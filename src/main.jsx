@@ -14,6 +14,10 @@ const router = createBrowserRouter([
     path: "/p",
     element: <App />,
   },
+  {
+    path: "/testk",
+    element: <div>"/index"Test Github ja</div>,
+  }
 ]);
 
 
