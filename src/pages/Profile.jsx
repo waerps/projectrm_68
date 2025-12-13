@@ -3,16 +3,16 @@ import React, { useState } from "react"
 export default function Profile() {
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({
-    firstname: "กมลทิพย์",
-    lastname: "กงเพชร",
-    nickname: "เป้ว",
+    firstname: "ณัฐวุฒิ",
+    lastname: "พัดไธสง",
+    nickname: "โลตัส",
     phone: "081-234-5678",
     occupation: "นักเรียนดี",
     birthdate: "1985-05-15",
     emergencyName: "สมหญิง ใจดี",
     emergencyPhone: "081-987-6543",
-    lineId: "somchai.teacher",
-    remark: "ครูสอนดี มีประสบการณ์ 10 ปี",
+    lineId: "somchai",
+    remark: "",
     createdAt: "2020-01-15",
   })
 
@@ -20,14 +20,14 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl border p-6 flex items-center justify-between mt-40">
+      <div className="bg-white rounded-2xl p-6 flex items-center justify-between mt-25">
         <div>
           <h1 className="text-2xl font-bold">ข้อมูลส่วนตัว</h1>
           <p className="text-neutral-600">จัดการข้อมูลส่วนตัวและการติดต่อ</p>
         </div>
         <button
           className={`px-6 py-2 rounded-xl font-medium ${
-            isEditing ? "bg-primary-orange text-white" : "border"
+            isEditing ? "bg-primary-orange text-white" : ""
           }`}
           onClick={() => setIsEditing((v) => !v)}
         >
@@ -37,19 +37,19 @@ export default function Profile() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl border p-6 text-center">
+        <div className="bg-white rounded-2xl p-6 text-center">
           <div className="w-32 h-32 bg-gradient-to-br from-primary-orange to-orange-600 rounded-full overflow-hidden mx-auto mb-4">
-            <img src="/img/tutor.png" alt="tutor" className="w-full h-full object-cover" />
+            <img src="/user2.jpg" alt="tutor" className="w-full h-full object-cover" />
           </div>
           <h3 className="text-xl font-bold mb-2">
             {form.firstname} {form.lastname}
           </h3>
           <p className="text-neutral-600 mb-1">{form.nickname}</p>
           <p className="text-neutral-500 mb-4">{form.occupation}</p>
-          {isEditing && <button className="px-4 py-2 border rounded-xl">เปลี่ยนรูป</button>}
+          {isEditing && <button className="px-4 py-2 rounded-xl">เปลี่ยนรูป</button>}
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-2xl border p-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6">
           <h3 className="text-lg font-bold mb-6">ข้อมูลทั่วไป</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Input label="ชื่อ" value={form.firstname} onChange={(v) => onChange("firstname", v)} disabled={!isEditing} />
@@ -66,7 +66,7 @@ export default function Profile() {
               <label className="block text-sm font-medium mb-2">หมายเหตุ</label>
               <textarea
                 rows="3"
-                className="w-full border rounded-xl px-4 py-3 disabled:bg-neutral-50"
+                className="w-full rounded-xl px-4 py-3 disabled:bg-neutral-50"
                 value={form.remark}
                 onChange={(e) => onChange("remark", e.target.value)}
                 disabled={!isEditing}
@@ -85,7 +85,7 @@ function Input({ label, value, onChange, disabled, type = "text" }) {
       <label className="block text-sm font-medium mb-2">{label}</label>
       <input
         type={type}
-        className="w-full border rounded-xl px-4 py-3 disabled:bg-neutral-50"
+        className="w-full rounded-xl px-4 py-3 disabled:bg-neutral-50"
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}

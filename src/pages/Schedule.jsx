@@ -1,9 +1,26 @@
-import React, { useState } from "react"
-
+import React, { useState,useEffect } from "react"
+import {getdataProducts}from "../callapi/calladmin"
 export default function Schedule() {
   const [showModal, setShowModal] = useState(false)
   const [selectedClass, setSelectedClass] = useState(null)
+  
+  const [data, setData] = useState([]);
 
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        // const token = Cookies.get("token");
+        const res = await getdataProducts();
+        console.log(res)
+        setData(res.data);
+        // setyearOptions(res.data);
+      } catch (err) {
+        console.error("Error loading data:", err);
+      }
+    }
+
+    fetchData();
+  }, []);
   const timeSlots = [
     "08:00-09:30",
     "09:30-11:00",
@@ -33,10 +50,17 @@ export default function Schedule() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-neutral-200 p-6 mt-35">
+    <>
+    {data.map((item) => (
+        <div key={item.id}>
+          <h2>{item.name}</h2>
+          <p>Price: {item.price}</p>
+        </div>
+      ))}
+      <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-neutral-200 p-6 mt-25">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">ตารางสอน</h1>
+          <h1 className="text-2xl font-bold text-neutral-900">ตารางเรียน</h1>
           <div className="bg-primary-orange text-white px-4 py-2 rounded-xl text-sm font-medium">
             <i className="fas fa-calendar-day mr-2" />
             วันนี้: อังคารที่ 28 ตุลาคม 2568
@@ -85,7 +109,7 @@ export default function Schedule() {
                           <div className="text-xs text-neutral-500">{cls.students}</div>
                           {cls.needsRecording && (
                             <div className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-lg font-medium inline-block mt-1">
-                              ต้องบันทึก
+                              
                             </div>
                           )}
                         </div>
@@ -98,7 +122,7 @@ export default function Schedule() {
           </div>
         </div>
       </div>
-
+{/* 
       {showModal && selectedClass && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full">
@@ -137,7 +161,9 @@ export default function Schedule() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
+    </>
+
   )
 }

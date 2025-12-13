@@ -3,7 +3,7 @@ import React from "react"
 
 export default function Footer() {
   return (
-    <div className="pb-24">
+    <div className="pb">
       {/* ========== FOOTER TOP (ABOUT) ========== */}
       <div className="mt-16 bg-orange-500/95 text-white">
         <div className="mx-auto max-w-[1200px] px-4 md:px-6 py-12">

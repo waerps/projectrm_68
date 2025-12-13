@@ -58,14 +58,22 @@ import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
 
 import AppShell from "./layouts/AppShell.jsx"
+import ProfileLayout from "./layouts/ProfileLayout.jsx"
+
 import Home from "./pages/Home.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import Courses from "./pages/Courses.jsx"
 import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
-import TutorApply from "./pages/TutorApply.jsx" 
-import './index.css';
+import TutorApply from "./pages/TutorApply.jsx"
+
+import Notifications from "./pages/Notifications.jsx"
+import Mycourses from "./pages/Mycourses.jsx"
+import Attendance from "./pages/Attendance.jsx"
+import New from "./pages/New.jsx"
+
+import "./index.css"
 
 const router = createBrowserRouter([
   {
@@ -77,7 +85,22 @@ const router = createBrowserRouter([
       { path: "courses", element: <Courses /> },
       { path: "performance", element: <Performance /> },
       { path: "salary", element: <Salary /> },
-      { path: "profile", element: <Profile /> },
+      { path: "new", element: <New /> },
+      
+
+      // ✅ โซนโปรไฟล์: แสดง sidebar เฉพาะ /profile และลูกๆ
+      {
+        path: "profile",
+        element: <ProfileLayout />,
+        children: [
+          { index: true, element: <Profile /> },                 // /profile
+          { path: "schedule", element: <Schedule /> },           // /profile/schedule
+          { path: "notifications", element: <Notifications /> }, // /profile/notifications
+          { path: "my-courses", element: <Mycourses /> },        // /profile/my-courses
+          { path: "attendance", element: <Attendance /> },       // /profile/attendance
+        ],
+      },
+
       { path: "apply-tutor", element: <TutorApply /> },
     ],
   },

@@ -39,8 +39,8 @@ export default function TutorApply() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 pb-16 pt-28 mt-15">
-      <h1 className="mb-10 text-center text-4xl font-extrabold text-neutral-900">
+    <div className="container mx-auto max-w-4xl px-4 pb-16 pt-28">
+      <h1 className="mb-10 text-center text-4xl font-extrabold text-neutral-900 mt-15">
         สมัครเป็นติวเตอร์
       </h1>
 
@@ -98,7 +98,6 @@ export default function TutorApply() {
         </label>
         <div className="mb-8 rounded-2xl bg-neutral-100 p-6">
           <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-neutral-300 bg-white py-12">
-            <div className="text-4xl">☁️⬆️</div>
             <div className="text-sm text-neutral-500">ลากไฟล์มาวาง หรือกดเพื่อเลือกไฟล์</div>
             <input
               name="resume"

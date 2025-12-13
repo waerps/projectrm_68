@@ -15,7 +15,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen ">
         <Navbar />
       <main className=" ">
         <div className="max-w-6xl mx-auto">

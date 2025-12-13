@@ -50,7 +50,7 @@ export default function CourseDetail() {
       <div className="grid gap-8 md:grid-cols-12 mt-35">
         {/* รูปหลัก */}
         <div className="md:col-span-7">
-          <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
             <img
               src={course.hero}
               alt={course.title}
@@ -78,14 +78,14 @@ export default function CourseDetail() {
 
           {/* กล่องราคา / วัน-เวลา */}
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
               <CreditCard className="h-6 w-6 text-orange-600" />
               <div>
                 <div className="text-sm text-neutral-500">ค่าเรียน</div>
                 <div className="text-lg font-semibold text-neutral-900">{course.price}</div>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
               <Clock className="h-6 w-6 text-green-600" />
               <div>
                 <div className="text-sm text-neutral-500">รอบเรียน</div>
@@ -100,7 +100,7 @@ export default function CourseDetail() {
           </button>
 
           {/* รายละเอียดคอร์ส */}
-          <div className="mt-8 rounded-2xl border bg-white p-6 shadow-sm">
+          <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
             <h3 className="mb-3 text-lg font-semibold">รายละเอียดคอร์ส</h3>
             <ul className="list-disc space-y-2 pl-5 text-sm text-neutral-700">
               {course.detail.map((d, i) => (
@@ -110,7 +110,7 @@ export default function CourseDetail() {
           </div>
 
           {/* เนื้อหาหลัก */}
-          <div className="mt-4 rounded-2xl border bg-white p-6 shadow-sm">
+          <div className="mt-4 rounded-2xl bg-white p-6 shadow-sm">
             <h3 className="mb-3 text-lg font-semibold">เนื้อหาหลัก</h3>
             <ol className="list-decimal space-y-2 pl-5 text-sm text-neutral-700">
               {course.outline.map((d, i) => (
@@ -125,9 +125,9 @@ export default function CourseDetail() {
       <section className="mt-10">
         <h2 className="mb-4 text-2xl font-bold">คลิปวิดีโอเนื้อหาเพิ่มเติม</h2>
 
-        <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           {course.videos.map((v, i) => (
-            <div key={i} className="border-b last:border-b-0">
+            <div key={i} className="">
               <button
                 onClick={() => toggle(i)}
                 className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-neutral-50"
@@ -142,7 +142,7 @@ export default function CourseDetail() {
 
               {open[i] && (
                 <div className="px-5 pb-5">
-                  <div className="overflow-hidden rounded-xl border">
+                  <div className="overflow-hidden rounded-xl">
                     <img
                       src={v.thumb}
                       alt={v.title}

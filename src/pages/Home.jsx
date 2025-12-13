@@ -1,5 +1,7 @@
 // src/pages/Home.jsx
 import React from "react"
+import { Link } from "react-router-dom"
+import Sidebar from "../components/ProfileSidebar"
 
 /** ---------- mock data ---------- */
 const heroImages = [
@@ -13,12 +15,12 @@ const promoCards = [
   {
     title: "โปรโมชั่นคอร์ส",
     icon: "💸",
-    bg: "bg-rose-50",
+
   },
   {
     title: "ผลลัพธ์ยอดครูเสริม",
     icon: "🎓",
-    bg: "bg-violet-50",
+
   },
 ]
 
@@ -92,7 +94,6 @@ const CourseCard = ({ item }) => (
       <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
         {item.note}
       </div>
-      <div className="absolute left-3 -bottom-3 h-8 w-3 rounded-b-md bg-orange-500" />
     </div>
     <div className="pt-5">
       <div className="line-clamp-2 font-semibold">{item.title}</div>
@@ -103,7 +104,7 @@ const CourseCard = ({ item }) => (
 )
 
 const NewsCard = ({ item }) => (
-  <div className="rounded-3xl border border-gray-100 bg-white p-4 md:p-5 shadow-sm">
+  <div className="rounded-3xl border-gray-100 bg-white p-4 md:p-5 shadow-sm">
     <div className="flex flex-col md:flex-row gap-4">
       <div className="md:w-[36%]">
         <SafeImg
@@ -145,16 +146,15 @@ export default function Home() {
     <div className="pb-24">
       {/* container */}
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
-ㅤ
         {/* ========== HERO ========== */}
         <div className="mt-[108px] rounded-[] bg-white">
           <div className="relative overflow-hidden rounded-[28px]">
             <div className="grid grid-cols-1 md:grid-cols-6">
               {/* slider (fake) */}
               <div className="md:col-span-8 relative">
-                <div className="aspect-[16/7] w-full">
+                <div className="aspect-[16/5] w-full">
                   <SafeImg
-                    src="/one.jpg"
+                    src="/gray.jpg"
                     alt="hero"
                     className="h-full w-full object-cover"
                   />
@@ -168,7 +168,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
         {/* ========== ABOUT + PROMO SHORTCUTS ========== */}
         <div className="mt-10 grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
           <div className="md:col-span-8">
@@ -223,9 +222,16 @@ export default function Home() {
 
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {courseOpenTerm.map((c) => (
-              <CourseCard key={c.id} item={c} />
+            <Link
+              key={c}
+              to={`/courses`}
+              className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+            >
+              <CourseCard item={c} />
+            </Link>
             ))}
           </div>
+
         </div>
 
         {/* ========== COURSES: ซัมเมอร์ ========== */}
@@ -246,10 +252,17 @@ export default function Home() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {courseSummer.map((c) => (
-              <CourseCard key={c.id} item={c} />
+            {courseOpenTerm.map((c) => (
+            <Link
+              key={c}
+              to={`/courses`}
+              className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+            >
+              <CourseCard item={c} />
+            </Link>
             ))}
           </div>
+
         </div>
 
         {/* ========== NEWS ========== */}
