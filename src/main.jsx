@@ -1,4 +1,4 @@
-
+import {GoogleOAuthProvider } from "@react-oauth/google"
 import React from "react"
 import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
@@ -57,6 +57,9 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    {/* ล้อมรอบ RouterProvider เพื่อให้ทุก Page สามารถใช้ Google Login ได้ */}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_I}>
+      <RouterProvider router={router} />
+    </GoogleOAuthProvider>
   </React.StrictMode>
 )
