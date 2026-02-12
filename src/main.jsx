@@ -1,29 +1,116 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
-import { createBrowserRouter } from "react-router";
-import { RouterProvider } from "react-router/dom";
+// import { StrictMode } from 'react'
+// import { createRoot } from 'react-dom/client'
+// import './index.css'
+// import App from './App.jsx'
+// import { createBrowserRouter } from "react-router";
+// import { RouterProvider } from "react-router/dom";
 
-import Dash from './dash.jsx';
+
+// import Index from './index.jsx';
+// import Dash from './dash.jsx';
+// import Nav from './nav.jsx';
+
+
+// const router = createBrowserRouter([
+//   {
+//     path: "/", //router
+//     element: <div>Hello World</div>,
+//   },
+//   {
+//     path: "/p",
+//     element: <App />,
+//   },
+
+//   {
+//     path: "/testk",
+//     element: <div>"/index"Test Github ja</div>,
+//   },
+//   {
+//     path: "/index",
+//     element: <Index />,
+//   },
+//     {
+//     path: "/dash",
+//     element: <Dash />,
+//   },
+//   {
+//     path: "/nav",
+//     element: <Nav />,
+//   }
+// ]);
+
+
+
+// createRoot(document.getElementById('root')).render(
+//   // <StrictMode>
+//   //   <App />
+//   //   <App />
+//   // </StrictMode>,
+//   <RouterProvider router={router} />,
+// )
+
+
+
+
+
+import React from "react"
+import ReactDOM from "react-dom/client"
+import { createBrowserRouter, RouterProvider } from "react-router-dom"
+
+import AppShell from "./layouts/AppShell.jsx"
+import ProfileLayout from "./layouts/ProfileLayout.jsx"
+
+import Home from "./pages/Home.jsx"
+import Schedule from "./pages/Schedule.jsx"
+import Courses from "./pages/Courses.jsx"
+import Performance from "./pages/Performance.jsx"
+import Salary from "./pages/Salary.jsx"
+import Profile from "./pages/Profile.jsx"
+import TutorApply from "./pages/TutorApply.jsx"
+
+import Notifications from "./pages/Notifications.jsx"
+import Mycourses from "./pages/Mycourses.jsx"
+import Attendance from "./pages/Attendance.jsx"
+import New from "./pages/New.jsx"
+
+import "./index.css"
 
 const router = createBrowserRouter([
   {
-    path: "/", //router
-    element: <div>Hello World</div>,
-  },
-  {
-    path: "/p",
-    element: <App />,
-  },
-    {
-    path: "/dash",
-    element: <Dash />,
+    path: "/",
+    element: <AppShell />,
+    children: [
+      { index: true, element: <Home /> },
+      { path: "schedule", element: <Schedule /> },
+      { path: "courses", element: <Courses /> },
+      { path: "performance", element: <Performance /> },
+      { path: "salary", element: <Salary /> },
+      { path: "new", element: <New /> },
+      
+
+      // ✅ โซนโปรไฟล์: แสดง sidebar เฉพาะ /profile และลูกๆ
+      {
+        path: "profile",
+        element: <ProfileLayout />,
+        children: [
+          { index: true, element: <Profile /> },                 // /profile
+          { path: "schedule", element: <Schedule /> },           // /profile/schedule
+          { path: "notifications", element: <Notifications /> }, // /profile/notifications
+          { path: "my-courses", element: <Mycourses /> },        // /profile/my-courses
+          { path: "attendance", element: <Attendance /> },       // /profile/attendance
+        ],
+      },
+
+      { path: "apply-tutor", element: <TutorApply /> },
+    ],
   },
 ])
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    {/* ล้อมรอบ RouterProvider เพื่อให้ทุก Page สามารถใช้ Google Login ได้ */}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_I}>
+      <RouterProvider router={router} />
+    </GoogleOAuthProvider>
   </React.StrictMode>
 )
