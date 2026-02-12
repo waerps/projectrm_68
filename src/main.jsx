@@ -1,3 +1,4 @@
+
 import {GoogleOAuthProvider } from "@react-oauth/google"
 import React from "react"
 import ReactDOM from "react-dom/client"
@@ -23,6 +24,30 @@ import Register from "./pages/Register.jsx"
 
 import "./index.css"
 
+import TutorLayout from "./layouts/TutorLayout.jsx"
+import TutorMain from "./pagetutor/TutorMain.jsx"
+import TutorSchedule from "./pagetutor/TutorSchedule.jsx"
+import TutorProfile from "./pagetutor/TutorProfile.jsx"
+import TutorCourses from "./pagetutor/TutorCourses.jsx"
+import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
+import TutorStudents from "./pagetutor/TutorStudents.jsx"
+import TutorManage from "./pagetutor/TutorManage.jsx"
+import Test from "./pagetutor/Test.jsx"
+import TutorIncome from "./pagetutor/TutorIncome.jsx"
+import TutorNotification from "./pagetutor/TutorNotification.jsx"
+import TutorExam from "./pagetutor/TutorExam.jsx"
+
+import AdminLayout from "./layouts/AdminLayout.jsx"
+import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
+import AdminCourses from "./pageadmin/AdminCourses.jsx"
+import AdminSchedule from "./pageadmin/AdminSchedule.jsx"
+import AdminStudents from "./pageadmin/AdminStudents.jsx"
+import AdminTutors from "./pageadmin/AdminTutors.jsx"
+import AdminFinance from "./pageadmin/AdminFinance.jsx"
+import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
+import AdminMedia from "./pageadmin/AdminMedia.jsx"
+import AdminNotification from "./pageadmin/AdminNotification.jsx"
+
 const router = createBrowserRouter([
   { path: "login", element: <Login /> },
   { path: "register", element: <Register /> },
@@ -38,7 +63,44 @@ const router = createBrowserRouter([
       { path: "news", element: <News /> },
       { path: "/courses/:id", element: <Courses />
       },
+    
       
+      // ✅ โซนติวเตอร์
+      {
+        path: "tutor",
+        element: <TutorLayout />,
+        children: [
+          { index: true, element: <TutorMain /> },
+          { path: "schedule", element: <TutorSchedule /> },
+          { path: "profile", element: <TutorProfile /> },
+          { path: "courses", element: <TutorCourses /> },
+          { path: "analytics", element: <TutorAnalytics /> },
+          { path: "students", element: <TutorStudents /> },
+          { path: "manage", element: <TutorManage /> },
+          { path: "test", element: <Test /> },
+          { path: "income", element: <TutorIncome /> },
+          { path: "notification", element: <TutorNotification/> },
+          { path: "exam", element: <TutorExam/> },
+        ],
+      },
+
+      // ✅ โซนแอดมิน
+      {
+        path: "admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboard /> }, // ⭐ สำคัญ
+          { path: "dashboard", element: <AdminDashboard /> },
+          { path: "courses", element: <AdminCourses /> },
+          { path: "schedule", element: <AdminSchedule /> },
+          { path: "students", element: <AdminStudents /> },
+          { path: "tutors", element: <AdminTutors /> },
+          { path: "finance", element: <AdminFinance /> },
+          { path: "announcements", element: <AdminAnnouncements /> },
+          { path: "media", element: <AdminMedia /> },
+          { path: "notification", element: <AdminNotification /> },
+        ],
+      },
       {
         path: "profile",
         element: <ProfileLayout />,
