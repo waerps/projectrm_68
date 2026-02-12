@@ -1,57 +1,4 @@
-// import { StrictMode } from 'react'
-// import { createRoot } from 'react-dom/client'
-// import './index.css'
-// import App from './App.jsx'
-// import { createBrowserRouter } from "react-router";
-// import { RouterProvider } from "react-router/dom";
-
-
-// import Index from './index.jsx';
-// import Dash from './dash.jsx';
-// import Nav from './nav.jsx';
-
-
-// const router = createBrowserRouter([
-//   {
-//     path: "/", //router
-//     element: <div>Hello World</div>,
-//   },
-//   {
-//     path: "/p",
-//     element: <App />,
-//   },
-
-//   {
-//     path: "/testk",
-//     element: <div>"/index"Test Github ja</div>,
-//   },
-//   {
-//     path: "/index",
-//     element: <Index />,
-//   },
-//     {
-//     path: "/dash",
-//     element: <Dash />,
-//   },
-//   {
-//     path: "/nav",
-//     element: <Nav />,
-//   }
-// ]);
-
-
-
-// createRoot(document.getElementById('root')).render(
-//   // <StrictMode>
-//   //   <App />
-//   //   <App />
-//   // </StrictMode>,
-//   <RouterProvider router={router} />,
-// )
-
-
-
-
+import { GoogleOAuthProvider } from "@react-oauth/google";
 
 import React from "react"
 import ReactDOM from "react-dom/client"
@@ -75,6 +22,30 @@ import New from "./pages/New.jsx"
 
 import "./index.css"
 
+import TutorLayout from "./layouts/TutorLayout.jsx"
+import TutorMain from "./pagetutor/TutorMain.jsx"
+import TutorSchedule from "./pagetutor/TutorSchedule.jsx"
+import TutorProfile from "./pagetutor/TutorProfile.jsx"
+import TutorCourses from "./pagetutor/TutorCourses.jsx"
+import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
+import TutorStudents from "./pagetutor/TutorStudents.jsx"
+import TutorManage from "./pagetutor/TutorManage.jsx"
+import Test from "./pagetutor/Test.jsx"
+import TutorIncome from "./pagetutor/TutorIncome.jsx"
+import TutorNotification from "./pagetutor/TutorNotification.jsx"
+import TutorExam from "./pagetutor/TutorExam.jsx"
+
+import AdminLayout from "./layouts/AdminLayout.jsx"
+import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
+import AdminCourses from "./pageadmin/AdminCourses.jsx"
+import AdminSchedule from "./pageadmin/AdminSchedule.jsx"
+import AdminStudents from "./pageadmin/AdminStudents.jsx"
+import AdminTutors from "./pageadmin/AdminTutors.jsx"
+import AdminFinance from "./pageadmin/AdminFinance.jsx"
+import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
+import AdminMedia from "./pageadmin/AdminMedia.jsx"
+import AdminNotification from "./pageadmin/AdminNotification.jsx"
+
 const router = createBrowserRouter([
   {
     path: "/",
@@ -87,6 +58,43 @@ const router = createBrowserRouter([
       { path: "salary", element: <Salary /> },
       { path: "new", element: <New /> },
       
+      
+      // ✅ โซนติวเตอร์
+      {
+        path: "tutor",
+        element: <TutorLayout />,
+        children: [
+          { index: true, element: <TutorMain /> },
+          { path: "schedule", element: <TutorSchedule /> },
+          { path: "profile", element: <TutorProfile /> },
+          { path: "courses", element: <TutorCourses /> },
+          { path: "analytics", element: <TutorAnalytics /> },
+          { path: "students", element: <TutorStudents /> },
+          { path: "manage", element: <TutorManage /> },
+          { path: "test", element: <Test /> },
+          { path: "income", element: <TutorIncome /> },
+          { path: "notification", element: <TutorNotification/> },
+          { path: "exam", element: <TutorExam/> },
+        ],
+      },
+
+      // ✅ โซนแอดมิน
+      {
+        path: "admin",
+        element: <AdminLayout />,
+        children: [
+          { index: true, element: <AdminDashboard /> }, // ⭐ สำคัญ
+          { path: "dashboard", element: <AdminDashboard /> },
+          { path: "courses", element: <AdminCourses /> },
+          { path: "schedule", element: <AdminSchedule /> },
+          { path: "students", element: <AdminStudents /> },
+          { path: "tutors", element: <AdminTutors /> },
+          { path: "finance", element: <AdminFinance /> },
+          { path: "announcements", element: <AdminAnnouncements /> },
+          { path: "media", element: <AdminMedia /> },
+          { path: "notification", element: <AdminNotification /> },
+        ],
+      },
 
       // ✅ โซนโปรไฟล์: แสดง sidebar เฉพาะ /profile และลูกๆ
       {
@@ -108,6 +116,9 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    {/* ล้อมรอบ RouterProvider เพื่อให้ทุก Page สามารถใช้ Google Login ได้ */}
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_I}>
+      <RouterProvider router={router} />
+    </GoogleOAuthProvider>
   </React.StrictMode>
 )

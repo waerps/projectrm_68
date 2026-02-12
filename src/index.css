@@ -1,2 +1,13 @@
 @import "tailwindcss";
 @tailwind utilities;
+
+@font-face {
+  font-family: "MyFont";
+  src: url("./assets/fonts/IBMPlexSansThaiLooped-Light.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+html, body {
+  font-family: "MyFont", sans-serif;
+}
