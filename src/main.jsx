@@ -1,57 +1,3 @@
-// import { StrictMode } from 'react'
-// import { createRoot } from 'react-dom/client'
-// import './index.css'
-// import App from './App.jsx'
-// import { createBrowserRouter } from "react-router";
-// import { RouterProvider } from "react-router/dom";
-
-
-// import Index from './index.jsx';
-// import Dash from './dash.jsx';
-// import Nav from './nav.jsx';
-
-
-// const router = createBrowserRouter([
-//   {
-//     path: "/", //router
-//     element: <div>Hello World</div>,
-//   },
-//   {
-//     path: "/p",
-//     element: <App />,
-//   },
-
-//   {
-//     path: "/testk",
-//     element: <div>"/index"Test Github ja</div>,
-//   },
-//   {
-//     path: "/index",
-//     element: <Index />,
-//   },
-//     {
-//     path: "/dash",
-//     element: <Dash />,
-//   },
-//   {
-//     path: "/nav",
-//     element: <Nav />,
-//   }
-// ]);
-
-
-
-// createRoot(document.getElementById('root')).render(
-//   // <StrictMode>
-//   //   <App />
-//   //   <App />
-//   // </StrictMode>,
-//   <RouterProvider router={router} />,
-// )
-
-
-
-
 
 import React from "react"
 import ReactDOM from "react-dom/client"
@@ -71,11 +17,15 @@ import TutorApply from "./pages/TutorApply.jsx"
 import Notifications from "./pages/Notifications.jsx"
 import Mycourses from "./pages/Mycourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
-import New from "./pages/New.jsx"
+import News from "./pages/News.jsx"
+import Login from "./pages/Login.jsx"
+import Register from "./pages/Register.jsx"
 
 import "./index.css"
 
 const router = createBrowserRouter([
+  { path: "login", element: <Login /> },
+  { path: "register", element: <Register /> },
   {
     path: "/",
     element: <AppShell />,
@@ -85,22 +35,21 @@ const router = createBrowserRouter([
       { path: "courses", element: <Courses /> },
       { path: "performance", element: <Performance /> },
       { path: "salary", element: <Salary /> },
-      { path: "new", element: <New /> },
+      { path: "news", element: <News /> },
+      { path: "/courses/:id", element: <Courses />
+      },
       
-
-      // ✅ โซนโปรไฟล์: แสดง sidebar เฉพาะ /profile และลูกๆ
       {
         path: "profile",
         element: <ProfileLayout />,
         children: [
-          { index: true, element: <Profile /> },                 // /profile
-          { path: "schedule", element: <Schedule /> },           // /profile/schedule
-          { path: "notifications", element: <Notifications /> }, // /profile/notifications
-          { path: "my-courses", element: <Mycourses /> },        // /profile/my-courses
-          { path: "attendance", element: <Attendance /> },       // /profile/attendance
+          { index: true, element: <Profile /> },      
+          { path: "schedule", element: <Schedule /> },  
+          { path: "notifications", element: <Notifications /> },
+          { path: "my-courses", element: <Mycourses /> },       
+          { path: "attendance", element: <Attendance /> },     
         ],
       },
-
       { path: "apply-tutor", element: <TutorApply /> },
     ],
   },

@@ -111,7 +111,7 @@ export default function Navbar() {
                   </li>
                   <li>
                     <Link
-                      to="/top-tutors"
+                      to="/news"
                       className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                     >
                       ผลผลิตของศรเสริม
