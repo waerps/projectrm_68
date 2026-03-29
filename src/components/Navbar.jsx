@@ -38,10 +38,6 @@ export default function Navbar() {
         <div className="flex items-center flex-1 justify-center gap-8">
           {/* ... (เมนูและกล่องค้นหาเหมือนเดิม) ... */}
           <div className="hidden md:flex items-center gap-8 ml-4">
-<<<<<<< HEAD
-             <Link to="/" className={`font-medium transition-colors text-xs ${isActive("/") ? "text-orange-500 border-b-2 border-orange-500 pb-1" : "text-gray-700 hover:text-orange-500"}`}>หน้าแรก</Link>
-             <Link to="/apply-tutor" className={`font-medium transition-colors text-xs ${isActive("/apply-tutor") ? "text-orange-500 border-b-2 border-orange-500 pb-1" : "text-gray-700 hover:text-orange-500"}`}>สมัครติวเตอร์</Link>
-=======
             <Link
               to="/"
               className={`font-medium transition-colors text-xs ${
@@ -210,7 +206,6 @@ export default function Navbar() {
                 </ul>
               </div>
             </div>
->>>>>>> origin/main
           </div>
 
           <div className="relative flex-1 max-w-sm">
