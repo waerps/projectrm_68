@@ -38,8 +38,179 @@ export default function Navbar() {
         <div className="flex items-center flex-1 justify-center gap-8">
           {/* ... (เมนูและกล่องค้นหาเหมือนเดิม) ... */}
           <div className="hidden md:flex items-center gap-8 ml-4">
+<<<<<<< HEAD
              <Link to="/" className={`font-medium transition-colors text-xs ${isActive("/") ? "text-orange-500 border-b-2 border-orange-500 pb-1" : "text-gray-700 hover:text-orange-500"}`}>หน้าแรก</Link>
              <Link to="/apply-tutor" className={`font-medium transition-colors text-xs ${isActive("/apply-tutor") ? "text-orange-500 border-b-2 border-orange-500 pb-1" : "text-gray-700 hover:text-orange-500"}`}>สมัครติวเตอร์</Link>
+=======
+            <Link
+              to="/"
+              className={`font-medium transition-colors text-xs ${
+                isActive("/")
+                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  : "text-gray-700 hover:text-orange-500"
+              }`}
+            >
+              หน้าแรก
+            </Link>
+            <Link
+              to="/apply-tutor"
+              className={`font-medium transition-colors text-xs ${
+                isActive("/apply-tutor")
+                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  : "text-gray-700 hover:text-orange-500"
+              }`}
+            >
+              สมัครติวเตอร์
+            </Link>
+            <div className="relative group">
+              {/* หมวดหมู่ */}
+              <div
+                className={`flex items-center gap-1 cursor-pointer font-medium text-xs transition-colors ${
+                  isActive("")
+                    ? "text-orange-500 border-b-2 border-orange-500"
+                    : "text-gray-700 hover:text-orange-500"
+                }`}
+              >
+                <span>หมวดหมู่</span>
+                <svg
+                  className="w-3 h-3 transition-transform duration-200 group-hover:rotate-90 mt-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </div>
+
+              {/* Dropdown */}
+              <div
+                className="
+                  absolute left-0 mt-3 w-47
+                  rounded-xl bg-white shadow-lg
+                  opacity-0 invisible
+                  group-hover:opacity-100 group-hover:visible
+                  transition-all duration-200
+                  z-50
+                "
+              >
+                <ul className="py-2 text-xs text-gray-700">
+                  <li>
+                    <Link
+                      to="/promotion"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      โปรโมชั่น
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/news"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      ข่าวประชาสัมพันธ์
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/top-tutors"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      ผลผลิตของศรเสริม
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/about"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      เกี่ยวกับเรา
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div className="relative group">
+              {/* คอร์สเรียนทั้งหมด */}
+              <div
+                className={`flex items-center gap-1 cursor-pointer font-medium text-xs transition-colors ${
+                  isActive("")
+                    ? "text-orange-500 border-b-2 border-orange-500"
+                    : "text-gray-700 hover:text-orange-500"
+                }`}
+              >
+                <span>คอร์สเรียนรวม</span>
+                <svg
+                  className="w-3 h-3 transition-transform duration-200 group-hover:rotate-90 mt-1"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </div>
+
+              {/* Dropdown */}
+              <div
+                className="
+                  absolute left-0 mt-3 w-47
+                  rounded-xl bg-white shadow-lg
+                  opacity-0 invisible
+                  group-hover:opacity-100 group-hover:visible
+                  transition-all duration-200
+                  z-50
+                "
+              >
+                <ul className="py-2 text-xs text-gray-700">
+                  <li>
+                    <Link
+                      to="/promotion"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      ประถมศึกษา 3
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/news"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      ประถมศึกษา 4 - 5 - 6
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/top-tutors"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      มัธยมศึกษา 1 - 2 - 3
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/about"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      มัธยมศึกษา 4
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/about"
+                      className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                    >
+                      มัธยมศึกษา 5 - 6
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            </div>
+>>>>>>> origin/main
           </div>
 
           <div className="relative flex-1 max-w-sm">
