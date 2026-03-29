@@ -1,269 +1,376 @@
-import { ChevronRight, Video, FileText, Eye, Trash2, Calendar, BarChart3, Edit, Plus, Download, Upload } from "lucide-react";
-import { useState } from "react";
+import {
+  ChevronRight, Video, FileText, Trash2, Calendar, Plus, Download,
+  Link as LinkIcon, UploadCloud, Loader2, Pencil, X, Check, PlayCircle
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams, Link } from "react-router-dom";
+import axios from "axios";
 
-export default function CourseManagePage() {
-  const [isUploadVideoOpen, setIsUploadVideoOpen] = useState(false);
+export default function TutorCourseManagePage() {
+  const [searchParams] = useSearchParams();
+  const courseId = searchParams.get("courseId") || "";
+  const subjectId = searchParams.get("subjectId") || "";
+  const courseName = searchParams.get("courseName") || "คอร์สรวม (แพ็กเกจ)";
+  const adminId = 1;
+
+  const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false);
-  const [editingVideo, setEditingVideo] = useState(null);
   const [editingDoc, setEditingDoc] = useState(null);
 
-  const courseInfo = {
-    id: 1,
-    name: "คณิตศาสตร์ ม.3 เทอม 1/2567",
-    startDate: "15 พ.ค. 2567",
-    studentCount: 24,
+  const [editingVideoId, setEditingVideoId] = useState(null);
+  const [editVideoData, setEditVideoData] = useState({ title: "", url: "", duration: "" });
+
+  const [newVideo, setNewVideo] = useState({ title: "", url: "", duration: "" });
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadDisplayName, setUploadDisplayName] = useState("");
+  const [editDocName, setEditDocName] = useState("");
+  const [editDocFile, setEditDocFile] = useState(null);
+
+  const [videos, setVideos] = useState([]);
+  const [documents, setDocuments] = useState([]);
+
+  const editFileInputRef = useRef(null);
+
+  const isValidVideoUrl = (url) =>
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|drive\.google\.com)/.test(url);
+
+  const getVideoThumbnail = (url) => {
+    const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+    return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
   };
 
-  const [videos, setVideos] = useState([
-    { id: 1, title: "บทที่ 1: พีชคณิต - เลขยกกำลัง", uploadDate: "20 พ.ค. 2567", duration: "45:32", views: 22, size: "245 MB" },
-    { id: 2, title: "บทที่ 2: สมการและอสมการ", uploadDate: "27 พ.ค. 2567", duration: "52:18", views: 20, size: "298 MB" },
-    { id: 3, title: "บทที่ 3: ฟังก์ชันเชิงเส้น", uploadDate: "3 มิ.ย. 2567", duration: "48:45", views: 18, size: "267 MB" },
-  ]);
-
-  const [documents, setDocuments] = useState([
-    { id: 1, title: "แบบฝึกหัดบทที่ 1", uploadDate: "20 พ.ค. 2567", downloads: 24, size: "2.4 MB", type: "PDF" },
-    { id: 2, title: "สรุปสูตรพีชคณิต", uploadDate: "20 พ.ค. 2567", downloads: 23, size: "1.8 MB", type: "PDF" },
-    { id: 3, title: "ข้อสอบกลางภาค", uploadDate: "10 มิ.ย. 2567", downloads: 22, size: "3.2 MB", type: "PDF" },
-  ]);
-
-  const handleDeleteVideo = (id) => {
-    if (confirm('ต้องการลบวิดีโอนี้ใช่หรือไม่?')) {
-      setVideos(videos.filter(v => v.id !== id));
-    }
+  const getVideoType = (url) => {
+    if (/youtube\.com|youtu\.be/.test(url)) return 'youtube';
+    if (/drive\.google\.com/.test(url)) return 'drive';
+    return 'other';
   };
 
-  const handleDeleteDoc = (id) => {
-    if (confirm('ต้องการลบเอกสารนี้ใช่หรือไม่?')) {
-      setDocuments(documents.filter(d => d.id !== id));
-    }
+  const fetchContent = async () => {
+    if (!courseId || !subjectId) { setLoading(false); return; }
+    try {
+      const res = await axios.get(`http://localhost:3000/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`);
+      setVideos(res.data.videos || []);
+      setDocuments(res.data.files || []);
+    } catch (e) {
+      console.error("Error fetching content:", e);
+    } finally { setLoading(false); }
   };
 
-  const handleEditVideo = (video) => {
-    setEditingVideo(video);
+  useEffect(() => { fetchContent(); }, [courseId, subjectId]);
+
+  // ===== VIDEO =====
+  const handleSaveNewVideo = async () => {
+    if (!newVideo.title || !newVideo.url) return alert("กรุณากรอกชื่อและลิงก์วิดีโอให้ครบถ้วน");
+    if (!isValidVideoUrl(newVideo.url)) return alert("กรุณาใส่ลิงก์ YouTube หรือ Google Drive เท่านั้น");
+    setIsSubmitting(true);
+    try {
+      await axios.post("http://localhost:3000/api/tutor-content/video", {
+        CourseID: courseId, SubjectId: subjectId, AdminId: adminId,
+        VideoTitle: newVideo.title, VideoUrl: newVideo.url, Duration: newVideo.duration
+      });
+      setIsAddVideoOpen(false);
+      setNewVideo({ title: "", url: "", duration: "" });
+      fetchContent();
+    } catch { alert("เกิดข้อผิดพลาดในการบันทึกวิดีโอ"); }
+    finally { setIsSubmitting(false); }
   };
 
-  const handleEditDoc = (doc) => {
-    setEditingDoc(doc);
+  const handleSaveEditVideo = async (videoId) => {
+    if (!editVideoData.title || !editVideoData.url) return alert("กรุณากรอกข้อมูลให้ครบ");
+    if (!isValidVideoUrl(editVideoData.url)) return alert("กรุณาใส่ลิงก์ YouTube หรือ Google Drive เท่านั้น");
+    setIsSubmitting(true);
+    try {
+      await axios.put(`http://localhost:3000/api/tutor-content/video/${videoId}`, {
+        VideoTitle: editVideoData.title, VideoUrl: editVideoData.url, Duration: editVideoData.duration
+      });
+      setEditingVideoId(null);
+      fetchContent();
+    } catch { alert("เกิดข้อผิดพลาดในการแก้ไขวิดีโอ"); }
+    finally { setIsSubmitting(false); }
   };
 
-  const handleSaveVideo = () => {
-    if (editingVideo) {
-      setVideos(videos.map(v => v.id === editingVideo.id ? editingVideo : v));
-      setEditingVideo(null);
-    }
+  const handleDeleteVideo = async (id) => {
+    if (!confirm("ต้องการลบวิดีโอนี้?")) return;
+    try {
+      await axios.delete(`http://localhost:3000/api/tutor-content/video/${id}`);
+      setVideos(videos.filter(v => v.VideoId !== id));
+    } catch { alert("ลบวิดีโอไม่สำเร็จ"); }
   };
 
-  const handleSaveDoc = () => {
-    if (editingDoc) {
-      setDocuments(documents.map(d => d.id === editingDoc.id ? editingDoc : d));
+  // ===== UPLOAD DOC =====
+  const handleUploadFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadFile(file);
+    if (!uploadDisplayName) setUploadDisplayName(file.name);
+  };
+
+  const handleSaveDoc = async () => {
+    if (!uploadFile) return alert("กรุณาเลือกไฟล์");
+    setIsSubmitting(true);
+    const formData = new FormData();
+    formData.append("file", uploadFile);
+    formData.append("CourseID", courseId);
+    formData.append("SubjectId", subjectId);
+    formData.append("AdminId", adminId);
+    formData.append("DisplayName", uploadDisplayName.trim());
+    try {
+      await axios.post("http://localhost:3000/api/tutor-content/file", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setIsUploadDocOpen(false);
+      setUploadFile(null);
+      setUploadDisplayName("");
+      fetchContent();
+    } catch { alert("เกิดข้อผิดพลาดในการอัปโหลดไฟล์"); }
+    finally { setIsSubmitting(false); }
+  };
+
+  // ===== EDIT DOC =====
+  const handleSaveEditDoc = async () => {
+    if (!editDocName.trim()) return alert("กรุณาระบุชื่อไฟล์");
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("FileName", editDocName.trim());
+      if (editDocFile) formData.append("file", editDocFile);
+      await axios.put(`http://localhost:3000/api/tutor-content/file/${editingDoc.FileId}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       setEditingDoc(null);
-    }
+      fetchContent();
+    } catch { alert("เกิดข้อผิดพลาดในการแก้ไขไฟล์"); }
+    finally { setIsSubmitting(false); }
   };
+
+  const handleDeleteDoc = async (id) => {
+    if (!confirm("ต้องการลบเอกสารนี้?")) return;
+    try {
+      await axios.delete(`http://localhost:3000/api/tutor-content/file/${id}`);
+      setDocuments(documents.filter(d => d.FileId !== id));
+    } catch { alert("ลบไฟล์ไม่สำเร็จ"); }
+  };
+
+  if (loading) return (
+    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-neutral-500">
+      <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
+      กำลังดึงข้อมูล...
+    </div>
+  );
 
   return (
-    <div className="min-h-screen space-y-6 mt-20">
-      <div className="mx-auto max-w-7xl px-4">
+    <div className="min-h-screen mt-[70px] pb-12">
+      <div className="mx-auto">
+
         {/* Header */}
-        <div className="mb-6">
-          {/* Breadcrumb */}
-          <div className="mb-6 flex items-center text-sm">
-            <a
-              href="/tutor/courses"
-              className="font-medium text-gray-500 hover:text-orange-600 transition"
-            >
-              คอร์ส
-            </a>
-            <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-            <span className="font-medium text-gray-800">
-              จัดการคลิป/เอกสาร
-            </span>
+        <div className="py-6">
+          <div className="mb-3 flex items-center text-sm text-neutral-500">
+            <Link to="/tutor/courses" className="hover:text-orange-600 transition">คอร์สของฉัน</Link>
+            <ChevronRight className="mx-1.5 h-4 w-4" />
+            <span className="text-neutral-800 font-medium">จัดการเนื้อหา</span>
           </div>
-
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900">{courseInfo.name}</h1>
-              <p className="mt-1 text-sm text-neutral-500">
-                เริ่มเรียน: {courseInfo.startDate} • นักเรียน {courseInfo.studentCount} คน
-              </p>
-            </div>
-
-          </div>
+          <h1 className="text-2xl font-bold text-neutral-900">{courseName}</h1>
         </div>
 
-        {/* Video and Document Grid */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Video Section */}
-          <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
-            <div className="p-5 bg-linear-to-br from-orange-50 to-amber-50 border-b border-orange-100">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
-                  <Video className="h-5 w-5 text-orange-600" />
-                  คลิปวิดีโอ ({videos.length})
-                </h2>
+        {/* ===== GRID ===== */}
+        {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
+        <div className="grid gap-5 lg:grid-cols-2">
 
-              </div>
+          {/* VIDEOS */}
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+              <h2 className="flex items-center gap-2 font-bold text-neutral-800">
+                <span className="p-1.5 bg-orange-100 rounded-lg"><Video className="h-4 w-4 text-orange-500" /></span>
+                คลิปวิดีโอ
+                <span className="ml-1 text-sm font-medium text-neutral-400">({videos.length})</span>
+              </h2>
+              <button onClick={() => setIsAddVideoOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm font-bold transition shadow-sm">
+                <Plus className="h-4 w-4" /> เพิ่มวิดีโอ
+              </button>
             </div>
 
-            <div className="p-5 space-y-3 bg-neutral-50">
-              {videos.map((video) => (
-                <div key={video.id} className="bg-white rounded-xl p-4 border-2 border-neutral-200 hover:border-orange-300 transition">
-                  <h4 className="font-semibold text-neutral-900">{video.title}</h4>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600 mt-2">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {video.uploadDate}
-                    </span>
-                    <span>{video.duration}</span>
-                    <span>{video.size}</span>
+            {/* Scrollable list */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {videos.length > 0 ? videos.map((video) => (
+                <div key={video.VideoId} className="rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden">
+                  {editingVideoId === video.VideoId ? (
+                    /* Edit Mode */
+                    <div className="p-4 space-y-3">
+                      <div>
+                        <label className="text-xs font-bold text-neutral-500 mb-1 block">ชื่อวิดีโอ</label>
+                        <input type="text" value={editVideoData.title} onChange={e => setEditVideoData({ ...editVideoData, title: e.target.value })}
+                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none" disabled={isSubmitting} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-neutral-500 mb-1 block">ลิงก์วิดีโอ</label>
+                        <input type="url" value={editVideoData.url} onChange={e => setEditVideoData({ ...editVideoData, url: e.target.value })}
+                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none" disabled={isSubmitting} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-neutral-500 mb-1 block">ความยาวคลิป</label>
+                        <input type="text" value={editVideoData.duration} onChange={e => setEditVideoData({ ...editVideoData, duration: e.target.value })}
+                          className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                          placeholder="เช่น 1 ชม. 30 นาที" disabled={isSubmitting} />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingVideoId(null)} disabled={isSubmitting}
+                          className="flex-1 flex items-center justify-center gap-1 py-2 bg-neutral-100 text-neutral-600 rounded-lg text-sm font-bold hover:bg-neutral-200 transition">
+                          <X className="h-4 w-4" /> ยกเลิก
+                        </button>
+                        <button onClick={() => handleSaveEditVideo(video.VideoId)} disabled={isSubmitting}
+                          className="flex-1 flex items-center justify-center gap-1 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition">
+                          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ✅ View Mode — แนวนอน thumbnail เล็ก + ข้อมูลข้างๆ */
+                    <div className="flex items-stretch gap-0">
+                      {/* Thumbnail */}
+                      <a href={video.VideoUrl} target="_blank" rel="noreferrer" className="relative flex-shrink-0 w-28 bg-neutral-100 group">
+                        {getVideoThumbnail(video.VideoUrl) ? (
+                          <img src={getVideoThumbnail(video.VideoUrl)} alt="" className="w-28 h-full object-cover" />
+                        ) : (
+                          <div className="w-28 h-full flex items-center justify-center min-h-[72px]">
+                            <span className="text-2xl">📁</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <PlayCircle className="h-8 w-8 text-white" />
+                        </div>
+                      </a>
+
+                      {/* Info */}
+                      <div className="flex-1 px-3 py-3 flex flex-col justify-between min-w-0">
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl) === 'youtube' ? 'bg-red-50 text-red-500' : 'bg-blue-50 text-blue-500'}`}>
+                              {getVideoType(video.VideoUrl) === 'youtube' ? '▶ YouTube' : '📁 Drive'}
+                            </span>
+                            {video.Duration && <span className="text-[10px] text-neutral-400">{video.Duration}</span>}
+                          </div>
+                          <p className="text-sm font-semibold text-neutral-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
+                        </div>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="flex items-center gap-1 text-[11px] text-neutral-400">
+                            <Calendar className="h-3 w-3" />{video.date}
+                          </span>
+                          <div className="flex items-center gap-0.5">
+                            <button onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, duration: video.Duration || "" }); }}
+                              className="p-1.5 text-neutral-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button onClick={() => handleDeleteVideo(video.VideoId)}
+                              className="p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )) : (
+                <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
+                  <Video className="h-10 w-10 text-neutral-300 mb-2" />
+                  <p className="text-sm text-neutral-400">ยังไม่มีวิดีโอในวิชานี้</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* DOCUMENTS */}
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+              <h2 className="flex items-center gap-2 font-bold text-neutral-800">
+                <span className="p-1.5 bg-blue-100 rounded-lg"><FileText className="h-4 w-4 text-blue-500" /></span>
+                เอกสาร
+                <span className="ml-1 text-sm font-medium text-neutral-400">({documents.length})</span>
+              </h2>
+              <button onClick={() => setIsUploadDocOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition shadow-sm">
+                <UploadCloud className="h-4 w-4" /> อัปโหลด
+              </button>
+            </div>
+
+            {/* Scrollable list */}
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+              {documents.length > 0 ? documents.map((doc) => (
+                <div key={doc.FileId} className="rounded-xl border border-neutral-200 hover:border-blue-200 hover:shadow-sm transition bg-white p-4 flex items-center gap-3">
+                  {/* Icon */}
+                  <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <FileText className="h-5 w-5 text-blue-500" />
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-200">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Eye className="h-4 w-4 text-orange-600" />
-                      <span className="font-semibold text-neutral-900">{video.views}</span>
-                      <span className="text-neutral-600">ครั้งที่ดู</span>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-neutral-900 truncate">{doc.FileName}</p>
+                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-neutral-400">
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{doc.date}</span>
+                      <span>{doc.FileSize}</span>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditDoc(doc)}
-                        className="flex items-center gap-1 px-2 py-1 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm"
-                      >
-                        <Plus className="h-3 w-3" />
-                        เพิ่ม
-                      </button>
-                      <button
-                        onClick={() => handleEditVideo(video)}
-                        className="flex items-center gap-1 px-2 py-1 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm"
-                      >
-                        <Edit className="h-3 w-3" />
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDeleteVideo(video.id)}
-                        className="flex items-center gap-1 px-2 py-1 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition text-sm"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        ลบ
-                      </button>
-                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <a href={`http://localhost:3000${doc.FilePath}`} download target="_blank" rel="noreferrer"
+                      className="p-1.5 text-neutral-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
+                      <Download className="h-4 w-4" />
+                    </a>
+                    <button onClick={() => { setEditingDoc(doc); setEditDocName(doc.FileName); setEditDocFile(null); }}
+                      className="p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50" title="แก้ไข">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => handleDeleteDoc(doc.FileId)}
+                      className="p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="ลบ">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-              ))}
-
-              {videos.length === 0 && (
-                <div className="text-center py-12">
-                  <Video className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-500 text-sm">ยังไม่มีวิดีโอ</p>
+              )) : (
+                <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
+                  <FileText className="h-10 w-10 text-neutral-300 mb-2" />
+                  <p className="text-sm text-neutral-400">ยังไม่มีเอกสารในวิชานี้</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Document Section */}
-          <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
-            <div className="p-5 bg-linear-to-br from-orange-50 to-amber-50 border-b border-orange-100">
-              <div className="flex items-center justify-between">
-                <h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900">
-                  <FileText className="h-5 w-5 text-orange-600" />
-                  เอกสาร ({documents.length})
-                </h2>
-
-              </div>
-            </div>
-
-            <div className="p-5 space-y-3 bg-neutral-50">
-              {documents.map((doc) => (
-                <div key={doc.id} className="bg-white rounded-xl p-4 border-2 border-neutral-200 hover:border-orange-300 transition">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-xs font-medium border border-orange-200">
-                      {doc.type}
-                    </span>
-                    <h4 className="font-semibold text-neutral-900">{doc.title}</h4>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {doc.uploadDate}
-                    </span>
-                    <span>{doc.size}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-200">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Download className="h-4 w-4 text-orange-600" />
-                      <span className="font-semibold text-neutral-900">{doc.downloads}</span>
-                      <span className="text-neutral-600">ดาวน์โหลด</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditDoc(doc)}
-                        className="flex items-center gap-1 px-2 py-1 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm"
-                      >
-                        <Plus className="h-3 w-3" />
-                        เพิ่ม
-                      </button>
-                      <button
-                        onClick={() => handleEditDoc(doc)}
-                        className="flex items-center gap-1 px-2 py-1 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm"
-                      >
-                        <Edit className="h-3 w-3" />
-                        แก้ไข
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDoc(doc.id)}
-                        className="flex items-center gap-1 px-2 py-1 border border-red-300 rounded-lg text-red-600 hover:bg-red-50 transition text-sm"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        ลบ
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {documents.length === 0 && (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-500 text-sm">ยังไม่มีเอกสาร</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Upload Video Modal */}
-      {isUploadVideoOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-neutral-900 mb-4">เพิ่มวิดีโอใหม่</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ชื่อวิดีโอ</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="บทที่ 4: ..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ไฟล์วิดีโอ</label>
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-orange-500 transition cursor-pointer">
-                  <Upload className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-                  <p className="text-sm text-neutral-600">คลิกเพื่อเลือกไฟล์</p>
-                  <p className="text-xs text-neutral-500 mt-1">รองรับ MP4, MOV (สูงสุด 2GB)</p>
+      {/* ===== MODAL: ADD VIDEO ===== */}
+      {isAddVideoOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-orange-500" /> เพิ่มลิงก์วิดีโอ
+            </h3>
+            <div className="space-y-3">
+              {[
+                { label: "ชื่อวิดีโอ / หัวข้อ", key: "title", type: "text", placeholder: "เช่น EP.1: แนะนำบทเรียน" },
+                { label: "ลิงก์วิดีโอ (YouTube / Drive)", key: "url", type: "url", placeholder: "https://..." },
+                { label: "ความยาวคลิป (ไม่บังคับ)", key: "duration", type: "text", placeholder: "เช่น 1 ชม. 30 นาที" },
+              ].map(({ label, key, type, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">{label}</label>
+                  <input type={type} value={newVideo[key]} onChange={e => setNewVideo({ ...newVideo, [key]: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-sm transition"
+                    placeholder={placeholder} disabled={isSubmitting} />
                 </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsUploadVideoOpen(false)}
-                  className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition font-medium"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={() => setIsUploadVideoOpen(false)}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium"
-                >
-                  อัปโหลด
+              ))}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setIsAddVideoOpen(false); setNewVideo({ title: "", url: "", duration: "" }); }} disabled={isSubmitting}
+                  className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition">ยกเลิก</button>
+                <button onClick={handleSaveNewVideo} disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "บันทึก"}
                 </button>
               </div>
             </div>
@@ -271,40 +378,34 @@ export default function CourseManagePage() {
         </div>
       )}
 
-      {/* Upload Document Modal */}
+      {/* ===== MODAL: UPLOAD DOC ===== */}
       {isUploadDocOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-neutral-900 mb-4">เพิ่มเอกสารใหม่</h3>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+              <UploadCloud className="h-5 w-5 text-blue-500" /> อัปโหลดเอกสาร
+            </h3>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ชื่อเอกสาร</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  placeholder="แบบฝึกหัดบทที่ 4"
-                />
+                <label className="block text-sm font-medium text-neutral-700 mb-1">เลือกไฟล์ (PDF, DOCX, DOC)</label>
+                <input type="file" onChange={handleUploadFileChange} accept=".pdf,.doc,.docx" disabled={isSubmitting}
+                  className="block w-full text-sm text-neutral-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition cursor-pointer" />
+                {uploadFile && <p className="mt-1.5 text-xs text-neutral-400">ไฟล์: {uploadFile.name}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ไฟล์เอกสาร</label>
-                <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center hover:border-orange-500 transition cursor-pointer">
-                  <Upload className="h-8 w-8 text-neutral-400 mx-auto mb-2" />
-                  <p className="text-sm text-neutral-600">คลิกเพื่อเลือกไฟล์</p>
-                  <p className="text-xs text-neutral-500 mt-1">รองรับ PDF, DOCX (สูงสุด 50MB)</p>
-                </div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  ชื่อที่แสดงในระบบ <span className="text-neutral-400 font-normal text-xs">(แก้ได้)</span>
+                </label>
+                <input type="text" value={uploadDisplayName} onChange={e => setUploadDisplayName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition"
+                  placeholder="เช่น เอกสารประกอบบทที่ 1" disabled={isSubmitting} />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsUploadDocOpen(false)}
-                  className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition font-medium"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={() => setIsUploadDocOpen(false)}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium"
-                >
-                  อัปโหลด
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { setIsUploadDocOpen(false); setUploadFile(null); setUploadDisplayName(""); }} disabled={isSubmitting}
+                  className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition">ยกเลิก</button>
+                <button onClick={handleSaveDoc} disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition">
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "อัปโหลด"}
                 </button>
               </div>
             </div>
@@ -312,67 +413,42 @@ export default function CourseManagePage() {
         </div>
       )}
 
-      {/* Edit Video Modal */}
-      {editingVideo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-neutral-900 mb-4">แก้ไขวิดีโอ</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ชื่อวิดีโอ</label>
-                <input
-                  type="text"
-                  value={editingVideo.title}
-                  onChange={(e) => setEditingVideo({ ...editingVideo, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setEditingVideo(null)}
-                  className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition font-medium"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={handleSaveVideo}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium"
-                >
-                  บันทึก
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Document Modal */}
+      {/* ===== MODAL: EDIT DOC ===== */}
       {editingDoc && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-neutral-900 mb-4">แก้ไขเอกสาร</h3>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-500" /> แก้ไขเอกสาร
+            </h3>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-2">ชื่อเอกสาร</label>
-                <input
-                  type="text"
-                  value={editingDoc.title}
-                  onChange={(e) => setEditingDoc({ ...editingDoc, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
+                <label className="block text-sm font-medium text-neutral-700 mb-1">ชื่อที่แสดงในระบบ</label>
+                <input type="text" value={editDocName} onChange={e => setEditDocName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                  disabled={isSubmitting} />
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setEditingDoc(null)}
-                  className="flex-1 px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition font-medium"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={handleSaveDoc}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium"
-                >
-                  บันทึก
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  เปลี่ยนไฟล์ใหม่ <span className="text-neutral-400 font-normal text-xs">(ไม่บังคับ)</span>
+                </label>
+                <input ref={editFileInputRef} type="file" onChange={e => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  setEditDocFile(file);
+                  if (editDocName === editingDoc?.FileName) setEditDocName(file.name);
+                }} accept=".pdf,.doc,.docx" disabled={isSubmitting}
+                  className="block w-full text-sm text-neutral-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-neutral-100 file:text-neutral-600 hover:file:bg-neutral-200 transition cursor-pointer" />
+                {editDocFile
+                  ? <p className="mt-1.5 text-xs text-blue-600">✅ ไฟล์ใหม่: {editDocFile.name}</p>
+                  : <p className="mt-1.5 text-xs text-neutral-400">ใช้ไฟล์เดิม: {editingDoc.FileName}</p>
+                }
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setEditingDoc(null)} disabled={isSubmitting}
+                  className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition">ยกเลิก</button>
+                <button onClick={handleSaveEditDoc} disabled={isSubmitting}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition">
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
               </div>
             </div>
