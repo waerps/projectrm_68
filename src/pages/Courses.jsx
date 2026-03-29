@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard } from "lucide-react";
 import { getCourseById } from "../callapi/callusers";
 
+
 export default function CourseDetail() {
   const { id } = useParams(); 
   const [courseRaw, setCourseRaw] = useState(null);
