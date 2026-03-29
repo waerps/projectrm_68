@@ -66,20 +66,19 @@ const SectionTitle = ({ children, sub }) => (
 )
 
 const CourseCard = ({ item }) => (
-  <div className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm hover:shadow-md transition">
-    <div className="relative">
+  <div className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm ">
+    <div className="relative -mx-1 -mt-15">
       <SafeImg
         src={item.img}
         alt={item.title}
-        className="h-44 w-full rounded-2xl object-cover"
+        className="h-55 w-full rounded-2xl object-cover"
       />
-      <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
+      {/* <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
         {item.note}
-      </div>
+      </div> */}
     </div>
-    <div className="pt-5">
+    <div className="pt-4">
       <div className="line-clamp-2 font-semibold">{item.title}</div>
-      <div className="mt-2 text-sm text-gray-500">ราคาเริ่มต้น</div>
       <div className="text-orange-600 font-bold">{item.price}</div>
     </div>
   </div>
@@ -173,7 +172,7 @@ export default function Home() {
               ศรเสริมติวเตอร์
             </h2>
             <p className="mt-3 text-gray-700 leading-relaxed">
-              “ติวจริง ติวตรง มีผลงาน ใส่ใจทุกๆพัฒนาการของนักเรียน”
+              "ติวจริง ติวตรง มีผลงาน ใส่ใจทุกๆพัฒนาการของนักเรียน"
             </p>
             <p className="mt-2 text-gray-600 leading-relaxed">
               รับติวตั้งแต่ระดับ ม.1 - ม.6 ทั้งเพิ่มเกรด / สอบเข้า / สอบแข่งขัน /
@@ -182,7 +181,7 @@ export default function Home() {
             </p>
           </div>
           <div className="md:col-span-4 grid grid-cols-1 gap-4">
-            {promoCards.map((p, i) => (
+            {/* {promoCards.map((p, i) => (
               <div
                 key={i}
                 className={`${p.bg} rounded-[22px] border border-gray-100 p-5 shadow-sm`}
@@ -197,20 +196,18 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))} */}
           </div>
         </div>
 
-        {/* ========== COURSES: เปิดเทอม ========== */}
+        {/* ========== COURSES: เปิดเทอม 1 ========== */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
               คอร์สเรียน เปิดเทอม 1
             </h3>
           </div>
-
-          {/* ดึงข้อมูลมา */}
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
             {data.map((c) => (
               <Link
                 key={c.CourseID}
@@ -222,7 +219,7 @@ export default function Home() {
                     id: c.CourseID,
                     title: c.CourseName,
                     price: `${c.Price ?? "-"} บาท`,
-                    note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+                    // note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
                     img: c.CourseImage
                       ? c.CourseImage.startsWith("http")
                         ? c.CourseImage
@@ -233,7 +230,6 @@ export default function Home() {
               </Link>
             ))}
           </div>
-
         </div>
 
         {/* ========== COURSES เปิดเทอม 2 ========== */}
@@ -243,9 +239,7 @@ export default function Home() {
               คอร์สเรียน เปิดเทอม 2
             </h3>
           </div>
-
-          {/* ดึงข้อมูลมา */}
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
             {data.map((c) => (
               <Link
                 key={c.CourseID}
@@ -270,16 +264,14 @@ export default function Home() {
           </div>
         </div>
 
-                {/* ========== COURSES เปิดเทอม 2 ========== */}
+        {/* ========== COURSES ปิดเทอมเล็ก ========== */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
               คอร์สเรียน ปิดเทอมเล็ก
             </h3>
           </div>
-
-          {/* ดึงข้อมูลมา */}
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
             {data.map((c) => (
               <Link
                 key={c.CourseID}
@@ -304,16 +296,14 @@ export default function Home() {
           </div>
         </div>
 
-                {/* ========== COURSES ซัมเมอร์ ========== */}
+        {/* ========== COURSES ซัมเมอร์ ========== */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
               คอร์สเรียน ซัมเมอร์
             </h3>
           </div>
-
-          {/* ดึงข้อมูลมา */}
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
             {data.map((c) => (
               <Link
                 key={c.CourseID}

@@ -69,7 +69,7 @@ ate(date)
       price: c.Price != null ? `${c.Price} บาท` : "-",
 startDate: c.StartDate || null,
 endDate: c.LastDate || null,
-      hero: "/gray.jpg", 
+      hero: "/openterm2.jpg", 
       badges: [
         c.Discount ? `ลด ${c.Discount}` : null,
         c.Remark ? "รายละเอียดเพิ่มเติม" : null,
