@@ -26,13 +26,47 @@ export function Register() {
     });
   };
 
-  const handleSubmit = () => {
+const handleSubmit = async (e) => {
+    // ป้องกันปุ่ม submit ทำงานซ้ำซ้อน (ถ้าใส่ใน form tag)
+    if(e) e.preventDefault(); 
+
+    // 1. Validation เบื้องต้น
+    if (!formData.firstname || !formData.lastname || !formData.username || !formData.password) {
+      alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ที่มีเครื่องหมาย *)');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       alert('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง');
       return;
     }
-    console.log('Register data:', formData);
-    alert('ลงทะเบียนสำเร็จ!');
+
+    try {
+      // 2. ส่งข้อมูลไปที่ Backend (เปลี่ยน port ให้ตรงกับของคุณ เช่น 3000 หรือ 5000)
+      const response = await fetch('http://localhost:3000/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 3. กรณีสำเร็จ
+        alert('ลงทะเบียนสำเร็จ! กำลังพาท่านไปหน้าเข้าสู่ระบบ...');
+        // ถ้าใช้ react-router-dom ให้ใช้ navigate('/login') แทน
+        window.location.href = '/login'; 
+      } else {
+        // 4. กรณี Error (เช่น Username ซ้ำ)
+        alert(data.message || 'เกิดข้อผิดพลาดในการลงทะเบียน');
+      }
+
+    } catch (error) {
+      console.error('Error:', error);
+      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    }
   };
 
   return (

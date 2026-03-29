@@ -1,102 +1,52 @@
 // src/pages/CourseDetail.jsx
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard } from "lucide-react";
-import { getCourseById } from "../callapi/callusers";
+import { useState, useMemo } from "react"
+import { useParams } from "react-router-dom"
+import { ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard } from "lucide-react"
+
+const COURSE_DB = {
+  "netsat-intensive": {
+    title: "คอร์สติวเข้ม NETSAT",
+    price: "5,900 บาท",
+    dateText: "17 มีนาคม - 4 เมษายน",
+    hero: "gray.jpg", // ใส่ไฟล์ใน public
+    badges: ["รับจำนวนจำกัด", "โปรโมชั่นพิเศษ"],
+    detail: [
+      "รูปแบบเรียน: คลาสสดออนไลน์ (Zoom) + วีดีโอย้อนหลัง + เอกสาร + ชุดข้อสอบจริง",
+      "ผู้สอน: อาจารย์ติวเตอร์ผู้เชี่ยวชาญ NETSAT (ประสบการณ์ติวเฉพาะสาย NETSAT มากกว่า 5 ปี)",
+      "จำนวนที่นั่ง: จำกัด 25 ที่นั่งต่อรอบ",
+    ],
+    outline: [
+      "พื้นฐานเซลล์พืช & เซลล์สัตว์ — โครงสร้าง ออร์แกเนลล์ หน้าที่",
+      "การสร้างโปรตีน & การถ่ายทอดลักษณะทางพันธุกรรม",
+      "ระบบร่างกายและสรีรวิทยา — โครงโมเลกุล ยีน พันธุกรรมเชิงปริมาณ",
+      "พันธุวิศวกรรมชีวภาพ & เทคนิคชีวโมเลกุล NETSAT",
+      "สอบย่อย (Mock Test) + วิเคราะห์ผลละเอียด",
+    ],
+    videos: [
+      { title: "NETSAT ชีววิทยา: คณิตศาสตร์เรื่องจำนวนเชิงซ้อน (ตัวอย่าง)", thumb: "gray.jpg" },
+      { title: "NETSAT ภาษาไทย: คำยืม คำซ้ำ (ตัวอย่าง)", thumb: "gray.jpg" },
+      { title: "NETSAT ชีววิทยา: เซลล์ (ตัวอย่าง)", thumb: "gray.jpg", open: true },
+    ],
+  },
+}
 
 export default function CourseDetail() {
-  const { id } = useParams(); 
-  const [courseRaw, setCourseRaw] = useState(null);
-  const [loading, setLoading] = useState(true);
-const formatThaiDate = (date) => {
-  if (!date) return "-"
+  const { slug } = useParams()
+  const course = useMemo(() => COURSE_DB[slug] ?? COURSE_DB["netsat-intensive"], [slug])
+  const [open, setOpen] = useState(
+    course.videos.map((v) => Boolean(v.open)) // แถวสุดท้ายเปิดอยู่ตามตัวอย่าง
+  )
 
-  const formatThaiDate = (date) => {
-  if (!date) return ""
-
-  const d = new Date(date)
-  if (isNaN(d)) return ""
-
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d)
-}
-
-
-  const d = new D
-  const formatDateRange = (start, end) => {
-  if (start && end) {
-    return `${formatThaiDate(start)} - ${formatThaiDate(end)}`
-  }
-  if (start) {
-    return `${formatThaiDate(start)} -`
-  }
-  return "-"
-}
-ate(date)
-
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d)
-}
-
-  
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await getCourseById(id); 
-        setCourseRaw(data);
-      } catch (err) {
-        console.error("Load course error:", err);
-        setCourseRaw(null);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [id]);
-
-
-  const course = useMemo(() => {
-    const c = courseRaw || {};
-
-    return {
-      title: c.CourseName ?? "ไม่พบข้อมูลคอร์ส",
-      price: c.Price != null ? `${c.Price} บาท` : "-",
-startDate: c.StartDate || null,
-endDate: c.LastDate || null,
-      hero: "/gray.jpg", 
-      badges: [
-        c.Discount ? `ลด ${c.Discount}` : null,
-        c.Remark ? "รายละเอียดเพิ่มเติม" : null,
-      ].filter(Boolean),
-      detail: c.Remark ? [c.Remark] : ["-"],
-      outline: [],
-      videos: [],  
-    };
-  }, [courseRaw]);
-
-  const [open, setOpen] = useState([]);
-  useEffect(() => {
-    setOpen((course.videos || []).map((v) => Boolean(v.open)));
-  }, [course.videos]);
-
-  const toggle = (i) => setOpen((prev) => prev.map((x, idx) => (idx === i ? !x : x)));
-
-  if (loading) {
-    return (
-      <div className="container mx-auto max-w-6xl px-4 py-8">
-        <div className="text-gray-500">กำลังโหลดข้อมูลคอร์ส...</div>
-      </div>
-    );
-  }
+  const toggle = (i) =>
+    setOpen((prev) => prev.map((x, idx) => (idx === i ? !x : x)))
 
   return (
     <div className="container mx-auto max-w-6xl px-4 py-8">
+      {/* Breadcrumb แบบง่าย */}
+      {/* <div className="mb-4 text-sm text-neutral-500">
+        หน้าแรก / คอร์สเรียน / <span className="text-neutral-900 font-medium">{course.title}</span>
+      </div> */}
+
       <div className="grid gap-8 md:grid-cols-12 mt-35">
         {/* รูปหลัก */}
         <div className="md:col-span-7">
@@ -139,7 +89,7 @@ endDate: c.LastDate || null,
               <Clock className="h-6 w-6 text-green-600" />
               <div>
                 <div className="text-sm text-neutral-500">รอบเรียน</div>
-                <div className="text-lg font-semibold text-neutral-900">{formatThaiDate(course.dateText)}</div>
+                <div className="text-lg font-semibold text-neutral-900">{course.dateText}</div>
               </div>
             </div>
           </div>
@@ -163,11 +113,9 @@ endDate: c.LastDate || null,
           <div className="mt-4 rounded-2xl bg-white p-6 shadow-sm">
             <h3 className="mb-3 text-lg font-semibold">เนื้อหาหลัก</h3>
             <ol className="list-decimal space-y-2 pl-5 text-sm text-neutral-700">
-              {course.outline.length ? (
-                course.outline.map((d, i) => <li key={i}>{d}</li>)
-              ) : (
-                <li>-</li>
-              )}
+              {course.outline.map((d, i) => (
+                <li key={i}>{d}</li>
+              ))}
             </ol>
           </div>
         </div>
@@ -178,39 +126,35 @@ endDate: c.LastDate || null,
         <h2 className="mb-4 text-2xl font-bold">คลิปวิดีโอเนื้อหาเพิ่มเติม</h2>
 
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-          {course.videos.length ? (
-            course.videos.map((v, i) => (
-              <div key={i} className="">
-                <button
-                  onClick={() => toggle(i)}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-neutral-50"
-                >
-                  <span className="text-sm font-medium text-neutral-800">{v.title}</span>
-                  {open[i] ? (
-                    <ChevronUp className="h-5 w-5 text-neutral-500" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 text-neutral-500" />
-                  )}
-                </button>
-
-                {open[i] && (
-                  <div className="px-5 pb-5">
-                    <div className="overflow-hidden rounded-xl">
-                      <img
-                        src={v.thumb}
-                        alt={v.title}
-                        className="aspect-[16/9] w-full object-cover"
-                      />
-                    </div>
-                  </div>
+          {course.videos.map((v, i) => (
+            <div key={i} className="">
+              <button
+                onClick={() => toggle(i)}
+                className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-neutral-50"
+              >
+                <span className="text-sm font-medium text-neutral-800">{v.title}</span>
+                {open[i] ? (
+                  <ChevronUp className="h-5 w-5 text-neutral-500" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-neutral-500" />
                 )}
-              </div>
-            ))
-          ) : (
-            <div className="px-5 py-4 text-sm text-neutral-500">ยังไม่มีคลิปเพิ่มเติม</div>
-          )}
+              </button>
+
+              {open[i] && (
+                <div className="px-5 pb-5">
+                  <div className="overflow-hidden rounded-xl">
+                    <img
+                      src={v.thumb}
+                      alt={v.title}
+                      className="aspect-[16/9] w-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </section>
     </div>
-  );
+  )
 }
