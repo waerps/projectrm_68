@@ -1,5 +1,6 @@
+import { API_URL } from "../config";
 import axios from "axios";
-let api = "http://localhost:3000";
+let api = API_URL;
 export async function GetLogin(email, password) {
   // console.log(id_strategic.data)
   try {

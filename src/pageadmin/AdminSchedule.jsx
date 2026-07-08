@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus, Edit, Trash2, Search, X, Save, UserCheck, BookOpen,
@@ -5,7 +6,7 @@ import {
   ChevronRight, Copy, CheckCircle, Clock, AlertTriangle, Layers,
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:3000/api/admin';
+const API_BASE = `${API_URL}/api/admin`;
 
 // ─── constants ────────────────────────────────────────────────
 const DAY_MAP = { 2: 'จันทร์', 3: 'อังคาร', 4: 'พุธ', 5: 'พฤหัสบดี', 6: 'ศุกร์', 7: 'เสาร์', 1: 'อาทิตย์' };

@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
@@ -39,7 +40,7 @@ export default function Navbar() {
                         <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
                             {user?.photo ? (
                                 <img
-                                    src={`http://localhost:3000${user.photo}`}
+                                    src={`${API_URL}${user.photo}`}
                                     alt="imgProfile"
                                     className="h-full w-full object-cover"
                                 />

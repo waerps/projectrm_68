@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Search, ChevronDown, ChevronUp, X, Download,
@@ -6,7 +7,7 @@ import {
     EyeIcon
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:3000/api/admin';
+const API_BASE = `${API_URL}/api/admin`;
 
 function thisMonthRange() {
     const now = new Date();
@@ -259,8 +260,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                                                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
                                                     {photo ? (
                                                         <div className="relative">
-                                                            <a href={`http://localhost:3000${photo}`} target="_blank" rel="noreferrer">
-                                                                <img src={`http://localhost:3000${photo}`} alt={label}
+                                                            <a href={`${API_URL}${photo}`} target="_blank" rel="noreferrer">
+                                                                <img src={`${API_URL}${photo}`} alt={label}
                                                                     className="w-full h-28 object-cover rounded-xl border border-slate-200 hover:opacity-90 transition" />
                                                             </a>
                                                             {time && (
