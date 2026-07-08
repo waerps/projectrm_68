@@ -7,16 +7,8 @@ export const useChat = () => useContext(ChatContext)
 const BOT_GREETING =
   "สวัสดีครับ! ผมคือแชตบอตของศรเสริมติวเตอร์ มีคำถามอะไรสอบถามไหมครับ?"
 
-<<<<<<< HEAD
-// const N8N_CHAT_WEBHOOK =
-//   // "https://cpkku.app.n8n.cloud/webhook/488ca9d1-0cb9-4a10-93df-3b8fb52fc2c8/chat" 
-//   "http://localhost:5678/webhook/chat-webhook-sornserm-003/chat"
-
-const N8N_CHAT_WEBHOOK = "/api/chat"
-=======
 const N8N_CHAT_WEBHOOK =
   "http://localhost:5678/webhook/488ca9d1-0cb9-4a10-93df-3b8fb52fc2c8/chat"
->>>>>>> main
 
   
 function extractReply(data) {
