@@ -66,20 +66,26 @@ const SectionTitle = ({ children, sub }) => (
 )
 
 const CourseCard = ({ item }) => (
-  <div className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm ">
-    <div className="relative -mx-1 -mt-15">
+  <div className="flex flex-col h-full rounded-3xl border border-gray-100 bg-white p-3 shadow-sm overflow-hidden">
+    {/* รูปภาพ — เพิ่ม overflow-hidden + aspect ratio คงที่ */}
+    <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 flex-shrink-0">
       <SafeImg
         src={item.img}
         alt={item.title}
-        className="h-55 w-full rounded-2xl object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
       />
-      {/* <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
-        {item.note}
-      </div> */}
     </div>
-    <div className="pt-4">
-      <div className="line-clamp-2 font-semibold">{item.title}</div>
-      <div className="text-orange-600 font-bold">{item.price}</div>
+
+    {/* เนื้อหา */}
+    <div className="flex flex-col flex-1 pt-4 gap-1">
+      {/* จอง min-h ไว้ 2 บรรทัดเสมอ แม้ชื่อสั้น */}
+      <div className="line-clamp-2 font-semibold leading-snug min-h-[2.75rem]">
+        {item.title}
+      </div>
+      {/* ราคาอยู่ล่างสุดเสมอ */}
+      <div className="mt-auto text-orange-600 font-bold">
+        {item.price}
+      </div>
     </div>
   </div>
 )
@@ -201,9 +207,9 @@ export default function Home() {
         </div>
 
         {/* ========== COURSES: เปิดเทอม 1 ========== */}
-        <div className="mt-12">
+        {/* <div className="mt-12">
           <div className="flex items-center justify-between">
-            <h3 className="text-[22px] md:text-[24px] font-extrabold">
+            <h3 className="text-[22px] md:text-[24px] font-extrabold mb-4">
               คอร์สเรียน เปิดเทอม 1
             </h3>
           </div>
@@ -230,39 +236,39 @@ export default function Home() {
               </Link>
             ))}
           </div>
-        </div>
+        </div> */}
 
-        {/* ========== COURSES เปิดเทอม 2 ========== */}
+        {/* ========== COURSES เปิดเทอม 1 ========== */}
         <div className="mt-12">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[22px] md:text-[24px] font-extrabold">
-              คอร์สเรียน เปิดเทอม 2
-            </h3>
-          </div>
-          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-            {data.map((c) => (
-              <Link
-                key={c.CourseID}
-                to={`/courses/${c.CourseID}`}
-                className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-              >
-                <CourseCard
-                  item={{
-                    id: c.CourseID,
-                    title: c.CourseName,
-                    price: `${c.Price ?? "-"} บาท`,
-                    note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
-                    img: c.CourseImage
-                      ? c.CourseImage.startsWith("http")
-                        ? c.CourseImage
-                        : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
-                      : "/gray.jpg",
-                  }}
-                />
-              </Link>
-            ))}
-          </div>
-        </div>
+  <div className="flex items-center justify-between">
+    <h3 className="text-[22px] md:text-[24px] font-extrabold">
+      คอร์สเรียน เปิดเทอม 2
+    </h3>
+  </div>
+  <div className="mt-5 mb-5 pt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8">
+    {data.map((c) => (
+      <Link
+        key={c.CourseID}
+        to={`/courses/${c.CourseID}`}
+        className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg h-full"
+      >
+        <CourseCard
+          item={{
+            id: c.CourseID,
+            title: c.CourseName,
+            price: `${c.Price ?? "-"} บาท`,
+            note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+            img: c.CourseImage
+              ? c.CourseImage.startsWith("http")
+                ? c.CourseImage
+                : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
+              : "/gray.jpg",
+          }}
+        />
+      </Link>
+    ))}
+  </div>
+</div>
 
         {/* ========== COURSES ปิดเทอมเล็ก ========== */}
         <div className="mt-12">
