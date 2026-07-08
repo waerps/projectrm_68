@@ -164,7 +164,6 @@ const handleSubmit = async (e) => {
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                   />
                 </div>
-
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     เบอร์โทรศัพท์

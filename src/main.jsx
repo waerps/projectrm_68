@@ -7,6 +7,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import AppShell from "./layouts/AppShell.jsx"
 import ProfileLayout from "./layouts/ProfileLayout.jsx"
 
+// Pages Imports
 import Home from "./pages/Home.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import Courses from "./pages/Courses.jsx"
@@ -14,17 +15,23 @@ import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> main
 import Notifications from "./pages/Notifications.jsx"
 import Mycourses from "./pages/Mycourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
+import ThaiExam from "./pages/Thai_exam.jsx"
 
+// CSS
 import "./index.css"
 
+// Tutor Layouts
 import TutorLayout from "./layouts/TutorLayout.jsx"
 import TutorMain from "./pagetutor/TutorMain.jsx"
 import TutorSchedule from "./pagetutor/TutorSchedule.jsx"
@@ -39,6 +46,7 @@ import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 
+// Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
 import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
 import AdminCourses from "./pageadmin/AdminCourses.jsx"
