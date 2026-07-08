@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { useState, useEffect, useMemo } from 'react'
 import React from 'react'
 import axios from 'axios'
@@ -164,7 +165,7 @@ export default function TutorSchedule() {
     if (!tutorId) return
     const fetchSchedule = async () => {
       try {
-        const res = await axios.get(`http://localhost:3000/api/tutor/${tutorId}/schedule`)
+        const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule`)
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
         const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
 
@@ -223,7 +224,7 @@ export default function TutorSchedule() {
 
     // ดึงรายชื่อนักเรียน
     try {
-      const res = await axios.get(`http://localhost:3000/courses/${cId}/students`)
+      const res = await axios.get(`${API_URL}/courses/${cId}/students`)
       const students = res.data.students || []
       setStudentsList(students)
       const init = {}
@@ -261,7 +262,7 @@ export default function TutorSchedule() {
 
       // API คืน recordId กลับมาเพื่อใช้ในขั้นที่ 2
       const res = await axios.post(
-        'http://localhost:3000/api/tutor/record-teaching/start',
+        `${API_URL}/api/tutor/record-teaching/start`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       )
@@ -299,7 +300,7 @@ export default function TutorSchedule() {
       formData.append('photoEnd', endPhoto)
 
       await axios.put(
-        `http://localhost:3000/api/tutor/record-teaching/${recordId}/end`,
+        `${API_URL}/api/tutor/record-teaching/${recordId}/end`,
         formData,
         { headers: { 'Content-Type': 'multipart/form-data' } }
       )

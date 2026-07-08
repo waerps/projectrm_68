@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TrendingUp, TrendingDown, Clock, Calendar,
@@ -29,7 +30,7 @@ const RATE_TABLE = {
   ],
 };
 
-const API_BASE = 'http://localhost:3000/api/tutor';
+const API_BASE = `${API_URL}/api/tutor`;
 
 // ─── Pagination Hook ─────────────────────────────────────────
 function usePagination(items, pageSize = 10) {

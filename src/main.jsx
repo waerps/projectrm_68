@@ -23,7 +23,6 @@ import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
-//import ThaiExam from "./pages/Thai_exam.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
 
 // CSS

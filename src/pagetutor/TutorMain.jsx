@@ -1,8 +1,9 @@
+import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { X, ChevronLeft, ChevronRight, Calendar, Tag } from "lucide-react";
 
-const SERVER_URL = "http://localhost:3000";
+const SERVER_URL = API_URL;
 
 function resolveImg(img) {
   if (!img) return null;

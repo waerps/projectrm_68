@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // 1. นำเข้า useNavigate เพื่อใช้เปลี่ยนหน้า
 
@@ -42,8 +43,8 @@ export function Login() {
     e.preventDefault();
 
     const endpoint = role === "user"
-      ? "http://localhost:3000/auth/login"
-      : "http://localhost:3000/auth/login-admin";
+      ? `${API_URL}/auth/login`
+      : `${API_URL}/auth/login-admin`;
 
     try {
       const response = await fetch(endpoint, {

@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useState } from 'react';
 
 export function Register() {
@@ -43,7 +44,7 @@ const handleSubmit = async (e) => {
 
     try {
       // 2. ส่งข้อมูลไปที่ Backend (เปลี่ยน port ให้ตรงกับของคุณ เช่น 3000 หรือ 5000)
-      const response = await fetch('http://localhost:3000/auth/register', {
+      const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
