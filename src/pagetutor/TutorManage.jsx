@@ -11,7 +11,7 @@ export default function TutorCourseManagePage() {
   const courseId = searchParams.get("courseId") || "";
   const subjectId = searchParams.get("subjectId") || "";
   const courseName = searchParams.get("courseName") || "คอร์สรวม (แพ็กเกจ)";
-  const adminId = 1;
+  const adminId = JSON.parse(localStorage.getItem("user"))?.id;
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -15,6 +15,7 @@ import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 
+
 import Notifications from "./pages/Notifications.jsx"
 import Mycourses from "./pages/Mycourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
@@ -49,6 +50,9 @@ import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
+import ChatProvider from "../src/components/Chat/ChatProvider.jsx"
+import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx";
+import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx";
 
 const router = createBrowserRouter(
   [
@@ -56,7 +60,11 @@ const router = createBrowserRouter(
     { path: "register", element: <Register /> },
     {
       path: "/",
-      element: <AppShell />,
+      element: (
+        <ChatProvider>
+          <AppShell />
+        </ChatProvider>
+      ),
       children: [
         { index: true, element: <Home /> },
         { path: "schedule", element: <Schedule /> },
@@ -74,12 +82,13 @@ const router = createBrowserRouter(
             { path: "courses", element: <TutorCourses /> },
             { path: "analytics", element: <TutorAnalytics /> },
             { path: "students", element: <TutorStudents /> },
-            { path: "students/detail", element: <TutorStudentDetail /> },  // ✅ เพิ่มบรรทัดนี้
-            { path: "manage", element: <TutorManage /> },
+            { path: "students/detail", element: <TutorStudentDetail /> },
             { path: "test", element: <Test /> },
             { path: "income", element: <TutorIncome /> },
             { path: "notification", element: <TutorNotification /> },
             { path: "exam", element: <TutorExam /> },
+            { path: "examanalytics", element: <TutorExamAnalytics /> },
+            { path: "manage", element: <TutorManage /> },  // ← เพิ่มบรรทัดนี้
           ],
         },
         {
@@ -97,6 +106,7 @@ const router = createBrowserRouter(
             { path: "media", element: <AdminMedia /> },
             { path: "notification", element: <AdminNotification /> },
             { path: "create-tutor", element: <CreateTutorForm /> },
+            { path: "attendance", element: <AdminAttendanceDashboard /> },
           ],
         },
         {

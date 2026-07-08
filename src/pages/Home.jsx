@@ -1,15 +1,11 @@
 // src/pages/Home.jsx
-import React from "react"
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom"
-import Sidebar from "../components/ProfileSidebar"
+import { getCourses } from "../callapi/callusers";
 
-/** ---------- mock data ---------- */
-const heroImages = [
-  "/img/hero-1.jpg",
-  "/img/hero-2.jpg",
-  "/img/hero-3.jpg",
-]
-const teacherImage = "/img/teacher.png"
+const API_URL = import.meta.env.VITE_API_URL;
+
+
 
 const promoCards = [
   {
@@ -22,20 +18,6 @@ const promoCards = [
     icon: "🎓",
 
   },
-]
-
-const courseOpenTerm = [
-  { id: 1, title: "คอร์สติวเข้ม NETSAT ชีวะ", price: "6,400 บาท", note: "ลด 25%", img: "/gray.jpg" },
-  { id: 2, title: "คอร์ส NETSAT Online", price: "350 บาท", note: "E-Quiz", img: "/gray.jpg" },
-  { id: 3, title: "คอร์สติวเข้ม NETSAT", price: "5,400 บาท", note: "UV", img: "/gray.jpg" },
-  { id: 4, title: "คอร์สติว NETSAT", price: "700 บาท", note: "พิเศษ", img: "/gray.jpg" },
-]
-
-const courseSummer = [
-  { id: 5, title: "คอร์สติวเข้ม NETSAT ชีวะ", price: "6,400 บาท", note: "⭐", img: "/gray.jpg" },
-  { id: 6, title: "คอร์ส NETSAT Online", price: "350 บาท", note: "E-Quiz", img: "/gray.jpg" },
-  { id: 7, title: "คอร์สติวเข้ม NETSAT", price: "5,400 บาท", note: "UV", img: "/gray.jpg" },
-  { id: 8, title: "คอร์สติว NETSAT", price: "700 บาท", note: "พิเศษ", img: "/gray.jpg" },
 ]
 
 const newsList = [
@@ -84,21 +66,26 @@ const SectionTitle = ({ children, sub }) => (
 )
 
 const CourseCard = ({ item }) => (
-  <div className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm hover:shadow-md transition">
-    <div className="relative">
+  <div className="flex flex-col h-full rounded-3xl border border-gray-100 bg-white p-3 shadow-sm overflow-hidden">
+    {/* รูปภาพ — เพิ่ม overflow-hidden + aspect ratio คงที่ */}
+    <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 flex-shrink-0">
       <SafeImg
         src={item.img}
         alt={item.title}
-        className="h-44 w-full rounded-2xl object-cover"
+        className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
-        {item.note}
-      </div>
     </div>
-    <div className="pt-5">
-      <div className="line-clamp-2 font-semibold">{item.title}</div>
-      <div className="mt-2 text-sm text-gray-500">ราคาเริ่มต้น</div>
-      <div className="text-orange-600 font-bold">{item.price}</div>
+
+    {/* เนื้อหา */}
+    <div className="flex flex-col flex-1 pt-4 gap-1">
+      {/* จอง min-h ไว้ 2 บรรทัดเสมอ แม้ชื่อสั้น */}
+      <div className="line-clamp-2 font-semibold leading-snug min-h-[2.75rem]">
+        {item.title}
+      </div>
+      {/* ราคาอยู่ล่างสุดเสมอ */}
+      <div className="mt-auto text-orange-600 font-bold">
+        {item.price}
+      </div>
     </div>
   </div>
 )
@@ -142,6 +129,22 @@ const Dots = () => (
 /** ---------- main page ---------- */
 
 export default function Home() {
+
+  const [data, setData] = useState([]);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const courses = await getCourses();
+        console.log("courses:", courses);
+        setData(Array.isArray(courses) ? courses : []);
+      } catch (err) {
+        console.error("Error loading courses:", err);
+        setData([]);
+      }
+    }
+    fetchData();
+  }, []);
+
   return (
     <div className="pb-24">
       {/* container */}
@@ -154,7 +157,7 @@ export default function Home() {
               <div className="md:col-span-8 relative">
                 <div className="aspect-[16/5] w-full">
                   <SafeImg
-                    src="/gray.jpg"
+                    src="/one.jpg"
                     alt="hero"
                     className="h-full w-full object-cover"
                   />
@@ -175,7 +178,7 @@ export default function Home() {
               ศรเสริมติวเตอร์
             </h2>
             <p className="mt-3 text-gray-700 leading-relaxed">
-              “ติวจริง ติวตรง มีผลงาน ใส่ใจทุกๆพัฒนาการของนักเรียน”
+              "ติวจริง ติวตรง มีผลงาน ใส่ใจทุกๆพัฒนาการของนักเรียน"
             </p>
             <p className="mt-2 text-gray-600 leading-relaxed">
               รับติวตั้งแต่ระดับ ม.1 - ม.6 ทั้งเพิ่มเกรด / สอบเข้า / สอบแข่งขัน /
@@ -184,7 +187,7 @@ export default function Home() {
             </p>
           </div>
           <div className="md:col-span-4 grid grid-cols-1 gap-4">
-            {promoCards.map((p, i) => (
+            {/* {promoCards.map((p, i) => (
               <div
                 key={i}
                 className={`${p.bg} rounded-[22px] border border-gray-100 p-5 shadow-sm`}
@@ -199,70 +202,136 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))} */}
           </div>
         </div>
 
-        {/* ========== COURSES: เปิดเทอม ========== */}
+        {/* ========== COURSES: เปิดเทอม 1 ========== */}
+        {/* <div className="mt-12">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[22px] md:text-[24px] font-extrabold mb-4">
+              คอร์สเรียน เปิดเทอม 1
+            </h3>
+          </div>
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            {data.map((c) => (
+              <Link
+                key={c.CourseID}
+                to={`/courses/${c.CourseID}`}
+                className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              >
+                <CourseCard
+                  item={{
+                    id: c.CourseID,
+                    title: c.CourseName,
+                    price: `${c.Price ?? "-"} บาท`,
+                    // note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+                    img: c.CourseImage
+                      ? c.CourseImage.startsWith("http")
+                        ? c.CourseImage
+                        : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
+                      : "/gray.jpg",
+                  }}
+                />
+              </Link>
+            ))}
+          </div>
+        </div> */}
+
+        {/* ========== COURSES เปิดเทอม 1 ========== */}
+        <div className="mt-12">
+  <div className="flex items-center justify-between">
+    <h3 className="text-[22px] md:text-[24px] font-extrabold">
+      คอร์สเรียน เปิดเทอม 2
+    </h3>
+  </div>
+  <div className="mt-5 mb-5 pt-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-6 md:gap-x-6 md:gap-y-8">
+    {data.map((c) => (
+      <Link
+        key={c.CourseID}
+        to={`/courses/${c.CourseID}`}
+        className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg h-full"
+      >
+        <CourseCard
+          item={{
+            id: c.CourseID,
+            title: c.CourseName,
+            price: `${c.Price ?? "-"} บาท`,
+            note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+            img: c.CourseImage
+              ? c.CourseImage.startsWith("http")
+                ? c.CourseImage
+                : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
+              : "/gray.jpg",
+          }}
+        />
+      </Link>
+    ))}
+  </div>
+</div>
+
+        {/* ========== COURSES ปิดเทอมเล็ก ========== */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
-              คอร์สเรียน เปิดเทอม
+              คอร์สเรียน ปิดเทอมเล็ก
             </h3>
-            <div className="flex items-center gap-2">
-              <button className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm">
-                ดูทั้งหมด
-              </button>
-              <div className="flex gap-2">
-                <button className="grid h-8 w-8 place-items-center rounded-full border bg-white shadow">‹</button>
-                <button className="grid h-8 w-8 place-items-center rounded-full border bg-white shadow">›</button>
-              </div>
-            </div>
           </div>
-
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {courseOpenTerm.map((c) => (
-            <Link
-              key={c}
-              to={`/courses`}
-              className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <CourseCard item={c} />
-            </Link>
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            {data.map((c) => (
+              <Link
+                key={c.CourseID}
+                to={`/courses/${c.CourseID}`}
+                className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              >
+                <CourseCard
+                  item={{
+                    id: c.CourseID,
+                    title: c.CourseName,
+                    price: `${c.Price ?? "-"} บาท`,
+                    note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+                    img: c.CourseImage
+                      ? c.CourseImage.startsWith("http")
+                        ? c.CourseImage
+                        : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
+                      : "/gray.jpg",
+                  }}
+                />
+              </Link>
             ))}
           </div>
-
         </div>
 
-        {/* ========== COURSES: ซัมเมอร์ ========== */}
+        {/* ========== COURSES ซัมเมอร์ ========== */}
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
               คอร์สเรียน ซัมเมอร์
             </h3>
-            <div className="flex items-center gap-2">
-              <button className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm">
-                ดูทั้งหมด
-              </button>
-              <div className="flex gap-2">
-                <button className="grid h-8 w-8 place-items-center rounded-full border bg-white shadow">‹</button>
-                <button className="grid h-8 w-8 place-items-center rounded-full border bg-white shadow">›</button>
-              </div>
-            </div>
           </div>
-
-          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {courseOpenTerm.map((c) => (
-            <Link
-              key={c}
-              to={`/courses`}
-              className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <CourseCard item={c} />
-            </Link>
+          <div className="mt-5 pt-6 grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            {data.map((c) => (
+              <Link
+                key={c.CourseID}
+                to={`/courses/${c.CourseID}`}
+                className="block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              >
+                <CourseCard
+                  item={{
+                    id: c.CourseID,
+                    title: c.CourseName,
+                    price: `${c.Price ?? "-"} บาท`,
+                    note: c.Discount ? `ลด ${c.Discount}` : "เปิดรับสมัคร",
+                    img: c.CourseImage
+                      ? c.CourseImage.startsWith("http")
+                        ? c.CourseImage
+                        : `${import.meta.env.VITE_API_URL}${c.CourseImage}`
+                      : "/gray.jpg",
+                  }}
+                />
+              </Link>
             ))}
           </div>
-
         </div>
 
         {/* ========== NEWS ========== */}

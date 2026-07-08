@@ -3,8 +3,9 @@ import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 
-
 export default function Navbar() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    console.log(user);
     const [searchQuery, setSearchQuery] = useState("")
     const location = useLocation()
 
@@ -35,12 +36,20 @@ export default function Navbar() {
 
                 <div className="flex items-center gap-2">
                     <div className="relative group flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white">
-                            <img
-                                src="/admin.jpg"
-                                alt="imgProfile"
-                                className="h-8 w-8 rounded-full object-cover"
-                            />
+                        <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
+                            {user?.photo ? (
+                                <img
+                                    src={`http://localhost:3000${user.photo}`}
+                                    alt="imgProfile"
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                <div className="h-full w-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
+                                    <span className="text-white text-xs font-bold select-none">
+                                        {user?.firstname?.charAt(0)?.toUpperCase() || "A"}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         <div
@@ -49,7 +58,7 @@ export default function Navbar() {
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >
-                            <span>แอดมิน พี่กวาง</span>
+                            <span>แอดมิน {user?.firstname || "ไม่ทราบชื่อ"}</span>
                         </div>
 
                         <div
@@ -63,21 +72,12 @@ export default function Navbar() {
               "
                         >
                             <ul className="py-2 text-sm text-gray-700 text-right">
-                            <li>
+                                <li>
                                     <Link
                                         to="courses"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
-                                        คอร์สทั้งหมด
-                                    </Link>
-                                </li>
-                                
-                                <li>
-                                    <Link
-                                        to="schedule"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        ตารางเรียน
+                                        คอร์ส
                                     </Link>
                                 </li>
 
@@ -95,7 +95,16 @@ export default function Navbar() {
                                         to="tutors"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
-                                        ติวเตอร์​
+                                        ติวเตอร์
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
+                                        to="schedule"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        ตารางเรียน
                                     </Link>
                                 </li>
 
@@ -117,14 +126,6 @@ export default function Navbar() {
                                     </Link>
                                 </li> */}
 
-                                <li>
-                                    <Link
-                                        to="notification"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        การแจ้งเตือน
-                                    </Link>
-                                </li>
 
                                 <li>
                                     <Link
@@ -134,6 +135,17 @@ export default function Navbar() {
                                         การเงิน
                                     </Link>
                                 </li>
+
+                                <li>
+                                    <Link
+                                        to="notification"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        การแจ้งเตือน
+                                    </Link>
+                                </li>
+
+
 
                                 <li>
                                     <button

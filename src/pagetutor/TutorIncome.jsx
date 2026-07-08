@@ -29,7 +29,6 @@ const RATE_TABLE = {
   ],
 };
 
-const ADMIN_ID = 1;
 const API_BASE = 'http://localhost:3000/api/tutor';
 
 // ─── Pagination Hook ─────────────────────────────────────────
@@ -178,6 +177,7 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 // ─── Component ───────────────────────────────────────────────
 export default function TutorIncome() {
+  const ADMIN_ID = JSON.parse(localStorage.getItem("user"))?.id;  // ✅ เพิ่มตรงนี้
   const [viewMode, setViewMode] = useState('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');

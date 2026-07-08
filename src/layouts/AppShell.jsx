@@ -2,7 +2,7 @@ import React from "react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar.jsx"
 import Footer from "../components/footer.jsx"
-
+import ChatWidget from "../components/Chat/ChatWidget"
 export default function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -15,14 +15,18 @@ export default function AppShell() {
   }
 
   return (
-    <div className="min-h-screen ">
+    <>
+      <div className="min-h-screen ">
         <Navbar />
-      <main className=" ">
-        <div className="max-w-6xl mx-auto">
-          <Outlet />
-        </div>
-      </main>
+        <main className=" ">
+          <div className="max-w-6xl mx-auto">
+            <Outlet />
+          </div>
+        </main>
         <Footer />
-    </div>
+
+      </div>
+      <ChatWidget />
+    </>
   )
 }

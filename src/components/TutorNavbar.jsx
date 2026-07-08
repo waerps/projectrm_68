@@ -7,6 +7,7 @@ import { NavLink } from "react-router-dom"
 export default function Navbar() {
     const [searchQuery, setSearchQuery] = useState("")
     const location = useLocation()
+    const user = JSON.parse(localStorage.getItem("user"));
 
     const isActive = (path) => location.pathname === path
 
@@ -36,13 +37,12 @@ export default function Navbar() {
                             to="."
                             end
                             className={({ isActive }) =>
-                                `font-medium text-xs transition-colors pb-1 ${
-                                isActive
+                                `font-medium text-xs transition-colors pb-1 ${isActive
                                     ? "text-orange-500 border-b-2 border-orange-500"
                                     : "text-neutral-700 hover:text-orange-500"
                                 }`
                             }
-                            >
+                        >
                             หน้าแรก
                         </NavLink>
                     </div>
@@ -62,7 +62,7 @@ export default function Navbar() {
                     <div className="relative group flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white">
                             <img
-                                src="/tutor.jpeg"
+                                src={user?.photo ? `http://localhost:3000${user?.photo}` : "/tutor.jpeg"}
                                 alt="imgProfile"
                                 className="h-8 w-8 rounded-full object-cover"
                             />
@@ -74,7 +74,7 @@ export default function Navbar() {
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >
-                            <span>กมลทิพย์ กงเพชร</span>
+                            <span>{user?.firstname}</span>
                         </div>
 
                         <div
@@ -88,7 +88,7 @@ export default function Navbar() {
               "
                         >
                             <ul className="py-2 text-sm text-gray-700 text-right">
-                            <li>
+                                <li>
                                     <Link
                                         to="courses"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
@@ -105,7 +105,7 @@ export default function Navbar() {
                                         รายรับของฉัน
                                     </Link>
                                 </li>
-                                
+
                                 <li>
                                     <Link
                                         to="profile"
@@ -124,7 +124,7 @@ export default function Navbar() {
                                     </Link>
                                 </li>
 
-                                
+
 
                                 <li>
                                     <button
