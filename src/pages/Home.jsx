@@ -66,7 +66,6 @@ const SectionTitle = ({ children, sub }) => (
 )
 
 const CourseCard = ({ item }) => (
-<<<<<<< HEAD
   <div className="flex flex-col h-full rounded-3xl border border-gray-100 bg-white p-3 shadow-sm overflow-hidden">
     {/* รูปภาพ — เพิ่ม overflow-hidden + aspect ratio คงที่ */}
     <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100 flex-shrink-0">
@@ -87,22 +86,6 @@ const CourseCard = ({ item }) => (
       <div className="mt-auto text-orange-600 font-bold">
         {item.price}
       </div>
-=======
-  <div className="rounded-3xl border border-gray-100 bg-white p-3 shadow-sm ">
-    <div className="relative -mx-1 -mt-15">
-      <SafeImg
-        src={item.img}
-        alt={item.title}
-        className="h-55 w-full rounded-2xl object-cover"
-      />
-      {/* <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[11px] font-bold text-orange-500 shadow">
-        {item.note}
-      </div> */}
-    </div>
-    <div className="pt-4">
-      <div className="line-clamp-2 font-semibold">{item.title}</div>
-      <div className="text-orange-600 font-bold">{item.price}</div>
->>>>>>> main
     </div>
   </div>
 )
