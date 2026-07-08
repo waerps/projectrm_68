@@ -55,15 +55,9 @@ import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
-<<<<<<< HEAD
 import { ShopProvider } from "./context/ShopContext";
 import Cart from "./pages/Cart.jsx"
 import Favorites from "./pages/Favorites.jsx"
-=======
-import ChatProvider from "../src/components/Chat/ChatProvider.jsx"
-import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx";
-import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx";
->>>>>>> main
 
 const router = createBrowserRouter(
   [
@@ -136,7 +130,6 @@ const router = createBrowserRouter(
     },
   ],
   {
-<<<<<<< HEAD
     path: "/",
     element: <AppShell />,
     children: [
@@ -203,7 +196,7 @@ const router = createBrowserRouter(
       },
     ],
   },
-])
+)
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -211,18 +204,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <ShopProvider>
         <RouterProvider router={router} />
       </ShopProvider>
-=======
-    future: {
-      v7_startTransition: true,
-    },
-  }
-)
-
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_I}>
-      <RouterProvider router={router} />
->>>>>>> main
     </GoogleOAuthProvider>
   </React.StrictMode>
 )
