@@ -13,11 +13,7 @@ export default function ChatWidget() {
     setInputValue,
     handleSend,
     messagesEndRef,
-<<<<<<< HEAD
     isLoading,
-=======
-    isLoading, // 🔴 ดึงค่านี้มาใช้
->>>>>>> main
   } = useChat()
 
   if (!isOpen && !isFullscreen) {
@@ -49,7 +45,6 @@ export default function ChatWidget() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-<<<<<<< HEAD
 {messages.map((msg) => (
   <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-4`}>
     <div className="flex flex-col gap-2 max-w-[85%]"> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
@@ -90,27 +85,6 @@ export default function ChatWidget() {
                 </div>
               </div>
             </div>
-=======
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
-                msg.sender === "user" ? "bg-orange-500 text-white rounded-br-sm" : "bg-gray-100 text-gray-800 rounded-bl-sm"
-              }`}>
-                {msg.text}
-              </div>
-            </div>
-          ))}
-
-          {/* 🔴 Typing Indicator สำหรับ Widget */}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm">
-                <div className="typing-indicator small">
-                  <span></span><span></span><span></span>
-                </div>
-              </div>
-            </div>
->>>>>>> main
           )}
           <div ref={messagesEndRef} />
         </div>
