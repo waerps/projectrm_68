@@ -1,55 +1,39 @@
 // src/pages/CourseDetail.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard } from "lucide-react";
+import { ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard, Heart } from "lucide-react";
 import { getCourseById } from "../callapi/callusers";
+import { useShop } from "../context/ShopContext";
 
 export default function CourseDetail() {
-  const { id } = useParams(); 
+  const { id } = useParams();
   const [courseRaw, setCourseRaw] = useState(null);
   const [loading, setLoading] = useState(true);
-const formatThaiDate = (date) => {
-  if (!date) return "-"
+
+  const { addToCart, toggleFavorite, favorites } = useShop();
 
   const formatThaiDate = (date) => {
-  if (!date) return ""
+    if (!date) return "-";
+    const d = new Date(date);
+    if (isNaN(d)) return "-";
+    return new Intl.DateTimeFormat("th-TH", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(d);
+  };
 
-  const d = new Date(date)
-  if (isNaN(d)) return ""
-
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d)
-}
-
-
-  const d = new D
   const formatDateRange = (start, end) => {
-  if (start && end) {
-    return `${formatThaiDate(start)} - ${formatThaiDate(end)}`
-  }
-  if (start) {
-    return `${formatThaiDate(start)} -`
-  }
-  return "-"
-}
-ate(date)
+    if (start && end) return `${formatThaiDate(start)} - ${formatThaiDate(end)}`;
+    if (start) return `${formatThaiDate(start)} -`;
+    return "-";
+  };
 
-  return new Intl.DateTimeFormat("th-TH", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(d)
-}
-
-  
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const data = await getCourseById(id); 
+        const data = await getCourseById(id);
         setCourseRaw(data);
       } catch (err) {
         console.error("Load course error:", err);
@@ -60,25 +44,26 @@ ate(date)
     })();
   }, [id]);
 
-
   const course = useMemo(() => {
     const c = courseRaw || {};
-
     return {
       title: c.CourseName ?? "ไม่พบข้อมูลคอร์ส",
       price: c.Price != null ? `${c.Price} บาท` : "-",
-startDate: c.StartDate || null,
-endDate: c.LastDate || null,
-      hero: "/openterm2.jpg", 
+      startDate: c.StartDate || null,
+      endDate: c.LastDate || null,
+      hero: "/openterm2.jpg",
       badges: [
         c.Discount ? `ลด ${c.Discount}` : null,
         c.Remark ? "รายละเอียดเพิ่มเติม" : null,
       ].filter(Boolean),
       detail: c.Remark ? [c.Remark] : ["-"],
       outline: [],
-      videos: [],  
+      videos: [],
     };
   }, [courseRaw]);
+
+  const isFav = favorites.some((c) => c.id === id);
+  const courseData = { id, title: course.title, price: course.price };
 
   const [open, setOpen] = useState([]);
   useEffect(() => {
@@ -139,15 +124,32 @@ endDate: c.LastDate || null,
               <Clock className="h-6 w-6 text-green-600" />
               <div>
                 <div className="text-sm text-neutral-500">รอบเรียน</div>
-                <div className="text-lg font-semibold text-neutral-900">{formatThaiDate(course.dateText)}</div>
+                <div className="text-lg font-semibold text-neutral-900">
+                  {formatDateRange(course.startDate, course.endDate)}
+                </div>
               </div>
             </div>
           </div>
 
           {/* ปุ่ม CTA */}
-          <button className="mt-6 w-full rounded-2xl bg-orange-500 py-4 text-white shadow-md transition hover:bg-orange-600">
-            ซื้อคอร์สเรียน
-          </button>
+          <div className="mt-6 flex gap-3">
+            <button
+              onClick={() => addToCart(courseData)}
+              className="flex-1 rounded-2xl bg-orange-500 py-4 text-white shadow-md transition hover:bg-orange-600"
+            >
+              เพิ่มลงตะกร้า
+            </button>
+            <button
+              onClick={() => toggleFavorite(courseData)}
+              className={`rounded-2xl px-4 py-4 shadow-md border transition
+                ${isFav
+                  ? "bg-red-50 border-red-300 text-red-500"
+                  : "bg-white border-neutral-200 text-neutral-400"
+                }`}
+            >
+              <Heart className={`h-6 w-6 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
+            </button>
+          </div>
 
           {/* รายละเอียดคอร์ส */}
           <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
@@ -180,7 +182,7 @@ endDate: c.LastDate || null,
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           {course.videos.length ? (
             course.videos.map((v, i) => (
-              <div key={i} className="">
+              <div key={i}>
                 <button
                   onClick={() => toggle(i)}
                   className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-neutral-50"

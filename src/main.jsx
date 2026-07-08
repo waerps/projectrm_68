@@ -15,7 +15,7 @@ import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 import Notifications from "./pages/Notifications.jsx"
-import Mycourses from "./pages/Mycourses.jsx"
+import StudentCourses from "./pages/StudentCourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import News from "./pages/News.jsx"
 import Login from "./pages/Login.jsx"
@@ -51,6 +51,9 @@ import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
+import { ShopProvider } from "./context/ShopContext";
+import Cart from "./pages/Cart.jsx"
+import Favorites from "./pages/Favorites.jsx"
 
 const router = createBrowserRouter([
   // เส้นทางสำหรับ Login/Register (อยู่นอก AppShell เพื่อไม่ให้มี Navbar ซ้อน)
@@ -71,20 +74,22 @@ const router = createBrowserRouter([
       { path: "salary", element: <Salary /> },
       { path: "news", element: <News /> },
       { path: "apply-tutor", element: <TutorApply /> },
-      
+      { path: "cart", element: <Cart /> },
+      { path: "favorites", element: <Favorites /> },
+
       // เส้นทาง Profile (Nested Layout)
       {
         path: "profile",
         element: <ProfileLayout />,
         children: [
-          { index: true, element: <Profile /> },      
-          { path: "schedule", element: <Schedule /> },  
+          { index: true, element: <Profile /> },
+          { path: "schedule", element: <Schedule /> },
           { path: "notifications", element: <Notifications /> },
-          { path: "my-courses", element: <Mycourses /> },       
-          { path: "attendance", element: <Attendance /> },     
+          { path: "my-courses", element: <StudentCourses /> },
+          { path: "attendance", element: <Attendance /> },
         ],
       },
-      
+
       // === เส้นทางสำหรับติวเตอร์ (Tutor) ===
       {
         path: "tutor",
@@ -99,8 +104,8 @@ const router = createBrowserRouter([
           { path: "manage", element: <TutorManage /> },
           { path: "test", element: <Test /> },
           { path: "income", element: <TutorIncome /> },
-          { path: "notification", element: <TutorNotification/> },
-          { path: "exam", element: <TutorExam/> },
+          { path: "notification", element: <TutorNotification /> },
+          { path: "exam", element: <TutorExam /> },
         ],
       },
 
@@ -129,7 +134,9 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-      <RouterProvider router={router} />
+      <ShopProvider>
+        <RouterProvider router={router} />
+      </ShopProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>
 )

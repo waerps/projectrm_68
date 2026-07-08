@@ -16,7 +16,7 @@ export default function ChatFullscreen() {
     loadChat,
     formatDate,
     messagesEndRef,
-    isLoading, // 🔴 ดึงค่านี้มาใช้
+    isLoading,
   } = useChat()
 
   if (!isFullscreen) return null

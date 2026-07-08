@@ -8,7 +8,7 @@ const BOT_GREETING =
   "สวัสดีครับ! ผมคือแชตบอตของศรเสริมติวเตอร์ มีคำถามอะไรสอบถามไหมครับ?"
 
 const N8N_CHAT_WEBHOOK =
-  "http://localhost:5678/webhook/488ca9d1-0cb9-4a10-93df-3b8fb52fc2c8/chat"
+  "http://localhost:5678/webhook/chat-webhook-sornserm-003/chat"
 
   
 function extractReply(data) {
