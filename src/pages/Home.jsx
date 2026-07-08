@@ -207,7 +207,6 @@ export default function Home() {
         </div>
 
         {/* ========== COURSES: เปิดเทอม 1 ========== */}
-<<<<<<< HEAD
         {/* <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold mb-4">
@@ -272,8 +271,6 @@ export default function Home() {
 </div>
 
         {/* ========== COURSES ปิดเทอมเล็ก ========== */}
-=======
->>>>>>> main
         <div className="mt-12">
           <div className="flex items-center justify-between">
             <h3 className="text-[22px] md:text-[24px] font-extrabold">
