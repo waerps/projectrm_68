@@ -15,11 +15,8 @@ import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
-<<<<<<< HEAD
 
 
-=======
->>>>>>> main
 import Notifications from "./pages/Notifications.jsx"
 import Mycourses from "./pages/Mycourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
