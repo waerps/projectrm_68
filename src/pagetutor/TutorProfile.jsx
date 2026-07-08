@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
-import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock ,ImagePlus, Landmark} from "lucide-react"
+import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
 
 
 export default function TutorProfile() {
@@ -9,7 +9,7 @@ export default function TutorProfile() {
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [alertModal, setAlertModal] = useState({ show: false, fields: [] })
-    const TUTOR_ID = 1;
+    const TUTOR_ID = JSON.parse(localStorage.getItem("user"))?.id;
 
     const [formData, setFormData] = useState({
         firstname: "", lastname: "", nickname: "", phone: "",
@@ -53,7 +53,7 @@ export default function TutorProfile() {
             }
         };
         fetchTutorData();
-    }, []);
+    }, [TUTOR_ID]);
 
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
@@ -79,26 +79,26 @@ export default function TutorProfile() {
 
     const handleSave = async () => {
         const requiredFields = {
-            firstname:      'ชื่อ',
-            lastname:       'นามสกุล',
-            nickname:       'ชื่อเล่น',
-            phone:          'เบอร์โทรศัพท์',
-            lineId:         'Line ID',
-            birthDate:      'วันเกิด',
-            occupation:     'อาชีพ',
-            emergencyName:  'ชื่อผู้ติดต่อฉุกเฉิน',
+            firstname: 'ชื่อ',
+            lastname: 'นามสกุล',
+            nickname: 'ชื่อเล่น',
+            phone: 'เบอร์โทรศัพท์',
+            lineId: 'Line ID',
+            birthDate: 'วันเกิด',
+            occupation: 'อาชีพ',
+            emergencyName: 'ชื่อผู้ติดต่อฉุกเฉิน',
             emergencyPhone: 'เบอร์โทรฉุกเฉิน',
         }
-    
+
         const emptyFields = Object.entries(requiredFields)
             .filter(([key]) => !formData[key] || formData[key].trim() === '')
             .map(([, label]) => label)
-    
+
         if (emptyFields.length > 0) {
             setAlertModal({ show: true, fields: emptyFields })
             return
         }
-    
+
         setIsSaving(true)
         try {
             await axios.put(`http://localhost:3000/api/tutor/${TUTOR_ID}`, formData);
@@ -249,11 +249,11 @@ export default function TutorProfile() {
                         icon={<Users className="h-4.5 w-4.5 text-orange-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="ชื่อ"      name="firstname"  value={formData.firstname}  isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="นามสกุล"   name="lastname"   value={formData.lastname}   isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="ชื่อเล่น"  name="nickname"   value={formData.nickname}   isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="วันเกิด"   name="birthDate"  value={formData.birthDate}  isEditing={isEditing} onChange={handleChange} type="date" />
-                        <InfoRow label="อาชีพ"     name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="ชื่อ" name="firstname" value={formData.firstname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="นามสกุล" name="lastname" value={formData.lastname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="ชื่อเล่น" name="nickname" value={formData.nickname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="วันเกิด" name="birthDate" value={formData.birthDate} isEditing={isEditing} onChange={handleChange} type="date" />
+                        <InfoRow label="อาชีพ" name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
                     {/* ข้อมูลติดต่อ */}
@@ -262,8 +262,8 @@ export default function TutorProfile() {
                         icon={<Phone className="h-4.5 w-4.5 text-orange-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="เบอร์โทรศัพท์" name="phone"  value={formData.phone}  isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="Line ID"        name="lineId" value={formData.lineId} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="เบอร์โทรศัพท์" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="Line ID" name="lineId" value={formData.lineId} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
                     {/* 🟢 ข้อมูลการเงินและเรทค่าสอน (รวมกันแล้ว) */}
@@ -285,7 +285,7 @@ export default function TutorProfile() {
                                 ต่อ 1.5 ชม.
                             </span>
                         </div>
-                        
+
                         {/* ส่วนข้อมูลบัญชีธนาคาร */}
                         <div className="border-t border-neutral-100 pt-2 space-y-0.5">
                             <InfoRow label="ธนาคาร" name="bankName" value={formData.bankName} isEditing={isEditing} onChange={handleChange} />
@@ -305,18 +305,18 @@ export default function TutorProfile() {
                         icon={<AlertTriangle className="h-4.5 w-4.5 text-red-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="ชื่อผู้ติดต่อ"    name="emergencyName"  value={formData.emergencyName}  isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow label="ชื่อผู้ติดต่อ" name="emergencyName" value={formData.emergencyName} isEditing={isEditing} onChange={handleChange} />
                         <InfoRow label="เบอร์โทรฉุกเฉิน" name="emergencyPhone" value={formData.emergencyPhone} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
                 </div>
             </div>
-                {/* วางใต้สุดของ return ก่อนปิด div สุดท้าย */}
-    {alertModal.show && (
-        <ValidationModal
-            fields={alertModal.fields}
-            onClose={() => setAlertModal({ show: false, fields: [] })}
-        />
-    )}
+            {/* วางใต้สุดของ return ก่อนปิด div สุดท้าย */}
+            {alertModal.show && (
+                <ValidationModal
+                    fields={alertModal.fields}
+                    onClose={() => setAlertModal({ show: false, fields: [] })}
+                />
+            )}
         </div>
     )
 }

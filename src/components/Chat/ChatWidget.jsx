@@ -1,5 +1,6 @@
 import React from "react"
 import { useChat } from "./ChatProvider"
+import ReactMarkdown from 'react-markdown';
 
 export default function ChatWidget() {
   const {
@@ -12,7 +13,11 @@ export default function ChatWidget() {
     setInputValue,
     handleSend,
     messagesEndRef,
+<<<<<<< HEAD
+    isLoading,
+=======
     isLoading, // 🔴 ดึงค่านี้มาใช้
+>>>>>>> main
   } = useChat()
 
   if (!isOpen && !isFullscreen) {
@@ -44,6 +49,48 @@ export default function ChatWidget() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
+<<<<<<< HEAD
+{messages.map((msg) => (
+  <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-4`}>
+    <div className="flex flex-col gap-2 max-w-[85%]"> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
+          {msg.sender === "user" ? (
+            // ของ User ให้แสดงปกติ
+            <div className="px-4 py-2.5 rounded-2xl text-sm bg-orange-500 text-white rounded-br-sm shadow-sm">
+              <ReactMarkdown>
+              {msg.text}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            // ของ Bot: สแกนข้อความและแบ่งส่วน
+            msg.text.split('\n').filter(line => line.trim() !== '').map((line, index) => (
+              <div 
+                key={index} 
+                className="px-4 py-2.5 rounded-2xl text-sm bg-gray-100 text-gray-800 rounded-bl-sm shadow-sm animate-fadeIn"
+                style={{ animationDelay: `${index * 0.15}s`, animationFillMode: "both" }} // ให้แต่ละก้อนค่อยๆ เด้งออกมา
+              >
+                {line.startsWith('•') || line.startsWith('-') ? (
+                  <span className="flex gap-2">
+                    <span className="text-orange-500">•</span>
+                    <span>{line.replace(/^[•-]\s*/, '')}</span>
+                  </span>
+                ) : line}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    ))}
+
+          {/* 🔴 Typing Indicator สำหรับ Widget */}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 px-4 py-2.5 rounded-2xl rounded-bl-sm">
+                <div className="typing-indicator small">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+=======
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm whitespace-pre-wrap ${
@@ -63,6 +110,7 @@ export default function ChatWidget() {
                 </div>
               </div>
             </div>
+>>>>>>> main
           )}
           <div ref={messagesEndRef} />
         </div>

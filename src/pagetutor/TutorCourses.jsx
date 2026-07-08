@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
-  const tutorId = 1; // 💡 สมมติว่าติวเตอร์ที่ล็อกอินคือ AdminId = 1 (อนาคตค่อยดึงจาก Auth/Context)
+  const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -88,7 +88,7 @@ export default function CoursesPage() {
     };
 
     fetchCourses();
-  }, []);
+  }, [tutorId]);
 
   // 4. คำนวณ Stats ด้านบนสุด
   // ✅ ใหม่ (กรองให้เหลือคอร์สละ 1 ก่อน แล้วค่อยรวม)
@@ -127,7 +127,7 @@ export default function CoursesPage() {
           {stats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="flex items-center gap-4 p-5 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100 hover:shadow-md transition">
+              <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500">
                   <Icon className="h-6 w-6 text-white" />
                 </div>
@@ -260,6 +260,13 @@ export default function CoursesPage() {
                     className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                   >
                     <FileText className="h-4 w-4" /> จัดการเนื้อหา
+                  </Link>
+
+                  <Link
+                    to={`/tutor/exam?courseId=${course.id}&subjectId=${course.subjectId}&courseName=${course.name}&subjectName=${course.subjectName}`}
+                    className="flex-1 bg-blue-50 text-blue-600 border-2 border-blue-100 rounded-xl py-2.5 hover:bg-blue-100 hover:border-blue-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                  >
+                    <FileText className="h-4 w-4" /> จัดการข้อสอบ
                   </Link>
                 </div>
               </div>
