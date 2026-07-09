@@ -16,11 +16,11 @@ import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 
-
 import Notifications from "./pages/Notifications.jsx"
 import StudentCourses from "./pages/StudentCourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
+import News from "./pages/News.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
 import ThaiExam from "./pages/Thai_exam.jsx"
@@ -36,12 +36,13 @@ import TutorProfile from "./pagetutor/TutorProfile.jsx"
 import TutorCourses from "./pagetutor/TutorCourses.jsx"
 import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
 import TutorStudents from "./pagetutor/TutorStudents.jsx"
-import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"   // ✅ เพิ่มบรรทัดนี้
+import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"
 import TutorManage from "./pagetutor/TutorManage.jsx"
 import Test from "./pagetutor/Test.jsx"
 import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
+import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -55,94 +56,34 @@ import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
-import { ShopProvider } from "./context/ShopContext";
+import ChatProvider from "./components/Chat/ChatProvider.jsx"
+import { ShopProvider } from "./context/ShopContext"
 import Cart from "./pages/Cart.jsx"
 import Favorites from "./pages/Favorites.jsx"
+import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 
-const router = createBrowserRouter(
-  [
-    { path: "login", element: <Login /> },
-    { path: "register", element: <Register /> },
-    {
-      path: "/",
-      element: (
-        <ChatProvider>
-          <AppShell />
-        </ChatProvider>
-      ),
-      children: [
-        { index: true, element: <Home /> },
-        { path: "schedule", element: <Schedule /> },
-        { path: "courses", element: <Courses /> },
-        { path: "performance", element: <Performance /> },
-        { path: "salary", element: <Salary /> },
-        { path: "new", element: <New /> },
-        {
-          path: "tutor",
-          element: <TutorLayout />,
-          children: [
-            { index: true, element: <TutorMain /> },
-            { path: "schedule", element: <TutorSchedule /> },
-            { path: "profile", element: <TutorProfile /> },
-            { path: "courses", element: <TutorCourses /> },
-            { path: "analytics", element: <TutorAnalytics /> },
-            { path: "students", element: <TutorStudents /> },
-            { path: "students/detail", element: <TutorStudentDetail /> },
-            { path: "test", element: <Test /> },
-            { path: "income", element: <TutorIncome /> },
-            { path: "notification", element: <TutorNotification /> },
-            { path: "exam", element: <TutorExam /> },
-            { path: "examanalytics", element: <TutorExamAnalytics /> },
-            { path: "manage", element: <TutorManage /> },  // ← เพิ่มบรรทัดนี้
-          ],
-        },
-        {
-          path: "admin",
-          element: <AdminLayout />,
-          children: [
-            { index: true, element: <AdminDashboard /> },
-            { path: "dashboard", element: <AdminDashboard /> },
-            { path: "courses", element: <AdminCourses /> },
-            { path: "schedule", element: <AdminSchedule /> },
-            { path: "students", element: <AdminStudents /> },
-            { path: "tutors", element: <AdminTutors /> },
-            { path: "finance", element: <AdminFinance /> },
-            { path: "announcements", element: <AdminAnnouncements /> },
-            { path: "media", element: <AdminMedia /> },
-            { path: "notification", element: <AdminNotification /> },
-            { path: "create-tutor", element: <CreateTutorForm /> },
-            { path: "attendance", element: <AdminAttendanceDashboard /> },
-          ],
-        },
-        {
-          path: "profile",
-          element: <ProfileLayout />,
-          children: [
-            { index: true, element: <Profile /> },
-            { path: "schedule", element: <Schedule /> },
-            { path: "notifications", element: <Notifications /> },
-            { path: "my-courses", element: <Mycourses /> },
-            { path: "attendance", element: <Attendance /> },
-          ],
-        },
-        { path: "apply-tutor", element: <TutorApply /> },
-      ],
-    },
-  ],
+const router = createBrowserRouter([
+  { path: "login", element: <Login /> },
+  { path: "register", element: <Register /> },
   {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <ChatProvider>
+        <AppShell />
+      </ChatProvider>
+    ),
     children: [
       { index: true, element: <Home /> },
       { path: "schedule", element: <Schedule /> },
       { path: "courses", element: <Courses /> },
-      { path: "courses/:id", element: <Courses /> },
+      { path: "courses/:id", element: <Courses /> }, // ✅ เพิ่ม route detail ที่หายไป
       { path: "performance", element: <Performance /> },
       { path: "salary", element: <Salary /> },
+      { path: "new", element: <New /> },
       { path: "news", element: <News /> },
-      { path: "apply-tutor", element: <TutorApply /> },
       { path: "cart", element: <Cart /> },
       { path: "favorites", element: <Favorites /> },
+      { path: "apply-tutor", element: <TutorApply /> },
 
       // เส้นทาง Profile (Nested Layout)
       {
@@ -152,7 +93,7 @@ const router = createBrowserRouter(
           { index: true, element: <Profile /> },
           { path: "schedule", element: <Schedule /> },
           { path: "notifications", element: <Notifications /> },
-          { path: "my-courses", element: <StudentCourses /> },
+          { path: "my-courses", element: <StudentCourses /> }, // ✅ ใช้ StudentCourses
           { path: "attendance", element: <Attendance /> },
         ],
       },
@@ -168,11 +109,13 @@ const router = createBrowserRouter(
           { path: "courses", element: <TutorCourses /> },
           { path: "analytics", element: <TutorAnalytics /> },
           { path: "students", element: <TutorStudents /> },
-          { path: "manage", element: <TutorManage /> },
+          { path: "students/detail", element: <TutorStudentDetail /> },
           { path: "test", element: <Test /> },
           { path: "income", element: <TutorIncome /> },
           { path: "notification", element: <TutorNotification /> },
           { path: "exam", element: <TutorExam /> },
+          { path: "examanalytics", element: <TutorExamAnalytics /> },
+          { path: "manage", element: <TutorManage /> },
         ],
       },
 
@@ -192,11 +135,12 @@ const router = createBrowserRouter(
           { path: "media", element: <AdminMedia /> },
           { path: "notification", element: <AdminNotification /> },
           { path: "create-tutor", element: <CreateTutorForm /> },
+          { path: "attendance", element: <AdminAttendanceDashboard /> },
         ],
       },
     ],
   },
-)
+])
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
