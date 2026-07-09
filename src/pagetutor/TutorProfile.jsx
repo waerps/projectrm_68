@@ -1,3 +1,5 @@
+import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
@@ -23,7 +25,7 @@ export default function TutorProfile() {
     useEffect(() => {
         const fetchTutorData = async () => {
             try {
-                const response = await axios.get(`http://localhost:3000/api/tutor/${TUTOR_ID}`);
+                const response = await axios.get(`${API_URL}/api/tutor/${TUTOR_ID}`);
                 const dbData = response.data;
                 const mappedData = {
                     firstname: dbData.Firstname || "",
@@ -61,7 +63,7 @@ export default function TutorProfile() {
         const data = new FormData();
         data.append('profileImage', file);
         try {
-            const res = await axios.post(`http://localhost:3000/api/tutor/${TUTOR_ID}/upload-profile`, data, {
+            const res = await axios.post(`${API_URL}/api/tutor/${TUTOR_ID}/upload-profile`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
@@ -101,7 +103,7 @@ export default function TutorProfile() {
 
         setIsSaving(true)
         try {
-            await axios.put(`http://localhost:3000/api/tutor/${TUTOR_ID}`, formData);
+            await axios.put(`${API_URL}/api/tutor/${TUTOR_ID}`, formData);
             setOriginalData(formData);
             setIsEditing(false);
         } catch (error) {
@@ -166,7 +168,7 @@ export default function TutorProfile() {
                             <div className="relative shrink-0 mx-auto md:mx-0">
                                 <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-gray-100">
                                     <img
-                                        src={formData.photo ? `http://localhost:3000${formData.photo}` : "/tutor.jpeg"}
+                                        src={getFileUrl(formData.photo) || "/tutor.jpeg"}
                                         className="h-full w-full object-cover"
                                         alt="Tutor"
                                     />

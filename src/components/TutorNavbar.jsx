@@ -1,3 +1,5 @@
+import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import React, { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
@@ -62,7 +64,7 @@ export default function Navbar() {
                     <div className="relative group flex items-center gap-2">
                         <div className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white">
                             <img
-                                src={user?.photo ? `http://localhost:3000${user?.photo}` : "/tutor.jpeg"}
+                                src={getFileUrl(user?.photo) || "/tutor.jpeg"}
                                 alt="imgProfile"
                                 className="h-8 w-8 rounded-full object-cover"
                             />

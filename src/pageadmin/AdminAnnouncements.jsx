@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { useState, useEffect, useCallback } from 'react';
 import {
     Megaphone, Plus, Search, Filter, Edit2, Trash2, Eye,
@@ -6,8 +7,8 @@ import {
     ChevronLeft, ChevronRight, Loader2, Inbox, Images,
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:3000/api/admin/news';
-const SERVER_URL = 'http://localhost:3000';
+const API_BASE = `${API_URL}/api/admin/news`;
+const SERVER_URL = API_URL;
 const ITEMS_PER_PAGE = 10;
 
 const CATEGORIES = [

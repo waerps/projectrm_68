@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
@@ -44,7 +45,7 @@ export default function CoursesPage() {
     const fetchCourses = async () => {
       try {
         // ยิง API พร้อมพารามิเตอร์ adminId
-        const response = await axios.get(`http://localhost:3000/courses?adminId=${tutorId}`);
+        const response = await axios.get(`${API_URL}/courses?adminId=${tutorId}`);
 
         const formattedData = response.data.map(course => {
           const statusInfo = mapStatus(course.Status_Course_Id, course.StartDate, course.LastDate);

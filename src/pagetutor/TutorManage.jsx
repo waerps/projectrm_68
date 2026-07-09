@@ -1,3 +1,5 @@
+import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import {
   ChevronRight, Video, FileText, Trash2, Calendar, Plus, Download,
   Link as LinkIcon, UploadCloud, Loader2, Pencil, X, Check, PlayCircle
@@ -51,7 +53,7 @@ export default function TutorCourseManagePage() {
   const fetchContent = async () => {
     if (!courseId || !subjectId) { setLoading(false); return; }
     try {
-      const res = await axios.get(`http://localhost:3000/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`);
+      const res = await axios.get(`${API_URL}/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`);
       setVideos(res.data.videos || []);
       setDocuments(res.data.files || []);
     } catch (e) {
@@ -67,7 +69,7 @@ export default function TutorCourseManagePage() {
     if (!isValidVideoUrl(newVideo.url)) return alert("กรุณาใส่ลิงก์ YouTube หรือ Google Drive เท่านั้น");
     setIsSubmitting(true);
     try {
-      await axios.post("http://localhost:3000/api/tutor-content/video", {
+      await axios.post(`${API_URL}/api/tutor-content/video`, {
         CourseID: courseId, SubjectId: subjectId, AdminId: adminId,
         VideoTitle: newVideo.title, VideoUrl: newVideo.url, Duration: newVideo.duration
       });
@@ -83,7 +85,7 @@ export default function TutorCourseManagePage() {
     if (!isValidVideoUrl(editVideoData.url)) return alert("กรุณาใส่ลิงก์ YouTube หรือ Google Drive เท่านั้น");
     setIsSubmitting(true);
     try {
-      await axios.put(`http://localhost:3000/api/tutor-content/video/${videoId}`, {
+      await axios.put(`${API_URL}/api/tutor-content/video/${videoId}`, {
         VideoTitle: editVideoData.title, VideoUrl: editVideoData.url, Duration: editVideoData.duration
       });
       setEditingVideoId(null);
@@ -95,7 +97,7 @@ export default function TutorCourseManagePage() {
   const handleDeleteVideo = async (id) => {
     if (!confirm("ต้องการลบวิดีโอนี้?")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/tutor-content/video/${id}`);
+      await axios.delete(`${API_URL}/api/tutor-content/video/${id}`);
       setVideos(videos.filter(v => v.VideoId !== id));
     } catch { alert("ลบวิดีโอไม่สำเร็จ"); }
   };
@@ -118,7 +120,7 @@ export default function TutorCourseManagePage() {
     formData.append("AdminId", adminId);
     formData.append("DisplayName", uploadDisplayName.trim());
     try {
-      await axios.post("http://localhost:3000/api/tutor-content/file", formData, {
+      await axios.post(`${API_URL}/api/tutor-content/file`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setIsUploadDocOpen(false);
@@ -137,7 +139,7 @@ export default function TutorCourseManagePage() {
       const formData = new FormData();
       formData.append("FileName", editDocName.trim());
       if (editDocFile) formData.append("file", editDocFile);
-      await axios.put(`http://localhost:3000/api/tutor-content/file/${editingDoc.FileId}`, formData, {
+      await axios.put(`${API_URL}/api/tutor-content/file/${editingDoc.FileId}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setEditingDoc(null);
@@ -149,7 +151,7 @@ export default function TutorCourseManagePage() {
   const handleDeleteDoc = async (id) => {
     if (!confirm("ต้องการลบเอกสารนี้?")) return;
     try {
-      await axios.delete(`http://localhost:3000/api/tutor-content/file/${id}`);
+      await axios.delete(`${API_URL}/api/tutor-content/file/${id}`);
       setDocuments(documents.filter(d => d.FileId !== id));
     } catch { alert("ลบไฟล์ไม่สำเร็จ"); }
   };
@@ -319,7 +321,7 @@ export default function TutorCourseManagePage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <a href={`http://localhost:3000${doc.FilePath}`} download target="_blank" rel="noreferrer"
+                    <a href={getFileUrl(doc.FilePath)} download target="_blank" rel="noreferrer"
                       className="p-1.5 text-neutral-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
                       <Download className="h-4 w-4" />
                     </a>

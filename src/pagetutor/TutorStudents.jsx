@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -93,7 +94,7 @@ export default function TutorStudents() {
         const fetchData = async () => {
             if (!courseId || courseId === "undefined") { setLoading(false); return; }
             try {
-                const response = await axios.get(`http://localhost:3000/courses/${courseId}/students`);
+                const response = await axios.get(`${API_URL}/courses/${courseId}/students`);
                 const dataFromApi = response.data;
                 setCourseInfo(dataFromApi.courseInfo);
                 const mappedStudents = dataFromApi.students.map((std, index) => {

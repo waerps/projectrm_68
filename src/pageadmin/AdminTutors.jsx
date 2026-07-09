@@ -1,3 +1,5 @@
+import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
@@ -9,7 +11,7 @@ import {
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
-const API = "http://localhost:3000/api/admin";
+const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
 // ─── FIX #6-equivalent: ใช้ AdminId เป็น seed แทนชื่อ
@@ -324,7 +326,6 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 //         <div className="absolute -bottom-8 left-4">
 //           <div className="h-16 w-16 rounded-2xl border-4 border-white overflow-hidden bg-orange-50 shadow-md">
 //             {tutor.Photo && !imgErr ? (
-//               <img src={`http://localhost:3000${tutor.Photo}`} alt={displayName}
 //                 onError={() => setImgErr(true)} className="w-full h-full object-cover" />
 //             ) : (
 //               // FIX #6-equivalent: ใช้ AdminId เป็น seed
@@ -416,7 +417,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl overflow-hidden bg-orange-50 border border-orange-100 shrink-0">
             {t.Photo && !imgErr ? (
-              <img src={`http://localhost:3000${t.Photo}`} alt={displayName}
+              <img src={getFileUrl(t.Photo)} alt={displayName}
                 onError={() => setImgErr(true)} className="w-full h-full object-cover" />
             ) : (
               <img src={avatarUrl(t.AdminId)} alt={displayName} className="w-full h-full object-cover" />

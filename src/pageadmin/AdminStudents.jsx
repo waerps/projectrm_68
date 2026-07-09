@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
@@ -11,7 +12,7 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 
-const API = "http://localhost:3000/api/admin";
+const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
 // ─── FIX #6: ใช้ UserId เป็น seed แทนชื่อ เพื่อไม่ให้ avatar เปลี่ยนเมื่อแก้ชื่อ
