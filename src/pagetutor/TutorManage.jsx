@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import {
   ChevronRight, Video, FileText, Trash2, Calendar, Plus, Download,
   Link as LinkIcon, UploadCloud, Loader2, Pencil, X, Check, PlayCircle
@@ -320,7 +321,7 @@ export default function TutorCourseManagePage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <a href={`${API_URL}${doc.FilePath}`} download target="_blank" rel="noreferrer"
+                    <a href={getFileUrl(doc.FilePath)} download target="_blank" rel="noreferrer"
                       className="p-1.5 text-neutral-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
                       <Download className="h-4 w-4" />
                     </a>

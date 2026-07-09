@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import {
   BookOpen, Plus, Search, Edit2, Trash2, X, Check,
   Calendar, DollarSign, Users, Tag, Filter,
@@ -125,7 +126,7 @@ function ImageUpload({ value, onChange }) {
           ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-neutral-200 bg-neutral-50 hover:border-orange-300 hover:bg-orange-50"}`}
       >
         {value && !uploading && (
-          <img src={`${API_URL}${value}`} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
+          <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
         )}
         <div className="relative z-10 flex flex-col items-center gap-1 text-center">
           {uploading
@@ -406,7 +407,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
       <div className="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
         {course.CourseImage && !imgErr ? (
           <img
-            src={`${API_URL}${course.CourseImage}`}
+            src={getFileUrl(course.CourseImage)}
             alt={course.CourseName}
             onError={() => setImgErr(true)}
             className="w-full h-full object-cover"

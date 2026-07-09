@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
@@ -167,7 +168,7 @@ export default function TutorProfile() {
                             <div className="relative shrink-0 mx-auto md:mx-0">
                                 <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-gray-100">
                                     <img
-                                        src={formData.photo ? `${API_URL}${formData.photo}` : "/tutor.jpeg"}
+                                        src={getFileUrl(formData.photo) || "/tutor.jpeg"}
                                         className="h-full w-full object-cover"
                                         alt="Tutor"
                                     />

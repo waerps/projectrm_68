@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
@@ -325,7 +326,6 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 //         <div className="absolute -bottom-8 left-4">
 //           <div className="h-16 w-16 rounded-2xl border-4 border-white overflow-hidden bg-orange-50 shadow-md">
 //             {tutor.Photo && !imgErr ? (
-//               <img src={`${API_URL}${tutor.Photo}`} alt={displayName}
 //                 onError={() => setImgErr(true)} className="w-full h-full object-cover" />
 //             ) : (
 //               // FIX #6-equivalent: ใช้ AdminId เป็น seed
@@ -417,7 +417,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl overflow-hidden bg-orange-50 border border-orange-100 shrink-0">
             {t.Photo && !imgErr ? (
-              <img src={`${API_URL}${t.Photo}`} alt={displayName}
+              <img src={getFileUrl(t.Photo)} alt={displayName}
                 onError={() => setImgErr(true)} className="w-full h-full object-cover" />
             ) : (
               <img src={avatarUrl(t.AdminId)} alt={displayName} className="w-full h-full object-cover" />
