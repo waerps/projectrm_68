@@ -6,7 +6,6 @@ const items = [
   { to: "/profile/schedule", label: "ตารางเรียน" },
   { to: "/profile/notifications", label: "การแจ้งเตือน" },
   { to: "/profile/my-courses", label: "คอร์สเรียนของฉัน" },
-  { to: "/profile/attendance", label: "ประวัติการเข้าเรียน" },
 ];
 
 export default function ProfileSidebar() {
@@ -34,6 +33,17 @@ export default function ProfileSidebar() {
             {it.label}
           </NavLink>
         ))}
+
+        {/* Logout button */}
+        <button
+          onClick={() => {
+            localStorage.clear();
+            window.location.href = "/login";
+          }}
+          className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition border-t border-gray-100 mt-2"
+        >
+          ออกจากระบบ
+        </button>
       </nav>
     </div>
   );

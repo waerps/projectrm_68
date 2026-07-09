@@ -47,7 +47,7 @@ export default function ChatWidget() {
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
 {messages.map((msg) => (
   <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-4`}>
-    <div className="flex flex-col gap-2 max-w-[85%]"> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
+    <div className={`flex flex-col gap-2 max-w-[85%]`}> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
           {msg.sender === "user" ? (
             // ของ User ให้แสดงปกติ
             <div className="px-4 py-2.5 rounded-2xl text-sm bg-orange-500 text-white rounded-br-sm shadow-sm">
@@ -61,7 +61,7 @@ export default function ChatWidget() {
               <div 
                 key={index} 
                 className="px-4 py-2.5 rounded-2xl text-sm bg-gray-100 text-gray-800 rounded-bl-sm shadow-sm animate-fadeIn"
-                style={{ animationDelay: `${index * 0.15}s`, animationFillMode: "both" }} // ให้แต่ละก้อนค่อยๆ เด้งออกมา
+                style={{ animationDelay: `${index * 0.15}s`, animationFillMode: 'both' }} // ให้แต่ละก้อนค่อยๆ เด้งออกมา
               >
                 {line.startsWith('•') || line.startsWith('-') ? (
                   <span className="flex gap-2">

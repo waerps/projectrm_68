@@ -13,7 +13,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react"
 
 // ---- mock bot (เปลี่ยนเป็นเรียก API จริงได้) ----
 const N8N_CHAT_WEBHOOK =
-  "https://cpkku.app.n8n.cloud/webhook/488ca9d1-0cb9-4a10-93df-3b8fb52fc2c8/chat"
+  "http://localhost:5678/webhook/chat-webhook-sornserm-003/chat"
 
 // helper: แปลง response ให้เป็นรูปแบบมาตรฐาน
 function normalizeN8nResponse(data) {

@@ -1,4 +1,4 @@
-import { useShop } from "../components/context/ShopContext";
+import { useShop } from "../context/ShopContext";
 import { Trash2 } from "lucide-react";
 
 export default function Cart() {

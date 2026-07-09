@@ -57,7 +57,7 @@ export function Login() {
 
       if (response.ok) {
 
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("student_token", data.token);
         localStorage.setItem("user_role", data.user?.roleId || "student");
 
         localStorage.setItem("user", JSON.stringify(data.user));
