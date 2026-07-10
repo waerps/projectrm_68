@@ -486,8 +486,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
         <div>
           <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
-          <input type="number" value={form.YearId}
-            onChange={(e) => set("YearId", e.target.value)} className={inputCls} placeholder="2569" />
+          <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
+            <option value="">เลือกปีการศึกษา</option>
+            {yearOptions.map((y) => (
+              <option key={y.YearId} value={y.YearId}>{y.YearName}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -541,47 +545,80 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   );
 }
 
-// ─── Pending Student Picker ──────────────────────────────────────────────────
-function PendingStudentPicker({ items, onChange, showToast }) {
+function PendingStudentPicker({ items, onChange }) {
   const [allStudents, setAllStudents] = useState([]);
-  const [selected, setSelected] = useState("");
-  useEffect(() => { axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data)); }, []);
-  const available = allStudents.filter(s => !items.includes(String(s.UserId)));
+  const [search, setSearch] = useState("");
 
-  const add = () => {
-    if (!selected) {
-      return showToast("error", "กรุณาเลือกนักเรียน");
-    }
-    onChange([...items, selected]);
-    setSelected("");
+  useEffect(() => {
+    axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
+  }, []);
+
+  const filtered = allStudents.filter(s => {
+    const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
+    return !search || name.includes(search.toLowerCase()) || String(s.UserId).includes(search);
+  });
+
+  const toggle = (id) => {
+    onChange(items.includes(id) ? items.filter(x => x !== id) : [...items, id]);
   };
-  const remove = (id) => onChange(items.filter(i => i !== id));
+
+  const toggleAll = () => {
+    const filteredIds = filtered.map(s => String(s.UserId));
+    const allSelected = filteredIds.every(id => items.includes(id));
+    onChange(
+      allSelected
+        ? items.filter(id => !filteredIds.includes(id))
+        : [...new Set([...items, ...filteredIds])]
+    );
+  };
 
   return (
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
         <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
       </div>
-      {items.map(id => {
-        const st = allStudents.find(s => String(s.UserId) === id);
-        return (
-          <div key={id} className="flex items-center gap-3 px-4 py-2 border-b border-neutral-100 last:border-0">
-            <span className="flex-1 text-sm">{st ? (st.Nickname || `${st.Firstname} ${st.Lastname}`) : `#${id}`}</span>
-            <button onClick={() => remove(id)} className="text-red-400 hover:text-red-600">
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        );
-      })}
-      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
-        <select value={selected} onChange={e => setSelected(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none">
-          <option value="">เลือกนักเรียน</option>
-          {available.map(s => <option key={s.UserId} value={String(s.UserId)}>{s.Nickname || `${s.Firstname} ${s.Lastname}`}</option>)}
-        </select>
-        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600">
-          <Plus className="h-3.5 w-3.5" />
+
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50">
+        <input
+          type="text"
+          placeholder="ค้นหานักเรียน..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+        />
+        <button
+          onClick={toggleAll}
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap"
+        >
+          {filtered.length > 0 && filtered.every(s => items.includes(String(s.UserId)))
+            ? "ยกเลิกทั้งหมด"
+            : "เลือกทั้งหมด"}
         </button>
+      </div>
+
+      <div className="max-h-48 overflow-y-auto px-4 space-y-1 py-2">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-neutral-400 text-center py-3">ไม่พบนักเรียน</p>
+        ) : (
+          filtered.map(s => {
+            const id = String(s.UserId);
+            const checked = items.includes(id);
+            return (
+              <label
+                key={id}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${
+                  checked ? "bg-orange-100" : "hover:bg-neutral-50"
+                }`}
+              >
+                <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                <span className="flex-1 font-medium text-neutral-700">
+                  {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                </span>
+                <span className="text-[11px] text-neutral-400">#{s.UserId}</span>
+              </label>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -800,6 +837,7 @@ export default function AdminCoursesPage() {
   const [courses, setCourses] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
   const [termOptions, setTermOptions] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -813,14 +851,16 @@ export default function AdminCoursesPage() {
 
   const fetchAll = async () => {
     try {
-      const [cRes, sRes, tRes] = await Promise.all([
+      const [cRes, sRes, tRes, yRes] = await Promise.all([
         axios.get(`${API_BASE}/courses`),
         axios.get(`${API_BASE}/status-course`),
         axios.get(`${API_BASE}/term`),
+        axios.get(`${API_BASE}/year`),
       ]);
       setCourses(cRes.data);
       setStatusOptions(sRes.data);
       setTermOptions(tRes.data);
+      setYearOptions(yRes.data);
     } catch (e) {
       console.error("Fetch error:", e);
     } finally {
@@ -838,13 +878,29 @@ export default function AdminCoursesPage() {
       const res = await axios.post(`${API_BASE}/courses`, courseData);
       const CourseID = res.data.CourseID;
   
-      const tasks = pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s));
-      if (pendingStudents.length) {
-        tasks.push(axios.post(`${API_BASE}/enroll/bulk`, { UserIds: pendingStudents, CourseID }));
-      }
-      await Promise.all(tasks);
+      const subjectResults = await Promise.allSettled(
+        pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
+      );
+      const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
   
-      showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้!");
+      let enrollFailed = 0;
+      if (pendingStudents.length) {
+        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
+          UserIds: pendingStudents,
+          CourseID,
+        });
+        enrollFailed = enrollRes.data.failed?.length || 0;
+      }
+  
+      if (subjectFailed > 0 || enrollFailed > 0) {
+        showToast(
+          "error",
+          "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
+          `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
+        );
+      } else {
+        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้!");
+      }
       setShowAddModal(false);
       fetchAll();
     } catch (e) {
@@ -1065,11 +1121,13 @@ export default function AdminCoursesPage() {
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <CourseForm
-            onSave={handleCreate}
-            onCancel={() => setShowAddModal(false)}
+            initial={editingCourse}
+            onSave={handleUpdate}
+            onCancel={() => setEditingCourse(null)}
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            yearOptions={yearOptions}   // ★ เพิ่ม
             showToast={showToast}
           />
         </Modal>
