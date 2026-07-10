@@ -318,10 +318,13 @@ function StudentDetailModal({ studentId, onClose }) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("courses");
   const [error, setError] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(null); // ★ ใหม่
 
   useEffect(() => {
     setError(null);
     setLoading(true);
+    setSelectedCourseId(null);
+    setTab("courses");
     axios.get(`${API}/students/${studentId}`)
       .then(r => setData(r.data))
       .catch(e => setError(e.response?.data?.message || e.message))
@@ -342,10 +345,10 @@ function StudentDetailModal({ studentId, onClose }) {
 
   if (!data) return null;
 
-  const { student: s, courses, attendance, videoProgress } = data;
+  const { student: s, courses, attendance, videoProgress, examScores = [] } = data;
   const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
 
-  // FIX #5: คำนวณ attRate จาก attendance array (source เดียว ไม่ซ้อนกัน)
+  // ── ภาพรวมทั้งหมด (ไม่กรองคอร์ส) สำหรับ header การ์ดบนสุด ──────────────
   const totalClasses = attendance.length;
   const attended = attendance.filter(a => a.Status === "1").length;
   const attRate = totalClasses > 0 ? Math.round((attended / totalClasses) * 100) : 0;
@@ -355,20 +358,69 @@ function StudentDetailModal({ studentId, onClose }) {
   const watchedVideos = videoProgress.filter(v => v.WatchPercent >= 100).length;
   const totalVideos = videoProgress.length;
 
+  // ── ข้อมูลกรองตามคอร์สที่เลือก (ใช้ในทุก tab ยกเว้น "courses") ──────────
+  const selectedCourse = courses.find(c => String(c.CourseID) === String(selectedCourseId));
+  const cAttendance = selectedCourseId ? attendance.filter(a => String(a.CourseID) === String(selectedCourseId)) : [];
+  const cVideos = selectedCourseId ? videoProgress.filter(v => String(v.CourseID) === String(selectedCourseId)) : [];
+  const cScores = selectedCourseId ? examScores.filter(e => String(e.CourseID) === String(selectedCourseId)) : [];
+
+  const cAttended = cAttendance.filter(a => a.Status === "1").length;
+  const cAttRate = cAttendance.length ? Math.round((cAttended / cAttendance.length) * 100) : 0;
+  const cWatched = cVideos.filter(v => v.WatchPercent >= 100).length;
+
+  // ── รวมคะแนนสอบเป็นรายวิชา (pre/mid/post = ExamTypeId 1/2/3) ────────────
+  const scoresBySubject = {};
+  cScores.forEach(e => {
+    if (!e.MaxScore || e.MaxScore <= 0) return;
+    const key = e.SubjectName || "ไม่ระบุวิชา";
+    if (!scoresBySubject[key]) scoresBySubject[key] = { pre: [], mid: [], post: [] };
+    const pct = Math.round((e.Score / e.MaxScore) * 100);
+    const typeId = String(e.ExamTypeId);
+    if (typeId === "1") scoresBySubject[key].pre.push(pct);
+    else if (typeId === "2") scoresBySubject[key].mid.push(pct);
+    else if (typeId === "3") scoresBySubject[key].post.push(pct);
+  });
+  const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
+  const subjectSummaries = Object.entries(scoresBySubject).map(([subject, v]) => {
+    const pre = avg(v.pre), mid = avg(v.mid), post = avg(v.post);
+    const improvement = pre !== null && post !== null ? post - pre : null;
+    return { subject, pre, mid, post, improvement };
+  });
+
+  const trendOf = (imp) => imp > 0 ? "up" : imp < 0 ? "down" : "stable";
+  const trendIcon = (t) =>
+    t === "up" ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> :
+    t === "down" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
+    <Minus className="h-3.5 w-3.5 text-amber-500" />;
+  const trendColor = (t) =>
+    t === "up" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+    t === "down" ? "bg-red-50 text-red-600 border-red-200" :
+    "bg-amber-50 text-amber-700 border-amber-200";
+
   const TABS = [
     { key: "courses", label: "คอร์สที่ลง", count: courses.length },
-    { key: "attendance", label: "ประวัติเรียน", count: totalClasses },
-    { key: "videos", label: "วิดีโอ", count: totalVideos },
+    { key: "attendance", label: "ประวัติเรียน", count: cAttendance.length },
+    { key: "videos", label: "วิดีโอ", count: cVideos.length },
+    { key: "scores", label: "คะแนนสอบ", count: subjectSummaries.length },      // ★ ใหม่
+    { key: "overview", label: "ภาพรวม", count: null },                          // ★ ใหม่
   ];
+
+  // ── ข้อความเตือนเมื่อยังไม่เลือกคอร์ส ────────────────────────────────
+  const NeedCourseNotice = () => (
+    <div className="text-center py-10">
+      <p className="text-slate-400 text-sm mb-3">กรุณาเลือกคอร์สก่อน เพื่อดูรายละเอียดของคอร์สนั้น</p>
+      <button onClick={() => setTab("courses")}
+        className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
+        <BookOpen className="h-3.5 w-3.5" /> ไปเลือกคอร์ส
+      </button>
+    </div>
+  );
 
   return (
     <Modal title={`ข้อมูลนักเรียน: ${displayName}`} icon={Eye} onClose={onClose} wide>
       {/* Profile Card */}
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-gradient-to-br from-orange-600 to-amber-700 rounded-2xl text-white">
-        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
-          {/* FIX #6: ใช้ UserId เป็น seed */}
-          {/* <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-cover" /> */}
-        </div>
+        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0" />
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-white text-lg">{displayName}</h2>
           <p className="text-sm text-orange-200">{s.Firstname} {s.Lastname}</p>
@@ -377,47 +429,64 @@ function StudentDetailModal({ studentId, onClose }) {
             {s.SchoolName && <span className="bg-white/15 text-orange-100 px-2 py-0.5 rounded-full">{s.SchoolName}</span>}
             {s.PhoneNo && <span className="bg-white/15 text-orange-100 px-2 py-0.5 rounded-full">{s.PhoneNo}</span>}
             {s.GPA && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">GPA {s.GPA}</span>}
-            {calcAge(s.BirthOfDate) && <span className="bg-white/15 text-orange-100 px-2 py-0.5 rounded-full">อายุ {calcAge(s.BirthOfDate)} ปี</span>}
           </div>
         </div>
         <div className="flex gap-3 shrink-0">
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">เข้าเรียน</p>
+            <p className="text-xs text-orange-200">เข้าเรียน (รวม)</p>
             <p className="text-xl font-black text-white">{attRate}%</p>
             <p className="text-[10px] text-orange-300">{attended}/{totalClasses} คาบ</p>
           </div>
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">วิดีโอ</p>
+            <p className="text-xs text-orange-200">วิดีโอ (รวม)</p>
             <p className="text-xl font-black text-white">{watchedVideos}</p>
             <p className="text-[10px] text-orange-300">/{totalVideos} คลิป</p>
           </div>
         </div>
       </div>
 
+      {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
+      {selectedCourse && tab !== "courses" && (
+        <div className="flex items-center gap-2 mb-4 text-xs">
+          <span className="text-slate-400">กำลังดูคอร์ส:</span>
+          <span className="bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-semibold">
+            {selectedCourse.CourseName}
+          </span>
+          <button onClick={() => setTab("courses")}
+            className="flex items-center gap-1 text-slate-400 hover:text-orange-600 transition">
+            <ArrowLeft className="h-3 w-3" /> เปลี่ยนคอร์ส
+          </button>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5 flex-wrap">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
             {t.label}
-            <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-              {t.count}
-            </span>
+            {t.count !== null && (
+              <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
+                {t.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
-      {/* Tab: คอร์สที่ลงทะเบียน */}
+      {/* Tab: คอร์สที่ลงทะเบียน — คลิกเพื่อเลือกดูรายละเอียด */}
       {tab === "courses" && (
         <div className="space-y-3">
           {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
           ) : courses.map(c => {
-            // FIX #5: แสดงตัวเลขจาก API ตรงๆ ไม่คำนวณซ้ำ
             const rate = c.TotalClassHeld > 0 ? Math.round((c.TotalAttended / c.TotalClassHeld) * 100) : null;
             const rColor = !rate ? "bg-slate-300" : rate >= 80 ? "bg-emerald-500" : rate >= 60 ? "bg-amber-400" : "bg-red-500";
+            const isSelected = String(selectedCourseId) === String(c.CourseID);
             return (
-              <div key={c.EnrollId} className="bg-slate-50 rounded-xl p-4 border border-slate-200 flex flex-col md:flex-row gap-3">
+              <div key={c.EnrollId}
+                onClick={() => { setSelectedCourseId(c.CourseID); setTab("attendance"); }}
+                className={`bg-slate-50 rounded-xl p-4 border flex flex-col md:flex-row gap-3 cursor-pointer transition hover:border-orange-300 hover:shadow-sm ${isSelected ? "border-orange-300 ring-1 ring-orange-200" : "border-slate-200"}`}>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm text-slate-900 truncate">{c.CourseName}</p>
                   <div className="flex flex-wrap gap-2 mt-1 text-[11px]">
@@ -451,106 +520,191 @@ function StudentDetailModal({ studentId, onClose }) {
         </div>
       )}
 
-      {/* Tab: ประวัติเข้าเรียน */}
+      {/* Tab: ประวัติเข้าเรียน (กรองตามคอร์ส) */}
       {tab === "attendance" && (
-        <div>
-          <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className="text-slate-500 font-medium">อัตราการเข้าเรียนรวม</span>
-              <span className={`font-black ${attColor}`}>{attRate}% ({attended}/{totalClasses} คาบ)</span>
+        !selectedCourseId ? <NeedCourseNotice /> : (
+          <div>
+            <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="text-slate-500 font-medium">อัตราการเข้าเรียนในคอร์สนี้</span>
+                <span className={`font-black ${cAttRate >= 80 ? "text-emerald-600" : cAttRate >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                  {cAttRate}% ({cAttended}/{cAttendance.length} คาบ)
+                </span>
+              </div>
+              <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${cAttRate >= 80 ? "bg-emerald-500" : cAttRate >= 60 ? "bg-amber-400" : "bg-red-500"}`} style={{ width: `${cAttRate}%` }} />
+              </div>
             </div>
-            <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${attBarColor}`} style={{ width: `${attRate}%` }} />
-            </div>
-          </div>
-          {attendance.length === 0 ? (
-            <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการเข้าเรียน</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-xs">
-                    <th className="text-left px-4 py-3 font-semibold">วันที่</th>
-                    <th className="text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
-                    <th className="text-left px-4 py-3 font-semibold">เวลา</th>
-                    <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendance.map(a => (
-                    <tr key={a.StudentAttendanceId} className={`border-t border-slate-100 ${a.Status === "0" ? "bg-red-50" : "hover:bg-slate-50"}`}>
-                      <td className="px-4 py-3 font-medium text-slate-800 text-xs">
-                        {formatDate(a.ClassDate || a.AttendanceDate)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 text-xs">
-                        <span className="font-medium">{a.CourseName}</span>
-                        {a.SubjectName && <span className="text-slate-400"> · {a.SubjectName}</span>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{a.StartTime} – {a.EndTime} น.</td>
-                      <td className="px-4 py-3 text-center">
-                        {a.Status === "1" ? (
-                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                            <CheckCircle className="h-3 w-3" /> มาเรียน
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                            <XCircle className="h-3 w-3" /> ขาดเรียน
-                          </span>
-                        )}
-                      </td>
+            {cAttendance.length === 0 ? (
+              <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการเข้าเรียนในคอร์สนี้</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 text-xs">
+                      <th className="text-left px-4 py-3 font-semibold">วันที่</th>
+                      <th className="text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
+                      <th className="text-left px-4 py-3 font-semibold">เวลา</th>
+                      <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  </thead>
+                  <tbody>
+                    {cAttendance.map(a => (
+                      <tr key={a.StudentAttendanceId} className={`border-t border-slate-100 ${a.Status === "0" ? "bg-red-50" : "hover:bg-slate-50"}`}>
+                        <td className="px-4 py-3 font-medium text-slate-800 text-xs">
+                          {formatDate(a.ClassDate || a.AttendanceDate)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-xs">
+                          <span className="font-medium">{a.CourseName}</span>
+                          {a.SubjectName && <span className="text-slate-400"> · {a.SubjectName}</span>}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">{a.StartTime} – {a.EndTime} น.</td>
+                        <td className="px-4 py-3 text-center">
+                          {a.Status === "1" ? (
+                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                              <CheckCircle className="h-3 w-3" /> มาเรียน
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                              <XCircle className="h-3 w-3" /> ขาดเรียน
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
       )}
 
-      {/* Tab: วิดีโอ */}
+      {/* Tab: วิดีโอ (กรองตามคอร์ส) */}
       {tab === "videos" && (
-        <div>
-          {videoProgress.length === 0 ? (
-            <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการดูวิดีโอ</p>
-          ) : (
-            <div className="space-y-2">
-              {videoProgress.map(v => {
-                const done = v.WatchPercent >= 100;
-                return (
-                  <div key={v.StudentVideoProgressId} className={`flex items-center gap-3 p-3 rounded-xl border ${done ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-200"}`}>
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-orange-600" : "bg-slate-300"}`}>
-                      <PlayCircle className={`h-5 w-5 ${done ? "text-white" : "text-slate-500"}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
-                        <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
-                        {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
+        !selectedCourseId ? <NeedCourseNotice /> : (
+          <div>
+            {cVideos.length === 0 ? (
+              <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการดูวิดีโอในคอร์สนี้</p>
+            ) : (
+              <div className="space-y-2">
+                {cVideos.map(v => {
+                  const done = v.WatchPercent >= 100;
+                  return (
+                    <div key={v.StudentVideoProgressId} className={`flex items-center gap-3 p-3 rounded-xl border ${done ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-200"}`}>
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-orange-600" : "bg-slate-300"}`}>
+                        <PlayCircle className={`h-5 w-5 ${done ? "text-white" : "text-slate-500"}`} />
                       </div>
-                      {!done && v.WatchPercent > 0 && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-orange-400 rounded-full" style={{ width: `${v.WatchPercent}%` }} />
-                          </div>
-                          <span className="text-[10px] text-orange-500 font-medium">{v.WatchPercent}%</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
+                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                          <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
+                          {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
                         </div>
-                      )}
+                        {!done && v.WatchPercent > 0 && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                              <div className="h-full bg-orange-400 rounded-full" style={{ width: `${v.WatchPercent}%` }} />
+                            </div>
+                            <span className="text-[10px] text-orange-500 font-medium">{v.WatchPercent}%</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        {done ? (
+                          <span className="inline-flex items-center gap-1 bg-orange-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <CheckCircle className="h-3 w-3" /> ดูแล้ว
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="shrink-0">
-                      {done ? (
-                        <span className="inline-flex items-center gap-1 bg-orange-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
-                          <CheckCircle className="h-3 w-3" /> ดูแล้ว
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
-                      )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )
+      )}
+
+      {/* Tab: คะแนนสอบ (ใหม่) — กรองตามคอร์ส แยกตามวิชา */}
+      {tab === "scores" && (
+        !selectedCourseId ? <NeedCourseNotice /> : (
+          <div className="space-y-3">
+            {subjectSummaries.length === 0 ? (
+              <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลคะแนนสอบในคอร์สนี้</p>
+            ) : subjectSummaries.map(sub => {
+              const t = trendOf(sub.improvement ?? 0);
+              return (
+                <div key={sub.subject} className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-orange-500" />
+                      <span className="font-semibold text-sm text-slate-900">{sub.subject}</span>
                     </div>
+                    {sub.improvement !== null && (
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold ${trendColor(t)}`}>
+                        {trendIcon(t)}
+                        {sub.improvement > 0 ? `+${sub.improvement}` : sub.improvement}
+                      </span>
+                    )}
                   </div>
-                );
-              })}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: "ก่อนเรียน", value: sub.pre },
+                      { label: "กลางภาค", value: sub.mid },
+                      { label: "หลังเรียน", value: sub.post },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
+                        <p className="text-[10px] text-slate-400 mb-1">{label}</p>
+                        <p className="text-sm font-black text-slate-800">{value !== null ? `${value}%` : "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      )}
+
+      {/* Tab: ภาพรวม (ใหม่) */}
+      {tab === "overview" && (
+        !selectedCourseId ? <NeedCourseNotice /> : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "คาบทั้งหมด", value: cAttendance.length, color: "text-slate-700" },
+                { label: "มาเรียน", value: `${cAttended} คาบ`, color: "text-emerald-600" },
+                { label: "ขาดเรียน", value: `${cAttendance.length - cAttended} คาบ`, color: "text-red-500" },
+                { label: "คลิปดูแล้ว", value: `${cWatched}/${cVideos.length}`, color: "text-orange-600" },
+              ].map((st, i) => (
+                <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 font-medium mb-1">{st.label}</p>
+                  <p className={`text-xl font-black ${st.color}`}>{st.value}</p>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {subjectSummaries.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-4">
+                <p className="text-sm font-bold text-slate-800 mb-3">พัฒนาการรายวิชา</p>
+                <div className="space-y-2">
+                  {subjectSummaries.map(sub => (
+                    <div key={sub.subject} className="flex items-center gap-3">
+                      <span className="text-xs text-slate-500 w-24 truncate shrink-0">{sub.subject}</span>
+                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-orange-500 rounded-full" style={{ width: `${sub.post ?? 0}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-slate-700 w-10 text-right">{sub.post !== null ? `${sub.post}%` : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
       )}
     </Modal>
   );
