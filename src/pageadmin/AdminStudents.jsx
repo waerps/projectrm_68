@@ -75,7 +75,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     lastname: initial.Lastname || initial.lastname || "",
     nickname: initial.Nickname || initial.nickname || "",
     phoneNo: initial.PhoneNo || initial.phoneNo || "",
-    schoolName: initial.SchoolName || initial.schoolName || "",
+    schoolName: stripSchool(initial.SchoolName || initial.schoolName || ""),
     lineId: initial.LineID || initial.lineId || "",
     birthOfDate: initial.BirthOfDate || initial.birthOfDate || "",
     remark: initial.Remark || initial.remark || "",
@@ -85,7 +85,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     username: initial.Username || initial.username || "",
     password: "",
   });
-
+  const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [showPwd, setShowPwd] = useState(false);
   const isEdit = !!initial.UserId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -93,7 +93,17 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
   const submit = () => {
     if (!form.firstname.trim() || !form.lastname.trim()) return alert("กรุณากรอกชื่อ-นามสกุล");
     if (!isEdit && (!form.username.trim() || !form.password.trim())) return alert("กรุณากรอก Username และ Password");
-    onSave(form);
+    onSave({
+      ...form,
+      schoolName: form.schoolName.trim() ? `โรงเรียน${form.schoolName.trim()}` : "",
+    });
+  };
+
+  const formatPhone = (v) => {
+    const d = v.replace(/\D/g, "").slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+    return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
   };
 
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
@@ -118,12 +128,23 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         </div>
         <div>
           <label className={lbl}>เบอร์โทร</label>
-          <input className={inp} value={form.phoneNo || ""} onChange={e => set("phoneNo", e.target.value)} placeholder="08x-xxx-xxxx" />
+          <input
+            className={inp}
+            value={form.phoneNo || ""}
+            onChange={e => set("phoneNo", formatPhone(e.target.value))}
+            placeholder="098-xxx-xxxx"
+            inputMode="numeric"
+          />
         </div>
       </div>
       <div>
         <label className={lbl}>โรงเรียน</label>
-        <input className={inp} value={form.schoolName || ""} onChange={e => set("schoolName", e.target.value)} />
+        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg focus-within:ring-2 focus-within:ring-orange-500">
+          <span className="pl-3 pr-1 text-sm text-slate-500 select-none">โรงเรียน</span>
+          <input className="flex-1 px-1 py-2 bg-transparent text-sm outline-none"
+            value={form.schoolName || ""} onChange={e => set("schoolName", e.target.value)}
+            placeholder="เทศบาลสวนสนุก" />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -152,8 +173,19 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         </div>
         <div>
           <label className={lbl}>GPA</label>
-          <input type="number" step="0.01" min="0" max="4" className={inp}
-            value={form.gpa || ""} onChange={e => set("gpa", e.target.value)} placeholder="0.00" />
+          <input
+            type="number" step="0.01" min="0" max="4" className={inp}
+            value={form.gpa || ""}
+            onKeyDown={e => { if (e.key === "-" || e.key === "e" || e.key === "+") e.preventDefault(); }}
+            onChange={e => set("gpa", e.target.value)}
+            onBlur={e => {
+              let n = parseFloat(e.target.value);
+              if (isNaN(n)) return set("gpa", "");
+              n = Math.min(4, Math.max(0, n));
+              set("gpa", n.toFixed(2));
+            }}
+            placeholder="0.00"
+          />
         </div>
       </div>
       <div>
@@ -263,6 +295,7 @@ function StudentDetailModal({ studentId, onClose }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("courses");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     axios.get(`${API}/students/${studentId}`)
@@ -276,6 +309,21 @@ function StudentDetailModal({ studentId, onClose }) {
       <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
     </Modal>
   );
+
+  useEffect(() => {
+    setError(null); setLoading(true);
+    axios.get(`${API}/students/${studentId}`)
+      .then(r => setData(r.data))
+      .catch(e => setError(e.response?.data?.message || e.message))
+      .finally(() => setLoading(false));
+  }, [studentId]);
+
+  if (error) return (
+    <Modal title="เกิดข้อผิดพลาด" icon={AlertTriangle} onClose={onClose}>
+      <p className="text-sm text-red-500">{error}</p>
+    </Modal>
+  );
+
   if (!data) return null;
 
   const { student: s, courses, attendance, videoProgress } = data;
@@ -811,7 +859,15 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   // ตัดแสดงตาม limit
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
-  const top3 = filtered.slice(0, 3);
+
+  const topRanks = [...new Set(filtered.map(s => s.Rank))]
+    .filter(r => r <= 3)
+    .sort((a, b) => a - b); // [1,2,3] หรือ [1,3] ถ้าอันดับ2โดนข้าม
+
+  const podiumGroups = topRanks.map(rank => ({
+    rank,
+    students: filtered.filter(s => s.Rank === rank),
+  }));
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -879,28 +935,46 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
             {filtered.length >= 2 && (
-              <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((s, i) => s && (
-                  <div
-                    key={s.UserId}
-                    className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
-                      ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                    onClick={() => onViewStudent(s.UserId)}
-                  >
-                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
-                      <img src={avatarUrl(s.UserId)}
-                        alt={s.Nickname || s.Firstname}
-                        className="w-full h-full object-contain" />
+              <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${podiumGroups.length}, minmax(0,1fr))` }}>
+                {podiumGroups.map(({ rank, students: tied }) => {
+                  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
+                  const marginTop = rank === 1 ? 0 : rank === 2 ? 16 : 32;
+                  return (
+                    <div
+                      key={rank}
+                      className={`rounded-xl border p-3 text-center
+            ${rank === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                      style={{ marginTop }}
+                    >
+                      <div className="text-2xl">{medal}</div>
+
+                      {/* คนที่เสมอกันในอันดับนี้ แสดงเรียงต่อกัน */}
+                      <div className={`mt-2 space-y-2 ${tied.length > 1 ? 'max-h-40 overflow-y-auto pr-0.5' : ''}`}>
+                        {tied.map(s => (
+                          <div
+                            key={s.UserId}
+                            className="cursor-pointer hover:opacity-80 transition"
+                            onClick={() => onViewStudent(s.UserId)}
+                          >
+                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto">
+                              <img src={avatarUrl(s.UserId)}
+                                alt={s.Nickname || s.Firstname}
+                                className="w-full h-full object-contain" />
+                            </div>
+                            <p className="text-xs font-semibold text-slate-800 mt-1 truncate">
+                              {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <p className="text-lg font-black text-slate-900 mt-1.5">{tied[0].PerformanceScore}</p>
+                      <p className="text-[10px] text-slate-400">
+                        คะแนน{tied.length > 1 ? ` · ${tied.length} คน` : ''}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
-                      {s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                    </p>
-                    <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
-                    <p className="text-[10px] text-slate-400">คะแนน</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
