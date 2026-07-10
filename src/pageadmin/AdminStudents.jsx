@@ -99,6 +99,14 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     });
   };
 
+  const formatGPA = (raw) => {
+    const digits = raw.replace(/[^\d]/g, "").slice(0, 3); // เก็บแค่ตัวเลข ไม่เกิน 3 หลัก
+    if (digits.length === 0) return "";
+    const formatted = digits.length === 1 ? digits : `${digits[0]}.${digits.slice(1)}`;
+    if (parseFloat(formatted) > 4) return "4.00"; // กันไม่ให้เกิน 4.00 ตั้งแต่กำลังพิมพ์
+    return formatted;
+  };
+
   const formatPhone = (v) => {
     const d = v.replace(/\D/g, "").slice(0, 10);
     if (d.length <= 3) return d;
@@ -174,17 +182,18 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         <div>
           <label className={lbl}>GPA</label>
           <input
-            type="number" step="0.01" min="0" max="4" className={inp}
+            type="text" inputMode="decimal" className={inp}
             value={form.gpa || ""}
-            onKeyDown={e => { if (e.key === "-" || e.key === "e" || e.key === "+") e.preventDefault(); }}
-            onChange={e => set("gpa", e.target.value)}
+            onChange={e => set("gpa", formatGPA(e.target.value))}
             onBlur={e => {
+              if (!e.target.value) return;
               let n = parseFloat(e.target.value);
               if (isNaN(n)) return set("gpa", "");
               n = Math.min(4, Math.max(0, n));
               set("gpa", n.toFixed(2));
             }}
             placeholder="0.00"
+            maxLength={4}
           />
         </div>
       </div>
@@ -192,6 +201,19 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         <label className={lbl}>หมายเหตุ</label>
         <textarea className={inp} rows={2} value={form.remark || ""} onChange={e => set("remark", e.target.value)} />
       </div>
+
+      {isEdit && (
+        <div>
+          <label className={lbl}>Username</label>
+          <input
+            className={inp + " bg-slate-100 text-slate-500 cursor-not-allowed"}
+            value={form.username}
+            disabled
+            readOnly
+          />
+          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
+        </div>
+      )}
 
       {!isEdit && (
         <div className="border border-orange-100 rounded-xl p-4 space-y-3 bg-orange-50/50">
