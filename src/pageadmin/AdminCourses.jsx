@@ -249,7 +249,7 @@ function CourseSubjects({ courseId }) {
   );
 }
 
-function CourseStudents({ courseId }) {
+function CourseStudents({ courseId, showToast }) {
   const [students, setStudents] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -277,8 +277,10 @@ function CourseStudents({ courseId }) {
       setSelectedUserId(""); setAdding(false);
       fetchStudents(); // อัปเดตรายชื่อในคอร์สทันที ไม่ต้อง refresh
     } catch (e) {
-      alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); // แจ้งเตือนกรณีซ้ำ (409)
-    } finally { setSaving(false); }
+      const msg = e.response?.data?.message || "เกิดข้อผิดพลาด";
+      const detail = e.response?.data?.error;
+      showToast("error", msg, detail); // ★ ใช้ showToast แทน alert ให้สอดคล้อง UX เดิมของหน้าอื่น ๆ ในระบบ
+    }
   };
 
   const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
@@ -348,6 +350,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     CourseImage: "",
     ...initial,
   });
+
+  // ★ ใหม่: state สำหรับ pending list เมื่อยังไม่มี CourseID (โหมดสร้างใหม่)
+  const [pendingSubjects, setPendingSubjects] = useState([]); // [{SubjectId, AdminId, TotalHours}]
+  const [pendingStudents, setPendingStudents] = useState([]); // [UserId, ...]
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -451,20 +457,19 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         />
       </div>
 
-      {/* เพิ่มก่อนปุ่ม บันทึก/ยกเลิก */}
-      {initial.CourseID && (
-        <div>
-          <label className={labelCls}>วิชาและติวเตอร์</label>
-          <CourseSubjects courseId={initial.CourseID} />
-        </div>
-      )}
+      <div>
+        <label className={labelCls}>วิชาและติวเตอร์</label>
+        {initial.CourseID
+          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} />
+          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} />}
+      </div>
 
-      {initial.CourseID && (
-        <div>
-          <label className={labelCls}>นักเรียนในคอร์ส</label>
-          <CourseStudents courseId={initial.CourseID} />
-        </div>
-      )}
+      <div>
+        <label className={labelCls}>นักเรียนในคอร์ส</label>
+        {initial.CourseID
+          ? <CourseStudents courseId={initial.CourseID} showToast={showToast} />
+          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} />}
+      </div>
 
       <div className="flex gap-3 pt-2">
         <button
@@ -480,6 +485,49 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PendingStudentPicker({ items, onChange }) {
+  const [allStudents, setAllStudents] = useState([]);
+  const [selected, setSelected] = useState("");
+  useEffect(() => { axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data)); }, []);
+  const available = allStudents.filter(s => !items.includes(String(s.UserId)));
+
+  const add = () => {
+    if (!selected) return;
+    onChange([...items, selected]);
+    setSelected("");
+  };
+  const remove = (id) => onChange(items.filter(i => i !== id));
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
+      </div>
+      {items.map(id => {
+        const st = allStudents.find(s => String(s.UserId) === id);
+        return (
+          <div key={id} className="flex items-center gap-3 px-4 py-2 border-b border-neutral-100 last:border-0">
+            <span className="flex-1 text-sm">{st ? (st.Nickname || `${st.Firstname} ${st.Lastname}`) : `#${id}`}</span>
+            <button onClick={() => remove(id)} className="text-red-400 hover:text-red-600">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+        <select value={selected} onChange={e => setSelected(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none">
+          <option value="">เลือกนักเรียน</option>
+          {available.map(s => <option key={s.UserId} value={String(s.UserId)}>{s.Nickname || `${s.Firstname} ${s.Lastname}`}</option>)}
+        </select>
+        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600">
+          <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -641,14 +689,20 @@ export default function AdminCoursesPage() {
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
+    const { pendingSubjects = [], pendingStudents = [], ...courseData } = data;
     try {
-      const res = await axios.post(`${API_BASE}/courses`, data);
-      showToast("success", "เพิ่มข้อมูลคอร์สสำเร็จ!");
+      const res = await axios.post(`${API_BASE}/courses`, courseData);
+      const CourseID = res.data.CourseID;
+  
+      // ★ ผูกวิชา/นักเรียนที่เลือกไว้ทั้งหมดในรอบเดียว ไม่ต้องเปิด modal ใหม่
+      await Promise.all([
+        ...pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s)),
+        ...pendingStudents.map(UserId => axios.post(`${API_BASE}/enroll`, { UserId, CourseID })),
+      ]);
+  
+      showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้!");
       setShowAddModal(false);
-      await fetchAll();
-      // เปิด modal แก้ไขของคอร์สที่เพิ่งสร้าง
-      const newCourse = { ...data, CourseID: res.data.CourseID };
-      setEditingCourse(newCourse);
+      fetchAll(); // ปิด modal ทันที ไม่เปิด edit ต่ออัตโนมัติแล้ว เพราะข้อมูลครบในรอบเดียว
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
     } finally {
@@ -872,6 +926,7 @@ export default function AdminCoursesPage() {
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            showToast={showToast}
           />
         </Modal>
       )}
@@ -886,6 +941,7 @@ export default function AdminCoursesPage() {
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            showToast={showToast}
           />
         </Modal>
       )}

@@ -70,6 +70,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
 
 // ─── StudentForm ───────────────────────────────────────────────────────────────
 function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders }) {
+  const isEdit = !!initial.UserId;
   const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [form, setForm] = useState({
     firstname: initial.Firstname || initial.firstname || "",
@@ -87,7 +88,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     password: "",
   });
   const [showPwd, setShowPwd] = useState(false);
-  const isEdit = !!initial.UserId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = () => {
@@ -116,6 +116,14 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
+
+  const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่
+
+  const loadCourses = () => {
+    if (!isEdit) return;
+    axios.get(`${API}/students/${initial.UserId}`).then(r => setCourses(r.data.courses || []));
+  };
+  useEffect(() => { loadCourses(); }, [initial.UserId]);
 
   return (
     <div className="space-y-5">
@@ -240,6 +248,25 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         </div>
       )}
 
+      {isEdit && (
+        <div>
+          <label className={lbl}>คอร์สที่ลงทะเบียน</label>
+          <AddCourseToStudent
+            studentId={initial.UserId}
+            enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
+            onAdded={loadCourses}   // ★ ใช้ endpoint/logic POST /enroll ตัวเดียวกับหน้าคอร์ส ไม่ซ้ำ logic
+            showToast={showToast}
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {courses.map(c => (
+              <span key={c.CourseID} className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                {c.CourseName}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
           className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
@@ -330,8 +357,10 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded }) {
       setSelectedCourseId(""); setAdding(false);
       onAdded(); // อัปเดตรายชื่อคอร์สของนักเรียนทันที ไม่ต้อง refresh
     } catch (e) {
-      alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); // แจ้งเตือนกรณีซ้ำ (409)
-    } finally { setSaving(false); }
+      const msg = e.response?.data?.message || "เกิดข้อผิดพลาด";
+      const detail = e.response?.data?.error;
+      showToast("error", msg, detail); // ★ ใช้ showToast แทน alert ให้สอดคล้อง UX เดิมของหน้าอื่น ๆ ในระบบ
+    }
   };
 
   if (!adding) {
