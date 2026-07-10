@@ -3,10 +3,14 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
-    ChevronRight, Users, Video, CheckCircle, XCircle,
-    PlayCircle, Clock, TrendingUp, TrendingDown, Minus,
-    Calendar, BarChart2, Award, ChevronLeft, ChevronRight as ChevronRightIcon
-} from "lucide-react";
+    Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+    Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
+    AlertTriangle, KeyRound, GraduationCap, School,
+    CheckCircle, XCircle, Video, Calendar, BarChart2,
+    PlayCircle, Clock, Shield,
+    ChevronDown, ChevronUp,
+    Award, TrendingUp, TrendingDown, Minus, ArrowLeft,   // ★ เพิ่ม
+  } from "lucide-react";
 
 // ── Mock helpers (เหมือนเดิม) ────────────────────────────────────────
 const mockAttendance = (studentId, totalClassHeld) => {
