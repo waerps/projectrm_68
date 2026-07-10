@@ -343,26 +343,34 @@ function ResetPasswordModal({ student, onClose }) {
 function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }) {
   const [allCourses, setAllCourses] = useState([]);
   const [adding, setAdding] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => { axios.get(`${API}/courses`).then(r => setAllCourses(r.data)); }, []);
 
   const available = allCourses.filter(c => !enrolledCourseIds.has(String(c.CourseID)));
+  const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(c => String(c.CourseID)));
 
   const handleAdd = async () => {
-    if (!selectedCourseId) return alert("กรุณาเลือกคอร์ส");
+    if (!selectedIds.length) return showToast("error", "กรุณาเลือกคอร์สอย่างน้อย 1 คอร์ส");
     setSaving(true);
     try {
-      await axios.post(`${API}/enroll`, { UserId: studentId, CourseID: selectedCourseId });
-      setSelectedCourseId(""); setAdding(false);
+      const res = await axios.post(`${API}/enroll/bulk`, { UserIds: [studentId], CourseIDs: selectedIds });
+      const { success = [], skipped = [], failed = [] } = res.data;
+      let msg = `เพิ่มสำเร็จ ${success.length} คอร์ส`;
+      if (skipped.length) msg += ` · ข้าม ${skipped.length} คอร์ส (ลงทะเบียนแล้ว)`;
+      if (failed.length) msg += ` · ล้มเหลว ${failed.length} คอร์ส`;
+      showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
+      setSelectedIds([]); setAdding(false); setSearch("");
       onAdded();
     } catch (e) {
-      const msg = e.response?.data?.message || "เกิดข้อผิดพลาด";
-      const detail = e.response?.data?.error;
-      showToast("error", msg, detail);
+      showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด", e.response?.data?.error);
     } finally {
-      setSaving(false); // ★ เพิ่ม
+      setSaving(false);
     }
   };
 
@@ -376,20 +384,39 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
   }
 
   return (
-    <div className="flex items-center gap-2 mb-3 p-3 bg-orange-50 border border-orange-100 rounded-xl">
-      <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}
-        className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400">
-        <option value="">เลือกคอร์ส</option>
-        {available.map(c => <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>)}
-      </select>
-      <button onClick={handleAdd} disabled={saving}
-        className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition">
-        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-      </button>
-      <button onClick={() => { setAdding(false); setSelectedCourseId(""); }}
-        className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
-        <X className="h-3.5 w-3.5" />
-      </button>
+    <div className="mb-3 bg-orange-50 border border-orange-100 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 p-3">
+        <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
+          {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+        </button>
+      </div>
+      <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+        ) : filtered.map(c => {
+          const id = String(c.CourseID);
+          const checked = selectedIds.includes(id);
+          return (
+            <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+              <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
+            </label>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 p-3 border-t border-orange-100">
+        <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คอร์ส</span>
+        <button onClick={handleAdd} disabled={saving || !selectedIds.length}
+          className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition flex items-center gap-1.5">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
+        </button>
+        <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }
