@@ -413,17 +413,6 @@ function StudentDetailModal({ studentId, onClose }) {
     loadDetail();
   }, [studentId]);
 
-  // useEffect(() => {
-  //   setError(null);
-  //   setLoading(true);
-  //   setSelectedCourseId(null);
-  //   setTab("courses");
-  //   axios.get(`${API}/students/${studentId}`)
-  //     .then(r => setData(r.data))
-  //     .catch(e => setError(e.response?.data?.message || e.message))
-  //     .finally(() => setLoading(false));
-  // }, [studentId]);
-
   if (loading) return (
     <Modal title="ข้อมูลนักเรียน" icon={Eye} onClose={onClose} wide>
       <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
@@ -807,94 +796,6 @@ function StudentDetailModal({ studentId, onClose }) {
     </Modal>
   );
 }
-
-// ─── StudentCard ───────────────────────────────────────────────────────────────
-// function StudentCard({ student, onEdit, onDelete, onView, onResetPwd }) {
-//   const displayName = student.Nickname || `${student.Firstname} ${student.Lastname}`;
-
-//   return (
-//     <div className="bg-white rounded-2xl border-2 border-slate-100 hover:border-orange-300 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col">
-//       <div className="relative h-20 bg-gradient-to-br from-orange-500 to-amber-600 overflow-hidden">
-//         <div className="absolute inset-0 opacity-30"
-//           style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #a5b4fc 0%, transparent 60%)" }} />
-//         <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/30 text-white text-[10px] font-bold rounded-full backdrop-blur-sm">
-//           #{student.UserId}
-//         </span>
-//         {student.GPA && (
-//           <span className="absolute top-2 right-2 px-2 py-0.5 bg-amber-900/80 text-white text-[10px] font-bold rounded-full">
-//             GPA {student.GPA}
-//           </span>
-//         )}
-//         <div className="absolute -bottom-8 left-4">
-//           <div className="h-14 w-14 rounded-2xl border-4 border-white overflow-hidden bg-orange-50 shadow-md">
-//             {/* FIX #6: ใช้ UserId เป็น seed */}
-//             {/* <img src={avatarUrl(student.UserId)} alt={displayName} className="w-full h-full object-cover" /> */}
-//             <img src={avatarUrl(student.UserId)} alt={displayName} className="w-full h-full object-contain" />
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="pt-9 px-4 pb-4 flex-1 flex flex-col">
-//         <h3 className="font-bold text-slate-900 text-sm">{displayName}</h3>
-//         {student.Nickname && <p className="text-xs text-slate-400">{student.Firstname} {student.Lastname}</p>}
-
-//         <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
-//           {student.GradeDetail && (
-//             <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
-//               {student.GradeDetail}
-//             </span>
-//           )}
-//           {student.GenderName && (
-//             <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[10px] font-semibold">
-//               {student.GenderName}
-//             </span>
-//           )}
-//           {student.EnrolledCourses > 0 && (
-//             <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-semibold">
-//               {student.EnrolledCourses} คอร์ส
-//             </span>
-//           )}
-//         </div>
-
-//         {student.SchoolName && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1.5">
-//             <School className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-//             <span className="truncate">{student.SchoolName}</span>
-//           </div>
-//         )}
-//         {student.PhoneNo && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-//             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-//             <span>{student.PhoneNo}</span>
-//           </div>
-//         )}
-//         {student.CourseNames && (
-//           <p className="text-[11px] text-slate-400 line-clamp-1 mb-3">{student.CourseNames}</p>
-//         )}
-
-//         {/* FIX #11 + #7: เพิ่มปุ่ม Reset Password, ปุ่ม Delete มี loading ป้องกัน double click */}
-//         <div className="mt-auto pt-3 border-t border-slate-100 flex gap-1.5">
-//           <button onClick={() => onView(student.UserId)}
-//             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
-//             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
-//           </button>
-//           <button onClick={() => onEdit(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition" title="แก้ไขข้อมูล">
-//             <Edit2 className="h-3.5 w-3.5" />
-//           </button>
-//           <button onClick={() => onResetPwd(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition" title="รีเซ็ตรหัสผ่าน">
-//             <KeyRound className="h-3.5 w-3.5" />
-//           </button>
-//           <button onClick={() => onDelete(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition">
-//             <Trash2 className="h-3.5 w-3.5" />
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {

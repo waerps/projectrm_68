@@ -150,7 +150,7 @@ function ImageUpload({ value, onChange }) {
   );
 }
 
-function CourseSubjects({ courseId }) {
+function CourseSubjects({ courseId, showToast }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -174,13 +174,20 @@ function CourseSubjects({ courseId }) {
   }, [courseId]);
 
   const handleAdd = async () => {
-    if (!newRow.SubjectId || !newRow.AdminId) return alert("กรุณาเลือกวิชาและติวเตอร์");
+    if (!newRow.SubjectId || !newRow.AdminId) {
+      return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+    }
     try {
       await axios.post(`${API_BASE}/courses/${courseId}/subjects`, newRow);
       setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
       setAdding(false);
       fetchSubjects();
-    } catch (e) { alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); }
+    } catch (e) {
+      showToast(
+        "error",
+        e.response?.data?.message || "เกิดข้อผิดพลาด"
+      );
+    }
   };
 
   const handleDelete = async (id) => {
@@ -335,7 +342,7 @@ function CourseStudents({ courseId, showToast }) {
 }
 
 // ─── Course Form ─────────────────────────────────────────────────────────────
-function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions }) {
+function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
     StartDate: "",
@@ -349,7 +356,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Term_Id: 1,
     CourseImage: "",
     ...initial,
-    showToast,
   });
 
   // ★ ใหม่: state สำหรับ pending list เมื่อยังไม่มี CourseID (โหมดสร้างใหม่)
@@ -474,7 +480,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
           ? <CourseStudents courseId={initial.CourseID} showToast={showToast} />
-          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} />}
+          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} showToast={showToast}/>}
       </div>
 
       <div className="flex gap-3 pt-2">
@@ -497,14 +503,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   );
 }
 
-function PendingStudentPicker({ items, onChange }) {
+function PendingStudentPicker({ items, onChange, showToast}) {
   const [allStudents, setAllStudents] = useState([]);
   const [selected, setSelected] = useState("");
   useEffect(() => { axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data)); }, []);
   const available = allStudents.filter(s => !items.includes(String(s.UserId)));
 
   const add = () => {
-    if (!selected) return;
+    if (!selected) {
+      return showToast("error", "กรุณาเลือกนักเรียน");
+    }
     onChange([...items, selected]);
     setSelected("");
   };
