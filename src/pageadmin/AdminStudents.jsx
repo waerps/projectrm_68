@@ -395,7 +395,7 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 }
 
 // ─── StudentDetailModal ────────────────────────────────────────────────────────
-function StudentDetailModal({ studentId, onClose }) {
+function StudentDetailModal({ studentId, onClose, showToast }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("courses");
@@ -1526,7 +1526,7 @@ export default function AdminStudentsPage() {
         <ConfirmDelete student={deletingStudent} onConfirm={handleDelete} onCancel={() => setDeletingStudent(null)} isDeleting={isDeleting} />
       )}
       {viewStudentId && (
-        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)} />
+        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)}  showToast={showToast}/>
       )}
       {/* FIX #11: Reset Password Modal */}
       {resetPwdStudent && (

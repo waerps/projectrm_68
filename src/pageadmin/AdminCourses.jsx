@@ -442,7 +442,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* ★ รวมเป็น grid-cols-3 แถวเดียว: สถานะคอร์ส / เทอม / ปีการศึกษา */}
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelCls}>สถานะคอร์ส</label>
           <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
