@@ -4,7 +4,7 @@ import {
   BookOpen, Plus, Search, Edit2, Trash2, X, Check,
   Calendar, DollarSign, Users, Tag, Filter,
   ChevronLeft, ChevronRight, Loader2, ImagePlus,
-  ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy
+  ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -349,6 +349,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Term_Id: 1,
     CourseImage: "",
     ...initial,
+    showToast,
   });
 
   // ★ ใหม่: state สำหรับ pending list เมื่อยังไม่มี CourseID (โหมดสร้างใหม่)
@@ -363,7 +364,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์ส");
-    onSave({ ...form, FullCost: fullCost });
+    onSave({
+      ...form,
+      FullCost: fullCost,
+      pendingSubjects,
+      pendingStudents,
+    });
   };
 
   const inputCls =
