@@ -10,6 +10,7 @@ import {
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
+  Award, TrendingUp, TrendingDown, Minus,   // ★ เพิ่ม
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
@@ -69,7 +70,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
 }
 
 // ─── StudentForm ───────────────────────────────────────────────────────────────
-function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders }) {
+function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders, showToast }) {
   const isEdit = !!initial.UserId;
   const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [form, setForm] = useState({
@@ -255,7 +256,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
             studentId={initial.UserId}
             enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
             onAdded={loadCourses}   // ★ ใช้ endpoint/logic POST /enroll ตัวเดียวกับหน้าคอร์ส ไม่ซ้ำ logic
-            showToast={showToast}
+            showToast={showToast} 
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {courses.map(c => (
@@ -339,7 +340,7 @@ function ResetPasswordModal({ student, onClose }) {
   );
 }
 
-function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded }) {
+function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }) {
   const [allCourses, setAllCourses] = useState([]);
   const [adding, setAdding] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -355,11 +356,13 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded }) {
     try {
       await axios.post(`${API}/enroll`, { UserId: studentId, CourseID: selectedCourseId });
       setSelectedCourseId(""); setAdding(false);
-      onAdded(); // อัปเดตรายชื่อคอร์สของนักเรียนทันที ไม่ต้อง refresh
+      onAdded();
     } catch (e) {
       const msg = e.response?.data?.message || "เกิดข้อผิดพลาด";
       const detail = e.response?.data?.error;
-      showToast("error", msg, detail); // ★ ใช้ showToast แทน alert ให้สอดคล้อง UX เดิมของหน้าอื่น ๆ ในระบบ
+      showToast("error", msg, detail);
+    } finally {
+      setSaving(false); // ★ เพิ่ม
     }
   };
 
@@ -563,6 +566,7 @@ function StudentDetailModal({ studentId, onClose }) {
             studentId={s.UserId}
             enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
             onAdded={loadDetail}
+            showToast={showToast}  
           />
           {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
@@ -1509,13 +1513,13 @@ export default function AdminStudentsPage() {
       {showAddModal && (
         <Modal title="เพิ่มนักเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <StudentForm onSave={handleCreate} onCancel={() => setShowAddModal(false)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
         </Modal>
       )}
       {editingStudent && (
         <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Edit2} onClose={() => setEditingStudent(null)}>
           <StudentForm initial={editingStudent} onSave={handleUpdate} onCancel={() => setEditingStudent(null)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
         </Modal>
       )}
       {deletingStudent && (

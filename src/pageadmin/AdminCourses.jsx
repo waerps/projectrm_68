@@ -259,11 +259,6 @@ function CourseSubjects({ courseId, showToast }) {
 function CourseStudents({ courseId, showToast }) {
   const [students, setStudents] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
-  
-  // 1. เพิ่ม State สำหรับปีการศึกษา
-  const [allYears, setAllYears] = useState([]); 
-  const [selectedYearId, setSelectedYearId] = useState("");
-
   const [adding, setAdding] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -275,46 +270,25 @@ function CourseStudents({ courseId, showToast }) {
 
   useEffect(() => {
     fetchStudents();
-    // 2. ดึงข้อมูลนักเรียน และดึงข้อมูลปีการศึกษามาพร้อมกัน
-    // หมายเหตุ: ตรง /years ให้เปลี่ยนตาม Route API ที่คุณตั้งไว้ใน Backend จริงๆ ครับ
-    Promise.all([
-      axios.get(`${API_BASE}/students`),
-      axios.get(`${API_BASE}/years`) 
-    ]).then(([studentRes, yearRes]) => {
-      setAllStudents(studentRes.data);
-      setAllYears(yearRes.data);
-    }).catch(err => {
-      console.error("ดึงข้อมูลไม่สำเร็จ:", err);
-    });
+    axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
   }, [courseId]);
 
   const enrolledIds = new Set(students.map(s => String(s.UserId)));
   const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
 
   const handleAdd = async () => {
-    if (!selectedUserId) return showToast("error", "กรุณาเลือกนักเรียน");
-    // 3. ดักจับว่าเลือกปีการศึกษาหรือยัง
-    if (!selectedYearId) return showToast("error", "กรุณาเลือกปีการศึกษา"); 
-
+    if (!selectedUserId) return alert("กรุณาเลือกนักเรียน");
     setSaving(true);
     try {
-      // 4. แนบ YearId ไปพร้อมกับ Payload
-      await axios.post(`${API_BASE}/enroll`, { 
-        UserId: selectedUserId, 
-        CourseID: courseId,
-        YearId: selectedYearId
-      });
-      
-      setSelectedUserId(""); 
-      setSelectedYearId(""); // เคลียร์ค่าหลังจากเพิ่มเสร็จ
-      setAdding(false);
-      fetchStudents(); 
+      await axios.post(`${API_BASE}/enroll`, { UserId: selectedUserId, CourseID: courseId });
+      setSelectedUserId(""); setAdding(false);
+      fetchStudents();
     } catch (e) {
       const msg = e.response?.data?.message || "เกิดข้อผิดพลาด";
       const detail = e.response?.data?.error;
-      showToast("error", msg, detail); 
+      showToast("error", msg, detail);
     } finally {
-      setSaving(false);
+      setSaving(false); // ★ เพิ่ม
     }
   };
 
@@ -341,14 +315,12 @@ function CourseStudents({ courseId, showToast }) {
           <span className="flex-1 text-sm font-semibold text-neutral-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
-          {/* สามารถแสดงปีการศึกษาตรงนี้ได้ ถ้าในนักเรียน (s) มีข้อมูล YearName ส่งกลับมา */}
           <span className="text-xs text-neutral-400">#{s.UserId}</span>
         </div>
       ))}
 
       {adding && (
         <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border-t border-orange-100">
-          
           <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className={inp + " flex-1"}>
             <option value="">เลือกนักเรียน</option>
             {available.map(s => (
@@ -357,24 +329,11 @@ function CourseStudents({ courseId, showToast }) {
               </option>
             ))}
           </select>
-
-          {/* ช่องเลือกปีการศึกษา */}
-          <select value={selectedYearId} onChange={e => setSelectedYearId(e.target.value)} className={inp + " w-32"}>
-            <option value="">เลือกปี</option>
-            {allYears.map(y => (
-              // ต้องเช็คว่าฟิลด์ชื่อ YearId หรือ Id และ YearName ใช่ชื่อนี้ไหมใน DB ของคุณ
-              <option key={y.YearId} value={y.YearId}>
-                {y.YearName} 
-              </option>
-            ))}
-          </select>
-
           <button onClick={handleAdd} disabled={saving}
             className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition">
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
           </button>
-          
-          <button onClick={() => { setAdding(false); setSelectedUserId(""); setSelectedYearId(""); }}
+          <button onClick={() => { setAdding(false); setSelectedUserId(""); }}
             className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
             <X className="h-3.5 w-3.5" />
           </button>
@@ -398,6 +357,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Status_Course_Id: 1,
     Term_Id: 1,
     CourseImage: "",
+    YearId: "",
     ...initial,
   });
 
@@ -413,6 +373,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์ส");
+    if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
     onSave({
       ...form,
       FullCost: fullCost,
@@ -493,6 +454,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
             {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
           </select>
+        </div>
+        <div>
+          <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
+          <input type="number" value={form.YearId}
+            onChange={(e) => set("YearId", e.target.value)} className={inputCls} placeholder="2569" />
         </div>
       </div>
 
