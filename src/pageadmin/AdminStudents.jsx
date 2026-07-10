@@ -312,6 +312,56 @@ function ResetPasswordModal({ student, onClose }) {
   );
 }
 
+function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded }) {
+  const [allCourses, setAllCourses] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { axios.get(`${API}/courses`).then(r => setAllCourses(r.data)); }, []);
+
+  const available = allCourses.filter(c => !enrolledCourseIds.has(String(c.CourseID)));
+
+  const handleAdd = async () => {
+    if (!selectedCourseId) return alert("กรุณาเลือกคอร์ส");
+    setSaving(true);
+    try {
+      await axios.post(`${API}/enroll`, { UserId: studentId, CourseID: selectedCourseId });
+      setSelectedCourseId(""); setAdding(false);
+      onAdded(); // อัปเดตรายชื่อคอร์สของนักเรียนทันที ไม่ต้อง refresh
+    } catch (e) {
+      alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); // แจ้งเตือนกรณีซ้ำ (409)
+    } finally { setSaving(false); }
+  };
+
+  if (!adding) {
+    return (
+      <button onClick={() => setAdding(true)}
+        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition mb-3">
+        <Plus className="h-3.5 w-3.5" /> เพิ่มคอร์สให้นักเรียน
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 mb-3 p-3 bg-orange-50 border border-orange-100 rounded-xl">
+      <select value={selectedCourseId} onChange={e => setSelectedCourseId(e.target.value)}
+        className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400">
+        <option value="">เลือกคอร์ส</option>
+        {available.map(c => <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>)}
+      </select>
+      <button onClick={handleAdd} disabled={saving}
+        className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition">
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+      </button>
+      <button onClick={() => { setAdding(false); setSelectedCourseId(""); }}
+        className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 // ─── StudentDetailModal ────────────────────────────────────────────────────────
 function StudentDetailModal({ studentId, onClose }) {
   const [data, setData] = useState(null);
@@ -320,16 +370,30 @@ function StudentDetailModal({ studentId, onClose }) {
   const [error, setError] = useState(null);
   const [selectedCourseId, setSelectedCourseId] = useState(null); // ★ ใหม่
 
-  useEffect(() => {
-    setError(null);
-    setLoading(true);
-    setSelectedCourseId(null);
-    setTab("courses");
-    axios.get(`${API}/students/${studentId}`)
+  const loadDetail = () => {
+    setError(null); setLoading(true);
+    return axios.get(`${API}/students/${studentId}`)
       .then(r => setData(r.data))
       .catch(e => setError(e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setSelectedCourseId(null);
+    setTab("courses");
+    loadDetail();
   }, [studentId]);
+
+  // useEffect(() => {
+  //   setError(null);
+  //   setLoading(true);
+  //   setSelectedCourseId(null);
+  //   setTab("courses");
+  //   axios.get(`${API}/students/${studentId}`)
+  //     .then(r => setData(r.data))
+  //     .catch(e => setError(e.response?.data?.message || e.message))
+  //     .finally(() => setLoading(false));
+  // }, [studentId]);
 
   if (loading) return (
     <Modal title="ข้อมูลนักเรียน" icon={Eye} onClose={onClose} wide>
@@ -390,12 +454,12 @@ function StudentDetailModal({ studentId, onClose }) {
   const trendOf = (imp) => imp > 0 ? "up" : imp < 0 ? "down" : "stable";
   const trendIcon = (t) =>
     t === "up" ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> :
-    t === "down" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
-    <Minus className="h-3.5 w-3.5 text-amber-500" />;
+      t === "down" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
+        <Minus className="h-3.5 w-3.5 text-amber-500" />;
   const trendColor = (t) =>
     t === "up" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-    t === "down" ? "bg-red-50 text-red-600 border-red-200" :
-    "bg-amber-50 text-amber-700 border-amber-200";
+      t === "down" ? "bg-red-50 text-red-600 border-red-200" :
+        "bg-amber-50 text-amber-700 border-amber-200";
 
   const TABS = [
     { key: "courses", label: "คอร์สที่ลง", count: courses.length },
@@ -477,6 +541,11 @@ function StudentDetailModal({ studentId, onClose }) {
       {/* Tab: คอร์สที่ลงทะเบียน — คลิกเพื่อเลือกดูรายละเอียด */}
       {tab === "courses" && (
         <div className="space-y-3">
+          <AddCourseToStudent
+            studentId={s.UserId}
+            enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
+            onAdded={loadDetail}
+          />
           {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
           ) : courses.map(c => {

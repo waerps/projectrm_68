@@ -249,6 +249,89 @@ function CourseSubjects({ courseId }) {
   );
 }
 
+function CourseStudents({ courseId }) {
+  const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchStudents = async () => {
+    const res = await axios.get(`${API_BASE}/courses/${courseId}/students`);
+    setStudents(res.data);
+  };
+
+  useEffect(() => {
+    fetchStudents();
+    axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
+  }, [courseId]);
+
+  const enrolledIds = new Set(students.map(s => String(s.UserId)));
+  const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
+
+  const handleAdd = async () => {
+    if (!selectedUserId) return alert("กรุณาเลือกนักเรียน");
+    setSaving(true);
+    try {
+      await axios.post(`${API_BASE}/enroll`, { UserId: selectedUserId, CourseID: courseId });
+      setSelectedUserId(""); setAdding(false);
+      fetchStudents(); // อัปเดตรายชื่อในคอร์สทันที ไม่ต้อง refresh
+    } catch (e) {
+      alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); // แจ้งเตือนกรณีซ้ำ (409)
+    } finally { setSaving(false); }
+  };
+
+  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
+        {!adding && (
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+            <Plus className="h-3.5 w-3.5" /> เพิ่มนักเรียน
+          </button>
+        )}
+      </div>
+
+      {students.length === 0 && !adding && (
+        <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
+      )}
+
+      {students.map(s => (
+        <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+          <span className="flex-1 text-sm font-semibold text-neutral-800">
+            {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+          </span>
+          <span className="text-xs text-neutral-400">#{s.UserId}</span>
+        </div>
+      ))}
+
+      {adding && (
+        <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border-t border-orange-100">
+          <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className={inp + " flex-1"}>
+            <option value="">เลือกนักเรียน</option>
+            {available.map(s => (
+              <option key={s.UserId} value={s.UserId}>
+                {(s.Nickname || `${s.Firstname} ${s.Lastname}`)} (#{s.UserId})
+              </option>
+            ))}
+          </select>
+          <button onClick={handleAdd} disabled={saving}
+            className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+          </button>
+          <button onClick={() => { setAdding(false); setSelectedUserId(""); }}
+            className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Course Form ─────────────────────────────────────────────────────────────
 function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions }) {
   const [form, setForm] = useState({
@@ -373,6 +456,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <div>
           <label className={labelCls}>วิชาและติวเตอร์</label>
           <CourseSubjects courseId={initial.CourseID} />
+        </div>
+      )}
+
+      {initial.CourseID && (
+        <div>
+          <label className={labelCls}>นักเรียนในคอร์ส</label>
+          <CourseStudents courseId={initial.CourseID} />
         </div>
       )}
 
