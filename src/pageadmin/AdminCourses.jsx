@@ -4,7 +4,7 @@ import {
   BookOpen, Plus, Search, Edit2, Trash2, X, Check,
   Calendar, DollarSign, Users, Tag, Filter,
   ChevronLeft, ChevronRight, Loader2, ImagePlus,
-  ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy
+  ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -150,7 +150,7 @@ function ImageUpload({ value, onChange }) {
   );
 }
 
-function CourseSubjects({ courseId }) {
+function CourseSubjects({ courseId, showToast }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -174,13 +174,20 @@ function CourseSubjects({ courseId }) {
   }, [courseId]);
 
   const handleAdd = async () => {
-    if (!newRow.SubjectId || !newRow.AdminId) return alert("กรุณาเลือกวิชาและติวเตอร์");
+    if (!newRow.SubjectId || !newRow.AdminId) {
+      return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+    }
     try {
       await axios.post(`${API_BASE}/courses/${courseId}/subjects`, newRow);
       setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
       setAdding(false);
       fetchSubjects();
-    } catch (e) { alert(e.response?.data?.message || "เกิดข้อผิดพลาด"); }
+    } catch (e) {
+      showToast(
+        "error",
+        e.response?.data?.message || "เกิดข้อผิดพลาด"
+      );
+    }
   };
 
   const handleDelete = async (id) => {
@@ -249,8 +256,138 @@ function CourseSubjects({ courseId }) {
   );
 }
 
+function CourseStudents({ courseId, showToast }) {
+  const [students, setStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const fetchStudents = async () => {
+    const res = await axios.get(`${API_BASE}/courses/${courseId}/students`);
+    setStudents(res.data);
+  };
+
+  useEffect(() => {
+    fetchStudents();
+    axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
+  }, [courseId]);
+
+  const enrolledIds = new Set(students.map(s => String(s.UserId)));
+  const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
+  const filtered = available.filter(s => {
+    const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
+    return !search || name.includes(search.toLowerCase()) || String(s.UserId).includes(search);
+  });
+
+  const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(s => String(s.UserId)));
+
+  const handleAdd = async () => {
+    if (!selectedIds.length) return showToast("error", "กรุณาเลือกนักเรียนอย่างน้อย 1 คน");
+    setSaving(true);
+    try {
+      const res = await axios.post(`${API_BASE}/enroll/bulk`, { UserIds: selectedIds, CourseID: courseId });
+      const { success = [], skipped = [], failed = [] } = res.data;
+      let msg = `เพิ่มสำเร็จ ${success.length} คน`;
+      if (skipped.length) msg += ` · ข้าม ${skipped.length} คน (ลงทะเบียนแล้ว)`;
+      if (failed.length) msg += ` · ล้มเหลว ${failed.length} คน`;
+      showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
+      setSelectedIds([]); setAdding(false); setSearch("");
+      fetchStudents();
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด", e.response?.data?.error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
+        {!adding && (
+          <button onClick={() => setAdding(true)}
+            className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+            <Plus className="h-3.5 w-3.5" /> เพิ่มนักเรียน
+          </button>
+        )}
+      </div>
+
+      {students.length === 0 && !adding && (
+        <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
+      )}
+
+      {students.map(s => (
+        <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+          <span className="flex-1 text-sm font-semibold text-neutral-800">
+            {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+          </span>
+          <span className="text-xs text-neutral-400">#{s.UserId}</span>
+          <button
+            onClick={async () => {
+              try {
+                await axios.delete(`${API_BASE}/enroll/${s.EnrollId}`);
+                showToast("success", "นำนักเรียนออกจากคอร์สแล้ว");
+                fetchStudents();
+              } catch (e) {
+                showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ");
+              }
+            }}
+            className="text-red-400 hover:text-red-600 transition"
+            title="นำออกจากคอร์ส"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ))}
+
+      {adding && (
+        <div className="bg-orange-50 border-t border-orange-100">
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <input type="text" placeholder="ค้นหานักเรียน..." value={search}
+              onChange={e => setSearch(e.target.value)} className={inp + " flex-1"} />
+            <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
+              {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+            </button>
+          </div>
+          <div className="max-h-48 overflow-y-auto px-4 space-y-1 pb-2">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-neutral-400 text-center py-3">ไม่พบนักเรียนที่สามารถเพิ่มได้</p>
+            ) : filtered.map(s => {
+              const id = String(s.UserId);
+              const checked = selectedIds.includes(id);
+              return (
+                <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
+                  <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                  <span className="flex-1 font-medium text-neutral-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
+                  <span className="text-[11px] text-neutral-400">#{s.UserId}</span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-2 px-4 py-3 border-t border-orange-100">
+            <span className="text-xs text-neutral-500 flex-1">เลือกแล้ว {selectedIds.length} คน</span>
+            <button onClick={handleAdd} disabled={saving || !selectedIds.length}
+              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
+            </button>
+            <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+              className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Course Form ─────────────────────────────────────────────────────────────
-function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions }) {
+function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
     StartDate: "",
@@ -263,8 +400,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Status_Course_Id: 1,
     Term_Id: 1,
     CourseImage: "",
+    YearId: "",
     ...initial,
   });
+
+  // ★ ใหม่: state สำหรับ pending list เมื่อยังไม่มี CourseID (โหมดสร้างใหม่)
+  const [pendingSubjects, setPendingSubjects] = useState([]); // [{SubjectId, AdminId, TotalHours}]
+  const [pendingStudents, setPendingStudents] = useState([]); // [UserId, ...]
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -274,7 +416,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์ส");
-    onSave({ ...form, FullCost: fullCost });
+    if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
+    onSave({
+      ...form,
+      FullCost: fullCost,
+      pendingSubjects,
+      pendingStudents,
+    });
   };
 
   const inputCls =
@@ -337,7 +485,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* ★ รวมเป็น grid-cols-3 แถวเดียว: สถานะคอร์ส / เทอม / ปีการศึกษา */}
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelCls}>สถานะคอร์ส</label>
           <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
@@ -348,6 +497,15 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <label className={labelCls}>เทอม</label>
           <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
             {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
+          <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
+            <option value="">เลือกปีการศึกษา</option>
+            {yearOptions.map((y) => (
+              <option key={y.YearId} value={y.YearId}>{y.YearName}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -368,13 +526,19 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         />
       </div>
 
-      {/* เพิ่มก่อนปุ่ม บันทึก/ยกเลิก */}
-      {initial.CourseID && (
-        <div>
-          <label className={labelCls}>วิชาและติวเตอร์</label>
-          <CourseSubjects courseId={initial.CourseID} />
-        </div>
-      )}
+      <div>
+        <label className={labelCls}>วิชาและติวเตอร์</label>
+        {initial.CourseID
+          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} />
+          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
+      </div>
+
+      <div>
+        <label className={labelCls}>นักเรียนในคอร์ส</label>
+        {initial.CourseID
+          ? <CourseStudents courseId={initial.CourseID} showToast={showToast} />
+          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} showToast={showToast} />}
+      </div>
 
       <div className="flex gap-3 pt-2">
         <button
@@ -390,6 +554,205 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PendingStudentPicker({ items, onChange }) {
+  const [allStudents, setAllStudents] = useState([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
+  }, []);
+
+  const filtered = allStudents.filter(s => {
+    const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
+    return !search || name.includes(search.toLowerCase()) || String(s.UserId).includes(search);
+  });
+
+  const toggle = (id) => {
+    onChange(items.includes(id) ? items.filter(x => x !== id) : [...items, id]);
+  };
+
+  const remove = (id) => {
+    onChange(items.filter(x => x !== id));
+  };
+
+  const toggleAll = () => {
+    const filteredIds = filtered.map(s => String(s.UserId));
+    const allSelected = filteredIds.every(id => items.includes(id));
+    onChange(
+      allSelected
+        ? items.filter(id => !filteredIds.includes(id))
+        : [...new Set([...items, ...filteredIds])]
+    );
+  };
+
+  const selectedStudents = items
+    .map(id => allStudents.find(s => String(s.UserId) === id))
+    .filter(Boolean);
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
+      </div>
+
+      {/* ★ ใหม่: รายชื่อที่เลือกไว้แล้ว พร้อมปุ่ม X เอาออก */}
+      {selectedStudents.length > 0 && (
+        <div className="divide-y divide-neutral-100 border-b border-neutral-200">
+          {selectedStudents.map(s => (
+            <div key={s.UserId} className="flex items-center gap-3 px-4 py-2 bg-orange-50/50">
+              <span className="flex-1 text-sm font-medium text-neutral-800">
+                {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+              </span>
+              <span className="text-[11px] text-neutral-400">#{s.UserId}</span>
+              <button
+                type="button"
+                onClick={() => remove(String(s.UserId))}
+                className="text-red-400 hover:text-red-600 transition"
+                title="เอาออก"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50">
+        <input
+          type="text"
+          placeholder="ค้นหานักเรียน..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+        />
+        <button
+          onClick={toggleAll}
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap"
+        >
+          {filtered.length > 0 && filtered.every(s => items.includes(String(s.UserId)))
+            ? "ยกเลิกทั้งหมด"
+            : "เลือกทั้งหมด"}
+        </button>
+      </div>
+
+      <div className="max-h-48 overflow-y-auto px-4 space-y-1 py-2">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-neutral-400 text-center py-3">ไม่พบนักเรียน</p>
+        ) : (
+          filtered.map(s => {
+            const id = String(s.UserId);
+            const checked = items.includes(id);
+            return (
+              <label
+                key={id}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-neutral-50"
+                  }`}
+              >
+                <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                <span className="flex-1 font-medium text-neutral-700">
+                  {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                </span>
+                <span className="text-[11px] text-neutral-400">#{s.UserId}</span>
+              </label>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
+function PendingSubjectPicker({ items, onChange, showToast }) {
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [allTutors, setAllTutors] = useState([]);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+
+  useEffect(() => {
+    Promise.all([
+      axios.get(`${API_BASE}/subjects`),
+      axios.get(`${API_BASE}/tutors`),
+    ]).then(([sRes, tRes]) => {
+      setAllSubjects(sRes.data);
+      setAllTutors(tRes.data);
+    });
+  }, []);
+
+  const add = () => {
+    if (!newRow.SubjectId || !newRow.AdminId) {
+      if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+      return alert("กรุณาเลือกวิชาและติวเตอร์");
+    }
+    onChange([...items, newRow]);
+    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+  };
+
+  const remove = (index) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
+      </div>
+
+      {items.map((it, idx) => {
+        const subj = allSubjects.find(s => String(s.SubjectId) === String(it.SubjectId));
+        const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
+        return (
+          <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+            <span className="flex-1 text-sm font-semibold text-neutral-800">
+              {subj ? subj.SubjectName : `Subject #${it.SubjectId}`}
+            </span>
+            <span className="text-xs text-neutral-500">
+              {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : `Tutor #${it.AdminId}`}
+            </span>
+            <span className="text-xs text-neutral-400 w-16 text-right">{it.TotalHours || 0} ชม.</span>
+            <button onClick={() => remove(idx)} className="text-red-400 hover:text-red-600 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+        <select
+          value={newRow.SubjectId}
+          onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกวิชา</option>
+          {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
+        </select>
+
+        <select
+          value={newRow.AdminId}
+          onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกติวเตอร์</option>
+          {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
+        </select>
+
+        <input
+          type="number"
+          placeholder="ชม."
+          value={newRow.TotalHours}
+          onChange={e => setNewRow(r => ({ ...r, TotalHours: e.target.value }))}
+          className={inp + " w-20"}
+        />
+
+        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+          <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
@@ -518,6 +881,7 @@ export default function AdminCoursesPage() {
   const [courses, setCourses] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
   const [termOptions, setTermOptions] = useState([]);
+  const [yearOptions, setYearOptions] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -531,14 +895,16 @@ export default function AdminCoursesPage() {
 
   const fetchAll = async () => {
     try {
-      const [cRes, sRes, tRes] = await Promise.all([
+      const [cRes, sRes, tRes, yRes] = await Promise.all([
         axios.get(`${API_BASE}/courses`),
         axios.get(`${API_BASE}/status-course`),
         axios.get(`${API_BASE}/term`),
+        axios.get(`${API_BASE}/year`),
       ]);
       setCourses(cRes.data);
       setStatusOptions(sRes.data);
       setTermOptions(tRes.data);
+      setYearOptions(yRes.data);
     } catch (e) {
       console.error("Fetch error:", e);
     } finally {
@@ -551,14 +917,36 @@ export default function AdminCoursesPage() {
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
+    const { pendingSubjects = [], pendingStudents = [], ...courseData } = data;
     try {
-      const res = await axios.post(`${API_BASE}/courses`, data);
-      showToast("success", "เพิ่มข้อมูลคอร์สสำเร็จ!");
+      const res = await axios.post(`${API_BASE}/courses`, courseData);
+      const CourseID = res.data.CourseID;
+
+      const subjectResults = await Promise.allSettled(
+        pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
+      );
+      const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
+
+      let enrollFailed = 0;
+      if (pendingStudents.length) {
+        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
+          UserIds: pendingStudents,
+          CourseID,
+        });
+        enrollFailed = enrollRes.data.failed?.length || 0;
+      }
+
+      if (subjectFailed > 0 || enrollFailed > 0) {
+        showToast(
+          "error",
+          "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
+          `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
+        );
+      } else {
+        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้!");
+      }
       setShowAddModal(false);
-      await fetchAll();
-      // เปิด modal แก้ไขของคอร์สที่เพิ่งสร้าง
-      const newCourse = { ...data, CourseID: res.data.CourseID };
-      setEditingCourse(newCourse);
+      fetchAll();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
     } finally {
@@ -782,6 +1170,8 @@ export default function AdminCoursesPage() {
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
+            showToast={showToast}
           />
         </Modal>
       )}
@@ -796,6 +1186,8 @@ export default function AdminCoursesPage() {
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
+            showToast={showToast}
           />
         </Modal>
       )}

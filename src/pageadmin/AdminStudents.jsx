@@ -10,6 +10,7 @@ import {
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
+  Award, TrendingUp, TrendingDown, Minus,   // ★ เพิ่ม
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
@@ -69,7 +70,8 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
 }
 
 // ─── StudentForm ───────────────────────────────────────────────────────────────
-function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders }) {
+function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders, showToast }) {
+  const isEdit = !!initial.UserId;
   const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [form, setForm] = useState({
     firstname: initial.Firstname || initial.firstname || "",
@@ -87,7 +89,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     password: "",
   });
   const [showPwd, setShowPwd] = useState(false);
-  const isEdit = !!initial.UserId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = () => {
@@ -116,6 +117,14 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
+
+  const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่
+
+  const loadCourses = () => {
+    if (!isEdit) return;
+    axios.get(`${API}/students/${initial.UserId}`).then(r => setCourses(r.data.courses || []));
+  };
+  useEffect(() => { loadCourses(); }, [initial.UserId]);
 
   return (
     <div className="space-y-5">
@@ -240,6 +249,41 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         </div>
       )}
 
+      {isEdit && (
+        <div>
+          <label className={lbl}>คอร์สที่ลงทะเบียน</label>
+          <AddCourseToStudent
+            studentId={initial.UserId}
+            enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
+            onAdded={loadCourses}
+            showToast={showToast}
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {courses.map(c => (
+              <span key={c.CourseID} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                {c.CourseName}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await axios.delete(`${API}/enroll/${c.EnrollId}`);
+                      loadCourses();
+                    } catch (err) {
+                      alert(err.response?.data?.message || "ลบไม่สำเร็จ");
+                    }
+                  }}
+                  className="text-orange-400 hover:text-red-500 transition"
+                  title="นำออกจากคอร์ส"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
           className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
@@ -312,23 +356,131 @@ function ResetPasswordModal({ student, onClose }) {
   );
 }
 
+function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }) {
+  const [allCourses, setAllCourses] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => { axios.get(`${API}/courses`).then(r => setAllCourses(r.data)); }, []);
+
+  const available = allCourses.filter(c => !enrolledCourseIds.has(String(c.CourseID)));
+  const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
+
+  const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const remove = (id) => setSelectedIds(p => p.filter(x => x !== id));
+  const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(c => String(c.CourseID)));
+
+  const selectedCourses = selectedIds
+    .map(id => allCourses.find(c => String(c.CourseID) === id))
+    .filter(Boolean);
+
+  const handleAdd = async () => {
+    if (!selectedIds.length) return showToast("error", "กรุณาเลือกคอร์สอย่างน้อย 1 คอร์ส");
+    setSaving(true);
+    try {
+      const res = await axios.post(`${API}/enroll/bulk`, { UserIds: [studentId], CourseIDs: selectedIds });
+      const { success = [], skipped = [], failed = [] } = res.data;
+      let msg = `เพิ่มสำเร็จ ${success.length} คอร์ส`;
+      if (skipped.length) msg += ` · ข้าม ${skipped.length} คอร์ส (ลงทะเบียนแล้ว)`;
+      if (failed.length) msg += ` · ล้มเหลว ${failed.length} คอร์ส`;
+      showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
+      setSelectedIds([]); setAdding(false); setSearch("");
+      onAdded();
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด", e.response?.data?.error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!adding) {
+    return (
+      <button onClick={() => setAdding(true)}
+        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition mb-3">
+        <Plus className="h-3.5 w-3.5" /> เพิ่มคอร์สให้นักเรียน
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-3 bg-orange-50 border border-orange-100 rounded-xl overflow-hidden">
+      {/* ★ ใหม่: รายชื่อคอร์สที่เลือกไว้แล้ว พร้อมปุ่ม X เอาออก */}
+      {selectedCourses.length > 0 && (
+        <div className="divide-y divide-orange-100 border-b border-orange-200 bg-white">
+          {selectedCourses.map(c => (
+            <div key={c.CourseID} className="flex items-center gap-3 px-3 py-2">
+              <span className="flex-1 text-sm font-medium text-slate-800 truncate">{c.CourseName}</span>
+              <button
+                type="button"
+                onClick={() => remove(String(c.CourseID))}
+                className="text-red-400 hover:text-red-600 transition shrink-0"
+                title="เอาออก"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 p-3">
+        <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
+          {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+        </button>
+      </div>
+      <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+        ) : filtered.map(c => {
+          const id = String(c.CourseID);
+          const checked = selectedIds.includes(id);
+          return (
+            <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+              <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
+            </label>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 p-3 border-t border-orange-100">
+        <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คอร์ส</span>
+        <button onClick={handleAdd} disabled={saving || !selectedIds.length}
+          className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition flex items-center gap-1.5">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
+        </button>
+        <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── StudentDetailModal ────────────────────────────────────────────────────────
-function StudentDetailModal({ studentId, onClose }) {
+function StudentDetailModal({ studentId, onClose, showToast }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("courses");
   const [error, setError] = useState(null);
   const [selectedCourseId, setSelectedCourseId] = useState(null); // ★ ใหม่
 
-  useEffect(() => {
-    setError(null);
-    setLoading(true);
-    setSelectedCourseId(null);
-    setTab("courses");
-    axios.get(`${API}/students/${studentId}`)
+  const loadDetail = () => {
+    setError(null); setLoading(true);
+    return axios.get(`${API}/students/${studentId}`)
       .then(r => setData(r.data))
       .catch(e => setError(e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setSelectedCourseId(null);
+    setTab("courses");
+    loadDetail();
   }, [studentId]);
 
   if (loading) return (
@@ -390,12 +542,12 @@ function StudentDetailModal({ studentId, onClose }) {
   const trendOf = (imp) => imp > 0 ? "up" : imp < 0 ? "down" : "stable";
   const trendIcon = (t) =>
     t === "up" ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> :
-    t === "down" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
-    <Minus className="h-3.5 w-3.5 text-amber-500" />;
+      t === "down" ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> :
+        <Minus className="h-3.5 w-3.5 text-amber-500" />;
   const trendColor = (t) =>
     t === "up" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-    t === "down" ? "bg-red-50 text-red-600 border-red-200" :
-    "bg-amber-50 text-amber-700 border-amber-200";
+      t === "down" ? "bg-red-50 text-red-600 border-red-200" :
+        "bg-amber-50 text-amber-700 border-amber-200";
 
   const TABS = [
     { key: "courses", label: "คอร์สที่ลง", count: courses.length },
@@ -477,6 +629,12 @@ function StudentDetailModal({ studentId, onClose }) {
       {/* Tab: คอร์สที่ลงทะเบียน — คลิกเพื่อเลือกดูรายละเอียด */}
       {tab === "courses" && (
         <div className="space-y-3">
+          <AddCourseToStudent
+            studentId={s.UserId}
+            enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
+            onAdded={loadDetail}
+            showToast={showToast}
+          />
           {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
           ) : courses.map(c => {
@@ -514,6 +672,23 @@ function StudentDetailModal({ studentId, onClose }) {
                     </div>
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
+                    try {
+                      await axios.delete(`${API}/enroll/${c.EnrollId}`);
+                      loadDetail();
+                    } catch (err) {
+                      showToast("error", err.response?.data?.message || "ลบไม่สำเร็จ");
+                    }
+                  }}
+                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  title="นำออกจากคอร์ส"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             );
           })}
@@ -709,94 +884,6 @@ function StudentDetailModal({ studentId, onClose }) {
     </Modal>
   );
 }
-
-// ─── StudentCard ───────────────────────────────────────────────────────────────
-// function StudentCard({ student, onEdit, onDelete, onView, onResetPwd }) {
-//   const displayName = student.Nickname || `${student.Firstname} ${student.Lastname}`;
-
-//   return (
-//     <div className="bg-white rounded-2xl border-2 border-slate-100 hover:border-orange-300 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col">
-//       <div className="relative h-20 bg-gradient-to-br from-orange-500 to-amber-600 overflow-hidden">
-//         <div className="absolute inset-0 opacity-30"
-//           style={{ backgroundImage: "radial-gradient(circle at 80% 50%, #a5b4fc 0%, transparent 60%)" }} />
-//         <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/30 text-white text-[10px] font-bold rounded-full backdrop-blur-sm">
-//           #{student.UserId}
-//         </span>
-//         {student.GPA && (
-//           <span className="absolute top-2 right-2 px-2 py-0.5 bg-amber-900/80 text-white text-[10px] font-bold rounded-full">
-//             GPA {student.GPA}
-//           </span>
-//         )}
-//         <div className="absolute -bottom-8 left-4">
-//           <div className="h-14 w-14 rounded-2xl border-4 border-white overflow-hidden bg-orange-50 shadow-md">
-//             {/* FIX #6: ใช้ UserId เป็น seed */}
-//             {/* <img src={avatarUrl(student.UserId)} alt={displayName} className="w-full h-full object-cover" /> */}
-//             <img src={avatarUrl(student.UserId)} alt={displayName} className="w-full h-full object-contain" />
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="pt-9 px-4 pb-4 flex-1 flex flex-col">
-//         <h3 className="font-bold text-slate-900 text-sm">{displayName}</h3>
-//         {student.Nickname && <p className="text-xs text-slate-400">{student.Firstname} {student.Lastname}</p>}
-
-//         <div className="flex flex-wrap gap-1.5 mt-2 mb-3">
-//           {student.GradeDetail && (
-//             <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
-//               {student.GradeDetail}
-//             </span>
-//           )}
-//           {student.GenderName && (
-//             <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[10px] font-semibold">
-//               {student.GenderName}
-//             </span>
-//           )}
-//           {student.EnrolledCourses > 0 && (
-//             <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-semibold">
-//               {student.EnrolledCourses} คอร์ส
-//             </span>
-//           )}
-//         </div>
-
-//         {student.SchoolName && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1.5">
-//             <School className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-//             <span className="truncate">{student.SchoolName}</span>
-//           </div>
-//         )}
-//         {student.PhoneNo && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-//             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-//             <span>{student.PhoneNo}</span>
-//           </div>
-//         )}
-//         {student.CourseNames && (
-//           <p className="text-[11px] text-slate-400 line-clamp-1 mb-3">{student.CourseNames}</p>
-//         )}
-
-//         {/* FIX #11 + #7: เพิ่มปุ่ม Reset Password, ปุ่ม Delete มี loading ป้องกัน double click */}
-//         <div className="mt-auto pt-3 border-t border-slate-100 flex gap-1.5">
-//           <button onClick={() => onView(student.UserId)}
-//             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
-//             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
-//           </button>
-//           <button onClick={() => onEdit(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition" title="แก้ไขข้อมูล">
-//             <Edit2 className="h-3.5 w-3.5" />
-//           </button>
-//           <button onClick={() => onResetPwd(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl hover:bg-amber-100 transition" title="รีเซ็ตรหัสผ่าน">
-//             <KeyRound className="h-3.5 w-3.5" />
-//           </button>
-//           <button onClick={() => onDelete(student)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition">
-//             <Trash2 className="h-3.5 w-3.5" />
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
@@ -1510,20 +1597,20 @@ export default function AdminStudentsPage() {
       {showAddModal && (
         <Modal title="เพิ่มนักเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <StudentForm onSave={handleCreate} onCancel={() => setShowAddModal(false)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
         </Modal>
       )}
       {editingStudent && (
         <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Edit2} onClose={() => setEditingStudent(null)}>
           <StudentForm initial={editingStudent} onSave={handleUpdate} onCancel={() => setEditingStudent(null)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
         </Modal>
       )}
       {deletingStudent && (
         <ConfirmDelete student={deletingStudent} onConfirm={handleDelete} onCancel={() => setDeletingStudent(null)} isDeleting={isDeleting} />
       )}
       {viewStudentId && (
-        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)} />
+        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)} showToast={showToast} />
       )}
       {/* FIX #11: Reset Password Modal */}
       {resetPwdStudent && (
