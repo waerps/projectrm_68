@@ -9,7 +9,7 @@ import {
   AlertTriangle, KeyRound, GraduationCap, School,
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, ArrowLeft,
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
