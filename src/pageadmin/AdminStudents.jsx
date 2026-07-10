@@ -70,6 +70,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
 
 // ─── StudentForm ───────────────────────────────────────────────────────────────
 function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders }) {
+  const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [form, setForm] = useState({
     firstname: initial.Firstname || initial.firstname || "",
     lastname: initial.Lastname || initial.lastname || "",
@@ -85,7 +86,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     username: initial.Username || initial.username || "",
     password: "",
   });
-  const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [showPwd, setShowPwd] = useState(false);
   const isEdit = !!initial.UserId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -298,9 +298,11 @@ function StudentDetailModal({ studentId, onClose }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    setError(null);
+    setLoading(true);
     axios.get(`${API}/students/${studentId}`)
       .then(r => setData(r.data))
-      .catch(e => console.error(e))
+      .catch(e => setError(e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
   }, [studentId]);
 
@@ -309,14 +311,6 @@ function StudentDetailModal({ studentId, onClose }) {
       <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
     </Modal>
   );
-
-  useEffect(() => {
-    setError(null); setLoading(true);
-    axios.get(`${API}/students/${studentId}`)
-      .then(r => setData(r.data))
-      .catch(e => setError(e.response?.data?.message || e.message))
-      .finally(() => setLoading(false));
-  }, [studentId]);
 
   if (error) return (
     <Modal title="เกิดข้อผิดพลาด" icon={AlertTriangle} onClose={onClose}>
@@ -860,14 +854,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
 
-  const topRanks = [...new Set(filtered.map(s => s.Rank))]
-    .filter(r => r <= 3)
-    .sort((a, b) => a - b); // [1,2,3] หรือ [1,3] ถ้าอันดับ2โดนข้าม
-
-  const podiumGroups = topRanks.map(rank => ({
-    rank,
-    students: filtered.filter(s => s.Rank === rank),
-  }));
+  const top3 = filtered.slice(0, 3);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -935,48 +922,31 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
             {filtered.length >= 2 && (
-              <div className={`grid gap-3`} style={{ gridTemplateColumns: `repeat(${podiumGroups.length}, minmax(0,1fr))` }}>
-                {podiumGroups.map(({ rank, students: tied }) => {
-                  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉';
-                  const marginTop = rank === 1 ? 0 : rank === 2 ? 16 : 32;
-                  return (
-                    <div
-                      key={rank}
-                      className={`rounded-xl border p-3 text-center
-            ${rank === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                      style={{ marginTop }}
-                    >
-                      <div className="text-2xl">{medal}</div>
-
-                      {/* คนที่เสมอกันในอันดับนี้ แสดงเรียงต่อกัน */}
-                      <div className={`mt-2 space-y-2 ${tied.length > 1 ? 'max-h-40 overflow-y-auto pr-0.5' : ''}`}>
-                        {tied.map(s => (
-                          <div
-                            key={s.UserId}
-                            className="cursor-pointer hover:opacity-80 transition"
-                            onClick={() => onViewStudent(s.UserId)}
-                          >
-                            <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto">
-                              <img src={avatarUrl(s.UserId)}
-                                alt={s.Nickname || s.Firstname}
-                                className="w-full h-full object-contain" />
-                            </div>
-                            <p className="text-xs font-semibold text-slate-800 mt-1 truncate">
-                              {s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-
-                      <p className="text-lg font-black text-slate-900 mt-1.5">{tied[0].PerformanceScore}</p>
-                      <p className="text-[10px] text-slate-400">
-                        คะแนน{tied.length > 1 ? ` · ${tied.length} คน` : ''}
-                      </p>
+              <div className="grid grid-cols-3 gap-3">
+                {[top3[1], top3[0], top3[2]].map((s, i) => s && (
+                  <div
+                    key={s.UserId}
+                    className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
+                      ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
+                    onClick={() => onViewStudent(s.UserId)}
+                  >
+                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
+                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
+                      <img src={avatarUrl(s.UserId)}
+                        alt={s.Nickname || s.Firstname}
+                        className="w-full h-full object-contain" />
                     </div>
-                  );
-                })}
+                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                      {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                    </p>
+                    <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
+                    <p className="text-[10px] text-slate-400">คะแนน</p>
+                  </div>
+                ))}
               </div>
             )}
+
 
             {/* ── Score Card List ─────────────────────────────────── */}
             <div className="space-y-2">
