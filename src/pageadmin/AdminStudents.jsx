@@ -255,13 +255,29 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <AddCourseToStudent
             studentId={initial.UserId}
             enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
-            onAdded={loadCourses}   // ★ ใช้ endpoint/logic POST /enroll ตัวเดียวกับหน้าคอร์ส ไม่ซ้ำ logic
-            showToast={showToast} 
+            onAdded={loadCourses}
+            showToast={showToast}
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {courses.map(c => (
-              <span key={c.CourseID} className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+              <span key={c.CourseID} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
                 {c.CourseName}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await axios.delete(`${API}/enroll/${c.EnrollId}`);
+                      loadCourses();
+                    } catch (err) {
+                      alert(err.response?.data?.message || "ลบไม่สำเร็จ");
+                    }
+                  }}
+                  className="text-orange-400 hover:text-red-500 transition"
+                  title="นำออกจากคอร์ส"
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </span>
             ))}
           </div>
@@ -617,7 +633,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             studentId={s.UserId}
             enrolledCourseIds={new Set(courses.map(c => String(c.CourseID)))}
             onAdded={loadDetail}
-            showToast={showToast}  
+            showToast={showToast}
           />
           {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
@@ -656,6 +672,23 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                     </div>
                   </div>
                 )}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
+                    try {
+                      await axios.delete(`${API}/enroll/${c.EnrollId}`);
+                      loadDetail();
+                    } catch (err) {
+                      showToast("error", err.response?.data?.message || "ลบไม่สำเร็จ");
+                    }
+                  }}
+                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  title="นำออกจากคอร์ส"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             );
           })}
@@ -1577,7 +1610,7 @@ export default function AdminStudentsPage() {
         <ConfirmDelete student={deletingStudent} onConfirm={handleDelete} onCancel={() => setDeletingStudent(null)} isDeleting={isDeleting} />
       )}
       {viewStudentId && (
-        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)}  showToast={showToast}/>
+        <StudentDetailModal studentId={viewStudentId} onClose={() => setViewStudentId(null)} showToast={showToast} />
       )}
       {/* FIX #11: Reset Password Modal */}
       {resetPwdStudent && (

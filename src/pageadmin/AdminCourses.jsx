@@ -327,6 +327,21 @@ function CourseStudents({ courseId, showToast }) {
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
           <span className="text-xs text-neutral-400">#{s.UserId}</span>
+          <button
+            onClick={async () => {
+              try {
+                await axios.delete(`${API_BASE}/enroll/${s.EnrollId}`);
+                showToast("success", "นำนักเรียนออกจากคอร์สแล้ว");
+                fetchStudents();
+              } catch (e) {
+                showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ");
+              }
+            }}
+            className="text-red-400 hover:text-red-600 transition"
+            title="นำออกจากคอร์ส"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       ))}
 
@@ -636,9 +651,8 @@ function PendingStudentPicker({ items, onChange }) {
             return (
               <label
                 key={id}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${
-                  checked ? "bg-orange-100" : "hover:bg-neutral-50"
-                }`}
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-neutral-50"
+                  }`}
               >
                 <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
                 <span className="flex-1 font-medium text-neutral-700">
