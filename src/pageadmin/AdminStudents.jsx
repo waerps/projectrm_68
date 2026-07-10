@@ -353,7 +353,12 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
   const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
 
   const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+  const remove = (id) => setSelectedIds(p => p.filter(x => x !== id));
   const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(c => String(c.CourseID)));
+
+  const selectedCourses = selectedIds
+    .map(id => allCourses.find(c => String(c.CourseID) === id))
+    .filter(Boolean);
 
   const handleAdd = async () => {
     if (!selectedIds.length) return showToast("error", "กรุณาเลือกคอร์สอย่างน้อย 1 คอร์ส");
@@ -385,6 +390,25 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 
   return (
     <div className="mb-3 bg-orange-50 border border-orange-100 rounded-xl overflow-hidden">
+      {/* ★ ใหม่: รายชื่อคอร์สที่เลือกไว้แล้ว พร้อมปุ่ม X เอาออก */}
+      {selectedCourses.length > 0 && (
+        <div className="divide-y divide-orange-100 border-b border-orange-200 bg-white">
+          {selectedCourses.map(c => (
+            <div key={c.CourseID} className="flex items-center gap-3 px-3 py-2">
+              <span className="flex-1 text-sm font-medium text-slate-800 truncate">{c.CourseName}</span>
+              <button
+                type="button"
+                onClick={() => remove(String(c.CourseID))}
+                className="text-red-400 hover:text-red-600 transition shrink-0"
+                title="เอาออก"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-2 p-3">
         <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
           className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />

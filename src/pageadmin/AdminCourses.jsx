@@ -372,7 +372,7 @@ function CourseStudents({ courseId, showToast }) {
 }
 
 // ─── Course Form ─────────────────────────────────────────────────────────────
-function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, showToast }) {
+function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
     StartDate: "",
@@ -562,6 +562,10 @@ function PendingStudentPicker({ items, onChange }) {
     onChange(items.includes(id) ? items.filter(x => x !== id) : [...items, id]);
   };
 
+  const remove = (id) => {
+    onChange(items.filter(x => x !== id));
+  };
+
   const toggleAll = () => {
     const filteredIds = filtered.map(s => String(s.UserId));
     const allSelected = filteredIds.every(id => items.includes(id));
@@ -572,11 +576,37 @@ function PendingStudentPicker({ items, onChange }) {
     );
   };
 
+  const selectedStudents = items
+    .map(id => allStudents.find(s => String(s.UserId) === id))
+    .filter(Boolean);
+
   return (
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
         <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
       </div>
+
+      {/* ★ ใหม่: รายชื่อที่เลือกไว้แล้ว พร้อมปุ่ม X เอาออก */}
+      {selectedStudents.length > 0 && (
+        <div className="divide-y divide-neutral-100 border-b border-neutral-200">
+          {selectedStudents.map(s => (
+            <div key={s.UserId} className="flex items-center gap-3 px-4 py-2 bg-orange-50/50">
+              <span className="flex-1 text-sm font-medium text-neutral-800">
+                {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+              </span>
+              <span className="text-[11px] text-neutral-400">#{s.UserId}</span>
+              <button
+                type="button"
+                onClick={() => remove(String(s.UserId))}
+                className="text-red-400 hover:text-red-600 transition"
+                title="เอาออก"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 px-4 py-2.5 bg-orange-50">
         <input
@@ -877,12 +907,12 @@ export default function AdminCoursesPage() {
     try {
       const res = await axios.post(`${API_BASE}/courses`, courseData);
       const CourseID = res.data.CourseID;
-  
+
       const subjectResults = await Promise.allSettled(
         pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
-  
+
       let enrollFailed = 0;
       if (pendingStudents.length) {
         const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
@@ -891,7 +921,7 @@ export default function AdminCoursesPage() {
         });
         enrollFailed = enrollRes.data.failed?.length || 0;
       }
-  
+
       if (subjectFailed > 0 || enrollFailed > 0) {
         showToast(
           "error",
@@ -1121,13 +1151,12 @@ export default function AdminCoursesPage() {
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <CourseForm
-            initial={editingCourse}
-            onSave={handleUpdate}
-            onCancel={() => setEditingCourse(null)}
+            onSave={handleCreate}
+            onCancel={() => setShowAddModal(false)}
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
-            yearOptions={yearOptions}   // ★ เพิ่ม
+            yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
             showToast={showToast}
           />
         </Modal>
@@ -1143,6 +1172,7 @@ export default function AdminCoursesPage() {
             isSubmitting={isSubmitting}
             statusOptions={statusOptions}
             termOptions={termOptions}
+            yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
             showToast={showToast}
           />
         </Modal>
