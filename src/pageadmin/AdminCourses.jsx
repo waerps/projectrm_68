@@ -473,7 +473,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
           ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} />
-          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} />}
+          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast}/>}
       </div>
 
       <div>
@@ -497,6 +497,187 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+// ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
+function PendingSubjectPicker({ items, onChange, showToast }) {
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [allTutors, setAllTutors] = useState([]);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+
+  useEffect(() => {
+    Promise.all([
+      axios.get(`${API_BASE}/subjects`),
+      axios.get(`${API_BASE}/tutors`),
+    ]).then(([sRes, tRes]) => {
+      setAllSubjects(sRes.data);
+      setAllTutors(tRes.data);
+    });
+  }, []);
+
+  const add = () => {
+    if (!newRow.SubjectId || !newRow.AdminId) {
+      if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+      return alert("กรุณาเลือกวิชาและติวเตอร์");
+    }
+    onChange([...items, newRow]);
+    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+  };
+
+  const remove = (index) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
+      </div>
+      
+      {items.map((it, idx) => {
+        const subj = allSubjects.find(s => String(s.SubjectId) === String(it.SubjectId));
+        const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
+        return (
+          <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+            <span className="flex-1 text-sm font-semibold text-neutral-800">
+              {subj ? subj.SubjectName : `Subject #${it.SubjectId}`}
+            </span>
+            <span className="text-xs text-neutral-500">
+              {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : `Tutor #${it.AdminId}`}
+            </span>
+            <span className="text-xs text-neutral-400 w-16 text-right">{it.TotalHours || 0} ชม.</span>
+            <button onClick={() => remove(idx)} className="text-red-400 hover:text-red-600 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+        <select 
+          value={newRow.SubjectId} 
+          onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกวิชา</option>
+          {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
+        </select>
+        
+        <select 
+          value={newRow.AdminId} 
+          onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกติวเตอร์</option>
+          {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
+        </select>
+        
+        <input 
+          type="number" 
+          placeholder="ชม." 
+          value={newRow.TotalHours}
+          onChange={e => setNewRow(r => ({ ...r, TotalHours: e.target.value }))}
+          className={inp + " w-20"} 
+        />
+        
+        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
+function PendingSubjectPicker({ items, onChange, showToast }) {
+  const [allSubjects, setAllSubjects] = useState([]);
+  const [allTutors, setAllTutors] = useState([]);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+
+  useEffect(() => {
+    Promise.all([
+      axios.get(`${API_BASE}/subjects`),
+      axios.get(`${API_BASE}/tutors`),
+    ]).then(([sRes, tRes]) => {
+      setAllSubjects(sRes.data);
+      setAllTutors(tRes.data);
+    });
+  }, []);
+
+  const add = () => {
+    if (!newRow.SubjectId || !newRow.AdminId) {
+      if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+      return alert("กรุณาเลือกวิชาและติวเตอร์");
+    }
+    onChange([...items, newRow]);
+    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+  };
+
+  const remove = (index) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
+
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
+      </div>
+      
+      {items.map((it, idx) => {
+        const subj = allSubjects.find(s => String(s.SubjectId) === String(it.SubjectId));
+        const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
+        return (
+          <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+            <span className="flex-1 text-sm font-semibold text-neutral-800">
+              {subj ? subj.SubjectName : `Subject #${it.SubjectId}`}
+            </span>
+            <span className="text-xs text-neutral-500">
+              {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : `Tutor #${it.AdminId}`}
+            </span>
+            <span className="text-xs text-neutral-400 w-16 text-right">{it.TotalHours || 0} ชม.</span>
+            <button onClick={() => remove(idx)} className="text-red-400 hover:text-red-600 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        );
+      })}
+
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+        <select 
+          value={newRow.SubjectId} 
+          onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกวิชา</option>
+          {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
+        </select>
+        
+        <select 
+          value={newRow.AdminId} 
+          onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
+          className={inp + " flex-1"}
+        >
+          <option value="">เลือกติวเตอร์</option>
+          {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
+        </select>
+        
+        <input 
+          type="number" 
+          placeholder="ชม." 
+          value={newRow.TotalHours}
+          onChange={e => setNewRow(r => ({ ...r, TotalHours: e.target.value }))}
+          className={inp + " w-20"} 
+        />
+        
+        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+          <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
