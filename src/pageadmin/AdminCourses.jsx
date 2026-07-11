@@ -914,7 +914,7 @@ export default function AdminCoursesPage() {
 
   const fetchAll = async () => {
     try {
-      const [cRes, sRes, tRes, yRes] = await Promise.all([
+      const [cRes, sRes, tRes, yRes, aRes] = await Promise.all([
         axios.get(`${API_BASE}/courses`),
         axios.get(`${API_BASE}/status-course`),
         axios.get(`${API_BASE}/term`),
