@@ -27,7 +27,7 @@ const STATUS_MAP = {
 // ★ Mapping ตัวกรองเทอม อ้างอิงตาราง term จริง:
 // 1 = เปิดเทอม 1 (4 เดือน) | 2 = ตุลาคม (ปิดเทอมเล็ก) | 3 = เปิดเทอม 2 | 4 = ปิดเทอมใหญ่
 const TERM_FILTERS = [
-  { key: "all", label: "ทั้งหมด", termId: null },
+  { key: "all", label: "สถานะทั้งหมดทั้งหมด", termId: null },
   { key: "term1", label: "เทอม 1", termId: 1 },
   { key: "term2", label: "เทอม 2", termId: 3 },
   { key: "smallbreak", label: "ปิดเทอมเล็ก", termId: 2 },
