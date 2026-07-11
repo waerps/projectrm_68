@@ -235,14 +235,19 @@ function StudentPreviewModal({ course, onClose }) {
     return "ไม่ระบุ";
   })();
 
-  const getThumbnail = (url, type) => {
-    if (type === "youtube") {
-      const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+  const getThumbnail = (v) => {
+    if (v.Thumbnail) {
+      // ถ้าเป็น URL เต็ม (http...) ใช้ตรงๆ, ถ้าเป็น path ที่อัปโหลดเอง ให้ผ่าน getFileUrl
+      return /^https?:\/\//.test(v.Thumbnail) ? v.Thumbnail : getFileUrl(v.Thumbnail);
+    }
+    // fallback เผื่อข้อมูลเก่าที่ยังไม่มี Thumbnail
+    if (v.VideoType === "youtube") {
+      const m = v.VideoUrl?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
       return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
     }
     return null;
   };
-
+  
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -368,8 +373,8 @@ function StudentPreviewModal({ course, onClose }) {
                         onClick={() => setPlayingVideo(v)}
                         className="relative w-full overflow-hidden rounded-xl bg-neutral-100 aspect-[16/9] flex items-center justify-center group cursor-pointer"
                       >
-                        {getThumbnail(v.VideoUrl, v.VideoType) ? (
-                          <img src={getThumbnail(v.VideoUrl, v.VideoType)} alt={v.VideoTitle} className="w-full h-full object-cover" />
+                        {getThumbnail(v) ? (
+                          <img src={getThumbnail(v)} alt={v.VideoTitle} className="w-full h-full object-cover" />
                         ) : (
                           <PlayCircle className="h-10 w-10 text-neutral-300" />
                         )}
@@ -772,7 +777,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
   const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
   const fileInputRef = useRef(null);
 
-  const emptyForm = { title: "", mode: "youtube", url: "", duration: "" };
+  const emptyForm = { title: "", mode: "youtube", url: "", duration: "", thumbnail: "" };
   const [form, setForm] = useState(emptyForm);
   const adminId = (() => {
     try { return JSON.parse(localStorage.getItem("user"))?.id; } catch { return null; }
@@ -830,6 +835,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
         VideoTitle: form.title.trim(),
         VideoUrl: form.url,
         VideoType: form.mode,
+        Thumbnail: form.thumbnail || null,
         Duration: form.duration || null,
         AdminId: adminId,
       };
@@ -857,7 +863,13 @@ function CoursePreviewVideos({ courseId, showToast }) {
 
   const startEdit = (v) => {
     setEditingId(v.VideoId);
-    setForm({ title: v.VideoTitle, mode: v.VideoType || "youtube", url: v.VideoUrl, duration: v.Duration || "" });
+    setForm({
+      title: v.VideoTitle,
+      mode: v.VideoType || "youtube",
+      url: v.VideoUrl,
+      duration: v.Duration || "",
+      thumbnail: v.Thumbnail || "",
+    });
     setAdding(true);
   };
 
@@ -890,8 +902,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
               className="relative w-14 h-9 rounded-lg bg-neutral-100 flex items-center justify-center overflow-hidden shrink-0 group cursor-pointer"
               title="เล่นวิดีโอ"
             >
-              {getThumbnail(v.VideoUrl, v.VideoType) ? (
-                <img src={getThumbnail(v.VideoUrl, v.VideoType)} className="w-full h-full object-cover" />
+              {getThumbnail(v) ? (
+                <img src={getThumbnail(v)} className="w-full h-full object-cover" />
               ) : (
                 <PlayCircle className="h-5 w-5 text-neutral-300" />
               )}
@@ -966,6 +978,16 @@ function CoursePreviewVideos({ courseId, showToast }) {
             <label className="block text-xs font-bold text-neutral-500 mb-1">ความยาวคลิป (ไม่บังคับ)</label>
             <input type="text" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
               className={inp} placeholder="เช่น 5 นาที" disabled={saving} />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-neutral-500 mb-1.5">
+              ภาพปกคลิป (ไม่บังคับ)
+            </label>
+            <p className="text-[11px] text-neutral-400 mb-2">
+              หากไม่เลือกภาพ ระบบจะดึงภาพหน้าปกจากเนื้อหาในวิดีโอให้อัตโนมัติ
+            </p>
+            <ImageUpload value={form.thumbnail} onChange={(path) => setForm(f => ({ ...f, thumbnail: path }))} />
           </div>
 
           <div className="flex gap-2 pt-1">
