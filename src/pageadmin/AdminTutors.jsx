@@ -7,16 +7,13 @@ import { ToastContainer } from "../components/Toast";
 import {
   Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
-  AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus
+  AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
+  UserCog, UserCheck, UserX, Info,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
-
-// ─── FIX #6-equivalent: ใช้ AdminId เป็น seed แทนชื่อ
-const avatarUrl = (adminId) =>
-  `https://api.dicebear.com/7.x/avataaars/svg?seed=tutor_${adminId}&backgroundColor=ffedd5`;
 
 // ─── FIX #8-equivalent: handle format วันที่ที่หลากหลาย
 const formatDate = (d) => {
@@ -49,6 +46,65 @@ const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
+// ─── ★ ใหม่: สถานะติวเตอร์ ──────────────────────────────────────────────────
+// Status_Tutor_Id: 1 = กำลังสอน, 2 = เลิกสอน (ดูรายละเอียดที่ backend guidance)
+const TUTOR_STATUS = {
+  1: { label: "กำลังสอน", bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
+  2: { label: "ลาพัก", bg: "bg-slate-200", text: "text-slate-600", border: "border-slate-300" },
+};
+const statusOf = (id) => TUTOR_STATUS[id] || TUTOR_STATUS[1];
+
+// ─── ★ ใหม่: Fallback Avatar เป็นตัวอักษรแรกของชื่อ เมื่อไม่มีรูปโปรไฟล์ ──────
+const AVATAR_COLORS = [
+  "bg-orange-500", "bg-amber-500", "bg-rose-500", "bg-pink-500",
+  "bg-fuchsia-500", "bg-violet-500", "bg-indigo-500", "bg-blue-500",
+  "bg-cyan-500", "bg-teal-500", "bg-emerald-500", "bg-lime-600",
+];
+const colorForSeed = (seed) => {
+  const s = String(seed ?? "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+const initialsOf = (name) => {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0][0] || "";
+  const second = parts.length > 1 ? parts[1][0] : "";
+  return (first + second).toUpperCase();
+};
+function InitialsAvatar({ name, seed, className = "" }) {
+  return (
+    <div className={`flex items-center justify-center font-bold text-white select-none ${colorForSeed(seed ?? name)} ${className}`}>
+      {initialsOf(name)}
+    </div>
+  );
+}
+// รูปโปรไฟล์ติวเตอร์: ถ้ามีรูป → แสดงรูป, ถ้าไม่มี/โหลดพัง → fallback เป็นตัวอักษรแรกของชื่อ
+function TutorAvatar({ tutor, className = "h-10 w-10 rounded-xl" }) {
+  const [imgErr, setImgErr] = useState(false);
+  const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
+  if (tutor.Photo && !imgErr) {
+    return (
+      <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+        <img
+          src={getFileUrl(tutor.Photo)}
+          alt={displayName}
+          onError={() => setImgErr(true)}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+  return (
+    <InitialsAvatar
+      name={displayName}
+      seed={tutor.AdminId}
+      className={`shrink-0 border border-orange-100 ${className}`}
+    />
+  );
+}
+
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
   return (
@@ -74,14 +130,18 @@ function Modal({ title, icon: Icon, onClose, children }) {
 }
 
 // ─── ImageUpload (เหมือนหน้าคอร์สทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
-function ImageUpload({ value, onChange }) {
+function ImageUpload({ value, onChange, showToast }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState("");
 
   const handleFile = async (file) => {
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return setErr("ไฟล์ต้องไม่เกิน 5MB");
+    if (file.size > 5 * 1024 * 1024) {
+      setErr("ไฟล์ต้องไม่เกิน 5MB");
+      showToast?.("error", "อัปโหลดไม่สำเร็จ", "ไฟล์ต้องไม่เกิน 5MB");
+      return;
+    }
     setErr(""); setUploading(true);
     try {
       const fd = new FormData();
@@ -90,6 +150,7 @@ function ImageUpload({ value, onChange }) {
       onChange(res.data.path);
     } catch {
       setErr("อัปโหลดไม่สำเร็จ");
+      showToast?.("error", "อัปโหลดรูปไม่สำเร็จ");
     } finally { setUploading(false); }
   };
 
@@ -127,8 +188,112 @@ function ImageUpload({ value, onChange }) {
   );
 }
 
+// ─── ★ ใหม่: เลือกวิชาที่สอนได้หลายวิชา (Multi-select แบบ checkbox + ค้นหา) ──
+function SubjectMultiSelect({ allSubjects, selectedIds, onChange }) {
+  const [search, setSearch] = useState("");
+  const filtered = allSubjects.filter(s => !search || (s.SubjectName || "").toLowerCase().includes(search.toLowerCase()));
+  const toggle = (id) => {
+    const idStr = String(id);
+    onChange(selectedIds.includes(idStr) ? selectedIds.filter(x => x !== idStr) : [...selectedIds, idStr]);
+  };
+  const selectedItems = allSubjects.filter(s => selectedIds.includes(String(s.SubjectId)));
+
+  return (
+    <div>
+      {selectedItems.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {selectedItems.map(s => (
+            <span key={s.SubjectId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+              {s.SubjectName}
+              <button type="button" onClick={() => toggle(s.SubjectId)} className="text-orange-400 hover:text-red-500 transition">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="ค้นหาวิชา..."
+          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+        />
+      </div>
+      <div className="mt-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+        {allSubjects.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">ยังไม่มีรายวิชาในระบบ</p>
+        ) : filtered.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">ไม่พบวิชาที่ค้นหา</p>
+        ) : filtered.map(s => {
+          const checked = selectedIds.includes(String(s.SubjectId));
+          return (
+            <label key={s.SubjectId} className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-sm transition ${checked ? "bg-orange-50" : "hover:bg-slate-50"}`}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(s.SubjectId)} className="accent-orange-500" />
+              <span className="flex-1 text-slate-700">{s.SubjectName}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── ★ ใหม่: เลือกผู้ติดต่อฉุกเฉินแบบค้นหาจากรายชื่อติวเตอร์ในระบบ (Searchable Select) ──
+// พิมพ์ค้นหาชื่อได้อิสระ (ไม่บังคับต้องมีในระบบ) แต่ถ้าเลือกจากรายการ จะดึงเบอร์โทรมาเติมให้อัตโนมัติ (ยังแก้เองได้)
+function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onSelectPhone }) {
+  const [open, setOpen] = useState(false);
+  const query = value || "";
+
+  const candidates = allTutors.filter(t => String(t.AdminId) !== String(excludeId));
+  const displayNameOf = (t) => t.Nickname || `${t.Firstname} ${t.Lastname}`;
+  const filtered = query
+    ? candidates.filter(t => {
+        const q = query.toLowerCase();
+        return displayNameOf(t).toLowerCase().includes(q) || `${t.Firstname} ${t.Lastname}`.toLowerCase().includes(q);
+      }).slice(0, 8)
+    : candidates.slice(0, 8);
+
+  const pick = (t) => {
+    onSelectName(displayNameOf(t));
+    if (t.PhoneNo) onSelectPhone(t.PhoneNo);
+    setOpen(false);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+        value={query}
+        onChange={e => { onSelectName(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="พิมพ์ชื่อ หรือเลือกจากติวเตอร์ในระบบ"
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+          {filtered.map(t => (
+            <button
+              type="button"
+              key={t.AdminId}
+              onMouseDown={() => pick(t)}
+              className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition"
+            >
+              <TutorAvatar tutor={t} className="h-6 w-6 rounded-full text-[10px]" />
+              <span className="flex-1 truncate">{displayNameOf(t)}</span>
+              {t.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{t.PhoneNo}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── TutorForm ─────────────────────────────────────────────────────────────────
-function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
+function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, allTutors, allSubjects }) {
   const [form, setForm] = useState({
     firstname: initial.Firstname || initial.firstname || "",
     lastname: initial.Lastname || initial.lastname || "",
@@ -146,7 +311,9 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
     bankName: initial.BankName || initial.bankName || "",
     bankAccountNumber: initial.BankAccountNumber || initial.bankAccountNumber || "",
     bankAccountName: initial.BankAccountName || initial.bankAccountName || "",
-    photo: initial.Photo || initial.photo || "", // ★ เพิ่ม: รูปโปรไฟล์
+    photo: initial.Photo || initial.photo || "",
+    // ★ เพิ่ม: วิชาที่สอน (multi-select) — เก็บเป็น array ของ SubjectId (string)
+    subjectIds: (initial.TeachingSubjectIds ? String(initial.TeachingSubjectIds).split(",") : []).filter(Boolean),
   });
   const [showPwd, setShowPwd] = useState(false);
   const isEdit = !!initial.AdminId;
@@ -158,12 +325,12 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
 
   const submit = () => {
     if (!form.firstname.trim() || !form.lastname.trim())
-      return alert("กรุณากรอกชื่อ-นามสกุล");
+      return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอกชื่อ-นามสกุล");
     if (!isEdit && (!form.username.trim() || !form.password.trim()))
-      return alert("กรุณากรอก Username และ Password");
+      return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอก Username และ Password");
     // ★ เพิ่ม: validate อัตราค่าสอนไม่ติดลบ (กันเหนียวฝั่ง client แม้ backend เช็คแล้ว)
     if (form.ratePerTutors !== "" && Number(form.ratePerTutors) < 0)
-      return alert("อัตราค่าสอนต้องเป็นตัวเลขไม่ติดลบ");
+      return showToast("error", "ข้อมูลไม่ถูกต้อง", "อัตราค่าสอนต้องเป็นตัวเลขไม่ติดลบ");
     onSave(form);
   };
 
@@ -172,10 +339,10 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
 
   return (
     <div className="space-y-5">
-      {/* ★ เพิ่ม: รูปโปรไฟล์ */}
+      {/* รูปโปรไฟล์ */}
       <div>
         <label className={lbl}>รูปโปรไฟล์</label>
-        <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} />
+        <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -195,7 +362,6 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
         <div>
           <label className={lbl}>เบอร์โทร</label>
-          {/* ★ แก้: ใช้ formatPhone เหมือนหน้านักเรียน */}
           <input
             className={inp}
             value={form.phoneNo || ""}
@@ -222,7 +388,6 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
         <div>
           <label className={lbl}>อัตราค่าสอน (บาท/ชม.)</label>
-          {/* ★ แก้: comma คั่นหลักพัน + กันติดลบ เหมือน Price/Discount ของคอร์ส */}
           <input
             type="text" inputMode="numeric"
             className={inp}
@@ -232,6 +397,16 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
             placeholder="180"
           />
         </div>
+      </div>
+
+      {/* ★ เพิ่ม: วิชาที่สอน (เลือกได้หลายวิชา แก้ไขภายหลังได้) */}
+      <div>
+        <label className={lbl}>วิชาที่สอน</label>
+        <SubjectMultiSelect
+          allSubjects={allSubjects}
+          selectedIds={form.subjectIds}
+          onChange={(ids) => set("subjectIds", ids)}
+        />
       </div>
 
       {/* ข้อมูลธนาคาร */}
@@ -255,30 +430,40 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
       </div>
 
-      {/* ผู้ติดต่อฉุกเฉิน */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={lbl}>ผู้ติดต่อฉุกเฉิน</label>
-          <input className={inp} value={form.emergencyContactName || ""} onChange={e => set("emergencyContactName", e.target.value)} />
-        </div>
-        <div>
-          <label className={lbl}>เบอร์ผู้ติดต่อฉุกเฉิน</label>
-          {/* ★ แก้: ใช้ formatPhone เช่นเดียวกับเบอร์หลัก */}
-          <input
-            className={inp}
-            value={form.emergencyContactPhoneNo || ""}
-            onChange={e => set("emergencyContactPhoneNo", formatPhone(e.target.value))}
-            placeholder="098-888-8888"
-            inputMode="numeric"
-          />
+      {/* ผู้ติดต่อฉุกเฉิน — ★ แก้: เลือกชื่อจากรายชื่อติวเตอร์ในระบบได้ (Searchable Select), เบอร์เติมอัตโนมัติแต่แก้เองได้ */}
+      <div>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ผู้ติดต่อฉุกเฉิน</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={lbl}>ชื่อผู้ติดต่อฉุกเฉิน</label>
+            <EmergencyContactSelect
+              allTutors={allTutors}
+              excludeId={initial.AdminId}
+              value={form.emergencyContactName}
+              onSelectName={(name) => set("emergencyContactName", name)}
+              onSelectPhone={(phone) => set("emergencyContactPhoneNo", formatPhone(phone))}
+            />
+          </div>
+          <div>
+            <label className={lbl}>เบอร์ผู้ติดต่อฉุกเฉิน</label>
+            <input
+              className={inp}
+              value={form.emergencyContactPhoneNo || ""}
+              onChange={e => set("emergencyContactPhoneNo", formatPhone(e.target.value))}
+              placeholder="098-888-8888"
+              inputMode="numeric"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">เติมอัตโนมัติเมื่อเลือกชื่อจากรายชื่อติวเตอร์ — แก้ไขเองได้หากจำเป็น</p>
+          </div>
         </div>
       </div>
+
       <div>
         <label className={lbl}>หมายเหตุ</label>
         <textarea className={inp} rows={2} value={form.remark || ""} onChange={e => set("remark", e.target.value)} />
       </div>
 
-      {/* ★ เพิ่ม: แสดง Username แบบอ่านอย่างเดียวตอนแก้ไข เหมือนหน้านักเรียน */}
+      {/* ★ แก้: แสดง Username แบบอ่านอย่างเดียวตอนแก้ไข ต้องโชว์ค่าปัจจุบันเสมอ (เดิมหน้านี้ไม่มีบล็อกนี้เลย) */}
       {isEdit && (
         <div>
           <label className={lbl}>Username</label>
@@ -337,22 +522,22 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
   );
 }
 
-// ─── ResetPasswordModal ────────────────────────────────────────────────────────
-function ResetPasswordModal({ tutor, onClose }) {
+// ─── ResetPasswordModal — ★ แก้: alert() → showToast() ─────────────────────────
+function ResetPasswordModal({ tutor, onClose, showToast }) {
   const [pwd, setPwd] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const inp = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 transition";
 
   const submit = async () => {
-    if (!pwd.trim()) return alert("กรุณากรอกรหัสผ่านใหม่");
+    if (!pwd.trim()) return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอกรหัสผ่านใหม่");
     setLoading(true);
     try {
       await axios.patch(`${API}/tutors/${tutor.AdminId}/reset-password`, { newPassword: pwd });
-      alert("รีเซ็ตรหัสผ่านสำเร็จ");
+      showToast("success", "รีเซ็ตรหัสผ่านสำเร็จ");
       onClose();
     } catch (e) {
-      alert(e.response?.data?.message || "เกิดข้อผิดพลาด");
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setLoading(false); }
   };
 
@@ -394,6 +579,97 @@ function ResetPasswordModal({ tutor, onClose }) {
   );
 }
 
+// ─── ★ ใหม่: TutorStatusModal — เปลี่ยนสถานะ กำลังสอน / เลิกสอน พร้อมเหตุผล ──
+// ไม่ลบ User ออกจากระบบ เพื่อเก็บประวัติ (ยังคงดูข้อมูลย้อนหลัง / ประวัติค่าสอนได้ตามปกติ)
+function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
+  const currentStatus = tutor.Status_Tutor_Id || 1;
+  const [statusTutorId, setStatusTutorId] = useState(currentStatus);
+  const [reason, setReason] = useState(tutor.ResignReason || "");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (statusTutorId === 2 && !reason.trim())
+      return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณาระบุเหตุผลการเลิกสอน");
+    setLoading(true);
+    try {
+      await axios.patch(`${API}/tutors/${tutor.AdminId}/status`, {
+        statusTutorId,
+        resignReason: statusTutorId === 2 ? reason.trim() : null,
+      });
+      showToast("success", "อัปเดตสถานะสำเร็จ");
+      onSaved();
+      onClose();
+    } catch (e) {
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+            <UserCog className="h-5 w-5 text-orange-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">เปลี่ยนสถานะติวเตอร์</h3>
+            <p className="text-xs text-slate-400">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button
+            onClick={() => setStatusTutorId(1)}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-sm font-bold transition
+              ${statusTutorId === 1 ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+          >
+            <UserCheck className="h-5 w-5" /> กำลังสอน
+          </button>
+          <button
+            onClick={() => setStatusTutorId(2)}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-sm font-bold transition
+              ${statusTutorId === 2 ? "bg-slate-100 border-slate-400 text-slate-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}
+          >
+            <UserX className="h-5 w-5" /> เลิกสอน
+          </button>
+        </div>
+
+        {statusTutorId === 2 && (
+          <div className="mb-4">
+            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+              เหตุผลการเลิกสอน <span className="text-red-400 normal-case">*</span>
+            </label>
+            <textarea
+              rows={3}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="เช่น ย้ายที่อยู่ / ปรับตารางเรียน / ลาออก..."
+            />
+            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+              <Info className="h-3 w-3" /> ข้อมูลติวเตอร์และประวัติค่าสอนจะยังถูกเก็บไว้ตามเดิม ไม่มีการลบผู้ใช้ออกจากระบบ
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button onClick={onClose}
+            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            ยกเลิก
+          </button>
+          <button onClick={submit} disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "บันทึก"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
   return (
@@ -419,7 +695,6 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
             className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
             ยกเลิก
           </button>
-          {/* FIX #7-equivalent: ปุ่ม disable + loading */}
           <button onClick={onConfirm} disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
             {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
@@ -431,23 +706,17 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 }
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
-function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
-  const [imgErr, setImgErr] = useState(false);
+function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor }) {
   const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
   const fullName = `${t.Firstname} ${t.Lastname}`;
+  const status = statusOf(t.Status_Tutor_Id);
+  const isInactive = Number(t.Status_Tutor_Id) === 2;
 
   return (
-    <tr className="hover:bg-orange-50/40 transition-colors">
+    <tr className={`hover:bg-orange-50/40 transition-colors ${isInactive ? "opacity-60" : ""}`}>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl overflow-hidden bg-orange-50 border border-orange-100 shrink-0">
-            {t.Photo && !imgErr ? (
-              <img src={getFileUrl(t.Photo)} alt={displayName}
-                onError={() => setImgErr(true)} className="w-full h-full object-cover" />
-            ) : (
-              <img src={avatarUrl(t.AdminId)} alt={displayName} className="w-full h-full object-cover" />
-            )}
-          </div>
+          <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-sm" />
           <div>
             <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
             {t.Nickname && displayName !== fullName && (
@@ -464,10 +733,11 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
             <span>{t.Occupation}</span>
           </div>
         )}
-        {t.Subjects && (
+        {/* ★ แก้: แสดงวิชาที่สอน (จากรายการที่เลือกโดยตรง) แทนวิชาที่คำนวณจากคอร์สเดิม */}
+        {(t.TeachingSubjects || t.Subjects) && (
           <div className="flex items-start gap-1.5 text-xs text-slate-500">
             <BookOpen className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
-            <span className="line-clamp-1 max-w-[160px]">{t.Subjects}</span>
+            <span className="line-clamp-1 max-w-[160px]">{t.TeachingSubjects || t.Subjects}</span>
           </div>
         )}
       </td>
@@ -479,18 +749,12 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
           </div>
         )}
       </td>
-      <td className="px-4 py-3">
-        {t.BankName ? (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <CreditCard className="h-3.5 w-3.5 shrink-0" />
-            <div>
-              <p className="font-medium text-slate-700">{t.BankName}</p>
-              <p className="text-slate-400">{t.BankAccountNumber}</p>
-            </div>
-          </div>
-        ) : (
-          <span className="text-xs text-slate-300">—</span>
-        )}
+      {/* ★ เพิ่ม: คอลัมน์สถานะ */}
+      <td className="px-4 py-3 text-center">
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+          {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+          {status.label}
+        </span>
       </td>
       <td className="px-4 py-3 text-center">
         <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
@@ -517,6 +781,10 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
             <Edit2 className="h-3.5 w-3.5" /> แก้ไข
           </button>
+          <button onClick={() => setStatusTutor(t)}
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="เปลี่ยนสถานะ">
+            <UserCog className="h-3.5 w-3.5" />
+          </button>
           <button onClick={() => setResetPwdTutor(t)}
             className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition" title="รีเซ็ตรหัสผ่าน">
             <KeyRound className="h-3.5 w-3.5" />
@@ -535,9 +803,11 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
 export default function AdminTutorsPage() {
   const { toasts, showToast, removeToast } = useToast(); //alert ต่างๆ
   const [tutors, setTutors] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]); // ★ เพิ่ม: รายวิชาทั้งหมดในระบบ สำหรับ multi-select
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterSubject, setFilterSubject] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all"); // ★ เพิ่ม: กรองตามสถานะ
   const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // FIX #7-equivalent
@@ -546,6 +816,7 @@ export default function AdminTutorsPage() {
   const [editingTutor, setEditingTutor] = useState(null);
   const [deletingTutor, setDeletingTutor] = useState(null);
   const [resetPwdTutor, setResetPwdTutor] = useState(null);
+  const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [activeTab, setActiveTab] = useState('list');
 
   const fetchTutors = async () => {
@@ -554,12 +825,22 @@ export default function AdminTutorsPage() {
       setTutors(res.data);
     } catch (e) {
       console.error("fetch tutors error:", e);
+      showToast("error", "โหลดข้อมูลติวเตอร์ไม่สำเร็จ");
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchTutors(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search]);
-  useEffect(() => { setCurrentPage(1); }, [search, filterSubject]);
+  const fetchSubjects = async () => {
+    try {
+      const res = await axios.get(`${API}/subjects`);
+      setAllSubjects(res.data || []);
+    } catch (e) {
+      console.error("fetch subjects error:", e);
+      // ไม่ต้อง toast error ตรงนี้ ป้องกันรบกวนถ้า endpoint ยังไม่พร้อมใช้งาน
+    }
+  };
+
+  useEffect(() => { fetchTutors(); fetchSubjects(); }, []);
+  useEffect(() => { setCurrentPage(1); }, [search, filterSubject, filterStatus]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -600,21 +881,22 @@ export default function AdminTutorsPage() {
   };
 
   // เพิ่มตรงนี้ก่อน filtered
-  const allSubjects = [...new Set(
+  const allSubjectNames = [...new Set(
     tutors
-      .flatMap(t => (t.Subjects || "").split(",").map(s => s.trim()))
+      .flatMap(t => (t.TeachingSubjects || t.Subjects || "").split(",").map(s => s.trim()))
       .filter(Boolean)
   )].sort();
 
-  // แก้ filtered เดิม
+  // แก้ filtered เดิม — ★ เพิ่มกรองตามสถานะ
   const filtered = tutors.filter(t => {
     const displayName = (t.Nickname || `${t.Firstname} ${t.Lastname}`).toLowerCase();
     const s = search.toLowerCase();
     const matchSearch = !s || displayName.includes(s) || (t.PhoneNo || "").includes(s) ||
-      String(t.AdminId).includes(s) || (t.Subjects || "").toLowerCase().includes(s);
+      String(t.AdminId).includes(s) || (t.TeachingSubjects || t.Subjects || "").toLowerCase().includes(s);
     const matchSubject = filterSubject === "all" ||
-      (t.Subjects || "").split(",").map(x => x.trim()).includes(filterSubject);
-    return matchSearch && matchSubject;
+      (t.TeachingSubjects || t.Subjects || "").split(",").map(x => x.trim()).includes(filterSubject);
+    const matchStatus = filterStatus === "all" || String(t.Status_Tutor_Id || 1) === filterStatus;
+    return matchSearch && matchSubject && matchStatus;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -626,6 +908,9 @@ export default function AdminTutorsPage() {
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลติวเตอร์...</p>
     </div>
   );
+
+  const activeTutorCount = tutors.filter(t => Number(t.Status_Tutor_Id || 1) === 1).length;
+  const inactiveTutorCount = tutors.length - activeTutorCount;
 
   return (
     <div className="space-y-6 mt-[90px]">
@@ -670,20 +955,22 @@ export default function AdminTutorsPage() {
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats — ★ เพิ่มคำอธิบายที่มาของตัวเลข + แยกนับเฉพาะติวเตอร์ที่ "กำลังสอน" สำหรับนักเรียนรวม/คาบสอนรวม */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500" },
-            { label: "นักเรียนรวม", value: tutors.reduce((s, t) => s + Number(t.StudentCount || 0), 0), color: "bg-blue-500" },
-            { label: "คาบสอนรวม", value: tutors.reduce((s, t) => s + Number(t.TotalSessions || 0), 0), color: "bg-emerald-500" },
+            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: `กำลังสอน ${activeTutorCount} · เลิกสอน ${inactiveTutorCount}` },
+            { label: "นักเรียนรวม", value: tutors.reduce((s, t) => s + Number(t.StudentCount || 0), 0), color: "bg-blue-500", hint: "นับจากนักเรียนที่ลงทะเบียนในคอร์สที่ติวเตอร์แต่ละคนสอน (ไม่ซ้ำคน)" },
             { label: "มีข้อมูลธนาคาร", value: tutors.filter(t => t.BankName).length, color: "bg-indigo-500" },
-          ].map(({ label, value, color }, i) => (
-            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+          ].map(({ label, value, color, hint }, i) => (
+            <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                 <Users className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">{label}</p>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                  {label}
+                  {hint && <Info className="h-3 w-3 text-slate-300" />}
+                </p>
                 <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
               </div>
             </div>
@@ -704,12 +991,22 @@ export default function AdminTutorsPage() {
             <select
               value={filterSubject}
               onChange={e => setFilterSubject(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px]"
+              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
             >
               <option value="all">ทุกวิชา</option>
-              {allSubjects.map(sub => (
+              {allSubjectNames.map(sub => (
                 <option key={sub} value={sub}>{sub}</option>
               ))}
+            </select>
+            {/* ★ เพิ่ม: filter สถานะ */}
+            <select
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]"
+            >
+              <option value="all">ทุกสถานะ</option>
+              <option value="1">กำลังสอน</option>
+              <option value="2">เลิกสอน</option>
             </select>
           </div>
           <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -732,7 +1029,7 @@ export default function AdminTutorsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติวเตอร์</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">อาชีพ / วิชา</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ธนาคาร</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คาบ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">บาท/ชม.</th>
@@ -747,6 +1044,7 @@ export default function AdminTutorsPage() {
                       setEditingTutor={setEditingTutor}
                       setResetPwdTutor={setResetPwdTutor}
                       setDeletingTutor={setDeletingTutor}
+                      setStatusTutor={setStatusTutor}
                     />
                   ))}
                 </tbody>
@@ -792,19 +1090,42 @@ export default function AdminTutorsPage() {
         {/* Modals */}
         {showAddModal && (
           <Modal title="เพิ่มติวเตอร์ใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
-            <TutorForm onSave={handleCreate} onCancel={() => setShowAddModal(false)} isSubmitting={isSubmitting} />
+            <TutorForm
+              onSave={handleCreate}
+              onCancel={() => setShowAddModal(false)}
+              isSubmitting={isSubmitting}
+              showToast={showToast}
+              allTutors={tutors}
+              allSubjects={allSubjects}
+            />
           </Modal>
         )}
         {editingTutor && (
           <Modal title={`แก้ไขติวเตอร์ #${editingTutor.AdminId}`} icon={Edit2} onClose={() => setEditingTutor(null)}>
-            <TutorForm initial={editingTutor} onSave={handleUpdate} onCancel={() => setEditingTutor(null)} isSubmitting={isSubmitting} />
+            <TutorForm
+              initial={editingTutor}
+              onSave={handleUpdate}
+              onCancel={() => setEditingTutor(null)}
+              isSubmitting={isSubmitting}
+              showToast={showToast}
+              allTutors={tutors}
+              allSubjects={allSubjects}
+            />
           </Modal>
         )}
         {deletingTutor && (
           <ConfirmDelete tutor={deletingTutor} onConfirm={handleDelete} onCancel={() => setDeletingTutor(null)} isDeleting={isDeleting} />
         )}
         {resetPwdTutor && (
-          <ResetPasswordModal tutor={resetPwdTutor} onClose={() => setResetPwdTutor(null)} />
+          <ResetPasswordModal tutor={resetPwdTutor} onClose={() => setResetPwdTutor(null)} showToast={showToast} />
+        )}
+        {statusTutor && (
+          <TutorStatusModal
+            tutor={statusTutor}
+            onClose={() => setStatusTutor(null)}
+            onSaved={fetchTutors}
+            showToast={showToast}
+          />
         )}
       </>
       }
