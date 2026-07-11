@@ -3,7 +3,7 @@ import { getFileUrl } from "../utils/fileUrl";
 import {
   BookOpen, Plus, Search, Edit2, Trash2, X, Check,
   Calendar, DollarSign, Users, Tag, Filter,
-  ChevronLeft, ChevronRight, Loader2, ImagePlus,
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
   BadgeCheck,
@@ -1428,11 +1428,8 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
             onClick={() => onEdit(course)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
           >
-            <button onClick={() => onEdit(course)} className="...">
-              <Edit2 className="h-3.5 w-3.5" /> แก้ไข
-            </button>
+            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
           </button>
-
           <button
             onClick={() => setShowPreview(true)}
             className="flex items-center justify-center px-3 py-2 text-xs font-bold text-neutral-500 bg-neutral-50 border border-neutral-100 rounded-xl hover:bg-neutral-100 hover:border-neutral-200 transition"
@@ -1440,11 +1437,17 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           >
             <Eye className="h-3.5 w-3.5" />
           </button>
-
-          <button onClick={() => onDelete(course)} className="...">
+          <button
+            onClick={() => onDelete(course)}
+            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 hover:border-red-200 transition"
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => onDuplicate(course)} className="..." title="ทำสำเนาคอร์ส">
+          <button
+            onClick={() => onDuplicate(course)}
+            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-blue-500 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition"
+            title="ทำสำเนาคอร์ส"
+          >
             <Copy className="h-3.5 w-3.5" />
           </button>
         </div>
