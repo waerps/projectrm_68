@@ -127,6 +127,59 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
   );
 }
 
+// ─── Duplicate Course Modal (ให้แก้วันที่ก่อนทำสำเนา) ─────────────────────────
+function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
+  const [startDate, setStartDate] = useState(course.StartDate?.slice(0, 10) || "");
+  const [lastDate, setLastDate] = useState(course.LastDate?.slice(0, 10) || "");
+
+  const handleConfirm = () => {
+    if (!startDate || !lastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    if (new Date(startDate) >= new Date(lastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    onConfirm({ StartDate: startDate, LastDate: lastDate });
+  };
+
+  const inputCls = "w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const labelCls = "block text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wide";
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <Copy className="h-6 w-6 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-neutral-900">ทำสำเนาคอร์ส</h3>
+            <p className="text-xs text-neutral-400 mt-0.5 truncate">{course.CourseName}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-5">
+          <div>
+            <label className={labelCls}>วันเริ่มสอนใหม่</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>วันสิ้นสุดใหม่</label>
+            <input type="date" value={lastDate} onChange={(e) => setLastDate(e.target.value)} className={inputCls} />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onCancel} disabled={isSubmitting}
+            className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition text-sm">
+            ยกเลิก
+          </button>
+          <button onClick={handleConfirm} disabled={isSubmitting}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm">
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยันทำสำเนา</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Video Player Modal (เล่นคลิปจริง — ใช้ร่วมกันทั้งแอดมินและพรีวิว) ─────────
 function getYoutubeEmbedUrl(url) {
   const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -247,7 +300,7 @@ function StudentPreviewModal({ course, onClose }) {
     }
     return null;
   };
-  
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -1600,6 +1653,7 @@ export default function AdminCoursesPage() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
+  const [duplicatingCourse, setDuplicatingCourse] = useState(null); // ★ เพิ่ม
 
   const fetchAll = async () => {
     try {
@@ -1702,12 +1756,23 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const handleDuplicate = async (course) => {
+  // ★ แก้: เปลี่ยนจากยิง API ทันที เป็นเปิด modal ให้กรอกวันที่ก่อน
+  const handleDuplicate = (course) => {
+    setDuplicatingCourse(course);
+  };
+
+  // ★ เพิ่ม: ฟังก์ชันยืนยันทำสำเนา (เรียกจาก modal)
+  const confirmDuplicate = async ({ StartDate, LastDate }) => {
+    setIsSubmitting(true);
     try {
-      await axios.post(`${API_BASE}/courses/${course.CourseID}/duplicate`);
+      await axios.post(`${API_BASE}/courses/${duplicatingCourse.CourseID}/duplicate`, { StartDate, LastDate });
+      showToast("success", "ทำสำเนาคอร์สสำเร็จ!");
+      setDuplicatingCourse(null);
       fetchAll();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1933,6 +1998,16 @@ export default function AdminCoursesPage() {
           course={deletingCourse}
           onConfirm={handleDelete}
           onCancel={() => setDeletingCourse(null)}
+        />
+      )}
+
+      {/* ── Modal: Duplicate ── */}
+      {duplicatingCourse && (
+        <DuplicateCourseModal
+          course={duplicatingCourse}
+          onConfirm={confirmDuplicate}
+          onCancel={() => setDuplicatingCourse(null)}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>
