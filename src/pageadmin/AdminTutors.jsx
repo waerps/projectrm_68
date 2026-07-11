@@ -33,6 +33,15 @@ const formatPhone = (v) => {
   return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
 };
 
+const formatBankAccount = (v) => {
+  const d = v.replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 4) return `${d.slice(0,3)}-${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0,3)}-${d.slice(3,4)}-${d.slice(4)}`;
+  return `${d.slice(0,3)}-${d.slice(3,4)}-${d.slice(4,9)}-${d.slice(9,10)}`;
+};
+const isValidBankAccount = (v) => !v || /^\d{3}-\d{1}-\d{5}-\d{1}$/.test(v);
+
 // ★ เพิ่ม: format จำนวนเงิน เหมือนหน้าคอร์ส (Price/Discount) — comma คั่นหลักพัน ไม่มีทศนิยม
 const formatMoney = (p) =>
   Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -250,9 +259,9 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
   const displayNameOf = (t) => t.Nickname || `${t.Firstname} ${t.Lastname}`;
   const filtered = query
     ? candidates.filter(t => {
-        const q = query.toLowerCase();
-        return displayNameOf(t).toLowerCase().includes(q) || `${t.Firstname} ${t.Lastname}`.toLowerCase().includes(q);
-      }).slice(0, 8)
+      const q = query.toLowerCase();
+      return displayNameOf(t).toLowerCase().includes(q) || `${t.Firstname} ${t.Lastname}`.toLowerCase().includes(q);
+    }).slice(0, 8)
     : candidates.slice(0, 8);
 
   const pick = (t) => {
@@ -328,10 +337,11 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
       return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอกชื่อ-นามสกุล");
     if (!isEdit && (!form.username.trim() || !form.password.trim()))
       return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอก Username และ Password");
-    // ★ เพิ่ม: validate อัตราค่าสอนไม่ติดลบ (กันเหนียวฝั่ง client แม้ backend เช็คแล้ว)
     if (form.ratePerTutors !== "" && Number(form.ratePerTutors) < 0)
       return showToast("error", "ข้อมูลไม่ถูกต้อง", "อัตราค่าสอนต้องเป็นตัวเลขไม่ติดลบ");
-    onSave(form);
+    if (form.bankAccountNumber && !isValidBankAccount(form.bankAccountNumber))
+      return showToast("error", "ข้อมูลไม่ถูกต้อง", "เลขบัญชีต้องอยู่ในรูปแบบ xxx-x-xxxxx-x");
+    onSave(form);   // ← ต้องอยู่บรรทัดสุดท้าย
   };
 
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
@@ -421,7 +431,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           </div>
           <div>
             <label className={lbl}>เลขบัญชี</label>
-            <input className={inp} value={form.bankAccountNumber || ""} onChange={e => set("bankAccountNumber", e.target.value)} placeholder="xxx-x-xxxxx-x" />
+            <input className={inp} value={form.bankAccountNumber || ""} onChange={e => set("bankAccountNumber", formatBankAccount(e.target.value))} placeholder="xxx-x-xxxxx-x" />
           </div>
           <div>
             <label className={lbl}>ชื่อบัญชี</label>
@@ -432,7 +442,6 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       {/* ผู้ติดต่อฉุกเฉิน — ★ แก้: เลือกชื่อจากรายชื่อติวเตอร์ในระบบได้ (Searchable Select), เบอร์เติมอัตโนมัติแต่แก้เองได้ */}
       <div>
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ผู้ติดต่อฉุกเฉิน</p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={lbl}>ชื่อผู้ติดต่อฉุกเฉิน</label>
@@ -453,7 +462,6 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
               placeholder="098-888-8888"
               inputMode="numeric"
             />
-            <p className="text-[11px] text-slate-400 mt-1">เติมอัตโนมัติเมื่อเลือกชื่อจากรายชื่อติวเตอร์ — แก้ไขเองได้หากจำเป็น</p>
           </div>
         </div>
       </div>
@@ -470,7 +478,6 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input
             className={inp + " bg-slate-100 text-slate-500 cursor-not-allowed"}
             value={form.username}
-            disabled
             readOnly
           />
           <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
@@ -880,12 +887,7 @@ export default function AdminTutorsPage() {
     } finally { setIsDeleting(false); }
   };
 
-  // เพิ่มตรงนี้ก่อน filtered
-  const allSubjectNames = [...new Set(
-    tutors
-      .flatMap(t => (t.TeachingSubjects || t.Subjects || "").split(",").map(s => s.trim()))
-      .filter(Boolean)
-  )].sort();
+  const allSubjectNames = [...allSubjects.map(s => s.SubjectName)].sort();
 
   // แก้ filtered เดิม — ★ เพิ่มกรองตามสถานะ
   const filtered = tutors.filter(t => {
@@ -1018,7 +1020,11 @@ export default function AdminTutorsPage() {
         {paginated.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
             <div className="text-6xl mb-3">👩‍🏫</div>
-            <p className="text-slate-500 font-medium">ไม่พบติวเตอร์ที่ค้นหา</p>
+            <p className="text-slate-500 font-medium">
+              {filterSubject !== "all"
+                ? `ไม่พบติวเตอร์ที่สอนวิชา "${filterSubject}"`
+                : "ไม่พบติวเตอร์ที่ค้นหา"}
+            </p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
