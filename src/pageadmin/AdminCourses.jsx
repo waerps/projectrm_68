@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
+  BadgeCheck,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -15,7 +16,6 @@ import { ToastContainer } from "../components/Toast";
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 9;
-const STUDENT_SITE_URL = ""; // ★ ถ้าหน้านักเรียนอยู่คนละโดเมน/พอร์ต ให้ใส่ base url ตรงนี้ (เช่น "https://yourdomain.com")
 
 const STATUS_MAP = {
   1: { label: "เปิดรับสมัคร", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -45,6 +45,15 @@ const formatDate = (d) => {
 // ★ ใช้กับข้อมูลจำนวนเงินทุกจุด — คั่นหลักพันเสมอ
 const formatPrice = (p) =>
   Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+// ★ แปลงชั่วโมงทศนิยม (เช่น 24.5) เป็นข้อความอ่านง่าย เช่น "24 ชม. 30 นาที"
+const formatHoursLabel = (decimalHours) => {
+  const total = Number(decimalHours || 0);
+  const h = Math.floor(total);
+  const m = Math.round((total - h) * 60);
+  if (m === 0) return `${h} ชม.`;
+  return `${h} ชม. ${m} นาที`;
+};
 
 // ★ helper: แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ
 const sanitizeMoneyInput = (raw) => {
@@ -118,6 +127,181 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
   );
 }
 
+// ─── Preview มุมมองนักเรียน (Modal) ───────────────────────────────────────────
+function StudentPreviewModal({ course, onClose }) {
+  const [videos, setVideos] = useState([]);
+  const [loadingVideos, setLoadingVideos] = useState(true);
+  const [openIdx, setOpenIdx] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    axios.get(`${API_BASE}/courses/${course.CourseID}/preview-videos`)
+      .then(r => { if (active) setVideos(r.data); })
+      .finally(() => { if (active) setLoadingVideos(false); });
+    return () => { active = false; };
+  }, [course.CourseID]);
+
+  const formatThaiDate = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d)) return null;
+    return new Intl.DateTimeFormat("th-TH", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  };
+
+  const dateRange = (() => {
+    const s = formatThaiDate(course.StartDate);
+    const e = formatThaiDate(course.LastDate);
+    if (s && e) return `${s} - ${e}`;
+    if (s) return `${s} เป็นต้นไป`;
+    return "ไม่ระบุ";
+  })();
+
+  const getThumbnail = (url, type) => {
+    if (type === "youtube") {
+      const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+      return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
+    }
+    return null;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200 bg-white shrink-0">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shrink-0">
+              <Eye className="h-4 w-4 text-white" />
+            </span>
+            <div>
+              <p className="text-sm font-bold text-neutral-800 leading-tight">พรีวิวมุมมองนักเรียน</p>
+              <p className="text-[11px] text-neutral-400 leading-tight">แสดงตัวอย่างเท่านั้น ปุ่มบางส่วนใช้งานไม่ได้จริง</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 p-5 space-y-5">
+          <div className="grid gap-5 md:grid-cols-12">
+            {/* รูปหลัก */}
+            <div className="md:col-span-5">
+              <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-neutral-100">
+                {course.CourseImage ? (
+                  <img src={getFileUrl(course.CourseImage)} alt={course.CourseName} className="aspect-[16/10] w-full object-cover" />
+                ) : (
+                  <div className="aspect-[16/10] w-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100">
+                    <BookOpen className="h-14 w-14 text-orange-300" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ข้อมูลหลัก */}
+            <div className="md:col-span-7 space-y-4">
+              <div>
+                <h2 className="text-xl font-bold text-neutral-900 leading-snug">{course.CourseName}</h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {course.Term_Name && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-700">
+                      <BadgeCheck className="h-3.5 w-3.5 text-orange-500" /> {course.Term_Name}
+                    </span>
+                  )}
+                  {Number(course.Discount) > 0 && (
+                    <span className="rounded-full bg-red-50 text-red-600 px-2.5 py-1 text-[11px] font-bold">
+                      ลด {formatPrice(course.Discount)} บาท
+                    </span>
+                  )}
+                  {course.VideosFree > 0 && (
+                    <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-[11px] font-bold">
+                      ฟรี {course.VideosFree} คลิป
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-neutral-100">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 font-bold">฿</span>
+                  <div>
+                    <div className="text-[11px] text-neutral-500">ค่าเรียน</div>
+                    <div className="text-sm font-bold text-neutral-900">{formatPrice(course.FullCost || course.Price)} บาท</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-neutral-100">
+                  <Calendar className="h-5 w-5 text-orange-500 shrink-0" />
+                  <div>
+                    <div className="text-[11px] text-neutral-500">รอบเรียน</div>
+                    <div className="text-sm font-bold text-neutral-900">{dateRange}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ปุ่ม CTA — พรีวิว กดไม่ได้ */}
+              <button
+                type="button"
+                disabled
+                title="ปุ่มนี้ใช้งานไม่ได้ในโหมดพรีวิว"
+                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-orange-300 py-3 text-white font-bold cursor-not-allowed shadow-sm"
+              >
+                ซื้อคอร์สเรียน
+                <span className="text-[10px] font-normal bg-white/25 px-2 py-0.5 rounded-full">พรีวิว</span>
+              </button>
+            </div>
+          </div>
+
+          {/* รายละเอียดคอร์ส */}
+          <div className="rounded-2xl bg-white p-5 shadow-sm border border-neutral-100">
+            <h3 className="mb-2.5 text-sm font-bold text-neutral-800">รายละเอียดคอร์ส</h3>
+            <p className="text-sm text-neutral-600 whitespace-pre-line">
+              {course.Remark?.trim() || "ไม่มีรายละเอียดเพิ่มเติม"}
+            </p>
+          </div>
+
+          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
+          <div className="rounded-2xl bg-white shadow-sm border border-neutral-100 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-neutral-100">
+              <h3 className="text-sm font-bold text-neutral-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
+            </div>
+            {loadingVideos ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-orange-400" />
+              </div>
+            ) : videos.length === 0 ? (
+              <div className="px-5 py-4 text-sm text-neutral-500">ยังไม่มีคลิปเพิ่มเติม</div>
+            ) : (
+              videos.map((v, i) => (
+                <div key={v.VideoId}>
+                  <button
+                    onClick={() => setOpenIdx(openIdx === i ? null : i)}
+                    className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 border-b border-neutral-100 last:border-0"
+                  >
+                    <span className="text-sm font-medium text-neutral-800">{v.VideoTitle}</span>
+                    {openIdx === i ? <ChevronUp className="h-4 w-4 text-neutral-400" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                  </button>
+                  {openIdx === i && (
+                    <div className="px-5 pb-4">
+                      <div className="overflow-hidden rounded-xl bg-neutral-100 aspect-[16/9] flex items-center justify-center">
+                        {getThumbnail(v.VideoUrl, v.VideoType) ? (
+                          <img src={getThumbnail(v.VideoUrl, v.VideoType)} alt={v.VideoTitle} className="w-full h-full object-cover" />
+                        ) : (
+                          <PlayCircle className="h-10 w-10 text-neutral-300" />
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ImageUpload({ value, onChange }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -171,19 +355,25 @@ function ImageUpload({ value, onChange }) {
   );
 }
 
-// ─── ชั่วโมงสอน: input แบบแก้ไขได้ ไม่ติดลบ ─────────────────────────────────
 function HoursInlineEdit({ value, onSave, onCancel }) {
-  const [hours, setHours] = useState(String(value ?? ""));
+  const initial = Number(value || 0);
+  const [hours, setHours] = useState(String(Math.floor(initial)));
+  const [minutes, setMinutes] = useState(String(Math.round((initial - Math.floor(initial)) * 60)));
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (e) => {
+  const handleHoursChange = (e) => {
     const v = e.target.value;
     if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setHours(v);
+  };
+  const handleMinutesChange = (e) => {
+    const v = e.target.value;
+    if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0 && Number(v) < 60)) setMinutes(v);
   };
 
   const save = async () => {
     setSaving(true);
-    await onSave(Number(hours || 0));
+    const decimal = Number(hours || 0) + Number(minutes || 0) / 60;
+    await onSave(decimal);
     setSaving(false);
   };
 
@@ -191,11 +381,17 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
     <div className="flex items-center gap-1.5">
       <input
         type="number" min="0" step="1" value={hours}
-        onChange={handleChange} onKeyDown={blockNegativeKeys}
-        className="w-16 px-2 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
+        onChange={handleHoursChange} onKeyDown={blockNegativeKeys}
+        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
         autoFocus
       />
       <span className="text-xs text-neutral-400">ชม.</span>
+      <input
+        type="number" min="0" max="59" step="1" value={minutes}
+        onChange={handleMinutesChange} onKeyDown={blockNegativeKeys}
+        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
+      />
+      <span className="text-xs text-neutral-400">นาที</span>
       <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700 transition">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
       </button>
@@ -291,7 +487,7 @@ function CourseSubjects({ courseId, showToast }) {
             />
           ) : (
             <>
-              <span className="text-xs text-neutral-400 w-14 text-right">{s.TotalHours} ชม.</span>
+              <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(s.TotalHours)}</span>
               <button onClick={() => setEditingId(s.TutorCourseDetailId)}
                 className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
                 <Pencil className="h-3.5 w-3.5" />
@@ -709,6 +905,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   const [pendingSubjects, setPendingSubjects] = useState([]);
   const [pendingStudents, setPendingStudents] = useState([]);
+  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -891,13 +1088,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       </div>
 
       {initial.CourseID && (
-        <a
-          href={`${STUDENT_SITE_URL}/courses/${initial.CourseID}`}
-          target="_blank" rel="noreferrer"
-          className="flex items-center justify-center gap-2 py-2.5 border border-neutral-200 text-neutral-600 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition text-sm"
-        >
-          <Eye className="h-4 w-4" /> Preview หน้าคอร์ส (มุมมองนักเรียน)
-        </a>
+        <>
+          <button
+            type="button"
+            onClick={() => setShowPreview(true)}
+            className="flex items-center justify-center gap-2 py-2.5 border border-neutral-200 text-neutral-600 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition text-sm w-full"
+          >
+            <Eye className="h-4 w-4" /> Preview หน้าคอร์ส (มุมมองนักเรียน)
+          </button>
+          {showPreview && <StudentPreviewModal course={initial} onClose={() => setShowPreview(false)} />}
+        </>
       )}
     </div>
   );
@@ -1080,7 +1280,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
               />
             ) : (
               <>
-                <span className="text-xs text-neutral-400 w-14 text-right">{it.TotalHours || 0} ชม.</span>
+                <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(it.TotalHours || 0)}</span>
                 <button onClick={() => setEditingIndex(idx)} className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
@@ -1136,6 +1336,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
 function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
+  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
 
   return (
     <div className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
@@ -1227,32 +1428,30 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
             onClick={() => onEdit(course)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
           >
-            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+            <button onClick={() => onEdit(course)} className="...">
+              <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+            </button>
           </button>
-          <a
-            href={`${STUDENT_SITE_URL}/courses/${course.CourseID}`}
-            target="_blank" rel="noreferrer"
+
+          <button
+            onClick={() => setShowPreview(true)}
             className="flex items-center justify-center px-3 py-2 text-xs font-bold text-neutral-500 bg-neutral-50 border border-neutral-100 rounded-xl hover:bg-neutral-100 hover:border-neutral-200 transition"
             title="Preview มุมมองนักเรียน"
           >
             <Eye className="h-3.5 w-3.5" />
-          </a>
-          <button
-            onClick={() => onDelete(course)}
-            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 hover:border-red-200 transition"
-          >
+          </button>
+
+          <button onClick={() => onDelete(course)} className="...">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
-          <button
-            onClick={() => onDuplicate(course)}
-            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-blue-500 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition"
-            title="ทำสำเนาคอร์ส"
-          >
+          <button onClick={() => onDuplicate(course)} className="..." title="ทำสำเนาคอร์ส">
             <Copy className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {showPreview && <StudentPreviewModal course={course} onClose={() => setShowPreview(false)} />}
       </div>
-    </div>
+    </div >
   );
 }
 
@@ -1461,23 +1660,7 @@ export default function AdminCoursesPage() {
         ))}
       </div>
 
-      {/* ── Term Filter Tabs ── */}
-      <div className="flex flex-wrap gap-2">
-        {TERM_FILTERS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setFilterTerm(t.key)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition border ${
-              filterTerm === t.key
-                ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                : "bg-white text-neutral-600 border-neutral-200 hover:border-orange-300 hover:text-orange-600"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
+      {/* ── Search & Filter ── */}
       {/* ── Search & Filter ── */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
@@ -1501,7 +1684,15 @@ export default function AdminCoursesPage() {
               <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>
             ))}
           </select>
-
+          <select
+            value={filterTerm}
+            onChange={(e) => setFilterTerm(e.target.value)}
+            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+          >
+            {TERM_FILTERS.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
+            ))}
+          </select>
         </div>
         <p className="text-xs text-neutral-400 mt-2 pl-1">
           แสดง {filtered.length} จาก {courses.length} คอร์ส
