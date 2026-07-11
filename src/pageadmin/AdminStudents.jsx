@@ -582,7 +582,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-gradient-to-br from-orange-600 to-amber-700 rounded-2xl text-white">
         <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0" />
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold text-white text-lg">{displayName}</h2>
+          <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-contain" />
           <p className="text-sm text-orange-200">{s.Firstname} {s.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
             {s.GradeDetail && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">{s.GradeDetail}</span>}
