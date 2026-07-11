@@ -15,7 +15,6 @@ import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
-import CourseDetail from "./pages/CourseDetail.jsx"
 
 
 import Notifications from "./pages/Notifications.jsx"
@@ -75,7 +74,7 @@ const router = createBrowserRouter(
         { index: true, element: <Home /> },
         { path: "schedule", element: <Schedule /> },
         { path: "courses", element: <Courses /> },
-        { path: "courses/:id", element: <CourseDetail /> },   // ← เพิ่มบรรทัดนี้
+        { path: "courses/:id", element: <Courses /> },
         { path: "performance", element: <Performance /> },
         { path: "salary", element: <Salary /> },
         { path: "new", element: <New /> },
