@@ -115,10 +115,10 @@ function TutorAvatar({ tutor, className = "h-10 w-10 rounded-xl" }) {
 }
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children }) {
+function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
             {Icon && (
@@ -713,7 +713,7 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 }
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
-function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor }) {
+function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
   const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
   const fullName = `${t.Firstname} ${t.Lastname}`;
   const status = statusOf(t.Status_Tutor_Id);
@@ -784,6 +784,11 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1.5">
+          {/* ★ เพิ่ม: ปุ่มดูข้อมูล วางไว้เป็นปุ่มแรกสุด เหมือนหน้านักเรียน */}
+          <button onClick={() => setViewTutor(t)}
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูข้อมูลติวเตอร์">
+            <Eye className="h-3.5 w-3.5" />
+          </button>
           <button onClick={() => setEditingTutor(t)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
             <Edit2 className="h-3.5 w-3.5" /> แก้ไข
@@ -883,7 +888,8 @@ function MetricBreakdown({ tutor }) {
   );
 }
 
-function TutorScoreCard({ tutor, index, expanded, onToggle }) {
+function TutorScoreCard({ tutor, index, expanded, onToggle, onView }) {
+  {/* ★ เพิ่ม onView */ }
   const badge = calcBadge(tutor.PerformanceScore);
   const MEDAL = ['🥇', '🥈', '🥉'];
   return (
@@ -903,8 +909,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
-              ${badge.bg} ${badge.text} ${badge.border}`}>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
             <span className="text-[10px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
@@ -912,6 +917,16 @@ function TutorScoreCard({ tutor, index, expanded, onToggle }) {
         </div>
         {/* score ring */}
         <ScoreRing score={tutor.PerformanceScore} />
+
+        {/* ★ เพิ่ม: ปุ่มดวงตา — วางตรงนี้ ระหว่าง ScoreRing กับ chevron */}
+        <button
+          onClick={e => { e.stopPropagation(); onView(tutor); }}
+          className="shrink-0 p-1.5 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 hover:bg-orange-100 transition"
+          title="ดูข้อมูลติวเตอร์"
+        >
+          <Eye className="h-3.5 w-3.5" />
+        </button>
+
         {/* chevron */}
         {expanded
           ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
@@ -925,7 +940,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle }) {
 // ─── ★ ใหม่: Performance Score ประจำเดือน ของติวเตอร์ (ย้ายมาจากหน้า Attendance) ──
 const DEFAULT_TUTOR_LIMIT = 5;
 
-function TutorPerformanceRanking() {
+function TutorPerformanceRanking({ onViewTutor }) {
   const [perfData, setPerfData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
@@ -971,6 +986,7 @@ function TutorPerformanceRanking() {
                     className={`rounded-xl border p-3 text-center ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                     style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}>
                     <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
+                    <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl mx-auto mt-2 text-xs" />
                     <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">{t.Nickname}</p>
                     <p className="text-lg font-black text-slate-900 mt-1">{t.PerformanceScore}</p>
                     <p className="text-[10px] text-slate-400">คะแนน</p>
@@ -987,6 +1003,7 @@ function TutorPerformanceRanking() {
                   index={i}
                   expanded={expandedId === t.AdminId}
                   onToggle={() => setExpandedId(expandedId === t.AdminId ? null : t.AdminId)}
+                  onView={onViewTutor}
                 />
               ))}
             </div>
@@ -1021,6 +1038,120 @@ function TutorPerformanceRanking() {
   );
 }
 
+function TutorDetailModal({ tutor, onClose }) {
+  const [data, setData] = useState(null);
+  const [perf, setPerf] = useState(null);   // ★ เพิ่ม
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('overview');
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      axios.get(`${API}/tutors/${tutor.AdminId}/courses-students`),
+      axios.get(`${API}/tutors/performance`),
+    ])
+      .then(([csRes, perfRes]) => {
+        setData(csRes.data);
+        const found = (perfRes.data.tutors || []).find(t => t.AdminId === tutor.AdminId);
+        setPerf(found || null);
+      })
+      .catch(e => {
+        console.error('[TutorDetailModal]', e);
+        setData({ courses: [], students: [] });   // ★ กันไม่ให้ data เป็น null
+        setPerf(null);
+      })
+      .finally(() => setLoading(false));
+  }, [tutor.AdminId]);
+
+  const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
+  const badge = calcBadge(perf?.PerformanceScore ?? 0);
+
+  const TABS = [
+    { key: 'overview', label: 'ภาพรวม' },
+    { key: 'courses', label: 'คอร์สที่สอน', count: data?.courses.length },
+    { key: 'students', label: 'นักเรียน', count: data?.students.length },
+  ];
+
+  return (
+    <Modal title={`ข้อมูลติวเตอร์: ${displayName}`} icon={Eye} onClose={onClose} wide>
+      {/* Profile card */}
+      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+        <TutorAvatar tutor={tutor} className="h-16 w-16 rounded-2xl text-lg border-2 border-white/30" />
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-lg">{displayName}</p>
+          <p className="text-sm text-orange-100">{tutor.Firstname} {tutor.Lastname}</p>
+          <div className="flex flex-wrap gap-2 mt-2 text-xs">
+            {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-full">{tutor.TeachingSubjects}</span>}
+            <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
+          </div>
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
+            <p className="text-[10px] text-orange-100">นักเรียน</p>
+          </div>
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{tutor.TotalSessions ?? 0}</p>
+            <p className="text-[10px] text-orange-100">คาบสะสม</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5">
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}>
+            {t.label}{t.count !== undefined && ` (${t.count})`}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
+      ) : (
+        <>
+          {tab === 'courses' && (
+            data.courses.length === 0
+              ? <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่สอน</p>
+              : <div className="space-y-2">
+                {data.courses.map(c => (
+                  <div key={c.CourseID} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <p className="font-semibold text-sm text-slate-900">{c.CourseName}</p>
+                    <div className="flex gap-2 mt-1 text-[11px] text-slate-500">
+                      {c.SubjectName && <span>{c.SubjectName}</span>}
+                      <span>· {formatDate(c.StartDate)} – {formatDate(c.LastDate)}</span>
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{c.Status_Course_Name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+          )}
+
+          {tab === 'students' && (
+            data.students.length === 0
+              ? <p className="text-center text-slate-400 py-8">ยังไม่มีนักเรียน</p>
+              : <div className="space-y-1">
+                {data.students.map(s => (
+                  <div key={`${s.UserId}-${s.CourseID}`} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50">
+                    <span className="text-sm text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
+                    <span className="text-[11px] text-slate-400">{s.CourseName}</span>
+                  </div>
+                ))}
+              </div>
+          )}
+
+          {tab === 'overview' && (
+            perf
+              ? <MetricBreakdown tutor={perf} />
+              : <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูล Performance เดือนนี้</p>
+          )}
+        </>
+      )}
+    </Modal>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminTutorsPage() {
   const { toasts, showToast, removeToast } = useToast(); //alert ต่างๆ
@@ -1039,6 +1170,7 @@ export default function AdminTutorsPage() {
   const [deletingTutor, setDeletingTutor] = useState(null);
   const [resetPwdTutor, setResetPwdTutor] = useState(null);
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
+  const [viewTutor, setViewTutor] = useState(null);
   const [activeTab, setActiveTab] = useState('list');
 
   const fetchTutors = async () => {
@@ -1195,7 +1327,7 @@ export default function AdminTutorsPage() {
         </div>
 
         {/* ★ ใหม่: Performance Ranking (ย้ายมาจากหน้าบันทึกชั่วโมงการสอน) */}
-        <TutorPerformanceRanking />
+        <TutorPerformanceRanking onViewTutor={setViewTutor} />
 
         {/* Search */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
@@ -1269,6 +1401,7 @@ export default function AdminTutorsPage() {
                       setResetPwdTutor={setResetPwdTutor}
                       setDeletingTutor={setDeletingTutor}
                       setStatusTutor={setStatusTutor}
+                      setViewTutor={setViewTutor}   // ★ เพิ่ม
                     />
                   ))}
                 </tbody>
@@ -1350,6 +1483,9 @@ export default function AdminTutorsPage() {
             onSaved={fetchTutors}
             showToast={showToast}
           />
+        )}
+        {viewTutor && (
+          <TutorDetailModal tutor={viewTutor} onClose={() => setViewTutor(null)} />
         )}
       </>
       }
