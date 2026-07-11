@@ -27,7 +27,7 @@ const STATUS_MAP = {
 // ★ Mapping ตัวกรองเทอม อ้างอิงตาราง term จริง:
 // 1 = เปิดเทอม 1 (4 เดือน) | 2 = ตุลาคม (ปิดเทอมเล็ก) | 3 = เปิดเทอม 2 | 4 = ปิดเทอมใหญ่
 const TERM_FILTERS = [
-  { key: "all", label: "สถานะทั้งหมด", termId: null },
+  { key: "all", label: "ทุกเทอม", termId: null },
   { key: "term1", label: "เทอม 1", termId: 1 },
   { key: "term2", label: "เทอม 2", termId: 3 },
   { key: "smallbreak", label: "ปิดเทอมเล็ก", termId: 2 },
@@ -127,11 +127,90 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
   );
 }
 
+// ─── Video Player Modal (เล่นคลิปจริง — ใช้ร่วมกันทั้งแอดมินและพรีวิว) ─────────
+function getYoutubeEmbedUrl(url) {
+  const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+  return m ? `https://www.youtube.com/embed/${m[1]}?autoplay=1` : null;
+}
+
+function getDriveEmbedUrl(url) {
+  // รองรับทั้งแบบ .../file/d/FILE_ID/view และ .../open?id=FILE_ID
+  const m = url?.match(/\/file\/d\/([^/]+)/) || url?.match(/[?&]id=([^&]+)/);
+  return m ? `https://drive.google.com/file/d/${m[1]}/preview` : null;
+}
+
+function VideoPlayerModal({ video, onClose }) {
+  const { VideoUrl, VideoType, VideoTitle } = video;
+
+  const renderPlayer = () => {
+    if (VideoType === "youtube") {
+      const embedUrl = getYoutubeEmbedUrl(VideoUrl);
+      if (!embedUrl) return <ErrorState message="ลิงก์ YouTube ไม่ถูกต้อง เล่นไม่ได้" />;
+      return (
+        <iframe
+          src={embedUrl}
+          title={VideoTitle}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      );
+    }
+    if (VideoType === "drive") {
+      const embedUrl = getDriveEmbedUrl(VideoUrl);
+      if (!embedUrl) return <ErrorState message="ลิงก์ Google Drive ไม่ถูกต้อง เล่นไม่ได้" />;
+      return (
+        <iframe
+          src={embedUrl}
+          title={VideoTitle}
+          className="w-full h-full"
+          allow="autoplay"
+          allowFullScreen
+        />
+      );
+    }
+    // upload (Cloudinary) — ไฟล์วิดีโอตรงๆ เล่นด้วย <video> ได้เลย
+    return (
+      <video
+        src={VideoUrl}
+        controls
+        autoPlay
+        className="w-full h-full bg-black"
+      />
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+      <div className="bg-black rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 bg-neutral-900">
+          <p className="text-sm font-bold text-white truncate pr-4">{VideoTitle}</p>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-neutral-400 hover:bg-white/10 hover:text-white transition shrink-0">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="aspect-video w-full">
+          {renderPlayer()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ message }) {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-neutral-900">
+      <p className="text-sm text-neutral-400">{message}</p>
+    </div>
+  );
+}
+
 // ─── Preview มุมมองนักเรียน (Modal) ───────────────────────────────────────────
 function StudentPreviewModal({ course, onClose }) {
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [openIdx, setOpenIdx] = useState(null);
+  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
 
   useEffect(() => {
     let active = true;
@@ -261,6 +340,7 @@ function StudentPreviewModal({ course, onClose }) {
           </div>
 
           {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
+          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
           <div className="rounded-2xl bg-white shadow-sm border border-neutral-100 overflow-hidden">
             <div className="px-5 py-3.5 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
@@ -283,13 +363,20 @@ function StudentPreviewModal({ course, onClose }) {
                   </button>
                   {openIdx === i && (
                     <div className="px-5 pb-4">
-                      <div className="overflow-hidden rounded-xl bg-neutral-100 aspect-[16/9] flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setPlayingVideo(v)}
+                        className="relative w-full overflow-hidden rounded-xl bg-neutral-100 aspect-[16/9] flex items-center justify-center group cursor-pointer"
+                      >
                         {getThumbnail(v.VideoUrl, v.VideoType) ? (
                           <img src={getThumbnail(v.VideoUrl, v.VideoType)} alt={v.VideoTitle} className="w-full h-full object-cover" />
                         ) : (
                           <PlayCircle className="h-10 w-10 text-neutral-300" />
                         )}
-                      </div>
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition">
+                          <PlayCircle className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition" />
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -298,6 +385,7 @@ function StudentPreviewModal({ course, onClose }) {
           </div>
         </div>
       </div>
+      {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
     </div>
   );
 }
@@ -681,6 +769,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
   const fileInputRef = useRef(null);
 
   const emptyForm = { title: "", mode: "youtube", url: "", duration: "" };
@@ -795,11 +884,21 @@ function CoursePreviewVideos({ courseId, showToast }) {
       ) : (
         videos.map(v => (
           <div key={v.VideoId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
-            <div className="w-14 h-9 rounded-lg bg-neutral-100 flex items-center justify-center overflow-hidden shrink-0">
-              {getThumbnail(v.VideoUrl, v.VideoType)
-                ? <img src={getThumbnail(v.VideoUrl, v.VideoType)} className="w-full h-full object-cover" />
-                : <PlayCircle className="h-5 w-5 text-neutral-300" />}
-            </div>
+            <button
+              type="button"
+              onClick={() => setPlayingVideo(v)}
+              className="relative w-14 h-9 rounded-lg bg-neutral-100 flex items-center justify-center overflow-hidden shrink-0 group cursor-pointer"
+              title="เล่นวิดีโอ"
+            >
+              {getThumbnail(v.VideoUrl, v.VideoType) ? (
+                <img src={getThumbnail(v.VideoUrl, v.VideoType)} className="w-full h-full object-cover" />
+              ) : (
+                <PlayCircle className="h-5 w-5 text-neutral-300" />
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition">
+                <PlayCircle className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition" />
+              </div>
+            </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-neutral-800 truncate">{v.VideoTitle}</p>
               <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5
@@ -881,6 +980,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
           </div>
         </div>
       )}
+
+      {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
     </div>
   );
 }
