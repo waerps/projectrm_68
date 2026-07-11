@@ -580,8 +580,11 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
     <Modal title={`ข้อมูลนักเรียน: ${displayName}`} icon={Eye} onClose={onClose} wide>
       {/* Profile Card */}
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-gradient-to-br from-orange-600 to-amber-700 rounded-2xl text-white">
-        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0" />
-        <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-contain" />
+        {/* เอาเครื่องหมาย / ออกจากท้าย div นี้ และให้ครอบ img แทน */}
+        <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
+          <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-contain" />
+        </div>
+
         <div className="flex-1 min-w-0">
           <p className="text-sm text-orange-200">{s.Firstname} {s.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
@@ -604,6 +607,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
           </div>
         </div>
       </div>
+
 
       {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
       {selectedCourse && tab !== "courses" && (
