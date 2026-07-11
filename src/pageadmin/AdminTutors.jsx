@@ -8,7 +8,7 @@ import {
   Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
-  UserCog, UserCheck, UserX, Info,
+  UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
@@ -806,6 +806,221 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
   );
 }
 
+// ─── ★ ใหม่: Performance Score helpers (ย้ายมาจาก AdminAttendanceDashboard) ──
+function calcBadge(score) {
+  if (score >= 90) return { label: 'ดีเด่น', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+  if (score >= 80) return { label: 'เยี่ยม', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+  if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+  if (score >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+  return { label: 'ต้องปรับปรุง', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+}
+
+function ScoreRing({ score }) {
+  const r = 20, circ = 2 * Math.PI * r;
+  const dash = (score / 100) * circ;
+  const color = score >= 80 ? '#1D9E75' : score >= 60 ? '#BA7517' : '#E24B4A';
+  return (
+    <svg width="56" height="56">
+      <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="5"
+        strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`}
+        strokeDashoffset={`${(circ / 4).toFixed(1)}`}
+        strokeLinecap="round" />
+      <text x="28" y="33" textAnchor="middle" fontSize="14" fontWeight="500" fill={color}>{score}</text>
+    </svg>
+  );
+}
+
+function MetricBreakdown({ tutor }) {
+  const metrics = [
+    {
+      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 40,
+      sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`
+    },
+    {
+      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 30,
+      sub: 'วัดจาก stddev การสอนต่อสัปดาห์'
+    },
+    {
+      name: 'ชั่วโมงสอนสะสม', val: tutor.WorkloadScore, weight: 30,
+      sub: `${tutor.TotalHours} ชม. (เทียบกับ top)`
+    },
+  ];
+
+  return (
+    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+      {metrics.map(m => {
+        const contrib = Math.round(m.val * m.weight / 100);
+        const barColor = m.val >= 80 ? 'bg-emerald-500'
+          : m.val >= 60 ? 'bg-amber-500' : 'bg-red-500';
+        const textColor = m.val >= 80 ? 'text-emerald-700'
+          : m.val >= 60 ? 'text-amber-700' : 'text-red-700';
+        return (
+          <div key={m.name}>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 w-36 shrink-0">
+                {m.name}
+                <span className="text-[10px] ml-1">(×{m.weight}%)</span>
+              </span>
+              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                <div className={`h-full rounded-full ${barColor}`}
+                  style={{ width: `${m.val}%` }} />
+              </div>
+              <span className={`text-xs font-semibold w-6 text-right ${textColor}`}>
+                {contrib}
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 ml-[9.5rem] mt-0.5">{m.sub}</p>
+          </div>
+        );
+      })}
+
+      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+        <span className="text-xs text-slate-500">คะแนนรวม</span>
+        <span className="text-base font-semibold">{tutor.PerformanceScore} / 100</span>
+      </div>
+    </div>
+  );
+}
+
+function TutorScoreCard({ tutor, index, expanded, onToggle }) {
+  const badge = calcBadge(tutor.PerformanceScore);
+  const MEDAL = ['🥇', '🥈', '🥉'];
+  return (
+    <div className={`bg-white rounded-2xl border transition-all
+      ${index === 0 ? 'border-amber-300' : 'border-slate-200'}`}>
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+        onClick={onToggle}>
+        {/* rank */}
+        <span className="text-lg w-6 text-center shrink-0">
+          {index < 3 ? MEDAL[index] : <span className="text-xs text-slate-400">{index + 1}</span>}
+        </span>
+        {/* avatar */}
+        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold shrink-0">
+          {tutor.Nickname?.slice(0, 2)}
+        </div>
+        {/* info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
+              ${badge.bg} ${badge.text} ${badge.border}`}>
+              {badge.label}
+            </span>
+            <span className="text-[10px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
+          </div>
+        </div>
+        {/* score ring */}
+        <ScoreRing score={tutor.PerformanceScore} />
+        {/* chevron */}
+        {expanded
+          ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
+          : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
+      </div>
+      {expanded && <div className="px-4 pb-3"><MetricBreakdown tutor={tutor} /></div>}
+    </div>
+  );
+}
+
+// ─── ★ ใหม่: Performance Score ประจำเดือน ของติวเตอร์ (ย้ายมาจากหน้า Attendance) ──
+const DEFAULT_TUTOR_LIMIT = 5;
+
+function TutorPerformanceRanking() {
+  const [perfData, setPerfData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState(null);
+  const [showLimit, setShowLimit] = useState(DEFAULT_TUTOR_LIMIT);
+
+  useEffect(() => {
+    axios.get(`${API}/tutors/performance`)
+      .then(r => setPerfData(r.data.tutors || []))
+      .catch(e => console.error(e))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const visible = perfData.slice(0, showLimit);
+  const hasMore = perfData.length > showLimit;
+  const top3 = perfData.slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-orange-100
+                      bg-gradient-to-r from-orange-500 to-amber-500">
+        <div className="flex items-center gap-2.5">
+          <BarChart2 className="h-5 w-5 text-white" />
+          <h2 className="font-bold text-white text-sm">Performance Score ติวเตอร์ประจำเดือน</h2>
+        </div>
+        <span className="text-[11px] text-orange-100">เช็กอิน 40% + ความสม่ำเสมอ 30% + ชั่วโมงสอน 30%</span>
+      </div>
+
+      <div className="px-5 py-5 space-y-4">
+        {loading ? (
+          <div className="flex items-center justify-center h-32">
+            <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+          </div>
+        ) : perfData.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-slate-400 text-sm">ยังไม่มีข้อมูล Performance ในเดือนนี้</p>
+          </div>
+        ) : (
+          <>
+            {perfData.length >= 2 && (
+              <div className="grid grid-cols-3 gap-3">
+                {[top3[1], top3[0], top3[2]].map((t, i) => t && (
+                  <div key={t.AdminId}
+                    className={`rounded-xl border p-3 text-center ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}>
+                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
+                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">{t.Nickname}</p>
+                    <p className="text-lg font-black text-slate-900 mt-1">{t.PerformanceScore}</p>
+                    <p className="text-[10px] text-slate-400">คะแนน</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              {visible.map((t, i) => (
+                <TutorScoreCard
+                  key={t.AdminId}
+                  tutor={t}
+                  index={i}
+                  expanded={expandedId === t.AdminId}
+                  onToggle={() => setExpandedId(expandedId === t.AdminId ? null : t.AdminId)}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-slate-400">
+                แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
+                <span className="font-semibold text-slate-600">{perfData.length}</span> คน
+              </p>
+              <div className="flex gap-2">
+                {showLimit > DEFAULT_TUTOR_LIMIT && (
+                  <button onClick={() => { setShowLimit(DEFAULT_TUTOR_LIMIT); setExpandedId(null); }}
+                    className="text-xs text-slate-500 hover:text-slate-700 underline underline-offset-2 transition">
+                    แสดงน้อยลง
+                  </button>
+                )}
+                {hasMore && (
+                  <button onClick={() => setShowLimit(v => v + DEFAULT_TUTOR_LIMIT)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
+                               text-orange-600 bg-orange-50 border border-orange-200
+                               rounded-lg hover:bg-orange-100 transition">
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    แสดงเพิ่มอีก {Math.min(DEFAULT_TUTOR_LIMIT, perfData.length - showLimit)} คน
+                  </button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminTutorsPage() {
   const { toasts, showToast, removeToast } = useToast(); //alert ต่างๆ
@@ -978,6 +1193,9 @@ export default function AdminTutorsPage() {
             </div>
           ))}
         </div>
+
+        {/* ★ ใหม่: Performance Ranking (ย้ายมาจากหน้าบันทึกชั่วโมงการสอน) */}
+        <TutorPerformanceRanking />
 
         {/* Search */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
