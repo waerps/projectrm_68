@@ -36,9 +36,9 @@ const formatPhone = (v) => {
 const formatBankAccount = (v) => {
   const d = v.replace(/\D/g, "").slice(0, 10);
   if (d.length <= 3) return d;
-  if (d.length <= 4) return `${d.slice(0,3)}-${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0,3)}-${d.slice(3,4)}-${d.slice(4)}`;
-  return `${d.slice(0,3)}-${d.slice(3,4)}-${d.slice(4,9)}-${d.slice(9,10)}`;
+  if (d.length <= 4) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}-${d.slice(3, 4)}-${d.slice(4)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 4)}-${d.slice(4, 9)}-${d.slice(9, 10)}`;
 };
 const isValidBankAccount = (v) => !v || /^\d{3}-\d{1}-\d{5}-\d{1}$/.test(v);
 
@@ -476,7 +476,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <div>
           <label className={lbl}>Username</label>
           <input
-            className={inp + " bg-slate-100 text-slate-500 cursor-not-allowed"}
+            className={inp + " bg-slate-50 text-slate-900 font-medium cursor-default"}
             value={form.username}
             readOnly
           />
@@ -960,9 +960,9 @@ export default function AdminTutorsPage() {
         {/* Stats — ★ เพิ่มคำอธิบายที่มาของตัวเลข + แยกนับเฉพาะติวเตอร์ที่ "กำลังสอน" สำหรับนักเรียนรวม/คาบสอนรวม */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: `กำลังสอน ${activeTutorCount} · เลิกสอน ${inactiveTutorCount}` },
-            { label: "นักเรียนรวม", value: tutors.reduce((s, t) => s + Number(t.StudentCount || 0), 0), color: "bg-blue-500", hint: "นับจากนักเรียนที่ลงทะเบียนในคอร์สที่ติวเตอร์แต่ละคนสอน (ไม่ซ้ำคน)" },
-            { label: "มีข้อมูลธนาคาร", value: tutors.filter(t => t.BankName).length, color: "bg-indigo-500" },
+            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)" },
+            { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500" },
+            { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500" },
           ].map(({ label, value, color, hint }, i) => (
             <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
