@@ -387,7 +387,7 @@ function CourseStudents({ courseId, showToast }) {
 }
 
 // ─── Course Form ─────────────────────────────────────────────────────────────
-function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], showToast }) {
+function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
     StartDate: "",
@@ -399,6 +399,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Remark: "",
     Status_Course_Id: 1,
     Term_Id: 1,
+    Course_Availability_Id: "",   // ★ เพิ่ม
     CourseImage: "",
     YearId: "",
     ...initial,
@@ -486,7 +487,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       </div>
 
       {/* ★ รวมเป็น grid-cols-3 แถวเดียว: สถานะคอร์ส / เทอม / ปีการศึกษา */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>สถานะคอร์ส</label>
           <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
@@ -499,12 +500,24 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
           </select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
           <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
             <option value="">เลือกปีการศึกษา</option>
-            {yearOptions.map((y) => (
-              <option key={y.YearId} value={y.YearId}>{y.YearName}</option>
+            {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>รูปแบบการเรียน</label>
+          <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls}>
+            <option value="">ไม่ระบุ</option>
+            {availabilityOptions.map((a) => (
+              <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
+                {a.Course_Availability_Name}
+              </option>
             ))}
           </select>
         </div>
@@ -836,6 +849,11 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
               {course.Term_Name}
             </span>
           )}
+          {course.Course_Availability_Name && (
+            <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-semibold">
+              {course.Course_Availability_Name}
+            </span>
+          )}
           {course.VideosFree > 0 && (
             <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-semibold">
               ฟรี {course.VideosFree} คลิป
@@ -892,6 +910,7 @@ export default function AdminCoursesPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
+  const [availabilityOptions, setAvailabilityOptions] = useState([]);
 
   const fetchAll = async () => {
     try {
@@ -900,11 +919,13 @@ export default function AdminCoursesPage() {
         axios.get(`${API_BASE}/status-course`),
         axios.get(`${API_BASE}/term`),
         axios.get(`${API_BASE}/year`),
+        axios.get(`${API_BASE}/course-availability`), // ★ เพิ่ม
       ]);
       setCourses(cRes.data);
       setStatusOptions(sRes.data);
       setTermOptions(tRes.data);
       setYearOptions(yRes.data);
+      setAvailabilityOptions(aRes.data); // ★ เพิ่ม
     } catch (e) {
       console.error("Fetch error:", e);
     } finally {
@@ -1171,6 +1192,7 @@ export default function AdminCoursesPage() {
             statusOptions={statusOptions}
             termOptions={termOptions}
             yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
+            availabilityOptions={availabilityOptions}  // ★ เพิ่ม
             showToast={showToast}
           />
         </Modal>
@@ -1187,6 +1209,7 @@ export default function AdminCoursesPage() {
             statusOptions={statusOptions}
             termOptions={termOptions}
             yearOptions={yearOptions}   // ★ ต้องมีบรรทัดนี้
+            availabilityOptions={availabilityOptions}  // ★ เพิ่ม
             showToast={showToast}
           />
         </Modal>
