@@ -256,13 +256,14 @@ function CourseSubjects({ courseId, showToast }) {
   );
 }
 
-function CourseStudents({ courseId, showToast }) {
+function CourseStudents({ courseId, courseStatusId, showToast }) {
   const [students, setStudents] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
   const [adding, setAdding] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  const canAddStudents = [1, 2].includes(Number(courseStatusId));
 
   const fetchStudents = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/students`);
@@ -309,13 +310,23 @@ function CourseStudents({ courseId, showToast }) {
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
         <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
-        {!adding && (
+        {!adding && canAddStudents && (
           <button onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
             <Plus className="h-3.5 w-3.5" /> เพิ่มนักเรียน
           </button>
         )}
       </div>
+
+      {/* ★ เพิ่ม: แจ้งเตือนเมื่อสถานะไม่อนุญาตให้เพิ่ม */}
+      {!canAddStudents && (
+        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700">
+            คอร์สนี้ปิดรับสมัคร/ปิดคอร์สแล้ว จึงไม่สามารถเพิ่มนักเรียนใหม่ได้ (นำนักเรียนออกได้ตามปกติ)
+          </p>
+        </div>
+      )}
 
       {students.length === 0 && !adding && (
         <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
@@ -549,8 +560,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
-          ? <CourseStudents courseId={initial.CourseID} showToast={showToast} />
-          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} showToast={showToast} />}
+          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} />
+          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
       </div>
 
       <div className="flex gap-3 pt-2">
@@ -573,9 +584,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   );
 }
 
-function PendingStudentPicker({ items, onChange }) {
+function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
+  const willBeBlocked = ![1, 2].includes(Number(statusCourseId));
 
   useEffect(() => {
     axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
@@ -613,6 +625,16 @@ function PendingStudentPicker({ items, onChange }) {
       <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
         <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
       </div>
+
+      {/* ★ เพิ่ม: เตือนถ้าสถานะที่เลือกไว้จะทำให้เพิ่มไม่ได้ */}
+      {willBeBlocked && items.length > 0 && (
+        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+          <p className="text-xs text-amber-700">
+            สถานะคอร์สที่เลือกไม่ใช่ "เปิดรับสมัคร/กำลังสอน" นักเรียนที่เลือกไว้จะยังไม่ถูกเพิ่มจนกว่าจะเปลี่ยนสถานะภายหลัง
+          </p>
+        </div>
+      )}
 
       {/* ★ ใหม่: รายชื่อที่เลือกไว้แล้ว พร้อมปุ่ม X เอาออก */}
       {selectedStudents.length > 0 && (
@@ -942,22 +964,35 @@ export default function AdminCoursesPage() {
     try {
       const res = await axios.post(`${API_BASE}/courses`, courseData);
       const CourseID = res.data.CourseID;
-
+  
       const subjectResults = await Promise.allSettled(
         pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
-
+  
       let enrollFailed = 0;
+      let studentsSkippedDueToStatus = false;
+      const isEnrollAllowed = [1, 2].includes(Number(courseData.Status_Course_Id));
+  
       if (pendingStudents.length) {
-        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
-          UserIds: pendingStudents,
-          CourseID,
-        });
-        enrollFailed = enrollRes.data.failed?.length || 0;
+        if (isEnrollAllowed) {
+          const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
+            UserIds: pendingStudents,
+            CourseID,
+          });
+          enrollFailed = enrollRes.data.failed?.length || 0;
+        } else {
+          studentsSkippedDueToStatus = true; // ★ ไม่ยิง request เลย
+        }
       }
-
-      if (subjectFailed > 0 || enrollFailed > 0) {
+  
+      if (studentsSkippedDueToStatus) {
+        showToast(
+          "error",
+          "สร้างคอร์สสำเร็จ แต่ยังไม่ได้เพิ่มนักเรียน",
+          "เนื่องจากสถานะคอร์สไม่ใช่เปิดรับสมัคร/กำลังสอน กรุณาเปลี่ยนสถานะก่อนแล้วเพิ่มนักเรียนภายหลัง"
+        );
+      } else if (subjectFailed > 0 || enrollFailed > 0) {
         showToast(
           "error",
           "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",

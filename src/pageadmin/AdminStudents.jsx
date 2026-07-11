@@ -365,7 +365,11 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 
   useEffect(() => { axios.get(`${API}/courses`).then(r => setAllCourses(r.data)); }, []);
 
-  const available = allCourses.filter(c => !enrolledCourseIds.has(String(c.CourseID)));
+  // ★ เพิ่ม: กรองเฉพาะคอร์สที่เปิดรับสมัคร(1) หรือกำลังสอน(2)
+  const available = allCourses.filter(c =>
+    !enrolledCourseIds.has(String(c.CourseID)) &&
+    [1, 2].includes(Number(c.Status_Course_Id))
+  );
   const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
 
   const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
@@ -432,6 +436,10 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
           {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
         </button>
       </div>
+
+      {/* ★ เพิ่ม: บอกให้รู้ว่ากรองอะไรอยู่ */}
+      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่</p>
+
       <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
         {filtered.length === 0 ? (
           <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
