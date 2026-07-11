@@ -1,13 +1,13 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
   Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
-  AlertTriangle, KeyRound, CreditCard, Briefcase, Shield
+  AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
@@ -26,6 +26,27 @@ const formatDate = (d) => {
     if (isNaN(date.getTime())) return "ไม่ระบุ";
     return date.toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
   } catch { return "ไม่ระบุ"; }
+};
+
+// ★ เพิ่ม: format เบอร์โทร เหมือนหน้านักเรียน (098-888-8888)
+const formatPhone = (v) => {
+  const d = v.replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
+};
+
+// ★ เพิ่ม: format จำนวนเงิน เหมือนหน้าคอร์ส (Price/Discount) — comma คั่นหลักพัน ไม่มีทศนิยม
+const formatMoney = (p) =>
+  Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+// ★ เพิ่ม: helper แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ
+const sanitizeMoneyInput = (raw) => {
+  const cleaned = String(raw).replace(/,/g, "").replace(/[^0-9]/g, "");
+  return cleaned;
+};
+const blockNegativeKeys = (e) => {
+  if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
@@ -52,6 +73,60 @@ function Modal({ title, icon: Icon, onClose, children }) {
   );
 }
 
+// ─── ImageUpload (เหมือนหน้าคอร์สทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
+function ImageUpload({ value, onChange }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return setErr("ไฟล์ต้องไม่เกิน 5MB");
+    setErr(""); setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await axios.post(`${API}/upload/image`, fd);
+      onChange(res.data.path);
+    } catch {
+      setErr("อัปโหลดไม่สำเร็จ");
+    } finally { setUploading(false); }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
+        className={`relative flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed cursor-pointer transition
+          ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50"}`}
+      >
+        {value && !uploading && (
+          <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
+        )}
+        <div className="relative z-10 flex flex-col items-center gap-1 text-center">
+          {uploading
+            ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
+            : value
+              ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+          }
+        </div>
+        <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
+          onChange={(e) => handleFile(e.target.files[0])} />
+      </div>
+      {err && <p className="text-xs text-red-500">{err}</p>}
+      {value && !uploading && (
+        <button type="button" onClick={() => onChange("")}
+          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          <X className="h-3.5 w-3.5" /> ลบรูปภาพ
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── TutorForm ─────────────────────────────────────────────────────────────────
 function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
   const [form, setForm] = useState({
@@ -71,16 +146,24 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
     bankName: initial.BankName || initial.bankName || "",
     bankAccountNumber: initial.BankAccountNumber || initial.bankAccountNumber || "",
     bankAccountName: initial.BankAccountName || initial.bankAccountName || "",
+    photo: initial.Photo || initial.photo || "", // ★ เพิ่ม: รูปโปรไฟล์
   });
   const [showPwd, setShowPwd] = useState(false);
   const isEdit = !!initial.AdminId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // ★ เพิ่ม: helper สำหรับช่องเงิน (เหมือนหน้าคอร์ส — comma คั่นหลักพัน)
+  const handleMoneyChange = (key) => (e) => set(key, sanitizeMoneyInput(e.target.value));
+  const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatMoney(v));
 
   const submit = () => {
     if (!form.firstname.trim() || !form.lastname.trim())
       return alert("กรุณากรอกชื่อ-นามสกุล");
     if (!isEdit && (!form.username.trim() || !form.password.trim()))
       return alert("กรุณากรอก Username และ Password");
+    // ★ เพิ่ม: validate อัตราค่าสอนไม่ติดลบ (กันเหนียวฝั่ง client แม้ backend เช็คแล้ว)
+    if (form.ratePerTutors !== "" && Number(form.ratePerTutors) < 0)
+      return alert("อัตราค่าสอนต้องเป็นตัวเลขไม่ติดลบ");
     onSave(form);
   };
 
@@ -89,6 +172,12 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
 
   return (
     <div className="space-y-5">
+      {/* ★ เพิ่ม: รูปโปรไฟล์ */}
+      <div>
+        <label className={lbl}>รูปโปรไฟล์</label>
+        <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
@@ -106,7 +195,14 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
         <div>
           <label className={lbl}>เบอร์โทร</label>
-          <input className={inp} value={form.phoneNo || ""} onChange={e => set("phoneNo", e.target.value)} placeholder="08x-xxx-xxxx" />
+          {/* ★ แก้: ใช้ formatPhone เหมือนหน้านักเรียน */}
+          <input
+            className={inp}
+            value={form.phoneNo || ""}
+            onChange={e => set("phoneNo", formatPhone(e.target.value))}
+            placeholder="098-888-8888"
+            inputMode="numeric"
+          />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -126,7 +222,15 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
         <div>
           <label className={lbl}>อัตราค่าสอน (บาท/ชม.)</label>
-          <input type="number" className={inp} value={form.ratePerTutors || ""} onChange={e => set("ratePerTutors", e.target.value)} placeholder="180" />
+          {/* ★ แก้: comma คั่นหลักพัน + กันติดลบ เหมือน Price/Discount ของคอร์ส */}
+          <input
+            type="text" inputMode="numeric"
+            className={inp}
+            value={moneyDisplay(form.ratePerTutors)}
+            onChange={handleMoneyChange("ratePerTutors")}
+            onKeyDown={blockNegativeKeys}
+            placeholder="180"
+          />
         </div>
       </div>
 
@@ -159,13 +263,34 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting }) {
         </div>
         <div>
           <label className={lbl}>เบอร์ผู้ติดต่อฉุกเฉิน</label>
-          <input className={inp} value={form.emergencyContactPhoneNo || ""} onChange={e => set("emergencyContactPhoneNo", e.target.value)} />
+          {/* ★ แก้: ใช้ formatPhone เช่นเดียวกับเบอร์หลัก */}
+          <input
+            className={inp}
+            value={form.emergencyContactPhoneNo || ""}
+            onChange={e => set("emergencyContactPhoneNo", formatPhone(e.target.value))}
+            placeholder="098-888-8888"
+            inputMode="numeric"
+          />
         </div>
       </div>
       <div>
         <label className={lbl}>หมายเหตุ</label>
         <textarea className={inp} rows={2} value={form.remark || ""} onChange={e => set("remark", e.target.value)} />
       </div>
+
+      {/* ★ เพิ่ม: แสดง Username แบบอ่านอย่างเดียวตอนแก้ไข เหมือนหน้านักเรียน */}
+      {isEdit && (
+        <div>
+          <label className={lbl}>Username</label>
+          <input
+            className={inp + " bg-slate-100 text-slate-500 cursor-not-allowed"}
+            value={form.username}
+            disabled
+            readOnly
+          />
+          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
+        </div>
+      )}
 
       {!isEdit && (
         <div className="border border-orange-100 rounded-xl p-4 space-y-3 bg-orange-50/40">
@@ -304,106 +429,6 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
     </div>
   );
 }
-
-// ─── TutorCard ─────────────────────────────────────────────────────────────────
-// function TutorCard({ tutor, onEdit, onDelete, onResetPwd }) {
-//   const [imgErr, setImgErr] = useState(false);
-//   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
-//   const fullName = `${tutor.Firstname} ${tutor.Lastname}`;
-//   const isPlaceholder = tutor.Firstname === "ไม่ระบุ";
-
-//   return (
-//     <div className="bg-white rounded-2xl border-2 border-slate-100 hover:border-orange-300 hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col">
-//       <div className="relative h-24 bg-gradient-to-br from-orange-400 to-amber-500 overflow-hidden">
-//         <div className="absolute inset-0 opacity-20"
-//           style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #fde68a 0%, transparent 60%)" }} />
-//         <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/30 text-white text-[10px] font-bold rounded-full backdrop-blur-sm">
-//           #{tutor.AdminId}
-//         </span>
-//         <span className="absolute top-2 right-2 px-2 py-0.5 bg-amber-900/60 text-white text-[10px] font-bold rounded-full backdrop-blur-sm">
-//           {tutor.ExperienceYear} ปี
-//         </span>
-//         <div className="absolute -bottom-8 left-4">
-//           <div className="h-16 w-16 rounded-2xl border-4 border-white overflow-hidden bg-orange-50 shadow-md">
-//             {tutor.Photo && !imgErr ? (
-//                 onError={() => setImgErr(true)} className="w-full h-full object-cover" />
-//             ) : (
-//               // FIX #6-equivalent: ใช้ AdminId เป็น seed
-//               <img src={avatarUrl(tutor.AdminId)} alt={displayName} className="w-full h-full object-cover" />
-//             )}
-//           </div>
-//         </div>
-//       </div>
-
-//       <div className="pt-10 px-4 pb-4 flex-1 flex flex-col">
-//         <div className="mb-3">
-//           <h3 className="font-bold text-slate-900 text-sm leading-tight">{displayName}</h3>
-//           {!isPlaceholder && displayName !== fullName && (
-//             <p className="text-xs text-slate-400 mt-0.5">{fullName}</p>
-//           )}
-//           {tutor.Occupation && (
-//             <p className="text-xs text-orange-600 font-medium mt-0.5 flex items-center gap-1">
-//               <Briefcase className="h-3 w-3" />{tutor.Occupation}
-//             </p>
-//           )}
-//         </div>
-
-//         <div className="grid grid-cols-3 gap-2 mb-3">
-//           <div className="bg-blue-50 rounded-lg p-2 text-center">
-//             <p className="text-lg font-black text-blue-700">{tutor.StudentCount || 0}</p>
-//             <p className="text-[10px] text-blue-500 font-medium">นักเรียน</p>
-//           </div>
-//           <div className="bg-emerald-50 rounded-lg p-2 text-center">
-//             <p className="text-lg font-black text-emerald-700">{tutor.TotalSessions || 0}</p>
-//             <p className="text-[10px] text-emerald-500 font-medium">คาบ</p>
-//           </div>
-//           <div className="bg-orange-50 rounded-lg p-2 text-center">
-//             <p className="text-lg font-black text-orange-700">
-//               {tutor.RatePerTutors ? Number(tutor.RatePerTutors).toLocaleString() : "—"}
-//             </p>
-//             <p className="text-[10px] text-orange-500 font-medium">บาท/ชม.</p>
-//           </div>
-//         </div>
-
-//         {tutor.PhoneNo && tutor.PhoneNo !== "000-000-0000" && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-//             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-//             <span>{tutor.PhoneNo}</span>
-//           </div>
-//         )}
-
-//         {tutor.Subjects && (
-//           <div className="flex items-start gap-1.5 text-xs text-slate-500 mb-3">
-//             <BookOpen className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" />
-//             <span className="line-clamp-1">{tutor.Subjects}</span>
-//           </div>
-//         )}
-
-//         {tutor.BankName && (
-//           <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
-//             <CreditCard className="h-3.5 w-3.5 shrink-0" />
-//             <span className="truncate">{tutor.BankName} · {tutor.BankAccountNumber}</span>
-//           </div>
-//         )}
-
-//         <div className="mt-auto pt-3 border-t border-slate-100 flex gap-1.5">
-//           <button onClick={() => onEdit(tutor)}
-//             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
-//             <Edit2 className="h-3.5 w-3.5" /> แก้ไข
-//           </button>
-//           <button onClick={() => onResetPwd(tutor)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition" title="รีเซ็ตรหัสผ่าน">
-//             <KeyRound className="h-3.5 w-3.5" />
-//           </button>
-//           <button onClick={() => onDelete(tutor)}
-//             className="flex items-center justify-center px-2.5 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition">
-//             <Trash2 className="h-3.5 w-3.5" />
-//           </button>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
 function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor }) {
