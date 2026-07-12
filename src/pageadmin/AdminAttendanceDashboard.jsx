@@ -2,12 +2,11 @@ import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Search, ChevronDown, ChevronUp, X, Download,
+  Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Download,
   AlertTriangle, Clock, CheckCircle,
   Percent, Users, BookOpen, Camera,
   EyeIcon
 } from 'lucide-react';
-
 const API_BASE = `${API_URL}/api/admin`;
 
 // ── Avatar สีวน ──────────────────────────────────────────────
@@ -81,8 +80,8 @@ function StatusBadge({ rate }) {
 }
 
 function buildMonthRange(month, year) {
-  const start = new Date(year, month - 1, 1).toISOString().slice(0, 10);
-  const end = new Date(year, month, 0).toISOString().slice(0, 10);
+  const start = toLocalISODate(new Date(year, month - 1, 1));
+  const end = toLocalISODate(new Date(year, month, 0)); // วันสุดท้ายของเดือน ตามปฏิทินจริง (28/29/30/31)
   const label = new Date(year, month - 1, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
   return { label, start, end };
 }
@@ -93,7 +92,7 @@ const MONTH_NAMES_TH = [
 ];
 
 const CURRENT_YEAR_AD = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR_AD - i); // ย้อนหลัง 4 ปี
+const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR_AD - i); // ย้อนหลัง 8 ปี ปรับตัวเลขนี้ได้ตามจำนวนปีที่มีข้อมูลจริงในระบบ
 
 // ── CSV Export ────────────────────────────────────────────────
 // ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
@@ -101,8 +100,8 @@ const YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR_AD - i); /
 function exportCSV(tutors, startDate, endDate) {
   const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'สถานะ', 'บันทึกล่าสุด'];
   const rows = tutors.map(t => {
-    const rate = t.AttendanceRate ?? 0;
-    const status = rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
+    const rate = t.AttendanceRate;
+    const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
     return [
       t.Nickname || '',
       t.Firstname || '',
@@ -110,9 +109,9 @@ function exportCSV(tutors, startDate, endDate) {
       t.TotalScheduled ?? 0,
       t.TotalCheckin ?? 0,
       t.MissedCount ?? 0,
-      rate,
+      rate ?? 'ไม่มีข้อมูล',
       status,
-      t.LastCheckinAt ? new Date(t.LastCheckinAt).toISOString().slice(0, 10) : 'ยังไม่เคยบันทึก',
+      t.LastCheckinAt ? toLocalISODate(new Date(t.LastCheckinAt)) : 'ยังไม่เคยบันทึก',
     ];
   });
 
@@ -355,6 +354,9 @@ export default function TutorAttendanceDashboard() {
   const [filterSubject, setFilterSubject] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all'); // all | normal | watch | risk
   const [filterPhotoIssue, setFilterPhotoIssue] = useState('all'); // all | incomplete
+  const [allSubjects, setAllSubjects] = useState([]); // รายวิชาทั้งหมดในระบบ (ไม่ผูกกับติวเตอร์ที่ดึงมาในเดือนนี้)
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   // helper ดึง range จาก selectedMonth (null = ไม่ filter)
   const getDateRange = () => {
@@ -376,47 +378,82 @@ export default function TutorAttendanceDashboard() {
   // auto-fetch เมื่อ selectedMonth เปลี่ยน
   useEffect(() => { fetchData(selectedMonth); }, [selectedMonth]);
 
+  // ดึงรายวิชาทั้งหมดในระบบ ครั้งเดียวตอน mount — ใช้ endpoint เดียวกับหน้าจัดการติวเตอร์
+  useEffect(() => {
+    fetch(`${API_BASE}/subjects`)
+      .then(r => r.json())
+      .then(d => setAllSubjects(d || []))
+      .catch(() => { });
+  }, []);
+
+  // reset หน้าเมื่อฟิลเตอร์หรือเดือน/ปีเปลี่ยน
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterSubject, filterStatus, filterPhotoIssue, selectedMonth]);
+
+  // วิชาทั้งหมดในระบบ — ดึงจาก endpoint /subjects ไม่ใช่แค่วิชาที่ติวเตอร์ในเดือนนี้สอน
+  const allSubjectNames = useMemo(
+    () => [...allSubjects.map(s => s.SubjectName)].sort(),
+    [allSubjects]
+  );
+
+  const matchSearchFn = (t) => {
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return (t.Nickname || '').toLowerCase().includes(q) ||
+      (t.Firstname || '').toLowerCase().includes(q) ||
+      (t.Lastname || '').toLowerCase().includes(q);
+  };
+  const matchSubjectFn = (t) => filterSubject === 'all' ||
+    (t.TeachingSubjects || '').split(',').map(s => s.trim()).includes(filterSubject);
+  const matchStatusFn = (t) => {
+    if (filterStatus === 'all') return true;
+    const rate = t.AttendanceRate ?? 100;
+    if (filterStatus === 'risk') return rate < 50;
+    if (filterStatus === 'watch') return rate >= 50 && rate < 80;
+    return rate >= 80; // normal
+  };
+  const matchPhotoFn = (t) => filterPhotoIssue === 'all' || (t.IncompletePhotoCount ?? 0) > 0;
+
+  const STRING_COLUMNS = ['Nickname', 'Firstname', 'Lastname'];
+
   const processed = useMemo(() => {
-    let list = [...tutors];
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(t =>
-        (t.Nickname || '').toLowerCase().includes(q) ||
-        (t.Firstname || '').toLowerCase().includes(q) ||
-        (t.Lastname || '').toLowerCase().includes(q)
-      );
-    }
-    if (filterSubject !== 'all') {
-      list = list.filter(t =>
-        (t.TeachingSubjects || '').split(',').map(s => s.trim()).includes(filterSubject)
-      );
-    }
-    if (filterStatus !== 'all') {
-      list = list.filter(t => {
-        const rate = t.AttendanceRate ?? 100;
-        if (filterStatus === 'risk') return rate < 50;
-        if (filterStatus === 'watch') return rate >= 50 && rate < 80;
-        return rate >= 80; // normal
-      });
-    }
-    if (filterPhotoIssue === 'incomplete') {
-      list = list.filter(t => (t.IncompletePhotoCount ?? 0) > 0);
-    }
+    let list = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t) && matchPhotoFn(t));
     list.sort((a, b) => {
-      const av = a[sortBy] ?? -1;
-      const bv = b[sortBy] ?? -1;
-      return sortAsc ? av - bv : bv - av;
+      const av = a[sortBy];
+      const bv = b[sortBy];
+      if (STRING_COLUMNS.includes(sortBy)) {
+        const cmp = (av || '').localeCompare(bv || '', 'th');
+        return sortAsc ? cmp : -cmp;
+      }
+      const an = av ?? -1;
+      const bn = bv ?? -1;
+      return sortAsc ? an - bn : bn - an;
     });
     return list;
   }, [tutors, sortBy, sortAsc, search, filterSubject, filterStatus, filterPhotoIssue]);
 
-  const allSubjectNames = useMemo(() => {
-    const set = new Set();
-    tutors.forEach(t => {
-      (t.TeachingSubjects || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => set.add(s));
-    });
-    return [...set].sort();
-  }, [tutors]);
+  // ★ นับจำนวนสำหรับแต่ละ dropdown (กรองไขว้กับตัวกรองอื่นที่เลือกไว้ก่อน — เหมือนหน้าจัดการติวเตอร์)
+  const baseForSubjectCount = tutors.filter(t => matchSearchFn(t) && matchStatusFn(t) && matchPhotoFn(t));
+  const allSubjectCount = baseForSubjectCount.length;
+  const subjectCounts = allSubjectNames.reduce((acc, sub) => {
+    acc[sub] = baseForSubjectCount.filter(t =>
+      (t.TeachingSubjects || '').split(',').map(x => x.trim()).includes(sub)
+    ).length;
+    return acc;
+  }, {});
+
+  const baseForStatusCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchPhotoFn(t));
+  const normalCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 80).length;
+  const watchCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 50 && (t.AttendanceRate ?? 100) < 80).length;
+  const riskCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) < 50).length;
+
+  const baseForPhotoCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
+  const incompletePhotoCount = baseForPhotoCount.filter(t => (t.IncompletePhotoCount ?? 0) > 0).length;
+
+  // ★ pagination
+  const totalPages = Math.max(1, Math.ceil(processed.length / ITEMS_PER_PAGE));
+  const paginated = processed.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const avgRate = tutors.length
     ? Math.round(tutors.reduce((s, t) => s + (t.AttendanceRate ?? 0), 0) / tutors.length) : 0;
@@ -438,7 +475,7 @@ export default function TutorAttendanceDashboard() {
 
     // ถ้าไม่มี filter ให้ดึงตั้งแต่ปีที่แล้วจนถึงวันนี้ (เผื่อ checkin เก่า)
     const s = startDate || '2020-01-01';
-    const e = endDate || new Date().toISOString().slice(0, 10);
+    const e = endDate || toLocalISODate(new Date()); // ★ แก้แล้ว ไม่เพี้ยนข้ามวัน
 
     try {
       const r = await fetch(`${API_BASE}/tutors/${adminId}/sessions?startDate=${s}&endDate=${e}`);
@@ -501,9 +538,29 @@ export default function TutorAttendanceDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
-          <p className="text-sm text-slate-500 mt-1">ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน</p>
+          <p className="text-sm text-slate-500 mt-1">
+            ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน · {selectedMonth.start} ถึง {selectedMonth.end}
+          </p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          <select
+            value={selectedMonthNum}
+            onChange={e => setSelectedMonthNum(Number(e.target.value))}
+            className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+          >
+            {MONTH_NAMES_TH.map((name, i) => (
+              <option key={name} value={i + 1}>{name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={e => setSelectedYear(Number(e.target.value))}
+            className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+          >
+            {YEAR_OPTIONS.map(y => (
+              <option key={y} value={y}>{y + 543}</option>
+            ))}
+          </select>
           <button
             onClick={() => {
               const { startDate, endDate } = getDateRange();
@@ -514,32 +571,6 @@ export default function TutorAttendanceDashboard() {
             <Download className="w-4 h-4" /> ส่งออก CSV
           </button>
         </div>
-      </div>
-
-      {/* ── Month/Year Dropdown Filter ─────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">ดูข้อมูลของเดือน</label>
-        <select
-          value={selectedMonthNum}
-          onChange={e => setSelectedMonthNum(Number(e.target.value))}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition min-w-[140px]"
-        >
-          {MONTH_NAMES_TH.map((name, i) => (
-            <option key={name} value={i + 1}>{name}</option>
-          ))}
-        </select>
-        <select
-          value={selectedYear}
-          onChange={e => setSelectedYear(Number(e.target.value))}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition min-w-[100px]"
-        >
-          {YEAR_OPTIONS.map(y => (
-            <option key={y} value={y}>{y + 543}</option>
-          ))}
-        </select>
-        <span className="text-xs text-slate-400">
-          {selectedMonth.start} ถึง {selectedMonth.end}
-        </span>
       </div>
 
       {/* ── Stats Grid ─────────────────────────────────── */}
@@ -580,32 +611,32 @@ export default function TutorAttendanceDashboard() {
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[150px]"
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[170px]"
           >
-            <option value="all">ทุกวิชา</option>
+            <option value="all">ทุกวิชา ({allSubjectCount})</option>
             {allSubjectNames.map(sub => (
-              <option key={sub} value={sub}>{sub}</option>
+              <option key={sub} value={sub}>{sub} ({subjectCounts[sub] || 0})</option>
             ))}
           </select>
           {/* Status level filter */}
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[150px]"
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
           >
-            <option value="all">ทุกระดับสถานะ</option>
-            <option value="normal">ปกติ (≥80%)</option>
-            <option value="watch">ควรติดตาม (50–79%)</option>
-            <option value="risk">น่าเป็นห่วง (&lt;50%)</option>
+            <option value="all">ทุกระดับสถานะ ({baseForStatusCount.length})</option>
+            <option value="normal">ปกติ ({normalCount})</option>
+            <option value="watch">ควรติดตาม ({watchCount})</option>
+            <option value="risk">น่าเป็นห่วง ({riskCount})</option>
           </select>
           {/* Photo issue filter */}
           <select
             value={filterPhotoIssue}
             onChange={e => setFilterPhotoIssue(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[160px]"
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
           >
-            <option value="all">ทุกคาบ (รูป)</option>
-            <option value="incomplete">มีรูปไม่ครบ</option>
+            <option value="all">ทุกคาบ (รูป) ({baseForPhotoCount.length})</option>
+            <option value="incomplete">มีรูปไม่ครบ ({incompletePhotoCount})</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -669,7 +700,7 @@ export default function TutorAttendanceDashboard() {
                     <p className="text-sm">ไม่มีข้อมูลในช่วงนี้</p>
                   </td>
                 </tr>
-              ) : processed.map((t, idx) => {
+              ) : paginated.map((t, idx) => {
                 const isAtRisk = (t.AttendanceRate ?? 100) < 50;
                 return (
                   <tr
@@ -749,6 +780,40 @@ export default function TutorAttendanceDashboard() {
         </div>
       </div>
 
+      {/* ── Pagination ─────────────────────────────────── */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">
+            แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, processed.length)}</span> จาก <span className="font-semibold">{processed.length}</span> คน
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((p, idx) => p === "..." ? (
+                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
+              ) : (
+                <button key={p} onClick={() => setCurrentPage(p)}
+                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
+                  {p}
+                </button>
+              ))}
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Legend ─────────────────────────────────────── */}
       {/* ★ แก้: ตัด "มีค้างจ่าย" ออก เพิ่ม "ควรติดตาม" (50–79%) ให้ครบ 3 ระดับตรงกับ StatusBadge */}
       <div className="flex flex-wrap gap-4 px-1">
@@ -784,6 +849,14 @@ export default function TutorAttendanceDashboard() {
 const DAY_LABELS = { 2: 'จ', 3: 'อ', 4: 'พ', 5: 'พฤ', 6: 'ศ', 7: 'ส', 1: 'อา' };
 const DAY_FULL = { 2: 'จันทร์', 3: 'อังคาร', 4: 'พุธ', 5: 'พฤหัส', 6: 'ศุกร์', 7: 'เสาร์', 1: 'อาทิตย์' };
 const DAY_ORDER = [2, 3, 4, 5, 6, 7, 1];
+
+// ใส่ helper นี้ทั้งฝั่ง frontend และ backend
+function toLocalISODate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function cellColor(count) {
   if (!count) return null;
