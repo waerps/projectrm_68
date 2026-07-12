@@ -942,6 +942,32 @@ function calcStudentBadge(score) {
   return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
 }
 
+// ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
+function topScoreGroups(sortedList, groupCount = 3) {
+  const groups = [];
+  for (const item of sortedList) {
+    const last = groups[groups.length - 1];
+    if (last && last.score === item.PerformanceScore) {
+      last.members.push(item);
+    } else {
+      if (groups.length >= groupCount) break;
+      groups.push({ score: item.PerformanceScore, members: [item] });
+    }
+  }
+  return groups;
+}
+
+// ★ เพิ่ม: standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
+function withCompetitionRank(sortedList) {
+  let rank = 0;
+  let prevScore = null;
+  return sortedList.map((item, idx) => {
+    if (item.PerformanceScore !== prevScore) rank = idx + 1;
+    prevScore = item.PerformanceScore;
+    return { ...item, _rank: rank };
+  });
+}
+
 // ─── Score Ring SVG ───────────────────────────────────────────────────────────
 function StudentScoreRing({ score }) {
   const r = 20, circ = 2 * Math.PI * r;
@@ -1030,22 +1056,21 @@ function StudentMetricBreakdown({ student }) {
   );
 }
 
-// ─── StudentScoreCard (แถวแบบ expandable ไม่ใช้ modal) ──────────────────────
-function StudentScoreCard({ student, index, expanded, onToggle, onView }) {
+function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
   const badge = calcStudentBadge(student.PerformanceScore);
-  const MEDAL = ['🥇', '🥈', '🥉'];
+  const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const name = student.Nickname || `${student.Firstname} ${student.Lastname}`;
 
   return (
     <div className={`bg-white rounded-2xl border transition-all
-      ${index === 0 ? 'border-amber-300' : 'border-slate-200'}`}>
+      ${rank === 1 ? 'border-amber-300' : 'border-slate-200'}`}>
       {/* แถวหลัก */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={onToggle}>
-        {/* อันดับ */}
+        {/* อันดับ — standard competition ranking: คะแนนเท่ากัน = อันดับเดียวกัน */}
         <span className="text-lg w-6 text-center shrink-0">
-          {index < 3
-            ? MEDAL[index]
-            : <span className="text-xs text-slate-400">{index + 1}</span>}
+          {MEDAL[rank]
+            ? MEDAL[rank]
+            : <span className="text-xs text-slate-400">{rank}</span>}
         </span>
 
         {/* Avatar */}
@@ -1141,6 +1166,9 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
   const filtered = perfData.filter(s => matchGradeFn(s) && matchScoreFn(s));
 
+  const rankedFiltered = withCompetitionRank(filtered); // ★ เพิ่ม
+  const podiumGroups = topScoreGroups(rankedFiltered, 3); // ★ เพิ่ม
+
   // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
   const baseForScoreCount = perfData.filter(matchGradeFn);
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
@@ -1149,10 +1177,8 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   }, {});
 
   // ตัดแสดงตาม limit
-  const visible = filtered.slice(0, showLimit);
-  const hasMore = filtered.length > showLimit;
-
-  const top3 = filtered.slice(0, 3);
+  const visible = rankedFiltered.slice(0, showLimit);
+  const hasMore = rankedFiltered.length > showLimit;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1237,57 +1263,60 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         ) : (
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
-            {filtered.length >= 1 && (
-              <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((s, i) => (
-                  s ? (
-                    <div
-                      key={s.UserId}
-                      className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
-                        ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                      onClick={() => onViewStudent(s.UserId)}
-                    >
-                      <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                      <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
-                        <img src={avatarUrl(s.UserId)}
-                          alt={s.Nickname || s.Firstname}
-                          className="w-full h-full object-contain" />
+            {podiumGroups.length > 0 && (() => {
+              const MEDALS = ['🥇', '🥈', '🥉'];
+              // อันดับ 1 อยู่กลางและสูงสุดเสมอ เหมือนโพเดียมจริง
+              const order = podiumGroups.length === 3
+                ? [podiumGroups[1], podiumGroups[0], podiumGroups[2]]
+                : podiumGroups.length === 2
+                  ? [podiumGroups[1], podiumGroups[0]]
+                  : [podiumGroups[0]];
+              return (
+                <div className="flex justify-center gap-3">
+                  {order.map((group) => {
+                    const medalIdx = podiumGroups.indexOf(group); // 0=ทอง 1=เงิน 2=ทองแดง
+                    return (
+                      <div key={group.score}
+                        className={`rounded-xl border p-3 text-center w-40 ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                      >
+                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="flex justify-center -space-x-2 mt-2">
+                          {group.members.slice(0, 4).map(s => (
+                            <button key={s.UserId} onClick={() => onViewStudent(s.UserId)}
+                              className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm bg-orange-50 hover:z-10 hover:scale-105 transition"
+                              title={s.Nickname || `${s.Firstname} ${s.Lastname}`}>
+                              <img src={avatarUrl(s.UserId)} alt={s.Nickname || s.Firstname} className="w-full h-full object-contain" />
+                            </button>
+                          ))}
+                          {group.members.length > 4 && (
+                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                              +{group.members.length - 4}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                          {group.members.length === 1
+                            ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
+                            : `${group.members.length} คนเสมอกัน`}
+                        </p>
+                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-[10px] text-slate-400">คะแนน</p>
                       </div>
-                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
-                        {s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                      </p>
-                      <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
-                      <p className="text-[10px] text-slate-400">คะแนน</p>
-                    </div>
-                  ) : (
-                    // ★ เพิ่ม: placeholder เมื่อไม่มีคนในอันดับนี้ — คงเลย์เอาต์ไว้ ไม่ปล่อยโล่ง
-                    <div
-                      key={`empty-${i}`}
-                      className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
-                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                    >
-                      <div className="text-2xl opacity-30">{['🥈', '🥇', '🥉'][i]}</div>
-                      <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
-                        <Users className="h-4 w-4 text-slate-400" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                      <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                      <p className="text-[10px] text-slate-300">คะแนน</p>
-                    </div>
-                  )
-                ))}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
 
             {/* ── Score Card List ─────────────────────────────────── */}
             <div className="space-y-2">
-              {visible.map((s, i) => (
+              {visible.map((s) => (
                 <StudentScoreCard
                   key={s.UserId}
                   student={s}
-                  index={i}
+                  rank={s._rank}
                   expanded={expandedId === s.UserId}
                   onToggle={() => setExpandedId(expandedId === s.UserId ? null : s.UserId)}
                   onView={onViewStudent}
