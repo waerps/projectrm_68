@@ -86,6 +86,18 @@ function buildMonthRange(month, year) {
   return { label, start, end };
 }
 
+function buildRange(monthNum, year) {
+  if (year === 'all') {
+    return { label: 'ทุกช่วงเวลา', start: null, end: null };
+  }
+  if (monthNum === 'all') {
+    const start = toLocalISODate(new Date(year, 0, 1));
+    const end = toLocalISODate(new Date(year, 11, 31));
+    return { label: `ทั้งปี ${year + 543}`, start, end };
+  }
+  return buildMonthRange(monthNum, year);
+}
+
 const MONTH_NAMES_TH = [
   'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
@@ -134,27 +146,33 @@ function exportCSV(tutors, startDate, endDate) {
 //   TODO: ย้ายไป Financial page ภายหลัง — การแสดงสถานะจ่ายเงินต่อคาบ (TutorPaymentId)
 function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDate, onClose }) {
   const [expandedSession, setExpandedSession] = useState(null);
+  const [modalPage, setModalPage] = useState(1);         // ★ เพิ่ม
+  const SESSIONS_PER_PAGE = 10;                          // ★ เพิ่ม
 
-  const parsePhotoTime = (path) => {
-    if (!path) return null;
-    const match = path?.match(/(\d{13})/);
-    if (!match) return null;
-    return new Date(parseInt(match[1]));
+  useEffect(() => { setModalPage(1); }, [sessions]);
+
+  const totalModalPages = Math.max(1, Math.ceil(sessions.length / SESSIONS_PER_PAGE)); // ★
+  const paginatedSessions = sessions.slice(               // ★
+    (modalPage - 1) * SESSIONS_PER_PAGE,
+    modalPage * SESSIONS_PER_PAGE
+  );
+
+  const getPhotoDiff = (startAt, endAt) => {
+    if (!startAt || !endAt) return null;
+    return Math.round((new Date(endAt) - new Date(startAt)) / 60000);
   };
+
   const formatTime = (date) => {
     if (!date) return null;
     return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
   };
-  const getPhotoDiff = (photoStart, photoEnd) => {
-    const s = parsePhotoTime(photoStart);
-    const e = parsePhotoTime(photoEnd);
-    if (!s || !e) return null;
-    return Math.round((e - s) / 60000);
-  };
+
+
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -192,12 +210,12 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
               <BookOpen className="w-10 h-10 mb-3 opacity-30" />
               <p className="text-sm">ไม่มีข้อมูลการสอนในช่วงนี้</p>
             </div>
-          ) : sessions.map(session => {
-            const diffMin = getPhotoDiff(session.PhotoStart, session.PhotoEnd);
+          ) : paginatedSessions.map(session => {
+            const diffMin = getPhotoDiff(session.PhotoStartAt, session.PhotoEndAt);  // ★ ใช้ column ใหม่
             const isValid = diffMin !== null && diffMin >= 30;
             const isExpanded = expandedSession === session.TutorCheckinId;
-            const startAt = parsePhotoTime(session.PhotoStart);
-            const endAt = parsePhotoTime(session.PhotoEnd);
+            const startAt = session.PhotoStartAt ? new Date(session.PhotoStartAt) : null;  // ★ ไม่ parse จาก path แล้ว
+            const endAt = session.PhotoEndAt ? new Date(session.PhotoEndAt) : null;        // ★
             const presentCount = session.students?.filter(s => s.Status == 1).length ?? 0;
             const totalCount = session.students?.length ?? 0;
 
@@ -263,8 +281,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
                           {photo ? (
                             <div className="relative">
-                              <a href={`${API_URL}${photo}`} target="_blank" rel="noreferrer">
-                                <img src={`${API_URL}${photo}`} alt={label}
+                              <a href={getFileUrl(photo)} target="_blank" rel="noreferrer">
+                                <img src={getFileUrl(photo)} alt={label}
                                   className="w-full h-28 object-cover rounded-xl border border-slate-200 hover:opacity-90 transition" />
                               </a>
                               {time && (
@@ -328,6 +346,32 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
               มีคาบที่ผ่านมา &gt; 4 ชั่วโมงแล้วแต่ยังไม่มีรูปบันทึก — อาจต้องติดตามติวเตอร์โดยตรง
             </div>
           )}
+
+          {sessions.length > SESSIONS_PER_PAGE && (
+            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between shrink-0">
+              <p className="text-xs text-slate-500">
+                แสดง {(modalPage - 1) * SESSIONS_PER_PAGE + 1}
+                –{Math.min(modalPage * SESSIONS_PER_PAGE, sessions.length)} จาก {sessions.length} คาบ
+              </p>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setModalPage(p => Math.max(1, p - 1))}
+                  disabled={modalPage === 1}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-xs font-bold text-slate-600 px-2">{modalPage} / {totalModalPages}</span>
+                <button
+                  onClick={() => setModalPage(p => Math.min(totalModalPages, p + 1))}
+                  disabled={modalPage === totalModalPages}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -340,7 +384,7 @@ export default function TutorAttendanceDashboard() {
   const [selectedMonthNum, setSelectedMonthNum] = useState(now.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const selectedMonth = useMemo(
-    () => buildMonthRange(selectedMonthNum, selectedYear),
+    () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
   );
   const [tutors, setTutors] = useState([]);
@@ -364,9 +408,10 @@ export default function TutorAttendanceDashboard() {
     return { startDate: selectedMonth.start, endDate: selectedMonth.end };
   };
 
+  // ★ แก้ fetchData ให้เช็ค start/end ตรงๆ ไม่ใช้ month เป็น truthy check
   const fetchData = async (month) => {
     setLoading(true);
-    const url = month
+    const url = (month && month.start && month.end)
       ? `${API_BASE}/tutors/attendance?startDate=${month.start}&endDate=${month.end}`
       : `${API_BASE}/tutors/attendance`;
     const r = await fetch(url);
@@ -539,24 +584,27 @@ export default function TutorAttendanceDashboard() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
           <p className="text-sm text-slate-500 mt-1">
-            ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน · {selectedMonth.start} ถึง {selectedMonth.end}
+            ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน ·{' '}
+            {selectedMonth.start ? `${selectedMonth.start} ถึง ${selectedMonth.end}` : selectedMonth.label}
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
           <select
             value={selectedMonthNum}
-            onChange={e => setSelectedMonthNum(Number(e.target.value))}
+            onChange={e => setSelectedMonthNum(e.target.value === 'all' ? 'all' : Number(e.target.value))}
             className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
           >
+            <option value="all">ทุกเดือน</option>          {/* ★ */}
             {MONTH_NAMES_TH.map((name, i) => (
               <option key={name} value={i + 1}>{name}</option>
             ))}
           </select>
           <select
             value={selectedYear}
-            onChange={e => setSelectedYear(Number(e.target.value))}
+            onChange={e => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
             className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
           >
+            <option value="all">ทุกปี</option>              {/* ★ */}
             {YEAR_OPTIONS.map(y => (
               <option key={y} value={y}>{y + 543}</option>
             ))}
@@ -697,7 +745,37 @@ export default function TutorAttendanceDashboard() {
                 <tr>
                   <td colSpan={9} className="text-center py-16 text-slate-400">
                     <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">ไม่มีข้อมูลในช่วงนี้</p>
+                    {tutors.length === 0 ? (
+                      <>
+                        <p className="text-sm mb-3">ไม่มีข้อมูลการสอนในช่วงเวลานี้</p>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          {selectedYear !== 'all' && (
+                            <button
+                              onClick={() => setSelectedMonthNum('all')}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                            >
+                              ดูทั้งปี {selectedYear + 543}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setSelectedYear('all')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                          >
+                            ดูข้อมูลทั้งหมดทุกช่วงเวลา
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm mb-3">ไม่พบติวเตอร์ที่ตรงกับตัวกรองที่เลือก</p>
+                        <button
+                          onClick={() => { setSearch(''); setFilterSubject('all'); setFilterStatus('all'); setFilterPhotoIssue('all'); }}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                        >
+                          ล้างตัวกรองทั้งหมด
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ) : paginated.map((t, idx) => {
@@ -781,38 +859,40 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Pagination ─────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, processed.length)}</span> จาก <span className="font-semibold">{processed.length}</span> คน
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-              .reduce((acc, p, idx, arr) => {
-                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, idx) => p === "..." ? (
-                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-              ) : (
-                <button key={p} onClick={() => setCurrentPage(p)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                  {p}
-                </button>
-              ))}
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronRight className="h-4 w-4" />
-            </button>
+      {
+        totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">
+              แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, processed.length)}</span> จาก <span className="font-semibold">{processed.length}</span> คน
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .reduce((acc, p, idx, arr) => {
+                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) => p === "..." ? (
+                  <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
+                ) : (
+                  <button key={p} onClick={() => setCurrentPage(p)}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
+                    {p}
+                  </button>
+                ))}
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* ── Legend ─────────────────────────────────────── */}
       {/* ★ แก้: ตัด "มีค้างจ่าย" ออก เพิ่ม "ควรติดตาม" (50–79%) ให้ครบ 3 ระดับตรงกับ StatusBadge */}
@@ -830,17 +910,19 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Session Detail Modal ───────────────────────── */}
-      {selectedTutor && (
-        <SessionDetailModal
-          tutor={selectedTutor}
-          sessions={sessions}
-          sessionsLoading={sessionsLoading}
-          startDate={selectedMonth?.start}
-          endDate={selectedMonth?.end}
-          onClose={() => { setSelectedTutor(null); setSessions([]); }}
-        />
-      )}
-    </div>
+      {
+        selectedTutor && (
+          <SessionDetailModal
+            tutor={selectedTutor}
+            sessions={sessions}
+            sessionsLoading={sessionsLoading}
+            startDate={selectedMonth?.start}
+            endDate={selectedMonth?.end}
+            onClose={() => { setSelectedTutor(null); setSessions([]); }}
+          />
+        )
+      }
+    </div >
   );
 }
 
@@ -1116,7 +1198,8 @@ function AbsenceHeatmap({ selectedMonth }) {
       setLoading(true);
       setTooltip(null);
       try {
-        const url = selectedMonth
+        // ★ แก้ที่เดียวกันใน AbsenceHeatmap useEffect
+        const url = (selectedMonth && selectedMonth.start && selectedMonth.end)
           ? `${API_BASE}/tutors/absence-heatmap?startDate=${selectedMonth.start}&endDate=${selectedMonth.end}`
           : `${API_BASE}/tutors/absence-heatmap`;
         const r = await fetch(url);
@@ -1127,6 +1210,30 @@ function AbsenceHeatmap({ selectedMonth }) {
     };
     load();
   }, [selectedMonth]);
+
+  // ★ เพิ่ม helper parse date แบบ local (กัน timezone เพี้ยน)
+  function parseLocalDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d); // สร้างจาก y/m/d ตรงๆ ไม่ผ่าน UTC parsing
+  }
+
+  const { weeks = [], tutors = [], daySummary = {}, weekSummary = {} } = data;
+
+  // ★ เพิ่ม: คำนวณว่าแต่ละวันในแต่ละสัปดาห์ อยู่ใน "เดือนที่เลือก" จริงหรือไม่
+  const weekDayInfo = useMemo(() => {
+    const map = {};
+    for (const w of weeks) {
+      map[w.YearWeek] = DAY_ORDER.map((day, i) => {
+        const d = parseLocalDate(w.WeekStart);
+        d.setDate(d.getDate() + i);
+        const ds = toLocalISODate(d);
+        const inRange = !selectedMonth?.start || !selectedMonth?.end ||
+          (ds >= selectedMonth.start && ds <= selectedMonth.end);
+        return { day, date: ds, inRange };
+      });
+    }
+    return map;
+  }, [weeks, selectedMonth]);
 
   const handleMouseEnter = (e, t, w, day, count) => {
     setTooltip({
@@ -1166,9 +1273,6 @@ function AbsenceHeatmap({ selectedMonth }) {
   );
 
   if (!data) return null;
-
-  const { weeks = [], tutors = [], daySummary = {}, weekSummary = {} } = data;
-
   return (
     <div className="space-y-4">
 
@@ -1215,12 +1319,13 @@ function AbsenceHeatmap({ selectedMonth }) {
                   </th>
                   {weeks.map(w => {
                     const wTotal = weekSummary[w.YearWeek] || 0;
+                    const isPartial = weekDayInfo[w.YearWeek]?.some(x => !x.inRange); // ★
                     return (
-                      <th key={w.YearWeek} colSpan={7}
-                        className="text-center px-2 py-2 bg-slate-50 border-l border-slate-200">
+                      <th key={w.YearWeek} colSpan={7} className="text-center px-2 py-2 bg-slate-50 border-l border-slate-200">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
                             สัปดาห์ที่ {w.weekIndex}
+                            {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>} {/* ★ */}
                           </span>
                           <span className="text-[10px] text-slate-400 whitespace-nowrap">
                             {shortDate(w.WeekStart)}–{shortDate(w.WeekEnd)}
@@ -1282,7 +1387,19 @@ function AbsenceHeatmap({ selectedMonth }) {
                       </td>
 
                       {weeks.map(w =>
-                        DAY_ORDER.map(day => {
+                        DAY_ORDER.map((day, i) => {
+                          const dayInfo = weekDayInfo[w.YearWeek]?.[i];
+                          if (dayInfo && !dayInfo.inRange) {                      // ★ นอกเดือนที่เลือก
+                            return (
+                              <td key={`${w.YearWeek}-${day}`}
+                                className={`text-center px-1 py-3 ${day === DAY_ORDER[0] ? 'border-l border-slate-100' : ''}`}>
+                                <div className="mx-auto w-7 h-7 rounded-lg flex items-center justify-center bg-slate-50"
+                                  title={`${dayInfo.date} อยู่นอกเดือนที่เลือก ยังไม่ถูกตรวจสอบในมุมมองนี้`}>
+                                  <span className="text-slate-300 text-xs">–</span>
+                                </div>
+                              </td>
+                            );
+                          }
                           const count = t.weeks[w.YearWeek]?.[day] ?? 0;
                           const color = cellColor(count);
                           return (
@@ -1360,6 +1477,7 @@ function AbsenceHeatmap({ selectedMonth }) {
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex flex-wrap gap-4">
             {[
+              { dot: 'bg-slate-50 border border-slate-200', text: '– นอกเดือนที่เลือก (ยังไม่ถูกตรวจสอบ)' }, // ★
               { dot: 'bg-amber-100 border border-amber-200', text: '1–2 ครั้ง' },
               { dot: 'bg-amber-300', text: '3–4 ครั้ง' },
               { dot: 'bg-orange-400', text: '5–7 ครั้ง' },
