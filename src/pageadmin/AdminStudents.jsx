@@ -10,7 +10,7 @@ import {
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
-  Award, TrendingUp, TrendingDown, Minus,   // ★ เพิ่ม
+  Award, TrendingUp, TrendingDown, Minus, Users   // ★ เพิ่ม
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
@@ -1237,28 +1237,45 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         ) : (
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
-            {filtered.length >= 2 && (
+            {filtered.length >= 1 && (
               <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((s, i) => s && (
-                  <div
-                    key={s.UserId}
-                    className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
-                      ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                    onClick={() => onViewStudent(s.UserId)}
-                  >
-                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
-                      <img src={avatarUrl(s.UserId)}
-                        alt={s.Nickname || s.Firstname}
-                        className="w-full h-full object-contain" />
+                {[top3[1], top3[0], top3[2]].map((s, i) => (
+                  s ? (
+                    <div
+                      key={s.UserId}
+                      className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
+                        ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
+                      onClick={() => onViewStudent(s.UserId)}
+                    >
+                      <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
+                      <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
+                        <img src={avatarUrl(s.UserId)}
+                          alt={s.Nickname || s.Firstname}
+                          className="w-full h-full object-contain" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                      </p>
+                      <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
+                      <p className="text-[10px] text-slate-400">คะแนน</p>
                     </div>
-                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
-                      {s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                    </p>
-                    <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
-                    <p className="text-[10px] text-slate-400">คะแนน</p>
-                  </div>
+                  ) : (
+                    // ★ เพิ่ม: placeholder เมื่อไม่มีคนในอันดับนี้ — คงเลย์เอาต์ไว้ ไม่ปล่อยโล่ง
+                    <div
+                      key={`empty-${i}`}
+                      className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
+                    >
+                      <div className="text-2xl opacity-30">{['🥈', '🥇', '🥉'][i]}</div>
+                      <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                      <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                      <p className="text-[10px] text-slate-300">คะแนน</p>
+                    </div>
+                  )
                 ))}
               </div>
             )}

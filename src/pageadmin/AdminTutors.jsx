@@ -940,11 +940,23 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView }) {
 // ─── ★ ใหม่: Performance Score ประจำเดือน ของติวเตอร์ (ย้ายมาจากหน้า Attendance) ──
 const DEFAULT_TUTOR_LIMIT = 5;
 
-function TutorPerformanceRanking({ onViewTutor }) {
+function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   const [perfData, setPerfData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [filterSubject, setFilterSubject] = useState('all'); // ★ เพิ่ม
+  const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
   const [showLimit, setShowLimit] = useState(DEFAULT_TUTOR_LIMIT);
+
+  // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcBadge เพื่อให้ label ตรงกับ badge ที่โชว์อยู่
+  const SCORE_RANGES = [
+    { key: 'excellent', label: 'ดีเด่น (90-100)', test: (v) => v >= 90 },
+    { key: 'great', label: 'เยี่ยม (80-89)', test: (v) => v >= 80 && v < 90 },
+    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
+    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
+    { key: 'needs_work', label: 'ต้องปรับปรุง (ต่ำกว่า 55)', test: (v) => v < 55 },
+  ];
+  const allSubjectNames = [...new Set(allSubjects.map(s => s.SubjectName))].sort();
 
   useEffect(() => {
     axios.get(`${API}/tutors/performance`)
@@ -953,9 +965,40 @@ function TutorPerformanceRanking({ onViewTutor }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const visible = perfData.slice(0, showLimit);
-  const hasMore = perfData.length > showLimit;
-  const top3 = perfData.slice(0, 3);
+  useEffect(() => {
+    setShowLimit(DEFAULT_TUTOR_LIMIT);
+    setExpandedId(null);
+  }, [filterSubject, filterScoreRange]); // ★ เพิ่มทั้ง useEffect นี้
+
+  const matchSubjectFn = (t) => filterSubject === 'all' ||
+    (t.TeachingSubjects || '').split(',').map(x => x.trim()).includes(filterSubject);
+  const matchScoreFn = (t) => {
+    if (filterScoreRange === 'all') return true;
+    const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
+    return range ? range.test(t.PerformanceScore) : true;
+  };
+
+  const filtered = perfData.filter(t => matchSubjectFn(t) && matchScoreFn(t));
+
+  // ★ นับจำนวนสำหรับ dropdown วิชา
+  const baseForScoreCount = perfData.filter(matchSubjectFn);
+  const allSubjectPerfCount = perfData.filter(matchScoreFn).length;
+  const subjectPerfCounts = allSubjectNames.reduce((acc, sub) => {
+    acc[sub] = perfData.filter(t =>
+      (t.TeachingSubjects || '').split(',').map(x => x.trim()).includes(sub) && matchScoreFn(t)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน
+  const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
+    acc[r.key] = baseForScoreCount.filter(t => r.test(t.PerformanceScore)).length;
+    return acc;
+  }, {});
+
+  const visible = filtered.slice(0, showLimit);
+  const hasMore = filtered.length > showLimit;
+  const top3 = filtered.slice(0, 3);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -968,29 +1011,91 @@ function TutorPerformanceRanking({ onViewTutor }) {
         <span className="text-[11px] text-orange-100">เช็กอิน 40% + ความสม่ำเสมอ 30% + ชั่วโมงสอน 30%</span>
       </div>
 
-      <div className="px-5 py-5 space-y-4">
+      {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
+      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+        <div className="relative ml-auto">
+          <select
+            value={filterSubject}
+            onChange={e => setFilterSubject(e.target.value)}
+            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+                 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
+                 focus:border-transparent outline-none transition cursor-pointer"
+          >
+            <option value="all">ทุกวิชา ({allSubjectPerfCount} คน)</option>
+            {allSubjectNames.map(sub => (
+              <option key={sub} value={sub}>{sub} ({subjectPerfCounts[sub] || 0} คน)</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        </div>
+        <div className="relative">
+          <select
+            value={filterScoreRange}
+            onChange={e => setFilterScoreRange(e.target.value)}
+            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+                 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
+                 focus:border-transparent outline-none transition cursor-pointer"
+          >
+            <option value="all">ทุกระดับคะแนน ({baseForScoreCount.length} คน)</option>
+            {SCORE_RANGES.map(r => (
+              <option key={r.key} value={r.key}>{r.label} ({scoreRangeCounts[r.key] || 0} คน)</option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+        </div>
+        {(filterSubject !== 'all' || filterScoreRange !== 'all') && (
+          <button
+            onClick={() => { setFilterSubject('all'); setFilterScoreRange('all'); }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
+                 text-slate-500 bg-white border border-slate-200 rounded-lg
+                 hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
+          >
+            <X className="h-3.5 w-3.5" /> ล้างตัวกรอง
+          </button>
+        )}
+      </div>
+
+      <div className="px-5 pb-5 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
-        ) : perfData.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-slate-400 text-sm">ยังไม่มีข้อมูล Performance ในเดือนนี้</p>
+            <p className="text-slate-400 text-sm">ไม่พบติวเตอร์ที่ตรงกับตัวกรอง</p>
           </div>
         ) : (
           <>
-            {perfData.length >= 2 && (
+            {filtered.length >= 1 && (
               <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((t, i) => t && (
-                  <div key={t.AdminId}
-                    className={`rounded-xl border p-3 text-center ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}>
-                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                    <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl mx-auto mt-2 text-xs" />
-                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">{t.Nickname}</p>
-                    <p className="text-lg font-black text-slate-900 mt-1">{t.PerformanceScore}</p>
-                    <p className="text-[10px] text-slate-400">คะแนน</p>
-                  </div>
+                {[top3[1], top3[0], top3[2]].map((t, i) => (
+                  t ? (
+                    <div key={t.AdminId}
+                      className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
+                      onClick={() => onViewTutor(t)}>
+                      <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
+                      <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl mx-auto mt-2 text-xs" />
+                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">{t.Nickname}</p>
+                      <p className="text-lg font-black text-slate-900 mt-1">{t.PerformanceScore}</p>
+                      <p className="text-[10px] text-slate-400">คะแนน</p>
+                    </div>
+                  ) : (
+                    // ★ เพิ่ม: placeholder เมื่อไม่มีคนในอันดับนี้ — คงเลย์เอาต์ไว้ ไม่ปล่อยโล่ง
+                    <div
+                      key={`empty-${i}`}
+                      className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
+                    >
+                      <div className="text-2xl opacity-30">{['🥈', '🥇', '🥉'][i]}</div>
+                      <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
+                        <Users className="h-4 w-4 text-slate-400" />
+                      </div>
+                      <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                      <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                      <p className="text-[10px] text-slate-300">คะแนน</p>
+                    </div>
+                  )
                 ))}
               </div>
             )}
@@ -1011,7 +1116,7 @@ function TutorPerformanceRanking({ onViewTutor }) {
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-slate-400">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
-                <span className="font-semibold text-slate-600">{perfData.length}</span> คน
+                <span className="font-semibold text-slate-600">{filtered.length}</span> คน
               </p>
               <div className="flex gap-2">
                 {showLimit > DEFAULT_TUTOR_LIMIT && (
@@ -1026,7 +1131,7 @@ function TutorPerformanceRanking({ onViewTutor }) {
                                text-orange-600 bg-orange-50 border border-orange-200
                                rounded-lg hover:bg-orange-100 transition">
                     <ChevronDown className="h-3.5 w-3.5" />
-                    แสดงเพิ่มอีก {Math.min(DEFAULT_TUTOR_LIMIT, perfData.length - showLimit)} คน
+                    แสดงเพิ่มอีก {Math.min(DEFAULT_TUTOR_LIMIT, filtered.length - showLimit)} คน
                   </button>
                 )}
               </div>
@@ -1161,6 +1266,7 @@ export default function AdminTutorsPage() {
   const [search, setSearch] = useState("");
   const [filterSubject, setFilterSubject] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all"); // ★ เพิ่ม: กรองตามสถานะ
+  const [filterHasStudents, setFilterHasStudents] = useState("all"); // ★ เพิ่ม: all | has | none
   const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // FIX #7-equivalent
@@ -1194,7 +1300,7 @@ export default function AdminTutorsPage() {
   };
 
   useEffect(() => { fetchTutors(); fetchSubjects(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterSubject, filterStatus]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterSubject, filterStatus, filterHasStudents]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -1236,17 +1342,42 @@ export default function AdminTutorsPage() {
 
   const allSubjectNames = [...allSubjects.map(s => s.SubjectName)].sort();
 
-  // แก้ filtered เดิม — ★ เพิ่มกรองตามสถานะ
-  const filtered = tutors.filter(t => {
+  const matchSearchFn = (t) => {
     const displayName = (t.Nickname || `${t.Firstname} ${t.Lastname}`).toLowerCase();
     const s = search.toLowerCase();
-    const matchSearch = !s || displayName.includes(s) || (t.PhoneNo || "").includes(s) ||
+    return !s || displayName.includes(s) || (t.PhoneNo || "").includes(s) ||
       String(t.AdminId).includes(s) || (t.TeachingSubjects || t.Subjects || "").toLowerCase().includes(s);
-    const matchSubject = filterSubject === "all" ||
-      (t.TeachingSubjects || t.Subjects || "").split(",").map(x => x.trim()).includes(filterSubject);
-    const matchStatus = filterStatus === "all" || String(t.Status_Tutor_Id || 1) === filterStatus;
-    return matchSearch && matchSubject && matchStatus;
-  });
+  };
+  const matchSubjectFn = (t) => filterSubject === "all" ||
+    (t.TeachingSubjects || t.Subjects || "").split(",").map(x => x.trim()).includes(filterSubject);
+  const matchStatusFn = (t) => filterStatus === "all" || String(t.Status_Tutor_Id || 1) === filterStatus;
+  const matchHasStudentsFn = (t) => filterHasStudents === "all" ||
+    (filterHasStudents === "has" ? Number(t.StudentCount) > 0 : !Number(t.StudentCount));
+
+  const filtered = tutors.filter(t =>
+    matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t) && matchHasStudentsFn(t)
+  );
+
+  // ★ นับจำนวนสำหรับ dropdown วิชา (กรองไขว้กับตัวกรองอื่นที่เลือกไว้ก่อน)
+  const baseForSubjectCount = tutors.filter(t => matchSearchFn(t) && matchStatusFn(t) && matchHasStudentsFn(t));
+  const allSubjectCount = baseForSubjectCount.length;
+  const subjectCounts = allSubjectNames.reduce((acc, sub) => {
+    acc[sub] = baseForSubjectCount.filter(t =>
+      (t.TeachingSubjects || t.Subjects || "").split(",").map(x => x.trim()).includes(sub)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนสำหรับ dropdown สถานะ
+  const baseForStatusCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchHasStudentsFn(t));
+  const allStatusCount = baseForStatusCount.length;
+  const activeStatusCount = baseForStatusCount.filter(t => String(t.Status_Tutor_Id || 1) === "1").length;
+  const inactiveStatusCount = baseForStatusCount.filter(t => String(t.Status_Tutor_Id || 1) === "2").length;
+
+  // ★ นับจำนวนสำหรับ dropdown มี/ไม่มีนักเรียน
+  const baseForHasStudentsCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
+  const hasStudentsCount = baseForHasStudentsCount.filter(t => Number(t.StudentCount) > 0).length;
+  const noStudentsCount = baseForHasStudentsCount.filter(t => !Number(t.StudentCount)).length;
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -1327,7 +1458,7 @@ export default function AdminTutorsPage() {
         </div>
 
         {/* ★ ใหม่: Performance Ranking (ย้ายมาจากหน้าบันทึกชั่วโมงการสอน) */}
-        <TutorPerformanceRanking onViewTutor={setViewTutor} />
+        <TutorPerformanceRanking onViewTutor={setViewTutor} allSubjects={allSubjects} />
 
         {/* Search */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
@@ -1345,9 +1476,9 @@ export default function AdminTutorsPage() {
               onChange={e => setFilterSubject(e.target.value)}
               className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
             >
-              <option value="all">ทุกวิชา</option>
+              <option value="all">ทุกวิชา ({allSubjectCount})</option>
               {allSubjectNames.map(sub => (
-                <option key={sub} value={sub}>{sub}</option>
+                <option key={sub} value={sub}>{sub} ({subjectCounts[sub] || 0})</option>
               ))}
             </select>
             {/* ★ เพิ่ม: filter สถานะ */}
@@ -1356,9 +1487,19 @@ export default function AdminTutorsPage() {
               onChange={e => setFilterStatus(e.target.value)}
               className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]"
             >
-              <option value="all">ทุกสถานะ</option>
-              <option value="1">กำลังสอน</option>
-              <option value="2">เลิกสอน</option>
+              <option value="all">ทุกสถานะ ({allStatusCount})</option>
+              <option value="1">กำลังสอน ({activeStatusCount})</option>
+              <option value="2">เลิกสอน ({inactiveStatusCount})</option>
+            </select>
+            {/* ★ เพิ่ม: filter มี/ไม่มีนักเรียน */}
+            <select
+              value={filterHasStudents}
+              onChange={e => setFilterHasStudents(e.target.value)}
+              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px]"
+            >
+              <option value="all">นักเรียนทั้งหมด ({hasStudentsCount + noStudentsCount})</option>
+              <option value="has">มีนักเรียน ({hasStudentsCount})</option>
+              <option value="none">ยังไม่มีนักเรียน ({noStudentsCount})</option>
             </select>
           </div>
           <p className="text-xs text-slate-400 mt-2 pl-1">
