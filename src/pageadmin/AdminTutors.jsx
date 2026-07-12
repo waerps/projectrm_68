@@ -1176,29 +1176,46 @@ function ScoreRing({ score }) {
   );
 }
 
-function MetricBreakdown({ tutor }) {
+function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
+  // ★ เพิ่ม: ถ้าข้อมูลไม่พอ (สัปดาห์น้อยกว่าเกณฑ์) ConsistencyScore ที่ backend ส่งมาคือค่ากลาง (50) ไม่ใช่ค่าที่วัดได้จริง
+  const isConsistencyDefault = typeof tutor.WeeksWithData === 'number' && tutor.WeeksWithData < minWeeksForConsistency;
+
   const metrics = [
     {
       name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 40,
-      sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`
+      sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`,
+      warn: false,
     },
     {
       name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 30,
-      sub: 'วัดจาก stddev การสอนต่อสัปดาห์'
+      sub: isConsistencyDefault
+        ? `ข้อมูลมีแค่ ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
+        : 'วัดจาก stddev การสอนต่อสัปดาห์',
+      warn: isConsistencyDefault,
     },
     {
       name: 'ชั่วโมงสอนสะสม', val: tutor.WorkloadScore, weight: 30,
-      sub: `${tutor.TotalHours} ชม. (เทียบกับ top)`
+      sub: `${tutor.TotalHours} ชม. (เทียบกับ top)`,
+      warn: false,
     },
   ];
 
   return (
     <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+      {/* ★ เพิ่ม: เตือนรวมด้านบนถ้าคาบสอนน้อยกว่าเกณฑ์ขึ้นโพเดียม */}
+      {tutor.LowDataWarning && (
+        <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1">
+          <Info className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 leading-relaxed">
+            ติวเตอร์คนนี้มีคาบสอนสะสมน้อย ({tutor.TotalScheduled} คาบ) คะแนนนี้จึงอาจยังไม่สะท้อนผลงานจริง และจะไม่ถูกนำไปจัดอันดับบนโพเดียม
+          </p>
+        </div>
+      )}
       {metrics.map(m => {
         const contrib = Math.round(m.val * m.weight / 100);
-        const barColor = m.val >= 80 ? 'bg-emerald-500'
+        const barColor = m.warn ? 'bg-amber-400' : m.val >= 80 ? 'bg-emerald-500'
           : m.val >= 60 ? 'bg-amber-500' : 'bg-red-500';
-        const textColor = m.val >= 80 ? 'text-emerald-700'
+        const textColor = m.warn ? 'text-amber-600' : m.val >= 80 ? 'text-emerald-700'
           : m.val >= 60 ? 'text-amber-700' : 'text-red-700';
         return (
           <div key={m.name}>
@@ -1215,7 +1232,9 @@ function MetricBreakdown({ tutor }) {
                 {contrib}
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 ml-[9.5rem] mt-0.5">{m.sub}</p>
+            <p className={`text-[10px] ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+              {m.warn && <Info className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}{m.sub}
+            </p>
           </div>
         );
       })}
@@ -1228,7 +1247,7 @@ function MetricBreakdown({ tutor }) {
   );
 }
 
-function TutorScoreCard({ tutor, index, expanded, onToggle, onView }) {
+function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForConsistency }) {
   {/* ★ เพิ่ม onView */ }
   const badge = calcBadge(tutor.PerformanceScore);
   const MEDAL = ['🥇', '🥈', '🥉'];
@@ -1248,10 +1267,16 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView }) {
         {/* info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
+            {/* ★ เพิ่ม: badge เตือนข้อมูลยังไม่พอ — ยังโชว์ในลิสต์ได้ แต่ไม่ขึ้นโพเดียม */}
+            {tutor.LowDataWarning && (
+              <span className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
+                <Info className="h-2.5 w-2.5" /> ข้อมูลยังไม่พอ
+              </span>
+            )}
             <span className="text-[10px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
           </div>
         </div>
@@ -1272,7 +1297,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView }) {
           ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
           : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
       </div>
-      {expanded && <div className="px-4 pb-3"><MetricBreakdown tutor={tutor} /></div>}
+      {expanded && <div className="px-4 pb-3"><MetricBreakdown tutor={tutor} minWeeksForConsistency={minWeeksForConsistency} /></div>}
     </div>
   );
 }
@@ -1287,6 +1312,9 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   const [filterSubject, setFilterSubject] = useState('all'); // ★ เพิ่ม
   const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
   const [showLimit, setShowLimit] = useState(DEFAULT_TUTOR_LIMIT);
+  // ★ เพิ่ม: เกณฑ์จาก backend ใช้บอกผู้ใช้ว่าทำไมบางคนไม่ขึ้นโพเดียม / คะแนนความสม่ำเสมอเป็นค่ากลาง
+  const [minWeeksForConsistency, setMinWeeksForConsistency] = useState(3);
+  const [minSessionsForRanking, setMinSessionsForRanking] = useState(5);
 
   // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcBadge เพื่อให้ label ตรงกับ badge ที่โชว์อยู่
   const SCORE_RANGES = [
@@ -1300,7 +1328,12 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   useEffect(() => {
     axios.get(`${API}/tutors/performance`)
-      .then(r => setPerfData(r.data.tutors || []))
+      .then(r => {
+        setPerfData(r.data.tutors || []);
+        // ★ เพิ่ม: เก็บเกณฑ์ขั้นต่ำที่ backend ส่งมา ไว้ใช้แสดงคำอธิบายในหน้านี้
+        if (r.data.minWeeksForConsistency) setMinWeeksForConsistency(r.data.minWeeksForConsistency);
+        if (r.data.minSessionsForRanking) setMinSessionsForRanking(r.data.minSessionsForRanking);
+      })
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
   }, []);
@@ -1338,7 +1371,9 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
-  const podiumGroups = topScoreGroups(filtered, 3); // ★ แก้: จัดกลุ่มตามคะแนนเท่ากัน แทน slice(0,3)
+  // ★ แก้: โพเดียมเอาเฉพาะคนที่ข้อมูลพอ (!LowDataWarning) มาจัดกลุ่ม — คนข้อมูลน้อยยังอยู่ในลิสต์ด้านล่างได้ แต่ไม่ขึ้นโพเดียม
+  const podiumEligible = filtered.filter(t => !t.LowDataWarning);
+  const podiumGroups = topScoreGroups(podiumEligible, 3); // ★ แก้: จัดกลุ่มตามคะแนนเท่ากัน แทน slice(0,3)
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1407,59 +1442,66 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         ) : (
           <>
             {filtered.length >= 1 && (
-              <div className="grid grid-cols-3 gap-3">
-                {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
-                  const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
-                  const MEDALS = ['🥇', '🥈', '🥉'];
+              <>
+                {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
+                <p className="flex items-center gap-1 text-[11px] text-slate-400">
+                  <Info className="h-3 w-3 shrink-0" />
+                  ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบในช่วงเวลานี้ ({podiumEligible.length} คนเข้าเกณฑ์)
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
+                    const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
+                    const MEDALS = ['🥇', '🥈', '🥉'];
 
-                  if (!group) {
+                    if (!group) {
+                      return (
+                        <div key={`empty-${i}`}
+                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        >
+                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
+                            <Users className="h-4 w-4 text-slate-400" />
+                          </div>
+                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div key={`empty-${i}`}
-                        className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                      <div key={group.score}
+                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                       >
-                        <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
-                        <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
-                          <Users className="h-4 w-4 text-slate-400" />
+                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="flex justify-center -space-x-2 mt-2">
+                          {group.members.slice(0, 4).map(t => (
+                            <button key={t.AdminId} onClick={() => onViewTutor(t)}
+                              className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
+                              title={t.Nickname}>
+                              <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-xs" />
+                            </button>
+                          ))}
+                          {group.members.length > 4 && (
+                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                              +{group.members.length - 4}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                        <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                        <p className="text-[10px] text-slate-300">คะแนน</p>
+                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                          {group.members.length === 1
+                            ? group.members[0].Nickname
+                            : `${group.members.length} คนเสมอกัน`}
+                        </p>
+                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-[10px] text-slate-400">คะแนน</p>
                       </div>
                     );
-                  }
-
-                  return (
-                    <div key={group.score}
-                      className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                      style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
-                    >
-                      <div className="text-2xl">{MEDALS[medalIdx]}</div>
-                      <div className="flex justify-center -space-x-2 mt-2">
-                        {group.members.slice(0, 4).map(t => (
-                          <button key={t.AdminId} onClick={() => onViewTutor(t)}
-                            className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
-                            title={t.Nickname}>
-                            <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-xs" />
-                          </button>
-                        ))}
-                        {group.members.length > 4 && (
-                          <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
-                            +{group.members.length - 4}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
-                        {group.members.length === 1
-                          ? group.members[0].Nickname
-                          : `${group.members.length} คนเสมอกัน`}
-                      </p>
-                      <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
-                      <p className="text-[10px] text-slate-400">คะแนน</p>
-                    </div>
-                  );
-                })}
-              </div>
+                  })}
+                </div>
+              </>
             )}
 
             <div className="space-y-2">
@@ -1471,6 +1513,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                   expanded={expandedId === t.AdminId}
                   onToggle={() => setExpandedId(expandedId === t.AdminId ? null : t.AdminId)}
                   onView={onViewTutor}
+                  minWeeksForConsistency={minWeeksForConsistency}
                 />
               ))}
             </div>
@@ -1508,6 +1551,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   const [data, setData] = useState(null);
   const [perf, setPerf] = useState(null);   // ★ เพิ่ม
+  const [minWeeksForConsistency, setMinWeeksForConsistency] = useState(3); // ★ เพิ่ม
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
 
@@ -1521,6 +1565,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         setData(csRes.data);
         const found = (perfRes.data.tutors || []).find(t => t.AdminId === tutor.AdminId);
         setPerf(found || null);
+        if (perfRes.data.minWeeksForConsistency) setMinWeeksForConsistency(perfRes.data.minWeeksForConsistency); // ★ เพิ่ม
       })
       .catch(e => {
         console.error('[TutorDetailModal]', e);
@@ -1554,6 +1599,12 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
             {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-full">{tutor.TeachingSubjects}</span>}
             <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
+            {/* ★ เพิ่ม: บอกด้วยว่าถ้าข้อมูลยังไม่พอ จะไม่ถูกจัดอันดับโพเดียม */}
+            {perf?.LowDataWarning && (
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-white/20">
+                <Info className="h-3 w-3" /> ข้อมูลยังไม่พอสำหรับจัดอันดับ
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-3 shrink-0">
@@ -1629,7 +1680,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
 
           {tab === 'overview' && (
             perf
-              ? <MetricBreakdown tutor={perf} />
+              ? <MetricBreakdown tutor={perf} minWeeksForConsistency={minWeeksForConsistency} />
               : <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูล Performance เดือนนี้</p>
           )}
         </>
