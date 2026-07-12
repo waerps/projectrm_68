@@ -1778,6 +1778,33 @@ export default function AdminCoursesPage() {
 
   const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
 
+  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown สถานะ (กรองตามค้นหา+เทอมที่เลือกไว้ก่อน ไม่รวมตัวสถานะเอง)
+  const baseForStatusCount = courses.filter((c) => {
+    const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
+    const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
+    return matchSearch && matchTerm;
+  });
+  const allStatusCount = baseForStatusCount.length;
+  const statusCounts = statusOptions.reduce((acc, s) => {
+    acc[s.Status_Course_Id] = baseForStatusCount.filter(
+      (c) => Number(c.Status_Course_Id) === Number(s.Status_Course_Id)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown เทอม (กรองตามค้นหา+สถานะที่เลือกไว้ก่อน ไม่รวมตัวเทอมเอง)
+  const baseForTermCount = courses.filter((c) => {
+    const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
+    return matchSearch && matchStatus;
+  });
+  const termCounts = TERM_FILTERS.reduce((acc, t) => {
+    acc[t.key] = t.termId === null
+      ? baseForTermCount.length
+      : baseForTermCount.filter((c) => Number(c.Term_Id) === t.termId).length;
+    return acc;
+  }, {});
+
   const filtered = courses.filter((c) => {
     const matchSearch =
       search === "" ||
@@ -1876,9 +1903,11 @@ export default function AdminCoursesPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
-            <option value="all">สถานะทั้งหมด</option>
+            <option value="all">สถานะทั้งหมด ({allStatusCount})</option>
             {statusOptions.map((s) => (
-              <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>
+              <option key={s.Status_Course_Id} value={s.Status_Course_Id}>
+                {s.Status_Course_Name} ({statusCounts[s.Status_Course_Id] || 0})
+              </option>
             ))}
           </select>
           <select
@@ -1887,7 +1916,7 @@ export default function AdminCoursesPage() {
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
             {TERM_FILTERS.map((t) => (
-              <option key={t.key} value={t.key}>{t.label}</option>
+              <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
             ))}
           </select>
         </div>
