@@ -301,6 +301,163 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
   );
 }
 
+// ★ ใหม่: ผูกติวเตอร์เข้าคอร์ส พร้อมเลือกวิชาที่จะสอนในคอร์สนั้น (แอดมินเลือกวิชาเอง)
+// รองรับให้ติวเตอร์สอนได้มากกว่า 1 วิชาในคอร์สเดียวกัน — คลิกคอร์สซ้ำได้เพื่อเพิ่มแถววิชาใหม่
+function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, showToast }) {
+  const [allCourses, setAllCourses] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const [selected, setSelected] = useState([]); // [{ localId, CourseID, SubjectId }]
+  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => { axios.get(`${API}/courses`).then(r => setAllCourses(r.data)); }, []);
+
+  const available = allCourses.filter(c => [1, 2].includes(Number(c.Status_Course_Id)));
+  const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
+
+  // วิชาที่ผูกกับคอร์สนี้อยู่แล้วใน DB
+  const assignedSubjectIdsOf = (courseId) =>
+    assignedCourses.filter(c => String(c.CourseID) === String(courseId)).map(c => String(c.SubjectId));
+
+  // วิชาที่ถูกเลือกไว้แล้วในฟอร์มนี้ (แถวอื่นของคอร์สเดียวกัน) — กันเลือกซ้ำในรอบเดียวกัน
+  const selectedSubjectIdsOf = (courseId, excludeLocalId) =>
+    selected
+      .filter(x => String(x.CourseID) === String(courseId) && x.localId !== excludeLocalId)
+      .map(x => String(x.SubjectId));
+
+  const addRow = (courseId) => {
+    setSelected(p => [...p, { localId: `${courseId}-${Date.now()}-${Math.random()}`, CourseID: courseId, SubjectId: "" }]);
+  };
+  const removeRow = (localId) => setSelected(p => p.filter(x => x.localId !== localId));
+  const setSubjectFor = (localId, subjectId) =>
+    setSelected(p => p.map(x => x.localId === localId ? { ...x, SubjectId: subjectId } : x));
+
+  const selectedRows = selected
+    .map(sel => ({ ...sel, course: allCourses.find(c => String(c.CourseID) === String(sel.CourseID)) }))
+    .filter(x => x.course);
+
+  const handleAdd = async () => {
+    if (!selected.length) return showToast("error", "กรุณาเลือกคอร์สอย่างน้อย 1 รายการ");
+    if (selected.some(x => !x.SubjectId)) return showToast("error", "กรุณาเลือกวิชาให้ครบทุกรายการ");
+
+    // กันเลือกคอร์ส+วิชาซ้ำกันเองภายในรอบเดียวกัน
+    const seen = new Set();
+    for (const x of selected) {
+      const key = `${x.CourseID}-${x.SubjectId}`;
+      if (seen.has(key)) return showToast("error", "มีคอร์สและวิชาที่เลือกซ้ำกันในรายการ กรุณาตรวจสอบ");
+      seen.add(key);
+    }
+
+    setSaving(true);
+    try {
+      const res = await axios.post(`${API}/tutor-courses/bulk`, {
+        AdminId: tutorId,
+        Assignments: selected.map(x => ({ CourseID: x.CourseID, SubjectId: x.SubjectId })),
+      });
+      const { success = [], skipped = [], failed = [] } = res.data;
+      let msg = `เพิ่มสำเร็จ ${success.length} รายการ`;
+      if (skipped.length) msg += ` · ข้าม ${skipped.length} รายการ (มีอยู่แล้ว)`;
+      if (failed.length) msg += ` · ล้มเหลว ${failed.length} รายการ`;
+      showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
+      setSelected([]); setAdding(false); setSearch("");
+      onAdded();
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด", e.response?.data?.error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!adding) {
+    return (
+      <button onClick={() => setAdding(true)}
+        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition mb-3">
+        <Plus className="h-3.5 w-3.5" /> เพิ่มคอร์สให้ติวเตอร์
+      </button>
+    );
+  }
+
+  return (
+    <div className="mb-3 bg-orange-50 border border-orange-100 rounded-xl overflow-hidden">
+      {selectedRows.length > 0 && (
+        <div className="divide-y divide-orange-100 border-b border-orange-200 bg-white">
+          {selectedRows.map(({ localId, course, SubjectId, CourseID }) => {
+            const excludeIds = [...assignedSubjectIdsOf(CourseID), ...selectedSubjectIdsOf(CourseID, localId)];
+            const subjectOptions = allSubjects.filter(
+              s => !excludeIds.includes(String(s.SubjectId)) || String(s.SubjectId) === String(SubjectId)
+            );
+            return (
+              <div key={localId} className="flex items-center gap-3 px-3 py-2">
+                <span className="flex-1 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
+                <select
+                  value={SubjectId}
+                  onChange={e => setSubjectFor(localId, e.target.value)}
+                  className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  <option value="">เลือกวิชา...</option>
+                  {subjectOptions.map(s => (
+                    <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>
+                  ))}
+                </select>
+                <button type="button" onClick={() => removeRow(localId)}
+                  className="text-red-400 hover:text-red-600 transition shrink-0" title="เอาออก">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 p-3">
+        <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
+          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+      </div>
+
+      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">
+        แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่ · คลิกคอร์สเดิมซ้ำได้เพื่อเพิ่มวิชาที่สอง
+      </p>
+
+      <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+        ) : filtered.map(c => {
+          const id = String(c.CourseID);
+          const dbCount = assignedSubjectIdsOf(id).length;
+          const pendingCount = selected.filter(x => String(x.CourseID) === id).length;
+          return (
+            <button
+              type="button"
+              key={id}
+              onClick={() => addRow(id)}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition hover:bg-white text-left"
+            >
+              <Plus className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+              <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
+              {(dbCount + pendingCount) > 0 && (
+                <span className="text-[10px] text-orange-500 font-semibold shrink-0">
+                  {dbCount} วิชาแล้ว{pendingCount ? ` +${pendingCount}` : ""}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 p-3 border-t border-orange-100">
+        <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selected.length} รายการ</span>
+        <button onClick={handleAdd} disabled={saving || !selected.length}
+          className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
+        </button>
+        <button onClick={() => { setAdding(false); setSelected([]); setSearch(""); }}
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── TutorForm ─────────────────────────────────────────────────────────────────
 function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, allTutors, allSubjects }) {
   const [form, setForm] = useState({
@@ -327,6 +484,14 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
   const [showPwd, setShowPwd] = useState(false);
   const isEdit = !!initial.AdminId;
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่ติวเตอร์คนนี้สอนอยู่
+
+  const loadCourses = () => {
+    if (!isEdit) return;
+    axios.get(`${API}/tutors/${initial.AdminId}/courses-students`).then(r => setCourses(r.data.courses || []));
+  };
+  useEffect(() => { loadCourses(); }, [initial.AdminId]);
 
   // ★ เพิ่ม: helper สำหรับช่องเงิน (เหมือนหน้าคอร์ส — comma คั่นหลักพัน)
   const handleMoneyChange = (key) => (e) => set(key, sanitizeMoneyInput(e.target.value));
@@ -511,6 +676,42 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isEdit && (
+        <div>
+          <label className={lbl}>คอร์สที่สอน</label>
+          <AddCourseToTutor
+            tutorId={initial.AdminId}
+            assignedCourses={courses}
+            onAdded={loadCourses}
+            allSubjects={allSubjects}
+            showToast={showToast}
+          />
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {courses.map(c => (
+              <span key={c.TutorCourseDetailId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                {c.CourseName}{c.SubjectName && ` · ${c.SubjectName}`}
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await axios.delete(`${API}/tutor-courses/${c.TutorCourseDetailId}`);
+                      loadCourses();
+                    } catch (err) {
+                      showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+                    }
+                  }}
+                  className="text-orange-400 hover:text-red-500 transition"
+                  title="ถอดออกจากคอร์ส"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
           </div>
         </div>
       )}
@@ -1143,15 +1344,15 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   );
 }
 
-function TutorDetailModal({ tutor, onClose }) {
+function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   const [data, setData] = useState(null);
   const [perf, setPerf] = useState(null);   // ★ เพิ่ม
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
 
-  useEffect(() => {
+  const loadDetail = () => {
     setLoading(true);
-    Promise.all([
+    return Promise.all([
       axios.get(`${API}/tutors/${tutor.AdminId}/courses-students`),
       axios.get(`${API}/tutors/performance`),
     ])
@@ -1162,11 +1363,13 @@ function TutorDetailModal({ tutor, onClose }) {
       })
       .catch(e => {
         console.error('[TutorDetailModal]', e);
-        setData({ courses: [], students: [] });   // ★ กันไม่ให้ data เป็น null
+        setData({ courses: [], students: [] });
         setPerf(null);
       })
       .finally(() => setLoading(false));
-  }, [tutor.AdminId]);
+  };
+
+  useEffect(() => { loadDetail(); }, [tutor.AdminId]);
 
   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
   const badge = calcBadge(perf?.PerformanceScore ?? 0);
@@ -1217,20 +1420,49 @@ function TutorDetailModal({ tutor, onClose }) {
       ) : (
         <>
           {tab === 'courses' && (
-            data.courses.length === 0
-              ? <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่สอน</p>
-              : <div className="space-y-2">
-                {data.courses.map(c => (
-                  <div key={c.CourseID} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="font-semibold text-sm text-slate-900">{c.CourseName}</p>
-                    <div className="flex gap-2 mt-1 text-[11px] text-slate-500">
-                      {c.SubjectName && <span>{c.SubjectName}</span>}
-                      <span>· {formatDate(c.StartDate)} – {formatDate(c.LastDate)}</span>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{c.Status_Course_Name}</span>
+            <div className="space-y-3">
+              <AddCourseToTutor
+                tutorId={tutor.AdminId}
+                assignedCourses={data.courses}
+                onAdded={loadDetail}
+                allSubjects={allSubjects}
+                showToast={showToast}
+              />
+              {data.courses.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่สอน</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.courses.map(c => (
+                    <div key={c.TutorCourseDetailId} className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-slate-900">{c.CourseName}</p>
+                        <div className="flex gap-2 mt-1 text-[11px] text-slate-500">
+                          {c.SubjectName && <span>{c.SubjectName}</span>}
+                          <span>· {formatDate(c.StartDate)} – {formatDate(c.LastDate)}</span>
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{c.Status_Course_Name}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`ถอด "${c.CourseName}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
+                          try {
+                            await axios.delete(`${API}/tutor-courses/${c.TutorCourseDetailId}`);
+                            loadDetail();
+                          } catch (err) {
+                            showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+                          }
+                        }}
+                        className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="ถอดออกจากคอร์ส"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {tab === 'students' && (
@@ -1626,7 +1858,12 @@ export default function AdminTutorsPage() {
           />
         )}
         {viewTutor && (
-          <TutorDetailModal tutor={viewTutor} onClose={() => setViewTutor(null)} />
+          <TutorDetailModal
+            tutor={viewTutor}
+            onClose={() => setViewTutor(null)}
+            showToast={showToast}
+            allSubjects={allSubjects}
+          />
         )}
       </>
       }
