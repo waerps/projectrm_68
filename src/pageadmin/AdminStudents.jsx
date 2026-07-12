@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
@@ -10,8 +10,9 @@ import {
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
-  Award, TrendingUp, TrendingDown, Minus,   // ★ เพิ่ม
+  Award, TrendingUp, TrendingDown, Minus, ImagePlus,   // ★ เพิ่ม
 } from "lucide-react";
+import { getFileUrl } from "../utils/fileUrl";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -44,6 +45,30 @@ const calcAge = (dob) => {
   } catch { return null; }
 };
 
+// ★ เพิ่ม: format เบอร์โทร (ใช้ร่วมกันหลายจุด — ผู้ปกครอง/นักเรียน)
+const formatPhone = (v) => {
+  const d = (v || "").replace(/\D/g, "").slice(0, 10);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
+};
+
+// ★ เพิ่ม: ใช้รูปที่อัปโหลดถ้ามี, ไม่งั้น fallback เป็น dicebear เหมือนเดิม (ไม่กระทบข้อมูลเก่าที่ยังไม่มีรูป)
+function StudentAvatar({ student, className = "h-10 w-10 rounded-xl" }) {
+  const [imgErr, setImgErr] = useState(false);
+  const displayName = student.Nickname || `${student.Firstname} ${student.Lastname}`;
+  const src = (student.Photo && !imgErr) ? getFileUrl(student.Photo) : avatarUrl(student.UserId);
+  return (
+    <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+      <img
+        src={src}
+        alt={displayName}
+        onError={() => { if (student.Photo) setImgErr(true); }}
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
+}
 
 // ─── Modal ─────────────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children, wide }) {
@@ -69,8 +94,121 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   );
 }
 
+// ─── ImageUpload (เหมือนหน้าติวเตอร์ทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
+function ImageUpload({ value, onChange, showToast }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setErr("ไฟล์ต้องไม่เกิน 5MB");
+      showToast?.("error", "อัปโหลดไม่สำเร็จ", "ไฟล์ต้องไม่เกิน 5MB");
+      return;
+    }
+    setErr(""); setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await axios.post(`${API}/upload/image`, fd);
+      onChange(res.data.path);
+    } catch {
+      setErr("อัปโหลดไม่สำเร็จ");
+      showToast?.("error", "อัปโหลดรูปไม่สำเร็จ");
+    } finally { setUploading(false); }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div
+        onClick={() => !uploading && inputRef.current?.click()}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
+        className={`relative flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed cursor-pointer transition
+          ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50"}`}
+      >
+        {value && !uploading && (
+          <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
+        )}
+        <div className="relative z-10 flex flex-col items-center gap-1 text-center">
+          {uploading
+            ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
+            : value
+              ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+          }
+        </div>
+        <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
+          onChange={(e) => handleFile(e.target.files[0])} />
+      </div>
+      {err && <p className="text-xs text-red-500">{err}</p>}
+      {value && !uploading && (
+        <button type="button" onClick={() => onChange("")}
+          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          <X className="h-3.5 w-3.5" /> ลบรูปภาพ
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── ★ ใหม่: ค้นหาผู้ปกครองที่มีอยู่แล้วในระบบ (กรณีพี่น้องใช้ผู้ปกครองคนเดียวกัน) ──
+function ParentSearchSelect({ onSelect }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    const timer = setTimeout(() => {
+      axios.get(`${API}/parent-profiles`, { params: { search: query } })
+        .then(r => setResults(r.data))
+        .finally(() => setLoading(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, open]);
+
+  const displayNameOf = (p) => p.Nickname || `${p.Firstname} ${p.Lastname}`;
+
+  return (
+    <div className="relative">
+      <input
+        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition"
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="ค้นหาผู้ปกครองที่มีอยู่ในระบบ (กรณีพี่น้องใช้คนเดียวกัน)..."
+        autoComplete="off"
+      />
+      {open && (
+        <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
+          {loading ? (
+            <p className="text-xs text-slate-400 text-center py-3">กำลังค้นหา...</p>
+          ) : results.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-3">ไม่พบ — กรอกข้อมูลใหม่ด้านล่างได้เลย</p>
+          ) : results.map(p => (
+            <button type="button" key={p.ParentId}
+              onMouseDown={() => { onSelect(p); setOpen(false); }}
+              className="flex items-center justify-between w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition">
+              <span className="truncate">
+                {displayNameOf(p)}
+                {p.ParentProfilesType_Name && <span className="text-slate-400"> · {p.ParentProfilesType_Name}</span>}
+              </span>
+              {p.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{p.PhoneNo}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── StudentForm ───────────────────────────────────────────────────────────────
-function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders, showToast }) {
+function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels, genders, parentProfileTypes = [], showToast }) {
   const isEdit = !!initial.UserId;
   const stripSchool = s => (s || "").replace(/^โรงเรียน\s*/, "");
   const [form, setForm] = useState({
@@ -87,6 +225,18 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     genderId: initial.GenderId || initial.genderId || "",
     username: initial.Username || initial.username || "",
     password: "",
+    // ★ เพิ่ม: รูปโปรไฟล์
+    photo: initial.Photo || initial.photo || "",
+    // ★ เพิ่ม: ข้อมูลผู้ปกครอง (ค่าเริ่มต้นจาก list — จะถูก autofill ให้ครบอีกทีจาก loadDetail ด้านล่างตอนแก้ไข)
+    parentId: initial.ParentId || "",
+    parentFirstname: initial.ParentFirstname || "",
+    parentLastname: initial.ParentLastname || "",
+    parentNickname: initial.ParentNickname || "",
+    parentPhoneNo: initial.ParentPhoneNo || "",
+    parentLineId: initial.ParentLineID || "",
+    parentRelationship: initial.ParentRelationship || "",
+    parentProfilesTypeId: initial.ParentProfilesType_Id || "",
+    removeParent: false,
   });
   const [showPwd, setShowPwd] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -94,6 +244,12 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
   const submit = () => {
     if (!form.firstname.trim() || !form.lastname.trim()) return alert("กรุณากรอกชื่อ-นามสกุล");
     if (!isEdit && (!form.username.trim() || !form.password.trim())) return alert("กรุณากรอก Username และ Password");
+    // ★ กันเคสกรอกชื่อ/นามสกุลผู้ปกครองมาไม่ครบ
+    const hasPartialParent =
+      (form.parentFirstname.trim() || form.parentLastname.trim()) &&
+      !(form.parentFirstname.trim() && form.parentLastname.trim());
+    if (hasPartialParent) return alert("กรุณากรอกชื่อและนามสกุลผู้ปกครองให้ครบ");
+
     onSave({
       ...form,
       schoolName: form.schoolName.trim() ? `โรงเรียน${form.schoolName.trim()}` : "",
@@ -108,13 +264,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     return formatted;
   };
 
-  const formatPhone = (v) => {
-    const d = v.replace(/\D/g, "").slice(0, 10);
-    if (d.length <= 3) return d;
-    if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
-    return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6, 10)}`;
-  };
-
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
@@ -122,12 +271,34 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
   const loadCourses = () => {
     if (!isEdit) return;
-    axios.get(`${API}/students/${initial.UserId}`).then(r => setCourses(r.data.courses || []));
+    axios.get(`${API}/students/${initial.UserId}`).then(r => {
+      setCourses(r.data.courses || []);
+      const p = r.data.parent;
+      setForm(f => ({
+        ...f,
+        parentId: "", // ★ ไม่ล็อกเป็นโหมด "เลือกไว้แล้ว" จะได้แก้ไขฟิลด์ได้ตรงๆ
+        parentFirstname: p?.Firstname || "",
+        parentLastname: p?.Lastname || "",
+        parentNickname: p?.Nickname || "",
+        parentPhoneNo: p?.PhoneNo || "",
+        parentLineId: p?.LineID || "",
+        parentRelationship: p?.Relationship || "",
+        parentProfilesTypeId: p?.ParentProfilesType_Id || "",
+        removeParent: false,
+      }));
+    });
   };
+
   useEffect(() => { loadCourses(); }, [initial.UserId]);
 
   return (
     <div className="space-y-5">
+      {/* ★ เพิ่ม: รูปโปรไฟล์ */}
+      <div>
+        <label className={lbl}>รูปโปรไฟล์</label>
+        <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
@@ -206,6 +377,72 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           />
         </div>
       </div>
+
+      {/* ★ เพิ่ม: ข้อมูลผู้ปกครอง */}
+      <div className="border border-orange-100 rounded-xl p-4 bg-orange-50/50 space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" /> ข้อมูลผู้ปกครอง
+          </p>
+          {(form.parentFirstname || form.parentLastname) && (
+            <button type="button"
+              onClick={() => setForm(f => ({
+                ...f, parentId: "", parentFirstname: "", parentLastname: "", parentNickname: "",
+                parentPhoneNo: "", parentLineId: "", parentRelationship: "",
+                parentProfilesTypeId: "", removeParent: true,
+              }))}
+              className="text-xs text-red-500 hover:text-red-700 font-semibold">
+              ลบข้อมูลผู้ปกครอง
+            </button>
+          )}
+        </div>
+
+        <ParentSearchSelect onSelect={(p) => setForm(f => ({
+          ...f,
+          parentId: p.ParentId,
+          parentFirstname: p.Firstname || "",
+          parentLastname: p.Lastname || "",
+          parentNickname: p.Nickname || "",
+          parentPhoneNo: p.PhoneNo || "",
+          parentLineId: p.LineID || "",
+          parentRelationship: p.Relationship || "",
+          parentProfilesTypeId: p.ParentProfilesType_Id || "",
+          removeParent: false,
+        }))} />
+        <p className="text-[11px] text-slate-400">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <input className={inp} placeholder="ชื่อผู้ปกครอง"
+            value={form.parentFirstname}
+            onChange={e => setForm(f => ({ ...f, parentFirstname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="นามสกุลผู้ปกครอง"
+            value={form.parentLastname}
+            onChange={e => setForm(f => ({ ...f, parentLastname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="ชื่อเล่น"
+            value={form.parentNickname}
+            onChange={e => setForm(f => ({ ...f, parentNickname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="เบอร์โทร"
+            value={form.parentPhoneNo}
+            onChange={e => setForm(f => ({ ...f, parentPhoneNo: formatPhone(e.target.value), parentId: "", removeParent: false }))}
+            inputMode="numeric" />
+          <input className={inp} placeholder="Line ID"
+            value={form.parentLineId}
+            onChange={e => setForm(f => ({ ...f, parentLineId: e.target.value, parentId: "", removeParent: false }))} />
+          <select className={inp} value={form.parentProfilesTypeId}
+            onChange={e => setForm(f => ({ ...f, parentProfilesTypeId: e.target.value, parentId: "", removeParent: false }))}>
+            <option value="">ไม่ระบุ</option>
+            {parentProfileTypes.map(t => (
+              <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>
+                {t.ParentProfilesType_Name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <input className={inp} placeholder="หมายเหตุความสัมพันธ์ (ถ้ามี)"
+          value={form.parentRelationship}
+          onChange={e => setForm(f => ({ ...f, parentRelationship: e.target.value, parentId: "", removeParent: false }))} />
+      </div>
+
       <div>
         <label className={lbl}>หมายเหตุ</label>
         <textarea className={inp} rows={2} value={form.remark || ""} onChange={e => set("remark", e.target.value)} />
@@ -470,6 +707,11 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 }
 
 // ─── StudentDetailModal ────────────────────────────────────────────────────────
+// ★ FIX: เดิม loadDetail ของ component นี้ถูกแทนที่ผิดตัวด้วยโค้ดของ StudentForm
+// (อ้าง isEdit / initial / setCourses / setForm ที่ไม่มีอยู่ใน scope นี้) ทำให้เปิด
+// modal นี้แล้ว React crash ทันที ("initial is not defined") แก้กลับให้ดึงข้อมูล
+// นักเรียนแบบเต็ม (student/parent/courses/attendance/videoProgress/examScores)
+// จาก GET /students/:id ให้ถูกต้องตามเดิม
 function StudentDetailModal({ studentId, onClose, showToast }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -505,7 +747,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   if (!data) return null;
 
-  const { student: s, courses, attendance, videoProgress, examScores = [] } = data;
+  // ★ เพิ่ม: destructure parent ออกมาด้วย (backend คืน field นี้มาให้แล้ว)
+  const { student: s, parent, courses, attendance, videoProgress, examScores = [] } = data;
   const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
 
   // ── ภาพรวมทั้งหมด (ไม่กรองคอร์ส) สำหรับ header การ์ดบนสุด ──────────────
@@ -563,6 +806,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
     { key: "videos", label: "วิดีโอ", count: cVideos.length },
     { key: "scores", label: "คะแนนสอบ", count: subjectSummaries.length },      // ★ ใหม่
     { key: "overview", label: "ภาพรวม", count: null },                          // ★ ใหม่
+    { key: "parent", label: "ผู้ปกครอง", count: null },                         // ★ เพิ่ม
   ];
 
   // ── ข้อความเตือนเมื่อยังไม่เลือกคอร์ส ────────────────────────────────
@@ -580,11 +824,18 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
     <Modal title={`ข้อมูลนักเรียน: ${displayName}`} icon={Eye} onClose={onClose} wide>
       {/* Profile Card */}
       <div className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-gradient-to-br from-orange-600 to-amber-700 rounded-2xl text-white">
+<<<<<<< HEAD
         <div className="h-16 w-16 rounded-2xl overflow-hidden border-2 border-white/30 shadow-md shrink-0">
           <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-contain" />
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-white text-lg">{displayName}</h2>
+=======
+        {/* ★ เปลี่ยนมาใช้ StudentAvatar — จะใช้รูปที่อัปโหลดถ้ามี ไม่งั้น fallback เป็น dicebear เดิม */}
+        <StudentAvatar student={s} className="h-16 w-16 rounded-2xl border-2 border-white/30 shadow-md" />
+
+        <div className="flex-1 min-w-0">
+>>>>>>> kaip
           <p className="text-sm text-orange-200">{s.Firstname} {s.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
             {s.GradeDetail && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">{s.GradeDetail}</span>}
@@ -606,6 +857,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
           </div>
         </div>
       </div>
+
 
       {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
       {selectedCourse && tab !== "courses" && (
@@ -891,6 +1143,49 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
           </div>
         )
       )}
+
+      {/* ★ เพิ่ม: Tab ผู้ปกครอง — แสดงข้อมูลผู้ปกครอง (backend คืน parent มาให้แล้วจาก GET /students/:id) */}
+      {tab === "parent" && (
+        !parent ? (
+          <div className="text-center py-10">
+            <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+            <p className="text-slate-400 text-sm">ยังไม่มีข้อมูลผู้ปกครอง — เพิ่มได้ผ่านปุ่มแก้ไขข้อมูลนักเรียน</p>
+          </div>
+        ) : (
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-slate-900">
+                {parent.Nickname || `${parent.Firstname} ${parent.Lastname}`}
+              </p>
+              {parent.ParentProfilesType_Name && (
+                <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                  {parent.ParentProfilesType_Name}
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-[11px] text-slate-400">ชื่อ-นามสกุล</p>
+                <p className="text-slate-700">{parent.Firstname} {parent.Lastname}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400">เบอร์โทร</p>
+                <p className="text-slate-700">{parent.PhoneNo || "—"}</p>
+              </div>
+              <div>
+                <p className="text-[11px] text-slate-400">Line ID</p>
+                <p className="text-slate-700">{parent.LineID || "—"}</p>
+              </div>
+              {parent.Relationship && (
+                <div className="col-span-2">
+                  <p className="text-[11px] text-slate-400">หมายเหตุความสัมพันธ์</p>
+                  <p className="text-slate-700">{parent.Relationship}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      )}
     </Modal>
   );
 }
@@ -938,6 +1233,32 @@ function calcStudentBadge(score) {
   if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
   if (score >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
   return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+}
+
+// ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
+function topScoreGroups(sortedList, groupCount = 3) {
+  const groups = [];
+  for (const item of sortedList) {
+    const last = groups[groups.length - 1];
+    if (last && last.score === item.PerformanceScore) {
+      last.members.push(item);
+    } else {
+      if (groups.length >= groupCount) break;
+      groups.push({ score: item.PerformanceScore, members: [item] });
+    }
+  }
+  return groups;
+}
+
+// ★ เพิ่ม: standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
+function withCompetitionRank(sortedList) {
+  let rank = 0;
+  let prevScore = null;
+  return sortedList.map((item, idx) => {
+    if (item.PerformanceScore !== prevScore) rank = idx + 1;
+    prevScore = item.PerformanceScore;
+    return { ...item, _rank: rank };
+  });
 }
 
 // ─── Score Ring SVG ───────────────────────────────────────────────────────────
@@ -1028,28 +1349,25 @@ function StudentMetricBreakdown({ student }) {
   );
 }
 
-// ─── StudentScoreCard (แถวแบบ expandable ไม่ใช้ modal) ──────────────────────
-function StudentScoreCard({ student, index, expanded, onToggle, onView }) {
+function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
   const badge = calcStudentBadge(student.PerformanceScore);
-  const MEDAL = ['🥇', '🥈', '🥉'];
+  const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const name = student.Nickname || `${student.Firstname} ${student.Lastname}`;
 
   return (
     <div className={`bg-white rounded-2xl border transition-all
-      ${index === 0 ? 'border-amber-300' : 'border-slate-200'}`}>
+      ${rank === 1 ? 'border-amber-300' : 'border-slate-200'}`}>
       {/* แถวหลัก */}
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={onToggle}>
-        {/* อันดับ */}
+        {/* อันดับ — standard competition ranking: คะแนนเท่ากัน = อันดับเดียวกัน */}
         <span className="text-lg w-6 text-center shrink-0">
-          {index < 3
-            ? MEDAL[index]
-            : <span className="text-xs text-slate-400">{index + 1}</span>}
+          {MEDAL[rank]
+            ? MEDAL[rank]
+            : <span className="text-xs text-slate-400">{rank}</span>}
         </span>
 
-        {/* Avatar */}
-        <div className="h-9 w-9 rounded-xl overflow-hidden border border-orange-100 shrink-0">
-          <img src={avatarUrl(student.UserId)} alt={name} className="w-full h-full object-contain" />
-        </div>
+        {/* Avatar — ★ เปลี่ยนมาใช้ StudentAvatar */}
+        <StudentAvatar student={student} className="h-9 w-9 rounded-xl border border-orange-100" />
 
         {/* Info */}
         <div className="flex-1 min-w-0">
@@ -1103,7 +1421,17 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [filterGrade, setFilterGrade] = useState('all');
+  const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
   const [showLimit, setShowLimit] = useState(DEFAULT_LIMIT);
+
+  // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcStudentBadge เพื่อให้ label/สีตรงกับ badge ที่โชว์อยู่
+  const SCORE_RANGES = [
+    { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
+    { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
+    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
+    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
+    { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
+  ];
 
   useEffect(() => {
     axios.get(`${API}/students/performance`)
@@ -1116,18 +1444,32 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   useEffect(() => {
     setShowLimit(DEFAULT_LIMIT);
     setExpandedId(null);
-  }, [filterGrade]);
+  }, [filterGrade, filterScoreRange]);
 
   // กรองตามชั้นปี
-  const filtered = filterGrade === 'all'
-    ? perfData
-    : perfData.filter(s => String(s.GradeLevelId) === filterGrade);
+  const matchGradeFn = (s) => filterGrade === 'all' || String(s.GradeLevelId) === filterGrade;
+  // ★ กรองตามช่วงคะแนน
+  const matchScoreFn = (s) => {
+    if (filterScoreRange === 'all') return true;
+    const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
+    return range ? range.test(s.PerformanceScore) : true;
+  };
+
+  const filtered = perfData.filter(s => matchGradeFn(s) && matchScoreFn(s));
+
+  const rankedFiltered = withCompetitionRank(filtered); // ★ เพิ่ม
+  const podiumGroups = topScoreGroups(rankedFiltered, 3); // ★ เพิ่ม
+
+  // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
+  const baseForScoreCount = perfData.filter(matchGradeFn);
+  const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
+    acc[r.key] = baseForScoreCount.filter(s => r.test(s.PerformanceScore)).length;
+    return acc;
+  }, {});
 
   // ตัดแสดงตาม limit
-  const visible = filtered.slice(0, showLimit);
-  const hasMore = filtered.length > showLimit;
-
-  const top3 = filtered.slice(0, 3);
+  const visible = rankedFiltered.slice(0, showLimit);
+  const hasMore = rankedFiltered.length > showLimit;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1141,8 +1483,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Pre/Mid/Post-test 60%</span>
       </div>
 
-      {/* ── Grade Filter Dropdown ─────────────────────────────── */}
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2">
+      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
         <div className="relative ml-auto">
           <select
             value={filterGrade}
@@ -1151,10 +1492,10 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
-            <option value="all">ทุกระดับชั้น ({perfData.length} คน)</option>
+            <option value="all">ทุกระดับชั้น ({baseForScoreCount.length} คน)</option>
             {gradeLevels.map(g => {
               const cnt = perfData.filter(
-                s => String(s.GradeLevelId) === String(g.GradeLevelId)
+                s => String(s.GradeLevelId) === String(g.GradeLevelId) && matchScoreFn(s)
               ).length;
               return (
                 <option key={g.GradeLevelId} value={String(g.GradeLevelId)}>
@@ -1163,15 +1504,34 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
               );
             })}
           </select>
-          {/* ไอคอน chevron */}
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4
                             text-slate-400 pointer-events-none" />
         </div>
 
-        {/* ปุ่มล้างตัวกรอง — แสดงเฉพาะเมื่อไม่ได้อยู่ที่ "ทุกระดับชั้น" */}
-        {filterGrade !== 'all' && (
+        {/* ★ เพิ่ม: dropdown กรองตามช่วง Performance Score */}
+        <div className="relative">
+          <select
+            value={filterScoreRange}
+            onChange={e => setFilterScoreRange(e.target.value)}
+            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+                 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
+                 focus:border-transparent outline-none transition cursor-pointer"
+          >
+            <option value="all">ทุกระดับคะแนน ({baseForScoreCount.length} คน)</option>
+            {SCORE_RANGES.map(r => (
+              <option key={r.key} value={r.key}>
+                {r.label} ({scoreRangeCounts[r.key] || 0} คน)
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4
+                            text-slate-400 pointer-events-none" />
+        </div>
+
+        {/* ปุ่มล้างตัวกรอง — แสดงเมื่อมีตัวกรองใดถูกเลือกอยู่ */}
+        {(filterGrade !== 'all' || filterScoreRange !== 'all') && (
           <button
-            onClick={() => setFilterGrade('all')}
+            onClick={() => { setFilterGrade('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
                  text-slate-500 bg-white border border-slate-200 rounded-lg
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
@@ -1194,40 +1554,75 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         ) : (
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
-            {filtered.length >= 2 && (
-              <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((s, i) => s && (
-                  <div
-                    key={s.UserId}
-                    className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition
-                      ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                    style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                    onClick={() => onViewStudent(s.UserId)}
-                  >
-                    <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                    <div className="h-10 w-10 rounded-xl overflow-hidden border border-orange-100 mx-auto mt-2">
-                      <img src={avatarUrl(s.UserId)}
-                        alt={s.Nickname || s.Firstname}
-                        className="w-full h-full object-contain" />
-                    </div>
-                    <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
-                      {s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                    </p>
-                    <p className="text-lg font-black text-slate-900 mt-1">{s.PerformanceScore}</p>
-                    <p className="text-[10px] text-slate-400">คะแนน</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            {filtered.length > 0 && (() => {
+              const MEDALS = ['🥇', '🥈', '🥉'];
+              return (
+                <div className="grid grid-cols-3 gap-3">
+                  {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
+                    const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
+
+                    if (!group) {
+                      return (
+                        <div key={`empty-${i}`}
+                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        >
+                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="flex justify-center mt-2">
+                            <span className="h-10 w-10 rounded-xl bg-slate-200/60 flex items-center justify-center">
+                              <Users className="h-4 w-4 text-slate-400" />
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={group.score}
+                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                      >
+                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="flex justify-center -space-x-2 mt-2">
+                          {group.members.slice(0, 4).map(s => (
+                            <button key={s.UserId} onClick={() => onViewStudent(s.UserId)}
+                              className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
+                              title={s.Nickname || `${s.Firstname} ${s.Lastname}`}>
+                              {/* ★ เปลี่ยนมาใช้ StudentAvatar */}
+                              <StudentAvatar student={s} className="h-10 w-10 rounded-xl" />
+                            </button>
+                          ))}
+                          {group.members.length > 4 && (
+                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                              +{group.members.length - 4}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                          {group.members.length === 1
+                            ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
+                            : `${group.members.length} คนเสมอกัน`}
+                        </p>
+                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-[10px] text-slate-400">คะแนน</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
 
             {/* ── Score Card List ─────────────────────────────────── */}
             <div className="space-y-2">
-              {visible.map((s, i) => (
+              {visible.map((s) => (
                 <StudentScoreCard
                   key={s.UserId}
                   student={s}
-                  index={i}
+                  rank={s._rank}
                   expanded={expandedId === s.UserId}
                   onToggle={() => setExpandedId(expandedId === s.UserId ? null : s.UserId)}
                   onView={onViewStudent}
@@ -1276,9 +1671,11 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState([]);
   const [gradeLevels, setGradeLevels] = useState([]);
   const [genders, setGenders] = useState([]);
+  const [parentProfileTypes, setParentProfileTypes] = useState([]); // ★ เพิ่ม
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
+  const [filterEnrolled, setFilterEnrolled] = useState("all"); // ★ เพิ่ม: all | enrolled | not_enrolled
   const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // FIX #7
@@ -1291,21 +1688,23 @@ export default function AdminStudentsPage() {
 
   const fetchAll = async () => {
     try {
-      const [sRes, gRes, genRes] = await Promise.all([
+      const [sRes, gRes, genRes, pptRes] = await Promise.all([
         axios.get(`${API}/students`),
         axios.get(`${API}/grade-levels`),
         axios.get(`${API}/genders`),
+        axios.get(`${API}/parent-profile-types`), // ★ เพิ่ม
       ]);
       setStudents(sRes.data);
       setGradeLevels(gRes.data);
       setGenders(genRes.data);
+      setParentProfileTypes(pptRes.data); // ★ เพิ่ม
     } catch (e) {
       console.error("fetch error:", e);
     } finally { setLoading(false); }
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterGrade]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterGrade, filterEnrolled]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -1331,7 +1730,6 @@ export default function AdminStudentsPage() {
     } finally { setIsSubmitting(false); }
   };
 
-  // FIX #7: เพิ่ม isDeleting state ป้องกัน double submit
   const handleDelete = async () => {
     if (isDeleting) return;
     setIsDeleting(true);
@@ -1346,17 +1744,36 @@ export default function AdminStudentsPage() {
   };
 
   // FIX #3: handle GradeLevelId = null อย่างถูกต้อง
-  const filtered = students.filter(s => {
+  const matchSearchFn = (s) => {
     const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
     const q = search.toLowerCase();
-    const matchSearch = !q || name.includes(q) || (s.SchoolName || "").toLowerCase().includes(q) ||
+    return !q || name.includes(q) || (s.SchoolName || "").toLowerCase().includes(q) ||
       String(s.UserId).includes(q) || (s.PhoneNo || "").includes(q);
-    const matchGrade = filterGrade === "all" ||
-      (s.GradeLevelId != null && String(s.GradeLevelId) === filterGrade);
-    return matchSearch && matchGrade;
-  });
+  };
+  const matchGradeFn = (s) => filterGrade === "all" ||
+    (s.GradeLevelId != null && String(s.GradeLevelId) === filterGrade);
+  const matchEnrolledFn = (s) => filterEnrolled === "all" ||
+    (filterEnrolled === "enrolled" ? s.EnrolledCourses > 0 : !s.EnrolledCourses);
+
+  const filtered = students.filter(s => matchSearchFn(s) && matchGradeFn(s) && matchEnrolledFn(s));
+
+  // ★ นับจำนวนสำหรับ dropdown ระดับชั้น (กรองตามค้นหา+สถานะลงทะเบียนที่เลือกไว้ก่อน)
+  const baseForGradeCount = students.filter(s => matchSearchFn(s) && matchEnrolledFn(s));
+  const allGradeCount = baseForGradeCount.length;
+  const gradeCounts = gradeLevels.reduce((acc, g) => {
+    acc[g.GradeLevelId] = baseForGradeCount.filter(
+      (s) => s.GradeLevelId != null && String(s.GradeLevelId) === String(g.GradeLevelId)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนสำหรับ dropdown สถานะลงทะเบียน (กรองตามค้นหา+ระดับชั้นที่เลือกไว้ก่อน)
+  const baseForEnrolledCount = students.filter(s => matchSearchFn(s) && matchGradeFn(s));
+  const enrolledCount = baseForEnrolledCount.filter(s => s.EnrolledCourses > 0).length;
+  const notEnrolledCount = baseForEnrolledCount.filter(s => !s.EnrolledCourses).length;
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
@@ -1426,8 +1843,18 @@ export default function AdminStudentsPage() {
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
             className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[160px]">
-            <option value="all">ทุกระดับชั้น</option>
-            {gradeLevels.map(g => <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>)}
+            <option value="all">ทุกระดับชั้น ({allGradeCount})</option>
+            {gradeLevels.map(g => (
+              <option key={g.GradeLevelId} value={g.GradeLevelId}>
+                {g.GradeDetail} ({gradeCounts[g.GradeLevelId] || 0})
+              </option>
+            ))}
+          </select>
+          <select value={filterEnrolled} onChange={e => setFilterEnrolled(e.target.value)}
+            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[180px]">
+            <option value="all">สถานะลงทะเบียนทั้งหมด ({enrolledCount + notEnrolledCount})</option>
+            <option value="enrolled">ลงทะเบียนแล้ว ({enrolledCount})</option>
+            <option value="not_enrolled">ยังไม่ลงทะเบียน ({notEnrolledCount})</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
@@ -1461,9 +1888,8 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: นักเรียน */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-xl overflow-hidden bg-orange-50 border border-orange-100 shrink-0">
-                            <img src={avatarUrl(s.UserId)} alt={displayName} className="w-full h-full object-contain" />
-                          </div>
+                          {/* ★ เปลี่ยนมาใช้ StudentAvatar */}
+                          <StudentAvatar student={s} className="h-9 w-9 rounded-xl" />
                           <div>
                             <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
                             {s.Nickname && (
@@ -1607,13 +2033,15 @@ export default function AdminStudentsPage() {
       {showAddModal && (
         <Modal title="เพิ่มนักเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <StudentForm onSave={handleCreate} onCancel={() => setShowAddModal(false)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders}
+            parentProfileTypes={parentProfileTypes} showToast={showToast} />
         </Modal>
       )}
       {editingStudent && (
         <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Edit2} onClose={() => setEditingStudent(null)}>
           <StudentForm initial={editingStudent} onSave={handleUpdate} onCancel={() => setEditingStudent(null)}
-            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders} showToast={showToast} />
+            isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders}
+            parentProfileTypes={parentProfileTypes} showToast={showToast} />
         </Modal>
       )}
       {deletingStudent && (
