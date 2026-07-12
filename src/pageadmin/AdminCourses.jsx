@@ -1840,7 +1840,7 @@ export default function AdminCoursesPage() {
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
-          { { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-neutral-400" },
+          { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-neutral-400" },
         ].map(({ label, value, icon: Icon, color }, i) => (
           <div
             key={i}
