@@ -1263,21 +1263,41 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         ) : (
           <>
             {/* ── Podium Top 3 (ของ filtered) ────────────────────── */}
-            {podiumGroups.length > 0 && (() => {
+            {filtered.length > 0 && (() => {
               const MEDALS = ['🥇', '🥈', '🥉'];
               // อันดับ 1 อยู่กลางและสูงสุดเสมอ เหมือนโพเดียมจริง
-              const order = podiumGroups.length === 3
-                ? [podiumGroups[1], podiumGroups[0], podiumGroups[2]]
-                : podiumGroups.length === 2
-                  ? [podiumGroups[1], podiumGroups[0]]
-                  : [podiumGroups[0]];
+              // const order = podiumGroups.length === 3
+              //   ? [podiumGroups[1], podiumGroups[0], podiumGroups[2]]
+              //   : podiumGroups.length === 2
+              //     ? [podiumGroups[1], podiumGroups[0]]
+              //     : [podiumGroups[0]];
               return (
-                <div className="flex justify-center gap-3">
-                  {order.map((group) => {
-                    const medalIdx = podiumGroups.indexOf(group); // 0=ทอง 1=เงิน 2=ทองแดง
+                <div className="grid grid-cols-3 gap-3">
+                  {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
+                    const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
+
+                    if (!group) {
+                      return (
+                        <div key={`empty-${i}`}
+                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        >
+                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="flex justify-center mt-2">
+                            <span className="h-10 w-10 rounded-xl bg-slate-200/60 flex items-center justify-center">
+                              <Users className="h-4 w-4 text-slate-400" />
+                            </span>
+                          </div>
+                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center w-40 ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                       >
                         <div className="text-2xl">{MEDALS[medalIdx]}</div>
