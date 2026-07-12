@@ -2,21 +2,12 @@ import { API_URL } from "../config";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, ChevronDown, ChevronUp, X, Download,
-  AlertTriangle, Clock, CreditCard, CheckCircle,
-  TrendingDown, Users, BookOpen, Camera,
+  AlertTriangle, Clock, CheckCircle,
+  Percent, Users, BookOpen, Camera,
   EyeIcon
 } from 'lucide-react';
 
 const API_BASE = `${API_URL}/api/admin`;
-
-function thisMonthRange() {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
-  const end = now.toISOString().slice(0, 10);
-  return { start, end };
-}
-
-const { start, end } = thisMonthRange();
 
 // ── Avatar สีวน ──────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -44,16 +35,18 @@ function RateBar({ rate }) {
   );
 }
 
-// ── Status Badge ──────────────────────────────────────────────
-function StatusBadge({ rate, unpaid }) {
+// ── Status Badge ─────────────────────────────────────────────
+// ★ แก้: ตัดเรื่อง "ค้างจ่าย" ออก เหลือแค่ 3 ระดับตามอัตราเช็กอิน (%)
+//   ให้ตรงกับเกณฑ์สีเดียวกับ RateBar: <50% แดง / 50–79% เหลือง / ≥80% เขียว
+function StatusBadge({ rate }) {
   if (rate < 50) return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
     </span>
   );
-  if (unpaid > 0) return (
+  if (rate < 80) return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />มีค้างจ่าย
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
     </span>
   );
   return (
@@ -82,22 +75,23 @@ function buildMonthOptions() {
 const MONTH_OPTIONS = buildMonthOptions();
 
 // ── CSV Export ────────────────────────────────────────────────
+// ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
+//   เพิ่ม "ขาด" และ "บันทึกล่าสุด" ให้ตรงกับตารางหลัก
 function exportCSV(tutors, startDate, endDate) {
-  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'อัตราเช็กอิน(%)', 'ค้างจ่าย(คาบ)', 'รายได้ค้างจ่าย(บาท)', 'สถานะ'];
+  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'สถานะ', 'บันทึกล่าสุด'];
   const rows = tutors.map(t => {
     const rate = t.AttendanceRate ?? 0;
-    const unpaid = t.UnpaidCheckin ?? 0;
-    const status = rate < 50 ? 'น่าเป็นห่วง' : unpaid > 0 ? 'มีค้างจ่าย' : 'ปกติ';
+    const status = rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
     return [
       t.Nickname || '',
       t.Firstname || '',
       t.Lastname || '',
       t.TotalScheduled ?? 0,
       t.TotalCheckin ?? 0,
+      t.MissedCount ?? 0,
       rate,
-      unpaid,
-      unpaid > 0 ? unpaid * (t.RatePerHour || 300) : 0,
       status,
+      t.LastCheckinAt ? new Date(t.LastCheckinAt).toISOString().slice(0, 10) : 'ยังไม่เคยบันทึก',
     ];
   });
 
@@ -116,9 +110,10 @@ function exportCSV(tutors, startDate, endDate) {
 }
 
 // ── Session Detail Modal ──────────────────────────────────────
+// ★ แก้: ตัดปุ่ม "จ่ายค้างทั้งหมด" และคอลัมน์สถานะการจ่ายเงินออกจากแต่ละคาบ
+//   TODO: ย้ายไป Financial page ภายหลัง — การแสดงสถานะจ่ายเงินต่อคาบ (TutorPaymentId)
 function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDate, onClose }) {
   const [expandedSession, setExpandedSession] = useState(null);
-  const { start, end } = thisMonthRange();
 
   const parsePhotoTime = (path) => {
     if (!path) return null;
@@ -158,16 +153,9 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {(tutor.UnpaidCheckin ?? 0) > 0 && (
-              <button className="px-3 py-1.5 text-xs font-bold rounded-xl bg-white/20 text-white hover:bg-white/30 transition border border-white/30">
-                จ่ายค้างทั้งหมด ({tutor.UnpaidCheckin} คาบ)
-              </button>
-            )}
-            <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Sessions List */}
@@ -234,11 +222,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   <div className="w-14 text-right shrink-0">
                     <p className="text-sm font-bold text-slate-700">{totalCount > 0 ? `${presentCount}/${totalCount}` : '—'}</p>
                     <p className="text-[10px] text-slate-400">นักเรียน</p>
-                  </div>
-
-                  {/* Payment */}
-                  <div className={`w-14 text-right shrink-0 text-xs font-bold ${session.TutorPaymentId ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {session.TutorPaymentId ? 'จ่ายแล้ว' : 'ค้างจ่าย'}
                   </div>
 
                   {isExpanded
@@ -333,8 +316,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 
 // ── Main Dashboard ────────────────────────────────────────────
 export default function TutorAttendanceDashboard() {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -344,8 +325,6 @@ export default function TutorAttendanceDashboard() {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [showBatchPayment, setShowBatchPayment] = useState(false);
 
   // helper ดึง range จาก selectedMonth (null = ไม่ filter)
   const getDateRange = () => {
@@ -353,7 +332,6 @@ export default function TutorAttendanceDashboard() {
     return { startDate: selectedMonth.start, endDate: selectedMonth.end };
   };
 
-  // แก้ fetchData
   const fetchData = async (month) => {
     setLoading(true);
     const url = month
@@ -368,6 +346,9 @@ export default function TutorAttendanceDashboard() {
   // auto-fetch เมื่อ selectedMonth เปลี่ยน
   useEffect(() => { fetchData(selectedMonth); }, [selectedMonth]);
 
+  // ★ แก้: ตัด logic filter (atRisk/unpaid/pending) ออกทั้งหมด เหลือแค่ search + sort
+  //   ปุ่มแท็บเดิมทำหน้าที่ซ้ำซ้อนกับ dropdown เรียงลำดับ (อ้างอิงฟิลด์เดียวกัน)
+  //   และหน้านี้ไม่มี pagination การเรียงลำดับก็เห็นกลุ่มที่น่าสนใจขึ้นบนสุดอยู่แล้ว
   const processed = useMemo(() => {
     let list = [...tutors];
     if (search.trim()) {
@@ -378,29 +359,25 @@ export default function TutorAttendanceDashboard() {
         (t.Lastname || '').toLowerCase().includes(q)
       );
     }
-    if (filter === 'atRisk') list = list.filter(t => (t.AttendanceRate ?? 100) < 50);
-    if (filter === 'unpaid') list = list.filter(t => t.UnpaidCheckin > 0);
-    if (filter === 'pending') list = list.filter(t => (t.MissedCount ?? 0) > 0);
     list.sort((a, b) => {
       const av = a[sortBy] ?? -1;
       const bv = b[sortBy] ?? -1;
       return sortAsc ? av - bv : bv - av;
     });
     return list;
-  }, [tutors, sortBy, sortAsc, search, filter]);
+  }, [tutors, sortBy, sortAsc, search]);
 
   const avgRate = tutors.length
     ? Math.round(tutors.reduce((s, t) => s + (t.AttendanceRate ?? 0), 0) / tutors.length) : 0;
   const atRisk = tutors.filter(t => (t.AttendanceRate ?? 100) < 50).length;
-  const unpaidTotal = tutors.reduce((s, t) => s + (t.UnpaidCheckin ?? 0), 0);
   const missedTotal = tutors.reduce((s, t) => s + (t.MissedCount ?? 0), 0);
+  // ★ เพิ่ม: จำนวนติวเตอร์ที่บันทึกครบ 100% (แทนที่การ์ดการเงินเดิม)
+  const fullyRecorded = tutors.filter(t => (t.AttendanceRate ?? -1) === 100).length;
 
   const toggleSort = (col) => {
     if (sortBy === col) setSortAsc(a => !a);
     else { setSortBy(col); setSortAsc(false); }
   };
-
-  const { start: thisMonthStart, end: thisMonthEnd } = thisMonthRange();
 
   // แก้ fetchSessions — ใช้ range เดียวกับ attendance
   const fetchSessions = async (adminId) => {
@@ -430,20 +407,14 @@ export default function TutorAttendanceDashboard() {
     fetchSessions(tutor.AdminId);
   };
 
-  const TABS = [
-    { key: 'all', label: 'ทั้งหมด' },
-    { key: 'atRisk', label: 'น่าเป็นห่วง' },
-    { key: 'unpaid', label: 'ค้างจ่าย' },
-    { key: 'pending', label: 'ยังไม่บันทึก' },
-  ];
-
+  // ★ แก้: ตัดการ์ด "ค้างจ่ายค่าสอน" ออก เพิ่มการ์ด "บันทึกครบ 100%" แทน
+  //   เพื่อให้ stat ทั้งหมดเป็นเรื่อง attendance ล้วนๆ ไม่มีการเงินปน
   const STAT_CARDS = [
     {
-      label: 'อัตราเช็กอินเฉลี่ย',
+      label: 'อัตราเช็กอินเฉลี่ย (%)',
       value: `${avgRate}%`,
-      icon: TrendingDown,
+      icon: Percent,
       color: 'bg-emerald-500',
-      badge: null,
     },
     {
       label: 'คาบที่ยังไม่ได้บันทึก',
@@ -452,16 +423,16 @@ export default function TutorAttendanceDashboard() {
       color: missedTotal > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
-      label: 'ค้างจ่ายค่าสอน',
-      value: `${unpaidTotal} คาบ`,
-      icon: CreditCard,
-      color: unpaidTotal > 0 ? 'bg-amber-500' : 'bg-slate-400',
-    },
-    {
       label: 'ติวเตอร์น่าเป็นห่วง',
       value: atRisk,
       icon: AlertTriangle,
       color: atRisk > 0 ? 'bg-red-500' : 'bg-slate-400',
+    },
+    {
+      label: 'ติวเตอร์บันทึกครบ 100%',
+      value: fullyRecorded,
+      icon: CheckCircle,
+      color: fullyRecorded > 0 ? 'bg-emerald-500' : 'bg-slate-400',
     },
   ];
 
@@ -477,26 +448,18 @@ export default function TutorAttendanceDashboard() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">รายงานบันทึกชั่วโมงการสอน</h1>
-          <p className="text-sm text-slate-500 mt-1">ติดตามการเช็กอิน  ค้างจ่าย  ขาดสอน ของติวเตอร์แต่ละคน</p>
+          <h1 className="text-2xl font-bold text-slate-900">ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
+          <p className="text-sm text-slate-500 mt-1">ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
-            onClick={() => exportCSV(processed, startDate, endDate)}
+            onClick={() => {
+              const { startDate, endDate } = getDateRange();
+              exportCSV(processed, startDate || 'all', endDate || 'all');
+            }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-orange-300 hover:text-orange-600 transition shadow-sm"
           >
             <Download className="w-4 h-4" /> ส่งออก CSV
-          </button>
-          <button
-            onClick={() => setShowBatchPayment(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition shadow-sm"
-          >
-            <CreditCard className="w-4 h-4" /> จ่ายเงินเป็นชุด
-            {unpaidTotal > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-black rounded-full">
-                {unpaidTotal}
-              </span>
-            )}
           </button>
         </div>
       </div>
@@ -526,7 +489,7 @@ export default function TutorAttendanceDashboard() {
 
       {/* ── Stats Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {STAT_CARDS.map(({ label, value, sub, icon: Icon, color, badge }) => (
+        {STAT_CARDS.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
@@ -534,12 +497,6 @@ export default function TutorAttendanceDashboard() {
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
               <p className="text-xl font-black text-slate-900 mt-0.5">{value}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>
-              {badge && (
-                <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badge.cls}`}>
-                  {badge.label}
-                </span>
-              )}
             </div>
           </div>
         ))}
@@ -547,7 +504,10 @@ export default function TutorAttendanceDashboard() {
 
       {/* ── Absence Heatmap ────────────────────────────── */}
       <AbsenceHeatmap selectedMonth={selectedMonth} />
+
       {/* ── Filter Bar ─────────────────────────────────── */}
+      {/* ★ แก้: ตัดปุ่มแท็บ (ทั้งหมด/น่าเป็นห่วง/ค้างจ่าย/ยังไม่บันทึก) ออก
+          เหลือแค่ search + dropdown เรียงลำดับ ไม่ให้ทำหน้าที่ซ้ำซ้อนกัน */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           {/* Search */}
@@ -561,23 +521,6 @@ export default function TutorAttendanceDashboard() {
               className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          {/* Tabs */}
-          <div className="flex border border-slate-200 rounded-lg overflow-hidden shrink-0">
-            {TABS.map((tab, i) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilter(tab.key)}
-                className={`px-3 py-2 text-xs font-medium transition
-                                    ${i < TABS.length - 1 ? 'border-r border-slate-200' : ''}
-                                    ${filter === tab.key
-                    ? 'bg-slate-100 text-slate-900 font-semibold'
-                    : 'bg-white text-slate-500 hover:bg-slate-50'
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
           {/* Sort select */}
           <select
             value={`${sortBy}_${sortAsc ? 'asc' : 'desc'}`}
@@ -588,11 +531,10 @@ export default function TutorAttendanceDashboard() {
             }}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
           >
-            <option value="AttendanceRate_asc">อัตราเช็กอิน </option>
-            <option value="AttendanceRate_desc">อัตราเช็กอิน </option>
-            <option value="TotalScheduled_desc">คาบทั้งหมด </option>
-            <option value="UnpaidCheckin_desc">ค้างจ่าย </option>
-            <option value="MissedCount_desc">ขาด </option>
+            <option value="AttendanceRate_asc">อัตราเช็กอิน (%) น้อย → มาก</option>
+            <option value="AttendanceRate_desc">อัตราเช็กอิน (%) มาก → น้อย</option>
+            <option value="TotalScheduled_desc">คาบทั้งหมด มาก → น้อย</option>
+            <option value="MissedCount_desc">ขาด มาก → น้อย</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -601,6 +543,9 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Table ──────────────────────────────────────── */}
+      {/* ★ แก้: ตัดคอลัมน์ "ค้างจ่าย" / "รายได้ค้างจ่าย" ออก
+          เพิ่มคอลัมน์ "ขาด" และ "บันทึกล่าสุด"
+          หัวคอลัมน์ระบุหน่วยชัดเจน (ครั้ง) vs (%) กันสับสน */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -616,19 +561,21 @@ export default function TutorAttendanceDashboard() {
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 transition"
                   onClick={() => toggleSort('TotalCheckin')}>
-                  เช็กอิน <SortIcon col="TotalCheckin" />
+                  เช็กอิน (ครั้ง) <SortIcon col="TotalCheckin" />
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 transition"
-                  onClick={() => toggleSort('UnpaidCheckin')}>
-                  ค้างจ่าย <SortIcon col="UnpaidCheckin" />
+                  onClick={() => toggleSort('MissedCount')}>
+                  ขาด (ครั้ง) <SortIcon col="MissedCount" />
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">รายได้ค้างจ่าย</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 transition"
                   onClick={() => toggleSort('AttendanceRate')}>
-                  อัตราเช็กอิน <SortIcon col="AttendanceRate" />
+                  อัตราเช็กอิน (%) <SortIcon col="AttendanceRate" />
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">รายละเอียด</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  บันทึกล่าสุด
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ประวัติ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -680,29 +627,29 @@ export default function TutorAttendanceDashboard() {
                         {t.TotalCheckin}
                       </span>
                     </td>
-                    {/* Status */}
+                    {/* Missed */}
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge rate={t.AttendanceRate ?? 100} unpaid={t.UnpaidCheckin ?? 0} />
-                    </td>
-                    {/* Unpaid */}
-                    <td className="px-4 py-3 text-center">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${(t.UnpaidCheckin ?? 0) > 0 ? 'bg-amber-50 text-amber-700' : 'bg-slate-50 text-slate-400'}`}>
-                        {t.UnpaidCheckin ?? 0}
+                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-400'}`}>
+                        {t.MissedCount ?? 0}
                       </span>
                     </td>
-                    {/* Revenue */}
-                    <td className="px-4 py-3 text-center text-xs">
-                      {(t.UnpaidCheckin ?? 0) > 0
-                        ? <span className="font-bold text-amber-700">฿{(t.UnpaidCheckin * (t.RatePerHour || 300)).toLocaleString()}</span>
-                        : <span className="text-slate-300">—</span>
-                      }
-                    </td>
-                    {/* Rate bar */}
+                    {/* Rate bar (%) */}
                     <td className="px-4 py-3 min-w-[120px]">
                       {t.AttendanceRate !== null && t.AttendanceRate !== undefined
                         ? <RateBar rate={t.AttendanceRate} />
                         : <span className="text-xs text-slate-300">ไม่มีข้อมูล</span>
                       }
+                    </td>
+                    {/* Last recorded */}
+                    <td className="px-4 py-3 text-center text-xs">
+                      {t.LastCheckinAt
+                        ? <span className="text-slate-500">{shortDate(t.LastCheckinAt)}</span>
+                        : <span className="text-red-400 font-semibold">ยังไม่เคยบันทึก</span>
+                      }
+                    </td>
+                    {/* Status */}
+                    <td className="px-4 py-3 text-center">
+                      <StatusBadge rate={t.AttendanceRate ?? 100} />
                     </td>
                     {/* View detail button */}
                     <td className="px-4 py-3 text-center">
@@ -710,7 +657,7 @@ export default function TutorAttendanceDashboard() {
                         onClick={(e) => handleViewDetail(t, e)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                       >
-                        <EyeIcon className="w-3.5 h-3.5" /> ดูรายละเอียด
+                        <EyeIcon className="w-3.5 h-3.5" /> ดูประวัติ
                       </button>
                     </td>
                   </tr>
@@ -722,11 +669,12 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Legend ─────────────────────────────────────── */}
+      {/* ★ แก้: ตัด "มีค้างจ่าย" ออก เพิ่ม "ควรติดตาม" (50–79%) ให้ครบ 3 ระดับตรงกับ StatusBadge */}
       <div className="flex flex-wrap gap-4 px-1">
         {[
-          { dot: 'bg-emerald-500', text: 'ปกติ — เช็กอิน ≥ 80%' },
-          { dot: 'bg-amber-500', text: 'มีค้างจ่าย — ยังไม่ได้รับเงิน' },
-          { dot: 'bg-red-500', text: 'น่าเป็นห่วง — เช็กอิน < 50%' },
+          { dot: 'bg-emerald-500', text: 'ปกติ — อัตราเช็กอิน ≥ 80%' },
+          { dot: 'bg-amber-500', text: 'ควรติดตาม — อัตราเช็กอิน 50–79%' },
+          { dot: 'bg-red-500', text: 'น่าเป็นห่วง — อัตราเช็กอิน < 50%' },
         ].map(({ dot, text }) => (
           <div key={text} className="flex items-center gap-2 text-xs text-slate-500">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
@@ -741,444 +689,11 @@ export default function TutorAttendanceDashboard() {
           tutor={selectedTutor}
           sessions={sessions}
           sessionsLoading={sessionsLoading}
-          startDate={startDate}
-          endDate={endDate}
+          startDate={selectedMonth?.start}
+          endDate={selectedMonth?.end}
           onClose={() => { setSelectedTutor(null); setSessions([]); }}
         />
       )}
-
-      {/* ── Batch Payment Modal ────────────────────────── */}
-      {showBatchPayment && (
-        <BatchPaymentModal
-          tutors={tutors}
-          onClose={() => setShowBatchPayment(false)}
-          onSuccess={(result) => {
-            setShowBatchPayment(false);
-            fetchData(selectedMonth);
-            alert(`บันทึกสำเร็จ! จ่าย ${result.SessionCount} คาบ รวม ฿${result.TotalAmount.toLocaleString()}`);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── Batch Payment Modal ───────────────────────────────────────
-function BatchPaymentModal({ tutors, onClose, onSuccess }) {
-  // step: 'select-tutor' | 'select-sessions' | 'confirm'
-  const [step, setStep] = useState('select-tutor');
-  const [selectedTutor, setSelectedTutor] = useState(null);
-  const [sessions, setSessions] = useState([]);
-  const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [checkedIds, setCheckedIds] = useState(new Set());
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
-  const [billNo, setBillNo] = useState('');
-  const [remark, setRemark] = useState('');
-  const [slipFile, setSlipFile] = useState(null);
-  const [slipPreview, setSlipPreview] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  // ติวเตอร์ที่มียอดค้าง
-  const unpaidTutors = tutors.filter(t => (t.UnpaidCheckin ?? 0) > 0);
-
-  // โหลด session ที่ค้างจ่ายของติวเตอร์ที่เลือก
-  const loadSessions = async (tutor) => {
-    setSessionsLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/tutors/${tutor.AdminId}/unpaid-sessions`);
-      const d = await r.json();
-      setSessions(d);
-      setCheckedIds(new Set(d.map(s => s.TutorCheckinId))); // tick ทั้งหมดเป็น default
-    } catch (err) {
-      setError('โหลด session ไม่สำเร็จ');
-    } finally {
-      setSessionsLoading(false);
-    }
-  };
-
-  const handleSelectTutor = async (tutor) => {
-    setSelectedTutor(tutor);
-    setStep('select-sessions');
-    await loadSessions(tutor);
-  };
-
-  const toggleAll = () => {
-    if (checkedIds.size === sessions.length) {
-      setCheckedIds(new Set());
-    } else {
-      setCheckedIds(new Set(sessions.map(s => s.TutorCheckinId)));
-    }
-  };
-
-  const toggleOne = (id) => {
-    setCheckedIds(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const handleSlipChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setSlipFile(file);
-    setSlipPreview(URL.createObjectURL(file));
-  };
-
-  // คำนวณยอดรวมจาก session ที่ tick
-  const selectedSessions = sessions.filter(s => checkedIds.has(s.TutorCheckinId));
-  const totalAmount = selectedSessions.reduce((sum, s) => {
-    return sum + (s.RatePerTutors * s.PlannedMinutes / 60);
-  }, 0);
-
-  const handleSubmit = async () => {
-    if (!checkedIds.size) return setError('กรุณาเลือก session อย่างน้อย 1 รายการ');
-    if (!paymentDate) return setError('กรุณาระบุวันที่จ่ายเงิน');
-
-    setSubmitting(true);
-    setError('');
-    try {
-      const formData = new FormData();
-      formData.append('adminId', selectedTutor.AdminId);
-      formData.append('checkinIds', JSON.stringify([...checkedIds]));
-      formData.append('paymentDate', paymentDate);
-      formData.append('billNo', billNo);
-      formData.append('remark', remark);
-      if (slipFile) formData.append('slip', slipFile);
-
-      const r = await fetch(`${API_BASE}/tutor-payments`, {
-        method: 'POST',
-        body: formData,
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.message);
-      onSuccess(d);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const formatDate = (dateStr) =>
-    dateStr ? new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-
-  // ── Step indicators ───────────────────────────────────────
-  const STEPS = ['เลือกติวเตอร์', 'เลือก session', 'ยืนยันการจ่าย'];
-  const stepIdx = { 'select-tutor': 0, 'select-sessions': 1, 'confirm': 2 };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-
-        {/* ── Header ─────────────────────────────────────── */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-blue-600 to-indigo-600 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                <CreditCard className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-white">จ่ายเงินติวเตอร์</h3>
-                {selectedTutor && (
-                  <p className="text-white/70 text-xs">{selectedTutor.Nickname} · {selectedTutor.Firstname} {selectedTutor.Lastname}</p>
-                )}
-              </div>
-            </div>
-            <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Step bar */}
-          <div className="flex items-center gap-2">
-            {STEPS.map((label, i) => {
-              const current = stepIdx[step];
-              const done = i < current;
-              const active = i === current;
-              return (
-                <React.Fragment key={label}>
-                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition
-                      ${active ? 'bg-white text-blue-700' : done ? 'bg-white/30 text-white' : 'bg-white/10 text-white/50'}`}>
-                    <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-black
-                        ${active ? 'bg-blue-600 text-white' : done ? 'bg-white/60 text-blue-700' : 'bg-white/20 text-white/50'}`}>
-                      {done ? '✓' : i + 1}
-                    </span>
-                    {label}
-                  </div>
-                  {i < STEPS.length - 1 && (
-                    <div className={`flex-1 h-px ${done ? 'bg-white/50' : 'bg-white/20'}`} />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Content ────────────────────────────────────── */}
-        <div className="overflow-y-auto flex-1">
-
-          {/* Step 1: เลือกติวเตอร์ */}
-          {step === 'select-tutor' && (
-            <div className="p-4 space-y-2">
-              {unpaidTutors.length === 0 ? (
-                <div className="text-center py-16 text-slate-400">
-                  <CheckCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">ไม่มียอดค้างจ่าย</p>
-                </div>
-              ) : unpaidTutors.map((t, idx) => {
-                const av = avatarCls(idx);
-                const est = (t.UnpaidCheckin ?? 0) * (t.RatePerHour || 300);
-                return (
-                  <button
-                    key={t.AdminId}
-                    onClick={() => handleSelectTutor(t)}
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition text-left group"
-                  >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${av.bg} ${av.color}`}>
-                      {t.Nickname?.slice(0, 2) || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-slate-900">{t.Nickname}</p>
-                      <p className="text-xs text-slate-400">{t.Firstname} {t.Lastname}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-black text-amber-600">{t.UnpaidCheckin} คาบ</p>
-                      <p className="text-xs text-slate-400">~฿{est.toLocaleString()}</p>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-slate-300 -rotate-90 group-hover:text-blue-400 transition shrink-0" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Step 2: เลือก session */}
-          {step === 'select-sessions' && (
-            <div>
-              {sessionsLoading ? (
-                <div className="flex items-center justify-center py-16 text-slate-400">
-                  <div className="text-center">
-                    <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-sm">กำลังโหลด...</p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Select all bar */}
-                  <div className="sticky top-0 bg-slate-50 border-b border-slate-200 px-5 py-3 flex items-center justify-between z-10">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={checkedIds.size === sessions.length && sessions.length > 0}
-                        onChange={toggleAll}
-                        className="w-4 h-4 rounded accent-blue-600"
-                      />
-                      <span className="text-sm font-semibold text-slate-700">
-                        เลือกทั้งหมด ({sessions.length} คาบ)
-                      </span>
-                    </label>
-                    <span className="text-xs text-slate-500">
-                      เลือกแล้ว <span className="font-bold text-blue-600">{checkedIds.size}</span> คาบ
-                    </span>
-                  </div>
-
-                  {/* Session list */}
-                  <div className="divide-y divide-slate-100">
-                    {sessions.map(s => {
-                      const checked = checkedIds.has(s.TutorCheckinId);
-                      const amount = s.RatePerTutors * s.PlannedMinutes / 60;
-                      const hrs = (s.PlannedMinutes / 60).toFixed(1);
-                      return (
-                        <label
-                          key={s.TutorCheckinId}
-                          className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer transition
-                              ${checked ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleOne(s.TutorCheckinId)}
-                            className="w-4 h-4 rounded accent-blue-600 shrink-0"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800">
-                              {s.SubjectName || s.CourseName}
-                            </p>
-                            <p className="text-xs text-slate-400 mt-0.5">
-                              {formatDate(s.ClassDate)} · {s.StartTime}–{s.EndTime} · {hrs} ชม.
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-slate-800">฿{amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
-                            <p className="text-[10px] text-slate-400">{s.PlannedMinutes} นาที</p>
-                          </div>
-                          {/* Photo indicator */}
-                          <div className="shrink-0 w-6 flex items-center justify-center">
-                            {s.PhotoStart && s.PhotoEnd
-                              ? <span title="มีรูปครบ" className="text-emerald-500 text-sm">✓</span>
-                              : <span title="รูปไม่ครบ" className="text-amber-400 text-sm">⚠</span>
-                            }
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  {/* Total bar */}
-                  <div className="sticky bottom-0 bg-white border-t border-slate-200 px-5 py-3 flex items-center justify-between">
-                    <span className="text-sm text-slate-600 font-medium">ยอดรวม {checkedIds.size} คาบ</span>
-                    <span className="text-xl font-black text-blue-700">
-                      ฿{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Step 3: ยืนยัน + กรอกข้อมูล */}
-          {step === 'confirm' && (
-            <div className="p-5 space-y-5">
-
-              {/* Summary */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-blue-600 font-semibold">ยอดที่จะจ่าย ({checkedIds.size} คาบ)</p>
-                  <p className="text-2xl font-black text-blue-800 mt-0.5">
-                    ฿{totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-500">{selectedTutor?.Nickname}</p>
-                  <p className="text-xs text-slate-400">{selectedTutor?.Firstname} {selectedTutor?.Lastname}</p>
-                </div>
-              </div>
-
-              {/* Session summary list */}
-              <div className="rounded-xl border border-slate-200 overflow-hidden">
-                <div className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-500 border-b border-slate-200">
-                  รายการที่เลือก
-                </div>
-                <div className="divide-y divide-slate-100 max-h-40 overflow-y-auto">
-                  {selectedSessions.map(s => (
-                    <div key={s.TutorCheckinId} className="flex items-center justify-between px-4 py-2.5">
-                      <div>
-                        <p className="text-xs font-medium text-slate-800">{s.SubjectName || s.CourseName}</p>
-                        <p className="text-[10px] text-slate-400">{formatDate(s.ClassDate)} · {(s.PlannedMinutes / 60).toFixed(1)} ชม.</p>
-                      </div>
-                      <p className="text-xs font-bold text-slate-700">
-                        ฿{(s.RatePerTutors * s.PlannedMinutes / 60).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment fields */}
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">
-                    วันที่จ่ายเงิน <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date" value={paymentDate}
-                    onChange={e => setPaymentDate(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">เลขที่บิล / อ้างอิง</label>
-                  <input
-                    type="text" value={billNo} onChange={e => setBillNo(e.target.value)}
-                    placeholder="เช่น PAY-20250430-001"
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">หมายเหตุ</label>
-                  <textarea
-                    value={remark} onChange={e => setRemark(e.target.value)}
-                    placeholder="บันทึกเพิ่มเติม..."
-                    rows={2}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none resize-none"
-                  />
-                </div>
-
-                {/* Slip upload */}
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">แนบสลิปการโอน</label>
-                  {slipPreview ? (
-                    <div className="relative">
-                      <img src={slipPreview} alt="slip" className="w-full h-40 object-cover rounded-xl border border-slate-200" />
-                      <button
-                        onClick={() => { setSlipFile(null); setSlipPreview(null); }}
-                        className="absolute top-2 right-2 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center hover:bg-black/70 transition"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="absolute bottom-2 left-2 text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-md">
-                        {slipFile?.name}
-                      </span>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition">
-                      <Camera className="w-6 h-6 text-slate-400" />
-                      <span className="text-xs text-slate-400">คลิกหรือลาก/วางไฟล์สลิปที่นี่</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleSlipChange} />
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {error && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 font-medium">
-                  <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Footer Buttons ──────────────────────────────── */}
-        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between shrink-0 bg-slate-50">
-          <button
-            onClick={() => {
-              if (step === 'select-tutor') onClose();
-              if (step === 'select-sessions') { setStep('select-tutor'); setSelectedTutor(null); }
-              if (step === 'confirm') setStep('select-sessions');
-            }}
-            className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition"
-          >
-            {step === 'select-tutor' ? 'ยกเลิก' : '← ย้อนกลับ'}
-          </button>
-
-          {step === 'select-sessions' && (
-            <button
-              disabled={checkedIds.size === 0 || sessionsLoading}
-              onClick={() => setStep('confirm')}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl font-bold shadow-sm transition text-sm"
-            >
-              ถัดไป → ยืนยันการจ่าย
-            </button>
-          )}
-
-          {step === 'confirm' && (
-            <button
-              disabled={submitting || checkedIds.size === 0}
-              onClick={handleSubmit}
-              className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded-xl font-bold shadow-sm transition text-sm"
-            >
-              {submitting ? (
-                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> กำลังบันทึก...</>
-              ) : (
-                <><CheckCircle className="w-4 h-4" /> บันทึกการจ่ายเงิน</>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1247,10 +762,6 @@ function DrillDownModal({ info, onClose }) {
     };
     load();
   }, [info]);
-
-  const formatDate = (ds) => ds
-    ? new Date(ds).toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-    : '';
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1726,4 +1237,3 @@ function AbsenceHeatmap({ selectedMonth }) {
     </div>
   );
 }
-
