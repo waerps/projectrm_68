@@ -1792,7 +1792,13 @@ export default function AdminCoursesPage() {
 
   const totalStudents = [...new Map(courses.map((c) => [c.CourseID, c])).values()]
     .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
-  const activeCourses = courses.filter((c) => c.Status_Course_Id === 2).length;
+
+  // ★ หา Status_Course_Id แบบ dynamic จากชื่อสถานะ แทนการ hardcode เลข
+  const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
+  const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;
+
+  const activeCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(activeStatusId)).length;
+  const closedCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(closedStatusId)).length;
 
   const getPageNumbers = () => {
     const pages = [];
@@ -1834,7 +1840,7 @@ export default function AdminCoursesPage() {
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
-          { label: "นักเรียนที่ลงทะเบียน", value: totalStudents, icon: Users, color: "bg-blue-500" },
+          { { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-neutral-400" },
         ].map(({ label, value, icon: Icon, color }, i) => (
           <div
             key={i}
