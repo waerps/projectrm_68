@@ -234,7 +234,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     parentNickname: initial.ParentNickname || "",
     parentPhoneNo: initial.ParentPhoneNo || "",
     parentLineId: initial.ParentLineID || "",
-    parentBirthOfDate: initial.ParentBirthOfDate || "",
     parentRelationship: initial.ParentRelationship || "",
     parentProfilesTypeId: initial.ParentProfilesType_Id || "",
     removeParent: false,
@@ -270,32 +269,26 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
   const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่
 
-  // ★ FIX: เดิมโค้ดนี้ดึงแค่ courses อย่างเดียว ทำให้ข้อมูลผู้ปกครอง (LineID/BirthOfDate/
-  // Relationship/ParentProfilesType_Id) ที่ไม่ได้ถูก select มาจาก GET /students (list)
-  // หายไปตอนแสดงฟอร์มแก้ไข แล้วถ้าแอดมินกดบันทึกโดยไม่แตะช่องผู้ปกครองเลย backend จะ
-  // เข้าใจว่าค่าที่ส่งมา (ว่างเปล่า) คือค่าที่ต้องการอัปเดต ทำให้ข้อมูลผู้ปกครองเดิมถูกเขียนทับเป็นค่าว่าง
-  // แก้โดยดึง parent object เต็มจาก GET /students/:id มา merge เข้าฟอร์มด้วยเสมอตอนเปิดแก้ไข
   const loadCourses = () => {
     if (!isEdit) return;
     axios.get(`${API}/students/${initial.UserId}`).then(r => {
       setCourses(r.data.courses || []);
       const p = r.data.parent;
-      if (p) {
-        setForm(f => ({
-          ...f,
-          parentId: p.ParentId,
-          parentFirstname: p.Firstname || "",
-          parentLastname: p.Lastname || "",
-          parentNickname: p.Nickname || "",
-          parentPhoneNo: p.PhoneNo || "",
-          parentLineId: p.LineID || "",
-          parentBirthOfDate: p.BirthOfDate || "",
-          parentRelationship: p.Relationship || "",
-          parentProfilesTypeId: p.ParentProfilesType_Id || "",
-        }));
-      }
+      setForm(f => ({
+        ...f,
+        parentId: "", // ★ ไม่ล็อกเป็นโหมด "เลือกไว้แล้ว" จะได้แก้ไขฟิลด์ได้ตรงๆ
+        parentFirstname: p?.Firstname || "",
+        parentLastname: p?.Lastname || "",
+        parentNickname: p?.Nickname || "",
+        parentPhoneNo: p?.PhoneNo || "",
+        parentLineId: p?.LineID || "",
+        parentRelationship: p?.Relationship || "",
+        parentProfilesTypeId: p?.ParentProfilesType_Id || "",
+        removeParent: false,
+      }));
     });
   };
+
   useEffect(() => { loadCourses(); }, [initial.UserId]);
 
   return (
@@ -387,73 +380,67 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
       {/* ★ เพิ่ม: ข้อมูลผู้ปกครอง */}
       <div className="border border-orange-100 rounded-xl p-4 bg-orange-50/50 space-y-3">
-        <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
-          <Users className="h-3.5 w-3.5" /> ข้อมูลผู้ปกครอง
-        </p>
-
-        {form.parentId ? (
-          <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">
-                {form.parentNickname || `${form.parentFirstname} ${form.parentLastname}`}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {form.parentRelationship || "ไม่ระบุความสัมพันธ์"} · {form.parentPhoneNo || "—"}
-              </p>
-            </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
+            <Users className="h-3.5 w-3.5" /> ข้อมูลผู้ปกครอง
+          </p>
+          {(form.parentFirstname || form.parentLastname) && (
             <button type="button"
               onClick={() => setForm(f => ({
                 ...f, parentId: "", parentFirstname: "", parentLastname: "", parentNickname: "",
-                parentPhoneNo: "", parentLineId: "", parentBirthOfDate: "", parentRelationship: "",
+                parentPhoneNo: "", parentLineId: "", parentRelationship: "",
                 parentProfilesTypeId: "", removeParent: true,
               }))}
               className="text-xs text-red-500 hover:text-red-700 font-semibold">
-              ยกเลิกผูก
+              ลบข้อมูลผู้ปกครอง
             </button>
-          </div>
-        ) : (
-          <>
-            <ParentSearchSelect onSelect={(p) => setForm(f => ({
-              ...f,
-              parentId: p.ParentId,
-              parentFirstname: p.Firstname || "",
-              parentLastname: p.Lastname || "",
-              parentNickname: p.Nickname || "",
-              parentPhoneNo: p.PhoneNo || "",
-              parentLineId: p.LineID || "",
-              parentBirthOfDate: p.BirthOfDate || "",
-              parentRelationship: p.Relationship || "",
-              parentProfilesTypeId: p.ParentProfilesType_Id || "",
-              removeParent: false,
-            }))} />
+          )}
+        </div>
 
-            <p className="text-[11px] text-slate-400">หรือกรอกข้อมูลผู้ปกครองใหม่ด้านล่าง</p>
+        <ParentSearchSelect onSelect={(p) => setForm(f => ({
+          ...f,
+          parentId: p.ParentId,
+          parentFirstname: p.Firstname || "",
+          parentLastname: p.Lastname || "",
+          parentNickname: p.Nickname || "",
+          parentPhoneNo: p.PhoneNo || "",
+          parentLineId: p.LineID || "",
+          parentRelationship: p.Relationship || "",
+          parentProfilesTypeId: p.ParentProfilesType_Id || "",
+          removeParent: false,
+        }))} />
+        <p className="text-[11px] text-slate-400">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
 
-            <div className="grid grid-cols-2 gap-3">
-              <input className={inp} placeholder="ชื่อผู้ปกครอง"
-                value={form.parentFirstname} onChange={e => set("parentFirstname", e.target.value)} />
-              <input className={inp} placeholder="นามสกุลผู้ปกครอง"
-                value={form.parentLastname} onChange={e => set("parentLastname", e.target.value)} />
-              <input className={inp} placeholder="ชื่อเล่น"
-                value={form.parentNickname} onChange={e => set("parentNickname", e.target.value)} />
-              <input className={inp} placeholder="เบอร์โทร"
-                value={form.parentPhoneNo} onChange={e => set("parentPhoneNo", formatPhone(e.target.value))} inputMode="numeric" />
-              <input className={inp} placeholder="Line ID"
-                value={form.parentLineId} onChange={e => set("parentLineId", e.target.value)} />
-              <select className={inp} value={form.parentProfilesTypeId}
-                onChange={e => set("parentProfilesTypeId", e.target.value)}>
-                <option value="">ความสัมพันธ์ (ไม่ระบุ)</option>
-                {parentProfileTypes.map(t => (
-                  <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>
-                    {t.ParentProfilesType_Name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <input className={inp} placeholder="หมายเหตุความสัมพันธ์ (ถ้ามี)"
-              value={form.parentRelationship} onChange={e => set("parentRelationship", e.target.value)} />
-          </>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <input className={inp} placeholder="ชื่อผู้ปกครอง"
+            value={form.parentFirstname}
+            onChange={e => setForm(f => ({ ...f, parentFirstname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="นามสกุลผู้ปกครอง"
+            value={form.parentLastname}
+            onChange={e => setForm(f => ({ ...f, parentLastname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="ชื่อเล่น"
+            value={form.parentNickname}
+            onChange={e => setForm(f => ({ ...f, parentNickname: e.target.value, parentId: "", removeParent: false }))} />
+          <input className={inp} placeholder="เบอร์โทร"
+            value={form.parentPhoneNo}
+            onChange={e => setForm(f => ({ ...f, parentPhoneNo: formatPhone(e.target.value), parentId: "", removeParent: false }))}
+            inputMode="numeric" />
+          <input className={inp} placeholder="Line ID"
+            value={form.parentLineId}
+            onChange={e => setForm(f => ({ ...f, parentLineId: e.target.value, parentId: "", removeParent: false }))} />
+          <select className={inp} value={form.parentProfilesTypeId}
+            onChange={e => setForm(f => ({ ...f, parentProfilesTypeId: e.target.value, parentId: "", removeParent: false }))}>
+            <option value="">ไม่ระบุ</option>
+            {parentProfileTypes.map(t => (
+              <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>
+                {t.ParentProfilesType_Name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <input className={inp} placeholder="หมายเหตุความสัมพันธ์ (ถ้ามี)"
+          value={form.parentRelationship}
+          onChange={e => setForm(f => ({ ...f, parentRelationship: e.target.value, parentId: "", removeParent: false }))} />
       </div>
 
       <div>
@@ -1180,10 +1167,6 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               <div>
                 <p className="text-[11px] text-slate-400">Line ID</p>
                 <p className="text-slate-700">{parent.LineID || "—"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] text-slate-400">วันเกิด</p>
-                <p className="text-slate-700">{formatDate(parent.BirthOfDate)}</p>
               </div>
               {parent.Relationship && (
                 <div className="col-span-2">
