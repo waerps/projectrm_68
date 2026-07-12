@@ -51,6 +51,49 @@ const sanitizeMoneyInput = (raw) => {
   const cleaned = String(raw).replace(/,/g, "").replace(/[^0-9]/g, "");
   return cleaned;
 };
+// ★ เพิ่ม: แปลงชั่วโมงทศนิยม (24.5) เป็น "24 ชม. 30 นาที" — เหมือนหน้าคอร์ส
+const formatHoursLabel = (decimalHours) => {
+  const total = Number(decimalHours || 0);
+  const h = Math.floor(total);
+  const m = Math.round((total - h) * 60);
+  if (m === 0) return `${h} ชม.`;
+  return `${h} ชม. ${m} นาที`;
+};
+
+// ★ เพิ่ม: inline edit ชั่วโมงสอน (เหมือน HoursInlineEdit ในหน้าคอร์ส)
+function HoursInlineEdit({ value, onSave, onCancel }) {
+  const initial = Number(value || 0);
+  const [hours, setHours] = useState(String(Math.floor(initial)));
+  const [minutes, setMinutes] = useState(String(Math.round((initial - Math.floor(initial)) * 60)));
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    const decimal = Number(hours || 0) + Number(minutes || 0) / 60;
+    await onSave(decimal);
+    setSaving(false);
+  };
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <input type="number" min="0" step="1" value={hours}
+        onChange={e => /^\d*$/.test(e.target.value) && setHours(e.target.value)}
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
+      <span className="text-[11px] text-slate-400">ชม.</span>
+      <input type="number" min="0" max="59" step="1" value={minutes}
+        onChange={e => /^\d*$/.test(e.target.value) && Number(e.target.value) < 60 && setMinutes(e.target.value)}
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
+      <span className="text-[11px] text-slate-400">นาที</span>
+      <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700">
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+      </button>
+      <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500">
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
@@ -481,9 +524,9 @@ function groupCoursesByCourseId(courses) {
   return Array.from(map.values());
 }
 
-// ─── GroupedTutorCourseList — แสดงคอร์สที่สอน จัดกลุ่มตามคอร์ส พร้อม badge วิชาย่อย ──
-// compact=true: ใช้ในฟอร์ม (ไม่โชว์วันที่/สถานะคอร์ส, การ์ดเล็กลง)
-function GroupedTutorCourseList({ courses, onRemoveSubject, compact = false }) {
+// แก้ GroupedTutorCourseList ให้แสดง + แก้ไขชั่วโมงได้
+function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compact = false }) {
+  const [editingId, setEditingId] = useState(null); // ★ เพิ่ม
   const grouped = groupCoursesByCourseId(courses);
   if (grouped.length === 0) {
     return <p className="text-center text-slate-400 py-6 text-sm">ยังไม่มีคอร์สที่สอน</p>;
@@ -501,19 +544,38 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, compact = false }) {
               )}
             </div>
           )}
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-col gap-1.5 mt-2">
             {g.subjects.map(s => (
-              <span key={s.TutorCourseDetailId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
-                {s.SubjectName || "ไม่ระบุวิชา"}
-                <button
-                  type="button"
-                  onClick={() => onRemoveSubject(s.TutorCourseDetailId, `${g.CourseName} · ${s.SubjectName || "ไม่ระบุวิชา"}`)}
-                  className="text-orange-400 hover:text-red-500 transition"
-                  title="ถอดออกจากคอร์ส"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
+              <div key={s.TutorCourseDetailId} className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                  {s.SubjectName || "ไม่ระบุวิชา"}
+                  <button
+                    type="button"
+                    onClick={() => onRemoveSubject(s.TutorCourseDetailId, `${g.CourseName} · ${s.SubjectName || "ไม่ระบุวิชา"}`)}
+                    className="text-orange-400 hover:text-red-500 transition"
+                    title="ถอดออกจากคอร์ส"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+
+                {editingId === s.TutorCourseDetailId ? (
+                  <HoursInlineEdit
+                    value={s.TotalHours}
+                    onSave={async (hours) => { await onUpdateHours(s.TutorCourseDetailId, hours); setEditingId(null); }}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(s.TutorCourseDetailId)}
+                    className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-orange-600 transition"
+                    title="แก้ไขชั่วโมงสอน"
+                  >
+                    {formatHoursLabel(s.TotalHours)} <Edit2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -763,6 +825,14 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+              }
+            }}
+            onUpdateHours={async (tutorCourseDetailId, hours) => {
+              try {
+                await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                loadCourses();
+              } catch (err) {
+                showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
               }
             }}
           />
@@ -1492,6 +1562,14 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+                  }
+                }}
+                onUpdateHours={async (tutorCourseDetailId, hours) => {
+                  try {
+                    await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                    loadDetail();
+                  } catch (err) {
+                    showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
                   }
                 }}
               />
