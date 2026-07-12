@@ -127,6 +127,59 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
   );
 }
 
+// ─── Duplicate Course Modal (ให้แก้วันที่ก่อนทำสำเนา) ─────────────────────────
+function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
+  const [startDate, setStartDate] = useState(course.StartDate?.slice(0, 10) || "");
+  const [lastDate, setLastDate] = useState(course.LastDate?.slice(0, 10) || "");
+
+  const handleConfirm = () => {
+    if (!startDate || !lastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    if (new Date(startDate) >= new Date(lastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    onConfirm({ StartDate: startDate, LastDate: lastDate });
+  };
+
+  const inputCls = "w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const labelCls = "block text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wide";
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+            <Copy className="h-6 w-6 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="font-bold text-neutral-900">ทำสำเนาคอร์ส</h3>
+            <p className="text-xs text-neutral-400 mt-0.5 truncate">{course.CourseName}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3 mb-5">
+          <div>
+            <label className={labelCls}>วันเริ่มสอนใหม่</label>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>วันสิ้นสุดใหม่</label>
+            <input type="date" value={lastDate} onChange={(e) => setLastDate(e.target.value)} className={inputCls} />
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={onCancel} disabled={isSubmitting}
+            className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition text-sm">
+            ยกเลิก
+          </button>
+          <button onClick={handleConfirm} disabled={isSubmitting}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm">
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยันทำสำเนา</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Video Player Modal (เล่นคลิปจริง — ใช้ร่วมกันทั้งแอดมินและพรีวิว) ─────────
 function getYoutubeEmbedUrl(url) {
   const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
@@ -247,7 +300,7 @@ function StudentPreviewModal({ course, onClose }) {
     }
     return null;
   };
-  
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -1600,6 +1653,7 @@ export default function AdminCoursesPage() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
+  const [duplicatingCourse, setDuplicatingCourse] = useState(null); // ★ เพิ่ม
 
   const fetchAll = async () => {
     try {
@@ -1702,16 +1756,54 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const handleDuplicate = async (course) => {
+  // ★ แก้: เปลี่ยนจากยิง API ทันที เป็นเปิด modal ให้กรอกวันที่ก่อน
+  const handleDuplicate = (course) => {
+    setDuplicatingCourse(course);
+  };
+
+  // ★ เพิ่ม: ฟังก์ชันยืนยันทำสำเนา (เรียกจาก modal)
+  const confirmDuplicate = async ({ StartDate, LastDate }) => {
+    setIsSubmitting(true);
     try {
-      await axios.post(`${API_BASE}/courses/${course.CourseID}/duplicate`);
+      await axios.post(`${API_BASE}/courses/${duplicatingCourse.CourseID}/duplicate`, { StartDate, LastDate });
+      showToast("success", "ทำสำเนาคอร์สสำเร็จ!");
+      setDuplicatingCourse(null);
       fetchAll();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
+
+  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown สถานะ (กรองตามค้นหา+เทอมที่เลือกไว้ก่อน ไม่รวมตัวสถานะเอง)
+  const baseForStatusCount = courses.filter((c) => {
+    const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
+    const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
+    return matchSearch && matchTerm;
+  });
+  const allStatusCount = baseForStatusCount.length;
+  const statusCounts = statusOptions.reduce((acc, s) => {
+    acc[s.Status_Course_Id] = baseForStatusCount.filter(
+      (c) => Number(c.Status_Course_Id) === Number(s.Status_Course_Id)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown เทอม (กรองตามค้นหา+สถานะที่เลือกไว้ก่อน ไม่รวมตัวเทอมเอง)
+  const baseForTermCount = courses.filter((c) => {
+    const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
+    return matchSearch && matchStatus;
+  });
+  const termCounts = TERM_FILTERS.reduce((acc, t) => {
+    acc[t.key] = t.termId === null
+      ? baseForTermCount.length
+      : baseForTermCount.filter((c) => Number(c.Term_Id) === t.termId).length;
+    return acc;
+  }, {});
 
   const filtered = courses.filter((c) => {
     const matchSearch =
@@ -1727,7 +1819,13 @@ export default function AdminCoursesPage() {
 
   const totalStudents = [...new Map(courses.map((c) => [c.CourseID, c])).values()]
     .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
-  const activeCourses = courses.filter((c) => c.Status_Course_Id === 2).length;
+
+  // ★ หา Status_Course_Id แบบ dynamic จากชื่อสถานะ แทนการ hardcode เลข
+  const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
+  const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;
+
+  const activeCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(activeStatusId)).length;
+  const closedCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(closedStatusId)).length;
 
   const getPageNumbers = () => {
     const pages = [];
@@ -1769,7 +1867,7 @@ export default function AdminCoursesPage() {
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
-          { label: "นักเรียนที่ลงทะเบียน", value: totalStudents, icon: Users, color: "bg-blue-500" },
+          { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-neutral-400" },
         ].map(({ label, value, icon: Icon, color }, i) => (
           <div
             key={i}
@@ -1805,9 +1903,11 @@ export default function AdminCoursesPage() {
             onChange={(e) => setFilterStatus(e.target.value)}
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
-            <option value="all">สถานะทั้งหมด</option>
+            <option value="all">สถานะทั้งหมด ({allStatusCount})</option>
             {statusOptions.map((s) => (
-              <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>
+              <option key={s.Status_Course_Id} value={s.Status_Course_Id}>
+                {s.Status_Course_Name} ({statusCounts[s.Status_Course_Id] || 0})
+              </option>
             ))}
           </select>
           <select
@@ -1816,7 +1916,7 @@ export default function AdminCoursesPage() {
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
             {TERM_FILTERS.map((t) => (
-              <option key={t.key} value={t.key}>{t.label}</option>
+              <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
             ))}
           </select>
         </div>
@@ -1933,6 +2033,16 @@ export default function AdminCoursesPage() {
           course={deletingCourse}
           onConfirm={handleDelete}
           onCancel={() => setDeletingCourse(null)}
+        />
+      )}
+
+      {/* ── Modal: Duplicate ── */}
+      {duplicatingCourse && (
+        <DuplicateCourseModal
+          course={duplicatingCourse}
+          onConfirm={confirmDuplicate}
+          onCancel={() => setDuplicatingCourse(null)}
+          isSubmitting={isSubmitting}
         />
       )}
     </div>
