@@ -1145,6 +1145,21 @@ function calcBadge(score) {
   return { label: 'ต้องปรับปรุง', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
 }
 
+// ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
+function topScoreGroups(sortedList, groupCount = 3) {
+  const groups = [];
+  for (const item of sortedList) {
+    const last = groups[groups.length - 1];
+    if (last && last.score === item.PerformanceScore) {
+      last.members.push(item);
+    } else {
+      if (groups.length >= groupCount) break;
+      groups.push({ score: item.PerformanceScore, members: [item] });
+    }
+  }
+  return groups;
+}
+
 function ScoreRing({ score }) {
   const r = 20, circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
@@ -1323,7 +1338,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
-  const top3 = filtered.slice(0, 3);
+  const podiumGroups = topScoreGroups(filtered, 3); // ★ แก้: จัดกลุ่มตามคะแนนเท่ากัน แทน slice(0,3)
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1393,35 +1408,57 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <>
             {filtered.length >= 1 && (
               <div className="grid grid-cols-3 gap-3">
-                {[top3[1], top3[0], top3[2]].map((t, i) => (
-                  t ? (
-                    <div key={t.AdminId}
-                      className={`rounded-xl border p-3 text-center cursor-pointer hover:shadow-md transition ${i === 1 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                      onClick={() => onViewTutor(t)}>
-                      <div className="text-2xl">{['🥈', '🥇', '🥉'][i]}</div>
-                      <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl mx-auto mt-2 text-xs" />
-                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">{t.Nickname}</p>
-                      <p className="text-lg font-black text-slate-900 mt-1">{t.PerformanceScore}</p>
+                {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
+                  const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
+                  const MEDALS = ['🥇', '🥈', '🥉'];
+
+                  if (!group) {
+                    return (
+                      <div key={`empty-${i}`}
+                        className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                      >
+                        <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                        <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
+                          <Users className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                        <p className="text-lg font-black text-slate-300 mt-1">—</p>
+                        <p className="text-[10px] text-slate-300">คะแนน</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={group.score}
+                      className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                      style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                    >
+                      <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                      <div className="flex justify-center -space-x-2 mt-2">
+                        {group.members.slice(0, 4).map(t => (
+                          <button key={t.AdminId} onClick={() => onViewTutor(t)}
+                            className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
+                            title={t.Nickname}>
+                            <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-xs" />
+                          </button>
+                        ))}
+                        {group.members.length > 4 && (
+                          <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            +{group.members.length - 4}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        {group.members.length === 1
+                          ? group.members[0].Nickname
+                          : `${group.members.length} คนเสมอกัน`}
+                      </p>
+                      <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
                       <p className="text-[10px] text-slate-400">คะแนน</p>
                     </div>
-                  ) : (
-                    // ★ เพิ่ม: placeholder เมื่อไม่มีคนในอันดับนี้ — คงเลย์เอาต์ไว้ ไม่ปล่อยโล่ง
-                    <div
-                      key={`empty-${i}`}
-                      className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
-                      style={{ marginTop: i === 0 ? 16 : i === 2 ? 32 : 0 }}
-                    >
-                      <div className="text-2xl opacity-30">{['🥈', '🥇', '🥉'][i]}</div>
-                      <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
-                        <Users className="h-4 w-4 text-slate-400" />
-                      </div>
-                      <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                      <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                      <p className="text-[10px] text-slate-300">คะแนน</p>
-                    </div>
-                  )
-                ))}
+                  );
+                })}
               </div>
             )}
 
