@@ -458,6 +458,70 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
   );
 }
 
+// ─── helper: จัดกลุ่มคอร์สที่สอนตาม CourseID (1 คอร์สอาจมีหลายวิชา) ──────────
+function groupCoursesByCourseId(courses) {
+  const map = new Map();
+  for (const c of courses) {
+    if (!map.has(c.CourseID)) {
+      map.set(c.CourseID, {
+        CourseID: c.CourseID,
+        CourseName: c.CourseName,
+        StartDate: c.StartDate,
+        LastDate: c.LastDate,
+        Status_Course_Name: c.Status_Course_Name,
+        subjects: [],
+      });
+    }
+    map.get(c.CourseID).subjects.push({
+      TutorCourseDetailId: c.TutorCourseDetailId,
+      SubjectId: c.SubjectId,
+      SubjectName: c.SubjectName,
+    });
+  }
+  return Array.from(map.values());
+}
+
+// ─── GroupedTutorCourseList — แสดงคอร์สที่สอน จัดกลุ่มตามคอร์ส พร้อม badge วิชาย่อย ──
+// compact=true: ใช้ในฟอร์ม (ไม่โชว์วันที่/สถานะคอร์ส, การ์ดเล็กลง)
+function GroupedTutorCourseList({ courses, onRemoveSubject, compact = false }) {
+  const grouped = groupCoursesByCourseId(courses);
+  if (grouped.length === 0) {
+    return <p className="text-center text-slate-400 py-6 text-sm">ยังไม่มีคอร์สที่สอน</p>;
+  }
+  return (
+    <div className={compact ? "mt-2 space-y-2" : "space-y-2"}>
+      {grouped.map(g => (
+        <div key={g.CourseID} className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="font-semibold text-sm text-slate-900 truncate">{g.CourseName}</p>
+          {!compact && (
+            <div className="flex flex-wrap gap-2 mt-1 text-[11px] text-slate-500">
+              <span>{formatDate(g.StartDate)} – {formatDate(g.LastDate)}</span>
+              {g.Status_Course_Name && (
+                <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{g.Status_Course_Name}</span>
+              )}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {g.subjects.map(s => (
+              <span key={s.TutorCourseDetailId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                {s.SubjectName || "ไม่ระบุวิชา"}
+                <button
+                  type="button"
+                  onClick={() => onRemoveSubject(s.TutorCourseDetailId, `${g.CourseName} · ${s.SubjectName || "ไม่ระบุวิชา"}`)}
+                  className="text-orange-400 hover:text-red-500 transition"
+                  title="ถอดออกจากคอร์ส"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── TutorForm ─────────────────────────────────────────────────────────────────
 function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, allTutors, allSubjects }) {
   const [form, setForm] = useState({
@@ -690,29 +754,18 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             allSubjects={allSubjects}
             showToast={showToast}
           />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {courses.map(c => (
-              <span key={c.TutorCourseDetailId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
-                {c.CourseName}{c.SubjectName && ` · ${c.SubjectName}`}
-                <button
-                  type="button"
-                  onClick={async (e) => {
-                    e.stopPropagation();
-                    try {
-                      await axios.delete(`${API}/tutor-courses/${c.TutorCourseDetailId}`);
-                      loadCourses();
-                    } catch (err) {
-                      showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
-                    }
-                  }}
-                  className="text-orange-400 hover:text-red-500 transition"
-                  title="ถอดออกจากคอร์ส"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
+          <GroupedTutorCourseList
+            courses={courses}
+            compact
+            onRemoveSubject={async (tutorCourseDetailId) => {
+              try {
+                await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                loadCourses();
+              } catch (err) {
+                showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+              }
+            }}
+          />
         </div>
       )}
 
@@ -1374,9 +1427,11 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
   const badge = calcBadge(perf?.PerformanceScore ?? 0);
 
+  const uniqueCourseCount = new Set((data?.courses || []).map(c => c.CourseID)).size;
+
   const TABS = [
     { key: 'overview', label: 'ภาพรวม' },
-    { key: 'courses', label: 'คอร์สที่สอน', count: data?.courses.length },
+    { key: 'courses', label: 'คอร์สที่สอน', count: uniqueCourseCount },
     { key: 'students', label: 'นักเรียน', count: data?.students.length },
   ];
 
@@ -1428,40 +1483,18 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                 allSubjects={allSubjects}
                 showToast={showToast}
               />
-              {data.courses.length === 0 ? (
-                <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่สอน</p>
-              ) : (
-                <div className="space-y-2">
-                  {data.courses.map(c => (
-                    <div key={c.TutorCourseDetailId} className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm text-slate-900">{c.CourseName}</p>
-                        <div className="flex gap-2 mt-1 text-[11px] text-slate-500">
-                          {c.SubjectName && <span>{c.SubjectName}</span>}
-                          <span>· {formatDate(c.StartDate)} – {formatDate(c.LastDate)}</span>
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{c.Status_Course_Name}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (!confirm(`ถอด "${c.CourseName}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
-                          try {
-                            await axios.delete(`${API}/tutor-courses/${c.TutorCourseDetailId}`);
-                            loadDetail();
-                          } catch (err) {
-                            showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
-                          }
-                        }}
-                        className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="ถอดออกจากคอร์ส"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <GroupedTutorCourseList
+                courses={data.courses}
+                onRemoveSubject={async (tutorCourseDetailId, label) => {
+                  if (!confirm(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
+                  try {
+                    await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                    loadDetail();
+                  } catch (err) {
+                    showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
+                  }
+                }}
+              />
             </div>
           )}
 
