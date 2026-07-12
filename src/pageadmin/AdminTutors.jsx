@@ -519,6 +519,7 @@ function groupCoursesByCourseId(courses) {
       TutorCourseDetailId: c.TutorCourseDetailId,
       SubjectId: c.SubjectId,
       SubjectName: c.SubjectName,
+      TotalHours: c.TotalHours,
     });
   }
   return Array.from(map.values());
