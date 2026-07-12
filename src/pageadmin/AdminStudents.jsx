@@ -1105,7 +1105,17 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [filterGrade, setFilterGrade] = useState('all');
+  const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
   const [showLimit, setShowLimit] = useState(DEFAULT_LIMIT);
+
+  // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcStudentBadge เพื่อให้ label/สีตรงกับ badge ที่โชว์อยู่
+  const SCORE_RANGES = [
+    { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
+    { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
+    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
+    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
+    { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
+  ];
 
   useEffect(() => {
     axios.get(`${API}/students/performance`)
@@ -1118,12 +1128,25 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   useEffect(() => {
     setShowLimit(DEFAULT_LIMIT);
     setExpandedId(null);
-  }, [filterGrade]);
+  }, [filterGrade, filterScoreRange]);
 
   // กรองตามชั้นปี
-  const filtered = filterGrade === 'all'
-    ? perfData
-    : perfData.filter(s => String(s.GradeLevelId) === filterGrade);
+  const matchGradeFn = (s) => filterGrade === 'all' || String(s.GradeLevelId) === filterGrade;
+  // ★ กรองตามช่วงคะแนน
+  const matchScoreFn = (s) => {
+    if (filterScoreRange === 'all') return true;
+    const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
+    return range ? range.test(s.PerformanceScore) : true;
+  };
+
+  const filtered = perfData.filter(s => matchGradeFn(s) && matchScoreFn(s));
+
+  // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
+  const baseForScoreCount = perfData.filter(matchGradeFn);
+  const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
+    acc[r.key] = baseForScoreCount.filter(s => r.test(s.PerformanceScore)).length;
+    return acc;
+  }, {});
 
   // ตัดแสดงตาม limit
   const visible = filtered.slice(0, showLimit);
@@ -1143,8 +1166,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Pre/Mid/Post-test 60%</span>
       </div>
 
-      {/* ── Grade Filter Dropdown ─────────────────────────────── */}
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2">
+      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
         <div className="relative ml-auto">
           <select
             value={filterGrade}
@@ -1153,10 +1175,10 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
-            <option value="all">ทุกระดับชั้น ({perfData.length} คน)</option>
+            <option value="all">ทุกระดับชั้น ({baseForScoreCount.length} คน)</option>
             {gradeLevels.map(g => {
               const cnt = perfData.filter(
-                s => String(s.GradeLevelId) === String(g.GradeLevelId)
+                s => String(s.GradeLevelId) === String(g.GradeLevelId) && matchScoreFn(s)
               ).length;
               return (
                 <option key={g.GradeLevelId} value={String(g.GradeLevelId)}>
@@ -1165,15 +1187,34 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
               );
             })}
           </select>
-          {/* ไอคอน chevron */}
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4
                             text-slate-400 pointer-events-none" />
         </div>
 
-        {/* ปุ่มล้างตัวกรอง — แสดงเฉพาะเมื่อไม่ได้อยู่ที่ "ทุกระดับชั้น" */}
-        {filterGrade !== 'all' && (
+        {/* ★ เพิ่ม: dropdown กรองตามช่วง Performance Score */}
+        <div className="relative">
+          <select
+            value={filterScoreRange}
+            onChange={e => setFilterScoreRange(e.target.value)}
+            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+                 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
+                 focus:border-transparent outline-none transition cursor-pointer"
+          >
+            <option value="all">ทุกระดับคะแนน ({baseForScoreCount.length} คน)</option>
+            {SCORE_RANGES.map(r => (
+              <option key={r.key} value={r.key}>
+                {r.label} ({scoreRangeCounts[r.key] || 0} คน)
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4
+                            text-slate-400 pointer-events-none" />
+        </div>
+
+        {/* ปุ่มล้างตัวกรอง — แสดงเมื่อมีตัวกรองใดถูกเลือกอยู่ */}
+        {(filterGrade !== 'all' || filterScoreRange !== 'all') && (
           <button
-            onClick={() => setFilterGrade('all')}
+            onClick={() => { setFilterGrade('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
                  text-slate-500 bg-white border border-slate-200 rounded-lg
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
@@ -1281,6 +1322,7 @@ export default function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
+  const [filterEnrolled, setFilterEnrolled] = useState("all"); // ★ เพิ่ม: all | enrolled | not_enrolled
   const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false); // FIX #7
@@ -1307,7 +1349,7 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterGrade]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterGrade, filterEnrolled]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -1333,32 +1375,37 @@ export default function AdminStudentsPage() {
     } finally { setIsSubmitting(false); }
   };
 
-  // FIX #7: เพิ่ม isDeleting state ป้องกัน double submit
-  const handleDelete = async () => {
-    if (isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await axios.delete(`${API}/students/${deletingStudent.UserId}`);
-      showToast("success", "ลบนักเรียนสำเร็จ!");
-      setDeletingStudent(null);
-      fetchAll();
-    } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
-    } finally { setIsDeleting(false); }
-  };
-
   // FIX #3: handle GradeLevelId = null อย่างถูกต้อง
-  const filtered = students.filter(s => {
+  const matchSearchFn = (s) => {
     const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
     const q = search.toLowerCase();
-    const matchSearch = !q || name.includes(q) || (s.SchoolName || "").toLowerCase().includes(q) ||
+    return !q || name.includes(q) || (s.SchoolName || "").toLowerCase().includes(q) ||
       String(s.UserId).includes(q) || (s.PhoneNo || "").includes(q);
-    const matchGrade = filterGrade === "all" ||
-      (s.GradeLevelId != null && String(s.GradeLevelId) === filterGrade);
-    return matchSearch && matchGrade;
-  });
+  };
+  const matchGradeFn = (s) => filterGrade === "all" ||
+    (s.GradeLevelId != null && String(s.GradeLevelId) === filterGrade);
+  const matchEnrolledFn = (s) => filterEnrolled === "all" ||
+    (filterEnrolled === "enrolled" ? s.EnrolledCourses > 0 : !s.EnrolledCourses);
+
+  const filtered = students.filter(s => matchSearchFn(s) && matchGradeFn(s) && matchEnrolledFn(s));
+
+  // ★ นับจำนวนสำหรับ dropdown ระดับชั้น (กรองตามค้นหา+สถานะลงทะเบียนที่เลือกไว้ก่อน)
+  const baseForGradeCount = students.filter(s => matchSearchFn(s) && matchEnrolledFn(s));
+  const allGradeCount = baseForGradeCount.length;
+  const gradeCounts = gradeLevels.reduce((acc, g) => {
+    acc[g.GradeLevelId] = baseForGradeCount.filter(
+      (s) => s.GradeLevelId != null && String(s.GradeLevelId) === String(g.GradeLevelId)
+    ).length;
+    return acc;
+  }, {});
+
+  // ★ นับจำนวนสำหรับ dropdown สถานะลงทะเบียน (กรองตามค้นหา+ระดับชั้นที่เลือกไว้ก่อน)
+  const baseForEnrolledCount = students.filter(s => matchSearchFn(s) && matchGradeFn(s));
+  const enrolledCount = baseForEnrolledCount.filter(s => s.EnrolledCourses > 0).length;
+  const notEnrolledCount = baseForEnrolledCount.filter(s => !s.EnrolledCourses).length;
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
@@ -1428,8 +1475,18 @@ export default function AdminStudentsPage() {
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
             className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[160px]">
-            <option value="all">ทุกระดับชั้น</option>
-            {gradeLevels.map(g => <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>)}
+            <option value="all">ทุกระดับชั้น ({allGradeCount})</option>
+            {gradeLevels.map(g => (
+              <option key={g.GradeLevelId} value={g.GradeLevelId}>
+                {g.GradeDetail} ({gradeCounts[g.GradeLevelId] || 0})
+              </option>
+            ))}
+          </select>
+          <select value={filterEnrolled} onChange={e => setFilterEnrolled(e.target.value)}
+            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[180px]">
+            <option value="all">สถานะลงทะเบียนทั้งหมด ({enrolledCount + notEnrolledCount})</option>
+            <option value="enrolled">ลงทะเบียนแล้ว ({enrolledCount})</option>
+            <option value="not_enrolled">ยังไม่ลงทะเบียน ({notEnrolledCount})</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
