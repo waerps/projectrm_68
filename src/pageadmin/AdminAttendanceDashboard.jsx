@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search, ChevronDown, ChevronUp, X, Download,
@@ -19,6 +20,29 @@ const AVATAR_COLORS = [
 ];
 function avatarCls(idx) {
   return AVATAR_COLORS[idx % AVATAR_COLORS.length];
+}
+
+// ── Avatar ติวเตอร์ (ใช้รูปโปรไฟล์จริงถ้ามี ไม่มีค่อย fallback เป็นตัวอักษร) ──
+function TutorAvatar({ tutor, idx = 0, className = 'w-9 h-9 rounded-xl' }) {
+  const [imgErr, setImgErr] = useState(false);
+  const av = avatarCls(idx);
+  if (tutor.Photo && !imgErr) {
+    return (
+      <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+        <img
+          src={getFileUrl(tutor.Photo)}
+          alt={tutor.Nickname}
+          onError={() => setImgErr(true)}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+  return (
+    <div className={`flex items-center justify-center text-xs font-bold shrink-0 ${av.bg} ${av.color} ${className}`}>
+      {tutor.Nickname?.slice(0, 2) || '?'}
+    </div>
+  );
 }
 
 // ── Rate Bar ──────────────────────────────────────────────────
@@ -56,23 +80,20 @@ function StatusBadge({ rate }) {
   );
 }
 
-// ── สร้าง list เดือนย้อนหลัง 12 เดือน ──────────────────────
-function buildMonthOptions() {
-  const options = [];
-  const now = new Date();
-  for (let i = 0; i < 13; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const year = d.getFullYear();
-    const month = d.getMonth(); // 0-based
-    const start = new Date(year, month, 1).toISOString().slice(0, 10);
-    const end = new Date(year, month + 1, 0).toISOString().slice(0, 10); // วันสุดท้ายของเดือน
-    const label = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
-    options.push({ label, start, end });
-  }
-  return options;
+function buildMonthRange(month, year) {
+  const start = new Date(year, month - 1, 1).toISOString().slice(0, 10);
+  const end = new Date(year, month, 0).toISOString().slice(0, 10);
+  const label = new Date(year, month - 1, 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
+  return { label, start, end };
 }
 
-const MONTH_OPTIONS = buildMonthOptions();
+const MONTH_NAMES_TH = [
+  'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+  'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม',
+];
+
+const CURRENT_YEAR_AD = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 4 }, (_, i) => CURRENT_YEAR_AD - i); // ย้อนหลัง 4 ปี
 
 // ── CSV Export ────────────────────────────────────────────────
 // ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
@@ -316,7 +337,13 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 
 // ── Main Dashboard ────────────────────────────────────────────
 export default function TutorAttendanceDashboard() {
-  const [selectedMonth, setSelectedMonth] = useState(null);
+  const now = new Date();
+  const [selectedMonthNum, setSelectedMonthNum] = useState(now.getMonth() + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const selectedMonth = useMemo(
+    () => buildMonthRange(selectedMonthNum, selectedYear),
+    [selectedMonthNum, selectedYear]
+  );
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('AttendanceRate');
@@ -325,6 +352,9 @@ export default function TutorAttendanceDashboard() {
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [filterSubject, setFilterSubject] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all'); // all | normal | watch | risk
+  const [filterPhotoIssue, setFilterPhotoIssue] = useState('all'); // all | incomplete
 
   // helper ดึง range จาก selectedMonth (null = ไม่ filter)
   const getDateRange = () => {
@@ -346,9 +376,6 @@ export default function TutorAttendanceDashboard() {
   // auto-fetch เมื่อ selectedMonth เปลี่ยน
   useEffect(() => { fetchData(selectedMonth); }, [selectedMonth]);
 
-  // ★ แก้: ตัด logic filter (atRisk/unpaid/pending) ออกทั้งหมด เหลือแค่ search + sort
-  //   ปุ่มแท็บเดิมทำหน้าที่ซ้ำซ้อนกับ dropdown เรียงลำดับ (อ้างอิงฟิลด์เดียวกัน)
-  //   และหน้านี้ไม่มี pagination การเรียงลำดับก็เห็นกลุ่มที่น่าสนใจขึ้นบนสุดอยู่แล้ว
   const processed = useMemo(() => {
     let list = [...tutors];
     if (search.trim()) {
@@ -359,16 +386,41 @@ export default function TutorAttendanceDashboard() {
         (t.Lastname || '').toLowerCase().includes(q)
       );
     }
+    if (filterSubject !== 'all') {
+      list = list.filter(t =>
+        (t.TeachingSubjects || '').split(',').map(s => s.trim()).includes(filterSubject)
+      );
+    }
+    if (filterStatus !== 'all') {
+      list = list.filter(t => {
+        const rate = t.AttendanceRate ?? 100;
+        if (filterStatus === 'risk') return rate < 50;
+        if (filterStatus === 'watch') return rate >= 50 && rate < 80;
+        return rate >= 80; // normal
+      });
+    }
+    if (filterPhotoIssue === 'incomplete') {
+      list = list.filter(t => (t.IncompletePhotoCount ?? 0) > 0);
+    }
     list.sort((a, b) => {
       const av = a[sortBy] ?? -1;
       const bv = b[sortBy] ?? -1;
       return sortAsc ? av - bv : bv - av;
     });
     return list;
-  }, [tutors, sortBy, sortAsc, search]);
+  }, [tutors, sortBy, sortAsc, search, filterSubject, filterStatus, filterPhotoIssue]);
+
+  const allSubjectNames = useMemo(() => {
+    const set = new Set();
+    tutors.forEach(t => {
+      (t.TeachingSubjects || '').split(',').map(s => s.trim()).filter(Boolean).forEach(s => set.add(s));
+    });
+    return [...set].sort();
+  }, [tutors]);
 
   const avgRate = tutors.length
     ? Math.round(tutors.reduce((s, t) => s + (t.AttendanceRate ?? 0), 0) / tutors.length) : 0;
+
   const atRisk = tutors.filter(t => (t.AttendanceRate ?? 100) < 50).length;
   const missedTotal = tutors.reduce((s, t) => s + (t.MissedCount ?? 0), 0);
   // ★ เพิ่ม: จำนวนติวเตอร์ที่บันทึกครบ 100% (แทนที่การ์ดการเงินเดิม)
@@ -464,27 +516,30 @@ export default function TutorAttendanceDashboard() {
         </div>
       </div>
 
-      {/* ── Month Dropdown Filter ───────────────────────────────── */}
+      {/* ── Month/Year Dropdown Filter ─────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-wrap items-center gap-3">
-        <label className="text-sm font-semibold text-slate-600">เลือกเดือน</label>
+        <label className="text-sm font-semibold text-slate-600">ดูข้อมูลของเดือน</label>
         <select
-          value={selectedMonth ? selectedMonth.start : ''}
-          onChange={e => {
-            const found = MONTH_OPTIONS.find(o => o.start === e.target.value);
-            setSelectedMonth(found || null);
-          }}
-          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition min-w-[180px]"
+          value={selectedMonthNum}
+          onChange={e => setSelectedMonthNum(Number(e.target.value))}
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition min-w-[140px]"
         >
-          <option value="">ทั้งหมด (ไม่กำหนดช่วง)</option>
-          {MONTH_OPTIONS.map(opt => (
-            <option key={opt.start} value={opt.start}>{opt.label}</option>
+          {MONTH_NAMES_TH.map((name, i) => (
+            <option key={name} value={i + 1}>{name}</option>
           ))}
         </select>
-        {selectedMonth && (
-          <span className="text-xs text-slate-400">
-            {selectedMonth.start} ถึง {selectedMonth.end}
-          </span>
-        )}
+        <select
+          value={selectedYear}
+          onChange={e => setSelectedYear(Number(e.target.value))}
+          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition min-w-[100px]"
+        >
+          {YEAR_OPTIONS.map(y => (
+            <option key={y} value={y}>{y + 543}</option>
+          ))}
+        </select>
+        <span className="text-xs text-slate-400">
+          {selectedMonth.start} ถึง {selectedMonth.end}
+        </span>
       </div>
 
       {/* ── Stats Grid ─────────────────────────────────── */}
@@ -521,20 +576,36 @@ export default function TutorAttendanceDashboard() {
               className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          {/* Sort select */}
+          {/* Subject filter */}
           <select
-            value={`${sortBy}_${sortAsc ? 'asc' : 'desc'}`}
-            onChange={e => {
-              const [col, dir] = e.target.value.split('_');
-              setSortBy(col);
-              setSortAsc(dir === 'asc');
-            }}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+            value={filterSubject}
+            onChange={e => setFilterSubject(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[150px]"
           >
-            <option value="AttendanceRate_asc">อัตราเช็กอิน (%) น้อย → มาก</option>
-            <option value="AttendanceRate_desc">อัตราเช็กอิน (%) มาก → น้อย</option>
-            <option value="TotalScheduled_desc">คาบทั้งหมด มาก → น้อย</option>
-            <option value="MissedCount_desc">ขาด มาก → น้อย</option>
+            <option value="all">ทุกวิชา</option>
+            {allSubjectNames.map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+          {/* Status level filter */}
+          <select
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[150px]"
+          >
+            <option value="all">ทุกระดับสถานะ</option>
+            <option value="normal">ปกติ (≥80%)</option>
+            <option value="watch">ควรติดตาม (50–79%)</option>
+            <option value="risk">น่าเป็นห่วง (&lt;50%)</option>
+          </select>
+          {/* Photo issue filter */}
+          <select
+            value={filterPhotoIssue}
+            onChange={e => setFilterPhotoIssue(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[160px]"
+          >
+            <option value="all">ทุกคาบ (รูป)</option>
+            <option value="incomplete">มีรูปไม่ครบ</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -574,6 +645,9 @@ export default function TutorAttendanceDashboard() {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   บันทึกล่าสุด
                 </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  รูปไม่ครบ
+                </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ประวัติ</th>
               </tr>
@@ -581,7 +655,7 @@ export default function TutorAttendanceDashboard() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-slate-400">
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
                       <p className="text-sm">กำลังโหลด...</p>
@@ -590,13 +664,12 @@ export default function TutorAttendanceDashboard() {
                 </tr>
               ) : processed.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-slate-400">
+                  <td colSpan={9} className="text-center py-16 text-slate-400">
                     <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
                     <p className="text-sm">ไม่มีข้อมูลในช่วงนี้</p>
                   </td>
                 </tr>
               ) : processed.map((t, idx) => {
-                const av = avatarCls(idx);
                 const isAtRisk = (t.AttendanceRate ?? 100) < 50;
                 return (
                   <tr
@@ -606,9 +679,7 @@ export default function TutorAttendanceDashboard() {
                     {/* Tutor */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${av.bg} ${av.color}`}>
-                          {t.Nickname?.slice(0, 2) || '?'}
-                        </div>
+                        <TutorAvatar tutor={t} idx={idx} />
                         <div>
                           <p className="font-semibold text-slate-900 text-sm">{t.Nickname}</p>
                           <p className="text-[10px] text-slate-400">{t.Firstname} {t.Lastname}</p>
@@ -646,6 +717,16 @@ export default function TutorAttendanceDashboard() {
                         ? <span className="text-slate-500">{shortDate(t.LastCheckinAt)}</span>
                         : <span className="text-red-400 font-semibold">ยังไม่เคยบันทึก</span>
                       }
+                    </td>
+                    {/* Incomplete photo count */}
+                    <td className="px-4 py-3 text-center">
+                      {(t.IncompletePhotoCount ?? 0) > 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                          <Camera className="w-3 h-3" />{t.IncompletePhotoCount}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-300">—</span>
+                      )}
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3 text-center">
@@ -733,8 +814,8 @@ function HeatmapTooltip({ tooltip }) {
         <div className="mt-2 pt-2 border-t border-slate-700 flex items-center justify-between gap-2">
           <span className="text-slate-400">วัน{tooltip.dayLabel}</span>
           <span className={`font-black text-sm ${tooltip.count >= 8 ? 'text-red-400' :
-              tooltip.count >= 5 ? 'text-orange-400' :
-                tooltip.count >= 3 ? 'text-amber-400' : 'text-yellow-300'
+            tooltip.count >= 5 ? 'text-orange-400' :
+              tooltip.count >= 3 ? 'text-amber-400' : 'text-yellow-300'
             }`}>ขาด {tooltip.count} ครั้ง</span>
         </div>
         <p className="text-slate-500 text-[10px] mt-1.5">คลิกเพื่อดูรายละเอียด</p>
@@ -1115,14 +1196,11 @@ function AbsenceHeatmap({ selectedMonth }) {
                     </td>
                   </tr>
                 ) : tutors.map((t, idx) => {
-                  const av = avatarCls(idx);
                   return (
                     <tr key={t.AdminId} className="hover:bg-orange-50/20 transition-colors">
                       <td className="px-4 py-3 sticky left-0 bg-white border-r border-slate-100 z-10">
                         <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${av.bg} ${av.color}`}>
-                            {t.Nickname?.slice(0, 2) || '?'}
-                          </div>
+                          <TutorAvatar tutor={t} idx={idx} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-800 truncate">{t.Nickname}</p>
                             <p className="text-[10px] text-slate-400 truncate">{t.Firstname}</p>
