@@ -141,21 +141,15 @@ function exportCSV(tutors, startDate, endDate) {
   URL.revokeObjectURL(url);
 }
 
-// ── Session Detail Modal ──────────────────────────────────────
-// ★ แก้: ตัดปุ่ม "จ่ายค้างทั้งหมด" และคอลัมน์สถานะการจ่ายเงินออกจากแต่ละคาบ
-//   TODO: ย้ายไป Financial page ภายหลัง — การแสดงสถานะจ่ายเงินต่อคาบ (TutorPaymentId)
 function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDate, onClose }) {
   const [expandedSession, setExpandedSession] = useState(null);
-  const [modalPage, setModalPage] = useState(1);         // ★ เพิ่ม
-  const SESSIONS_PER_PAGE = 10;                          // ★ เพิ่ม
+  const [modalPage, setModalPage] = useState(1);
+  const SESSIONS_PER_PAGE = 10;
 
-  useEffect(() => { setModalPage(1); }, [sessions]);
-
-  const totalModalPages = Math.max(1, Math.ceil(sessions.length / SESSIONS_PER_PAGE)); // ★
-  const paginatedSessions = sessions.slice(               // ★
-    (modalPage - 1) * SESSIONS_PER_PAGE,
-    modalPage * SESSIONS_PER_PAGE
-  );
+  // ★ ย้ายมาไว้บนสุด — ก่อนสิ่งที่จะใช้มัน
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalPhotoFilter, setModalPhotoFilter] = useState('all');
+  const [modalMonthFilter, setModalMonthFilter] = useState('all');
 
   const getPhotoDiff = (startAt, endAt) => {
     if (!startAt || !endAt) return null;
@@ -172,7 +166,51 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
     return new Date(dateStr).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const getPhotoStatus = (session) => {
+    if (!session.PhotoStart) return 'missing';
+    if (!session.PhotoEnd) return 'incomplete';
+    const diff = getPhotoDiff(session.PhotoStartAt, session.PhotoEndAt);
+    return (diff !== null && diff >= 30) ? 'complete' : 'incomplete';
+  };
 
+  const monthOptions = useMemo(() => {
+    const set = new Map();
+    sessions.forEach(s => {
+      if (!s.ClassDate) return;
+      const d = new Date(s.ClassDate);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const label = d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
+      if (!set.has(key)) set.set(key, label);
+    });
+    return [...set.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  }, [sessions]);
+
+  // ★ filteredSessions ต้องมาก่อนที่จะใช้ใน totalModalPages/paginatedSessions
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(s => {
+      if (modalSearch.trim()) {
+        const q = modalSearch.toLowerCase();
+        const hay = `${s.SubjectName || ''} ${s.CourseName || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (modalPhotoFilter !== 'all' && getPhotoStatus(s) !== modalPhotoFilter) return false;
+      if (modalMonthFilter !== 'all') {
+        const d = new Date(s.ClassDate);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (key !== modalMonthFilter) return false;
+      }
+      return true;
+    });
+  }, [sessions, modalSearch, modalPhotoFilter, modalMonthFilter]);
+
+  // ★ ตอนนี้ useEffect และ pagination อ้างถึงตัวแปรที่ถูกประกาศแล้วทั้งหมด
+  useEffect(() => { setModalPage(1); }, [sessions, modalSearch, modalPhotoFilter, modalMonthFilter]);
+
+  const totalModalPages = Math.max(1, Math.ceil(filteredSessions.length / SESSIONS_PER_PAGE));
+  const paginatedSessions = filteredSessions.slice(
+    (modalPage - 1) * SESSIONS_PER_PAGE,
+    modalPage * SESSIONS_PER_PAGE
+  );
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -195,6 +233,57 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* ★ เพิ่ม: Filter Bar */}
+        {sessions.length > 0 && (
+          <div className="px-6 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-2 shrink-0">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="ค้นหาวิชา/คอร์ส..."
+                value={modalSearch}
+                onChange={e => setModalSearch(e.target.value)}
+                className="pl-8 pr-3 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none transition"
+              />
+            </div>
+            {monthOptions.length > 1 && (
+              <select
+                value={modalMonthFilter}
+                onChange={e => setModalMonthFilter(e.target.value)}
+                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+              >
+                <option value="all">ทุกเดือน</option>
+                {monthOptions.map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={modalPhotoFilter}
+              onChange={e => setModalPhotoFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+            >
+              <option value="all">ทุกสถานะรูป</option>
+              <option value="complete">รูปครบ</option>
+              <option value="incomplete">รูปไม่ครบ/รอปิดคาบ</option>
+              <option value="missing">ไม่มีรูป</option>
+            </select>
+            {(modalSearch || modalPhotoFilter !== 'all' || modalMonthFilter !== 'all') && (
+              <button
+                onClick={() => { setModalSearch(''); setModalPhotoFilter('all'); setModalMonthFilter('all'); }}
+                className="px-2.5 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-lg transition shrink-0"
+              >
+                ล้างตัวกรอง
+              </button>
+            )}
+          </div>
+        )}
+        {sessions.length > 0 && (
+          <p className="px-6 pt-2 text-[11px] text-slate-400 shrink-0">
+            แสดง {filteredSessions.length} จาก {sessions.length} คาบ
+          </p>
+        )}
 
         {/* Sessions List */}
         <div className="overflow-y-auto flex-1">
@@ -340,18 +429,18 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
           })}
 
           {/* Missed banner */}
-          {sessions.some(s => !s.PhotoStart) && (
+          {filteredSessions.some(s => !s.PhotoStart) && (
             <div className="flex items-center gap-2 px-6 py-3 bg-red-50/60 border-t border-red-100 text-xs text-red-700 font-medium">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               มีคาบที่ผ่านมา &gt; 4 ชั่วโมงแล้วแต่ยังไม่มีรูปบันทึก — อาจต้องติดตามติวเตอร์โดยตรง
             </div>
           )}
 
-          {sessions.length > SESSIONS_PER_PAGE && (
+          {filteredSessions.length > SESSIONS_PER_PAGE && (
             <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between shrink-0">
               <p className="text-xs text-slate-500">
                 แสดง {(modalPage - 1) * SESSIONS_PER_PAGE + 1}
-                –{Math.min(modalPage * SESSIONS_PER_PAGE, sessions.length)} จาก {sessions.length} คาบ
+                –{Math.min(modalPage * SESSIONS_PER_PAGE, filteredSessions.length)} จาก {filteredSessions.length} คาบ
               </p>
               <div className="flex items-center gap-1.5">
                 <button
@@ -683,7 +772,7 @@ export default function TutorAttendanceDashboard() {
             onChange={e => setFilterPhotoIssue(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
           >
-            <option value="all">ทุกคาบ (รูป) ({baseForPhotoCount.length})</option>
+            <option value="all">มีรูปครบ ({baseForPhotoCount.length})</option>
             <option value="incomplete">มีรูปไม่ครบ ({incompletePhotoCount})</option>
           </select>
         </div>
