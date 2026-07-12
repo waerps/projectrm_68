@@ -1217,7 +1217,7 @@ function AbsenceHeatmap({ selectedMonth }) {
     return new Date(y, m - 1, d); // สร้างจาก y/m/d ตรงๆ ไม่ผ่าน UTC parsing
   }
 
-  const { weeks = [], tutors = [], daySummary = {}, weekSummary = {} } = data;
+  const { weeks = [], tutors = [], daySummary = {}, weekSummary = {} } = data || {};
 
   // ★ เพิ่ม: คำนวณว่าแต่ละวันในแต่ละสัปดาห์ อยู่ใน "เดือนที่เลือก" จริงหรือไม่
   const weekDayInfo = useMemo(() => {
