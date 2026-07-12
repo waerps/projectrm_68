@@ -1164,14 +1164,18 @@ function DrillDownModal({ info, onClose }) {
 }
 
 // ── Heatmap Summary ───────────────────────────────────────────
-function HeatmapSummary({ tutors, daySummary, weekSummary, weeks }) {
+function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo }) {
   const totalMissed = tutors.reduce((s, t) => s + t.totalMissed, 0);
   const worstTutor = tutors[0];
   const worstDayNum = DAY_ORDER.reduce((best, d) =>
     (daySummary[d] || 0) > (daySummary[best] || 0) ? d : best, DAY_ORDER[0]);
   const worstWeek = weeks.reduce((best, w) =>
     (weekSummary[w.YearWeek] || 0) > (weekSummary[best?.YearWeek] || 0) ? w : best, null);
-  const cleanWeeks = weeks.filter(w => !weekSummary[w.YearWeek]);
+  const cleanWeeks = weeks.filter(w => {
+    const infos = weekDayInfo[w.YearWeek] || [];
+    const allFuture = infos.length > 0 && infos.every(x => x.isFuture || !x.inRange);
+    return !weekSummary[w.YearWeek] && !allFuture;   // ★ ตัดสัปดาห์ที่ยังไม่ถึงออก ไม่ให้นับเป็น "สะอาด"
+  });
 
   if (totalMissed === 0) return (
     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
@@ -1308,9 +1312,9 @@ function AbsenceHeatmap({ selectedMonth }) {
 
   const { weeks = [], tutors = [], daySummary = {}, weekSummary = {} } = data || {};
 
-  // ★ เพิ่ม: คำนวณว่าแต่ละวันในแต่ละสัปดาห์ อยู่ใน "เดือนที่เลือก" จริงหรือไม่
   const weekDayInfo = useMemo(() => {
     const map = {};
+    const todayStr = toLocalISODate(new Date());
     for (const w of weeks) {
       map[w.YearWeek] = DAY_ORDER.map((day, i) => {
         const d = parseLocalDate(w.WeekStart);
@@ -1318,7 +1322,8 @@ function AbsenceHeatmap({ selectedMonth }) {
         const ds = toLocalISODate(d);
         const inRange = !selectedMonth?.start || !selectedMonth?.end ||
           (ds >= selectedMonth.start && ds <= selectedMonth.end);
-        return { day, date: ds, inRange };
+        const isFuture = ds > todayStr;
+        return { day, date: ds, inRange, isFuture };
       });
     }
     return map;
@@ -1371,6 +1376,7 @@ function AbsenceHeatmap({ selectedMonth }) {
         daySummary={daySummary}
         weekSummary={weekSummary}
         weeks={weeks}
+        weekDayInfo={weekDayInfo}   // ★ เพิ่ม
       />
 
       {/* ── Heatmap Table ──────────────────────────────── */}
@@ -1405,21 +1411,23 @@ function AbsenceHeatmap({ selectedMonth }) {
                 <tr className="border-b border-slate-200">
                   <th className="px-5 py-2 text-left text-xs font-semibold text-slate-500 bg-slate-50 w-36 sticky left-0 z-10 border-r border-slate-200">
                     ติวเตอร์
-                  </th>
-                  {weeks.map(w => {
+                  </th>{weeks.map(w => {
                     const wTotal = weekSummary[w.YearWeek] || 0;
-                    const isPartial = weekDayInfo[w.YearWeek]?.some(x => !x.inRange); // ★
+                    const dayInfos = weekDayInfo[w.YearWeek] || [];
+                    const isPartial = dayInfos.some(x => !x.inRange && !x.isFuture);
+                    const allFuture = dayInfos.length > 0 && dayInfos.every(x => x.isFuture || !x.inRange);
                     return (
                       <th key={w.YearWeek} colSpan={7} className="text-center px-2 py-2 bg-slate-50 border-l border-slate-200">
                         <div className="flex flex-col items-center gap-1">
                           <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
                             สัปดาห์ที่ {w.weekIndex}
-                            {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>} {/* ★ */}
+                            {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>}
                           </span>
-                          <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                            {shortDate(w.WeekStart)}–{shortDate(w.WeekEnd)}
-                          </span>
-                          {wTotal > 0 ? (
+                          {allFuture ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
+                              ยังไม่ถึง
+                            </span>
+                          ) : wTotal > 0 ? (
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${cellColor(wTotal)}`}>
                               {wTotal} ครั้ง
                             </span>
@@ -1478,6 +1486,19 @@ function AbsenceHeatmap({ selectedMonth }) {
                       {weeks.map(w =>
                         DAY_ORDER.map((day, i) => {
                           const dayInfo = weekDayInfo[w.YearWeek]?.[i];
+
+                          if (dayInfo && dayInfo.isFuture) {                       // ★ วันในอนาคต ยังไม่ถึงวันสอนจริง
+                            return (
+                              <td key={`${w.YearWeek}-${day}`}
+                                className={`text-center px-1 py-3 ${day === DAY_ORDER[0] ? 'border-l border-slate-100' : ''}`}>
+                                <div className="mx-auto w-7 h-7 rounded-lg flex items-center justify-center bg-slate-50/60"
+                                  title={`${dayInfo.date} ยังไม่ถึงวันนี้ — ยังไม่มีข้อมูล`}>
+                                  <span className="text-slate-200 text-xs">○</span>
+                                </div>
+                              </td>
+                            );
+                          }
+
                           if (dayInfo && !dayInfo.inRange) {                      // ★ นอกเดือนที่เลือก
                             return (
                               <td key={`${w.YearWeek}-${day}`}
