@@ -491,8 +491,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 // ── Main Dashboard ────────────────────────────────────────────
 export default function TutorAttendanceDashboard() {
   const now = new Date();
-  const [selectedMonthNum, setSelectedMonthNum] = useState(now.getMonth() + 1); // 1-12
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonthNum, setSelectedMonthNum] = useState('all');
+  const [selectedYear, setSelectedYear] = useState('all');
   const selectedMonth = useMemo(
     () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
