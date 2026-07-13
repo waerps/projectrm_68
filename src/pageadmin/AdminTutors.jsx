@@ -1559,12 +1559,12 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
       {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
       <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-        <p className="text-xs text-slate-500 leading-relaxed">
+        {/* <p className="text-xs text-slate-500 leading-relaxed">
           <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
           คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
           ดังนั้นสถานะ Performance ไม่ได้พิจารณาจากจำนวนครั้งที่เช็กอินเพียงอย่างเดียว แต่เป็นคะแนนภาพรวมที่สะท้อนคุณภาพและความรับผิดชอบของติวเตอร์
           จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
-        </p>
+        </p> */}
         {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
         <p className="flex items-center gap-1 text-[11px] text-slate-400">
           <Info className="h-3 w-3 shrink-0" />
