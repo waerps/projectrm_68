@@ -59,9 +59,12 @@ function RateBar({ rate }) {
 }
 
 // ── Status Badge ─────────────────────────────────────────────
-// ★ แก้: ตัดเรื่อง "ค้างจ่าย" ออก เหลือแค่ 3 ระดับตามอัตราเช็กอิน (%)
-//   ให้ตรงกับเกณฑ์สีเดียวกับ RateBar: <50% แดง / 50–79% เหลือง / ≥80% เขียว
 function StatusBadge({ rate }) {
+  if (rate === null || rate === undefined) return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
+    </span>
+  );
   if (rate < 50) return (
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
@@ -542,7 +545,9 @@ export default function TutorAttendanceDashboard() {
     (t.TeachingSubjects || '').split(',').map(s => s.trim()).includes(filterSubject);
   const matchStatusFn = (t) => {
     if (filterStatus === 'all') return true;
-    const rate = t.AttendanceRate ?? 100;
+    if (filterStatus === 'no_data') return t.AttendanceRate === null || t.AttendanceRate === undefined;
+    if (t.AttendanceRate === null || t.AttendanceRate === undefined) return false;
+    const rate = t.AttendanceRate;
     if (filterStatus === 'risk') return rate < 50;
     if (filterStatus === 'watch') return rate >= 50 && rate < 80;
     return rate >= 80; // normal
@@ -578,9 +583,11 @@ export default function TutorAttendanceDashboard() {
   }, {});
 
   const baseForStatusCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchPhotoFn(t));
-  const normalCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 80).length;
-  const watchCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 50 && (t.AttendanceRate ?? 100) < 80).length;
-  const riskCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) < 50).length;
+  const hasRate = t => t.AttendanceRate !== null && t.AttendanceRate !== undefined;
+  const normalCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 80).length;
+  const watchCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 50 && t.AttendanceRate < 80).length;
+  const riskCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate < 50).length;
+  const noDataCount = baseForStatusCount.filter(t => !hasRate(t)).length; // ★ เพิ่ม
 
   const baseForPhotoCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
   const incompletePhotoCount = baseForPhotoCount.filter(t => (t.IncompletePhotoCount ?? 0) > 0).length;
@@ -589,8 +596,9 @@ export default function TutorAttendanceDashboard() {
   const totalPages = Math.max(1, Math.ceil(processed.length / ITEMS_PER_PAGE));
   const paginated = processed.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const avgRate = tutors.length
-    ? Math.round(tutors.reduce((s, t) => s + (t.AttendanceRate ?? 0), 0) / tutors.length) : 0;
+  const tutorsWithRate = tutors.filter(t => t.AttendanceRate !== null && t.AttendanceRate !== undefined);
+  const avgRate = tutorsWithRate.length
+    ? Math.round(tutorsWithRate.reduce((s, t) => s + t.AttendanceRate, 0) / tutorsWithRate.length) : 0;
 
   const atRisk = tutors.filter(t => (t.AttendanceRate ?? 100) < 50).length;
   const missedTotal = tutors.reduce((s, t) => s + (t.MissedCount ?? 0), 0);
@@ -765,6 +773,7 @@ export default function TutorAttendanceDashboard() {
             <option value="normal">ปกติ ({normalCount})</option>
             <option value="watch">ควรติดตาม ({watchCount})</option>
             <option value="risk">น่าเป็นห่วง ({riskCount})</option>
+            <option value="no_data">ยังไม่มีข้อมูล ({noDataCount})</option> {/* ★ เพิ่ม */}
           </select>
           {/* Photo issue filter */}
           <select
@@ -868,7 +877,7 @@ export default function TutorAttendanceDashboard() {
                   </td>
                 </tr>
               ) : paginated.map((t, idx) => {
-                const isAtRisk = (t.AttendanceRate ?? 100) < 50;
+                const isAtRisk = t.AttendanceRate !== null && t.AttendanceRate !== undefined && t.AttendanceRate < 50;
                 return (
                   <tr
                     key={t.AdminId}
@@ -928,7 +937,7 @@ export default function TutorAttendanceDashboard() {
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge rate={t.AttendanceRate ?? 100} />
+                      <StatusBadge rate={t.AttendanceRate} />
                     </td>
                     {/* View detail button */}
                     <td className="px-4 py-3 text-center">
@@ -990,12 +999,23 @@ export default function TutorAttendanceDashboard() {
           { dot: 'bg-emerald-500', text: 'ปกติ — อัตราเช็กอิน ≥ 80%' },
           { dot: 'bg-amber-500', text: 'ควรติดตาม — อัตราเช็กอิน 50–79%' },
           { dot: 'bg-red-500', text: 'น่าเป็นห่วง — อัตราเช็กอิน < 50%' },
+          { dot: 'bg-slate-300', text: 'ยังไม่มีข้อมูล — ยังไม่มีคาบสอนตามตารางในช่วงนี้' },
         ].map(({ dot, text }) => (
           <div key={text} className="flex items-center gap-2 text-xs text-slate-500">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
             {text}
           </div>
         ))}
+      </div>
+
+      {/* ★ เพิ่ม: คำอธิบายความหมายของ Attendance Status */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          สถานะนี้เป็นการประเมินแบบรวดเร็วจากอัตราการเช็กอินเท่านั้น ไม่ใช่คะแนน Performance ของติวเตอร์
+          ใช้เพื่อเป็นสัญญาณเตือนเบื้องต้นสำหรับแอดมิน โดยพิจารณาเฉพาะว่าติวเตอร์มาเช็กอินครบตามคาบที่ควรสอนหรือไม่
+          ระบบไม่ได้พิจารณาปัจจัยอื่น เช่น ความสม่ำเสมอระยะยาว จำนวนชั่วโมงสะสม ภาระงานที่ได้รับ หรือคุณภาพการปฏิบัติงาน
+          (ดูรายละเอียดเชิงคุณภาพได้ที่หน้า Performance Score ของติวเตอร์)
+        </p>
       </div>
 
       {/* ── Session Detail Modal ───────────────────────── */}

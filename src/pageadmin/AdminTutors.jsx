@@ -1326,14 +1326,15 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   // ★ เพิ่ม: เกณฑ์จาก backend ใช้บอกผู้ใช้ว่าทำไมบางคนไม่ขึ้นโพเดียม / คะแนนความสม่ำเสมอเป็นค่ากลาง
   const [minWeeksForConsistency, setMinWeeksForConsistency] = useState(3);
   const [minSessionsForRanking, setMinSessionsForRanking] = useState(5);
+  const [minScoreForPodium, setMinScoreForPodium] = useState(70); // ★ เพิ่ม
 
   // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcBadge เพื่อให้ label ตรงกับ badge ที่โชว์อยู่
   const SCORE_RANGES = [
-    { key: 'excellent', label: 'ดีเด่น (90-100)', test: (v) => v >= 90 },
-    { key: 'great', label: 'เยี่ยม (80-89)', test: (v) => v >= 80 && v < 90 },
-    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
-    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
-    { key: 'needs_work', label: 'ต้องปรับปรุง (ต่ำกว่า 55)', test: (v) => v < 55 },
+    { key: 'excellent', label: 'ดีเด่น', test: (v) => v >= 90 },
+    { key: 'great', label: 'เยี่ยม', test: (v) => v >= 80 && v < 90 },
+    { key: 'good', label: 'ดี', test: (v) => v >= 70 && v < 80 },
+    { key: 'fair', label: 'พอใช้', test: (v) => v >= 55 && v < 70 },
+    { key: 'needs_work', label: 'ต้องปรับปรุง', test: (v) => v < 55 },
   ];
   const allSubjectNames = [...new Set(allSubjects.map(s => s.SubjectName))].sort();
 
@@ -1344,6 +1345,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         // ★ เพิ่ม: เก็บเกณฑ์ขั้นต่ำที่ backend ส่งมา ไว้ใช้แสดงคำอธิบายในหน้านี้
         if (r.data.minWeeksForConsistency) setMinWeeksForConsistency(r.data.minWeeksForConsistency);
         if (r.data.minSessionsForRanking) setMinSessionsForRanking(r.data.minSessionsForRanking);
+        if (r.data.minScoreForPodium) setMinScoreForPodium(r.data.minScoreForPodium);
       })
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -1459,7 +1461,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                 {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
                 <p className="flex items-center gap-1 text-[11px] text-slate-400">
                   <Info className="h-3 w-3 shrink-0" />
-                  ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบในช่วงเวลานี้ ({podiumEligible.length} คนเข้าเกณฑ์)
+                  ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
                 </p>
                 <div className="grid grid-cols-3 gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
@@ -1558,6 +1560,16 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
             </div>
           </>
         )}
+      </div>
+
+      {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
+      <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
+          คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
+          ดังนั้นสถานะ Performance ไม่ได้พิจารณาจากจำนวนครั้งที่เช็กอินเพียงอย่างเดียว แต่เป็นคะแนนภาพรวมที่สะท้อนคุณภาพและความรับผิดชอบของติวเตอร์
+          จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
+        </p>
       </div>
     </div>
   );
