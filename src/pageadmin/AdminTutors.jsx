@@ -1138,6 +1138,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
 
 // ─── ★ ใหม่: Performance Score helpers (ย้ายมาจาก AdminAttendanceDashboard) ──
 function calcBadge(score) {
+  if (score === null || score === undefined) return { label: 'N/A', bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' };
   if (score >= 90) return { label: 'ดีเด่น', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
   if (score >= 80) return { label: 'เยี่ยม', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
   if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -1162,8 +1163,10 @@ function topScoreGroups(sortedList, groupCount = 3) {
 
 function ScoreRing({ score }) {
   const r = 20, circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  const color = score >= 80 ? '#1D9E75' : score >= 60 ? '#BA7517' : '#E24B4A';
+  const isNA = score === null || score === undefined;
+  const safeScore = score ?? 0;
+  const dash = (safeScore / 100) * circ;
+  const color = isNA ? '#94A3B8' : safeScore >= 80 ? '#1D9E75' : safeScore >= 60 ? '#BA7517' : '#E24B4A';
   return (
     <svg width="56" height="56">
       <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
@@ -1171,7 +1174,9 @@ function ScoreRing({ score }) {
         strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`}
         strokeDashoffset={`${(circ / 4).toFixed(1)}`}
         strokeLinecap="round" />
-      <text x="28" y="33" textAnchor="middle" fontSize="14" fontWeight="500" fill={color}>{score}</text>
+      <text x="28" y="33" textAnchor="middle" fontSize="14" fontWeight="500" fill={color}>
+        {isNA ? '–' : score}
+      </text>
     </svg>
   );
 }
@@ -1180,25 +1185,27 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
   // ★ เพิ่ม: ถ้าข้อมูลไม่พอ (สัปดาห์น้อยกว่าเกณฑ์) ConsistencyScore ที่ backend ส่งมาคือค่ากลาง (50) ไม่ใช่ค่าที่วัดได้จริง
   const isConsistencyDefault = typeof tutor.WeeksWithData === 'number' && tutor.WeeksWithData < minWeeksForConsistency;
 
+  const noSchedule = tutor.ScheduledHours === null || tutor.ScheduledHours === undefined;
+
   const metrics = [
     {
-      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 40,
+      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 35,
       sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`,
       warn: false,
     },
     {
-      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 30,
+      name: 'ปฏิบัติหน้าที่ตามภาระงาน', val: noSchedule ? 0 : tutor.ResponsibilityScore, weight: 45,
+      sub: noSchedule
+        ? 'เดือนนี้ไม่มีชั่วโมงสอนตามตาราง — ไม่มีข้อมูลเปรียบเทียบ (N/A)'
+        : `${tutor.ActualHours} ชม. / ตารางสอน ${tutor.ScheduledHours} ชม.`,
+      warn: noSchedule,
+    },
+    {
+      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 20,
       sub: isConsistencyDefault
         ? `ข้อมูลมีแค่ ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
         : 'วัดจาก stddev การสอนต่อสัปดาห์',
       warn: isConsistencyDefault,
-    },
-    {
-      name: 'ชั่วโมงสอนจริง (เทียบเป้าหมาย)', val: tutor.WorkloadScore, weight: 30,
-      sub: tutor.MissingTargetWarning
-        ? `ยังไม่ได้กำหนดเป้าหมายชั่วโมงของวิชานี้ครบ — คะแนนนี้ยังไม่น่าเชื่อถือ`
-        : `${tutor.ActualHours} ชม. / เป้าหมาย ${tutor.TargetHours} ชม.`,
-      warn: tutor.MissingTargetWarning,
     },
   ];
 
@@ -1243,7 +1250,9 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
 
       <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
         <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold">{tutor.PerformanceScore} / 100</span>
+        <span className="text-base font-semibold">
+          {tutor.PerformanceScore === null ? 'N/A' : `${tutor.PerformanceScore} / 100`}
+        </span>
       </div>
     </div>
   );
@@ -1347,8 +1356,10 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   const matchSubjectFn = (t) => filterSubject === 'all' ||
     (t.TeachingSubjects || '').split(',').map(x => x.trim()).includes(filterSubject);
+
   const matchScoreFn = (t) => {
     if (filterScoreRange === 'all') return true;
+    if (t.PerformanceScore === null || t.PerformanceScore === undefined) return false;
     const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
     return range ? range.test(t.PerformanceScore) : true;
   };
@@ -1374,7 +1385,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
   // ★ แก้: โพเดียมเอาเฉพาะคนที่ข้อมูลพอ (!LowDataWarning) มาจัดกลุ่ม — คนข้อมูลน้อยยังอยู่ในลิสต์ด้านล่างได้ แต่ไม่ขึ้นโพเดียม
-  const podiumEligible = filtered.filter(t => !t.LowDataWarning);
+  const podiumEligible = filtered.filter(t => t.EligibleForRanking);
   const podiumGroups = topScoreGroups(podiumEligible, 3); // ★ แก้: จัดกลุ่มตามคะแนนเท่ากัน แทน slice(0,3)
 
   return (
@@ -1385,7 +1396,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <BarChart2 className="h-5 w-5 text-white" />
           <h2 className="font-bold text-white text-sm">Performance Score ติวเตอร์ประจำเดือน</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เช็กอิน 40% + ความสม่ำเสมอ 30% + ชั่วโมงสอน 30%</span>
+        <span className="text-[11px] text-orange-100">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
       </div>
 
       {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
