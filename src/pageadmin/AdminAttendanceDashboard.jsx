@@ -552,7 +552,13 @@ export default function TutorAttendanceDashboard() {
     if (filterStatus === 'watch') return rate >= 50 && rate < 80;
     return rate >= 80; // normal
   };
-  const matchPhotoFn = (t) => filterPhotoIssue === 'all' || (t.IncompletePhotoCount ?? 0) > 0;
+  const matchPhotoFn = (t) => {
+    if (filterPhotoIssue === 'all') return true;
+    const hasData = (t.TotalCheckin ?? 0) > 0;
+    if (filterPhotoIssue === 'no_data') return !hasData;
+    if (filterPhotoIssue === 'complete') return hasData && (t.IncompletePhotoCount ?? 0) === 0;
+    return hasData && (t.IncompletePhotoCount ?? 0) > 0; // 'incomplete'
+  };
 
   const STRING_COLUMNS = ['Nickname', 'Firstname', 'Lastname'];
 
@@ -591,6 +597,10 @@ export default function TutorAttendanceDashboard() {
 
   const baseForPhotoCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
   const incompletePhotoCount = baseForPhotoCount.filter(t => (t.IncompletePhotoCount ?? 0) > 0).length;
+  const noDataPhotoCount = baseForPhotoCount.filter(t => (t.TotalCheckin ?? 0) === 0).length;
+  const completePhotoCount = baseForPhotoCount.filter(
+    t => (t.TotalCheckin ?? 0) > 0 && (t.IncompletePhotoCount ?? 0) === 0
+  ).length;
 
   // ★ pagination
   const totalPages = Math.max(1, Math.ceil(processed.length / ITEMS_PER_PAGE));
@@ -781,8 +791,10 @@ export default function TutorAttendanceDashboard() {
             onChange={e => setFilterPhotoIssue(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
           >
-            <option value="all">มีรูปครบ ({baseForPhotoCount.length})</option>
+            <option value="all">ทั้งหมด ({baseForPhotoCount.length})</option>
+            <option value="complete">มีรูปครบ ({completePhotoCount})</option>
             <option value="incomplete">มีรูปไม่ครบ ({incompletePhotoCount})</option>
+            <option value="no_data">ยังไม่มีข้อมูล ({noDataPhotoCount})</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -927,7 +939,9 @@ export default function TutorAttendanceDashboard() {
                     </td>
                     {/* Incomplete photo count */}
                     <td className="px-4 py-3 text-center">
-                      {(t.IncompletePhotoCount ?? 0) > 0 ? (
+                      {(t.TotalCheckin ?? 0) === 0 ? (
+                        <span className="text-xs text-slate-300">ยังไม่มีข้อมูล</span>
+                      ) : (t.IncompletePhotoCount ?? 0) > 0 ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
                           <Camera className="w-3 h-3" />{t.IncompletePhotoCount}
                         </span>
