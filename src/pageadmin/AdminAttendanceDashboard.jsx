@@ -82,6 +82,24 @@ function StatusBadge({ rate }) {
   );
 }
 
+// ── Photo Warning Badge (แยกจาก StatusBadge — เตือนเรื่องหลักฐานรูป ไม่ใช่ attendance) ──
+function PhotoWarningBadge({ totalCheckin, incompleteCount }) {
+  if (!totalCheckin || !incompleteCount) return null; // ไม่มีเช็กอิน หรือรูปครบหมด ไม่ต้องเตือน
+  const allIncomplete = incompleteCount >= totalCheckin;
+  return (
+    <span
+      title={`รูปไม่ครบ ${incompleteCount} จาก ${totalCheckin} คาบที่เช็กอิน`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${allIncomplete
+        ? 'bg-red-50 text-red-600 border-red-100'
+        : 'bg-amber-50 text-amber-600 border-amber-100'
+        }`}
+    >
+      <Camera className="w-2.5 h-2.5" />
+      {allIncomplete ? 'ไม่มีรูปยืนยันเลย' : `รูปไม่ครบ ${incompleteCount}`}
+    </span>
+  );
+}
+
 function buildMonthRange(month, year) {
   const start = toLocalISODate(new Date(year, month - 1, 1));
   const end = toLocalISODate(new Date(year, month, 0)); // วันสุดท้ายของเดือน ตามปฏิทินจริง (28/29/30/31)
@@ -951,7 +969,10 @@ export default function TutorAttendanceDashboard() {
                     </td>
                     {/* Status */}
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge rate={t.AttendanceRate} />
+                      <div className="flex flex-col items-center gap-1">
+                        <StatusBadge rate={t.AttendanceRate} />
+                        <PhotoWarningBadge totalCheckin={t.TotalCheckin} incompleteCount={t.IncompletePhotoCount} />
+                      </div>
                     </td>
                     {/* View detail button */}
                     <td className="px-4 py-3 text-center">
@@ -1029,6 +1050,9 @@ export default function TutorAttendanceDashboard() {
           ใช้เพื่อเป็นสัญญาณเตือนเบื้องต้นสำหรับแอดมิน โดยพิจารณาเฉพาะว่าติวเตอร์มาเช็กอินครบตามคาบที่ควรสอนหรือไม่
           ระบบไม่ได้พิจารณาปัจจัยอื่น เช่น ความสม่ำเสมอระยะยาว จำนวนชั่วโมงสะสม ภาระงานที่ได้รับ หรือคุณภาพการปฏิบัติงาน
           (ดูรายละเอียดเชิงคุณภาพได้ที่หน้า Performance Score ของติวเตอร์)
+          <br />
+          ป้าย "รูปไม่ครบ" ที่แสดงคู่กับสถานะ เป็นการเตือนแยกต่างหากว่ามีคาบที่เช็กอินแล้วแต่ยังไม่มีหลักฐานรูปครบถ้วน
+          ซึ่งอาจทำให้สถานะ "ปกติ" ไม่ได้แปลว่ามีหลักฐานยืนยันครบทุกคาบเสมอไป
         </p>
       </div>
 
