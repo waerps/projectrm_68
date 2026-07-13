@@ -1998,7 +1998,7 @@ export default function AdminCoursesPage() {
               </option>
             ))}
           </select>
-          <select
+          {/* <select
             value={filterTerm}
             onChange={(e) => setFilterTerm(e.target.value)}
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
@@ -2006,7 +2006,7 @@ export default function AdminCoursesPage() {
             {TERM_FILTERS.map((t) => (
               <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
             ))}
-          </select>
+          </select> */}
           {/* <select
             value={filterAvailability}
             onChange={(e) => setFilterAvailability(e.target.value)}
