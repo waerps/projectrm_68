@@ -24,14 +24,13 @@ const STATUS_MAP = {
   4: { label: "ปิดคอร์ส", color: "bg-neutral-100 text-neutral-500 border-neutral-200" },
 };
 
-// ★ Mapping ตัวกรองเทอม อ้างอิงตาราง term จริง:
-// 1 = เปิดเทอม 1 (4 เดือน) | 2 = ตุลาคม (ปิดเทอมเล็ก) | 3 = เปิดเทอม 2 | 4 = ปิดเทอมใหญ่
+
 const TERM_FILTERS = [
   { key: "all", label: "ทุกเทอม", termId: null },
-  { key: "term1", label: "เทอม 1", termId: 1 },
-  { key: "term2", label: "เทอม 2", termId: 3 },
-  { key: "smallbreak", label: "ปิดเทอมเล็ก", termId: 2 },
-  { key: "bigbreak", label: "ปิดเทอมใหญ่", termId: 4 },
+  { key: "term1", label: "เปิดเทอม 1", termId: 1 },
+  { key: "term2", label: "เปิดเทอม 2", termId: 3 },
+  { key: "smallbreak", label: "ปิดเทอม 1", termId: 2 },
+  { key: "bigbreak", label: "ปิดเทอม 2", termId: 4 },
 ];
 
 const formatDate = (d) => {
@@ -1073,6 +1072,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Remark: "",
     Status_Course_Id: 1,
     Term_Id: 1,
+    Course_Type: "single",
     Course_Availability_Id: "",
     CourseImage: "",
     YearId: "",
@@ -1203,11 +1203,56 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ))}
           </select>
         </div>
+        <div>
+          <label className={labelCls}>ประเภทคอร์ส</label>
+          <div className="flex gap-2">
+            {[
+              { value: "single", label: "คอร์สเดี่ยว" },
+              { value: "bundle", label: "คอร์สรวม" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => set("Course_Type", opt.value)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
+          ${form.Course_Type === opt.value
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-semibold text-neutral-700">คอร์สโปรโมชัน</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => set("Is_Promotion", !form.Is_Promotion)}
+            className="transition"
+          >
+            {form.Is_Promotion
+              ? <ToggleRight className="h-7 w-7 text-orange-500" />
+              : <ToggleLeft className="h-7 w-7 text-neutral-300" />}
+          </button>
+        </div>
       </div>
 
       <div>
         <label className={labelCls}>รูปภาพคอร์ส</label>
         <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
+      </div>
+
+      {/* ★ เพิ่ม: รูปประกาศ แยกจากรูปหน้าปก */}
+      <div>
+        <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
+        <p className="text-[11px] text-neutral-400 mb-2 normal-case">
+          ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
+        </p>
+        <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
       </div>
 
       <div>
