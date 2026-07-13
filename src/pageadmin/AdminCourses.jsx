@@ -2007,7 +2007,7 @@ export default function AdminCoursesPage() {
               <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
             ))}
           </select>
-          <select
+          {/* <select
             value={filterAvailability}
             onChange={(e) => setFilterAvailability(e.target.value)}
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
@@ -2018,7 +2018,7 @@ export default function AdminCoursesPage() {
                 {a.Course_Availability_Name}
               </option>
             ))}
-          </select>
+          </select> */}
           <select
             value={filterCourseType}
             onChange={(e) => setFilterCourseType(e.target.value)}
