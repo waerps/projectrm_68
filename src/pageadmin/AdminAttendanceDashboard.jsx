@@ -59,28 +59,28 @@ function RateBar({ rate }) {
 }
 
 // ── Status Badge ─────────────────────────────────────────────
-function StatusBadge({ rate }) {
-  if (rate === null || rate === undefined) return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
-    </span>
-  );
-  if (rate < 50) return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
-    </span>
-  );
-  if (rate < 80) return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
-    </span>
-  );
-  return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ปกติ
-    </span>
-  );
-}
+// function StatusBadge({ rate }) {
+//   if (rate === null || rate === undefined) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+//       <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
+//     </span>
+//   );
+//   if (rate < 50) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
+//     </span>
+//   );
+//   if (rate < 80) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
+//     </span>
+//   );
+//   return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ปกติ
+//     </span>
+//   );
+// }
 
 // ── Photo Warning Badge (แยกจาก StatusBadge — เตือนเรื่องหลักฐานรูป ไม่ใช่ attendance) ──
 function PhotoWarningBadge({ totalCheckin, incompleteCount }) {
@@ -94,8 +94,8 @@ function PhotoWarningBadge({ totalCheckin, incompleteCount }) {
         : 'bg-amber-50 text-amber-600 border-amber-100'
         }`}
     >
-      <Camera className="w-2.5 h-2.5" />
-      {allIncomplete ? 'ไม่มีรูปยืนยันเลย' : `รูปไม่ครบ ${incompleteCount}`}
+      {/* <Camera className="w-2.5 h-2.5" />
+      {allIncomplete ? 'ไม่มีรูปยืนยันเลย' : `รูปไม่ครบ ${incompleteCount}`} */}
     </span>
   );
 }
@@ -131,10 +131,10 @@ const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR_AD - i); /
 // ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
 //   เพิ่ม "ขาด" และ "บันทึกล่าสุด" ให้ตรงกับตารางหลัก
 function exportCSV(tutors, startDate, endDate) {
-  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'สถานะ', 'บันทึกล่าสุด'];
+  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'บันทึกล่าสุด'];
   const rows = tutors.map(t => {
     const rate = t.AttendanceRate;
-    const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
+    // const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
     return [
       t.Nickname || '',
       t.Firstname || '',
@@ -676,19 +676,19 @@ export default function TutorAttendanceDashboard() {
       color: 'bg-emerald-500',
     },
     {
-      label: 'คาบที่ยังไม่ได้บันทึก',
+      label: 'คาบที่ยังไม่ได้เช็กอิน',
       value: missedTotal,
       icon: Clock,
       color: missedTotal > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
-      label: 'ติวเตอร์น่าเป็นห่วง',
+      label: 'ติวเตอร์เช็กอินต่ำกว่า 50%',
       value: atRisk,
       icon: AlertTriangle,
       color: atRisk > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
-      label: 'ติวเตอร์บันทึกครบ 100%',
+      label: 'ติวเตอร์เช็กอินครบ 100%',
       value: fullyRecorded,
       icon: CheckCircle,
       color: fullyRecorded > 0 ? 'bg-emerald-500' : 'bg-slate-400',
@@ -791,8 +791,9 @@ export default function TutorAttendanceDashboard() {
               <option key={sub} value={sub}>{sub} ({subjectCounts[sub] || 0})</option>
             ))}
           </select>
+          
           {/* Status level filter */}
-          <select
+          {/* <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
@@ -801,8 +802,9 @@ export default function TutorAttendanceDashboard() {
             <option value="normal">ปกติ ({normalCount})</option>
             <option value="watch">ควรติดตาม ({watchCount})</option>
             <option value="risk">น่าเป็นห่วง ({riskCount})</option>
-            <option value="no_data">ยังไม่มีข้อมูล ({noDataCount})</option> {/* ★ เพิ่ม */}
-          </select>
+            <option value="no_data">ยังไม่มีข้อมูล ({noDataCount})</option>
+          </select> */}
+
           {/* Photo issue filter */}
           <select
             value={filterPhotoIssue}
@@ -855,7 +857,7 @@ export default function TutorAttendanceDashboard() {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   รูปไม่ครบ
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                {/* <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th> */}
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ประวัติ</th>
               </tr>
             </thead>
@@ -1028,8 +1030,7 @@ export default function TutorAttendanceDashboard() {
       }
 
       {/* ── Legend ─────────────────────────────────────── */}
-      {/* ★ แก้: ตัด "มีค้างจ่าย" ออก เพิ่ม "ควรติดตาม" (50–79%) ให้ครบ 3 ระดับตรงกับ StatusBadge */}
-      <div className="flex flex-wrap gap-4 px-1">
+      {/* <div className="flex flex-wrap gap-4 px-1">
         {[
           { dot: 'bg-emerald-500', text: 'ปกติ — อัตราเช็กอิน ≥ 80%' },
           { dot: 'bg-amber-500', text: 'ควรติดตาม — อัตราเช็กอิน 50–79%' },
@@ -1041,10 +1042,10 @@ export default function TutorAttendanceDashboard() {
             {text}
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* ★ เพิ่ม: คำอธิบายความหมายของ Attendance Status */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
+      {/* <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
         <p className="text-xs text-slate-500 leading-relaxed">
           สถานะนี้เป็นการประเมินแบบรวดเร็วจากอัตราการเช็กอินเท่านั้น ไม่ใช่คะแนน Performance ของติวเตอร์
           ใช้เพื่อเป็นสัญญาณเตือนเบื้องต้นสำหรับแอดมิน โดยพิจารณาเฉพาะว่าติวเตอร์มาเช็กอินครบตามคาบที่ควรสอนหรือไม่
@@ -1054,7 +1055,7 @@ export default function TutorAttendanceDashboard() {
           ป้าย "รูปไม่ครบ" ที่แสดงคู่กับสถานะ เป็นการเตือนแยกต่างหากว่ามีคาบที่เช็กอินแล้วแต่ยังไม่มีหลักฐานรูปครบถ้วน
           ซึ่งอาจทำให้สถานะ "ปกติ" ไม่ได้แปลว่ามีหลักฐานยืนยันครบทุกคาบเสมอไป
         </p>
-      </div>
+      </div> */}
 
       {/* ── Session Detail Modal ───────────────────────── */}
       {
