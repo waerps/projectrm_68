@@ -1194,9 +1194,11 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
       warn: isConsistencyDefault,
     },
     {
-      name: 'ชั่วโมงสอนสะสม', val: tutor.WorkloadScore, weight: 30,
-      sub: `${tutor.TotalHours} ชม. (เทียบกับ top)`,
-      warn: false,
+      name: 'ชั่วโมงสอนจริง (เทียบเป้าหมาย)', val: tutor.WorkloadScore, weight: 30,
+      sub: tutor.MissingTargetWarning
+        ? `ยังไม่ได้กำหนดเป้าหมายชั่วโมงของวิชานี้ครบ — คะแนนนี้ยังไม่น่าเชื่อถือ`
+        : `${tutor.ActualHours} ชม. / เป้าหมาย ${tutor.TargetHours} ชม.`,
+      warn: tutor.MissingTargetWarning,
     },
   ];
 
@@ -1472,7 +1474,9 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        className={`rounded-xl border p-3 text-center transition-all duration-200 cursor-pointer
+                        hover:-translate-y-1.5 hover:shadow-lg hover:scale-[1.03]
+                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                       >
                         <div className="text-2xl">{MEDALS[medalIdx]}</div>
