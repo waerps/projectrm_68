@@ -59,22 +59,43 @@ function RateBar({ rate }) {
 }
 
 // ── Status Badge ─────────────────────────────────────────────
-// ★ แก้: ตัดเรื่อง "ค้างจ่าย" ออก เหลือแค่ 3 ระดับตามอัตราเช็กอิน (%)
-//   ให้ตรงกับเกณฑ์สีเดียวกับ RateBar: <50% แดง / 50–79% เหลือง / ≥80% เขียว
-function StatusBadge({ rate }) {
-  if (rate < 50) return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
-    </span>
-  );
-  if (rate < 80) return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
-    </span>
-  );
+// function StatusBadge({ rate }) {
+//   if (rate === null || rate === undefined) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+//       <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
+//     </span>
+//   );
+//   if (rate < 50) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
+//     </span>
+//   );
+//   if (rate < 80) return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
+//     </span>
+//   );
+//   return (
+//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+//       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ปกติ
+//     </span>
+//   );
+// }
+
+// ── Photo Warning Badge (แยกจาก StatusBadge — เตือนเรื่องหลักฐานรูป ไม่ใช่ attendance) ──
+function PhotoWarningBadge({ totalCheckin, incompleteCount }) {
+  if (!totalCheckin || !incompleteCount) return null; // ไม่มีเช็กอิน หรือรูปครบหมด ไม่ต้องเตือน
+  const allIncomplete = incompleteCount >= totalCheckin;
   return (
-    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ปกติ
+    <span
+      title={`รูปไม่ครบ ${incompleteCount} จาก ${totalCheckin} คาบที่เช็กอิน`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${allIncomplete
+        ? 'bg-red-50 text-red-600 border-red-100'
+        : 'bg-amber-50 text-amber-600 border-amber-100'
+        }`}
+    >
+      {/* <Camera className="w-2.5 h-2.5" />
+      {allIncomplete ? 'ไม่มีรูปยืนยันเลย' : `รูปไม่ครบ ${incompleteCount}`} */}
     </span>
   );
 }
@@ -110,10 +131,10 @@ const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR_AD - i); /
 // ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
 //   เพิ่ม "ขาด" และ "บันทึกล่าสุด" ให้ตรงกับตารางหลัก
 function exportCSV(tutors, startDate, endDate) {
-  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'สถานะ', 'บันทึกล่าสุด'];
+  const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'บันทึกล่าสุด'];
   const rows = tutors.map(t => {
     const rate = t.AttendanceRate;
-    const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
+    // const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
     return [
       t.Nickname || '',
       t.Firstname || '',
@@ -470,8 +491,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 // ── Main Dashboard ────────────────────────────────────────────
 export default function TutorAttendanceDashboard() {
   const now = new Date();
-  const [selectedMonthNum, setSelectedMonthNum] = useState(now.getMonth() + 1); // 1-12
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonthNum, setSelectedMonthNum] = useState('all');
+  const [selectedYear, setSelectedYear] = useState('all');
   const selectedMonth = useMemo(
     () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
@@ -542,12 +563,20 @@ export default function TutorAttendanceDashboard() {
     (t.TeachingSubjects || '').split(',').map(s => s.trim()).includes(filterSubject);
   const matchStatusFn = (t) => {
     if (filterStatus === 'all') return true;
-    const rate = t.AttendanceRate ?? 100;
+    if (filterStatus === 'no_data') return t.AttendanceRate === null || t.AttendanceRate === undefined;
+    if (t.AttendanceRate === null || t.AttendanceRate === undefined) return false;
+    const rate = t.AttendanceRate;
     if (filterStatus === 'risk') return rate < 50;
     if (filterStatus === 'watch') return rate >= 50 && rate < 80;
     return rate >= 80; // normal
   };
-  const matchPhotoFn = (t) => filterPhotoIssue === 'all' || (t.IncompletePhotoCount ?? 0) > 0;
+  const matchPhotoFn = (t) => {
+    if (filterPhotoIssue === 'all') return true;
+    const hasData = (t.TotalCheckin ?? 0) > 0;
+    if (filterPhotoIssue === 'no_data') return !hasData;
+    if (filterPhotoIssue === 'complete') return hasData && (t.IncompletePhotoCount ?? 0) === 0;
+    return hasData && (t.IncompletePhotoCount ?? 0) > 0; // 'incomplete'
+  };
 
   const STRING_COLUMNS = ['Nickname', 'Firstname', 'Lastname'];
 
@@ -578,19 +607,26 @@ export default function TutorAttendanceDashboard() {
   }, {});
 
   const baseForStatusCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchPhotoFn(t));
-  const normalCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 80).length;
-  const watchCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) >= 50 && (t.AttendanceRate ?? 100) < 80).length;
-  const riskCount = baseForStatusCount.filter(t => (t.AttendanceRate ?? 100) < 50).length;
+  const hasRate = t => t.AttendanceRate !== null && t.AttendanceRate !== undefined;
+  const normalCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 80).length;
+  const watchCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 50 && t.AttendanceRate < 80).length;
+  const riskCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate < 50).length;
+  const noDataCount = baseForStatusCount.filter(t => !hasRate(t)).length; // ★ เพิ่ม
 
   const baseForPhotoCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
   const incompletePhotoCount = baseForPhotoCount.filter(t => (t.IncompletePhotoCount ?? 0) > 0).length;
+  const noDataPhotoCount = baseForPhotoCount.filter(t => (t.TotalCheckin ?? 0) === 0).length;
+  const completePhotoCount = baseForPhotoCount.filter(
+    t => (t.TotalCheckin ?? 0) > 0 && (t.IncompletePhotoCount ?? 0) === 0
+  ).length;
 
   // ★ pagination
   const totalPages = Math.max(1, Math.ceil(processed.length / ITEMS_PER_PAGE));
   const paginated = processed.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const avgRate = tutors.length
-    ? Math.round(tutors.reduce((s, t) => s + (t.AttendanceRate ?? 0), 0) / tutors.length) : 0;
+  const tutorsWithRate = tutors.filter(t => t.AttendanceRate !== null && t.AttendanceRate !== undefined);
+  const avgRate = tutorsWithRate.length
+    ? Math.round(tutorsWithRate.reduce((s, t) => s + t.AttendanceRate, 0) / tutorsWithRate.length) : 0;
 
   const atRisk = tutors.filter(t => (t.AttendanceRate ?? 100) < 50).length;
   const missedTotal = tutors.reduce((s, t) => s + (t.MissedCount ?? 0), 0);
@@ -640,19 +676,19 @@ export default function TutorAttendanceDashboard() {
       color: 'bg-emerald-500',
     },
     {
-      label: 'คาบที่ยังไม่ได้บันทึก',
+      label: 'คาบที่ยังไม่ได้เช็กอิน',
       value: missedTotal,
       icon: Clock,
       color: missedTotal > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
-      label: 'ติวเตอร์น่าเป็นห่วง',
+      label: 'ติวเตอร์เช็กอินต่ำกว่า 50%',
       value: atRisk,
       icon: AlertTriangle,
       color: atRisk > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
-      label: 'ติวเตอร์บันทึกครบ 100%',
+      label: 'ติวเตอร์เช็กอินครบ 100%',
       value: fullyRecorded,
       icon: CheckCircle,
       color: fullyRecorded > 0 ? 'bg-emerald-500' : 'bg-slate-400',
@@ -755,8 +791,9 @@ export default function TutorAttendanceDashboard() {
               <option key={sub} value={sub}>{sub} ({subjectCounts[sub] || 0})</option>
             ))}
           </select>
+          
           {/* Status level filter */}
-          <select
+          {/* <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
@@ -765,15 +802,19 @@ export default function TutorAttendanceDashboard() {
             <option value="normal">ปกติ ({normalCount})</option>
             <option value="watch">ควรติดตาม ({watchCount})</option>
             <option value="risk">น่าเป็นห่วง ({riskCount})</option>
-          </select>
+            <option value="no_data">ยังไม่มีข้อมูล ({noDataCount})</option>
+          </select> */}
+
           {/* Photo issue filter */}
           <select
             value={filterPhotoIssue}
             onChange={e => setFilterPhotoIssue(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
           >
-            <option value="all">มีรูปครบ ({baseForPhotoCount.length})</option>
+            <option value="all">ทั้งหมด ({baseForPhotoCount.length})</option>
+            <option value="complete">มีรูปครบ ({completePhotoCount})</option>
             <option value="incomplete">มีรูปไม่ครบ ({incompletePhotoCount})</option>
+            <option value="no_data">ยังไม่มีข้อมูล ({noDataPhotoCount})</option>
           </select>
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">
@@ -816,7 +857,7 @@ export default function TutorAttendanceDashboard() {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   รูปไม่ครบ
                 </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                {/* <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th> */}
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ประวัติ</th>
               </tr>
             </thead>
@@ -868,7 +909,7 @@ export default function TutorAttendanceDashboard() {
                   </td>
                 </tr>
               ) : paginated.map((t, idx) => {
-                const isAtRisk = (t.AttendanceRate ?? 100) < 50;
+                const isAtRisk = t.AttendanceRate !== null && t.AttendanceRate !== undefined && t.AttendanceRate < 50;
                 return (
                   <tr
                     key={t.AdminId}
@@ -918,7 +959,9 @@ export default function TutorAttendanceDashboard() {
                     </td>
                     {/* Incomplete photo count */}
                     <td className="px-4 py-3 text-center">
-                      {(t.IncompletePhotoCount ?? 0) > 0 ? (
+                      {(t.TotalCheckin ?? 0) === 0 ? (
+                        <span className="text-xs text-slate-300">ยังไม่มีข้อมูล</span>
+                      ) : (t.IncompletePhotoCount ?? 0) > 0 ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
                           <Camera className="w-3 h-3" />{t.IncompletePhotoCount}
                         </span>
@@ -927,9 +970,12 @@ export default function TutorAttendanceDashboard() {
                       )}
                     </td>
                     {/* Status */}
-                    <td className="px-4 py-3 text-center">
-                      <StatusBadge rate={t.AttendanceRate ?? 100} />
-                    </td>
+                    {/* <td className="px-4 py-3 text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <StatusBadge rate={t.AttendanceRate} />
+                        <PhotoWarningBadge totalCheckin={t.TotalCheckin} incompleteCount={t.IncompletePhotoCount} />
+                      </div>
+                    </td> */}
                     {/* View detail button */}
                     <td className="px-4 py-3 text-center">
                       <button
@@ -984,19 +1030,32 @@ export default function TutorAttendanceDashboard() {
       }
 
       {/* ── Legend ─────────────────────────────────────── */}
-      {/* ★ แก้: ตัด "มีค้างจ่าย" ออก เพิ่ม "ควรติดตาม" (50–79%) ให้ครบ 3 ระดับตรงกับ StatusBadge */}
-      <div className="flex flex-wrap gap-4 px-1">
+      {/* <div className="flex flex-wrap gap-4 px-1">
         {[
           { dot: 'bg-emerald-500', text: 'ปกติ — อัตราเช็กอิน ≥ 80%' },
           { dot: 'bg-amber-500', text: 'ควรติดตาม — อัตราเช็กอิน 50–79%' },
           { dot: 'bg-red-500', text: 'น่าเป็นห่วง — อัตราเช็กอิน < 50%' },
+          { dot: 'bg-slate-300', text: 'ยังไม่มีข้อมูล — ยังไม่มีคาบสอนตามตารางในช่วงนี้' },
         ].map(({ dot, text }) => (
           <div key={text} className="flex items-center gap-2 text-xs text-slate-500">
             <span className={`w-2 h-2 rounded-full ${dot}`} />
             {text}
           </div>
         ))}
-      </div>
+      </div> */}
+
+      {/* ★ เพิ่ม: คำอธิบายความหมายของ Attendance Status */}
+      {/* <div className="bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4">
+        <p className="text-xs text-slate-500 leading-relaxed">
+          สถานะนี้เป็นการประเมินแบบรวดเร็วจากอัตราการเช็กอินเท่านั้น ไม่ใช่คะแนน Performance ของติวเตอร์
+          ใช้เพื่อเป็นสัญญาณเตือนเบื้องต้นสำหรับแอดมิน โดยพิจารณาเฉพาะว่าติวเตอร์มาเช็กอินครบตามคาบที่ควรสอนหรือไม่
+          ระบบไม่ได้พิจารณาปัจจัยอื่น เช่น ความสม่ำเสมอระยะยาว จำนวนชั่วโมงสะสม ภาระงานที่ได้รับ หรือคุณภาพการปฏิบัติงาน
+          (ดูรายละเอียดเชิงคุณภาพได้ที่หน้า Performance Score ของติวเตอร์)
+          <br />
+          ป้าย "รูปไม่ครบ" ที่แสดงคู่กับสถานะ เป็นการเตือนแยกต่างหากว่ามีคาบที่เช็กอินแล้วแต่ยังไม่มีหลักฐานรูปครบถ้วน
+          ซึ่งอาจทำให้สถานะ "ปกติ" ไม่ได้แปลว่ามีหลักฐานยืนยันครบทุกคาบเสมอไป
+        </p>
+      </div> */}
 
       {/* ── Session Detail Modal ───────────────────────── */}
       {
