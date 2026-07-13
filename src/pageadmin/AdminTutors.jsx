@@ -1458,11 +1458,6 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <>
             {filtered.length >= 1 && (
               <>
-                {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
-                <p className="flex items-center gap-1 text-[11px] text-slate-400">
-                  <Info className="h-3 w-3 shrink-0" />
-                  ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
-                </p>
                 <div className="grid grid-cols-3 gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
@@ -1569,6 +1564,11 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
           ดังนั้นสถานะ Performance ไม่ได้พิจารณาจากจำนวนครั้งที่เช็กอินเพียงอย่างเดียว แต่เป็นคะแนนภาพรวมที่สะท้อนคุณภาพและความรับผิดชอบของติวเตอร์
           จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
+        </p>
+        {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
+        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+          <Info className="h-3 w-3 shrink-0" />
+          ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
         </p>
       </div>
     </div>
