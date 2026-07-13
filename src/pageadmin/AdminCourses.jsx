@@ -33,6 +33,12 @@ const TERM_FILTERS = [
   { key: "bigbreak", label: "ปิดเทอม 2", termId: 4 },
 ];
 
+const COURSE_TYPE_FILTERS = [
+  { key: "all", label: "ทุกประเภทคอร์ส" },
+  { key: "single", label: "คอร์สเดี่ยว" },
+  { key: "bundle", label: "คอร์สรวม" },
+];
+
 const formatDate = (d) => {
   if (!d) return "ไม่ระบุ";
   const s = String(d).slice(0, 10);
@@ -339,10 +345,26 @@ function StudentPreviewModal({ course, onClose }) {
             <div className="md:col-span-7 space-y-4">
               <div>
                 <h2 className="text-xl font-bold text-neutral-900 leading-snug">{course.CourseName}</h2>
+
                 <div className="mt-2 flex flex-wrap gap-1.5">
+                  {Number(course.Is_Promotion) === 1 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-sm">
+                      <Sparkles className="h-3.5 w-3.5" /> โปรโมชัน
+                    </span>
+                  )}
                   {course.Term_Name && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-700">
                       <BadgeCheck className="h-3.5 w-3.5 text-orange-500" /> {course.Term_Name}
+                    </span>
+                  )}
+                  {course.Course_Type && (
+                    <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-[11px] font-semibold">
+                      {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
+                    </span>
+                  )}
+                  {course.Course_Availability_Name && (
+                    <span className="rounded-full bg-purple-50 text-purple-700 px-2.5 py-1 text-[11px] font-semibold">
+                      {course.Course_Availability_Name}
                     </span>
                   )}
                   {Number(course.Discount) > 0 && (
@@ -1203,9 +1225,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ))}
           </select>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>ประเภทคอร์ส</label>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { value: "single", label: "คอร์สเดี่ยว" },
               { value: "bundle", label: "คอร์สรวม" },
@@ -1214,8 +1239,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 key={opt.value}
                 type="button"
                 onClick={() => set("Course_Type", opt.value)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition
-          ${form.Course_Type === opt.value
+                className={`py-2.5 rounded-xl text-sm font-bold border transition
+                  ${form.Course_Type === opt.value
                     ? "bg-orange-500 text-white border-orange-500"
                     : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
               >
@@ -1224,19 +1249,23 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ))}
           </div>
         </div>
-        <div className="flex items-center justify-between px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            <span className="text-sm font-semibold text-neutral-700">คอร์สโปรโมชัน</span>
-          </div>
+        <div>
+          <label className={labelCls}>คอร์สโปรโมชัน</label>
           <button
             type="button"
             onClick={() => set("Is_Promotion", !form.Is_Promotion)}
-            className="transition"
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
+              ${form.Is_Promotion
+                ? "bg-amber-50 border-amber-300"
+                : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
           >
+            <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
+              <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
+              {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
+            </span>
             {form.Is_Promotion
-              ? <ToggleRight className="h-7 w-7 text-orange-500" />
-              : <ToggleLeft className="h-7 w-7 text-neutral-300" />}
+              ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
+              : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
           </button>
         </div>
       </div>
@@ -1621,9 +1650,19 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
 
         {/* Tags */}
         <div className="flex gap-1.5 flex-wrap mb-3">
+          {Number(course.Is_Promotion) === 1 && (
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full text-[10px] font-bold shadow-sm">
+              <Sparkles className="h-3 w-3" /> โปรโมชัน
+            </span>
+          )}
           {course.Term_Name && (
             <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
               {course.Term_Name}
+            </span>
+          )}
+          {course.Course_Type && (
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+              {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
             </span>
           )}
           {course.Course_Availability_Name && (
@@ -1692,6 +1731,8 @@ export default function AdminCoursesPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTerm, setFilterTerm] = useState("all");
+  const [filterAvailability, setFilterAvailability] = useState("all"); // ★ เพิ่ม
+  const [filterCourseType, setFilterCourseType] = useState("all"); // ★ เพิ่ม
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1722,7 +1763,7 @@ export default function AdminCoursesPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterAvailability, filterCourseType]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -1856,7 +1897,9 @@ export default function AdminCoursesPage() {
       c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
-    return matchSearch && matchStatus && matchTerm;
+    const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
+    const matchCourseType = filterCourseType === "all" || c.Course_Type === filterCourseType;
+    return matchSearch && matchStatus && matchTerm && matchAvailability && matchCourseType;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -1932,7 +1975,7 @@ export default function AdminCoursesPage() {
       {/* ── Search & Filter ── */}
       {/* ── Search & Filter ── */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
@@ -1962,6 +2005,27 @@ export default function AdminCoursesPage() {
           >
             {TERM_FILTERS.map((t) => (
               <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
+            ))}
+          </select>
+          <select
+            value={filterAvailability}
+            onChange={(e) => setFilterAvailability(e.target.value)}
+            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+          >
+            <option value="all">รูปแบบการเรียนทั้งหมด</option>
+            {availabilityOptions.map((a) => (
+              <option key={a.Course_Availability_Id} value={String(a.Course_Availability_Id)}>
+                {a.Course_Availability_Name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterCourseType}
+            onChange={(e) => setFilterCourseType(e.target.value)}
+            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+          >
+            {COURSE_TYPE_FILTERS.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
             ))}
           </select>
         </div>
