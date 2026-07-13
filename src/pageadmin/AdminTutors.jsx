@@ -1138,7 +1138,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
 
 // ─── ★ ใหม่: Performance Score helpers (ย้ายมาจาก AdminAttendanceDashboard) ──
 function calcBadge(score) {
-  if (score === null || score === undefined) return { label: 'N/A', bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' };
+  if (score === null || score === undefined) return { label: 'ยังไม่มีคะแนน', bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' };
   if (score >= 90) return { label: 'ดีเด่น', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
   if (score >= 80) return { label: 'เยี่ยม', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
   if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -1251,7 +1251,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
       <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
         <span className="text-xs text-slate-500">คะแนนรวม</span>
         <span className="text-base font-semibold">
-          {tutor.PerformanceScore === null ? 'N/A' : `${tutor.PerformanceScore} / 100`}
+          {tutor.PerformanceScore === null ? 'ยังไม่มีข้อมูล (ไม่มีตารางสอนเดือนนี้)' : `${tutor.PerformanceScore} / 100`}
         </span>
       </div>
     </div>
@@ -1272,9 +1272,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
           {index < 3 ? MEDAL[index] : <span className="text-xs text-slate-400">{index + 1}</span>}
         </span>
         {/* avatar */}
-        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold shrink-0">
-          {tutor.Nickname?.slice(0, 2)}
-        </div>
+        <TutorAvatar tutor={tutor} className="h-9 w-9 rounded-xl text-xs shrink-0" />
         {/* info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
@@ -1380,7 +1378,9 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
-    acc[r.key] = baseForScoreCount.filter(t => r.test(t.PerformanceScore)).length;
+    acc[r.key] = baseForScoreCount.filter(t =>
+      t.PerformanceScore !== null && t.PerformanceScore !== undefined && r.test(t.PerformanceScore)
+    ).length;
     return acc;
   }, {});
 
