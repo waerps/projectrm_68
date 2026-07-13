@@ -970,12 +970,12 @@ export default function TutorAttendanceDashboard() {
                       )}
                     </td>
                     {/* Status */}
-                    <td className="px-4 py-3 text-center">
+                    {/* <td className="px-4 py-3 text-center">
                       <div className="flex flex-col items-center gap-1">
                         <StatusBadge rate={t.AttendanceRate} />
                         <PhotoWarningBadge totalCheckin={t.TotalCheckin} incompleteCount={t.IncompletePhotoCount} />
                       </div>
-                    </td>
+                    </td> */}
                     {/* View detail button */}
                     <td className="px-4 py-3 text-center">
                       <button
