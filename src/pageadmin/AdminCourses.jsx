@@ -584,20 +584,32 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   const [saving, setSaving] = useState(false);
   const invalid = Number(t || 0) > 0 && Number(st || 0) > 0 && Number(st) < Number(t);
 
+  // เพิ่ม: เก็บค่าตั้งต้นไว้เทียบว่าผู้ใช้แก้ฟิลด์ไหนบ้าง
+  const originalTutor = String(tutorRate || "");
+  const originalStudent = String(studentRate || "");
+
   const save = async () => {
     setSaving(true);
-    const ok = await onSave(t, st);
+    // ส่ง undefined ถ้าฟิลด์นั้นไม่ถูกแตะ แทนที่จะส่งค่าเดิม/null เสมอ
+    const tutorChanged = t !== originalTutor;
+    const studentChanged = st !== originalStudent;
+    const ok = await onSave(
+      tutorChanged ? t : undefined,
+      studentChanged ? st : undefined
+    );
     setSaving(false);
-    if (ok) onCancel(); // onSave ปิด edit เองอยู่แล้วผ่าน setEditingRateId แต่กันไว้เผื่อ
+    if (ok) onCancel();
   };
 
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
+          onFocus={e => e.target.select()}
           placeholder="ต้นทุน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
         <span className="text-[10px] text-neutral-400">/ชม.</span>
         <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
+          onFocus={e => e.target.select()}
           placeholder="ขาย" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
         <span className="text-[10px] text-neutral-400">/ชม.</span>
         <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
@@ -680,15 +692,28 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange }) {
 
   // ★ เพิ่ม
   const handleUpdateRates = async (tutorCourseDetailId, tutorRate, studentRate) => {
-    if (!isValidRatePair(tutorRate, studentRate)) {
+    // หาแถวเดิมเพื่อรู้ค่าที่ยังไม่ถูกแก้ (ไว้ validate เท่านั้น ไม่ได้เอาไปส่ง)
+    const current = subjects.find(s => s.TutorCourseDetailId === tutorCourseDetailId);
+    const effectiveTutor = tutorRate !== undefined ? tutorRate : current?.TutorRatePerHourOverride;
+    const effectiveStudent = studentRate !== undefined ? studentRate : current?.StudentRatePerHourOverride;
+
+    if (!isValidRatePair(effectiveTutor, effectiveStudent)) {
       showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
       return false;
     }
+
+    // ส่งเฉพาะฟิลด์ที่ถูกแก้จริง ๆ
+    const payload = {};
+    if (tutorRate !== undefined) payload.TutorRatePerHourOverride = tutorRate || null;
+    if (studentRate !== undefined) payload.StudentRatePerHourOverride = studentRate || null;
+
+    if (Object.keys(payload).length === 0) {
+      // ไม่มีอะไรเปลี่ยน ไม่ต้องยิง request
+      return true;
+    }
+
     try {
-      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, {
-        TutorRatePerHourOverride: tutorRate || null,
-        StudentRatePerHourOverride: studentRate || null,
-      });
+      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, payload);
       setEditingRateId(null);
       fetchSubjects();
       return true;
