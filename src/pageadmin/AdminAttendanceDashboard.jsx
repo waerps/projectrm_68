@@ -108,15 +108,16 @@ function buildMonthRange(month, year) {
 }
 
 function buildRange(monthNum, year) {
+  if (monthNum !== 'all') {
+    const effectiveYear = year === 'all' ? new Date().getFullYear() : year;
+    return buildMonthRange(monthNum, effectiveYear);
+  }
   if (year === 'all') {
     return { label: 'ทุกช่วงเวลา', start: null, end: null };
   }
-  if (monthNum === 'all') {
-    const start = toLocalISODate(new Date(year, 0, 1));
-    const end = toLocalISODate(new Date(year, 11, 31));
-    return { label: `ทั้งปี ${year + 543}`, start, end };
-  }
-  return buildMonthRange(monthNum, year);
+  const start = toLocalISODate(new Date(year, 0, 1));
+  const end = toLocalISODate(new Date(year, 11, 31));
+  return { label: `ทั้งปี ${year + 543}`, start, end };
 }
 
 const MONTH_NAMES_TH = [
@@ -485,7 +486,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 export default function TutorAttendanceDashboard() {
   const now = new Date();
   const [selectedMonthNum, setSelectedMonthNum] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('all');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const selectedMonth = useMemo(
     () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
