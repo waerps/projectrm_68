@@ -1426,6 +1426,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         />
       </div>
 
+      <div>
+        <label className={labelCls}>วิชาและติวเตอร์</label>
+        {initial.CourseID
+          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} onTotalCostChange={setExistingSubjectsCost} />
+          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
+      </div>
+
       {totalTutorCost > 0 && (() => {
         const isLoss = totalTutorCost > fullCost;
         const diff = Math.abs(fullCost - totalTutorCost);
