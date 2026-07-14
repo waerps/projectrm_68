@@ -1094,11 +1094,6 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
-          {t.TotalSessions || 0}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-center">
         {t.RatePerTutors ? (
           <span className="inline-block px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-bold">
             {Number(t.RatePerTutors).toLocaleString()}
@@ -1401,6 +1396,14 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         <span className="text-[11px] text-orange-100">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
       </div>
 
+      {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
+      <div className="px-5 pt-3">
+        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+          <Info className="h-3 w-3 shrink-0" />
+          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงตามช่วงวันที่ที่เลือกในหน้าบันทึกชั่วโมงการสอน)
+        </p>
+      </div>
+
       {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
       <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
         <div className="relative ml-auto">
@@ -1559,12 +1562,12 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
       {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
       <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
-        <p className="text-xs text-slate-500 leading-relaxed">
+        {/* <p className="text-xs text-slate-500 leading-relaxed">
           <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
           คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
           ดังนั้นสถานะ Performance ไม่ได้พิจารณาจากจำนวนครั้งที่เช็กอินเพียงอย่างเดียว แต่เป็นคะแนนภาพรวมที่สะท้อนคุณภาพและความรับผิดชอบของติวเตอร์
           จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
-        </p>
+        </p> */}
         {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
         <p className="flex items-center gap-1 text-[11px] text-slate-400">
           <Info className="h-3 w-3 shrink-0" />
@@ -1987,8 +1990,7 @@ export default function AdminTutorsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คาบ</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">บาท/ชม.</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทค่าสอน (บาท/ชม.)</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                   </tr>
                 </thead>

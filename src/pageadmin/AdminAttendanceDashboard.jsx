@@ -108,15 +108,16 @@ function buildMonthRange(month, year) {
 }
 
 function buildRange(monthNum, year) {
+  if (monthNum !== 'all') {
+    const effectiveYear = year === 'all' ? new Date().getFullYear() : year;
+    return buildMonthRange(monthNum, effectiveYear);
+  }
   if (year === 'all') {
     return { label: 'ทุกช่วงเวลา', start: null, end: null };
   }
-  if (monthNum === 'all') {
-    const start = toLocalISODate(new Date(year, 0, 1));
-    const end = toLocalISODate(new Date(year, 11, 31));
-    return { label: `ทั้งปี ${year + 543}`, start, end };
-  }
-  return buildMonthRange(monthNum, year);
+  const start = toLocalISODate(new Date(year, 0, 1));
+  const end = toLocalISODate(new Date(year, 11, 31));
+  return { label: `ทั้งปี ${year + 543}`, start, end };
 }
 
 const MONTH_NAMES_TH = [
@@ -128,13 +129,10 @@ const CURRENT_YEAR_AD = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR_AD - i); // ย้อนหลัง 8 ปี ปรับตัวเลขนี้ได้ตามจำนวนปีที่มีข้อมูลจริงในระบบ
 
 // ── CSV Export ────────────────────────────────────────────────
-// ★ แก้: ตัดคอลัมน์การเงิน (ค้างจ่าย/รายได้ค้างจ่าย) ออก
-//   เพิ่ม "ขาด" และ "บันทึกล่าสุด" ให้ตรงกับตารางหลัก
 function exportCSV(tutors, startDate, endDate) {
   const headers = ['ชื่อเล่น', 'ชื่อ', 'นามสกุล', 'คาบทั้งหมด', 'เช็กอิน', 'ขาด', 'อัตราเช็กอิน(%)', 'บันทึกล่าสุด'];
   const rows = tutors.map(t => {
     const rate = t.AttendanceRate;
-    // const status = rate == null ? 'ไม่มีข้อมูล' : rate < 50 ? 'น่าเป็นห่วง' : rate < 80 ? 'ควรติดตาม' : 'ปกติ';
     return [
       t.Nickname || '',
       t.Firstname || '',
@@ -143,7 +141,6 @@ function exportCSV(tutors, startDate, endDate) {
       t.TotalCheckin ?? 0,
       t.MissedCount ?? 0,
       rate ?? 'ไม่มีข้อมูล',
-      status,
       t.LastCheckinAt ? toLocalISODate(new Date(t.LastCheckinAt)) : 'ยังไม่เคยบันทึก',
     ];
   });
@@ -167,7 +164,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
   const [modalPage, setModalPage] = useState(1);
   const SESSIONS_PER_PAGE = 10;
 
-  // ★ ย้ายมาไว้บนสุด — ก่อนสิ่งที่จะใช้มัน
   const [modalSearch, setModalSearch] = useState('');
   const [modalPhotoFilter, setModalPhotoFilter] = useState('all');
   const [modalMonthFilter, setModalMonthFilter] = useState('all');
@@ -206,7 +202,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
     return [...set.entries()].sort((a, b) => b[0].localeCompare(a[0]));
   }, [sessions]);
 
-  // ★ filteredSessions ต้องมาก่อนที่จะใช้ใน totalModalPages/paginatedSessions
   const filteredSessions = useMemo(() => {
     return sessions.filter(s => {
       if (modalSearch.trim()) {
@@ -224,7 +219,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
     });
   }, [sessions, modalSearch, modalPhotoFilter, modalMonthFilter]);
 
-  // ★ ตอนนี้ useEffect และ pagination อ้างถึงตัวแปรที่ถูกประกาศแล้วทั้งหมด
   useEffect(() => { setModalPage(1); }, [sessions, modalSearch, modalPhotoFilter, modalMonthFilter]);
 
   const totalModalPages = Math.max(1, Math.ceil(filteredSessions.length / SESSIONS_PER_PAGE));
@@ -492,7 +486,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 export default function TutorAttendanceDashboard() {
   const now = new Date();
   const [selectedMonthNum, setSelectedMonthNum] = useState('all');
-  const [selectedYear, setSelectedYear] = useState('all');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const selectedMonth = useMemo(
     () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
