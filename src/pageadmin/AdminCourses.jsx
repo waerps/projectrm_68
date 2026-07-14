@@ -660,8 +660,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       return sum + Number(s.TotalHours || 0) * rate;
     }, 0);
     onTotalCostChange(totalCost);
-
-    // ★ เพิ่ม: รวมราคาขายตามเรท/ชม. ของแต่ละวิชา (ไว้เทียบกับราคาคอร์สจริง ไม่ใช่ใช้แทนกัน)
+    // เพิ่ม: รวมรายได้จาก StudentRatePerHourOverride ต่อวิชา
     if (onTotalRevenueChange) {
       const totalRevenue = subjects.reduce((sum, s) => {
         const rate = Number(s.StudentRatePerHourOverride || 0);
@@ -1271,28 +1270,26 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   const [pendingSubjects, setPendingSubjects] = useState([]);
   const [pendingStudents, setPendingStudents] = useState([]);
-  const [showPreview, setShowPreview] = useState(false);
-  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0);
-  const [existingSubjectsRevenue, setExistingSubjectsRevenue] = useState(0); // ★ เพิ่ม
+  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
+  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0); // ★ เพิ่ม: ต้นทุนรวมจาก CourseSubjects (คอร์สที่มีอยู่แล้ว)
+  const [existingSubjectsRevenue, setExistingSubjectsRevenue] = useState(0); // เพิ่ม
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
 
+  // ★ เพิ่ม: ต้นทุนรวมที่ต้องจ่ายติวเตอร์ทั้งหมด (คำนวณต่างกันตามว่าคอร์สนี้เพิ่งสร้างหรือมีอยู่แล้ว)
   const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
     const rate = Number(it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
 
-  // ★ เพิ่ม: ราคาขายรวมตามเรท/ชม. ของแต่ละวิชา (คนละตัวกับ fullCost ที่มาจากช่องราคาคอร์ส)
-  const pendingSubjectsRevenue = pendingSubjects.reduce((sum, it) => {
+  // เพิ่ม: ถ้ามีวิชาที่ตั้งราคาขาย/ชม. ไว้ ให้ใช้ยอดนั้นแทนราคาคอร์สแบบเหมารวม
+  const subjectsBasedRevenue = initial.CourseID ? existingSubjectsRevenue : pendingSubjects.reduce((sum, it) => {
     const rate = Number(it.StudentRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
-  const subjectsBasedRevenue = initial.CourseID ? existingSubjectsRevenue : pendingSubjectsRevenue;
-  // มีข้อมูลราคาขาย/ชม. ให้เทียบไหม (ถ้าไม่มีวิชาไหนตั้งราคาขาย/ชม.ไว้เลย ก็ไม่ต้องโชว์แถวเทียบ)
-  const hasSubjectRevenueData = subjectsBasedRevenue > 0;
-  const revenueDiff = subjectsBasedRevenue - fullCost; // บวก = คอร์สขายถูกกว่าผลรวมแยกวิชา (ปกติของ bundle), ลบ = ขายแพงกว่า
+  const effectiveFullCost = subjectsBasedRevenue > 0 ? subjectsBasedRevenue : fullCost;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1320,24 +1317,177 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   return (
     <div className="space-y-5">
-      {/* ...ทุกอย่างด้านบนจนถึงส่วนวิชาและติวเตอร์ เหมือนเดิมทั้งหมด ไม่ต้องแก้... */}
+      <div>
+        <label className={labelCls}>ชื่อคอร์ส <span className="text-red-400 normal-case">*</span></label>
+        <input
+          type="text"
+          value={form.CourseName}
+          onChange={(e) => set("CourseName", e.target.value)}
+          className={inputCls}
+          placeholder="เช่น คอร์สรวม (แพ็กเกจ) ป.3 ทั้งหมด 4 วิชา"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>วันเริ่มสอน <span className="text-red-400 normal-case">*</span></label>
+          <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>วันสิ้นสุด <span className="text-red-400 normal-case">*</span></label>
+          <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
+          <input
+            type="text" inputMode="numeric" value={moneyDisplay(form.Price)}
+            onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
+            className={inputCls} placeholder="5,900" />
+        </div>
+        <div>
+          <label className={labelCls}>ส่วนลด (บาท)</label>
+          <input
+            type="text" inputMode="numeric" value={moneyDisplay(form.Discount)}
+            onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
+            className={inputCls} placeholder="0" />
+        </div>
+        <div>
+          <label className={labelCls}>ราคาสุทธิ</label>
+          <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
+            ฿{formatPrice(fullCost)}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>จำนวนงวดผ่อนชำระ</label>
+        <input
+          type="number" min="0" step="1" value={form.Installments}
+          onKeyDown={blockNegativeKeys}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("Installments", v);
+          }}
+          className={inputCls} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>สถานะคอร์ส</label>
+          <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
+            {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>เทอม</label>
+          <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
+            {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
+          <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
+            <option value="">เลือกปีการศึกษา</option>
+            {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={labelCls}>รูปแบบการเรียน</label>
+          <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls}>
+            <option value="">ไม่ระบุ</option>
+            {availabilityOptions.map((a) => (
+              <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
+                {a.Course_Availability_Name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>ประเภทคอร์ส</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "single", label: "คอร์สเดี่ยว" },
+              { value: "bundle", label: "คอร์สรวม" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => set("Course_Type", opt.value)}
+                className={`py-2.5 rounded-xl text-sm font-bold border transition
+                  ${form.Course_Type === opt.value
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>คอร์สโปรโมชัน</label>
+          <button
+            type="button"
+            onClick={() => set("Is_Promotion", !form.Is_Promotion)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
+              ${form.Is_Promotion
+                ? "bg-amber-50 border-amber-300"
+                : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
+          >
+            <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
+              <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
+              {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
+            </span>
+            {form.Is_Promotion
+              ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
+              : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>รูปภาพคอร์ส</label>
+        <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
+      </div>
+
+      {/* ★ เพิ่ม: รูปประกาศ แยกจากรูปหน้าปก */}
+      <div>
+        <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
+        <p className="text-[11px] text-neutral-400 mb-2 normal-case">
+          ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
+        </p>
+        <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
+      </div>
+
+      <div>
+        <label className={labelCls}>หมายเหตุ / รายละเอียดเพิ่มเติม</label>
+        <textarea
+          value={form.Remark || ""}
+          onChange={(e) => set("Remark", e.target.value)}
+          className={inputCls}
+          rows={3}
+          placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
+        />
+      </div>
 
       <div>
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
-          ? <CourseSubjects
-            courseId={initial.CourseID}
-            showToast={showToast}
-            onTotalCostChange={setExistingSubjectsCost}
-            onTotalRevenueChange={setExistingSubjectsRevenue}  // ★ เพิ่ม
-          />
+          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} onTotalCostChange={setExistingSubjectsCost} onTotalRevenueChange={setExistingSubjectsRevenue}/>
           : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
       </div>
 
-      {/* ★ แก้ทั้งบล็อกนี้: แยกแสดงราคาคอร์สจริง กับราคาขายรวมตามเรทวิชา เป็นคนละบรรทัด ไม่ override กัน */}
       {totalTutorCost > 0 && (() => {
-        const isLoss = totalTutorCost > fullCost; // ยังใช้ราคาคอร์สจริงเป็นตัวตัดสินกำไร-ขาดทุน เพราะเป็นราคาที่นักเรียนจ่ายจริง
-        const diff = Math.abs(fullCost - totalTutorCost);
+        const isLoss = totalTutorCost > effectiveFullCost;   // เปลี่ยนจาก fullCost
+        const diff = Math.abs(effectiveFullCost - totalTutorCost);  // เปลี่ยนจาก fullCost
         return (
           <div className={`mt-2.5 rounded-2xl border overflow-hidden
               ${isLoss ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
@@ -1375,24 +1525,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 💡 คอร์สนี้ขายราคาต่ำกว่าต้นทุนติวเตอร์ — ไม่เป็นไรถ้าตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
                 หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) แค่แจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
               </p>
-            )}
-
-            {/* ★ เพิ่มใหม่: แถวเทียบราคาขายรวมตามเรทวิชา — แสดงเฉพาะเมื่อมีการตั้งราคาขาย/ชม. ไว้จริง */}
-            {hasSubjectRevenueData && (
-              <div className="border-t border-black/5 px-4 py-2.5 bg-white/60">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-neutral-500">ราคาขายรวมตามเรทวิชา (ชม.×ขาย/ชม.)</span>
-                  <span className="font-bold text-neutral-700">฿{formatPrice(subjectsBasedRevenue)}</span>
-                </div>
-                {Math.abs(revenueDiff) > 0.5 && (
-                  <p className="mt-1 text-[11px] text-neutral-500 leading-relaxed">
-                    {revenueDiff > 0
-                      ? <>คอร์สนี้ตั้งราคาขาย <b>ถูกกว่า</b> ผลรวมแยกวิชาอยู่ ฿{formatPrice(revenueDiff)} (ปกติของคอร์สรวม/แพ็กเกจที่ลดราคาให้)</>
-                      : <>คอร์สนี้ตั้งราคาขาย <b>แพงกว่า</b> ผลรวมแยกวิชาอยู่ ฿{formatPrice(Math.abs(revenueDiff))} — ลองตรวจสอบว่าตั้งใจหรือไม่</>
-                    }
-                  </p>
-                )}
-              </div>
             )}
           </div>
         );
