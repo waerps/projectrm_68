@@ -1822,7 +1822,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
         {/* ★ เพิ่ม: ค่าติวเตอร์/ชม. */}
         <input
           type="number" min="0" step="1"
-          placeholder="ต้นทุน/ชม."
+          placeholder="เรทปัจจุบัน/ชม."
           value={newRow.TutorRatePerHourOverride}
           onKeyDown={blockNegativeKeys}
           onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
@@ -1831,7 +1831,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
         {/* ★ เพิ่ม: ราคาขาย/ชม. */}
         <input
           type="number" min="0" step="1"
-          placeholder="ขาย/ชม."
+          placeholder="ใหม่/ชม."
           value={newRow.StudentRatePerHourOverride}
           onKeyDown={blockNegativeKeys}
           onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
