@@ -69,6 +69,14 @@ const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
+// ★ เพิ่ม: กันตั้งราคาขายต่ำกว่าค่าติวเตอร์ (ใช้ตรงกับ backend logic)
+const isValidRatePair = (tutorRate, studentRate) => {
+  const t = Number(tutorRate || 0);
+  const s = Number(studentRate || 0);
+  if (t > 0 && s > 0 && s < t) return false;
+  return true;
+};
+
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
 function Modal({ onClose, children, title, icon: Icon }) {
   return (
@@ -569,13 +577,52 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
   );
 }
 
+// ★ เพิ่ม: แก้ไขราคาต้นทุน/ขาย ต่อวิชาในคอร์ส
+function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
+  const [t, setT] = useState(String(tutorRate || ""));
+  const [st, setSt] = useState(String(studentRate || ""));
+  const [saving, setSaving] = useState(false);
+  const invalid = Number(t || 0) > 0 && Number(st || 0) > 0 && Number(st) < Number(t);
+
+  const save = async () => {
+    setSaving(true);
+    const ok = await onSave(t, st);
+    setSaving(false);
+    if (ok) onCancel(); // onSave ปิด edit เองอยู่แล้วผ่าน setEditingRateId แต่กันไว้เผื่อ
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
+          placeholder="ต้นทุน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
+        <span className="text-[10px] text-neutral-400">/ชม.</span>
+        <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
+          placeholder="ขาย" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
+        <span className="text-[10px] text-neutral-400">/ชม.</span>
+        <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        </button>
+        <button onClick={onCancel} disabled={saving} className="p-1 text-neutral-400 hover:text-red-500">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {invalid && (
+        <p className="text-[10px] text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-2.5 w-2.5" /> ราคาขายต่ำกว่าต้นทุน จะขาดทุน {(Number(t) - Number(st)).toFixed(0)} บาท/ชม.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CourseSubjects({ courseId, showToast }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
   const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
+  const [editingIndex, setEditingIndex] = useState(null);
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
@@ -597,9 +644,13 @@ function CourseSubjects({ courseId, showToast }) {
     if (!newRow.SubjectId || !newRow.AdminId) {
       return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
     }
+    // ★ เพิ่ม
+    if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
+      return showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+    }
     try {
       await axios.post(`${API_BASE}/courses/${courseId}/subjects`, newRow);
-      setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+      setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
       setAdding(false);
       fetchSubjects();
     } catch (e) {
@@ -614,6 +665,26 @@ function CourseSubjects({ courseId, showToast }) {
       fetchSubjects();
     } catch (e) {
       showToast("error", e.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
+    }
+  };
+
+  // ★ เพิ่ม
+  const handleUpdateRates = async (tutorCourseDetailId, tutorRate, studentRate) => {
+    if (!isValidRatePair(tutorRate, studentRate)) {
+      showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+      return false;
+    }
+    try {
+      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, {
+        TutorRatePerHourOverride: tutorRate || null,
+        StudentRatePerHourOverride: studentRate || null,
+      });
+      setEditingRateId(null);
+      fetchSubjects();
+      return true;
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "แก้ไขราคาไม่สำเร็จ");
+      return false;
     }
   };
 
@@ -643,9 +714,30 @@ function CourseSubjects({ courseId, showToast }) {
       )}
 
       {subjects.map((s) => (
-        <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+        <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0 flex-wrap">
           <span className="flex-1 text-sm font-semibold text-neutral-800">{s.SubjectName}</span>
           <span className="text-xs text-neutral-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
+
+          {/* ★ เพิ่ม: rate ต้นทุน/ขาย พร้อมแก้ไข inline */}
+          {editingRateId === s.TutorCourseDetailId ? (
+            <RateInlineEdit
+              tutorRate={s.TutorRatePerHourOverride}
+              studentRate={s.StudentRatePerHourOverride}
+              onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
+              onCancel={() => setEditingRateId(null)}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEditingRateId(s.TutorCourseDetailId)}
+              className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition"
+              title="แก้ไขราคาต้นทุน/ขาย"
+            >
+              ต้นทุน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ขาย {s.StudentRatePerHourOverride || "-"}/ชม.
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+
           {editingId === s.TutorCourseDetailId ? (
             <HoursInlineEdit
               value={s.TotalHours}
@@ -669,33 +761,65 @@ function CourseSubjects({ courseId, showToast }) {
       ))}
 
       {adding && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border-t border-orange-100">
-          <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
-            className={inp + " flex-1"}>
-            <option value="">เลือกวิชา</option>
-            {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
-          </select>
-          <select value={newRow.AdminId} onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
-            className={inp + " flex-1"}>
-            <option value="">เลือกติวเตอร์</option>
-            {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
-          </select>
-          <input
-            type="number" min="0" step="1" placeholder="ชม." value={newRow.TotalHours}
-            onKeyDown={blockNegativeKeys}
-            onChange={e => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
-            }}
-            className={inp + " w-20"} />
-          <button onClick={handleAdd}
-            className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
-            <Check className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => setAdding(false)}
-            className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
-            <X className="h-3.5 w-3.5" />
-          </button>
+        <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2">
+          <div className="flex items-center gap-2">
+            <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
+              className={inp + " flex-1"}>
+              <option value="">เลือกวิชา</option>
+              {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
+            </select>
+            <select
+              value={newRow.AdminId}
+              onChange={e => {
+                const adminId = e.target.value;
+                const tutor = allTutors.find(t => String(t.AdminId) === adminId);
+                setNewRow(r => ({
+                  ...r,
+                  AdminId: adminId,
+                  TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
+                }));
+              }}
+              className={inp + " flex-1"}>
+              <option value="">เลือกติวเตอร์</option>
+              {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min="0" step="1" placeholder="ชม." value={newRow.TotalHours}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
+              }}
+              className={inp + " w-20"} />
+            <input
+              type="number" min="0" placeholder="ต้นทุน/ชม."
+              value={newRow.TutorRatePerHourOverride}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
+              className={inp + " w-28"} />
+            <input
+              type="number" min="0" placeholder="ขาย/ชม."
+              value={newRow.StudentRatePerHourOverride}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
+              className={inp + " w-28"} />
+            <button onClick={handleAdd}
+              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setAdding(false)}
+              className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
+            <p className="text-[11px] text-red-500 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> ราคาขายต่ำกว่าค่าติวเตอร์ — จะขาดทุน{" "}
+              {(Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0)).toFixed(0)} บาท/ชม.
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -1469,11 +1593,13 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 }
 
 // ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
-function PendingSubjectPicker({ items, onChange, showToast }) {
+function CourseSubjects({ courseId, showToast }) {
+  const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
-  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
+  const [editingId, setEditingId] = useState(null);        // ★ แก้: จาก editingIndex
 
   useEffect(() => {
     Promise.all([
@@ -1490,8 +1616,14 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
       if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
       return alert("กรุณาเลือกวิชาและติวเตอร์");
     }
+    // ★ เพิ่ม
+    if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
+      const msg = "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)";
+      if (showToast) return showToast("error", msg);
+      return alert(msg);
+    }
     onChange([...items, newRow]);
-    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   };
 
   const remove = (index) => {
@@ -1530,6 +1662,11 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
               />
             ) : (
               <>
+                {(it.TutorRatePerHourOverride || it.StudentRatePerHourOverride) && (
+                  <span className="text-[10px] text-neutral-400 whitespace-nowrap">
+                    ต้นทุน {it.TutorRatePerHourOverride || "-"}/ชม. · ขาย {it.StudentRatePerHourOverride || "-"}/ชม.
+                  </span>
+                )}
                 <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(it.TotalHours || 0)}</span>
                 <button onClick={() => setEditingIndex(idx)} className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
                   <Pencil className="h-3.5 w-3.5" />
@@ -1555,7 +1692,16 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
 
         <select
           value={newRow.AdminId}
-          onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
+          onChange={e => {
+            const adminId = e.target.value;
+            const tutor = allTutors.find(t => String(t.AdminId) === adminId);
+            setNewRow(r => ({
+              ...r,
+              AdminId: adminId,
+              // ★ auto-fill ค่าติวเตอร์มาตรฐานให้ทันที แก้ไขต่อได้
+              TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
+            }));
+          }}
           className={inp + " flex-1"}
         >
           <option value="">เลือกติวเตอร์</option>
@@ -1571,13 +1717,38 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
             const v = e.target.value;
             if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
           }}
-          className={inp + " w-20"}
+          className={inp + " w-16"}
+        />
+        {/* ★ เพิ่ม: ค่าติวเตอร์/ชม. */}
+        <input
+          type="number" min="0" step="1"
+          placeholder="ต้นทุน/ชม."
+          value={newRow.TutorRatePerHourOverride}
+          onKeyDown={blockNegativeKeys}
+          onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
+          className={inp + " w-24"}
+        />
+        {/* ★ เพิ่ม: ราคาขาย/ชม. */}
+        <input
+          type="number" min="0" step="1"
+          placeholder="ขาย/ชม."
+          value={newRow.StudentRatePerHourOverride}
+          onKeyDown={blockNegativeKeys}
+          onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
+          className={inp + " w-24"}
         />
 
         <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
+        <p className="px-4 pb-2 text-[11px] text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" /> ราคาขายต่ำกว่าค่าติวเตอร์ — คอร์สนี้จะขาดทุน{" "}
+          {(Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0)).toFixed(0)} บาท/ชม.
+        </p>
+      )}
     </div>
   );
 }
