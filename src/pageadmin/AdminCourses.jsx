@@ -1764,7 +1764,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
               <>
                 {(it.TutorRatePerHourOverride || it.StudentRatePerHourOverride) && (
                   <span className="text-[10px] text-neutral-400 whitespace-nowrap">
-                    ต้นทุน {it.TutorRatePerHourOverride || "-"}/ชม. · ขาย {it.StudentRatePerHourOverride || "-"}/ชม.
+                    เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
                   </span>
                 )}
                 <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(it.TotalHours || 0)}</span>
