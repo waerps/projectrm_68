@@ -655,20 +655,16 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
   useEffect(() => {
     if (!onTotalCostChange) return;
+    // ★ แก้: ถ้าติวเตอร์ตั้งราคา "ขาย/ชม." ไว้ ให้ใช้ค่านั้นคำนวณต้นทุนรวมแทนต้นทุนเดิม
+    // (ธุรกิจนี้ต้องการให้ต้นทุนอ้างอิงตามราคาขายที่ตกลงใหม่ ไม่ใช่เรทต้นทุน/มาตรฐานเดิม)
     const totalCost = subjects.reduce((sum, s) => {
-      const rate = Number(s.TutorRatePerHourOverride || s.RatePerTutors || 0);
+      const rate = Number(
+        s.StudentRatePerHourOverride || s.TutorRatePerHourOverride || s.RatePerTutors || 0
+      );
       return sum + Number(s.TotalHours || 0) * rate;
     }, 0);
     onTotalCostChange(totalCost);
-    // เพิ่ม: รวมรายได้จาก StudentRatePerHourOverride ต่อวิชา
-    if (onTotalRevenueChange) {
-      const totalRevenue = subjects.reduce((sum, s) => {
-        const rate = Number(s.StudentRatePerHourOverride || 0);
-        return sum + Number(s.TotalHours || 0) * rate;
-      }, 0);
-      onTotalRevenueChange(totalRevenue);
-    }
-  }, [subjects, onTotalCostChange, onTotalRevenueChange]);
+  }, [subjects, onTotalCostChange]);
 
   const handleAdd = async () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
@@ -1272,24 +1268,24 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [pendingStudents, setPendingStudents] = useState([]);
   const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
   const [existingSubjectsCost, setExistingSubjectsCost] = useState(0); // ★ เพิ่ม: ต้นทุนรวมจาก CourseSubjects (คอร์สที่มีอยู่แล้ว)
-  const [existingSubjectsRevenue, setExistingSubjectsRevenue] = useState(0); // เพิ่ม
+  
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
 
   // ★ เพิ่ม: ต้นทุนรวมที่ต้องจ่ายติวเตอร์ทั้งหมด (คำนวณต่างกันตามว่าคอร์สนี้เพิ่งสร้างหรือมีอยู่แล้ว)
   const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
-    const rate = Number(it.TutorRatePerHourOverride || 0);
+    const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
 
   // เพิ่ม: ถ้ามีวิชาที่ตั้งราคาขาย/ชม. ไว้ ให้ใช้ยอดนั้นแทนราคาคอร์สแบบเหมารวม
-  const subjectsBasedRevenue = initial.CourseID ? existingSubjectsRevenue : pendingSubjects.reduce((sum, it) => {
-    const rate = Number(it.StudentRatePerHourOverride || 0);
-    return sum + Number(it.TotalHours || 0) * rate;
-  }, 0);
-  const effectiveFullCost = subjectsBasedRevenue > 0 ? subjectsBasedRevenue : fullCost;
+  // const subjectsBasedRevenue = initial.CourseID ? existingSubjectsRevenue : pendingSubjects.reduce((sum, it) => {
+  //   const rate = Number(it.StudentRatePerHourOverride || 0);
+  //   return sum + Number(it.TotalHours || 0) * rate;
+  // }, 0);
+  // const effectiveFullCost = subjectsBasedRevenue > 0 ? subjectsBasedRevenue : fullCost;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1481,13 +1477,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       <div>
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
-          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} onTotalCostChange={setExistingSubjectsCost} onTotalRevenueChange={setExistingSubjectsRevenue}/>
+          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} onTotalCostChange={setExistingSubjectsCost} />
           : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
       </div>
 
       {totalTutorCost > 0 && (() => {
-        const isLoss = totalTutorCost > effectiveFullCost;   // เปลี่ยนจาก fullCost
-        const diff = Math.abs(effectiveFullCost - totalTutorCost);  // เปลี่ยนจาก fullCost
+        const isLoss = totalTutorCost > fullCost;
+        const diff = Math.abs(fullCost - totalTutorCost);
         return (
           <div className={`mt-2.5 rounded-2xl border overflow-hidden
               ${isLoss ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
