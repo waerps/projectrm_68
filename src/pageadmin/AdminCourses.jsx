@@ -616,7 +616,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast }) {
+function CourseSubjects({ courseId, showToast, onTotalCostChange }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -631,15 +631,13 @@ function CourseSubjects({ courseId, showToast }) {
   };
 
   useEffect(() => {
-    fetchSubjects();
-    Promise.all([
-      axios.get(`${API_BASE}/subjects`),
-      axios.get(`${API_BASE}/tutors`),
-    ]).then(([sRes, tRes]) => {
-      setAllSubjects(sRes.data);
-      setAllTutors(tRes.data);
-    });
-  }, [courseId]);
+    if (!onTotalCostChange) return;
+    const total = subjects.reduce((sum, s) => {
+      const rate = Number(s.TutorRatePerHourOverride || s.RatePerTutors || 0);
+      return sum + Number(s.TotalHours || 0) * rate;
+    }, 0);
+    onTotalCostChange(total);
+  }, [subjects, onTotalCostChange]);
 
   const handleAdd = async () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
@@ -1229,9 +1227,17 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [pendingSubjects, setPendingSubjects] = useState([]);
   const [pendingStudents, setPendingStudents] = useState([]);
   const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
+  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0); // ★ เพิ่ม: ต้นทุนรวมจาก CourseSubjects (คอร์สที่มีอยู่แล้ว)
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
+
+  // ★ เพิ่ม: ต้นทุนรวมที่ต้องจ่ายติวเตอร์ทั้งหมด (คำนวณต่างกันตามว่าคอร์สนี้เพิ่งสร้างหรือมีอยู่แล้ว)
+  const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
+    const rate = Number(it.TutorRatePerHourOverride || 0);
+    return sum + Number(it.TotalHours || 0) * rate;
+  }, 0);
+  const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1420,12 +1426,50 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         />
       </div>
 
-      <div>
-        <label className={labelCls}>วิชาและติวเตอร์</label>
-        {initial.CourseID
-          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} />
-          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
-      </div>
+      {totalTutorCost > 0 && (() => {
+        const isLoss = totalTutorCost > fullCost;
+        const diff = Math.abs(fullCost - totalTutorCost);
+        return (
+          <div className={`mt-2.5 rounded-2xl border overflow-hidden
+              ${isLoss ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
+            <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full shrink-0
+                  ${isLoss ? "bg-amber-400" : "bg-emerald-500"}`}>
+                {isLoss
+                  ? <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                  : <Check className="h-3.5 w-3.5 text-white" />}
+              </span>
+              <p className={`text-xs font-bold ${isLoss ? "text-amber-700" : "text-emerald-700"}`}>
+                สรุปต้นทุน–รายรับของคอร์สนี้
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 pb-2">
+              <div className="pr-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+              </div>
+              <div className="pl-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขายคอร์ส (สุทธิ)</p>
+                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(fullCost)}</p>
+              </div>
+            </div>
+
+            <div className={`px-4 py-2 text-xs font-semibold flex items-center justify-between
+                ${isLoss ? "bg-amber-100/70 text-amber-700" : "bg-emerald-100/70 text-emerald-700"}`}>
+              <span>{isLoss ? "ส่วนต่างที่ต้องจ่ายเพิ่ม" : "กำไรขั้นต้นโดยประมาณ"}</span>
+              <span className="text-sm font-bold">฿{formatPrice(diff)}</span>
+            </div>
+
+            {isLoss && (
+              <p className="px-4 py-2 text-[11px] text-amber-700/80 bg-amber-50 border-t border-amber-200/60 leading-relaxed">
+                💡 คอร์สนี้ขายราคาต่ำกว่าต้นทุนติวเตอร์ — ไม่เป็นไรถ้าตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
+                หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) แค่แจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
+              </p>
+            )}
+          </div>
+        );
+      })()}
 
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
@@ -1600,8 +1644,7 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
   const [allTutors, setAllTutors] = useState([]);
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
-  const [editingId, setEditingId] = useState(null);
-  const [editingRateId, setEditingRateId] = useState(null);
+  const [editingIndex, setEditingIndex] = useState(null);
 
   useEffect(() => {
     Promise.all([
