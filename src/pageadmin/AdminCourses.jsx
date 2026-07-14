@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
-  BadgeCheck,
+  BadgeCheck, Clock,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -60,6 +60,13 @@ const formatHoursLabel = (decimalHours) => {
   return `${h} ชม. ${m} นาที`;
 };
 
+// ★ เพิ่ม: แสดงชั่วโมงเฉลี่ยต่อเดือนของ "วิชานั้น ๆ" (ข้อ 3) — ใช้สูตรเดียวกับชั่วโมงเฉลี่ย/เดือนของคอร์ส
+const formatAvgPerMonth = (hours, monthsSpanned) => {
+  if (!hours || !monthsSpanned || monthsSpanned <= 0) return null;
+  const avg = Number(hours) / monthsSpanned;
+  return `เฉลี่ย ${avg.toFixed(1)} ชม./เดือน`;
+};
+
 // ★ helper: แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ
 const sanitizeMoneyInput = (raw) => {
   const cleaned = String(raw).replace(/,/g, "").replace(/[^0-9]/g, "");
@@ -79,6 +86,7 @@ const isValidRatePair = (tutorRate, studentRate) => {
 
 // ★ เพิ่ม: นับจำนวนเดือนแบบ "เดือนปฏิทินจริง" ไม่ใช่ (ms/30วัน) เพื่อไม่ให้ได้ค่าเช่น 3.97 แทน 4
 // ตัวอย่าง: มิ.ย.-ก.ย. ต้องได้ 4 (มิ.ย., ก.ค., ส.ค., ก.ย.) ไม่ใช่ 3.97
+// หลักการ: นับเดือนปฏิทินที่คาบเกี่ยว แล้ว "ปัดขึ้น" เป็นจำนวนเต็มเสมอ (ใช้หลักการเดียวกันทั้งระบบ)
 function calcMonthsSpanned(startDate, endDate) {
   if (!startDate || !endDate) return 0;
   const s = new Date(String(startDate).slice(0, 10));
@@ -639,7 +647,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange }) {
+function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, totalCourseHours, monthsSpanned }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -647,6 +655,9 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingId, setEditingId] = useState(null);
   const [editingRateId, setEditingRateId] = useState(null);
+  // ★ เพิ่ม: จำไว้ในหน้าจอ (ไม่บันทึกลง DB) ว่ารายการไหนถูกแก้ชั่วโมงเองแล้วบ้าง เพื่อไม่ auto-suggest ทับ
+  const [manualIds, setManualIds] = useState(new Set());
+  const [applyingAll, setApplyingAll] = useState(false);
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
@@ -684,6 +695,36 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     onTotalHoursChange(totalHours);
   }, [subjects, onTotalHoursChange]);
 
+  // ★ เพิ่ม (ข้อ 3): คำนวณค่าที่แนะนำ = (ชั่วโมงรวมเป้าหมาย - ผลรวมของรายการที่ถูกแก้เองแล้ว) / จำนวนรายการที่ยังไม่ถูกแก้เอง
+  const nonManualSubjects = subjects.filter(s => !manualIds.has(s.TutorCourseDetailId));
+  const manualHoursSum = subjects
+    .filter(s => manualIds.has(s.TutorCourseDetailId))
+    .reduce((sum, s) => sum + Number(s.TotalHours || 0), 0);
+  const remainingForSuggestion = Number(totalCourseHours || 0) - manualHoursSum;
+  const suggestedPerSubject = totalCourseHours && nonManualSubjects.length > 0
+    ? remainingForSuggestion / nonManualSubjects.length
+    : null;
+  const hasSuggestion = suggestedPerSubject !== null && nonManualSubjects.length > 0 &&
+    nonManualSubjects.some(s => Number(s.TotalHours || 0).toFixed(2) !== Number(suggestedPerSubject).toFixed(2));
+
+  const applySuggestedToAll = async () => {
+    if (suggestedPerSubject === null) return;
+    setApplyingAll(true);
+    try {
+      await Promise.allSettled(
+        nonManualSubjects.map(s =>
+          axios.put(`${API_BASE}/tutorcoursedetails/${s.TutorCourseDetailId}`, { TotalHours: suggestedPerSubject })
+        )
+      );
+      fetchSubjects();
+      showToast("success", `ใช้ค่าที่แนะนำ (${suggestedPerSubject.toFixed(1)} ชม./วิชา) กับ ${nonManualSubjects.length} วิชาแล้ว`);
+    } catch (e) {
+      showToast("error", "ใช้ค่าที่แนะนำไม่สำเร็จ");
+    } finally {
+      setApplyingAll(false);
+    }
+  };
+
   const handleAdd = async () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
       return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
@@ -693,7 +734,15 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       return showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
     }
     try {
-      await axios.post(`${API_BASE}/courses/${courseId}/subjects`, newRow);
+      // ★ เพิ่ม (ข้อ 3): ถ้าแอดมินไม่ได้กรอกชั่วโมงเอง และมีชั่วโมงรวมของคอร์สตั้งไว้ ให้เสนอค่าเริ่มต้นแบบเฉลี่ยทันที
+      const payload = { ...newRow };
+      const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
+      if (!willBeManual && totalCourseHours) {
+        const futureNonManualCount = nonManualSubjects.length + 1;
+        const suggestion = (Number(totalCourseHours) - manualHoursSum) / futureNonManualCount;
+        payload.TotalHours = suggestion > 0 ? suggestion : 0;
+      }
+      const res = await axios.post(`${API_BASE}/courses/${courseId}/subjects`, payload);
       setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
       setAdding(false);
       fetchSubjects();
@@ -706,6 +755,8 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     try {
       await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
       setEditingId(null);
+      // ★ เพิ่ม: ทำเครื่องหมายว่ารายการนี้ถูกแก้เองแล้ว จะไม่ถูก auto-suggest ทับอีก
+      setManualIds(prev => new Set(prev).add(tutorCourseDetailId));
       fetchSubjects();
     } catch (e) {
       showToast("error", e.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
@@ -748,6 +799,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API_BASE}/tutorcoursedetails/${id}`);
+      setManualIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSubjects();
     } catch (e) { showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ"); }
   };
@@ -766,56 +818,80 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         )}
       </div>
 
+      {/* ★ เพิ่ม (ข้อ 3): แถบแนะนำการแบ่งชั่วโมงเท่า ๆ กันจากชั่วโมงรวมของคอร์ส */}
+      {hasSuggestion && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+          <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            ระบบแนะนำ: แบ่ง {formatHoursLabel(remainingForSuggestion)} ที่เหลือให้ {nonManualSubjects.length} วิชาที่ยังไม่ได้กำหนดเอง
+            เท่ากับวิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
+          </p>
+          <button onClick={applySuggestedToAll} disabled={applyingAll}
+            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 disabled:opacity-50 transition flex items-center gap-1">
+            {applyingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} ใช้ค่าที่แนะนำทั้งหมด
+          </button>
+        </div>
+      )}
+
       {subjects.length === 0 && !adding && (
         <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
       )}
 
-      {subjects.map((s) => (
-        <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0 flex-wrap">
-          <span className="flex-1 text-sm font-semibold text-neutral-800">{s.SubjectName}</span>
-          <span className="text-xs text-neutral-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
+      {subjects.map((s) => {
+        const avgPerMonthLabel = formatAvgPerMonth(s.TotalHours, monthsSpanned);
+        const isManual = manualIds.has(s.TutorCourseDetailId);
+        return (
+          <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0 flex-wrap">
+            <span className="flex-1 text-sm font-semibold text-neutral-800">{s.SubjectName}</span>
+            <span className="text-xs text-neutral-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
 
-          {/* ★ เพิ่ม: rate ต้นทุน/ขาย พร้อมแก้ไข inline */}
-          {editingRateId === s.TutorCourseDetailId ? (
-            <RateInlineEdit
-              tutorRate={s.TutorRatePerHourOverride}
-              studentRate={s.StudentRatePerHourOverride}
-              onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
-              onCancel={() => setEditingRateId(null)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setEditingRateId(s.TutorCourseDetailId)}
-              className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition"
-              title="แก้ไขราคาเรทปัจจุบัน/เรทใหม่"
-            >
-              เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
-              <Pencil className="h-3 w-3" />
-            </button>
-          )}
+            {/* ★ เพิ่ม: rate ต้นทุน/ขาย พร้อมแก้ไข inline */}
+            {editingRateId === s.TutorCourseDetailId ? (
+              <RateInlineEdit
+                tutorRate={s.TutorRatePerHourOverride}
+                studentRate={s.StudentRatePerHourOverride}
+                onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
+                onCancel={() => setEditingRateId(null)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingRateId(s.TutorCourseDetailId)}
+                className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition"
+                title="แก้ไขราคาเรทปัจจุบัน/เรทใหม่"
+              >
+                เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
+                <Pencil className="h-3 w-3" />
+              </button>
+            )}
 
-          {editingId === s.TutorCourseDetailId ? (
-            <HoursInlineEdit
-              value={s.TotalHours}
-              onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <>
-              <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(s.TotalHours)}</span>
-              <button onClick={() => setEditingId(s.TutorCourseDetailId)}
-                className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => handleDelete(s.TutorCourseDetailId)}
-                className="text-red-400 hover:text-red-600 transition" title="ลบ">
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </>
-          )}
-        </div>
-      ))}
+            {editingId === s.TutorCourseDetailId ? (
+              <HoursInlineEdit
+                value={s.TotalHours}
+                onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <>
+                <div className="text-right w-28">
+                  <span className="text-xs text-neutral-400 block">
+                    {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                  </span>
+                  {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                </div>
+                <button onClick={() => setEditingId(s.TutorCourseDetailId)}
+                  className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => handleDelete(s.TutorCourseDetailId)}
+                  className="text-red-400 hover:text-red-600 transition" title="ลบ">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      })}
 
       {adding && (
         <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2">
@@ -843,13 +919,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
           </div>
           <div className="flex items-center gap-2">
             <input
-              type="number" min="0" step="1" placeholder="ชม." value={newRow.TotalHours}
+              type="number" min="0" step="1" placeholder="ชม. (เว้นว่าง = ให้ระบบแนะนำ)" value={newRow.TotalHours}
               onKeyDown={blockNegativeKeys}
               onChange={e => {
                 const v = e.target.value;
                 if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
               }}
-              className={inp + " w-20"} />
+              className={inp + " w-44"} />
             <input
               type="number" min="0" placeholder="เรทปัจจุบัน/ชม."
               value={newRow.TutorRatePerHourOverride}
@@ -871,6 +947,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
+          {totalCourseHours > 0 && newRow.TotalHours === "" && (
+            <p className="text-[11px] text-blue-500 flex items-center gap-1">
+              <Info className="h-3 w-3" /> เว้นว่างไว้ ระบบจะแบ่งชั่วโมงที่เหลือให้เท่า ๆ กันโดยอัตโนมัติ (แก้ไขภายหลังได้เสมอ)
+            </p>
+          )}
           {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
             <p className="text-[11px] text-red-500 flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" /> ราคาขายต่ำกว่าค่าติวเตอร์ — จะขาดทุน{" "}
@@ -1264,6 +1345,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
 }
 
 // ─── Pricing Calculator: วิเคราะห์กำไร ใช้ "ต้นทุนค่าติวเตอร์ (ประมาณการ)" เป็นฐาน ─────
+// ★ แก้ (ข้อ 7): currentPrice ที่รับเข้ามาต้องเป็น "ราคาสุทธิ (Price - Discount)" ไม่ใช่ราคาเต็ม
+// เพื่อให้เลข Margin/กำไร ตรงกับ "สรุปต้นทุน-รายรับของคอร์ส" ทุกจุด
 function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   const [mode, setMode] = useState("price"); // 'profit' | 'percent' | 'price'
   const [profitInput, setProfitInput] = useState("");
@@ -1300,14 +1383,15 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
 
       <div className="p-4 space-y-3">
         <p className="text-[11px] text-neutral-400">
-          ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) ฿{formatPrice(cost)} — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน
+          ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) ฿{formatPrice(cost)} — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน ·
+          ราคาที่แสดง/กรอกในนี้คือ <span className="font-semibold text-neutral-500">ราคาสุทธิหลังหักส่วนลดแล้ว</span>
         </p>
 
         <div className="flex gap-2">
           {[
             { key: "profit", label: "กรอกกำไร (บาท)" },
             { key: "percent", label: "กรอก %" },
-            { key: "price", label: "กรอกราคาขาย" },
+            { key: "price", label: "กรอกราคาขาย (สุทธิ)" },
           ].map(opt => (
             <button key={opt.key} type="button" onClick={() => setMode(opt.key)}
               className={`flex-1 py-2 rounded-lg text-xs font-bold border transition
@@ -1329,13 +1413,13 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
         )}
         {mode === "price" && (
           <input type="number" min="0" value={priceInput} onChange={e => setPriceInput(e.target.value)}
-            placeholder="ราคาขายที่ต้องการ" onKeyDown={blockNegativeKeys}
+            placeholder="ราคาขายสุทธิที่ต้องการ" onKeyDown={blockNegativeKeys}
             className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
 
         <div className={`grid grid-cols-3 divide-x rounded-xl border overflow-hidden ${isLoss ? "border-red-200 divide-red-100" : "border-emerald-200 divide-emerald-100"}`}>
           <div className="p-3 text-center">
-            <p className="text-[10px] text-neutral-400">ราคาขาย</p>
+            <p className="text-[10px] text-neutral-400">ราคาขาย (สุทธิ)</p>
             <p className="text-sm font-bold text-neutral-800">฿{formatPrice(resultPrice)}</p>
           </div>
           <div className="p-3 text-center">
@@ -1402,19 +1486,23 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     ? Number(form.InstallmentAmountOverride)
     : calculatedInstallmentAmount;
 
+  // ★ เพิ่ม (ข้อ 5): ยอดผ่อนเองรวมทั้งหมด (ต่องวด × จำนวนงวด) ต้องไม่เกินราคาสุทธิ
+  const maxAllowedInstallmentAmount = calculatedInstallmentAmount;
+  const installmentOverrideExceeds =
+    isInstallmentEnabled &&
+    form.InstallmentAmountOverride !== "" &&
+    form.InstallmentAmountOverride !== null &&
+    Number(form.InstallmentAmountOverride) > maxAllowedInstallmentAmount + 0.5;
+  const installmentOverrideTotal = form.InstallmentAmountOverride
+    ? Number(form.InstallmentAmountOverride) * installmentsCount
+    : null;
+
   // ★ เพิ่ม: ต้นทุนรวมที่ต้องจ่ายติวเตอร์ทั้งหมด (คำนวณต่างกันตามว่าคอร์สนี้เพิ่งสร้างหรือมีอยู่แล้ว)
   const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
     const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
-
-  // เพิ่ม: ถ้ามีวิชาที่ตั้งราคาขาย/ชม. ไว้ ให้ใช้ยอดนั้นแทนราคาคอร์สแบบเหมารวม
-  // const subjectsBasedRevenue = initial.CourseID ? existingSubjectsRevenue : pendingSubjects.reduce((sum, it) => {
-  //   const rate = Number(it.StudentRatePerHourOverride || 0);
-  //   return sum + Number(it.TotalHours || 0) * rate;
-  // }, 0);
-  // const effectiveFullCost = subjectsBasedRevenue > 0 ? subjectsBasedRevenue : fullCost;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1428,6 +1516,14 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (!form.Price || Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
     if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
+    // ★ เพิ่ม (ข้อ 5): บล็อกการบันทึกถ้ายอดผ่อนเองรวมเกินราคาสุทธิ
+    if (installmentOverrideExceeds) {
+      return showToast(
+        "error",
+        "ยอดผ่อนเองรวมเกินราคาสุทธิ",
+        `${formatPrice(form.InstallmentAmountOverride)} × ${installmentsCount} งวด = ${formatPrice(installmentOverrideTotal)} บาท มากกว่าราคาสุทธิ ${formatPrice(fullCost)} บาท กรุณากรอกไม่เกิน ${formatPrice(maxAllowedInstallmentAmount)}/งวด`
+      );
+    }
     onSave({
       ...form,
       FullCost: fullCost,
@@ -1501,7 +1597,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             className={inputCls} placeholder="เช่น 120"
           />
           <p className="text-[11px] text-neutral-400 mt-1">
-            ใช้เป็นเป้าหมายเทียบกับชั่วโมงวิชาที่เพิ่มภายหลัง (ไม่บังคับกรอก)
+            ใช้เป็นเป้าหมายเทียบกับชั่วโมงวิชาที่เพิ่มภายหลัง (ไม่บังคับกรอก) — ระบบจะช่วยแนะนำแบ่งชั่วโมง/วิชาให้อัตโนมัติ
           </p>
         </div>
         <div>
@@ -1544,12 +1640,23 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <input
             type="text" inputMode="numeric" value={moneyDisplay(form.InstallmentAmountOverride)}
             onChange={handleMoneyChange("InstallmentAmountOverride")} onKeyDown={blockNegativeKeys}
-            className={inputCls} placeholder={`ค่าเริ่มต้น: ${formatPrice(calculatedInstallmentAmount)}`}
+            className={inputCls + (installmentOverrideExceeds ? " border-red-300 focus:ring-red-300" : "")} placeholder={`ค่าเริ่มต้น: ${formatPrice(calculatedInstallmentAmount)}`}
           />
           <p className="text-[11px] text-neutral-400 mt-1">
             หากเว้นว่าง ระบบจะใช้ค่าคำนวณอัตโนมัติ (฿{formatPrice(calculatedInstallmentAmount)}/งวด) —
             ยอดที่ใช้จริงคือ <span className="font-bold text-orange-600">฿{formatPrice(effectiveInstallmentAmount)}/งวด</span>
           </p>
+          {/* ★ เพิ่ม (ข้อ 5): แจ้งเตือน + บล็อกบันทึก ถ้ายอดผ่อนเองรวมเกินราคาสุทธิ */}
+          {installmentOverrideExceeds && (
+            <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>
+                {formatPrice(form.InstallmentAmountOverride)} × {installmentsCount} งวด ={" "}
+                <span className="font-bold">฿{formatPrice(installmentOverrideTotal)}</span> ซึ่งมากกว่าราคาสุทธิ ฿{formatPrice(fullCost)} —
+                ระบบจะไม่ให้บันทึกจนกว่าจะแก้ไขให้ไม่เกิน ฿{formatPrice(maxAllowedInstallmentAmount)}/งวด
+              </span>
+            </p>
+          )}
         </div>
       )}
 
@@ -1660,8 +1767,21 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       <div>
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
-          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} onTotalCostChange={setExistingSubjectsCost} onTotalHoursChange={setExistingSubjectsHours} />
-          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
+          ? <CourseSubjects
+              courseId={initial.CourseID}
+              showToast={showToast}
+              onTotalCostChange={setExistingSubjectsCost}
+              onTotalHoursChange={setExistingSubjectsHours}
+              totalCourseHours={Number(form.TotalCourseHours || 0)}
+              monthsSpanned={monthsSpanned}
+            />
+          : <PendingSubjectPicker
+              items={pendingSubjects}
+              onChange={setPendingSubjects}
+              showToast={showToast}
+              totalCourseHours={Number(form.TotalCourseHours || 0)}
+              monthsSpanned={monthsSpanned}
+            />}
 
         {/* ★ เพิ่ม: เปรียบเทียบชั่วโมงวิชารวม vs เป้าหมายของคอร์ส */}
         {Number(form.TotalCourseHours) > 0 && (() => {
@@ -1733,14 +1853,18 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         );
       })()}
 
-      {/* ★ เพิ่ม: Pricing Calculator — ใช้ต้นทุนค่าติวเตอร์ (ประมาณการ) เป็นฐาน */}
+      {/* ★ แก้ (ข้อ 7,8): Pricing Calculator — ใช้ราคาสุทธิ (fullCost) เป็นฐาน ไม่ใช่ราคาเต็ม
+          และ "ใช้ราคานี้" ต้องคงส่วนลดเดิมไว้ แล้วปรับ "ราคาเต็ม" ให้ราคาสุทธิที่ได้ตรงกับผลลัพธ์ที่คำนวณ */}
       {totalTutorCost > 0 && (
         <div>
           <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
           <PricingCalculator
             tutorCost={totalTutorCost}
-            currentPrice={form.Price}
-            onApplyPrice={(price) => set("Price", String(price))}
+            currentPrice={fullCost}
+            onApplyPrice={(targetNetPrice) => {
+              const discount = Number(form.Discount || 0);
+              set("Price", String(targetNetPrice + discount));
+            }}
           />
         </div>
       )}
@@ -1773,7 +1897,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || installmentOverrideExceeds}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
@@ -1912,8 +2036,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 }
 
 // ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
-function PendingSubjectPicker({ items, onChange, showToast }) {
-  const [subjects, setSubjects] = useState([]);
+function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, monthsSpanned }) {
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1930,6 +2053,23 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
     });
   }, []);
 
+  // ★ เพิ่ม (ข้อ 3): คำนวณค่าที่แนะนำ = (ชั่วโมงรวมเป้าหมาย - ผลรวมของรายการที่แก้เอง) / จำนวนรายการที่ยังไม่ได้แก้เอง
+  const manualItems = items.filter(it => it.HoursIsManual);
+  const nonManualItems = items.filter(it => !it.HoursIsManual);
+  const manualHoursSum = manualItems.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
+  const remainingForSuggestion = Number(totalCourseHours || 0) - manualHoursSum;
+  const suggestedPerItem = totalCourseHours && nonManualItems.length > 0
+    ? remainingForSuggestion / nonManualItems.length
+    : null;
+  const hasSuggestion = suggestedPerItem !== null && nonManualItems.length > 0 &&
+    nonManualItems.some(it => Number(it.TotalHours || 0).toFixed(2) !== Number(suggestedPerItem).toFixed(2));
+
+  const applySuggestedToAll = () => {
+    if (suggestedPerItem === null) return;
+    onChange(items.map(it => it.HoursIsManual ? it : { ...it, TotalHours: suggestedPerItem }));
+    if (showToast) showToast("success", `ใช้ค่าที่แนะนำ (${suggestedPerItem.toFixed(1)} ชม./วิชา) กับ ${nonManualItems.length} วิชาแล้ว`);
+  };
+
   const add = () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
       if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
@@ -1941,7 +2081,15 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
       if (showToast) return showToast("error", msg);
       return alert(msg);
     }
-    onChange([...items, newRow]);
+    // ★ เพิ่ม (ข้อ 3): ถ้าไม่ได้กรอกชั่วโมงเอง ให้ใส่ค่าเริ่มต้นจากการแบ่งเฉลี่ยทันที และ mark ว่าเป็นค่าเริ่มต้น (ไม่ใช่ manual)
+    const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
+    let hoursToUse = willBeManual ? Number(newRow.TotalHours) : 0;
+    if (!willBeManual && totalCourseHours) {
+      const futureNonManualCount = nonManualItems.length + 1;
+      const suggestion = (Number(totalCourseHours) - manualHoursSum) / futureNonManualCount;
+      hoursToUse = suggestion > 0 ? suggestion : 0;
+    }
+    onChange([...items, { ...newRow, TotalHours: hoursToUse, HoursIsManual: willBeManual }]);
     setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   };
 
@@ -1950,7 +2098,8 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
   };
 
   const updateHours = (index, hours) => {
-    onChange(items.map((it, i) => i === index ? { ...it, TotalHours: hours } : it));
+    // ★ เพิ่ม: เมื่อแก้ชั่วโมงเอง mark HoursIsManual = true จะไม่ถูก auto-suggest ทับอีก
+    onChange(items.map((it, i) => i === index ? { ...it, TotalHours: hours, HoursIsManual: true } : it));
     setEditingIndex(null);
   };
 
@@ -1962,9 +2111,25 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
         <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
       </div>
 
+      {/* ★ เพิ่ม (ข้อ 3): แถบแนะนำการแบ่งชั่วโมงเท่า ๆ กัน */}
+      {hasSuggestion && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+          <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            ระบบแนะนำ: แบ่ง {formatHoursLabel(remainingForSuggestion)} ที่เหลือให้ {nonManualItems.length} วิชาที่ยังไม่ได้กำหนดเอง
+            เท่ากับวิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
+          </p>
+          <button onClick={applySuggestedToAll}
+            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 transition flex items-center gap-1">
+            <Check className="h-3 w-3" /> ใช้ค่าที่แนะนำทั้งหมด
+          </button>
+        </div>
+      )}
+
       {items.map((it, idx) => {
         const subj = allSubjects.find(s => String(s.SubjectId) === String(it.SubjectId));
         const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
+        const avgPerMonthLabel = formatAvgPerMonth(it.TotalHours, monthsSpanned);
         return (
           <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
             <span className="flex-1 text-sm font-semibold text-neutral-800">
@@ -1986,7 +2151,12 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
                     เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
                   </span>
                 )}
-                <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(it.TotalHours || 0)}</span>
+                <div className="text-right w-28">
+                  <span className="text-xs text-neutral-400 block">
+                    {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                  </span>
+                  {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                </div>
                 <button onClick={() => setEditingIndex(idx)} className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
                   <Pencil className="h-3.5 w-3.5" />
                 </button>
@@ -2029,14 +2199,14 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
 
         <input
           type="number" min="0" step="1"
-          placeholder="ชม."
+          placeholder="ชม. (ว่าง=แนะนำอัตโนมัติ)"
           value={newRow.TotalHours}
           onKeyDown={blockNegativeKeys}
           onChange={e => {
             const v = e.target.value;
             if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
           }}
-          className={inp + " w-16"}
+          className={inp + " w-40"}
         />
         {/* ★ เพิ่ม: ค่าติวเตอร์/ชม. */}
         <input
@@ -2061,6 +2231,12 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {totalCourseHours > 0 && newRow.TotalHours === "" && (
+        <p className="px-4 pb-2 text-[11px] text-blue-500 flex items-center gap-1">
+          <Info className="h-3 w-3" /> เว้นว่างไว้ ระบบจะแบ่งชั่วโมงที่เหลือให้เท่า ๆ กันโดยอัตโนมัติ (แก้ไขภายหลังได้เสมอ)
+        </p>
+      )}
 
       {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
         <p className="px-4 pb-2 text-[11px] text-red-500 flex items-center gap-1">
@@ -2267,22 +2443,6 @@ export default function AdminCoursesPage() {
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
 
-      let enrollFailed = 0;
-      let studentsSkippedDueToStatus = false;
-      const isEnrollAllowed = [1, 2].includes(Number(courseData.Status_Course_Id));
-
-      if (pendingStudents.length) {
-        if (isEnrollAllowed) {
-          const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
-            UserIds: pendingStudents,
-            CourseID,
-          });
-          enrollFailed = enrollRes.data.failed?.length || 0;
-        } else {
-          studentsSkippedDueToStatus = true;
-        }
-      }
-
       if (studentsSkippedDueToStatus) {
         showToast(
           "error",
@@ -2290,9 +2450,7 @@ export default function AdminCoursesPage() {
           "เนื่องจากสถานะคอร์สไม่ใช่เปิดรับสมัคร/กำลังสอน กรุณาเปลี่ยนสถานะก่อนแล้วเพิ่มนักเรียนภายหลัง"
         );
       } else if (subjectFailed > 0 || enrollFailed > 0) {
-        showToast(
-          "error",
-          "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
+        showToast("error", "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
           `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
         );
       } else {
@@ -2309,8 +2467,9 @@ export default function AdminCoursesPage() {
 
   const handleUpdate = async (data) => {
     setIsSubmitting(true);
+    const { pendingSubjects, pendingStudents, ...courseData } = data;
     try {
-      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, data)
+      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData)
       showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ!");
       setEditingCourse(null);
       fetchAll();
