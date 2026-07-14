@@ -1508,6 +1508,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
+  // ★ เพิ่ม: ตรวจสอบผลรวมชั่วโมงวิชา เทียบกับชั่วโมงรวมของคอร์ส
+  const addedSubjectHours = initial.CourseID
+    ? existingSubjectsHours
+    : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
+  const targetCourseHours = Number(form.TotalCourseHours || 0);
+  const hoursDiff = targetCourseHours - addedSubjectHours; // >0 ขาด, <0 เกิน
+  const hoursMismatch = targetCourseHours > 0 && Math.abs(hoursDiff) > 0.01;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1518,9 +1525,25 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const handleSubmit = () => {
     if (!form.CourseName.trim()) return alert("กรุณากรอกชื่อคอร์ส");
     if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!DATE_RE.test(String(form.StartDate).slice(0, 10)) || !DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+      return showToast(
+        "error",
+        "รูปแบบวันที่ไม่ถูกต้อง",
+        "กรุณาลบข้อมูลในช่องวันเริ่มสอน/วันสิ้นสุด แล้วเลือกวันที่ใหม่จากปฏิทินอีกครั้ง"
+      );
+    }
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (!form.Price || Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
     if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
+    // ★ เพิ่ม (ข้อ 1): บล็อกบันทึกถ้าชั่วโมงรายวิชารวมไม่เท่ากับชั่วโมงรวมของคอร์ส
+    if (hoursMismatch) {
+      return showToast(
+        "error",
+        hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
+        `กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
+      );
+    }
     // ★ เพิ่ม (ข้อ 5): บล็อกการบันทึกถ้ายอดผ่อนเองรวมเกินราคาสุทธิ
     if (installmentOverrideExceeds) {
       return showToast(
@@ -1594,8 +1617,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      {/* ★ เพิ่ม: ชั่วโมงรวมของคอร์ส (เป้าหมาย ไม่ใช่ SUM ของ TutorCourseDetails) */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* ★ แก้ (ข้อ 3,4,5): รวมเป็นแถวเดียว 3 คอลัมน์, ย้ายชั่วโมงเฉลี่ย/เดือนเป็น helper text, ย่อ label */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
@@ -1607,74 +1630,65 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             }}
             className={inputCls} placeholder="เช่น 120"
           />
-          <div className="flex items-start gap-1.5 mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
-            <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-blue-600 leading-relaxed">
-              ไม่บังคับกรอก — ใช้เป็นเป้าหมายเทียบกับชั่วโมงวิชาที่จะเพิ่มภายหลัง ระบบจะช่วยแนะนำแบ่งชั่วโมง/วิชาให้อัตโนมัติ
-            </p>
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>ชั่วโมงเฉลี่ย/เดือน (คำนวณอัตโนมัติ)</label>
-          <div className="px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold text-neutral-700">
+          <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
             {!monthsSpanned
-              ? <span className="font-medium text-neutral-400">กรุณากรอกวันเริ่มต้นและวันสิ้นสุดก่อน</span>
+              ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
               : !form.TotalCourseHours
-                ? <span className="font-medium text-neutral-400">ระยะเวลา {monthsSpanned} เดือน · กรอกชั่วโมงรวมเพื่อคำนวณค่าเฉลี่ย</span>
-                : `${avgHoursPerMonth.toFixed(1)} ชม./เดือน (${monthsSpanned} เดือน)`}
+                ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
+                : `เฉลี่ยประมาณ ${avgHoursPerMonth.toFixed(1)} ชม./เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
+          </p>
+        </div>
+
+        <div>
+          <label className={labelCls}>จำนวนงวด</label>
+          <input
+            type="number" min="0" step="1" value={form.Installments}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("Installments", v);
+            }}
+            className={inputCls} />
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
+              {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
+            </span>
+            {isInstallmentEnabled && (
+              <span className="text-[11px] text-neutral-500">
+                ฿{formatPrice(calculatedInstallmentAmount)}/งวด
+              </span>
+            )}
           </div>
         </div>
-      </div>
 
-      <div>
-        <label className={labelCls}>จำนวนงวดผ่อนชำระ</label>
-        <input
-          type="number" min="0" step="1" value={form.Installments}
-          onKeyDown={blockNegativeKeys}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("Installments", v);
-          }}
-          className={inputCls} />
-        {/* ★ เพิ่ม: แสดงสถานะและยอดผ่อนแบบ Real-time — ใช้ Installments เดิม ไม่เพิ่ม Is_Installment */}
-        <div className="mt-2 flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
-            {isInstallmentEnabled ? `เปิดผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
-          </span>
-          {isInstallmentEnabled && (
-            <span className="text-xs text-neutral-500">
-              คำนวณอัตโนมัติ ฿{formatPrice(calculatedInstallmentAmount)} / งวด
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ★ เพิ่ม: กำหนดยอดผ่อนเอง (แทนค่าที่ระบบคำนวณ) — แสดงเฉพาะเมื่อเปิดผ่อน */}
-      {isInstallmentEnabled && (
         <div>
-          <label className={labelCls}>กำหนดยอดผ่อนเอง (ไม่บังคับ)</label>
-          <input
-            type="text" inputMode="numeric" value={moneyDisplay(form.InstallmentAmountOverride)}
-            onChange={handleMoneyChange("InstallmentAmountOverride")} onKeyDown={blockNegativeKeys}
-            className={inputCls + (installmentOverrideExceeds ? " border-red-300 focus:ring-red-300" : "")} placeholder={`ค่าเริ่มต้น: ${formatPrice(calculatedInstallmentAmount)}`}
-          />
-          <p className="text-[11px] text-neutral-400 mt-1">
-            หากเว้นว่าง ระบบจะใช้ค่าคำนวณอัตโนมัติ (฿{formatPrice(calculatedInstallmentAmount)}/งวด) —
-            ยอดที่ใช้จริงคือ <span className="font-bold text-orange-600">฿{formatPrice(effectiveInstallmentAmount)}/งวด</span>
-          </p>
-          {/* ★ เพิ่ม (ข้อ 5): แจ้งเตือน + บล็อกบันทึก ถ้ายอดผ่อนเองรวมเกินราคาสุทธิ */}
-          {installmentOverrideExceeds && (
-            <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-              <span>
-                {formatPrice(form.InstallmentAmountOverride)} × {installmentsCount} งวด ={" "}
-                <span className="font-bold">฿{formatPrice(installmentOverrideTotal)}</span> ซึ่งมากกว่าราคาสุทธิ ฿{formatPrice(fullCost)} —
-                ระบบจะไม่ให้บันทึกจนกว่าจะแก้ไขให้ไม่เกิน ฿{formatPrice(maxAllowedInstallmentAmount)}/งวด
-              </span>
-            </p>
+          <label className={labelCls}>กำหนดยอดผ่อน (ถ้ามี)</label>
+          {isInstallmentEnabled ? (
+            <>
+              <input
+                type="text" inputMode="numeric" value={moneyDisplay(form.InstallmentAmountOverride)}
+                onChange={handleMoneyChange("InstallmentAmountOverride")} onKeyDown={blockNegativeKeys}
+                className={inputCls + (installmentOverrideExceeds ? " border-red-300 focus:ring-red-300" : "")} placeholder={`ค่าเริ่มต้น: ${formatPrice(calculatedInstallmentAmount)}`}
+              />
+              <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+                ยอดที่ใช้จริง <span className="font-bold text-orange-600">฿{formatPrice(effectiveInstallmentAmount)}/งวด</span>
+              </p>
+              {installmentOverrideExceeds && (
+                <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    รวม <span className="font-bold">฿{formatPrice(installmentOverrideTotal)}</span> เกินราคาสุทธิ ฿{formatPrice(fullCost)} — ไม่เกิน ฿{formatPrice(maxAllowedInstallmentAmount)}/งวด
+                  </span>
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -1804,24 +1818,22 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             monthsSpanned={monthsSpanned}
           />}
 
-        {/* ★ เพิ่ม: เปรียบเทียบชั่วโมงวิชารวม vs เป้าหมายของคอร์ส */}
-        {Number(form.TotalCourseHours) > 0 && (() => {
-          const addedHours = initial.CourseID
-            ? existingSubjectsHours
-            : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
-          const target = Number(form.TotalCourseHours);
-          const remaining = target - addedHours;
-          const isOver = remaining < 0;
-          return (
-            <p className={`mt-2 text-xs flex items-center gap-1.5 ${isOver ? "text-amber-600" : "text-neutral-500"}`}>
-              {isOver && <AlertTriangle className="h-3.5 w-3.5" />}
-              ชั่วโมงรวมของคอร์ส {formatHoursLabel(target)} · เพิ่มวิชาแล้ว {formatHoursLabel(addedHours)} ·{" "}
-              {isOver
-                ? `เกินเป้าหมายไป ${formatHoursLabel(Math.abs(remaining))}`
-                : `เหลืออีก ${formatHoursLabel(remaining)}`}
-            </p>
-          );
-        })()}
+        {/* ★ แก้ (ข้อ 1): สถานะชัดเจน ครบ/ขาด/เกิน + บล็อกบันทึกถ้าไม่ครบ */}
+        {targetCourseHours > 0 && (
+          <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
+            ${hoursMismatch
+              ? (hoursDiff > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-red-50 border-red-200 text-red-700")
+              : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+            {hoursMismatch
+              ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              : <Check className="h-3.5 w-3.5 shrink-0" />}
+            <span>
+              {hoursMismatch
+                ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
+                : "จำนวนชั่วโมงครบถ้วน ✓"}
+            </span>
+          </div>
+        )}
       </div>
 
       {totalTutorCost > 0 && (() => {
@@ -1918,7 +1930,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || installmentOverrideExceeds}
+          disabled={isSubmitting || installmentOverrideExceeds || hoursMismatch}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
@@ -2063,6 +2075,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingIndex, setEditingIndex] = useState(null);
+  const [editingRateIndex, setEditingRateIndex] = useState(null); // ★ เพิ่ม (ข้อ 2)
 
   useEffect(() => {
     Promise.all([
@@ -2124,6 +2137,24 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
     setEditingIndex(null);
   };
 
+  // ★ เพิ่ม (ข้อ 2): แก้ไขเรทปัจจุบัน/ใหม่ โดยไม่ต้องลบแล้วสร้างใหม่
+  const updateRate = (index, tutorRate, studentRate) => {
+    const current = items[index];
+    const effectiveTutor = tutorRate !== undefined ? tutorRate : current.TutorRatePerHourOverride;
+    const effectiveStudent = studentRate !== undefined ? studentRate : current.StudentRatePerHourOverride;
+    if (!isValidRatePair(effectiveTutor, effectiveStudent)) {
+      if (showToast) showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+      return false;
+    }
+    onChange(items.map((it, i) => i === index ? {
+      ...it,
+      TutorRatePerHourOverride: tutorRate !== undefined ? tutorRate : it.TutorRatePerHourOverride,
+      StudentRatePerHourOverride: studentRate !== undefined ? studentRate : it.StudentRatePerHourOverride,
+    } : it));
+    setEditingRateIndex(null);
+    return true;
+  };
+
   const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
 
   return (
@@ -2169,10 +2200,19 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              {(it.TutorRatePerHourOverride || it.StudentRatePerHourOverride) && (
-                <span className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 shrink-0">
+              {editingRateIndex === idx ? (
+                <RateInlineEdit
+                  tutorRate={it.TutorRatePerHourOverride}
+                  studentRate={it.StudentRatePerHourOverride}
+                  onSave={(t, st) => updateRate(idx, t, st)}
+                  onCancel={() => setEditingRateIndex(null)}
+                />
+              ) : (
+                <button type="button" onClick={() => setEditingRateIndex(idx)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition shrink-0">
                   เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
-                </span>
+                  <Pencil className="h-3 w-3" />
+                </button>
               )}
               <div className="shrink-0 ml-auto">
                 {editingIndex === idx ? (
