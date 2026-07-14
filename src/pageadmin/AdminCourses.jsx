@@ -606,11 +606,11 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
       <div className="flex items-center gap-1.5">
         <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
           onFocus={e => e.target.select()}
-          placeholder="ต้นทุน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
+          placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
         <span className="text-[10px] text-neutral-400">/ชม.</span>
         <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
           onFocus={e => e.target.select()}
-          placeholder="ขาย" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
+          placeholder="ใหม่" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
         <span className="text-[10px] text-neutral-400">/ชม.</span>
         <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -621,7 +621,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
       </div>
       {invalid && (
         <p className="text-[10px] text-red-500 flex items-center gap-1">
-          <AlertTriangle className="h-2.5 w-2.5" /> ราคาขายต่ำกว่าต้นทุน จะขาดทุน {(Number(t) - Number(st)).toFixed(0)} บาท/ชม.
+          <AlertTriangle className="h-2.5 w-2.5" /> ราคาเรทใหม่ต่ำกว่าเรทปัจจุบัน จะขาดทุน {(Number(t) - Number(st)).toFixed(0)} บาท/ชม.
         </p>
       )}
     </div>
@@ -770,9 +770,9 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               type="button"
               onClick={() => setEditingRateId(s.TutorCourseDetailId)}
               className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition"
-              title="แก้ไขราคาต้นทุน/ขาย"
+              title="แก้ไขราคาเรทปัจจุบัน/เรทใหม่"
             >
-              ต้นทุน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ขาย {s.StudentRatePerHourOverride || "-"}/ชม.
+              เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
               <Pencil className="h-3 w-3" />
             </button>
           )}
@@ -833,13 +833,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               }}
               className={inp + " w-20"} />
             <input
-              type="number" min="0" placeholder="ต้นทุน/ชม."
+              type="number" min="0" placeholder="เรทปัจจุบัน/ชม."
               value={newRow.TutorRatePerHourOverride}
               onKeyDown={blockNegativeKeys}
               onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
               className={inp + " w-28"} />
             <input
-              type="number" min="0" placeholder="ขาย/ชม."
+              type="number" min="0" placeholder="ใหม่/ชม."
               value={newRow.StudentRatePerHourOverride}
               onKeyDown={blockNegativeKeys}
               onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
@@ -1518,7 +1518,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
             {isLoss && (
               <p className="px-4 py-2 text-[11px] text-amber-700/80 bg-amber-50 border-t border-amber-200/60 leading-relaxed">
-                💡 คอร์สนี้ขายราคาต่ำกว่าต้นทุนติวเตอร์ — ไม่เป็นไรถ้าตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
+                💡 คอร์สนี้ขายราคาต่ำกว่าเรทปัจจุบันติวเตอร์ — ไม่เป็นไรถ้าตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
                 หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) แค่แจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
               </p>
             )}
