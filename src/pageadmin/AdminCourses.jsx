@@ -616,11 +616,14 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   );
 }
 
-function PendingSubjectPicker({ items, onChange, showToast }) {
+function CourseSubjects({ courseId, showToast }) {
+  const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
+  const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editingRateId, setEditingRateId] = useState(null);
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
