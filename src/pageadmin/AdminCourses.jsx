@@ -84,36 +84,32 @@ const isValidRatePair = (tutorRate, studentRate) => {
   return true;
 };
 
-// ★ เพิ่ม: นับจำนวนเดือนแบบ "เดือนปฏิทินจริง" ไม่ใช่ (ms/30วัน) เพื่อไม่ให้ได้ค่าเช่น 3.97 แทน 4
-// ตัวอย่าง: มิ.ย.-ก.ย. ต้องได้ 4 (มิ.ย., ก.ค., ส.ค., ก.ย.) ไม่ใช่ 3.97
-// หลักการ: นับเดือนปฏิทินที่คาบเกี่ยว แล้ว "ปัดขึ้น" เป็นจำนวนเต็มเสมอ (ใช้หลักการเดียวกันทั้งระบบ)
+
 function calcMonthsSpanned(startDate, endDate) {
   if (!startDate || !endDate) return 0;
   const s = new Date(String(startDate).slice(0, 10));
   const e = new Date(String(endDate).slice(0, 10));
   if (isNaN(s) || isNaN(e) || e < s) return 0;
-  const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+  const diffDays = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+  const months = Math.floor(diffDays / 30);
   return Math.max(1, months);
 }
 
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
-function Modal({ onClose, children, title, icon: Icon }) {
+function Modal({ onClose, children, title, icon: Icon, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 flex-shrink-0 bg-gradient-to-r from-orange-50 to-amber-50">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-neutral-800 truncate pr-4">
+      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="flex items-center gap-2.5 text-base font-bold text-white truncate pr-4">
             {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shadow-sm shrink-0">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
                 <Icon className="h-4 w-4 text-white" />
               </span>
             )}
             <span className="truncate">{title}</span>
           </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-neutral-400 hover:bg-white hover:text-neutral-600 transition shrink-0"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -841,54 +837,57 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         const avgPerMonthLabel = formatAvgPerMonth(s.TotalHours, monthsSpanned);
         const isManual = manualIds.has(s.TutorCourseDetailId);
         return (
-          <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0 flex-wrap">
-            <span className="flex-1 text-sm font-semibold text-neutral-800">{s.SubjectName}</span>
-            <span className="text-xs text-neutral-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
-
-            {/* ★ เพิ่ม: rate ต้นทุน/ขาย พร้อมแก้ไข inline */}
-            {editingRateId === s.TutorCourseDetailId ? (
-              <RateInlineEdit
-                tutorRate={s.TutorRatePerHourOverride}
-                studentRate={s.StudentRatePerHourOverride}
-                onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
-                onCancel={() => setEditingRateId(null)}
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditingRateId(s.TutorCourseDetailId)}
-                className="flex items-center gap-1 text-[11px] text-neutral-500 hover:text-orange-600 transition"
-                title="แก้ไขราคาเรทปัจจุบัน/เรทใหม่"
-              >
-                เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
-                <Pencil className="h-3 w-3" />
+          <div key={s.TutorCourseDetailId} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
+                <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+              </div>
+              <button onClick={() => handleDelete(s.TutorCourseDetailId)}
+                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                <X className="h-4 w-4" />
               </button>
-            )}
+            </div>
 
-            {editingId === s.TutorCourseDetailId ? (
-              <HoursInlineEdit
-                value={s.TotalHours}
-                onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
-                onCancel={() => setEditingId(null)}
-              />
-            ) : (
-              <>
-                <div className="text-right w-28">
-                  <span className="text-xs text-neutral-400 block">
-                    {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
-                  </span>
-                  {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
-                </div>
-                <button onClick={() => setEditingId(s.TutorCourseDetailId)}
-                  className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
-                  <Pencil className="h-3.5 w-3.5" />
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              {editingRateId === s.TutorCourseDetailId ? (
+                <RateInlineEdit
+                  tutorRate={s.TutorRatePerHourOverride}
+                  studentRate={s.StudentRatePerHourOverride}
+                  onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
+                  onCancel={() => setEditingRateId(null)}
+                />
+              ) : (
+                <button type="button" onClick={() => setEditingRateId(s.TutorCourseDetailId)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition">
+                  เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
+                  <Pencil className="h-3 w-3" />
                 </button>
-                <button onClick={() => handleDelete(s.TutorCourseDetailId)}
-                  className="text-red-400 hover:text-red-600 transition" title="ลบ">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
+              )}
+
+              <div className="shrink-0 ml-auto">
+                {editingId === s.TutorCourseDetailId ? (
+                  <HoursInlineEdit
+                    value={s.TotalHours}
+                    onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <span className="text-xs text-neutral-500 block">
+                        {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                      </span>
+                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                    </div>
+                    <button onClick={() => setEditingId(s.TutorCourseDetailId)}
+                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         );
       })}
@@ -1560,6 +1559,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
+      {form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) && (
+        <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
+          <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
+        </p>
+      )}
+
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
@@ -1603,9 +1608,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <div>
           <label className={labelCls}>ชั่วโมงเฉลี่ย/เดือน (คำนวณอัตโนมัติ)</label>
           <div className="px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm font-bold text-neutral-700">
-            {avgHoursPerMonth !== null
-              ? `${avgHoursPerMonth.toFixed(1)} ชม./เดือน (${monthsSpanned} เดือน)`
-              : "กรอกวันที่และชั่วโมงรวมก่อน"}
+            {!monthsSpanned
+              ? <span className="font-medium text-neutral-400">กรุณากรอกวันเริ่มต้นและวันสิ้นสุดก่อน</span>
+              : !form.TotalCourseHours
+                ? <span className="font-medium text-neutral-400">ระยะเวลา {monthsSpanned} เดือน · กรอกชั่วโมงรวมเพื่อคำนวณค่าเฉลี่ย</span>
+                : `${avgHoursPerMonth.toFixed(1)} ชม./เดือน (${monthsSpanned} เดือน)`}
           </div>
         </div>
       </div>
@@ -1768,20 +1775,20 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
           ? <CourseSubjects
-              courseId={initial.CourseID}
-              showToast={showToast}
-              onTotalCostChange={setExistingSubjectsCost}
-              onTotalHoursChange={setExistingSubjectsHours}
-              totalCourseHours={Number(form.TotalCourseHours || 0)}
-              monthsSpanned={monthsSpanned}
-            />
+            courseId={initial.CourseID}
+            showToast={showToast}
+            onTotalCostChange={setExistingSubjectsCost}
+            onTotalHoursChange={setExistingSubjectsHours}
+            totalCourseHours={Number(form.TotalCourseHours || 0)}
+            monthsSpanned={monthsSpanned}
+          />
           : <PendingSubjectPicker
-              items={pendingSubjects}
-              onChange={setPendingSubjects}
-              showToast={showToast}
-              totalCourseHours={Number(form.TotalCourseHours || 0)}
-              monthsSpanned={monthsSpanned}
-            />}
+            items={pendingSubjects}
+            onChange={setPendingSubjects}
+            showToast={showToast}
+            totalCourseHours={Number(form.TotalCourseHours || 0)}
+            monthsSpanned={monthsSpanned}
+          />}
 
         {/* ★ เพิ่ม: เปรียบเทียบชั่วโมงวิชารวม vs เป้าหมายของคอร์ส */}
         {Number(form.TotalCourseHours) > 0 && (() => {
@@ -1868,7 +1875,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           />
         </div>
       )}
-      
+
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
@@ -2131,40 +2138,51 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
         const avgPerMonthLabel = formatAvgPerMonth(it.TotalHours, monthsSpanned);
         return (
-          <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
-            <span className="flex-1 text-sm font-semibold text-neutral-800">
-              {subj ? subj.SubjectName : `วิชา (ไม่พบข้อมูล)`}
-            </span>
-            <span className="text-xs text-neutral-500">
-              {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : `ติวเตอร์ (ไม่พบข้อมูล)`}
-            </span>
-            {editingIndex === idx ? (
-              <HoursInlineEdit
-                value={it.TotalHours}
-                onSave={(hours) => updateHours(idx, hours)}
-                onCancel={() => setEditingIndex(null)}
-              />
-            ) : (
-              <>
-                {(it.TutorRatePerHourOverride || it.StudentRatePerHourOverride) && (
-                  <span className="text-[10px] text-neutral-400 whitespace-nowrap">
-                    เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
-                  </span>
+          <div key={idx} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-neutral-800 truncate">
+                  {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
+                </p>
+                <p className="text-xs text-neutral-500 mt-0.5">
+                  {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
+                </p>
+              </div>
+              <button onClick={() => remove(idx)}
+                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              {(it.TutorRatePerHourOverride || it.StudentRatePerHourOverride) && (
+                <span className="px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 shrink-0">
+                  เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
+                </span>
+              )}
+              <div className="shrink-0 ml-auto">
+                {editingIndex === idx ? (
+                  <HoursInlineEdit
+                    value={it.TotalHours}
+                    onSave={(hours) => updateHours(idx, hours)}
+                    onCancel={() => setEditingIndex(null)}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <span className="text-xs text-neutral-500 block">
+                        {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                      </span>
+                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                    </div>
+                    <button onClick={() => setEditingIndex(idx)}
+                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 )}
-                <div className="text-right w-28">
-                  <span className="text-xs text-neutral-400 block">
-                    {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
-                  </span>
-                  {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
-                </div>
-                <button onClick={() => setEditingIndex(idx)} className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => remove(idx)} className="text-red-400 hover:text-red-600 transition" title="ลบ">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         );
       })}
