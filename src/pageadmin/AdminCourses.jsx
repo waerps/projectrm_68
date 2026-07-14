@@ -631,6 +631,17 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange }) {
   };
 
   useEffect(() => {
+    fetchSubjects();
+    Promise.all([
+      axios.get(`${API_BASE}/subjects`),
+      axios.get(`${API_BASE}/tutors`),
+    ]).then(([sRes, tRes]) => {
+      setAllSubjects(sRes.data);
+      setAllTutors(tRes.data);
+    });
+  }, [courseId]);
+
+  useEffect(() => {
     if (!onTotalCostChange) return;
     const total = subjects.reduce((sum, s) => {
       const rate = Number(s.TutorRatePerHourOverride || s.RatePerTutors || 0);
