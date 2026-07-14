@@ -1830,7 +1830,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             <span>
               {hoursMismatch
                 ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
-                : "จำนวนชั่วโมงครบถ้วน ✓"}
+                : "จำนวนชั่วโมงครบถ้วน"}
             </span>
           </div>
         )}
