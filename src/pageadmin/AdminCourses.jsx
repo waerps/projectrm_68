@@ -1374,15 +1374,19 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   const isLoss = resultProfit < 0;
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex items-center gap-2">
-        <DollarSign className="h-4 w-4 text-orange-500" />
-        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">วิเคราะห์กำไร (Pricing Calculator)</p>
+    <div className={`rounded-2xl border overflow-hidden ${isLoss ? "border-amber-200" : "border-emerald-200"}`}>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b ${isLoss ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 ${isLoss ? "bg-amber-400" : "bg-emerald-500"}`}>
+          <DollarSign className="h-4 w-4 text-white" />
+        </span>
+        <p className={`text-xs font-bold uppercase tracking-wide ${isLoss ? "text-amber-700" : "text-emerald-700"}`}>
+          วิเคราะห์กำไร (Pricing Calculator)
+        </p>
       </div>
 
-      <div className="p-4 space-y-3">
-        <p className="text-[11px] text-neutral-400">
-          ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) ฿{formatPrice(cost)} — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน ·
+      <div className="p-4 space-y-3 bg-white">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน ·
           ราคาที่แสดง/กรอกในนี้คือ <span className="font-semibold text-neutral-500">ราคาสุทธิหลังหักส่วนลดแล้ว</span>
         </p>
 
@@ -1393,8 +1397,8 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
             { key: "price", label: "กรอกราคาขาย (สุทธิ)" },
           ].map(opt => (
             <button key={opt.key} type="button" onClick={() => setMode(opt.key)}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold border transition
-                ${mode === opt.key ? "bg-orange-500 text-white border-orange-500" : "bg-white text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
+              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition
+                ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
               {opt.label}
             </button>
           ))}
@@ -1403,36 +1407,38 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
         {mode === "profit" && (
           <input type="number" min="0" value={profitInput} onChange={e => setProfitInput(e.target.value)}
             placeholder="กำไรที่ต้องการ (บาท)" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "percent" && (
           <input type="number" min="0" max="99" value={percentInput} onChange={e => setPercentInput(e.target.value)}
             placeholder="% กำไรจากราคาขาย" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "price" && (
           <input type="number" min="0" value={priceInput} onChange={e => setPriceInput(e.target.value)}
             placeholder="ราคาขายสุทธิที่ต้องการ" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
 
-        <div className={`grid grid-cols-3 divide-x rounded-xl border overflow-hidden ${isLoss ? "border-red-200 divide-red-100" : "border-emerald-200 divide-emerald-100"}`}>
-          <div className="p-3 text-center">
-            <p className="text-[10px] text-neutral-400">ราคาขาย (สุทธิ)</p>
-            <p className="text-sm font-bold text-neutral-800">฿{formatPrice(resultPrice)}</p>
-          </div>
-          <div className="p-3 text-center">
-            <p className="text-[10px] text-neutral-400">กำไร</p>
-            <p className={`text-sm font-bold ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
-          </div>
-          <div className="p-3 text-center">
-            <p className="text-[10px] text-neutral-400">Margin</p>
-            <p className={`text-sm font-bold ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
+        <div className="rounded-2xl border border-black/5 overflow-hidden">
+          <div className="grid grid-cols-3 divide-x divide-black/5">
+            <div className="p-3 text-center bg-neutral-50">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขาย (สุทธิ)</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(resultPrice)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">Margin</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
+            </div>
           </div>
         </div>
 
         <button type="button" onClick={() => onApplyPrice(Math.round(resultPrice))} disabled={resultPrice <= 0}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-40 transition text-sm">
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-40 transition text-sm shadow-sm">
           <Check className="h-4 w-4" /> ใช้ราคานี้
         </button>
       </div>
@@ -1601,9 +1607,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             }}
             className={inputCls} placeholder="เช่น 120"
           />
-          <p className="text-[11px] text-neutral-400 mt-1">
-            ใช้เป็นเป้าหมายเทียบกับชั่วโมงวิชาที่เพิ่มภายหลัง (ไม่บังคับกรอก) — ระบบจะช่วยแนะนำแบ่งชั่วโมง/วิชาให้อัตโนมัติ
-          </p>
+          <div className="flex items-start gap-1.5 mt-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+            <Info className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-blue-600 leading-relaxed">
+              ไม่บังคับกรอก — ใช้เป็นเป้าหมายเทียบกับชั่วโมงวิชาที่จะเพิ่มภายหลัง ระบบจะช่วยแนะนำแบ่งชั่วโมง/วิชาให้อัตโนมัติ
+            </p>
+          </div>
         </div>
         <div>
           <label className={labelCls}>ชั่วโมงเฉลี่ย/เดือน (คำนวณอัตโนมัติ)</label>
@@ -1769,6 +1778,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           rows={3}
           placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
         />
+        {form.Remark?.trim() && (
+          <p className="flex items-center justify-end gap-1 text-[11px] text-green-600 font-medium mt-1">
+            <Check className="h-3 w-3" /> บันทึกข้อความแล้ว ({form.Remark.trim().length} ตัวอักษร)
+          </p>
+        )}
       </div>
 
       <div>
@@ -2460,6 +2474,18 @@ export default function AdminCoursesPage() {
         pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
+
+      // ★ แก้: เพิ่มนักเรียนจริง (เดิมไม่มีโค้ดส่วนนี้เลย ทำให้ตัวแปรด้านล่าง undefined → error)
+      const canEnrollNow = [1, 2].includes(Number(courseData.Status_Course_Id));
+      const studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
+      let enrollFailed = 0;
+      if (canEnrollNow && pendingStudents.length > 0) {
+        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
+          UserIds: pendingStudents,
+          CourseID,
+        });
+        enrollFailed = (enrollRes.data?.failed || []).length;
+      }
 
       if (studentsSkippedDueToStatus) {
         showToast(
