@@ -616,11 +616,9 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast }) {
-  const [subjects, setSubjects] = useState([]);
+function PendingSubjectPicker({ items, onChange, showToast }) {
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
-  const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingIndex, setEditingIndex] = useState(null);
 
@@ -1593,13 +1591,14 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 }
 
 // ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
-function CourseSubjects({ courseId, showToast }) {
+function PendingSubjectPicker({ items, onChange, showToast }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
-  const [editingId, setEditingId] = useState(null);        // ★ แก้: จาก editingIndex
+  const [editingId, setEditingId] = useState(null);
+  const [editingRateId, setEditingRateId] = useState(null);
 
   useEffect(() => {
     Promise.all([
