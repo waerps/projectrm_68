@@ -1451,25 +1451,32 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
   const [priceInput, setPriceInput] = useState(String(currentPrice || ""));
 
   const cost = Number(tutorCost || 0);
+  const studentCount = Number(currentStudentCount || 0);
 
-  let resultPrice = 0, resultProfit = 0, resultMargin = 0;
+  // ★ แก้ใหม่: ทุกโหมดคำนวณระดับ "ทั้งคอร์ส" ก่อน แล้วค่อยหารด้วยจำนวนนักเรียนเพื่อได้ราคาต่อคน
+  let pricePerStudent = 0, totalRevenue = 0, totalProfit = 0, resultMargin = 0;
+
   if (mode === "profit") {
-    resultProfit = Number(profitInput || 0);
-    resultPrice = cost + resultProfit;
-    resultMargin = resultPrice > 0 ? (resultProfit / resultPrice) * 100 : 0;
+    // กำไรเป้าหมายของทั้งคอร์ส (บาท) -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
+    totalProfit = Number(profitInput || 0);
+    totalRevenue = cost + totalProfit;
+    pricePerStudent = studentCount > 0 ? totalRevenue / studentCount : 0;
+    resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
   } else if (mode === "percent") {
+    // % กำไรของทั้งคอร์ส -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
     resultMargin = Number(percentInput || 0);
-    resultPrice = resultMargin < 100 ? cost / (1 - resultMargin / 100) : 0;
-    resultProfit = resultPrice - cost;
+    totalRevenue = resultMargin < 100 ? cost / (1 - resultMargin / 100) : 0;
+    totalProfit = totalRevenue - cost;
+    pricePerStudent = studentCount > 0 ? totalRevenue / studentCount : 0;
   } else {
-    resultPrice = Number(priceInput || 0);
-    resultProfit = resultPrice - cost;
-    resultMargin = resultPrice > 0 ? (resultProfit / resultPrice) * 100 : 0;
+    // กรอกราคาขายต่อคน -> คำนวณไปข้างหน้าเป็นรายได้รวม กำไรรวม และ %
+    pricePerStudent = Number(priceInput || 0);
+    totalRevenue = pricePerStudent * studentCount;
+    totalProfit = totalRevenue - cost;
+    resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
   }
 
-  // const isLoss = resultProfit < 0;
-  const isLoss = resultProfit < 0;
-  const totalRevenue = resultPrice * Number(currentStudentCount || 0);
+  const isLoss = totalProfit < 0;
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${isLoss ? "border-amber-200" : "border-emerald-200"}`}>
@@ -1483,30 +1490,33 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        {/* <p className="text-[11px] text-neutral-400 leading-relaxed">
-          ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน ·
-          ราคาที่แสดง/กรอกในนี้คือ <span className="font-semibold text-neutral-500">ราคาสุทธิหลังหักส่วนลดแล้ว</span>
-        </p> */}
-        <p className="text-[11px] text-neutral-400 leading-relaxed">
-          หากตั้งราคาสุทธิคอร์สต่อคนเป็นจำนวนนี้ ผลลัพธ์ด้านล่างคำนวณจาก <span className="font-semibold text-neutral-500">ราคาสุทธิคอร์สต่อคน × นักเรียนปัจจุบัน ({currentStudentCount || 0} คน)</span> เทียบกับต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span>
+      <p className="text-[11px] text-neutral-400 leading-relaxed">
+          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{studentCount} คน</span>
+          {studentCount === 0 && (
+            <span className="block mt-1 text-amber-600 font-semibold">⚠ ยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณาเพิ่มนักเรียนก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
+          )}
         </p>
 
         <div className="flex gap-2">
-          {[
-            { key: "profit", label: "กรอกกำไร (บาท)" },
-            { key: "percent", label: "กรอก %" },
-            { key: "price", label: "กรอกราคาขาย (สุทธิ)" },
+        {[
+            { key: "profit", label: "กำไรเป้าหมายของทั้งคอร์ส (บาท)" },
+            { key: "percent", label: "กรอก % กำไร (ทั้งคอร์ส)" },
+            { key: "price", label: "กรอกราคาขาย (สุทธิต่อคน)" },
           ].map(opt => (
             <button key={opt.key} type="button" onClick={() => {
-                setMode(opt.key);
-                if (opt.key === "profit") {
-                  setProfitInput(String(Math.round(currentPrice - cost)));
-                } else if (opt.key === "percent") {
-                  setPercentInput(currentPrice > 0 ? (((currentPrice - cost) / currentPrice) * 100).toFixed(1) : "");
-                } else if (opt.key === "price") {
-                  setPriceInput(String(currentPrice));
-                }
-              }}
+              setMode(opt.key);
+              // ★ แก้ใหม่: seed ค่าจากราคาต่อคนปัจจุบัน (currentPrice) x จำนวนนักเรียน = รายได้รวมปัจจุบัน
+              // แล้วคำนวณย้อนกลับเป็นกำไรรวม/เปอร์เซ็นต์ ให้ทุกโหมดอ้างอิงชุดข้อมูลเดียวกัน
+              const seedTotalRevenue = currentPrice * studentCount;
+              const seedTotalProfit = seedTotalRevenue - cost;
+              if (opt.key === "profit") {
+                setProfitInput(String(Math.round(seedTotalProfit)));
+              } else if (opt.key === "percent") {
+                setPercentInput(seedTotalRevenue > 0 ? ((seedTotalProfit / seedTotalRevenue) * 100).toFixed(1) : "");
+              } else if (opt.key === "price") {
+                setPriceInput(String(currentPrice));
+              }
+            }}
               className={`flex-1 py-2 rounded-xl text-xs font-bold border transition
                 ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
               {opt.label}
@@ -1516,43 +1526,25 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
 
         {mode === "profit" && (
           <input type="number" min="0" value={profitInput} onChange={e => setProfitInput(e.target.value)}
-            placeholder="กำไรที่ต้องการ (บาท)" onKeyDown={blockNegativeKeys}
+            placeholder="กำไรเป้าหมายที่ต้องการทั้งคอร์ส (บาท)" onKeyDown={blockNegativeKeys}
             className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "percent" && (
           <input type="number" min="0" max="99" value={percentInput} onChange={e => setPercentInput(e.target.value)}
-            placeholder="% กำไรจากราคาขาย" onKeyDown={blockNegativeKeys}
+            placeholder="% กำไรที่ต้องการของทั้งคอร์ส" onKeyDown={blockNegativeKeys}
             className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "price" && (
           <input type="number" min="0" value={priceInput} onChange={e => setPriceInput(e.target.value)}
-            placeholder="ราคาขายสุทธิที่ต้องการ" onKeyDown={blockNegativeKeys}
+            placeholder="ราคาขายสุทธิต่อคนที่ต้องการ" onKeyDown={blockNegativeKeys}
             className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
 
-        {/* <div className="rounded-2xl border border-black/5 overflow-hidden">
-          <div className="grid grid-cols-3 divide-x divide-black/5">
-            <div className="p-3 text-center bg-neutral-50">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขาย (สุทธิ)</p>
-              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(resultPrice)}</p>
-            </div>
-            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร</p>
-              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
-            </div> */}
-        {/* ★ แก้ (ข้อ 3): เปลี่ยนคำว่า "Margin" เป็นภาษาไทยที่เข้าใจง่าย — ใช้ "ส่วนต่างกำไร (%)"
-                เพราะช่องนี้แสดงเป็นเปอร์เซ็นต์ ไม่ใช่จำนวนเงิน จึงไม่ใช้คำว่า "กำไรขั้นต้น" ที่มักสื่อถึงตัวเลขบาท */}
-        {/* <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ส่วนต่างกำไร (%)</p>
-              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
-            </div>
-          </div>
-        </div> */}
         <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
-            <div className="p-3 text-center bg-neutral-50">
+          <div className="p-3 text-center bg-neutral-50">
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
-              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(resultPrice)}</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
             </div>
             <div className="p-3 text-center bg-neutral-50">
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">รายได้รวม</p>
@@ -1560,7 +1552,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
-              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(totalProfit)}</p>
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">อัตรากำไร (%)</p>
@@ -1569,7 +1561,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
           </div>
         </div>
 
-        <button type="button" onClick={() => onApplyPrice(Math.round(resultPrice))} disabled={resultPrice <= 0}
+        <button type="button" onClick={() => onApplyPrice(Math.round(pricePerStudent))} disabled={pricePerStudent <= 0}
           className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-40 transition text-sm shadow-sm">
           <Check className="h-4 w-4" /> ใช้ราคานี้
         </button>
