@@ -82,6 +82,36 @@ export async function getCourseById(courseId) {
   }
 }
 
+// ★ เพิ่มใหม่ — GET /courses/:id/subjects (วิชา+ติวเตอร์+ชั่วโมงในคอร์สนี้)
+export async function getCourseSubjects(courseId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/subjects`);
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+// ★ เพิ่มใหม่ — GET /courses/:id/preview-videos (คลิปตัวอย่างของคอร์ส)
+export async function getCoursePreviewVideos(courseId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/preview-videos`);
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+// ★ เพิ่มใหม่ — GET /courses/:id/schedule (วัน-เวลาเรียนของแต่ละวิชา)
+export async function getCourseSchedule(courseId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/schedule`);
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // POST /courses
 export async function createCourse(payload) {
   try {
@@ -111,6 +141,8 @@ export async function deleteCourse(courseId) {
     throwNiceError(error);
   }
 }
+
+
 
 export async function getdataProducts() {
   return getCourses();

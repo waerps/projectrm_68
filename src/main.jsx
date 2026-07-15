@@ -10,11 +10,12 @@ import ProfileLayout from "./layouts/ProfileLayout.jsx"
 // Pages Imports
 import Home from "./pages/Home.jsx"
 import Schedule from "./pages/Schedule.jsx"
-import Courses from "./pages/Courses.jsx"
+// import Courses from "./pages/Courses.jsx"
 import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
+import CourseDetail from "./pages/Courses.jsx"
 
 import Notifications from "./pages/Notifications.jsx"
 import StudentCourses from "./pages/StudentCourses.jsx"
@@ -24,6 +25,11 @@ import News from "./pages/News.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
+import About from "./pages/About.jsx"
+import Promotion from "./pages/Promotion.jsx"
+import CourseSearch from "./pages/CourseSearch.jsx"
+import StudentCourseContent from "./pages/StudentCourseContent.jsx"
+import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
 
 // CSS
 import "./index.css"
@@ -75,8 +81,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "schedule", element: <Schedule /> },
-      { path: "courses", element: <Courses /> },
-      { path: "courses/:id", element: <Courses /> }, // ✅ เพิ่ม route detail ที่หายไป
+      { path: "courses", element: <CourseSearch /> },
+      { path: "courses/:id", element: <CourseDetail /> },
       { path: "performance", element: <Performance /> },
       { path: "salary", element: <Salary /> },
       { path: "new", element: <New /> },
@@ -84,6 +90,9 @@ const router = createBrowserRouter([
       { path: "cart", element: <Cart /> },
       { path: "favorites", element: <Favorites /> },
       { path: "apply-tutor", element: <TutorApply /> },
+      { path: "about", element: <About /> },
+      { path: "promotion", element: <Promotion /> },
+      
 
       // เส้นทาง Profile (Nested Layout)
       {
@@ -93,7 +102,9 @@ const router = createBrowserRouter([
           { index: true, element: <Profile /> },
           { path: "schedule", element: <Schedule /> },
           { path: "notifications", element: <Notifications /> },
-          { path: "my-courses", element: <StudentCourses /> }, // ✅ ใช้ StudentCourses
+          { path: "my-courses", element: <StudentCourses /> },
+          { path: "course-detail", element: <StudentCourseDetail /> },
+          { path: "course-content", element: <StudentCourseContent /> },
           { path: "attendance", element: <Attendance /> },
         ],
       },
