@@ -63,11 +63,12 @@ const formatHoursLabel = (decimalHours) => {
   return `${h} ชม. ${m} นาที`;
 };
 
-// ★ แสดงชั่วโมงเฉลี่ยต่อเดือนของ "วิชานั้น ๆ" — ใช้สูตรเดียวกับชั่วโมงเฉลี่ย/เดือนของคอร์ส
+// ★ แก้: เดิมแสดง "เฉลี่ย 17.3 ชม./เดือน" เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที
+// เปลี่ยนไปใช้ formatHoursLabel แปลงเป็น ชม./นาที ที่อ่านง่ายแทน
 const formatAvgPerMonth = (hours, monthsSpanned) => {
   if (!hours || !monthsSpanned || monthsSpanned <= 0) return null;
   const avg = Number(hours) / monthsSpanned;
-  return `เฉลี่ย ${avg.toFixed(1)} ชม./เดือน`;
+  return `เฉลี่ย ${formatHoursLabel(avg)}/เดือน`;
 };
 
 // ★ แก้ (ข้อ 7): แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ + รองรับทศนิยมสูงสุด 2 ตำแหน่ง
@@ -149,7 +150,7 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
         <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg py-1">
+        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg py-1">
           {options.length === 0 ? (
             <p className="px-3 py-2 text-xs text-neutral-400">ไม่พบข้อมูล</p>
           ) : (
@@ -861,8 +862,8 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+    <div className="border border-neutral-200 rounded-xl overflow-visible">
+      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
         <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">วิชาในคอร์สนี้</p>
         {!adding && (
           <button onClick={() => setAdding(true)}
@@ -872,13 +873,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         )}
       </div>
 
-      {/* ★ แก้ (ข้อ 6): ข้อความแนะนำแบ่งชั่วโมงให้เป็นธรรมชาติขึ้น */}
+      {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
       {hasSuggestion && (
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            หากต้องการให้ทุกวิชามีจำนวนชั่วโมงเท่ากัน ระบบสามารถแบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) ให้อัตโนมัติ
-            โดยแต่ละวิชาจะได้รับ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
+            แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
+            วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
           </p>
           <button onClick={applySuggestedToAll} disabled={applyingAll}
             className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 disabled:opacity-50 transition flex items-center gap-1">
@@ -955,7 +956,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       })}
 
       {adding && (
-        <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2">
+        <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2 rounded-b-xl">
           <div className="flex items-center gap-2">
             <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
               className={inp + " flex-1"}>
@@ -1721,9 +1722,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      {/* ★ แก้: เปลี่ยนจาก div ครอบเฉย ๆ (ไม่มี gap ระหว่าง 3 บล็อกด้านใน) เป็น grid gap-4
-          ให้ระยะห่างสม่ำเสมอเหมือนส่วนราคาด้านบน แทนการพึ่งพา space-y-5 ของ parent ที่ไม่ครอบถึงระดับนี้ */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ★ แก้: ชั่วโมงรวม + จำนวนงวด อยู่แถวเดียวกัน (2 คอลัมน์) แล้วให้กำหนดยอดผ่อนแต่ละงวดลงมาแถวถัดไปเต็มความกว้าง */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
@@ -1735,12 +1735,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             }}
             className={inputCls} placeholder="เช่น 120"
           />
+          {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
           <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
             {!monthsSpanned
               ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
               : !form.TotalCourseHours
                 ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
-                : `เฉลี่ยประมาณ ${avgHoursPerMonth.toFixed(1)} ชม./เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
+                : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
           </p>
         </div>
 
@@ -1777,7 +1778,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           )}
         </div>
 
-        <div>
+        <div className="md:col-span-2">
           <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
           {isInstallmentEnabled ? (
             <InstallmentAmountsEditor
@@ -2051,7 +2052,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     </div>
   );
 }
-
 function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
@@ -2263,18 +2263,18 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+    <div className="border border-neutral-200 rounded-xl overflow-visible">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center rounded-t-xl">
         <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
       </div>
 
-      {/* ★ แก้ (ข้อ 6): ข้อความแนะนำแบ่งชั่วโมงให้เป็นธรรมชาติขึ้น */}
+      {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
       {hasSuggestion && (
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            หากต้องการให้ทุกวิชามีจำนวนชั่วโมงเท่ากัน ระบบสามารถแบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) ให้อัตโนมัติ
-            โดยแต่ละวิชาจะได้รับ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
+            แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
+            วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
           </p>
           <button onClick={applySuggestedToAll}
             className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 transition flex items-center gap-1">
@@ -2350,7 +2350,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         );
       })}
 
-      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 rounded-b-xl">
         <select
           value={newRow.SubjectId}
           onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
