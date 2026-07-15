@@ -1442,36 +1442,38 @@ function CoursePreviewVideos({ courseId, showToast }) {
   );
 }
 
-// ─── Pricing Calculator: วิเคราะห์กำไร ใช้ "ต้นทุนค่าติวเตอร์ (ประมาณการ)" เป็นฐาน ─────
-// function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
-function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApplyPrice }) {
+function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxStudents, onApplyPrice }) {
   const [mode, setMode] = useState("price"); // 'profit' | 'percent' | 'price'
   const [profitInput, setProfitInput] = useState("");
   const [percentInput, setPercentInput] = useState("");
   const [priceInput, setPriceInput] = useState(String(currentPrice || ""));
 
   const cost = Number(tutorCost || 0);
-  const studentCount = Number(currentStudentCount || 0);
+  const actualStudentCount = Number(currentStudentCount || 0);
+  const maxCount = Number(maxStudents || 0);
+  // ★ แก้ใหม่: ใช้ "จำนวนที่รับสูงสุด" เป็นฐานคำนวณเสมอ (สมมติว่ารับนักเรียนเต็มจำนวน)
+  // ถ้ายังไม่ได้กรอกจำนวนที่รับสูงสุด ให้ fallback ไปใช้จำนวนนักเรียนที่มีอยู่จริงแทน
+  const capacityCount = maxCount > 0 ? maxCount : actualStudentCount;
 
-  // ★ แก้ใหม่: ทุกโหมดคำนวณระดับ "ทั้งคอร์ส" ก่อน แล้วค่อยหารด้วยจำนวนนักเรียนเพื่อได้ราคาต่อคน
+  // ★ ทุกโหมดคำนวณระดับ "ทั้งคอร์ส" ก่อน แล้วค่อยหารด้วย capacityCount เพื่อได้ราคาต่อคน
   let pricePerStudent = 0, totalRevenue = 0, totalProfit = 0, resultMargin = 0;
 
   if (mode === "profit") {
     // กำไรเป้าหมายของทั้งคอร์ส (บาท) -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
     totalProfit = Number(profitInput || 0);
     totalRevenue = cost + totalProfit;
-    pricePerStudent = studentCount > 0 ? totalRevenue / studentCount : 0;
+    pricePerStudent = capacityCount > 0 ? totalRevenue / capacityCount : 0;
     resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
   } else if (mode === "percent") {
     // % กำไรของทั้งคอร์ส -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
     resultMargin = Number(percentInput || 0);
     totalRevenue = resultMargin < 100 ? cost / (1 - resultMargin / 100) : 0;
     totalProfit = totalRevenue - cost;
-    pricePerStudent = studentCount > 0 ? totalRevenue / studentCount : 0;
+    pricePerStudent = capacityCount > 0 ? totalRevenue / capacityCount : 0;
   } else {
     // กรอกราคาขายต่อคน -> คำนวณไปข้างหน้าเป็นรายได้รวม กำไรรวม และ %
     pricePerStudent = Number(priceInput || 0);
-    totalRevenue = pricePerStudent * studentCount;
+    totalRevenue = pricePerStudent * capacityCount;
     totalProfit = totalRevenue - cost;
     resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
   }
@@ -1491,9 +1493,11 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
 
       <div className="p-4 space-y-3 bg-white">
       <p className="text-[11px] text-neutral-400 leading-relaxed">
-          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{studentCount} คน</span>
-          {studentCount === 0 && (
-            <span className="block mt-1 text-amber-600 font-semibold">⚠ ยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณาเพิ่มนักเรียนก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
+          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> {maxCount > 0
+            ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-neutral-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
+            : <>และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{capacityCount} คน</span></>}
+          {capacityCount === 0 && (
+            <span className="block mt-1 text-amber-600 font-semibold">⚠ ยังไม่ได้กรอก "จำนวนที่รับสูงสุด" และยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณากรอกจำนวนที่รับสูงสุดก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
           )}
         </p>
 
@@ -1505,9 +1509,9 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
           ].map(opt => (
             <button key={opt.key} type="button" onClick={() => {
               setMode(opt.key);
-              // ★ แก้ใหม่: seed ค่าจากราคาต่อคนปัจจุบัน (currentPrice) x จำนวนนักเรียน = รายได้รวมปัจจุบัน
+              // ★ seed ค่าจากราคาต่อคนปัจจุบัน (currentPrice) x capacityCount = รายได้รวมปัจจุบัน (สมมติขายเต็มจำนวนที่รับสูงสุด)
               // แล้วคำนวณย้อนกลับเป็นกำไรรวม/เปอร์เซ็นต์ ให้ทุกโหมดอ้างอิงชุดข้อมูลเดียวกัน
-              const seedTotalRevenue = currentPrice * studentCount;
+              const seedTotalRevenue = currentPrice * capacityCount;
               const seedTotalProfit = seedTotalRevenue - cost;
               if (opt.key === "profit") {
                 setProfitInput(String(Math.round(seedTotalProfit)));
@@ -2204,6 +2208,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             tutorCost={totalTutorCost}
             currentPrice={fullCost}
             currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
             onApplyPrice={(targetNetPrice) => {
               const discount = Number(form.Discount || 0);
               set("Price", String(targetNetPrice + discount));
