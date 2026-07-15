@@ -731,7 +731,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, totalCourseHours, monthsSpanned }) {
+function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -774,6 +774,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     const totalHours = subjects.reduce((sum, s) => sum + Number(s.TotalHours || 0), 0);
     onTotalHoursChange(totalHours);
   }, [subjects, onTotalHoursChange]);
+
+  useEffect(() => {
+    if (!onSubjectCountChange) return;
+    onSubjectCountChange(subjects.length);
+  }, [subjects, onSubjectCountChange]);
 
   const nonManualSubjects = subjects.filter(s => !manualIds.has(s.TutorCourseDetailId));
   const manualHoursSum = subjects
@@ -1483,7 +1488,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
           ราคาที่แสดง/กรอกในนี้คือ <span className="font-semibold text-neutral-500">ราคาสุทธิหลังหักส่วนลดแล้ว</span>
         </p> */}
         <p className="text-[11px] text-neutral-400 leading-relaxed">
-          หากตั้งราคาสุทธิต่อคนเป็นจำนวนนี้ ผลลัพธ์ด้านล่างคำนวณจาก <span className="font-semibold text-neutral-500">ราคาสุทธิต่อคน × นักเรียนปัจจุบัน ({currentStudentCount || 0} คน)</span> เทียบกับต้นทุนรวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span>
+          หากตั้งราคาสุทธิคอร์สต่อคนเป็นจำนวนนี้ ผลลัพธ์ด้านล่างคำนวณจาก <span className="font-semibold text-neutral-500">ราคาสุทธิคอร์สต่อคน × นักเรียนปัจจุบัน ({currentStudentCount || 0} คน)</span> เทียบกับต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span>
         </p>
 
         <div className="flex gap-2">
@@ -1492,7 +1497,16 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
             { key: "percent", label: "กรอก %" },
             { key: "price", label: "กรอกราคาขาย (สุทธิ)" },
           ].map(opt => (
-            <button key={opt.key} type="button" onClick={() => setMode(opt.key)}
+            <button key={opt.key} type="button" onClick={() => {
+                setMode(opt.key);
+                if (opt.key === "profit") {
+                  setProfitInput(String(Math.round(currentPrice - cost)));
+                } else if (opt.key === "percent") {
+                  setPercentInput(currentPrice > 0 ? (((currentPrice - cost) / currentPrice) * 100).toFixed(1) : "");
+                } else if (opt.key === "price") {
+                  setPriceInput(String(currentPrice));
+                }
+              }}
               className={`flex-1 py-2 rounded-xl text-xs font-bold border transition
                 ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
               {opt.label}
@@ -1537,7 +1551,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApp
         <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
             <div className="p-3 text-center bg-neutral-50">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิต่อคน</p>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
               <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(resultPrice)}</p>
             </div>
             <div className="p-3 text-center bg-neutral-50">
@@ -1595,7 +1609,7 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
         </p> */}
       <div className="p-4 space-y-3 bg-white">
         <p className="text-[11px] text-neutral-400 leading-relaxed">
-          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
         </p>
 
         <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
@@ -1703,7 +1717,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
             <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
           </div>
           <span className={`text-xs font-bold ${ok ? "text-emerald-700" : "text-red-600"}`}>
-            {ok ? "ครบตามราคาสุทธิ" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
+            {ok ? "ครบตามราคาสุทธิคอร์ส" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
           </span>
         </div>
       </div>
@@ -1738,6 +1752,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [existingSubjectsCost, setExistingSubjectsCost] = useState(0);
   const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
   const [existingStudentCount, setExistingStudentCount] = useState(0);
+  const [existingTutorCount, setExistingTutorCount] = useState(0);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -1757,6 +1772,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
   const currentStudentCount = initial.CourseID ? existingStudentCount : pendingStudents.length;
+  const tutorCount = initial.CourseID ? existingTutorCount : pendingSubjects.length;
   const addedSubjectHours = initial.CourseID
     ? existingSubjectsHours
     : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
@@ -2074,13 +2090,14 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
           ? <CourseSubjects
-            courseId={initial.CourseID}
-            showToast={showToast}
-            onTotalCostChange={setExistingSubjectsCost}
-            onTotalHoursChange={setExistingSubjectsHours}
-            totalCourseHours={Number(form.TotalCourseHours || 0)}
-            monthsSpanned={monthsSpanned}
-          />
+          courseId={initial.CourseID}
+          showToast={showToast}
+          onTotalCostChange={setExistingSubjectsCost}
+          onTotalHoursChange={setExistingSubjectsHours}
+          onSubjectCountChange={setExistingTutorCount}
+          totalCourseHours={Number(form.TotalCourseHours || 0)}
+          monthsSpanned={monthsSpanned}
+        />
           : <PendingSubjectPicker
             items={pendingSubjects}
             onChange={setPendingSubjects}
@@ -2119,17 +2136,19 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
           <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
             <div className="pr-3 py-1.5">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนรวม</p>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
               <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
             </div>
             <div className="pl-3 py-1.5">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิต่อคน</p>
-              <p className="text-sm font-bold text-neutral-700">฿{formatPrice(fullCost)}</p>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+              <p className="text-sm font-bold text-neutral-700">
+                ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
+              </p>
             </div>
           </div>
 
           <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
-            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์ส ยังไม่รวมรายได้จากนักเรียน — ดูผลกำไร/ขาดทุนได้ในส่วน "วิเคราะห์กำไร" ด้านล่าง
+            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในส่วน "วิเคราะห์กำไร" ด้านล่าง
           </p>
         </div>
       )}
