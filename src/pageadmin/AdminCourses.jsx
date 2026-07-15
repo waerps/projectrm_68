@@ -1722,7 +1722,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="md:col-span-2">
+      <div className="md:col-span-2 mt-4">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
