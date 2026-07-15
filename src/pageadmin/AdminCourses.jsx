@@ -1722,7 +1722,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
@@ -1776,6 +1776,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           )}
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-1 items-start">
         <div>
           <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
           {isInstallmentEnabled ? (
@@ -1790,6 +1791,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
             </div>
           )}
+        </div>
         </div>
       </div>
 
