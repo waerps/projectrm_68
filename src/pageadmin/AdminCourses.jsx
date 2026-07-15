@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
-  BadgeCheck, Clock,
+  BadgeCheck, Clock, ChevronsUpDown,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -23,7 +23,6 @@ const STATUS_MAP = {
   3: { label: "ปิดรับสมัคร", color: "bg-amber-100 text-amber-700 border-amber-200" },
   4: { label: "ปิดคอร์ส", color: "bg-neutral-100 text-neutral-500 border-neutral-200" },
 };
-
 
 const TERM_FILTERS = [
   { key: "all", label: "ทุกเทอม", termId: null },
@@ -51,6 +50,10 @@ const formatDate = (d) => {
 const formatPrice = (p) =>
   Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
+// ★ moneyDisplay อยู่ระดับโมดูล (ไม่ผูกกับ CourseForm) เพื่อให้ component แยก เช่น
+// InstallmentAmountsEditor เรียกใช้ได้โดยตรง — เดิมเคยประกาศซ้อนใน CourseForm ทำให้ใช้นอก scope ไม่ได้
+const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatPrice(v));
+
 // ★ แปลงชั่วโมงทศนิยม (เช่น 24.5) เป็นข้อความอ่านง่าย เช่น "24 ชม. 30 นาที"
 const formatHoursLabel = (decimalHours) => {
   const total = Number(decimalHours || 0);
@@ -60,23 +63,28 @@ const formatHoursLabel = (decimalHours) => {
   return `${h} ชม. ${m} นาที`;
 };
 
-// ★ เพิ่ม: แสดงชั่วโมงเฉลี่ยต่อเดือนของ "วิชานั้น ๆ" (ข้อ 3) — ใช้สูตรเดียวกับชั่วโมงเฉลี่ย/เดือนของคอร์ส
+// ★ แสดงชั่วโมงเฉลี่ยต่อเดือนของ "วิชานั้น ๆ" — ใช้สูตรเดียวกับชั่วโมงเฉลี่ย/เดือนของคอร์ส
 const formatAvgPerMonth = (hours, monthsSpanned) => {
   if (!hours || !monthsSpanned || monthsSpanned <= 0) return null;
   const avg = Number(hours) / monthsSpanned;
   return `เฉลี่ย ${avg.toFixed(1)} ชม./เดือน`;
 };
 
-// ★ helper: แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ
+// ★ แก้ (ข้อ 7): แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ + รองรับทศนิยมสูงสุด 2 ตำแหน่ง
+// เดิมตัดจุดทศนิยมทิ้งหมด (\/[^0-9]\/g) ทำให้พิมพ์ "1999.80" ไม่ได้เลย
 const sanitizeMoneyInput = (raw) => {
-  const cleaned = String(raw).replace(/,/g, "").replace(/[^0-9]/g, "");
-  return cleaned;
+  let cleaned = String(raw).replace(/,/g, "").replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length > 2) cleaned = parts[0] + "." + parts.slice(1).join("");
+  const [intPart, decPart] = cleaned.split(".");
+  return decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : cleaned;
 };
+
 const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
-// ★ เพิ่ม: กันตั้งราคาขายต่ำกว่าค่าติวเตอร์ (ใช้ตรงกับ backend logic)
+// ★ กันตั้งราคาขายต่ำกว่าค่าติวเตอร์ (ใช้ตรงกับ backend logic)
 const isValidRatePair = (tutorRate, studentRate) => {
   const t = Number(tutorRate || 0);
   const s = Number(studentRate || 0);
@@ -84,6 +92,15 @@ const isValidRatePair = (tutorRate, studentRate) => {
   return true;
 };
 
+// ★ แบ่งยอดผ่อนเท่า ๆ กัน ปัดเศษไปรวมที่งวดสุดท้ายเสมอ ผลรวมตรงราคาสุทธิ 100%
+function distributeInstallments(fullCost, count) {
+  if (count <= 0) return [];
+  const base = Math.floor((fullCost / count) * 100) / 100;
+  const amounts = Array(count).fill(base);
+  const remainder = Math.round((fullCost - base * count) * 100) / 100;
+  amounts[count - 1] = Math.round((amounts[count - 1] + remainder) * 100) / 100;
+  return amounts;
+}
 
 function calcMonthsSpanned(startDate, endDate) {
   if (!startDate || !endDate) return 0;
@@ -93,6 +110,65 @@ function calcMonthsSpanned(startDate, endDate) {
   const diffDays = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
   const months = Math.floor(diffDays / 30);
   return Math.max(1, months);
+}
+
+// ─── Avatar helper (ข้อ 4) ────────────────────────────────────────────────────
+// ★ แสดงรูปโปรไฟล์ (ฟิลด์ Photo) หรือวงกลม fallback ถ้าไม่มีรูป
+function Avatar({ photo, size = "w-6 h-6" }) {
+  if (photo) {
+    return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-neutral-100`} />;
+  }
+  return <span className={`${size} rounded-full bg-neutral-200 shrink-0`} />;
+}
+
+// ─── AvatarSelect: dropdown แบบ custom พร้อมรูปโปรไฟล์ (ใช้กับติวเตอร์) ───────
+function AvatarSelect({ options, value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+  const selected = options.find(o => String(o.id) === String(value));
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative flex-1 min-w-[140px]">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] text-left hover:border-orange-300 transition"
+      >
+        <Avatar photo={selected?.Photo} />
+        <span className={`flex-1 truncate ${selected ? "text-neutral-700" : "text-neutral-400"}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg py-1">
+          {options.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-neutral-400">ไม่พบข้อมูล</p>
+          ) : (
+            options.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => { onChange(String(o.id)); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 text-[13px] text-left transition ${String(o.id) === String(value) ? "bg-orange-50" : ""}`}
+              >
+                <Avatar photo={o.Photo} />
+                <span className="truncate text-neutral-700">{o.label}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
@@ -215,7 +291,6 @@ function getYoutubeEmbedUrl(url) {
 }
 
 function getDriveEmbedUrl(url) {
-  // รองรับทั้งแบบ .../file/d/FILE_ID/view และ .../open?id=FILE_ID
   const m = url?.match(/\/file\/d\/([^/]+)/) || url?.match(/[?&]id=([^&]+)/);
   return m ? `https://drive.google.com/file/d/${m[1]}/preview` : null;
 }
@@ -250,7 +325,6 @@ function VideoPlayerModal({ video, onClose }) {
         />
       );
     }
-    // upload (Cloudinary) — ไฟล์วิดีโอตรงๆ เล่นด้วย <video> ได้เลย
     return (
       <video
         src={VideoUrl}
@@ -291,7 +365,7 @@ function StudentPreviewModal({ course, onClose }) {
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [openIdx, setOpenIdx] = useState(null);
-  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
+  const [playingVideo, setPlayingVideo] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -318,10 +392,8 @@ function StudentPreviewModal({ course, onClose }) {
 
   const getThumbnail = (v) => {
     if (v.Thumbnail) {
-      // ถ้าเป็น URL เต็ม (http...) ใช้ตรงๆ, ถ้าเป็น path ที่อัปโหลดเอง ให้ผ่าน getFileUrl
       return /^https?:\/\//.test(v.Thumbnail) ? v.Thumbnail : getFileUrl(v.Thumbnail);
     }
-    // fallback เผื่อข้อมูลเก่าที่ยังไม่มี Thumbnail
     if (v.VideoType === "youtube") {
       const m = v.VideoUrl?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
       return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
@@ -332,7 +404,6 @@ function StudentPreviewModal({ course, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shrink-0">
@@ -348,10 +419,8 @@ function StudentPreviewModal({ course, onClose }) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-5">
           <div className="grid gap-5 md:grid-cols-12">
-            {/* รูปหลัก */}
             <div className="md:col-span-5">
               <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-neutral-100">
                 {course.CourseImage ? (
@@ -364,7 +433,6 @@ function StudentPreviewModal({ course, onClose }) {
               </div>
             </div>
 
-            {/* ข้อมูลหลัก */}
             <div className="md:col-span-7 space-y-4">
               <div>
                 <h2 className="text-xl font-bold text-neutral-900 leading-snug">{course.CourseName}</h2>
@@ -420,7 +488,6 @@ function StudentPreviewModal({ course, onClose }) {
                 </div>
               </div>
 
-              {/* ปุ่ม CTA — พรีวิว กดไม่ได้ */}
               <button
                 type="button"
                 disabled
@@ -433,7 +500,6 @@ function StudentPreviewModal({ course, onClose }) {
             </div>
           </div>
 
-          {/* รายละเอียดคอร์ส */}
           <div className="rounded-2xl bg-white p-5 shadow-sm border border-neutral-100">
             <h3 className="mb-2.5 text-sm font-bold text-neutral-800">รายละเอียดคอร์ส</h3>
             <p className="text-sm text-neutral-600 whitespace-pre-line">
@@ -441,8 +507,6 @@ function StudentPreviewModal({ course, onClose }) {
             </p>
           </div>
 
-          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
-          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
           <div className="rounded-2xl bg-white shadow-sm border border-neutral-100 overflow-hidden">
             <div className="px-5 py-3.5 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
@@ -592,20 +656,18 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
   );
 }
 
-// ★ เพิ่ม: แก้ไขราคาต้นทุน/ขาย ต่อวิชาในคอร์ส
+// ★ แก้ไขราคาต้นทุน/ขาย ต่อวิชาในคอร์ส
 function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
   const [t, setT] = useState(String(tutorRate || ""));
   const [st, setSt] = useState(String(studentRate || ""));
   const [saving, setSaving] = useState(false);
   const invalid = Number(t || 0) > 0 && Number(st || 0) > 0 && Number(st) < Number(t);
 
-  // เพิ่ม: เก็บค่าตั้งต้นไว้เทียบว่าผู้ใช้แก้ฟิลด์ไหนบ้าง
   const originalTutor = String(tutorRate || "");
   const originalStudent = String(studentRate || "");
 
   const save = async () => {
     setSaving(true);
-    // ส่ง undefined ถ้าฟิลด์นั้นไม่ถูกแตะ แทนที่จะส่งค่าเดิม/null เสมอ
     const tutorChanged = t !== originalTutor;
     const studentChanged = st !== originalStudent;
     const ok = await onSave(
@@ -634,9 +696,10 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+      {/* ★ แก้ (ข้อ 1): ระบุชัดว่าเป็นค่าสอนของติวเตอร์ที่ลดลง ไม่ใช้คำว่า "ขาดทุน" เฉย ๆ */}
       {invalid && (
         <p className="text-[10px] text-red-500 flex items-center gap-1">
-          <AlertTriangle className="h-2.5 w-2.5" /> ราคาเรทใหม่ต่ำกว่าเรทปัจจุบัน จะขาดทุน {(Number(t) - Number(st)).toFixed(0)} บาท/ชม.
+          <AlertTriangle className="h-2.5 w-2.5" /> เรทใหม่ต่ำกว่าเรทปัจจุบัน ติวเตอร์จะได้รับค่าสอนลดลงเหลือ {Number(st).toFixed(0)} บาท/ชม.
         </p>
       )}
     </div>
@@ -651,7 +714,6 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingId, setEditingId] = useState(null);
   const [editingRateId, setEditingRateId] = useState(null);
-  // ★ เพิ่ม: จำไว้ในหน้าจอ (ไม่บันทึกลง DB) ว่ารายการไหนถูกแก้ชั่วโมงเองแล้วบ้าง เพื่อไม่ auto-suggest ทับ
   const [manualIds, setManualIds] = useState(new Set());
   const [applyingAll, setApplyingAll] = useState(false);
 
@@ -673,8 +735,6 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
   useEffect(() => {
     if (!onTotalCostChange) return;
-    // ★ แก้: ถ้าติวเตอร์ตั้งราคา "ขาย/ชม." ไว้ ให้ใช้ค่านั้นคำนวณต้นทุนรวมแทนต้นทุนเดิม
-    // (ธุรกิจนี้ต้องการให้ต้นทุนอ้างอิงตามราคาขายที่ตกลงใหม่ ไม่ใช่เรทต้นทุน/มาตรฐานเดิม)
     const totalCost = subjects.reduce((sum, s) => {
       const rate = Number(
         s.StudentRatePerHourOverride || s.TutorRatePerHourOverride || s.RatePerTutors || 0
@@ -686,12 +746,10 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
   useEffect(() => {
     if (!onTotalHoursChange) return;
-    // ★ เพิ่ม: SUM(TotalHours) ของวิชาในคอร์สนี้ ไว้เทียบกับ TotalCourseHours (เป้าหมาย)
     const totalHours = subjects.reduce((sum, s) => sum + Number(s.TotalHours || 0), 0);
     onTotalHoursChange(totalHours);
   }, [subjects, onTotalHoursChange]);
 
-  // ★ เพิ่ม (ข้อ 3): คำนวณค่าที่แนะนำ = (ชั่วโมงรวมเป้าหมาย - ผลรวมของรายการที่ถูกแก้เองแล้ว) / จำนวนรายการที่ยังไม่ถูกแก้เอง
   const nonManualSubjects = subjects.filter(s => !manualIds.has(s.TutorCourseDetailId));
   const manualHoursSum = subjects
     .filter(s => manualIds.has(s.TutorCourseDetailId))
@@ -725,12 +783,10 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     if (!newRow.SubjectId || !newRow.AdminId) {
       return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
     }
-    // ★ เพิ่ม
     if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
       return showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
     }
     try {
-      // ★ เพิ่ม (ข้อ 3): ถ้าแอดมินไม่ได้กรอกชั่วโมงเอง และมีชั่วโมงรวมของคอร์สตั้งไว้ ให้เสนอค่าเริ่มต้นแบบเฉลี่ยทันที
       const payload = { ...newRow };
       const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
       if (!willBeManual && totalCourseHours) {
@@ -751,7 +807,6 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     try {
       await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
       setEditingId(null);
-      // ★ เพิ่ม: ทำเครื่องหมายว่ารายการนี้ถูกแก้เองแล้ว จะไม่ถูก auto-suggest ทับอีก
       setManualIds(prev => new Set(prev).add(tutorCourseDetailId));
       fetchSubjects();
     } catch (e) {
@@ -759,9 +814,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     }
   };
 
-  // ★ เพิ่ม
   const handleUpdateRates = async (tutorCourseDetailId, tutorRate, studentRate) => {
-    // หาแถวเดิมเพื่อรู้ค่าที่ยังไม่ถูกแก้ (ไว้ validate เท่านั้น ไม่ได้เอาไปส่ง)
     const current = subjects.find(s => s.TutorCourseDetailId === tutorCourseDetailId);
     const effectiveTutor = tutorRate !== undefined ? tutorRate : current?.TutorRatePerHourOverride;
     const effectiveStudent = studentRate !== undefined ? studentRate : current?.StudentRatePerHourOverride;
@@ -771,13 +824,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       return false;
     }
 
-    // ส่งเฉพาะฟิลด์ที่ถูกแก้จริง ๆ
     const payload = {};
     if (tutorRate !== undefined) payload.TutorRatePerHourOverride = tutorRate || null;
     if (studentRate !== undefined) payload.StudentRatePerHourOverride = studentRate || null;
 
     if (Object.keys(payload).length === 0) {
-      // ไม่มีอะไรเปลี่ยน ไม่ต้องยิง request
       return true;
     }
 
@@ -800,7 +851,14 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     } catch (e) { showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ"); }
   };
 
-  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
+
+  // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
+  const tutorOptions = allTutors.map(t => ({
+    id: t.AdminId,
+    label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
+    Photo: t.Photo,
+  }));
 
   return (
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -814,13 +872,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         )}
       </div>
 
-      {/* ★ เพิ่ม (ข้อ 3): แถบแนะนำการแบ่งชั่วโมงเท่า ๆ กันจากชั่วโมงรวมของคอร์ส */}
+      {/* ★ แก้ (ข้อ 6): ข้อความแนะนำแบ่งชั่วโมงให้เป็นธรรมชาติขึ้น */}
       {hasSuggestion && (
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            ระบบแนะนำ: แบ่ง {formatHoursLabel(remainingForSuggestion)} ที่เหลือให้ {nonManualSubjects.length} วิชาที่ยังไม่ได้กำหนดเอง
-            เท่ากับวิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
+            หากต้องการให้ทุกวิชามีจำนวนชั่วโมงเท่ากัน ระบบสามารถแบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) ให้อัตโนมัติ
+            โดยแต่ละวิชาจะได้รับ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
           </p>
           <button onClick={applySuggestedToAll} disabled={applyingAll}
             className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 disabled:opacity-50 transition flex items-center gap-1">
@@ -839,9 +897,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         return (
           <div key={s.TutorCourseDetailId} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
-                <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+              <div className="min-w-0 flex items-center gap-2">
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
+                <Avatar photo={s.Photo} size="w-8 h-8" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+                </div>
               </div>
               <button onClick={() => handleDelete(s.TutorCourseDetailId)}
                 className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
@@ -900,10 +962,12 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               <option value="">เลือกวิชา</option>
               {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
             </select>
-            <select
+            {/* ★ แก้ (ข้อ 4): ใช้ AvatarSelect แทน select ธรรมดา เพื่อโชว์รูปติวเตอร์ */}
+            <AvatarSelect
+              options={tutorOptions}
               value={newRow.AdminId}
-              onChange={e => {
-                const adminId = e.target.value;
+              placeholder="เลือกติวเตอร์"
+              onChange={(adminId) => {
                 const tutor = allTutors.find(t => String(t.AdminId) === adminId);
                 setNewRow(r => ({
                   ...r,
@@ -911,10 +975,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                   TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
                 }));
               }}
-              className={inp + " flex-1"}>
-              <option value="">เลือกติวเตอร์</option>
-              {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
-            </select>
+            />
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -1040,6 +1101,8 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
 
       {students.map(s => (
         <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+          {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
+          <Avatar photo={s.Photo} size="w-7 h-7" />
           <span className="flex-1 text-sm font-semibold text-neutral-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
@@ -1079,6 +1142,8 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
               return (
                 <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                  {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
+                  <Avatar photo={s.Photo} />
                   <span className="flex-1 font-medium text-neutral-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
                 </label>
               );
@@ -1109,7 +1174,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
+  const [playingVideo, setPlayingVideo] = useState(null);
   const fileInputRef = useRef(null);
 
   const emptyForm = { title: "", mode: "youtube", url: "", duration: "", thumbnail: "" };
@@ -1344,8 +1409,6 @@ function CoursePreviewVideos({ courseId, showToast }) {
 }
 
 // ─── Pricing Calculator: วิเคราะห์กำไร ใช้ "ต้นทุนค่าติวเตอร์ (ประมาณการ)" เป็นฐาน ─────
-// ★ แก้ (ข้อ 7): currentPrice ที่รับเข้ามาต้องเป็น "ราคาสุทธิ (Price - Discount)" ไม่ใช่ราคาเต็ม
-// เพื่อให้เลข Margin/กำไร ตรงกับ "สรุปต้นทุน-รายรับของคอร์ส" ทุกจุด
 function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   const [mode, setMode] = useState("price"); // 'profit' | 'percent' | 'price'
   const [profitInput, setProfitInput] = useState("");
@@ -1354,7 +1417,6 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
 
   const cost = Number(tutorCost || 0);
 
-  // คำนวณย้อนกลับตาม mode ที่กำลังแก้ไข — Cost→Price, Price→Profit, Profit→Margin
   let resultPrice = 0, resultProfit = 0, resultMargin = 0;
   if (mode === "profit") {
     resultProfit = Number(profitInput || 0);
@@ -1362,7 +1424,6 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
     resultMargin = resultPrice > 0 ? (resultProfit / resultPrice) * 100 : 0;
   } else if (mode === "percent") {
     resultMargin = Number(percentInput || 0);
-    // Price = Cost / (1 - margin%) เมื่อ margin คิดจากราคาขาย
     resultPrice = resultMargin < 100 ? cost / (1 - resultMargin / 100) : 0;
     resultProfit = resultPrice - cost;
   } else {
@@ -1430,8 +1491,10 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
             </div>
+            {/* ★ แก้ (ข้อ 3): เปลี่ยนคำว่า "Margin" เป็นภาษาไทยที่เข้าใจง่าย — ใช้ "ส่วนต่างกำไร (%)"
+                เพราะช่องนี้แสดงเป็นเปอร์เซ็นต์ ไม่ใช่จำนวนเงิน จึงไม่ใช้คำว่า "กำไรขั้นต้น" ที่มักสื่อถึงตัวเลขบาท */}
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">Margin</p>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ส่วนต่างกำไร (%)</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
             </div>
           </div>
@@ -1446,6 +1509,56 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   );
 }
 
+// ─── InstallmentAmountsEditor: กำหนดยอดผ่อนรายงวด (ข้อ 2, 7, 8) ──────────────
+function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
+  const count = Number(installments || 1);
+  const amounts = value && value.length === count ? value : distributeInstallments(fullCost, count);
+  const sum = amounts.reduce((s, v) => s + Number(v || 0), 0);
+  const diff = Math.round((fullCost - sum) * 100) / 100;
+  const ok = Math.abs(diff) < 0.01;
+
+  const updateAt = (idx, raw) => {
+    const next = [...amounts];
+    next[idx] = sanitizeMoneyInput(raw);
+    onChange(next);
+  };
+
+  const resetToEqual = () => onChange(distributeInstallments(fullCost, count));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-neutral-400">กำหนดยอดแต่ละงวดได้ ไม่จำเป็นต้องเท่ากัน</span>
+        <button type="button" onClick={resetToEqual}
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 transition">
+          แบ่งเท่า ๆ กันใหม่
+        </button>
+      </div>
+      {amounts.map((amt, idx) => (
+        <div key={idx} className="flex items-center gap-2">
+          <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
+          <input
+            type="text" inputMode="decimal" value={moneyDisplay(amt)}
+            onChange={(e) => updateAt(idx, e.target.value)} onKeyDown={blockNegativeKeys}
+            className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <span className="text-xs text-neutral-400 shrink-0">บาท</span>
+        </div>
+      ))}
+      {/* ★ แก้ (ข้อ 8): แถบสรุปเต็มความกว้าง แทนกล่องแดงกองอยู่มุมขวาแบบเดิม */}
+      <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+        <div className="flex items-center gap-2">
+          {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
+          <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
+        </div>
+        <span className={`text-xs font-bold ${ok ? "text-emerald-700" : "text-red-600"}`}>
+          {ok ? "ครบตามราคาสุทธิ" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Course Form ─────────────────────────────────────────────────────────────
 function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], showToast }) {
   const [form, setForm] = useState({
@@ -1455,8 +1568,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Price: "",
     Discount: "0",
     Installments: "1",
-    TotalCourseHours: "",           // ★ เพิ่ม
-    InstallmentAmountOverride: "",  // ★ เพิ่ม
+    TotalCourseHours: "",
+    InstallmentAmounts: null, // ★ แก้: array รายงวด แทน InstallmentAmountOverride เดิม
     Remark: "",
     Status_Course_Id: 1,
     Term_Id: 1,
@@ -1469,58 +1582,47 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   const [pendingSubjects, setPendingSubjects] = useState([]);
   const [pendingStudents, setPendingStudents] = useState([]);
-  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
-  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0); // ★ เพิ่ม: ต้นทุนรวมจาก CourseSubjects (คอร์สที่มีอยู่แล้ว)
-  const [existingSubjectsHours, setExistingSubjectsHours] = useState(0); // ★ เพิ่ม: SUM(TotalHours) จาก CourseSubjects
-
+  const [showPreview, setShowPreview] = useState(false);
+  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0);
+  const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
 
-  // ★ เพิ่ม: คำนวณเดือนจริง + ชั่วโมงเฉลี่ยต่อเดือน แบบ Real-time (derived value, ไม่ต้อง useEffect)
   const monthsSpanned = calcMonthsSpanned(form.StartDate, form.LastDate);
   const avgHoursPerMonth = form.TotalCourseHours && monthsSpanned > 0
     ? Number(form.TotalCourseHours) / monthsSpanned
     : null;
 
-  // ★ เพิ่ม: Business Logic ผ่อนชำระ — Installments เดิม ไม่เพิ่ม Is_Installment
   const installmentsCount = Number(form.Installments || 1);
   const isInstallmentEnabled = installmentsCount > 1;
   const calculatedInstallmentAmount = isInstallmentEnabled ? fullCost / installmentsCount : fullCost;
-  const effectiveInstallmentAmount = form.InstallmentAmountOverride
-    ? Number(form.InstallmentAmountOverride)
-    : calculatedInstallmentAmount;
 
-  // ★ เพิ่ม (ข้อ 5): ยอดผ่อนเองรวมทั้งหมด (ต่องวด × จำนวนงวด) ต้องไม่เกินราคาสุทธิ
-  const maxAllowedInstallmentAmount = calculatedInstallmentAmount;
-  const installmentOverrideExceeds =
-    isInstallmentEnabled &&
-    form.InstallmentAmountOverride !== "" &&
-    form.InstallmentAmountOverride !== null &&
-    Number(form.InstallmentAmountOverride) > maxAllowedInstallmentAmount + 0.5;
-  const installmentOverrideTotal = form.InstallmentAmountOverride
-    ? Number(form.InstallmentAmountOverride) * installmentsCount
-    : null;
-
-  // ★ เพิ่ม: ต้นทุนรวมที่ต้องจ่ายติวเตอร์ทั้งหมด (คำนวณต่างกันตามว่าคอร์สนี้เพิ่งสร้างหรือมีอยู่แล้ว)
   const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
     const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
-  // ★ เพิ่ม: ตรวจสอบผลรวมชั่วโมงวิชา เทียบกับชั่วโมงรวมของคอร์ส
   const addedSubjectHours = initial.CourseID
     ? existingSubjectsHours
     : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
   const targetCourseHours = Number(form.TotalCourseHours || 0);
-  const hoursDiff = targetCourseHours - addedSubjectHours; // >0 ขาด, <0 เกิน
+  const hoursDiff = targetCourseHours - addedSubjectHours;
   const hoursMismatch = targetCourseHours > 0 && Math.abs(hoursDiff) > 0.01;
+
+  // ★ แก้ (ข้อ 2): เช็กยอดผ่อนรายงวดรวมต้องเท่ากับราคาสุทธิพอดี (แทน logic เดิมที่เช็กยอดเดียว×จำนวนงวด)
+  const currentInstallmentAmounts = isInstallmentEnabled
+    ? (form.InstallmentAmounts && form.InstallmentAmounts.length === installmentsCount
+        ? form.InstallmentAmounts
+        : distributeInstallments(fullCost, installmentsCount))
+    : [];
+  const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
+  const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
     set(key, cleaned);
   };
-  const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatPrice(v));
 
   const handleSubmit = () => {
     if (!form.CourseName.trim()) return alert("กรุณากรอกชื่อคอร์ส");
@@ -1536,7 +1638,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (!form.Price || Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
     if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
-    // ★ เพิ่ม (ข้อ 1): บล็อกบันทึกถ้าชั่วโมงรายวิชารวมไม่เท่ากับชั่วโมงรวมของคอร์ส
+
     if (hoursMismatch) {
       return showToast(
         "error",
@@ -1544,17 +1646,20 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         `กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
       );
     }
-    // ★ เพิ่ม (ข้อ 5): บล็อกการบันทึกถ้ายอดผ่อนเองรวมเกินราคาสุทธิ
-    if (installmentOverrideExceeds) {
+
+    // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
+    if (installmentMismatch) {
       return showToast(
         "error",
-        "ยอดผ่อนเองรวมเกินราคาสุทธิ",
-        `${formatPrice(form.InstallmentAmountOverride)} × ${installmentsCount} งวด = ${formatPrice(installmentOverrideTotal)} บาท มากกว่าราคาสุทธิ ${formatPrice(fullCost)} บาท กรุณากรอกไม่เกิน ${formatPrice(maxAllowedInstallmentAmount)}/งวด`
+        "ยอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ",
+        `รวม ฿${formatPrice(installmentSum)} ต้องเท่ากับราคาสุทธิ ฿${formatPrice(fullCost)}`
       );
     }
+
     onSave({
       ...form,
       FullCost: fullCost,
+      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts : null,
       pendingSubjects,
       pendingStudents,
     });
@@ -1598,14 +1703,14 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <div>
           <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
           <input
-            type="text" inputMode="numeric" value={moneyDisplay(form.Price)}
+            type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
             onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
             className={inputCls} placeholder="5,900" />
         </div>
         <div>
           <label className={labelCls}>ส่วนลด (บาท)</label>
           <input
-            type="text" inputMode="numeric" value={moneyDisplay(form.Discount)}
+            type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
             onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
             className={inputCls} placeholder="0" />
         </div>
@@ -1617,7 +1722,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      {/* ★ แก้ (ข้อ 3,4,5): รวมเป็นแถวเดียว 3 คอลัมน์, ย้ายชั่วโมงเฉลี่ย/เดือนเป็น helper text, ย่อ label */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
@@ -1646,7 +1750,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             onKeyDown={blockNegativeKeys}
             onChange={(e) => {
               const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("Installments", v);
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
+                set("Installments", v);
+                // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
+                set("InstallmentAmounts", null);
+              }
             }}
             className={inputCls} />
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
@@ -1655,33 +1763,28 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             </span>
             {isInstallmentEnabled && (
               <span className="text-[11px] text-neutral-500">
-                ฿{formatPrice(calculatedInstallmentAmount)}/งวด
+                ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
               </span>
             )}
           </div>
+          {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
+          {isInstallmentEnabled && monthsSpanned > 0 && (
+            <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+              <Info className="h-3 w-3 shrink-0" />
+              ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+            </p>
+          )}
         </div>
 
         <div>
-          <label className={labelCls}>กำหนดยอดผ่อน (ถ้ามี)</label>
+          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
           {isInstallmentEnabled ? (
-            <>
-              <input
-                type="text" inputMode="numeric" value={moneyDisplay(form.InstallmentAmountOverride)}
-                onChange={handleMoneyChange("InstallmentAmountOverride")} onKeyDown={blockNegativeKeys}
-                className={inputCls + (installmentOverrideExceeds ? " border-red-300 focus:ring-red-300" : "")} placeholder={`ค่าเริ่มต้น: ${formatPrice(calculatedInstallmentAmount)}`}
-              />
-              <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
-                ยอดที่ใช้จริง <span className="font-bold text-orange-600">฿{formatPrice(effectiveInstallmentAmount)}/งวด</span>
-              </p>
-              {installmentOverrideExceeds && (
-                <p className="mt-1.5 text-xs text-red-600 flex items-start gap-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
-                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span>
-                    รวม <span className="font-bold">฿{formatPrice(installmentOverrideTotal)}</span> เกินราคาสุทธิ ฿{formatPrice(fullCost)} — ไม่เกิน ฿{formatPrice(maxAllowedInstallmentAmount)}/งวด
-                  </span>
-                </p>
-              )}
-            </>
+            <InstallmentAmountsEditor
+              installments={installmentsCount}
+              fullCost={fullCost}
+              value={form.InstallmentAmounts}
+              onChange={(v) => set("InstallmentAmounts", v)}
+            />
           ) : (
             <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
               เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
@@ -1774,7 +1877,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
       </div>
 
-      {/* ★ เพิ่ม: รูปประกาศ แยกจากรูปหน้าปก */}
       <div>
         <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
         <p className="text-[11px] text-neutral-400 mb-2 normal-case">
@@ -1818,7 +1920,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             monthsSpanned={monthsSpanned}
           />}
 
-        {/* ★ แก้ (ข้อ 1): สถานะชัดเจน ครบ/ขาด/เกิน + บล็อกบันทึกถ้าไม่ครบ */}
         {targetCourseHours > 0 && (
           <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
             ${hoursMismatch
@@ -1854,7 +1955,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               </p>
             </div>
 
-            {/* ★ เพิ่ม: Disclaimer บังคับแสดงเสมอ — กันเข้าใจผิดว่าเป็นต้นทุนรวมของสถาบัน */}
             <p className="px-4 py-2 text-[10px] text-neutral-400 bg-neutral-50/70 border-t border-neutral-200/60 leading-relaxed">
               คำนวณจากค่าติวเตอร์เท่านั้น ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน
             </p>
@@ -1878,16 +1978,14 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
             {isLoss && (
               <p className="px-4 py-2 text-[11px] text-amber-700/80 bg-amber-50 border-t border-amber-200/60 leading-relaxed">
-                💡 คอร์สนี้ขายราคาต่ำกว่าเรทปัจจุบันติวเตอร์ — ไม่เป็นไรถ้าตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
-                หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) แค่แจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
+                💡 คอร์สนี้ขายราคาต่ำกว่าเรทปัจจุบันติวเตอร์ — ไม่เป็นไรหากตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
+                หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) ระบบเพียงแจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
               </p>
             )}
           </div>
         );
       })()}
 
-      {/* ★ แก้ (ข้อ 7,8): Pricing Calculator — ใช้ราคาสุทธิ (fullCost) เป็นฐาน ไม่ใช่ราคาเต็ม
-          และ "ใช้ราคานี้" ต้องคงส่วนลดเดิมไว้ แล้วปรับ "ราคาเต็ม" ให้ราคาสุทธิที่ได้ตรงกับผลลัพธ์ที่คำนวณ */}
       {totalTutorCost > 0 && (
         <div>
           <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
@@ -1930,7 +2028,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || installmentOverrideExceeds || hoursMismatch}
+          disabled={isSubmitting || hoursMismatch || installmentMismatch}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
@@ -2008,6 +2106,8 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
         <div className="divide-y divide-neutral-100 border-b border-neutral-200">
           {selectedStudents.map(s => (
             <div key={s.UserId} className="flex items-center gap-3 px-4 py-2 bg-orange-50/50">
+              {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
+              <Avatar photo={s.Photo} />
               <span className="flex-1 text-sm font-medium text-neutral-800">
                 {s.Nickname || `${s.Firstname} ${s.Lastname}`}
               </span>
@@ -2056,6 +2156,8 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
                   }`}
               >
                 <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
+                <Avatar photo={s.Photo} />
                 <span className="flex-1 font-medium text-neutral-700">
                   {s.Nickname || `${s.Firstname} ${s.Lastname}`}
                 </span>
@@ -2075,7 +2177,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingIndex, setEditingIndex] = useState(null);
-  const [editingRateIndex, setEditingRateIndex] = useState(null); // ★ เพิ่ม (ข้อ 2)
+  const [editingRateIndex, setEditingRateIndex] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -2087,7 +2189,6 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
     });
   }, []);
 
-  // ★ เพิ่ม (ข้อ 3): คำนวณค่าที่แนะนำ = (ชั่วโมงรวมเป้าหมาย - ผลรวมของรายการที่แก้เอง) / จำนวนรายการที่ยังไม่ได้แก้เอง
   const manualItems = items.filter(it => it.HoursIsManual);
   const nonManualItems = items.filter(it => !it.HoursIsManual);
   const manualHoursSum = manualItems.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
@@ -2109,13 +2210,11 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
       if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
       return alert("กรุณาเลือกวิชาและติวเตอร์");
     }
-    // ★ เพิ่ม
     if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
       const msg = "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)";
       if (showToast) return showToast("error", msg);
       return alert(msg);
     }
-    // ★ เพิ่ม (ข้อ 3): ถ้าไม่ได้กรอกชั่วโมงเอง ให้ใส่ค่าเริ่มต้นจากการแบ่งเฉลี่ยทันที และ mark ว่าเป็นค่าเริ่มต้น (ไม่ใช่ manual)
     const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
     let hoursToUse = willBeManual ? Number(newRow.TotalHours) : 0;
     if (!willBeManual && totalCourseHours) {
@@ -2132,12 +2231,10 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   };
 
   const updateHours = (index, hours) => {
-    // ★ เพิ่ม: เมื่อแก้ชั่วโมงเอง mark HoursIsManual = true จะไม่ถูก auto-suggest ทับอีก
     onChange(items.map((it, i) => i === index ? { ...it, TotalHours: hours, HoursIsManual: true } : it));
     setEditingIndex(null);
   };
 
-  // ★ เพิ่ม (ข้อ 2): แก้ไขเรทปัจจุบัน/ใหม่ โดยไม่ต้องลบแล้วสร้างใหม่
   const updateRate = (index, tutorRate, studentRate) => {
     const current = items[index];
     const effectiveTutor = tutorRate !== undefined ? tutorRate : current.TutorRatePerHourOverride;
@@ -2155,7 +2252,14 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
     return true;
   };
 
-  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
+  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] outline-none";
+
+  // ★ options สำหรับ AvatarSelect (ข้อ 4)
+  const tutorOptions = allTutors.map(t => ({
+    id: t.AdminId,
+    label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
+    Photo: t.Photo,
+  }));
 
   return (
     <div className="border border-neutral-200 rounded-xl overflow-hidden">
@@ -2163,13 +2267,13 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
       </div>
 
-      {/* ★ เพิ่ม (ข้อ 3): แถบแนะนำการแบ่งชั่วโมงเท่า ๆ กัน */}
+      {/* ★ แก้ (ข้อ 6): ข้อความแนะนำแบ่งชั่วโมงให้เป็นธรรมชาติขึ้น */}
       {hasSuggestion && (
         <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            ระบบแนะนำ: แบ่ง {formatHoursLabel(remainingForSuggestion)} ที่เหลือให้ {nonManualItems.length} วิชาที่ยังไม่ได้กำหนดเอง
-            เท่ากับวิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
+            หากต้องการให้ทุกวิชามีจำนวนชั่วโมงเท่ากัน ระบบสามารถแบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) ให้อัตโนมัติ
+            โดยแต่ละวิชาจะได้รับ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
           </p>
           <button onClick={applySuggestedToAll}
             className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 transition flex items-center gap-1">
@@ -2185,13 +2289,17 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         return (
           <div key={idx} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-neutral-800 truncate">
-                  {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
-                </p>
-                <p className="text-xs text-neutral-500 mt-0.5">
-                  {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
-                </p>
+              <div className="min-w-0 flex items-center gap-2">
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์ */}
+                <Avatar photo={tut?.Photo} size="w-8 h-8" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 truncate">
+                    {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
+                  </p>
+                </div>
               </div>
               <button onClick={() => remove(idx)}
                 className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
@@ -2251,23 +2359,20 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
           {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
         </select>
 
-        <select
+        {/* ★ แก้ (ข้อ 4): ใช้ AvatarSelect แทน select ธรรมดา เพื่อโชว์รูปติวเตอร์ */}
+        <AvatarSelect
+          options={tutorOptions}
           value={newRow.AdminId}
-          onChange={e => {
-            const adminId = e.target.value;
+          placeholder="เลือกติวเตอร์"
+          onChange={(adminId) => {
             const tutor = allTutors.find(t => String(t.AdminId) === adminId);
             setNewRow(r => ({
               ...r,
               AdminId: adminId,
-              // ★ auto-fill ค่าติวเตอร์มาตรฐานให้ทันที แก้ไขต่อได้
               TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
             }));
           }}
-          className={inp + " flex-1"}
-        >
-          <option value="">เลือกติวเตอร์</option>
-          {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
-        </select>
+        />
 
         <input
           type="number" min="0" step="1"
@@ -2280,7 +2385,6 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
           }}
           className={inp + " w-40"}
         />
-        {/* ★ เพิ่ม: ค่าติวเตอร์/ชม. */}
         <input
           type="number" min="0" step="1"
           placeholder="เรทปัจจุบัน/ชม."
@@ -2289,7 +2393,6 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
           onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
           className={inp + " w-24"}
         />
-        {/* ★ เพิ่ม: ราคาขาย/ชม. */}
         <input
           type="number" min="0" step="1"
           placeholder="ใหม่/ชม."
@@ -2324,11 +2427,10 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
-  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
+  const [showPreview, setShowPreview] = useState(false);
 
   return (
     <div className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
-      {/* Cover Image */}
       <div className="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
         {course.CourseImage && !imgErr ? (
           <img
@@ -2362,7 +2464,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
         </select>
       </div>
 
-      {/* Body */}
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="font-bold text-neutral-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
@@ -2386,7 +2487,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           </div>
         </div>
 
-        {/* Tags */}
         <div className="flex gap-1.5 flex-wrap mb-3">
           {Number(course.Is_Promotion) === 1 && (
             <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full text-[10px] font-bold shadow-sm">
@@ -2420,7 +2520,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           ))}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 mt-auto pt-2 border-t border-neutral-100">
           <button
             onClick={() => onEdit(course)}
@@ -2469,15 +2568,15 @@ export default function AdminCoursesPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTerm, setFilterTerm] = useState("all");
-  const [filterAvailability, setFilterAvailability] = useState("all"); // ★ เพิ่ม
-  const [filterCourseType, setFilterCourseType] = useState("all"); // ★ เพิ่ม
+  const [filterAvailability, setFilterAvailability] = useState("all");
+  const [filterCourseType, setFilterCourseType] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
-  const [duplicatingCourse, setDuplicatingCourse] = useState(null); // ★ เพิ่ม
+  const [duplicatingCourse, setDuplicatingCourse] = useState(null);
 
   const fetchAll = async () => {
     try {
@@ -2515,7 +2614,6 @@ export default function AdminCoursesPage() {
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
 
-      // ★ แก้: เพิ่มนักเรียนจริง (เดิมไม่มีโค้ดส่วนนี้เลย ทำให้ตัวแปรด้านล่าง undefined → error)
       const canEnrollNow = [1, 2].includes(Number(courseData.Status_Course_Id));
       const studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
       let enrollFailed = 0;
@@ -2575,12 +2673,10 @@ export default function AdminCoursesPage() {
     }
   };
 
-  // ★ แก้: เปลี่ยนจากยิง API ทันที เป็นเปิด modal ให้กรอกวันที่ก่อน
   const handleDuplicate = (course) => {
     setDuplicatingCourse(course);
   };
 
-  // ★ เพิ่ม: ฟังก์ชันยืนยันทำสำเนา (เรียกจาก modal)
   const confirmDuplicate = async ({ StartDate, LastDate }) => {
     setIsSubmitting(true);
     try {
@@ -2597,7 +2693,6 @@ export default function AdminCoursesPage() {
 
   const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
 
-  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown สถานะ (กรองตามค้นหา+เทอมที่เลือกไว้ก่อน ไม่รวมตัวสถานะเอง)
   const baseForStatusCount = courses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
@@ -2611,7 +2706,6 @@ export default function AdminCoursesPage() {
     return acc;
   }, {});
 
-  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown เทอม (กรองตามค้นหา+สถานะที่เลือกไว้ก่อน ไม่รวมตัวเทอมเอง)
   const baseForTermCount = courses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
@@ -2641,7 +2735,6 @@ export default function AdminCoursesPage() {
   const totalStudents = [...new Map(courses.map((c) => [c.CourseID, c])).values()]
     .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
 
-  // ★ หา Status_Course_Id แบบ dynamic จากชื่อสถานะ แทนการ hardcode เลข
   const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
   const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;
 
@@ -2669,7 +2762,6 @@ export default function AdminCoursesPage() {
   return (
     <div className="space-y-6 mt-[90px]">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">จัดการคอร์สเรียน</h1>
@@ -2683,7 +2775,6 @@ export default function AdminCoursesPage() {
         </button>
       </div>
 
-      {/* ── Stats ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
@@ -2705,8 +2796,6 @@ export default function AdminCoursesPage() {
         ))}
       </div>
 
-      {/* ── Search & Filter ── */}
-      {/* ── Search & Filter ── */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
           <div className="relative flex-1">
@@ -2731,27 +2820,6 @@ export default function AdminCoursesPage() {
               </option>
             ))}
           </select>
-          {/* <select
-            value={filterTerm}
-            onChange={(e) => setFilterTerm(e.target.value)}
-            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
-          >
-            {TERM_FILTERS.map((t) => (
-              <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
-            ))}
-          </select> */}
-          {/* <select
-            value={filterAvailability}
-            onChange={(e) => setFilterAvailability(e.target.value)}
-            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
-          >
-            <option value="all">รูปแบบการเรียนทั้งหมด</option>
-            {availabilityOptions.map((a) => (
-              <option key={a.Course_Availability_Id} value={String(a.Course_Availability_Id)}>
-                {a.Course_Availability_Name}
-              </option>
-            ))}
-          </select> */}
           <select
             value={filterCourseType}
             onChange={(e) => setFilterCourseType(e.target.value)}
@@ -2767,7 +2835,6 @@ export default function AdminCoursesPage() {
         </p>
       </div>
 
-      {/* ── Course Grid ── */}
       {paginated.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-neutral-200">
           <div className="text-6xl mb-3">📚</div>
@@ -2790,7 +2857,6 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {/* ── Pagination ── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-neutral-500">
@@ -2836,7 +2902,6 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {/* ── Modal: Add ── */}
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <CourseForm
@@ -2852,7 +2917,6 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
-      {/* ── Modal: Edit ── */}
       {editingCourse && (
         <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Edit2} onClose={() => setEditingCourse(null)}>
           <CourseForm
@@ -2869,7 +2933,6 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
-      {/* ── Confirm Delete ── */}
       {deletingCourse && (
         <ConfirmDialog
           course={deletingCourse}
@@ -2878,7 +2941,6 @@ export default function AdminCoursesPage() {
         />
       )}
 
-      {/* ── Modal: Duplicate ── */}
       {duplicatingCourse && (
         <DuplicateCourseModal
           course={duplicatingCourse}
