@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
-  BadgeCheck, Clock, ChevronsUpDown,
+  BadgeCheck, Clock, ChevronsUpDown, TrendingUp,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -1049,7 +1049,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   );
 }
 
-function CourseStudents({ courseId, courseStatusId, showToast }) {
+function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) {
   const [students, setStudents] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1067,6 +1067,10 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
     fetchStudents();
     axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
   }, [courseId]);
+
+  useEffect(() => {
+    if (onCountChange) onCountChange(students.length);
+  }, [students, onCountChange]);
 
   const enrolledIds = new Set(students.map(s => String(s.UserId)));
   const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
@@ -1534,6 +1538,75 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   );
 }
 
+function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStudents }) {
+  const cost = Number(tutorCost || 0);
+  const pricePerStudent = Number(fullCost || 0);
+  const breakEvenStudents = pricePerStudent > 0 ? Math.ceil(cost / pricePerStudent) : 0;
+
+  const currentRevenue = pricePerStudent * Number(currentStudentCount || 0);
+  const currentProfit = currentRevenue - cost;
+  const isProfitable = currentProfit >= 0;
+
+  const maxCount = maxStudents ? Number(maxStudents) : null;
+  const maxRevenue = maxCount !== null ? pricePerStudent * maxCount : null;
+  const maxProfit = maxRevenue !== null ? maxRevenue - cost : null;
+
+  return (
+    <div className={`rounded-2xl border overflow-hidden ${isProfitable ? "border-emerald-200" : "border-amber-200"}`}>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b ${isProfitable ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 ${isProfitable ? "bg-emerald-500" : "bg-amber-400"}`}>
+          <TrendingUp className="h-4 w-4 text-white" />
+        </span>
+        <p className={`text-xs font-bold uppercase tracking-wide ${isProfitable ? "text-emerald-700" : "text-amber-700"}`}>
+          วิเคราะห์ความคุ้มทุน (Break-even)
+        </p>
+      </div>
+
+      <div className="p-4 space-y-3 bg-white">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          ต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> (คงที่ ไม่ขึ้นกับจำนวนนักเรียน) ·
+          ราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+        </p>
+
+        <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
+          <div className="p-3 text-center bg-neutral-50">
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">จุดคุ้มทุน</p>
+            <p className="text-base font-bold text-neutral-800 mt-0.5">≥ {breakEvenStudents} คน</p>
+          </div>
+          <div className="p-3 text-center bg-neutral-50">
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
+            <p className="text-base font-bold text-neutral-800 mt-0.5">{currentStudentCount || 0} คน</p>
+          </div>
+          <div className={`p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+            <p className={`text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
+              {isProfitable ? "+" : ""}฿{formatPrice(currentProfit)}
+            </p>
+          </div>
+        </div>
+
+        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+          {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+          <span>
+            {isProfitable
+              ? `คุ้มทุนแล้ว (ต้องการอย่างน้อย ${breakEvenStudents} คน มีอยู่ ${currentStudentCount || 0} คน)`
+              : `ยังไม่คุ้มทุน — ต้องมีนักเรียนอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน จึงจะคุ้มทุน`}
+          </span>
+        </div>
+
+        {maxCount !== null && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
+            <span className="text-neutral-500">หากรับเต็มจำนวน ({maxCount} คน)</span>
+            <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              {maxProfit >= 0 ? "คุ้มทุน" : "ยังขาดทุน"} (฿{formatPrice(maxProfit)})
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   const count = Number(installments || 1);
   const amounts = value && value.length === count ? value : distributeInstallments(fullCost, count);
@@ -1601,6 +1674,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Discount: "0",
     Installments: "1",
     TotalCourseHours: "",
+    MaxStudents: "",
     InstallmentAmounts: null, // ★ แก้: array รายงวด แทน InstallmentAmountOverride เดิม
     Remark: "",
     Status_Course_Id: 1,
@@ -1617,6 +1691,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [showPreview, setShowPreview] = useState(false);
   const [existingSubjectsCost, setExistingSubjectsCost] = useState(0);
   const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
+  const [existingStudentCount, setExistingStudentCount] = useState(0);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -1635,6 +1710,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
   const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
+  const currentStudentCount = initial.CourseID ? existingStudentCount : pendingStudents.length;
   const addedSubjectHours = initial.CourseID
     ? existingSubjectsHours
     : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
@@ -1731,7 +1807,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </p>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
           <input
@@ -1752,7 +1828,20 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ฿{formatPrice(fullCost)}
           </div>
         </div>
+        <div>
+          <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
+          <input
+            type="number" min="0" step="1" value={form.MaxStudents}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+            }}
+            className={inputCls} placeholder="ไม่บังคับ" />
+        </div>
       </div>
+
+
 
       {/* ★ แก้: ชั่วโมงรวม + จำนวนงวด อยู่แถวเดียวกัน (2 คอลัมน์) แล้วให้กำหนดยอดผ่อนแต่ละงวดลงมาแถวถัดไปเต็มความกว้าง */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2034,10 +2123,22 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       )}
 
+      {totalTutorCost > 0 && (
+        <div>
+          <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
+          <BreakEvenAnalysis
+            tutorCost={totalTutorCost}
+            fullCost={fullCost}
+            currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
+          />
+        </div>
+      )}
+
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
-          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} />
+          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
           : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
       </div>
 
