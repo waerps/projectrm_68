@@ -306,6 +306,7 @@ export default function AdminFinance() {
 
     const [viewTxId, setViewTxId] = useState(null);
     const [exporting, setExporting] = useState(false);
+    const [missingPriceCount, setMissingPriceCount] = useState(0);
 
     /* ── Fetchers ──────────────────────────────────────────────────────── */
     const fetchSummary = () => {
@@ -392,6 +393,11 @@ export default function AdminFinance() {
     useEffect(() => { fetchMonthly(); }, []);
     useEffect(() => { fetchCharts(); }, []);
     useEffect(() => { fetchFiltersMeta(); }, []);
+    useEffect(() => {
+        axios.get(`${FINANCE_API}/missing-price`)
+            .then(r => setMissingPriceCount(r.data?.count || 0))
+            .catch(() => { }); // เงียบไว้ ไม่ใช่ critical path ของหน้า
+    }, []);
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
@@ -412,6 +418,7 @@ export default function AdminFinance() {
     const monthlyTutorExpenseCount = summary?.monthlyTutorExpenseCount ?? 0;
     const pendingApprovalAmount = summary?.pendingApprovalAmount ?? 0;
     const pendingApprovalCount = summary?.pendingApprovalCount ?? 0;
+    const monthlyPendingApprovalCount = summary?.monthlyPendingApprovalCount ?? 0;
     const totalRevenueAllTime = summary?.totalRevenueAllTime ?? 0;
     const paidEnrollCount = summary?.paidEnrollCount ?? 0;
     const totalEnrollCount = summary?.totalEnrollCount ?? 0;
@@ -421,7 +428,7 @@ export default function AdminFinance() {
 
     const profitMargin = monthlyRevenue > 0
         ? Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10
-        : 0;
+        : null;
 
     const revenueGrowth = (() => {
         if (monthly.length < 2) return null;
@@ -432,7 +439,7 @@ export default function AdminFinance() {
     })();
 
     const approvalSuccessRate = monthlyTransactionCount > 0
-        ? Math.round(((monthlyTransactionCount - Math.min(pendingApprovalCount, monthlyTransactionCount)) / monthlyTransactionCount) * 100)
+        ? Math.round(((monthlyTransactionCount - Math.min(monthlyPendingApprovalCount, monthlyTransactionCount)) / monthlyTransactionCount) * 100)
         : null;
 
     const avgRevenuePerStudent = paidEnrollCount > 0 ? Math.round(monthlyRevenue / paidEnrollCount) : 0;
@@ -443,6 +450,7 @@ export default function AdminFinance() {
         revenue: m.revenue,
         expenses: m.expense,
         profit: m.profit,
+        profitTrend: m.hasActivity ? m.profit : null,
     }));
 
     const revenueByCourseType = (charts.byCourseType || []).map((c, i) => ({
@@ -482,6 +490,13 @@ export default function AdminFinance() {
                 </div>
             </div>
 
+            {missingPriceCount > 0 && (
+                <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ
+                </div>
+            )}
+
             {/* ── Stats cards (from GET /summary) ── */}
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-24">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -496,7 +511,9 @@ export default function AdminFinance() {
                         {
                             label: 'กำไรสุทธิ (เดือนนี้)',
                             value: formatMoney(monthlyProfit),
-                            sub: `Margin ${profitMargin}%`,
+                            sub: profitMargin === null
+                                ? (monthlyProfit < 0 ? 'ไม่มีรายรับเทียบ (ขาดทุนล้วน)' : 'ยังไม่มีข้อมูลเดือนนี้')
+                                : `Margin ${profitMargin}%`,
                             color: 'bg-blue-500',
                             icon: Target,
                         },
@@ -608,7 +625,7 @@ export default function AdminFinance() {
                                                     contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }}
                                                     formatter={v => formatMoney(v)}
                                                 />
-                                                <Line type="monotone" dataKey="profit" stroke="#f97316" strokeWidth={2.5} name="กำไร" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} />
+                                                <Line type="monotone" dataKey="profitTrend" stroke="#f97316" strokeWidth={2.5} name="กำไร" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} connectNulls={false} />
                                             </LineChart>
                                         </ResponsiveContainer>
                                     </ApiState>
