@@ -1613,8 +1613,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   // ★ แก้ (ข้อ 2): เช็กยอดผ่อนรายงวดรวมต้องเท่ากับราคาสุทธิพอดี (แทน logic เดิมที่เช็กยอดเดียว×จำนวนงวด)
   const currentInstallmentAmounts = isInstallmentEnabled
     ? (form.InstallmentAmounts && form.InstallmentAmounts.length === installmentsCount
-        ? form.InstallmentAmounts
-        : distributeInstallments(fullCost, installmentsCount))
+      ? form.InstallmentAmounts
+      : distributeInstallments(fullCost, installmentsCount))
     : [];
   const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
   const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
@@ -1722,7 +1722,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+      <div className="md:col-span-2">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
@@ -1777,21 +1777,21 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-1 items-start">
-        <div>
-          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
-          {isInstallmentEnabled ? (
-            <InstallmentAmountsEditor
-              installments={installmentsCount}
-              fullCost={fullCost}
-              value={form.InstallmentAmounts}
-              onChange={(v) => set("InstallmentAmounts", v)}
-            />
-          ) : (
-            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
-              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
-            </div>
-          )}
-        </div>
+          <div>
+            <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
+            {isInstallmentEnabled ? (
+              <InstallmentAmountsEditor
+                installments={installmentsCount}
+                fullCost={fullCost}
+                value={form.InstallmentAmounts}
+                onChange={(v) => set("InstallmentAmounts", v)}
+              />
+            ) : (
+              <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+                เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
