@@ -1438,7 +1438,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
 }
 
 // ─── Pricing Calculator: วิเคราะห์กำไร ใช้ "ต้นทุนค่าติวเตอร์ (ประมาณการ)" เป็นฐาน ─────
-function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
+// function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
+function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, onApplyPrice }) {
   const [mode, setMode] = useState("price"); // 'profit' | 'percent' | 'price'
   const [profitInput, setProfitInput] = useState("");
   const [percentInput, setPercentInput] = useState("");
@@ -1461,7 +1462,9 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
     resultMargin = resultPrice > 0 ? (resultProfit / resultPrice) * 100 : 0;
   }
 
+  // const isLoss = resultProfit < 0;
   const isLoss = resultProfit < 0;
+  const totalRevenue = resultPrice * Number(currentStudentCount || 0);
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${isLoss ? "border-amber-200" : "border-emerald-200"}`}>
@@ -1475,9 +1478,12 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-neutral-400 leading-relaxed">
+        {/* <p className="text-[11px] text-neutral-400 leading-relaxed">
           ฐานคำนวณ: ต้นทุนค่าติวเตอร์ (ประมาณการ) <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> — ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน ·
           ราคาที่แสดง/กรอกในนี้คือ <span className="font-semibold text-neutral-500">ราคาสุทธิหลังหักส่วนลดแล้ว</span>
+        </p> */}
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          หากตั้งราคาสุทธิต่อคนเป็นจำนวนนี้ ผลลัพธ์ด้านล่างคำนวณจาก <span className="font-semibold text-neutral-500">ราคาสุทธิต่อคน × นักเรียนปัจจุบัน ({currentStudentCount || 0} คน)</span> เทียบกับต้นทุนรวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span>
         </p>
 
         <div className="flex gap-2">
@@ -1510,7 +1516,7 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
             className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
 
-        <div className="rounded-2xl border border-black/5 overflow-hidden">
+        {/* <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-3 divide-x divide-black/5">
             <div className="p-3 text-center bg-neutral-50">
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขาย (สุทธิ)</p>
@@ -1519,11 +1525,31 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
-            </div>
-            {/* ★ แก้ (ข้อ 3): เปลี่ยนคำว่า "Margin" เป็นภาษาไทยที่เข้าใจง่าย — ใช้ "ส่วนต่างกำไร (%)"
+            </div> */}
+        {/* ★ แก้ (ข้อ 3): เปลี่ยนคำว่า "Margin" เป็นภาษาไทยที่เข้าใจง่าย — ใช้ "ส่วนต่างกำไร (%)"
                 เพราะช่องนี้แสดงเป็นเปอร์เซ็นต์ ไม่ใช่จำนวนเงิน จึงไม่ใช้คำว่า "กำไรขั้นต้น" ที่มักสื่อถึงตัวเลขบาท */}
-            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+        {/* <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ส่วนต่างกำไร (%)</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div> */}
+        <div className="rounded-2xl border border-black/5 overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
+            <div className="p-3 text-center bg-neutral-50">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิต่อคน</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(resultPrice)}</p>
+            </div>
+            <div className="p-3 text-center bg-neutral-50">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">รายได้รวม</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(totalRevenue)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(resultProfit)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">อัตรากำไร (%)</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
             </div>
           </div>
@@ -1562,10 +1588,14 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
         </p>
       </div>
 
-      <div className="p-4 space-y-3 bg-white">
+      {/* <div className="p-4 space-y-3 bg-white">
         <p className="text-[11px] text-neutral-400 leading-relaxed">
           ต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> (คงที่ ไม่ขึ้นกับจำนวนนักเรียน) ·
           ราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+        </p> */}
+      <div className="p-4 space-y-3 bg-white">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
         </p>
 
         <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
@@ -1585,20 +1615,36 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+        {/* <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
           {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
           <span>
             {isProfitable
               ? `คุ้มทุนแล้ว (ต้องการอย่างน้อย ${breakEvenStudents} คน มีอยู่ ${currentStudentCount || 0} คน)`
               : `ยังไม่คุ้มทุน — ต้องมีนักเรียนอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน จึงจะคุ้มทุน`}
           </span>
+        </div> */}
+        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+          {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+          <span>
+            {isProfitable
+              ? `เกินจุดคุ้มทุนแล้ว — กำไรประมาณ ฿${formatPrice(currentProfit)}`
+              : `ยังไม่ถึงจุดคุ้มทุน — ต้องมีนักเรียนเพิ่มอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน เพื่อให้ถึงจุดคุ้มทุน`}
+          </span>
         </div>
 
-        {maxCount !== null && (
+        {/* {maxCount !== null && (
           <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
             <span className="text-neutral-500">หากรับเต็มจำนวน ({maxCount} คน)</span>
             <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
               {maxProfit >= 0 ? "คุ้มทุน" : "ยังขาดทุน"} (฿{formatPrice(maxProfit)})
+            </span>
+          </div>
+        )} */}
+        {maxCount !== null && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
+            <span className="text-neutral-500">หากมีนักเรียนเป้าหมายเต็มจำนวนนักเรียนสูงสุด ({maxCount} คน)</span>
+            <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              {maxProfit >= 0 ? "เกินจุดคุ้มทุน" : "ยังไม่ถึงจุดคุ้มทุน"} (฿{formatPrice(maxProfit)})
             </span>
           </div>
         )}
@@ -2060,7 +2106,34 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         )}
       </div>
 
-      {totalTutorCost > 0 && (() => {
+      {totalTutorCost > 0 && (
+        <div className="mt-2.5 rounded-2xl border border-neutral-200 bg-neutral-50/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-400 shrink-0">
+              <Info className="h-3.5 w-3.5 text-white" />
+            </span>
+            <p className="text-xs font-bold text-neutral-700">
+              สรุปต้นทุนคอร์ส
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
+            <div className="pr-3 py-1.5">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนรวม</p>
+              <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+            </div>
+            <div className="pl-3 py-1.5">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิต่อคน</p>
+              <p className="text-sm font-bold text-neutral-700">฿{formatPrice(fullCost)}</p>
+            </div>
+          </div>
+
+          <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
+            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์ส ยังไม่รวมรายได้จากนักเรียน — ดูผลกำไร/ขาดทุนได้ในส่วน "วิเคราะห์กำไร" ด้านล่าง
+          </p>
+        </div>
+      )}
+      {/* {totalTutorCost > 0 && (() => {
         const isLoss = totalTutorCost > fullCost;
         const diff = Math.abs(fullCost - totalTutorCost);
         return (
@@ -2107,14 +2180,19 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             )}
           </div>
         );
-      })()}
+      })()} */}
 
       {totalTutorCost > 0 && (
         <div>
           <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
+          {/* <PricingCalculator
+            tutorCost={totalTutorCost}
+            currentPrice={fullCost}
+            onApplyPrice={(targetNetPrice) => { */}
           <PricingCalculator
             tutorCost={totalTutorCost}
             currentPrice={fullCost}
+            currentStudentCount={currentStudentCount}
             onApplyPrice={(targetNetPrice) => {
               const discount = Number(form.Discount || 0);
               set("Price", String(targetNetPrice + discount));
