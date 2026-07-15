@@ -113,11 +113,35 @@ function calcMonthsSpanned(startDate, endDate) {
   return Math.max(1, months);
 }
 
-// ─── Avatar helper (ข้อ 4) ────────────────────────────────────────────────────
-// ★ แสดงรูปโปรไฟล์ (ฟิลด์ Photo) หรือวงกลม fallback ถ้าไม่มีรูป
-function Avatar({ photo, size = "w-6 h-6" }) {
+const AVATAR_COLORS = [
+  "bg-orange-500", "bg-amber-500", "bg-rose-500", "bg-pink-500",
+  "bg-fuchsia-500", "bg-violet-500", "bg-indigo-500", "bg-blue-500",
+  "bg-cyan-500", "bg-teal-500", "bg-emerald-500", "bg-lime-600",
+];
+const colorForSeed = (seed) => {
+  const s = String(seed ?? "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+const initialsOf = (name) => {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0][0] || "";
+  const second = parts.length > 1 ? parts[1][0] : "";
+  return (first + second).toUpperCase();
+};
+
+function Avatar({ photo, size = "w-6 h-6", name, seed }) {
   if (photo) {
     return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-neutral-100`} />;
+  }
+  if (name) {
+    return (
+      <div className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
+        <span className="text-[9px] leading-none">{initialsOf(name)}</span>
+      </div>
+    );
   }
   return <span className={`${size} rounded-full bg-neutral-200 shrink-0`} />;
 }
@@ -161,7 +185,7 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
                 onClick={() => { onChange(String(o.id)); setOpen(false); }}
                 className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 text-[13px] text-left transition ${String(o.id) === String(value) ? "bg-orange-50" : ""}`}
               >
-                <Avatar photo={o.Photo} />
+                <Avatar photo={o.Photo} name={o.label} seed={o.id} />
                 <span className="truncate text-neutral-700">{o.label}</span>
               </button>
             ))
@@ -900,7 +924,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
-                <Avatar photo={s.Photo} size="w-8 h-8" />
+                <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
                   <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
@@ -1103,7 +1127,7 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
       {students.map(s => (
         <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
           {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
-          <Avatar photo={s.Photo} size="w-7 h-7" />
+          <Avatar photo={s.Photo} size="w-7 h-7" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
           <span className="flex-1 text-sm font-semibold text-neutral-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
@@ -1144,7 +1168,7 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
                 <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
                   {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
-                  <Avatar photo={s.Photo} />
+                  <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                   <span className="flex-1 font-medium text-neutral-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
                 </label>
               );
@@ -1510,7 +1534,6 @@ function PricingCalculator({ tutorCost, currentPrice, onApplyPrice }) {
   );
 }
 
-// ─── InstallmentAmountsEditor: กำหนดยอดผ่อนรายงวด (ข้อ 2, 7, 8) ──────────────
 function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   const count = Number(installments || 1);
   const amounts = value && value.length === count ? value : distributeInstallments(fullCost, count);
@@ -1527,34 +1550,43 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   const resetToEqual = () => onChange(distributeInstallments(fullCost, count));
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] text-neutral-400">กำหนดยอดแต่ละงวดได้ ไม่จำเป็นต้องเท่ากัน</span>
+    <div className="rounded-2xl border border-orange-200 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 bg-orange-50 border-b border-orange-100">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 shrink-0">
+            <Tag className="h-4 w-4 text-white" />
+          </span>
+          <p className="text-xs font-bold uppercase tracking-wide text-orange-700">
+            กำหนดยอดผ่อนแต่ละงวด
+          </p>
+        </div>
         <button type="button" onClick={resetToEqual}
-          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 transition">
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 transition shrink-0">
           แบ่งเท่า ๆ กันใหม่
         </button>
       </div>
-      {amounts.map((amt, idx) => (
-        <div key={idx} className="flex items-center gap-2">
-          <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
-          <input
-            type="text" inputMode="decimal" value={moneyDisplay(amt)}
-            onChange={(e) => updateAt(idx, e.target.value)} onKeyDown={blockNegativeKeys}
-            className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
-          />
-          <span className="text-xs text-neutral-400 shrink-0">บาท</span>
+
+      <div className="p-4 space-y-2 bg-white">
+        {amounts.map((amt, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
+            <input
+              type="text" inputMode="decimal" value={moneyDisplay(amt)}
+              onChange={(e) => updateAt(idx, e.target.value)} onKeyDown={blockNegativeKeys}
+              className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <span className="text-xs text-neutral-400 shrink-0">บาท</span>
+          </div>
+        ))}
+        <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+          <div className="flex items-center gap-2">
+            {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
+            <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
+          </div>
+          <span className={`text-xs font-bold ${ok ? "text-emerald-700" : "text-red-600"}`}>
+            {ok ? "ครบตามราคาสุทธิ" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
+          </span>
         </div>
-      ))}
-      {/* ★ แก้ (ข้อ 8): แถบสรุปเต็มความกว้าง แทนกล่องแดงกองอยู่มุมขวาแบบเดิม */}
-      <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
-        <div className="flex items-center gap-2">
-          {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
-          <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
-        </div>
-        <span className={`text-xs font-bold ${ok ? "text-emerald-700" : "text-red-600"}`}>
-          {ok ? "ครบตามราคาสุทธิ" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
-        </span>
       </div>
     </div>
   );
@@ -2158,7 +2190,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
               >
                 <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
-                <Avatar photo={s.Photo} />
+                <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                 <span className="flex-1 font-medium text-neutral-700">
                   {s.Nickname || `${s.Firstname} ${s.Lastname}`}
                 </span>
@@ -2292,7 +2324,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์ */}
-                <Avatar photo={tut?.Photo} size="w-8 h-8" />
+                <Avatar photo={tut?.Photo} size="w-8 h-8" name={tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : undefined} seed={tut?.AdminId} />
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-neutral-800 truncate">
                     {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
