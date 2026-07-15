@@ -1094,11 +1094,6 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
-          {t.TotalSessions || 0}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-center">
         {t.RatePerTutors ? (
           <span className="inline-block px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-bold">
             {Number(t.RatePerTutors).toLocaleString()}
@@ -1138,6 +1133,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
 
 // ─── ★ ใหม่: Performance Score helpers (ย้ายมาจาก AdminAttendanceDashboard) ──
 function calcBadge(score) {
+  if (score === null || score === undefined) return { label: 'ยังไม่มีคะแนน', bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' };
   if (score >= 90) return { label: 'ดีเด่น', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
   if (score >= 80) return { label: 'เยี่ยม', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
   if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -1162,8 +1158,10 @@ function topScoreGroups(sortedList, groupCount = 3) {
 
 function ScoreRing({ score }) {
   const r = 20, circ = 2 * Math.PI * r;
-  const dash = (score / 100) * circ;
-  const color = score >= 80 ? '#1D9E75' : score >= 60 ? '#BA7517' : '#E24B4A';
+  const isNA = score === null || score === undefined;
+  const safeScore = score ?? 0;
+  const dash = (safeScore / 100) * circ;
+  const color = isNA ? '#94A3B8' : safeScore >= 80 ? '#1D9E75' : safeScore >= 60 ? '#BA7517' : '#E24B4A';
   return (
     <svg width="56" height="56">
       <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
@@ -1171,7 +1169,9 @@ function ScoreRing({ score }) {
         strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`}
         strokeDashoffset={`${(circ / 4).toFixed(1)}`}
         strokeLinecap="round" />
-      <text x="28" y="33" textAnchor="middle" fontSize="14" fontWeight="500" fill={color}>{score}</text>
+      <text x="28" y="33" textAnchor="middle" fontSize="14" fontWeight="500" fill={color}>
+        {isNA ? '–' : score}
+      </text>
     </svg>
   );
 }
@@ -1180,23 +1180,27 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
   // ★ เพิ่ม: ถ้าข้อมูลไม่พอ (สัปดาห์น้อยกว่าเกณฑ์) ConsistencyScore ที่ backend ส่งมาคือค่ากลาง (50) ไม่ใช่ค่าที่วัดได้จริง
   const isConsistencyDefault = typeof tutor.WeeksWithData === 'number' && tutor.WeeksWithData < minWeeksForConsistency;
 
+  const noSchedule = tutor.ScheduledHours === null || tutor.ScheduledHours === undefined;
+
   const metrics = [
     {
-      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 40,
+      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 35,
       sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`,
       warn: false,
     },
     {
-      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 30,
+      name: 'ปฏิบัติหน้าที่ตามภาระงาน', val: noSchedule ? 0 : tutor.ResponsibilityScore, weight: 45,
+      sub: noSchedule
+        ? 'เดือนนี้ไม่มีชั่วโมงสอนตามตาราง — ไม่มีข้อมูลเปรียบเทียบ (N/A)'
+        : `${tutor.ActualHours} ชม. / ตารางสอน ${tutor.ScheduledHours} ชม.`,
+      warn: noSchedule,
+    },
+    {
+      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 20,
       sub: isConsistencyDefault
         ? `ข้อมูลมีแค่ ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
         : 'วัดจาก stddev การสอนต่อสัปดาห์',
       warn: isConsistencyDefault,
-    },
-    {
-      name: 'ชั่วโมงสอนสะสม', val: tutor.WorkloadScore, weight: 30,
-      sub: `${tutor.TotalHours} ชม. (เทียบกับ top)`,
-      warn: false,
     },
   ];
 
@@ -1241,7 +1245,9 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
 
       <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
         <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold">{tutor.PerformanceScore} / 100</span>
+        <span className="text-base font-semibold">
+          {tutor.PerformanceScore === null ? 'ยังไม่มีข้อมูล (ไม่มีตารางสอนเดือนนี้)' : `${tutor.PerformanceScore} / 100`}
+        </span>
       </div>
     </div>
   );
@@ -1261,9 +1267,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
           {index < 3 ? MEDAL[index] : <span className="text-xs text-slate-400">{index + 1}</span>}
         </span>
         {/* avatar */}
-        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-700 flex items-center justify-center text-xs font-semibold shrink-0">
-          {tutor.Nickname?.slice(0, 2)}
-        </div>
+        <TutorAvatar tutor={tutor} className="h-9 w-9 rounded-xl text-xs shrink-0" />
         {/* info */}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
@@ -1315,14 +1319,15 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
   // ★ เพิ่ม: เกณฑ์จาก backend ใช้บอกผู้ใช้ว่าทำไมบางคนไม่ขึ้นโพเดียม / คะแนนความสม่ำเสมอเป็นค่ากลาง
   const [minWeeksForConsistency, setMinWeeksForConsistency] = useState(3);
   const [minSessionsForRanking, setMinSessionsForRanking] = useState(5);
+  const [minScoreForPodium, setMinScoreForPodium] = useState(70); // ★ เพิ่ม
 
   // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcBadge เพื่อให้ label ตรงกับ badge ที่โชว์อยู่
   const SCORE_RANGES = [
-    { key: 'excellent', label: 'ดีเด่น (90-100)', test: (v) => v >= 90 },
-    { key: 'great', label: 'เยี่ยม (80-89)', test: (v) => v >= 80 && v < 90 },
-    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
-    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
-    { key: 'needs_work', label: 'ต้องปรับปรุง (ต่ำกว่า 55)', test: (v) => v < 55 },
+    { key: 'excellent', label: 'ดีเด่น', test: (v) => v >= 90 },
+    { key: 'great', label: 'เยี่ยม', test: (v) => v >= 80 && v < 90 },
+    { key: 'good', label: 'ดี', test: (v) => v >= 70 && v < 80 },
+    { key: 'fair', label: 'พอใช้', test: (v) => v >= 55 && v < 70 },
+    { key: 'needs_work', label: 'ต้องปรับปรุง', test: (v) => v < 55 },
   ];
   const allSubjectNames = [...new Set(allSubjects.map(s => s.SubjectName))].sort();
 
@@ -1333,6 +1338,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         // ★ เพิ่ม: เก็บเกณฑ์ขั้นต่ำที่ backend ส่งมา ไว้ใช้แสดงคำอธิบายในหน้านี้
         if (r.data.minWeeksForConsistency) setMinWeeksForConsistency(r.data.minWeeksForConsistency);
         if (r.data.minSessionsForRanking) setMinSessionsForRanking(r.data.minSessionsForRanking);
+        if (r.data.minScoreForPodium) setMinScoreForPodium(r.data.minScoreForPodium);
       })
       .catch(e => console.error(e))
       .finally(() => setLoading(false));
@@ -1345,8 +1351,10 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   const matchSubjectFn = (t) => filterSubject === 'all' ||
     (t.TeachingSubjects || '').split(',').map(x => x.trim()).includes(filterSubject);
+
   const matchScoreFn = (t) => {
     if (filterScoreRange === 'all') return true;
+    if (t.PerformanceScore === null || t.PerformanceScore === undefined) return false;
     const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
     return range ? range.test(t.PerformanceScore) : true;
   };
@@ -1365,14 +1373,16 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
-    acc[r.key] = baseForScoreCount.filter(t => r.test(t.PerformanceScore)).length;
+    acc[r.key] = baseForScoreCount.filter(t =>
+      t.PerformanceScore !== null && t.PerformanceScore !== undefined && r.test(t.PerformanceScore)
+    ).length;
     return acc;
   }, {});
 
   const visible = filtered.slice(0, showLimit);
   const hasMore = filtered.length > showLimit;
   // ★ แก้: โพเดียมเอาเฉพาะคนที่ข้อมูลพอ (!LowDataWarning) มาจัดกลุ่ม — คนข้อมูลน้อยยังอยู่ในลิสต์ด้านล่างได้ แต่ไม่ขึ้นโพเดียม
-  const podiumEligible = filtered.filter(t => !t.LowDataWarning);
+  const podiumEligible = filtered.filter(t => t.EligibleForRanking);
   const podiumGroups = topScoreGroups(podiumEligible, 3); // ★ แก้: จัดกลุ่มตามคะแนนเท่ากัน แทน slice(0,3)
 
   return (
@@ -1383,7 +1393,15 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <BarChart2 className="h-5 w-5 text-white" />
           <h2 className="font-bold text-white text-sm">Performance Score ติวเตอร์ประจำเดือน</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เช็กอิน 40% + ความสม่ำเสมอ 30% + ชั่วโมงสอน 30%</span>
+        <span className="text-[11px] text-orange-100">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
+      </div>
+
+      {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
+      <div className="px-5 pt-3">
+        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+          <Info className="h-3 w-3 shrink-0" />
+          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงตามช่วงวันที่ที่เลือกในหน้าบันทึกชั่วโมงการสอน)
+        </p>
       </div>
 
       {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
@@ -1443,11 +1461,6 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <>
             {filtered.length >= 1 && (
               <>
-                {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
-                <p className="flex items-center gap-1 text-[11px] text-slate-400">
-                  <Info className="h-3 w-3 shrink-0" />
-                  ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบในช่วงเวลานี้ ({podiumEligible.length} คนเข้าเกณฑ์)
-                </p>
                 <div className="grid grid-cols-3 gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
@@ -1472,7 +1485,9 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        className={`rounded-xl border p-3 text-center transition-all duration-200 cursor-pointer
+                        hover:-translate-y-1.5 hover:shadow-lg hover:scale-[1.03]
+                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                       >
                         <div className="text-2xl">{MEDALS[medalIdx]}</div>
@@ -1543,6 +1558,21 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
             </div>
           </>
         )}
+      </div>
+
+      {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
+      <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+        {/* <p className="text-xs text-slate-500 leading-relaxed">
+          <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
+          คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
+          ดังนั้นสถานะ Performance ไม่ได้พิจารณาจากจำนวนครั้งที่เช็กอินเพียงอย่างเดียว แต่เป็นคะแนนภาพรวมที่สะท้อนคุณภาพและความรับผิดชอบของติวเตอร์
+          จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
+        </p> */}
+        {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
+        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+          <Info className="h-3 w-3 shrink-0" />
+          ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
+        </p>
       </div>
     </div>
   );
@@ -1960,8 +1990,7 @@ export default function AdminTutorsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คาบ</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">บาท/ชม.</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทค่าสอน (บาท/ชม.)</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                   </tr>
                 </thead>

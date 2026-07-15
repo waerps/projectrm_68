@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
   Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
-  BadgeCheck,
+  BadgeCheck, Clock, ChevronsUpDown, TrendingUp,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -24,14 +24,18 @@ const STATUS_MAP = {
   4: { label: "ปิดคอร์ส", color: "bg-neutral-100 text-neutral-500 border-neutral-200" },
 };
 
-// ★ Mapping ตัวกรองเทอม อ้างอิงตาราง term จริง:
-// 1 = เปิดเทอม 1 (4 เดือน) | 2 = ตุลาคม (ปิดเทอมเล็ก) | 3 = เปิดเทอม 2 | 4 = ปิดเทอมใหญ่
 const TERM_FILTERS = [
   { key: "all", label: "ทุกเทอม", termId: null },
-  { key: "term1", label: "เทอม 1", termId: 1 },
-  { key: "term2", label: "เทอม 2", termId: 3 },
-  { key: "smallbreak", label: "ปิดเทอมเล็ก", termId: 2 },
-  { key: "bigbreak", label: "ปิดเทอมใหญ่", termId: 4 },
+  { key: "term1", label: "เปิดเทอม 1", termId: 1 },
+  { key: "term2", label: "เปิดเทอม 2", termId: 3 },
+  { key: "smallbreak", label: "ปิดเทอม 1", termId: 2 },
+  { key: "bigbreak", label: "ปิดเทอม 2", termId: 4 },
+];
+
+const COURSE_TYPE_FILTERS = [
+  { key: "all", label: "ทุกประเภทคอร์ส" },
+  { key: "single", label: "คอร์สเดี่ยว" },
+  { key: "bundle", label: "คอร์สรวม" },
 ];
 
 const formatDate = (d) => {
@@ -46,6 +50,10 @@ const formatDate = (d) => {
 const formatPrice = (p) =>
   Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
+// ★ moneyDisplay อยู่ระดับโมดูล (ไม่ผูกกับ CourseForm) เพื่อให้ component แยก เช่น
+// InstallmentAmountsEditor เรียกใช้ได้โดยตรง — เดิมเคยประกาศซ้อนใน CourseForm ทำให้ใช้นอก scope ไม่ได้
+const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatPrice(v));
+
 // ★ แปลงชั่วโมงทศนิยม (เช่น 24.5) เป็นข้อความอ่านง่าย เช่น "24 ชม. 30 นาที"
 const formatHoursLabel = (decimalHours) => {
   const total = Number(decimalHours || 0);
@@ -55,33 +63,154 @@ const formatHoursLabel = (decimalHours) => {
   return `${h} ชม. ${m} นาที`;
 };
 
-// ★ helper: แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ
-const sanitizeMoneyInput = (raw) => {
-  const cleaned = String(raw).replace(/,/g, "").replace(/[^0-9]/g, "");
-  return cleaned;
+// ★ แก้: เดิมแสดง "เฉลี่ย 17.3 ชม./เดือน" เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที
+// เปลี่ยนไปใช้ formatHoursLabel แปลงเป็น ชม./นาที ที่อ่านง่ายแทน
+const formatAvgPerMonth = (hours, monthsSpanned) => {
+  if (!hours || !monthsSpanned || monthsSpanned <= 0) return null;
+  const avg = Number(hours) / monthsSpanned;
+  return `เฉลี่ย ${formatHoursLabel(avg)}/เดือน`;
 };
+
+// ★ แก้ (ข้อ 7): แปลง input ที่มี comma กลับเป็นตัวเลขดิบ + กันค่าติดลบ + รองรับทศนิยมสูงสุด 2 ตำแหน่ง
+// เดิมตัดจุดทศนิยมทิ้งหมด (\/[^0-9]\/g) ทำให้พิมพ์ "1999.80" ไม่ได้เลย
+const sanitizeMoneyInput = (raw) => {
+  let cleaned = String(raw).replace(/,/g, "").replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  if (parts.length > 2) cleaned = parts[0] + "." + parts.slice(1).join("");
+  const [intPart, decPart] = cleaned.split(".");
+  return decPart !== undefined ? `${intPart}.${decPart.slice(0, 2)}` : cleaned;
+};
+
 const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
+// ★ กันตั้งราคาขายต่ำกว่าค่าติวเตอร์ (ใช้ตรงกับ backend logic)
+const isValidRatePair = (tutorRate, studentRate) => {
+  const t = Number(tutorRate || 0);
+  const s = Number(studentRate || 0);
+  if (t > 0 && s > 0 && s < t) return false;
+  return true;
+};
+
+// ★ แบ่งยอดผ่อนเท่า ๆ กัน ปัดเศษไปรวมที่งวดสุดท้ายเสมอ ผลรวมตรงราคาสุทธิ 100%
+function distributeInstallments(fullCost, count) {
+  if (count <= 0) return [];
+  const base = Math.floor((fullCost / count) * 100) / 100;
+  const amounts = Array(count).fill(base);
+  const remainder = Math.round((fullCost - base * count) * 100) / 100;
+  amounts[count - 1] = Math.round((amounts[count - 1] + remainder) * 100) / 100;
+  return amounts;
+}
+
+function calcMonthsSpanned(startDate, endDate) {
+  if (!startDate || !endDate) return 0;
+  const s = new Date(String(startDate).slice(0, 10));
+  const e = new Date(String(endDate).slice(0, 10));
+  if (isNaN(s) || isNaN(e) || e < s) return 0;
+  const diffDays = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+  const months = Math.floor(diffDays / 30);
+  return Math.max(1, months);
+}
+
+const AVATAR_COLORS = [
+  "bg-orange-500", "bg-amber-500", "bg-rose-500", "bg-pink-500",
+  "bg-fuchsia-500", "bg-violet-500", "bg-indigo-500", "bg-blue-500",
+  "bg-cyan-500", "bg-teal-500", "bg-emerald-500", "bg-lime-600",
+];
+const colorForSeed = (seed) => {
+  const s = String(seed ?? "");
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+};
+const initialsOf = (name) => {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  const first = parts[0][0] || "";
+  const second = parts.length > 1 ? parts[1][0] : "";
+  return (first + second).toUpperCase();
+};
+
+function Avatar({ photo, size = "w-6 h-6", name, seed }) {
+  if (photo) {
+    return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-neutral-100`} />;
+  }
+  if (name) {
+    return (
+      <div className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
+        <span className="text-[9px] leading-none">{initialsOf(name)}</span>
+      </div>
+    );
+  }
+  return <span className={`${size} rounded-full bg-neutral-200 shrink-0`} />;
+}
+
+// ─── AvatarSelect: dropdown แบบ custom พร้อมรูปโปรไฟล์ (ใช้กับติวเตอร์) ───────
+function AvatarSelect({ options, value, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef(null);
+  const selected = options.find(o => String(o.id) === String(value));
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="relative flex-1 min-w-[140px]">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] text-left hover:border-orange-300 transition"
+      >
+        <Avatar photo={selected?.Photo} />
+        <span className={`flex-1 truncate ${selected ? "text-neutral-700" : "text-neutral-400"}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg py-1">
+          {options.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-neutral-400">ไม่พบข้อมูล</p>
+          ) : (
+            options.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => { onChange(String(o.id)); setOpen(false); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 text-[13px] text-left transition ${String(o.id) === String(value) ? "bg-orange-50" : ""}`}
+              >
+                <Avatar photo={o.Photo} name={o.label} seed={o.id} />
+                <span className="truncate text-neutral-700">{o.label}</span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
-function Modal({ onClose, children, title, icon: Icon }) {
+function Modal({ onClose, children, title, icon: Icon, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100 flex-shrink-0 bg-gradient-to-r from-orange-50 to-amber-50">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-neutral-800 truncate pr-4">
+      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="flex items-center gap-2.5 text-base font-bold text-white truncate pr-4">
             {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shadow-sm shrink-0">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
                 <Icon className="h-4 w-4 text-white" />
               </span>
             )}
             <span className="truncate">{title}</span>
           </h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-neutral-400 hover:bg-white hover:text-neutral-600 transition shrink-0"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -187,7 +316,6 @@ function getYoutubeEmbedUrl(url) {
 }
 
 function getDriveEmbedUrl(url) {
-  // รองรับทั้งแบบ .../file/d/FILE_ID/view และ .../open?id=FILE_ID
   const m = url?.match(/\/file\/d\/([^/]+)/) || url?.match(/[?&]id=([^&]+)/);
   return m ? `https://drive.google.com/file/d/${m[1]}/preview` : null;
 }
@@ -222,7 +350,6 @@ function VideoPlayerModal({ video, onClose }) {
         />
       );
     }
-    // upload (Cloudinary) — ไฟล์วิดีโอตรงๆ เล่นด้วย <video> ได้เลย
     return (
       <video
         src={VideoUrl}
@@ -263,7 +390,7 @@ function StudentPreviewModal({ course, onClose }) {
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [openIdx, setOpenIdx] = useState(null);
-  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
+  const [playingVideo, setPlayingVideo] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -290,10 +417,8 @@ function StudentPreviewModal({ course, onClose }) {
 
   const getThumbnail = (v) => {
     if (v.Thumbnail) {
-      // ถ้าเป็น URL เต็ม (http...) ใช้ตรงๆ, ถ้าเป็น path ที่อัปโหลดเอง ให้ผ่าน getFileUrl
       return /^https?:\/\//.test(v.Thumbnail) ? v.Thumbnail : getFileUrl(v.Thumbnail);
     }
-    // fallback เผื่อข้อมูลเก่าที่ยังไม่มี Thumbnail
     if (v.VideoType === "youtube") {
       const m = v.VideoUrl?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
       return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
@@ -304,7 +429,6 @@ function StudentPreviewModal({ course, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200 bg-white shrink-0">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shrink-0">
@@ -320,10 +444,8 @@ function StudentPreviewModal({ course, onClose }) {
           </button>
         </div>
 
-        {/* Body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-5">
           <div className="grid gap-5 md:grid-cols-12">
-            {/* รูปหลัก */}
             <div className="md:col-span-5">
               <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-neutral-100">
                 {course.CourseImage ? (
@@ -336,14 +458,29 @@ function StudentPreviewModal({ course, onClose }) {
               </div>
             </div>
 
-            {/* ข้อมูลหลัก */}
             <div className="md:col-span-7 space-y-4">
               <div>
                 <h2 className="text-xl font-bold text-neutral-900 leading-snug">{course.CourseName}</h2>
+
                 <div className="mt-2 flex flex-wrap gap-1.5">
+                  {Number(course.Is_Promotion) === 1 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-sm">
+                      <Sparkles className="h-3.5 w-3.5" /> โปรโมชัน
+                    </span>
+                  )}
                   {course.Term_Name && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-700">
                       <BadgeCheck className="h-3.5 w-3.5 text-orange-500" /> {course.Term_Name}
+                    </span>
+                  )}
+                  {course.Course_Type && (
+                    <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-[11px] font-semibold">
+                      {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
+                    </span>
+                  )}
+                  {course.Course_Availability_Name && (
+                    <span className="rounded-full bg-purple-50 text-purple-700 px-2.5 py-1 text-[11px] font-semibold">
+                      {course.Course_Availability_Name}
                     </span>
                   )}
                   {Number(course.Discount) > 0 && (
@@ -376,7 +513,6 @@ function StudentPreviewModal({ course, onClose }) {
                 </div>
               </div>
 
-              {/* ปุ่ม CTA — พรีวิว กดไม่ได้ */}
               <button
                 type="button"
                 disabled
@@ -389,7 +525,6 @@ function StudentPreviewModal({ course, onClose }) {
             </div>
           </div>
 
-          {/* รายละเอียดคอร์ส */}
           <div className="rounded-2xl bg-white p-5 shadow-sm border border-neutral-100">
             <h3 className="mb-2.5 text-sm font-bold text-neutral-800">รายละเอียดคอร์ส</h3>
             <p className="text-sm text-neutral-600 whitespace-pre-line">
@@ -397,8 +532,6 @@ function StudentPreviewModal({ course, onClose }) {
             </p>
           </div>
 
-          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
-          {/* คลิปวิดีโอเนื้อหาเพิ่มเติม */}
           <div className="rounded-2xl bg-white shadow-sm border border-neutral-100 overflow-hidden">
             <div className="px-5 py-3.5 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
@@ -548,13 +681,66 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast }) {
+// ★ แก้ไขราคาต้นทุน/ขาย ต่อวิชาในคอร์ส
+function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
+  const [t, setT] = useState(String(tutorRate || ""));
+  const [st, setSt] = useState(String(studentRate || ""));
+  const [saving, setSaving] = useState(false);
+  const invalid = Number(t || 0) > 0 && Number(st || 0) > 0 && Number(st) < Number(t);
+
+  const originalTutor = String(tutorRate || "");
+  const originalStudent = String(studentRate || "");
+
+  const save = async () => {
+    setSaving(true);
+    const tutorChanged = t !== originalTutor;
+    const studentChanged = st !== originalStudent;
+    const ok = await onSave(
+      tutorChanged ? t : undefined,
+      studentChanged ? st : undefined
+    );
+    setSaving(false);
+    if (ok) onCancel();
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
+          onFocus={e => e.target.select()}
+          placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
+        <span className="text-[10px] text-neutral-400">/ชม.</span>
+        <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
+          onFocus={e => e.target.select()}
+          placeholder="ใหม่" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
+        <span className="text-[10px] text-neutral-400">/ชม.</span>
+        <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        </button>
+        <button onClick={onCancel} disabled={saving} className="p-1 text-neutral-400 hover:text-red-500">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {/* ★ แก้ (ข้อ 1): ระบุชัดว่าเป็นค่าสอนของติวเตอร์ที่ลดลง ไม่ใช้คำว่า "ขาดทุน" เฉย ๆ */}
+      {invalid && (
+        <p className="text-[10px] text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-2.5 w-2.5" /> เรทใหม่ต่ำกว่าเรทปัจจุบัน ติวเตอร์จะได้รับค่าสอนลดลงเหลือ {Number(st).toFixed(0)} บาท/ชม.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
   const [adding, setAdding] = useState(false);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingId, setEditingId] = useState(null);
-  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+  const [editingRateId, setEditingRateId] = useState(null);
+  const [manualIds, setManualIds] = useState(new Set());
+  const [applyingAll, setApplyingAll] = useState(false);
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
@@ -572,13 +758,74 @@ function CourseSubjects({ courseId, showToast }) {
     });
   }, [courseId]);
 
+  useEffect(() => {
+    if (!onTotalCostChange) return;
+    const totalCost = subjects.reduce((sum, s) => {
+      const rate = Number(
+        s.StudentRatePerHourOverride || s.TutorRatePerHourOverride || s.RatePerTutors || 0
+      );
+      return sum + Number(s.TotalHours || 0) * rate;
+    }, 0);
+    onTotalCostChange(totalCost);
+  }, [subjects, onTotalCostChange]);
+
+  useEffect(() => {
+    if (!onTotalHoursChange) return;
+    const totalHours = subjects.reduce((sum, s) => sum + Number(s.TotalHours || 0), 0);
+    onTotalHoursChange(totalHours);
+  }, [subjects, onTotalHoursChange]);
+
+  useEffect(() => {
+    if (!onSubjectCountChange) return;
+    onSubjectCountChange(subjects.length);
+  }, [subjects, onSubjectCountChange]);
+
+  const nonManualSubjects = subjects.filter(s => !manualIds.has(s.TutorCourseDetailId));
+  const manualHoursSum = subjects
+    .filter(s => manualIds.has(s.TutorCourseDetailId))
+    .reduce((sum, s) => sum + Number(s.TotalHours || 0), 0);
+  const remainingForSuggestion = Number(totalCourseHours || 0) - manualHoursSum;
+  const suggestedPerSubject = totalCourseHours && nonManualSubjects.length > 0
+    ? remainingForSuggestion / nonManualSubjects.length
+    : null;
+  const hasSuggestion = suggestedPerSubject !== null && nonManualSubjects.length > 0 &&
+    nonManualSubjects.some(s => Number(s.TotalHours || 0).toFixed(2) !== Number(suggestedPerSubject).toFixed(2));
+
+  const applySuggestedToAll = async () => {
+    if (suggestedPerSubject === null) return;
+    setApplyingAll(true);
+    try {
+      await Promise.allSettled(
+        nonManualSubjects.map(s =>
+          axios.put(`${API_BASE}/tutorcoursedetails/${s.TutorCourseDetailId}`, { TotalHours: suggestedPerSubject })
+        )
+      );
+      fetchSubjects();
+      showToast("success", `ใช้ค่าที่แนะนำ (${suggestedPerSubject.toFixed(1)} ชม./วิชา) กับ ${nonManualSubjects.length} วิชาแล้ว`);
+    } catch (e) {
+      showToast("error", "ใช้ค่าที่แนะนำไม่สำเร็จ");
+    } finally {
+      setApplyingAll(false);
+    }
+  };
+
   const handleAdd = async () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
       return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
     }
+    if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
+      return showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+    }
     try {
-      await axios.post(`${API_BASE}/courses/${courseId}/subjects`, newRow);
-      setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+      const payload = { ...newRow };
+      const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
+      if (!willBeManual && totalCourseHours) {
+        const futureNonManualCount = nonManualSubjects.length + 1;
+        const suggestion = (Number(totalCourseHours) - manualHoursSum) / futureNonManualCount;
+        payload.TotalHours = suggestion > 0 ? suggestion : 0;
+      }
+      const res = await axios.post(`${API_BASE}/courses/${courseId}/subjects`, payload);
+      setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
       setAdding(false);
       fetchSubjects();
     } catch (e) {
@@ -590,24 +837,62 @@ function CourseSubjects({ courseId, showToast }) {
     try {
       await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
       setEditingId(null);
+      setManualIds(prev => new Set(prev).add(tutorCourseDetailId));
       fetchSubjects();
     } catch (e) {
       showToast("error", e.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
     }
   };
 
+  const handleUpdateRates = async (tutorCourseDetailId, tutorRate, studentRate) => {
+    const current = subjects.find(s => s.TutorCourseDetailId === tutorCourseDetailId);
+    const effectiveTutor = tutorRate !== undefined ? tutorRate : current?.TutorRatePerHourOverride;
+    const effectiveStudent = studentRate !== undefined ? studentRate : current?.StudentRatePerHourOverride;
+
+    if (!isValidRatePair(effectiveTutor, effectiveStudent)) {
+      showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+      return false;
+    }
+
+    const payload = {};
+    if (tutorRate !== undefined) payload.TutorRatePerHourOverride = tutorRate || null;
+    if (studentRate !== undefined) payload.StudentRatePerHourOverride = studentRate || null;
+
+    if (Object.keys(payload).length === 0) {
+      return true;
+    }
+
+    try {
+      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, payload);
+      setEditingRateId(null);
+      fetchSubjects();
+      return true;
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "แก้ไขราคาไม่สำเร็จ");
+      return false;
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       await axios.delete(`${API_BASE}/tutorcoursedetails/${id}`);
+      setManualIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSubjects();
     } catch (e) { showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ"); }
   };
 
-  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
+
+  // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
+  const tutorOptions = allTutors.map(t => ({
+    id: t.AdminId,
+    label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
+    Photo: t.Photo,
+  }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
+    <div className="border border-neutral-200 rounded-xl overflow-visible">
+      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
         <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">วิชาในคอร์สนี้</p>
         {!adding && (
           <button onClick={() => setAdding(true)}
@@ -617,71 +902,159 @@ function CourseSubjects({ courseId, showToast }) {
         )}
       </div>
 
+      {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
+      {hasSuggestion && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+          <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
+            วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
+          </p>
+          <button onClick={applySuggestedToAll} disabled={applyingAll}
+            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 disabled:opacity-50 transition flex items-center gap-1">
+            {applyingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} ใช้ค่าที่แนะนำทั้งหมด
+          </button>
+        </div>
+      )}
+
       {subjects.length === 0 && !adding && (
         <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
       )}
 
-      {subjects.map((s) => (
-        <div key={s.TutorCourseDetailId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
-          <span className="flex-1 text-sm font-semibold text-neutral-800">{s.SubjectName}</span>
-          <span className="text-xs text-neutral-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
-          {editingId === s.TutorCourseDetailId ? (
-            <HoursInlineEdit
-              value={s.TotalHours}
-              onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <>
-              <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(s.TotalHours)}</span>
-              <button onClick={() => setEditingId(s.TutorCourseDetailId)}
-                className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
+      {subjects.map((s) => {
+        const avgPerMonthLabel = formatAvgPerMonth(s.TotalHours, monthsSpanned);
+        const isManual = manualIds.has(s.TutorCourseDetailId);
+        return (
+          <div key={s.TutorCourseDetailId} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex items-center gap-2">
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
+                <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
+                  <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+                </div>
+              </div>
               <button onClick={() => handleDelete(s.TutorCourseDetailId)}
-                className="text-red-400 hover:text-red-600 transition" title="ลบ">
-                <X className="h-3.5 w-3.5" />
+                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                <X className="h-4 w-4" />
               </button>
-            </>
-          )}
-        </div>
-      ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              {editingRateId === s.TutorCourseDetailId ? (
+                <RateInlineEdit
+                  tutorRate={s.TutorRatePerHourOverride}
+                  studentRate={s.StudentRatePerHourOverride}
+                  onSave={(t, st) => handleUpdateRates(s.TutorCourseDetailId, t, st)}
+                  onCancel={() => setEditingRateId(null)}
+                />
+              ) : (
+                <button type="button" onClick={() => setEditingRateId(s.TutorCourseDetailId)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition">
+                  เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+
+              <div className="shrink-0 ml-auto">
+                {editingId === s.TutorCourseDetailId ? (
+                  <HoursInlineEdit
+                    value={s.TotalHours}
+                    onSave={(hours) => handleUpdateHours(s.TutorCourseDetailId, hours)}
+                    onCancel={() => setEditingId(null)}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <span className="text-xs text-neutral-500 block">
+                        {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                      </span>
+                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                    </div>
+                    <button onClick={() => setEditingId(s.TutorCourseDetailId)}
+                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
 
       {adding && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border-t border-orange-100">
-          <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
-            className={inp + " flex-1"}>
-            <option value="">เลือกวิชา</option>
-            {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
-          </select>
-          <select value={newRow.AdminId} onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
-            className={inp + " flex-1"}>
-            <option value="">เลือกติวเตอร์</option>
-            {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
-          </select>
-          <input
-            type="number" min="0" step="1" placeholder="ชม." value={newRow.TotalHours}
-            onKeyDown={blockNegativeKeys}
-            onChange={e => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
-            }}
-            className={inp + " w-20"} />
-          <button onClick={handleAdd}
-            className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
-            <Check className="h-3.5 w-3.5" />
-          </button>
-          <button onClick={() => setAdding(false)}
-            className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
-            <X className="h-3.5 w-3.5" />
-          </button>
+        <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2 rounded-b-xl">
+          <div className="flex items-center gap-2">
+            <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
+              className={inp + " flex-1"}>
+              <option value="">เลือกวิชา</option>
+              {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
+            </select>
+            {/* ★ แก้ (ข้อ 4): ใช้ AvatarSelect แทน select ธรรมดา เพื่อโชว์รูปติวเตอร์ */}
+            <AvatarSelect
+              options={tutorOptions}
+              value={newRow.AdminId}
+              placeholder="เลือกติวเตอร์"
+              onChange={(adminId) => {
+                const tutor = allTutors.find(t => String(t.AdminId) === adminId);
+                setNewRow(r => ({
+                  ...r,
+                  AdminId: adminId,
+                  TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
+                }));
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min="0" step="1" placeholder="ชม. (เว้นว่าง = ให้ระบบแนะนำ)" value={newRow.TotalHours}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
+              }}
+              className={inp + " w-44"} />
+            <input
+              type="number" min="0" placeholder="เรทปัจจุบัน/ชม."
+              value={newRow.TutorRatePerHourOverride}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
+              className={inp + " w-28"} />
+            <input
+              type="number" min="0" placeholder="ใหม่/ชม."
+              value={newRow.StudentRatePerHourOverride}
+              onKeyDown={blockNegativeKeys}
+              onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
+              className={inp + " w-28"} />
+            <button onClick={handleAdd}
+              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setAdding(false)}
+              className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {totalCourseHours > 0 && newRow.TotalHours === "" && (
+            <p className="text-[11px] text-blue-500 flex items-center gap-1">
+              <Info className="h-3 w-3" /> เว้นว่างไว้ ระบบจะแบ่งชั่วโมงที่เหลือให้เท่า ๆ กันโดยอัตโนมัติ (แก้ไขภายหลังได้เสมอ)
+            </p>
+          )}
+          {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
+            <p className="text-[11px] text-red-500 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> ราคาขายต่ำกว่าค่าติวเตอร์ — จะขาดทุน{" "}
+              {(Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0)).toFixed(0)} บาท/ชม.
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function CourseStudents({ courseId, courseStatusId, showToast }) {
+function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) {
   const [students, setStudents] = useState([]);
   const [allStudents, setAllStudents] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -699,6 +1072,10 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
     fetchStudents();
     axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
   }, [courseId]);
+
+  useEffect(() => {
+    if (onCountChange) onCountChange(students.length);
+  }, [students, onCountChange]);
 
   const enrolledIds = new Set(students.map(s => String(s.UserId)));
   const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
@@ -758,6 +1135,8 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
 
       {students.map(s => (
         <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+          {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
+          <Avatar photo={s.Photo} size="w-7 h-7" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
           <span className="flex-1 text-sm font-semibold text-neutral-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
@@ -797,6 +1176,8 @@ function CourseStudents({ courseId, courseStatusId, showToast }) {
               return (
                 <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
                   <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                  {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
+                  <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                   <span className="flex-1 font-medium text-neutral-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
                 </label>
               );
@@ -827,7 +1208,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [playingVideo, setPlayingVideo] = useState(null); // ★ เพิ่ม
+  const [playingVideo, setPlayingVideo] = useState(null);
   const fileInputRef = useRef(null);
 
   const emptyForm = { title: "", mode: "youtube", url: "", duration: "", thumbnail: "" };
@@ -1061,7 +1442,285 @@ function CoursePreviewVideos({ courseId, showToast }) {
   );
 }
 
-// ─── Course Form ─────────────────────────────────────────────────────────────
+function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxStudents, onApplyPrice }) {
+  const [mode, setMode] = useState("price"); // 'profit' | 'percent' | 'price'
+  const [profitInput, setProfitInput] = useState("");
+  const [percentInput, setPercentInput] = useState("");
+  const [priceInput, setPriceInput] = useState(String(currentPrice || ""));
+
+  const cost = Number(tutorCost || 0);
+  const actualStudentCount = Number(currentStudentCount || 0);
+  const maxCount = Number(maxStudents || 0);
+  // ★ แก้ใหม่: ใช้ "จำนวนที่รับสูงสุด" เป็นฐานคำนวณเสมอ (สมมติว่ารับนักเรียนเต็มจำนวน)
+  // ถ้ายังไม่ได้กรอกจำนวนที่รับสูงสุด ให้ fallback ไปใช้จำนวนนักเรียนที่มีอยู่จริงแทน
+  const capacityCount = maxCount > 0 ? maxCount : actualStudentCount;
+
+  // ★ ทุกโหมดคำนวณระดับ "ทั้งคอร์ส" ก่อน แล้วค่อยหารด้วย capacityCount เพื่อได้ราคาต่อคน
+  let pricePerStudent = 0, totalRevenue = 0, totalProfit = 0, resultMargin = 0;
+
+  if (mode === "profit") {
+    // กำไรเป้าหมายของทั้งคอร์ส (บาท) -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
+    totalProfit = Number(profitInput || 0);
+    totalRevenue = cost + totalProfit;
+    pricePerStudent = capacityCount > 0 ? totalRevenue / capacityCount : 0;
+    resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  } else if (mode === "percent") {
+    // % กำไรของทั้งคอร์ส -> คิดย้อนกลับหารายได้ที่ต้องมี แล้วหารเป็นราคาต่อคน
+    resultMargin = Number(percentInput || 0);
+    totalRevenue = resultMargin < 100 ? cost / (1 - resultMargin / 100) : 0;
+    totalProfit = totalRevenue - cost;
+    pricePerStudent = capacityCount > 0 ? totalRevenue / capacityCount : 0;
+  } else {
+    // กรอกราคาขายต่อคน -> คำนวณไปข้างหน้าเป็นรายได้รวม กำไรรวม และ %
+    pricePerStudent = Number(priceInput || 0);
+    totalRevenue = pricePerStudent * capacityCount;
+    totalProfit = totalRevenue - cost;
+    resultMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+  }
+
+  const isLoss = totalProfit < 0;
+
+  return (
+    <div className={`rounded-2xl border overflow-hidden ${isLoss ? "border-amber-200" : "border-emerald-200"}`}>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b ${isLoss ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 ${isLoss ? "bg-amber-400" : "bg-emerald-500"}`}>
+          <DollarSign className="h-4 w-4 text-white" />
+        </span>
+        <p className={`text-xs font-bold uppercase tracking-wide ${isLoss ? "text-amber-700" : "text-emerald-700"}`}>
+          วิเคราะห์กำไร (Pricing Calculator)
+        </p>
+      </div>
+
+      <div className="p-4 space-y-3 bg-white">
+      <p className="text-[11px] text-neutral-400 leading-relaxed">
+          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> {maxCount > 0
+            ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-neutral-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
+            : <>และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{capacityCount} คน</span></>}
+          {capacityCount === 0 && (
+            <span className="block mt-1 text-amber-600 font-semibold">⚠ ยังไม่ได้กรอก "จำนวนที่รับสูงสุด" และยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณากรอกจำนวนที่รับสูงสุดก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
+          )}
+        </p>
+
+        <div className="flex gap-2">
+        {[
+            { key: "profit", label: "กำไรเป้าหมายของทั้งคอร์ส (บาท)" },
+            { key: "percent", label: "กรอก % กำไร (ทั้งคอร์ส)" },
+            { key: "price", label: "กรอกราคาขาย (สุทธิต่อคน)" },
+          ].map(opt => (
+            <button key={opt.key} type="button" onClick={() => {
+              setMode(opt.key);
+              // ★ seed ค่าจากราคาต่อคนปัจจุบัน (currentPrice) x capacityCount = รายได้รวมปัจจุบัน (สมมติขายเต็มจำนวนที่รับสูงสุด)
+              // แล้วคำนวณย้อนกลับเป็นกำไรรวม/เปอร์เซ็นต์ ให้ทุกโหมดอ้างอิงชุดข้อมูลเดียวกัน
+              const seedTotalRevenue = currentPrice * capacityCount;
+              const seedTotalProfit = seedTotalRevenue - cost;
+              if (opt.key === "profit") {
+                setProfitInput(String(Math.round(seedTotalProfit)));
+              } else if (opt.key === "percent") {
+                setPercentInput(seedTotalRevenue > 0 ? ((seedTotalProfit / seedTotalRevenue) * 100).toFixed(1) : "");
+              } else if (opt.key === "price") {
+                setPriceInput(String(currentPrice));
+              }
+            }}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold border transition
+                ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {mode === "profit" && (
+          <input type="number" min="0" value={profitInput} onChange={e => setProfitInput(e.target.value)}
+            placeholder="กำไรเป้าหมายที่ต้องการทั้งคอร์ส (บาท)" onKeyDown={blockNegativeKeys}
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        )}
+        {mode === "percent" && (
+          <input type="number" min="0" max="99" value={percentInput} onChange={e => setPercentInput(e.target.value)}
+            placeholder="% กำไรที่ต้องการของทั้งคอร์ส" onKeyDown={blockNegativeKeys}
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        )}
+        {mode === "price" && (
+          <input type="number" min="0" value={priceInput} onChange={e => setPriceInput(e.target.value)}
+            placeholder="ราคาขายสุทธิต่อคนที่ต้องการ" onKeyDown={blockNegativeKeys}
+            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+        )}
+
+        <div className="rounded-2xl border border-black/5 overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
+          <div className="p-3 text-center bg-neutral-50">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
+            </div>
+            <div className="p-3 text-center bg-neutral-50">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">รายได้รวม</p>
+              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(totalRevenue)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(totalProfit)}</p>
+            </div>
+            <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">อัตรากำไร (%)</p>
+              <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onClick={() => onApplyPrice(Math.round(pricePerStudent))} disabled={pricePerStudent <= 0}
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-40 transition text-sm shadow-sm">
+          <Check className="h-4 w-4" /> ใช้ราคานี้
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStudents }) {
+  const cost = Number(tutorCost || 0);
+  const pricePerStudent = Number(fullCost || 0);
+  const breakEvenStudents = pricePerStudent > 0 ? Math.ceil(cost / pricePerStudent) : 0;
+
+  const currentRevenue = pricePerStudent * Number(currentStudentCount || 0);
+  const currentProfit = currentRevenue - cost;
+  const isProfitable = currentProfit >= 0;
+
+  const maxCount = maxStudents ? Number(maxStudents) : null;
+  const maxRevenue = maxCount !== null ? pricePerStudent * maxCount : null;
+  const maxProfit = maxRevenue !== null ? maxRevenue - cost : null;
+
+  return (
+    <div className={`rounded-2xl border overflow-hidden ${isProfitable ? "border-emerald-200" : "border-amber-200"}`}>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b ${isProfitable ? "bg-emerald-50 border-emerald-100" : "bg-amber-50 border-amber-100"}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full shrink-0 ${isProfitable ? "bg-emerald-500" : "bg-amber-400"}`}>
+          <TrendingUp className="h-4 w-4 text-white" />
+        </span>
+        <p className={`text-xs font-bold uppercase tracking-wide ${isProfitable ? "text-emerald-700" : "text-amber-700"}`}>
+          วิเคราะห์ความคุ้มทุน (Break-even)
+        </p>
+      </div>
+
+      {/* <div className="p-4 space-y-3 bg-white">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          ต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> (คงที่ ไม่ขึ้นกับจำนวนนักเรียน) ·
+          ราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+        </p> */}
+      <div className="p-4 space-y-3 bg-white">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
+          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+        </p>
+
+        <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
+          <div className="p-3 text-center bg-neutral-50">
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">จุดคุ้มทุน</p>
+            <p className="text-base font-bold text-neutral-800 mt-0.5">≥ {breakEvenStudents} คน</p>
+          </div>
+          <div className="p-3 text-center bg-neutral-50">
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
+            <p className="text-base font-bold text-neutral-800 mt-0.5">{currentStudentCount || 0} คน</p>
+          </div>
+          <div className={`p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
+            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+            <p className={`text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
+              {isProfitable ? "+" : ""}฿{formatPrice(currentProfit)}
+            </p>
+          </div>
+        </div>
+
+        {/* <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+          {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+          <span>
+            {isProfitable
+              ? `คุ้มทุนแล้ว (ต้องการอย่างน้อย ${breakEvenStudents} คน มีอยู่ ${currentStudentCount || 0} คน)`
+              : `ยังไม่คุ้มทุน — ต้องมีนักเรียนอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน จึงจะคุ้มทุน`}
+          </span>
+        </div> */}
+        <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+          {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+          <span>
+            {isProfitable
+              ? `เกินจุดคุ้มทุนแล้ว — กำไรประมาณ ฿${formatPrice(currentProfit)}`
+              : `ยังไม่ถึงจุดคุ้มทุน — ต้องมีนักเรียนเพิ่มอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน เพื่อให้ถึงจุดคุ้มทุน`}
+          </span>
+        </div>
+
+        {/* {maxCount !== null && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
+            <span className="text-neutral-500">หากรับเต็มจำนวน ({maxCount} คน)</span>
+            <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              {maxProfit >= 0 ? "คุ้มทุน" : "ยังขาดทุน"} (฿{formatPrice(maxProfit)})
+            </span>
+          </div>
+        )} */}
+        {maxCount !== null && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
+            <span className="text-neutral-500">หากมีนักเรียนเป้าหมายเต็มจำนวนนักเรียนสูงสุด ({maxCount} คน)</span>
+            <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              {maxProfit >= 0 ? "เกินจุดคุ้มทุน" : "ยังไม่ถึงจุดคุ้มทุน"} (฿{formatPrice(maxProfit)})
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
+  const count = Number(installments || 1);
+  const amounts = value && value.length === count ? value : distributeInstallments(fullCost, count);
+  const sum = amounts.reduce((s, v) => s + Number(v || 0), 0);
+  const diff = Math.round((fullCost - sum) * 100) / 100;
+  const ok = Math.abs(diff) < 0.01;
+
+  const updateAt = (idx, raw) => {
+    const next = [...amounts];
+    next[idx] = sanitizeMoneyInput(raw);
+    onChange(next);
+  };
+
+  const resetToEqual = () => onChange(distributeInstallments(fullCost, count));
+
+  return (
+    <div className="rounded-2xl border border-orange-200 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 bg-orange-50 border-b border-orange-100">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 shrink-0">
+            <Tag className="h-4 w-4 text-white" />
+          </span>
+          <p className="text-xs font-bold uppercase tracking-wide text-orange-700">
+            กำหนดยอดผ่อนแต่ละงวด
+          </p>
+        </div>
+        <button type="button" onClick={resetToEqual}
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 transition shrink-0">
+          แบ่งเท่า ๆ กันใหม่
+        </button>
+      </div>
+
+      <div className="p-4 space-y-2 bg-white">
+        {amounts.map((amt, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
+            <input
+              type="text" inputMode="decimal" value={moneyDisplay(amt)}
+              onChange={(e) => updateAt(idx, e.target.value)} onKeyDown={blockNegativeKeys}
+              className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+            />
+            <span className="text-xs text-neutral-400 shrink-0">บาท</span>
+          </div>
+        ))}
+        <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+          <div className="flex items-center gap-2">
+            {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
+            <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
+          </div>
+          <span className={`text-xs font-bold ${ok ? "text-emerald-700" : "text-red-600"}`}>
+            {ok ? "ครบตามราคาสุทธิคอร์ส" : diff > 0 ? `ขาดอีก ฿${formatPrice(diff)}` : `เกินไป ฿${formatPrice(Math.abs(diff))}`}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
@@ -1070,9 +1729,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Price: "",
     Discount: "0",
     Installments: "1",
+    TotalCourseHours: "",
+    MaxStudents: "",
+    InstallmentAmounts: null, // ★ แก้: array รายงวด แทน InstallmentAmountOverride เดิม
     Remark: "",
     Status_Course_Id: 1,
     Term_Id: 1,
+    Course_Type: "single",
     Course_Availability_Id: "",
     CourseImage: "",
     YearId: "",
@@ -1081,26 +1744,88 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   const [pendingSubjects, setPendingSubjects] = useState([]);
   const [pendingStudents, setPendingStudents] = useState([]);
-  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
+  const [showPreview, setShowPreview] = useState(false);
+  const [existingSubjectsCost, setExistingSubjectsCost] = useState(0);
+  const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
+  const [existingStudentCount, setExistingStudentCount] = useState(0);
+  const [existingTutorCount, setExistingTutorCount] = useState(0);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
+
+  const monthsSpanned = calcMonthsSpanned(form.StartDate, form.LastDate);
+  const avgHoursPerMonth = form.TotalCourseHours && monthsSpanned > 0
+    ? Number(form.TotalCourseHours) / monthsSpanned
+    : null;
+
+  const installmentsCount = Number(form.Installments || 1);
+  const isInstallmentEnabled = installmentsCount > 1;
+  const calculatedInstallmentAmount = isInstallmentEnabled ? fullCost / installmentsCount : fullCost;
+
+  const pendingTotalCost = pendingSubjects.reduce((sum, it) => {
+    const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
+    return sum + Number(it.TotalHours || 0) * rate;
+  }, 0);
+  const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
+  const currentStudentCount = initial.CourseID ? existingStudentCount : pendingStudents.length;
+  const tutorCount = initial.CourseID ? existingTutorCount : pendingSubjects.length;
+  const addedSubjectHours = initial.CourseID
+    ? existingSubjectsHours
+    : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
+  const targetCourseHours = Number(form.TotalCourseHours || 0);
+  const hoursDiff = targetCourseHours - addedSubjectHours;
+  const hoursMismatch = targetCourseHours > 0 && Math.abs(hoursDiff) > 0.01;
+
+  // ★ แก้ (ข้อ 2): เช็กยอดผ่อนรายงวดรวมต้องเท่ากับราคาสุทธิพอดี (แทน logic เดิมที่เช็กยอดเดียว×จำนวนงวด)
+  const currentInstallmentAmounts = isInstallmentEnabled
+    ? (form.InstallmentAmounts && form.InstallmentAmounts.length === installmentsCount
+      ? form.InstallmentAmounts
+      : distributeInstallments(fullCost, installmentsCount))
+    : [];
+  const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
+  const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
     set(key, cleaned);
   };
-  const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatPrice(v));
 
   const handleSubmit = () => {
     if (!form.CourseName.trim()) return alert("กรุณากรอกชื่อคอร์ส");
     if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+    if (!DATE_RE.test(String(form.StartDate).slice(0, 10)) || !DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+      return showToast(
+        "error",
+        "รูปแบบวันที่ไม่ถูกต้อง",
+        "กรุณาลบข้อมูลในช่องวันเริ่มสอน/วันสิ้นสุด แล้วเลือกวันที่ใหม่จากปฏิทินอีกครั้ง"
+      );
+    }
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (!form.Price || Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
     if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
+
+    if (hoursMismatch) {
+      return showToast(
+        "error",
+        hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
+        `กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
+      );
+    }
+
+    // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
+    if (installmentMismatch) {
+      return showToast(
+        "error",
+        "ยอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ",
+        `รวม ฿${formatPrice(installmentSum)} ต้องเท่ากับราคาสุทธิ ฿${formatPrice(fullCost)}`
+      );
+    }
+
     onSave({
       ...form,
       FullCost: fullCost,
+      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts : null,
       pendingSubjects,
       pendingStudents,
     });
@@ -1134,18 +1859,24 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      {form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) && (
+        <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
+          <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
           <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
           <input
-            type="text" inputMode="numeric" value={moneyDisplay(form.Price)}
+            type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
             onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
             className={inputCls} placeholder="5,900" />
         </div>
         <div>
           <label className={labelCls}>ส่วนลด (บาท)</label>
           <input
-            type="text" inputMode="numeric" value={moneyDisplay(form.Discount)}
+            type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
             onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
             className={inputCls} placeholder="0" />
         </div>
@@ -1155,18 +1886,92 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ฿{formatPrice(fullCost)}
           </div>
         </div>
+        <div>
+          <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
+          <input
+            type="number" min="0" step="1" value={form.MaxStudents}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+            }}
+            className={inputCls} placeholder="ไม่บังคับ" />
+        </div>
       </div>
 
-      <div>
-        <label className={labelCls}>จำนวนงวดผ่อนชำระ</label>
-        <input
-          type="number" min="0" step="1" value={form.Installments}
-          onKeyDown={blockNegativeKeys}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("Installments", v);
-          }}
-          className={inputCls} />
+
+
+      {/* ★ แก้: ชั่วโมงรวม + จำนวนงวด อยู่แถวเดียวกัน (2 คอลัมน์) แล้วให้กำหนดยอดผ่อนแต่ละงวดลงมาแถวถัดไปเต็มความกว้าง */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
+          <input
+            type="number" min="0" step="0.5" value={form.TotalCourseHours}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
+            }}
+            className={inputCls} placeholder="เช่น 120"
+          />
+          {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
+          <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+            {!monthsSpanned
+              ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
+              : !form.TotalCourseHours
+                ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
+                : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
+          </p>
+        </div>
+
+        <div>
+          <label className={labelCls}>จำนวนงวด</label>
+          <input
+            type="number" min="0" step="1" value={form.Installments}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
+                set("Installments", v);
+                // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
+                set("InstallmentAmounts", null);
+              }
+            }}
+            className={inputCls} />
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
+              {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
+            </span>
+            {isInstallmentEnabled && (
+              <span className="text-[11px] text-neutral-500">
+                ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+              </span>
+            )}
+          </div>
+          {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
+          {isInstallmentEnabled && monthsSpanned > 0 && (
+            <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+              <Info className="h-3 w-3 shrink-0" />
+              ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+            </p>
+          )}
+        </div>
+
+        <div className="md:col-span-2">
+          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
+          {isInstallmentEnabled ? (
+            <InstallmentAmountsEditor
+              installments={installmentsCount}
+              fullCost={fullCost}
+              value={form.InstallmentAmounts}
+              onChange={(v) => set("InstallmentAmounts", v)}
+            />
+          ) : (
+            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -1205,9 +2010,60 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={labelCls}>ประเภทคอร์ส</label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "single", label: "คอร์สเดี่ยว" },
+              { value: "bundle", label: "คอร์สรวม" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => set("Course_Type", opt.value)}
+                className={`py-2.5 rounded-xl text-sm font-bold border transition
+                  ${form.Course_Type === opt.value
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>คอร์สโปรโมชัน</label>
+          <button
+            type="button"
+            onClick={() => set("Is_Promotion", !form.Is_Promotion)}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
+              ${form.Is_Promotion
+                ? "bg-amber-50 border-amber-300"
+                : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
+          >
+            <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
+              <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
+              {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
+            </span>
+            {form.Is_Promotion
+              ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
+              : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
+          </button>
+        </div>
+      </div>
+
       <div>
         <label className={labelCls}>รูปภาพคอร์ส</label>
         <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
+      </div>
+
+      <div>
+        <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
+        <p className="text-[11px] text-neutral-400 mb-2 normal-case">
+          ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
+        </p>
+        <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
       </div>
 
       <div>
@@ -1219,19 +2075,164 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           rows={3}
           placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
         />
+        {form.Remark?.trim() && (
+          <p className="flex items-center justify-end gap-1 text-[11px] text-green-600 font-medium mt-1">
+            <Check className="h-3 w-3" /> บันทึกข้อความแล้ว ({form.Remark.trim().length} ตัวอักษร)
+          </p>
+        )}
       </div>
 
       <div>
         <label className={labelCls}>วิชาและติวเตอร์</label>
         {initial.CourseID
-          ? <CourseSubjects courseId={initial.CourseID} showToast={showToast} />
-          : <PendingSubjectPicker items={pendingSubjects} onChange={setPendingSubjects} showToast={showToast} />}
+          ? <CourseSubjects
+          courseId={initial.CourseID}
+          showToast={showToast}
+          onTotalCostChange={setExistingSubjectsCost}
+          onTotalHoursChange={setExistingSubjectsHours}
+          onSubjectCountChange={setExistingTutorCount}
+          totalCourseHours={Number(form.TotalCourseHours || 0)}
+          monthsSpanned={monthsSpanned}
+        />
+          : <PendingSubjectPicker
+            items={pendingSubjects}
+            onChange={setPendingSubjects}
+            showToast={showToast}
+            totalCourseHours={Number(form.TotalCourseHours || 0)}
+            monthsSpanned={monthsSpanned}
+          />}
+
+        {targetCourseHours > 0 && (
+          <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
+            ${hoursMismatch
+              ? (hoursDiff > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-red-50 border-red-200 text-red-700")
+              : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+            {hoursMismatch
+              ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              : <Check className="h-3.5 w-3.5 shrink-0" />}
+            <span>
+              {hoursMismatch
+                ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
+                : "จำนวนชั่วโมงครบถ้วน"}
+            </span>
+          </div>
+        )}
       </div>
+
+      {totalTutorCost > 0 && (
+        <div className="mt-2.5 rounded-2xl border border-neutral-200 bg-neutral-50/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-400 shrink-0">
+              <Info className="h-3.5 w-3.5 text-white" />
+            </span>
+            <p className="text-xs font-bold text-neutral-700">
+              สรุปต้นทุนคอร์ส
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
+            <div className="pr-3 py-1.5">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+              <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+            </div>
+            <div className="pl-3 py-1.5">
+              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+              <p className="text-sm font-bold text-neutral-700">
+                ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
+              </p>
+            </div>
+          </div>
+
+          <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
+            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในส่วน "วิเคราะห์กำไร" ด้านล่าง
+          </p>
+        </div>
+      )}
+      {/* {totalTutorCost > 0 && (() => {
+        const isLoss = totalTutorCost > fullCost;
+        const diff = Math.abs(fullCost - totalTutorCost);
+        return (
+          <div className={`mt-2.5 rounded-2xl border overflow-hidden
+              ${isLoss ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
+            <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full shrink-0
+                  ${isLoss ? "bg-amber-400" : "bg-emerald-500"}`}>
+                {isLoss
+                  ? <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                  : <Check className="h-3.5 w-3.5 text-white" />}
+              </span>
+              <p className={`text-xs font-bold ${isLoss ? "text-amber-700" : "text-emerald-700"}`}>
+                สรุปต้นทุน–รายรับของคอร์สนี้
+              </p>
+            </div>
+
+            <p className="px-4 py-2 text-[10px] text-neutral-400 bg-neutral-50/70 border-t border-neutral-200/60 leading-relaxed">
+              คำนวณจากค่าติวเตอร์เท่านั้น ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน
+            </p>
+
+            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 pb-2">
+              <div className="pr-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+              </div>
+              <div className="pl-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขายคอร์ส (สุทธิ)</p>
+                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(fullCost)}</p>
+              </div>
+            </div>
+
+            <div className={`px-4 py-2 text-xs font-semibold flex items-center justify-between
+                ${isLoss ? "bg-amber-100/70 text-amber-700" : "bg-emerald-100/70 text-emerald-700"}`}>
+              <span>{isLoss ? "ส่วนต่างที่ต้องจ่ายเพิ่ม" : "กำไรขั้นต้นโดยประมาณ"}</span>
+              <span className="text-sm font-bold">฿{formatPrice(diff)}</span>
+            </div>
+
+            {isLoss && (
+              <p className="px-4 py-2 text-[11px] text-amber-700/80 bg-amber-50 border-t border-amber-200/60 leading-relaxed">
+                💡 คอร์สนี้ขายราคาต่ำกว่าเรทปัจจุบันติวเตอร์ — ไม่เป็นไรหากตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
+                หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) ระบบเพียงแจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
+              </p>
+            )}
+          </div>
+        );
+      })()} */}
+
+      {totalTutorCost > 0 && (
+        <div>
+          <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
+          {/* <PricingCalculator
+            tutorCost={totalTutorCost}
+            currentPrice={fullCost}
+            onApplyPrice={(targetNetPrice) => { */}
+          <PricingCalculator
+            tutorCost={totalTutorCost}
+            currentPrice={fullCost}
+            currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
+            onApplyPrice={(targetNetPrice) => {
+              const discount = Number(form.Discount || 0);
+              set("Price", String(targetNetPrice + discount));
+            }}
+          />
+        </div>
+      )}
+
+      {totalTutorCost > 0 && (
+        <div>
+          <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
+          <BreakEvenAnalysis
+            tutorCost={totalTutorCost}
+            fullCost={fullCost}
+            currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
+          />
+        </div>
+      )}
 
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
-          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} />
+          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
           : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
       </div>
 
@@ -1256,7 +2257,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || hoursMismatch || installmentMismatch}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
@@ -1278,7 +2279,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     </div>
   );
 }
-
 function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
@@ -1334,6 +2334,8 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
         <div className="divide-y divide-neutral-100 border-b border-neutral-200">
           {selectedStudents.map(s => (
             <div key={s.UserId} className="flex items-center gap-3 px-4 py-2 bg-orange-50/50">
+              {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
+              <Avatar photo={s.Photo} />
               <span className="flex-1 text-sm font-medium text-neutral-800">
                 {s.Nickname || `${s.Firstname} ${s.Lastname}`}
               </span>
@@ -1382,6 +2384,8 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
                   }`}
               >
                 <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
+                <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                 <span className="flex-1 font-medium text-neutral-700">
                   {s.Nickname || `${s.Firstname} ${s.Lastname}`}
                 </span>
@@ -1395,11 +2399,13 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 }
 
 // ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
-function PendingSubjectPicker({ items, onChange, showToast }) {
+function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, monthsSpanned }) {
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
-  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "" });
+  const [adding, setAdding] = useState(false);
+  const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingIndex, setEditingIndex] = useState(null);
+  const [editingRateIndex, setEditingRateIndex] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -1411,13 +2417,41 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
     });
   }, []);
 
+  const manualItems = items.filter(it => it.HoursIsManual);
+  const nonManualItems = items.filter(it => !it.HoursIsManual);
+  const manualHoursSum = manualItems.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
+  const remainingForSuggestion = Number(totalCourseHours || 0) - manualHoursSum;
+  const suggestedPerItem = totalCourseHours && nonManualItems.length > 0
+    ? remainingForSuggestion / nonManualItems.length
+    : null;
+  const hasSuggestion = suggestedPerItem !== null && nonManualItems.length > 0 &&
+    nonManualItems.some(it => Number(it.TotalHours || 0).toFixed(2) !== Number(suggestedPerItem).toFixed(2));
+
+  const applySuggestedToAll = () => {
+    if (suggestedPerItem === null) return;
+    onChange(items.map(it => it.HoursIsManual ? it : { ...it, TotalHours: suggestedPerItem }));
+    if (showToast) showToast("success", `ใช้ค่าที่แนะนำ (${suggestedPerItem.toFixed(1)} ชม./วิชา) กับ ${nonManualItems.length} วิชาแล้ว`);
+  };
+
   const add = () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
       if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
       return alert("กรุณาเลือกวิชาและติวเตอร์");
     }
-    onChange([...items, newRow]);
-    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "" });
+    if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
+      const msg = "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)";
+      if (showToast) return showToast("error", msg);
+      return alert(msg);
+    }
+    const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
+    let hoursToUse = willBeManual ? Number(newRow.TotalHours) : 0;
+    if (!willBeManual && totalCourseHours) {
+      const futureNonManualCount = nonManualItems.length + 1;
+      const suggestion = (Number(totalCourseHours) - manualHoursSum) / futureNonManualCount;
+      hoursToUse = suggestion > 0 ? suggestion : 0;
+    }
+    onChange([...items, { ...newRow, TotalHours: hoursToUse, HoursIsManual: willBeManual }]);
+    setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   };
 
   const remove = (index) => {
@@ -1425,51 +2459,125 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
   };
 
   const updateHours = (index, hours) => {
-    onChange(items.map((it, i) => i === index ? { ...it, TotalHours: hours } : it));
+    onChange(items.map((it, i) => i === index ? { ...it, TotalHours: hours, HoursIsManual: true } : it));
     setEditingIndex(null);
   };
 
-  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none";
+  const updateRate = (index, tutorRate, studentRate) => {
+    const current = items[index];
+    const effectiveTutor = tutorRate !== undefined ? tutorRate : current.TutorRatePerHourOverride;
+    const effectiveStudent = studentRate !== undefined ? studentRate : current.StudentRatePerHourOverride;
+    if (!isValidRatePair(effectiveTutor, effectiveStudent)) {
+      if (showToast) showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
+      return false;
+    }
+    onChange(items.map((it, i) => i === index ? {
+      ...it,
+      TutorRatePerHourOverride: tutorRate !== undefined ? tutorRate : it.TutorRatePerHourOverride,
+      StudentRatePerHourOverride: studentRate !== undefined ? studentRate : it.StudentRatePerHourOverride,
+    } : it));
+    setEditingRateIndex(null);
+    return true;
+  };
+
+  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] outline-none";
+
+  // ★ options สำหรับ AvatarSelect (ข้อ 4)
+  const tutorOptions = allTutors.map(t => ({
+    id: t.AdminId,
+    label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
+    Photo: t.Photo,
+  }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
+    <div className="border border-neutral-200 rounded-xl overflow-visible">
+      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center rounded-t-xl">
         <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
       </div>
+
+      {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
+      {hasSuggestion && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+          <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
+            วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
+          </p>
+          <button onClick={applySuggestedToAll}
+            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 transition flex items-center gap-1">
+            <Check className="h-3 w-3" /> ใช้ค่าที่แนะนำทั้งหมด
+          </button>
+        </div>
+      )}
 
       {items.map((it, idx) => {
         const subj = allSubjects.find(s => String(s.SubjectId) === String(it.SubjectId));
         const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
+        const avgPerMonthLabel = formatAvgPerMonth(it.TotalHours, monthsSpanned);
         return (
-          <div key={idx} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
-            <span className="flex-1 text-sm font-semibold text-neutral-800">
-              {subj ? subj.SubjectName : `วิชา (ไม่พบข้อมูล)`}
-            </span>
-            <span className="text-xs text-neutral-500">
-              {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : `ติวเตอร์ (ไม่พบข้อมูล)`}
-            </span>
-            {editingIndex === idx ? (
-              <HoursInlineEdit
-                value={it.TotalHours}
-                onSave={(hours) => updateHours(idx, hours)}
-                onCancel={() => setEditingIndex(null)}
-              />
-            ) : (
-              <>
-                <span className="text-xs text-neutral-400 w-24 text-right">{formatHoursLabel(it.TotalHours || 0)}</span>
-                <button onClick={() => setEditingIndex(idx)} className="text-neutral-300 hover:text-orange-500 transition" title="แก้ไขชั่วโมง">
-                  <Pencil className="h-3.5 w-3.5" />
+          <div key={idx} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex items-center gap-2">
+                {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์ */}
+                <Avatar photo={tut?.Photo} size="w-8 h-8" name={tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : undefined} seed={tut?.AdminId} />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-neutral-800 truncate">
+                    {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => remove(idx)}
+                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              {editingRateIndex === idx ? (
+                <RateInlineEdit
+                  tutorRate={it.TutorRatePerHourOverride}
+                  studentRate={it.StudentRatePerHourOverride}
+                  onSave={(t, st) => updateRate(idx, t, st)}
+                  onCancel={() => setEditingRateIndex(null)}
+                />
+              ) : (
+                <button type="button" onClick={() => setEditingRateIndex(idx)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition shrink-0">
+                  เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
+                  <Pencil className="h-3 w-3" />
                 </button>
-                <button onClick={() => remove(idx)} className="text-red-400 hover:text-red-600 transition" title="ลบ">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
+              )}
+              <div className="shrink-0 ml-auto">
+                {editingIndex === idx ? (
+                  <HoursInlineEdit
+                    value={it.TotalHours}
+                    onSave={(hours) => updateHours(idx, hours)}
+                    onCancel={() => setEditingIndex(null)}
+                  />
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <span className="text-xs text-neutral-500 block">
+                        {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
+                      </span>
+                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                    </div>
+                    <button onClick={() => setEditingIndex(idx)}
+                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         );
       })}
 
-      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50">
+      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 rounded-b-xl">
         <select
           value={newRow.SubjectId}
           onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
@@ -1479,31 +2587,66 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
           {allSubjects.map(s => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
         </select>
 
-        <select
+        {/* ★ แก้ (ข้อ 4): ใช้ AvatarSelect แทน select ธรรมดา เพื่อโชว์รูปติวเตอร์ */}
+        <AvatarSelect
+          options={tutorOptions}
           value={newRow.AdminId}
-          onChange={e => setNewRow(r => ({ ...r, AdminId: e.target.value }))}
-          className={inp + " flex-1"}
-        >
-          <option value="">เลือกติวเตอร์</option>
-          {allTutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname || `${t.Firstname} ${t.Lastname}`}</option>)}
-        </select>
+          placeholder="เลือกติวเตอร์"
+          onChange={(adminId) => {
+            const tutor = allTutors.find(t => String(t.AdminId) === adminId);
+            setNewRow(r => ({
+              ...r,
+              AdminId: adminId,
+              TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
+            }));
+          }}
+        />
 
         <input
           type="number" min="0" step="1"
-          placeholder="ชม."
+          placeholder="ชม. (ว่าง=แนะนำอัตโนมัติ)"
           value={newRow.TotalHours}
           onKeyDown={blockNegativeKeys}
           onChange={e => {
             const v = e.target.value;
             if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) setNewRow(r => ({ ...r, TotalHours: v }));
           }}
-          className={inp + " w-20"}
+          className={inp + " w-40"}
+        />
+        <input
+          type="number" min="0" step="1"
+          placeholder="เรทปัจจุบัน/ชม."
+          value={newRow.TutorRatePerHourOverride}
+          onKeyDown={blockNegativeKeys}
+          onChange={e => setNewRow(r => ({ ...r, TutorRatePerHourOverride: e.target.value }))}
+          className={inp + " w-24"}
+        />
+        <input
+          type="number" min="0" step="1"
+          placeholder="ใหม่/ชม."
+          value={newRow.StudentRatePerHourOverride}
+          onKeyDown={blockNegativeKeys}
+          onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
+          className={inp + " w-24"}
         />
 
         <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {totalCourseHours > 0 && newRow.TotalHours === "" && (
+        <p className="px-4 pb-2 text-[11px] text-blue-500 flex items-center gap-1">
+          <Info className="h-3 w-3" /> เว้นว่างไว้ ระบบจะแบ่งชั่วโมงที่เหลือให้เท่า ๆ กันโดยอัตโนมัติ (แก้ไขภายหลังได้เสมอ)
+        </p>
+      )}
+
+      {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
+        <p className="px-4 pb-2 text-[11px] text-red-500 flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3" /> ราคาขายต่ำกว่าค่าติวเตอร์ — คอร์สนี้จะขาดทุน{" "}
+          {(Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0)).toFixed(0)} บาท/ชม.
+        </p>
+      )}
     </div>
   );
 }
@@ -1512,11 +2655,10 @@ function PendingSubjectPicker({ items, onChange, showToast }) {
 function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
-  const [showPreview, setShowPreview] = useState(false); // ★ เพิ่ม
+  const [showPreview, setShowPreview] = useState(false);
 
   return (
     <div className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
-      {/* Cover Image */}
       <div className="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
         {course.CourseImage && !imgErr ? (
           <img
@@ -1550,7 +2692,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
         </select>
       </div>
 
-      {/* Body */}
       <div className="p-4 flex-1 flex flex-col">
         <h3 className="font-bold text-neutral-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
@@ -1574,11 +2715,20 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           </div>
         </div>
 
-        {/* Tags */}
         <div className="flex gap-1.5 flex-wrap mb-3">
+          {Number(course.Is_Promotion) === 1 && (
+            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full text-[10px] font-bold shadow-sm">
+              <Sparkles className="h-3 w-3" /> โปรโมชัน
+            </span>
+          )}
           {course.Term_Name && (
             <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
               {course.Term_Name}
+            </span>
+          )}
+          {course.Course_Type && (
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+              {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
             </span>
           )}
           {course.Course_Availability_Name && (
@@ -1598,7 +2748,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           ))}
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2 mt-auto pt-2 border-t border-neutral-100">
           <button
             onClick={() => onEdit(course)}
@@ -1647,13 +2796,15 @@ export default function AdminCoursesPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTerm, setFilterTerm] = useState("all");
+  const [filterAvailability, setFilterAvailability] = useState("all");
+  const [filterCourseType, setFilterCourseType] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
-  const [duplicatingCourse, setDuplicatingCourse] = useState(null); // ★ เพิ่ม
+  const [duplicatingCourse, setDuplicatingCourse] = useState(null);
 
   const fetchAll = async () => {
     try {
@@ -1677,7 +2828,7 @@ export default function AdminCoursesPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterAvailability, filterCourseType]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -1691,20 +2842,15 @@ export default function AdminCoursesPage() {
       );
       const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
 
+      const canEnrollNow = [1, 2].includes(Number(courseData.Status_Course_Id));
+      const studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
       let enrollFailed = 0;
-      let studentsSkippedDueToStatus = false;
-      const isEnrollAllowed = [1, 2].includes(Number(courseData.Status_Course_Id));
-
-      if (pendingStudents.length) {
-        if (isEnrollAllowed) {
-          const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
-            UserIds: pendingStudents,
-            CourseID,
-          });
-          enrollFailed = enrollRes.data.failed?.length || 0;
-        } else {
-          studentsSkippedDueToStatus = true;
-        }
+      if (canEnrollNow && pendingStudents.length > 0) {
+        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
+          UserIds: pendingStudents,
+          CourseID,
+        });
+        enrollFailed = (enrollRes.data?.failed || []).length;
       }
 
       if (studentsSkippedDueToStatus) {
@@ -1714,9 +2860,7 @@ export default function AdminCoursesPage() {
           "เนื่องจากสถานะคอร์สไม่ใช่เปิดรับสมัคร/กำลังสอน กรุณาเปลี่ยนสถานะก่อนแล้วเพิ่มนักเรียนภายหลัง"
         );
       } else if (subjectFailed > 0 || enrollFailed > 0) {
-        showToast(
-          "error",
-          "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
+        showToast("error", "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
           `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
         );
       } else {
@@ -1733,8 +2877,9 @@ export default function AdminCoursesPage() {
 
   const handleUpdate = async (data) => {
     setIsSubmitting(true);
+    const { pendingSubjects, pendingStudents, ...courseData } = data;
     try {
-      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, data)
+      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData)
       showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ!");
       setEditingCourse(null);
       fetchAll();
@@ -1756,12 +2901,10 @@ export default function AdminCoursesPage() {
     }
   };
 
-  // ★ แก้: เปลี่ยนจากยิง API ทันที เป็นเปิด modal ให้กรอกวันที่ก่อน
   const handleDuplicate = (course) => {
     setDuplicatingCourse(course);
   };
 
-  // ★ เพิ่ม: ฟังก์ชันยืนยันทำสำเนา (เรียกจาก modal)
   const confirmDuplicate = async ({ StartDate, LastDate }) => {
     setIsSubmitting(true);
     try {
@@ -1778,7 +2921,6 @@ export default function AdminCoursesPage() {
 
   const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
 
-  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown สถานะ (กรองตามค้นหา+เทอมที่เลือกไว้ก่อน ไม่รวมตัวสถานะเอง)
   const baseForStatusCount = courses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
@@ -1792,7 +2934,6 @@ export default function AdminCoursesPage() {
     return acc;
   }, {});
 
-  // ★ นับจำนวนคอร์สสำหรับแต่ละตัวเลือกใน dropdown เทอม (กรองตามค้นหา+สถานะที่เลือกไว้ก่อน ไม่รวมตัวเทอมเอง)
   const baseForTermCount = courses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
@@ -1811,7 +2952,9 @@ export default function AdminCoursesPage() {
       c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
-    return matchSearch && matchStatus && matchTerm;
+    const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
+    const matchCourseType = filterCourseType === "all" || c.Course_Type === filterCourseType;
+    return matchSearch && matchStatus && matchTerm && matchAvailability && matchCourseType;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
@@ -1820,7 +2963,6 @@ export default function AdminCoursesPage() {
   const totalStudents = [...new Map(courses.map((c) => [c.CourseID, c])).values()]
     .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
 
-  // ★ หา Status_Course_Id แบบ dynamic จากชื่อสถานะ แทนการ hardcode เลข
   const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
   const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;
 
@@ -1848,7 +2990,6 @@ export default function AdminCoursesPage() {
   return (
     <div className="space-y-6 mt-[90px]">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">จัดการคอร์สเรียน</h1>
@@ -1862,7 +3003,6 @@ export default function AdminCoursesPage() {
         </button>
       </div>
 
-      {/* ── Stats ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
@@ -1884,10 +3024,8 @@ export default function AdminCoursesPage() {
         ))}
       </div>
 
-      {/* ── Search & Filter ── */}
-      {/* ── Search & Filter ── */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
@@ -1911,12 +3049,12 @@ export default function AdminCoursesPage() {
             ))}
           </select>
           <select
-            value={filterTerm}
-            onChange={(e) => setFilterTerm(e.target.value)}
+            value={filterCourseType}
+            onChange={(e) => setFilterCourseType(e.target.value)}
             className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
-            {TERM_FILTERS.map((t) => (
-              <option key={t.key} value={t.key}>{t.label} ({termCounts[t.key] || 0})</option>
+            {COURSE_TYPE_FILTERS.map((t) => (
+              <option key={t.key} value={t.key}>{t.label}</option>
             ))}
           </select>
         </div>
@@ -1925,7 +3063,6 @@ export default function AdminCoursesPage() {
         </p>
       </div>
 
-      {/* ── Course Grid ── */}
       {paginated.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-neutral-200">
           <div className="text-6xl mb-3">📚</div>
@@ -1948,7 +3085,6 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {/* ── Pagination ── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-neutral-500">
@@ -1994,7 +3130,6 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {/* ── Modal: Add ── */}
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
           <CourseForm
@@ -2010,7 +3145,6 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
-      {/* ── Modal: Edit ── */}
       {editingCourse && (
         <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Edit2} onClose={() => setEditingCourse(null)}>
           <CourseForm
@@ -2027,7 +3161,6 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
-      {/* ── Confirm Delete ── */}
       {deletingCourse && (
         <ConfirmDialog
           course={deletingCourse}
@@ -2036,7 +3169,6 @@ export default function AdminCoursesPage() {
         />
       )}
 
-      {/* ── Modal: Duplicate ── */}
       {duplicatingCourse && (
         <DuplicateCourseModal
           course={duplicatingCourse}
