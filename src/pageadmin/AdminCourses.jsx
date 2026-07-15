@@ -1559,7 +1559,6 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   );
 }
 
-// ─── Course Form ─────────────────────────────────────────────────────────────
 function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
@@ -1722,7 +1721,9 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
       </div>
 
-      <div className="md:col-span-2 mt-4">
+      {/* ★ แก้: เปลี่ยนจาก div ครอบเฉย ๆ (ไม่มี gap ระหว่าง 3 บล็อกด้านใน) เป็น grid gap-4
+          ให้ระยะห่างสม่ำเสมอเหมือนส่วนราคาด้านบน แทนการพึ่งพา space-y-5 ของ parent ที่ไม่ครอบถึงระดับนี้ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
           <input
@@ -1776,22 +1777,20 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-1 items-start">
-          <div>
-            <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
-            {isInstallmentEnabled ? (
-              <InstallmentAmountsEditor
-                installments={installmentsCount}
-                fullCost={fullCost}
-                value={form.InstallmentAmounts}
-                onChange={(v) => set("InstallmentAmounts", v)}
-              />
-            ) : (
-              <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
-                เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
-              </div>
-            )}
-          </div>
+        <div>
+          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
+          {isInstallmentEnabled ? (
+            <InstallmentAmountsEditor
+              installments={installmentsCount}
+              fullCost={fullCost}
+              value={form.InstallmentAmounts}
+              onChange={(v) => set("InstallmentAmounts", v)}
+            />
+          ) : (
+            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+            </div>
+          )}
         </div>
       </div>
 
