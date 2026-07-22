@@ -451,12 +451,9 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
       {isEdit && (
         <div>
           <label className={lbl}>Username</label>
-          <input
-            className={inp + " bg-slate-100 text-slate-500 cursor-not-allowed"}
-            value={form.username}
-            disabled
-            readOnly
-          />
+          <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
+            {form.username || "—"}
+          </div>
           <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
         </div>
       )}

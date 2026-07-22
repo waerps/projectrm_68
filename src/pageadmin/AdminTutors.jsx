@@ -1008,15 +1008,12 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <textarea className={inp} rows={2} value={form.remark || ""} onChange={e => set("remark", e.target.value)} />
       </div>
 
-      {/* ★ แก้: แสดง Username แบบอ่านอย่างเดียวตอนแก้ไข ต้องโชว์ค่าปัจจุบันเสมอ (เดิมหน้านี้ไม่มีบล็อกนี้เลย) */}
       {isEdit && (
         <div>
           <label className={lbl}>Username</label>
-          <input
-            className={inp + " bg-slate-50 text-slate-900 font-medium cursor-default"}
-            value={form.username}
-            readOnly
-          />
+          <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
+            {form.username || "—"}
+          </div>
           <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
         </div>
       )}
