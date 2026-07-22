@@ -98,15 +98,19 @@ const blockNegativeKeys = (e) => {
   if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
-// ─── ★ ใหม่: สถานะติวเตอร์ ──────────────────────────────────────────────────
-// Status_Tutor_Id: 1 = กำลังสอน, 2 = เลิกสอน (ดูรายละเอียดที่ backend guidance)
 const TUTOR_STATUS = {
   1: { label: "กำลังสอน", bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
   2: { label: "ลาพัก", bg: "bg-slate-200", text: "text-slate-600", border: "border-slate-300" },
 };
 const statusOf = (id) => TUTOR_STATUS[id] || TUTOR_STATUS[1];
 
-// ─── ★ ใหม่: Fallback Avatar เป็นตัวอักษรแรกของชื่อ เมื่อไม่มีรูปโปรไฟล์ ──────
+const APPLICATION_STATUS = {
+  1: { label: "รอตรวจสอบ", bg: "bg-amber-100", text: "text-amber-700", border: "border-amber-200" },
+  2: { label: "อนุมัติแล้ว", bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200" },
+  3: { label: "ปฏิเสธ", bg: "bg-red-100", text: "text-red-700", border: "border-red-200" },
+};
+const appStatusOf = (id) => APPLICATION_STATUS[id] || APPLICATION_STATUS[1];
+
 const AVATAR_COLORS = [
   "bg-orange-500", "bg-amber-500", "bg-rose-500", "bg-pink-500",
   "bg-fuchsia-500", "bg-violet-500", "bg-indigo-500", "bg-blue-500",
@@ -154,6 +158,247 @@ function TutorAvatar({ tutor, className = "h-10 w-10 rounded-xl" }) {
       seed={tutor.AdminId}
       className={`shrink-0 border border-orange-100 ${className}`}
     />
+  );
+}
+
+function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (!reason.trim()) return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณาระบุเหตุผลการปฏิเสธ");
+    setLoading(true);
+    try {
+      await onSaved(application.ApplicationId, reason.trim());
+      onClose();
+    } finally { setLoading(false); }
+  };
+
+  const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+            <UserX className="h-5 w-5 text-red-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900">ปฏิเสธใบสมัคร</h3>
+            <p className="text-xs text-slate-400">{displayName}</p>
+          </div>
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+          เหตุผลการปฏิเสธ <span className="text-red-400 normal-case">*</span>
+        </label>
+        <textarea
+          rows={3}
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition mb-4"
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          placeholder="เช่น คุณสมบัติไม่ตรงตามที่ต้องการ / เอกสารไม่ครบ..."
+        />
+
+        <div className="flex gap-3">
+          <button onClick={onClose} disabled={loading}
+            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 disabled:opacity-50 transition">
+            ยกเลิก
+          </button>
+          <button onClick={submit} disabled={loading}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold text-sm hover:bg-red-600 disabled:opacity-50 transition">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันปฏิเสธ"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting, showToast, allTutors, allSubjects }) {
+  return (
+    <Modal
+      title={`อนุมัติใบสมัคร: ${application.Nickname || `${application.Firstname} ${application.Lastname}`}`}
+      icon={UserCheck}
+      onClose={onClose}
+    >
+      {/* แจ้งเตือน: ชื่อ/เบอร์/LINE/อาชีพ ดึงมาจากใบสมัคร แก้ไม่ได้ตรงนี้ */}
+      <div className="mb-5 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
+        <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700 leading-relaxed">
+          ชื่อ-นามสกุล, ชื่อเล่น, เบอร์โทร, LINE ID และอาชีพ ดึงมาจากใบสมัครโดยตรง หากต้องการแก้ไขข้อมูลเหล่านี้ กรุณาแก้ไขที่หน้ารายชื่อติวเตอร์หลังอนุมัติแล้ว
+          {application.ResumePath && (
+            <>
+              {" · "}
+              <a href={getFileUrl(application.ResumePath)} target="_blank" rel="noreferrer"
+                className="underline font-semibold text-blue-800">ดูไฟล์ Resume</a>
+            </>
+          )}
+        </p>
+      </div>
+
+      <TutorForm
+        initial={{
+          Firstname: application.Firstname,
+          Lastname: application.Lastname,
+          Nickname: application.Nickname,
+          PhoneNo: application.PhoneNo,
+          LineID: application.LineID,
+          Occupation: application.Occupation,
+        }}
+        onSave={(form) => onApprove(application.ApplicationId, {
+          username: form.username,
+          password: form.password,
+          ratePerTutors: form.ratePerTutors,
+          subjectIds: form.subjectIds,
+          bankName: form.bankName,
+          bankAccountNumber: form.bankAccountNumber,
+          bankAccountName: form.bankAccountName,
+          emergencyContactName: form.emergencyContactName,
+          emergencyContactPhoneNo: form.emergencyContactPhoneNo,
+        })}
+        onCancel={onClose}
+        isSubmitting={isSubmitting}
+        showToast={showToast}
+        allTutors={allTutors}
+        allSubjects={allSubjects}
+      />
+    </Modal>
+  );
+}
+
+function TutorApplicationList({ applications, onRefresh, showToast, allTutors, allSubjects }) {
+  const [filterStatus, setFilterStatus] = useState("1");
+  const [approvingApp, setApprovingApp] = useState(null);
+  const [rejectingApp, setRejectingApp] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const filtered = applications.filter(a => filterStatus === "all" || String(a.Status) === filterStatus);
+  const countOf = (status) => applications.filter(a => status === "all" || String(a.Status) === status).length;
+
+  const handleApprove = async (applicationId, data) => {
+    setIsSubmitting(true);
+    try {
+      await axios.post(`${API}/tutor-applications/${applicationId}/approve`, data);
+      showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ!");
+      setApprovingApp(null);
+      onRefresh();
+    } catch (e) {
+      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+    } finally { setIsSubmitting(false); }
+  };
+
+  // ★ เพิ่มกลับเข้ามาตรงนี้ — เป็นคนละตัวกับที่ลบออกจาก AdminTutorsPage
+  const handleReject = async (applicationId, reason) => {
+    try {
+      await axios.patch(`${API}/tutor-applications/${applicationId}/reject`, { reason });
+      showToast("success", "ปฏิเสธใบสมัครสำเร็จ");
+      onRefresh();
+    } catch (e) {
+      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h1>
+        <p className="text-sm text-slate-500 mt-1">ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2 flex-wrap">
+        {[
+          { key: "1", label: "รอตรวจสอบ" },
+          { key: "2", label: "อนุมัติแล้ว" },
+          { key: "3", label: "ปฏิเสธ" },
+          { key: "all", label: "ทั้งหมด" },
+        ].map(f => (
+          <button key={f.key} onClick={() => setFilterStatus(f.key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition
+              ${filterStatus === f.key ? "bg-orange-500 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            {f.label} ({countOf(f.key)})
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+          <p className="text-slate-500 font-medium">ไม่พบใบสมัครในสถานะนี้</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
+          {filtered.map(a => {
+            const status = appStatusOf(a.Status);
+            const displayName = a.Nickname || `${a.Firstname} ${a.Lastname}`;
+            return (
+              <div key={a.ApplicationId} className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50/40 transition-colors">
+                <InitialsAvatar name={displayName} seed={a.ApplicationId} className="h-10 w-10 rounded-xl text-sm shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
+                  <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-slate-500">
+                    {a.PhoneNo && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{a.PhoneNo}</span>}
+                    {a.Occupation && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{a.Occupation}</span>}
+                    <span className="text-slate-400">{formatDate(a.Created_at)}</span>
+                  </div>
+                  {a.Status === 3 && a.RejectReason && (
+                    <p className="text-[11px] text-red-500 mt-1">เหตุผล: {a.RejectReason}</p>
+                  )}
+                </div>
+
+                {a.ResumePath && (
+                  <a href={getFileUrl(a.ResumePath)} target="_blank" rel="noreferrer"
+                    className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition shrink-0" title="ดู Resume">
+                    <Eye className="h-3.5 w-3.5" />
+                  </a>
+                )}
+
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${status.bg} ${status.text} ${status.border}`}>
+                  {status.label}
+                </span>
+
+                {a.Status === 1 && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => setApprovingApp(a)}
+                      className="px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition">
+                      อนุมัติ
+                    </button>
+                    <button onClick={() => setRejectingApp(a)}
+                      className="px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
+                      ปฏิเสธ
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {approvingApp && (
+        <ApproveApplicationModal
+          application={approvingApp}
+          onClose={() => setApprovingApp(null)}
+          onApprove={handleApprove}
+          isSubmitting={isSubmitting}
+          showToast={showToast}
+          allTutors={allTutors}
+          allSubjects={allSubjects}
+        />
+      )}
+      {rejectingApp && (
+        <RejectApplicationModal
+          application={rejectingApp}
+          onClose={() => setRejectingApp(null)}
+          onSaved={handleReject}
+          showToast={showToast}
+        />
+      )}
+    </div>
   );
 }
 
@@ -1740,6 +1985,7 @@ export default function AdminTutorsPage() {
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [viewTutor, setViewTutor] = useState(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [applications, setApplications] = useState([]);
 
   const fetchTutors = async () => {
     try {
@@ -1761,7 +2007,16 @@ export default function AdminTutorsPage() {
     }
   };
 
-  useEffect(() => { fetchTutors(); fetchSubjects(); }, []);
+  const fetchApplications = async () => {
+    try {
+      const res = await axios.get(`${API}/tutor-applications`);
+      setApplications(res.data);
+    } catch (e) {
+      console.error("fetch applications error:", e);
+    }
+  };
+
+  useEffect(() => { fetchTutors(); fetchSubjects(); fetchApplications(); }, []);
   useEffect(() => { setCurrentPage(1); }, [search, filterSubject, filterStatus, filterHasStudents]);
 
   const handleCreate = async (data) => {
@@ -1878,10 +2133,29 @@ export default function AdminTutorsPage() {
         >
           บันทึกชั่วโมงการสอน
         </button>
+        <button
+          onClick={() => setActiveTab('applications')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition
+                    ${activeTab === 'applications'
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+        >
+          สมัครเป็นติวเตอร์
+        </button>
       </div>
 
       {/* ── Attendance Tab ── */}
       {activeTab === 'attendance' && <AdminAttendanceDashboard />}
+
+      {activeTab === 'applications' && (
+        <TutorApplicationList
+          applications={applications}
+          onRefresh={() => { fetchApplications(); fetchTutors(); }}   // ← แก้ตรงนี้
+          showToast={showToast}
+          allTutors={tutors}
+          allSubjects={allSubjects}
+        />
+      )}
 
       {/* ── List Tab ── */}
       {activeTab === 'list' && <>

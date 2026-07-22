@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, Edit, Trash2, Search, X, Save, UserCheck, BookOpen,
   Users, MapPin, RefreshCw, AlertCircle, Loader2, ChevronLeft,
-  ChevronRight, Copy, CheckCircle, Clock, AlertTriangle, Layers,
+  ChevronRight, CheckCircle, Clock, AlertTriangle, Layers, Info,
 } from 'lucide-react';
 
 const API_BASE = `${API_URL}/api/admin`;
@@ -74,6 +74,19 @@ function isoDate(d) {
     .slice(0, 10);
 }
 
+// คืนรายวิชาที่ Course นั้นรองรับ
+// รองรับทั้งกรณี backend ส่ง course.Subjects (array ของ {SubjectId, SubjectName})
+// หรือ course.SubjectIds (array ของ id) ถ้ายังไม่มีข้อมูลนี้จาก backend
+// จะ fallback ไปแสดงวิชาทั้งหมดแทน (ไม่บล็อกการทำงานเดิม)
+function getCourseSubjects(course, allSubjects) {
+  if (!course) return allSubjects;
+  if (Array.isArray(course.Subjects) && course.Subjects.length) return course.Subjects;
+  if (Array.isArray(course.SubjectIds) && course.SubjectIds.length) {
+    return allSubjects.filter(s => course.SubjectIds.includes(s.SubjectId));
+  }
+  return allSubjects;
+}
+
 // ─── component ────────────────────────────────────────────────
 export default function AdminSchedule() {
   // data
@@ -89,7 +102,6 @@ export default function AdminSchedule() {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [showCopy, setShowCopy] = useState(false);
   const [selected, setSelected] = useState(null);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [editScope, setEditScope] = useState('this');
@@ -104,9 +116,6 @@ export default function AdminSchedule() {
   const [fRoom, setFRoom] = useState('all');
   const [fSubject, setFSubject] = useState('all');
   const [fSearch, setFSearch] = useState('');
-
-  // copy week
-  const [copyTo, setCopyTo] = useState('');
 
   // ── fetch ──────────────────────────────────────────────────
   const fetchSchedule = useCallback(async (ws = weekStart) => {
@@ -375,34 +384,6 @@ export default function AdminSchedule() {
     }
   };
 
-  const handleCopyWeek = async () => {
-    if (!copyTo) return;
-    setSaving(true);
-
-    try {
-      const r = await fetch(`${API_BASE}/schedule/copy-week`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fromWeek: isoDate(weekStart),
-          toWeek: copyTo,
-        }),
-      });
-
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.message);
-
-      alert(d.message);
-      setShowCopy(false);
-      setCopyTo('');
-      await fetchSchedule(weekStart);
-    } catch (e) {
-      alert(`คัดลอกไม่สำเร็จ: ${e.message}`);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // ── stats ──────────────────────────────────────────────────
   const totalClasses = schedule.length;
   const totalStudents = [...new Set(schedule.map(e => e.CourseID))].length;
@@ -423,7 +404,7 @@ export default function AdminSchedule() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">จัดการตารางเรียน</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">ตารางสอนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
+            <p className="text-sm text-neutral-500 mt-0.5">ตารางเรียนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             {/* <button
@@ -432,12 +413,6 @@ export default function AdminSchedule() {
             >
               <RefreshCw className="h-4 w-4" /> รีเฟรช
             </button> */}
-            <button
-              onClick={() => setShowCopy(true)}
-              className="flex items-center gap-2 px-3 py-2 border-2 border-neutral-200 text-neutral-600 rounded-xl hover:bg-neutral-50 text-sm font-medium"
-            >
-              <Copy className="h-4 w-4" /> คัดลอกสัปดาห์
-            </button>
             <button
               onClick={() => {
                 setFormData(EMPTY_FORM);
@@ -645,24 +620,37 @@ export default function AdminSchedule() {
                         const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
                         const hasEntries = entries.length > 0;
 
+                        // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบเรียนได้
+                        // แต่ถ้าเลือกวันหยุด ให้ยืนยันก่อนเสมอ
+                        const confirmHolidayThenAdd = () => {
+                          if (isHoliday) {
+                            const holidayName = holidayMap[dateStr];
+                            const ok = window.confirm(
+                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบเรียนในวันนี้หรือไม่?`
+                            );
+                            if (!ok) return;
+                          }
+                          openAdd(dow, slot.start, slot.end);
+                        };
+
                         return (
                           <div
                             key={dow}
-                            className={`min-h-[110px] rounded-xl border transition-all p-1 space-y-1
-                                  ${isHoliday
-                                ? 'border-red-100 bg-red-50 cursor-not-allowed'        // ← วันหยุด
-                                : hasEntries
-                                  ? 'border-neutral-200 bg-white hover:shadow-sm'
+                            className={`min-h-[110px] rounded-xl border transition-all p-1 space-y-1 relative
+                                  ${hasEntries
+                                ? 'border-neutral-200 bg-white hover:shadow-sm'
+                                : isHoliday
+                                  ? 'border-dashed border-red-200 bg-red-50 hover:border-red-300 hover:bg-red-100 cursor-pointer group'
                                   : 'border-dashed border-neutral-200 bg-neutral-50 hover:border-orange-300 hover:bg-orange-50 cursor-pointer group'
                               }`}
                             onClick={() => {
-                              if (!hasEntries && !isHoliday) openAdd(dow, slot.start, slot.end); // ← guard
+                              if (!hasEntries) confirmHolidayThenAdd();
                             }}
                           >
                             {isHoliday && !hasEntries && (
-                              <div className="flex items-center justify-center h-full">
-                                <span className="text-[10px] text-red-300">วันหยุด</span>
-                              </div>
+                              <span className="absolute top-1 left-1 text-[9px] text-red-400 pointer-events-none">
+                                วันหยุด
+                              </span>
                             )}
                             {hasEntries ? (
                               entries.map(e => (
@@ -680,7 +668,7 @@ export default function AdminSchedule() {
                               ))
                             ) : (
                               <div className="flex items-center justify-center h-full">
-                                <Plus className="h-4 w-4 text-neutral-300 group-hover:text-orange-400 transition" />
+                                <Plus className={`h-4 w-4 transition ${isHoliday ? 'text-red-200 group-hover:text-red-400' : 'text-neutral-300 group-hover:text-orange-400'}`} />
                               </div>
                             )}
 
@@ -688,7 +676,7 @@ export default function AdminSchedule() {
                               <button
                                 onClick={e => {
                                   e.stopPropagation();
-                                  openAdd(dow, slot.start, slot.end);
+                                  confirmHolidayThenAdd();
                                 }}
                                 className="w-full py-0.5 text-[10px] text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded transition flex items-center justify-center gap-0.5"
                               >
@@ -801,52 +789,6 @@ export default function AdminSchedule() {
                 className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm font-medium disabled:opacity-50"
               >
                 {saving ? 'กำลังลบ...' : 'ลบคาบสอน'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Copy week */}
-      {showCopy && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-neutral-900">คัดลอกตารางสัปดาห์</h3>
-              <button onClick={() => setShowCopy(false)}>
-                <X className="h-5 w-5 text-neutral-400" />
-              </button>
-            </div>
-
-            <p className="text-sm text-neutral-600 mb-4">
-              คัดลอกตารางจาก <strong>{fmtDate(weekStart)}</strong> ไปยังสัปดาห์:
-            </p>
-
-            <div>
-              <label className="text-xs text-neutral-500 mb-1 block">วันจันทร์ของสัปดาห์ปลายทาง</label>
-              <input
-                type="date"
-                value={copyTo}
-                onChange={e => setCopyTo(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              />
-            </div>
-
-            <p className="text-xs text-amber-600 mt-2">* คาบที่มี conflict จะถูกข้ามโดยอัตโนมัติ</p>
-
-            <div className="flex gap-3 mt-5">
-              <button
-                onClick={() => setShowCopy(false)}
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl text-sm font-medium"
-              >
-                ยกเลิก
-              </button>
-              <button
-                onClick={handleCopyWeek}
-                disabled={!copyTo || saving}
-                className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium disabled:opacity-50"
-              >
-                {saving ? 'กำลังคัดลอก...' : 'คัดลอก'}
               </button>
             </div>
           </div>
@@ -1022,13 +964,20 @@ function ScheduleModal({
   const currentSlotLabel =
     timeSlots.find(s => s.start === formData.StartTime && s.end === formData.EndTime)?.label || '';
 
-  // auto-fill term dates เมื่อเลือก course
+  // คอร์สที่เลือกอยู่ตอนนี้ (ใช้แสดงข้อมูลคอร์ส + กรอง dropdown วิชา)
+  const selectedCourse = meta.courses.find(c => String(c.CourseID) === String(formData.CourseID));
+  const availableSubjects = getCourseSubjects(selectedCourse, meta.subjects);
+
+  // auto-fill term dates เมื่อเลือก course + ล้างวิชาที่ไม่ตรงกับคอร์สใหม่
   const handleCourseChange = val => {
     const course = meta.courses.find(c => String(c.CourseID) === val);
+    const subjectsForCourse = getCourseSubjects(course, meta.subjects);
+    const subjectStillValid = subjectsForCourse.some(s => String(s.SubjectId) === String(formData.SubjectId));
 
     const next = {
       ...formData,
       CourseID: val,
+      SubjectId: subjectStillValid ? formData.SubjectId : '',
       ...(course
         ? {
           TermStartDate: course.StartDate || '',
@@ -1041,12 +990,34 @@ function ScheduleModal({
     onFormChange?.(next);
   };
 
+  // ── Validation ฝั่ง Frontend สำหรับช่วงวันที่ ──
+  // 1) ห้ามเพิ่มตารางเรียนย้อนหลัง
+  // 2) ช่วงวันที่ต้องอยู่ในช่วงเปิด-ปิดของคอร์ส
+  const dateError = useMemo(() => {
+    if (!showTermFields) return null;
+    if (!formData.TermStartDate || !formData.TermEndDate) return null;
+
+    const todayStr = isoDate(new Date());
+    if (formData.TermStartDate < todayStr) {
+      return 'ไม่สามารถเพิ่มตารางเรียนย้อนหลังได้';
+    }
+
+    if (selectedCourse?.StartDate && selectedCourse?.LastDate) {
+      if (formData.TermStartDate < selectedCourse.StartDate || formData.TermEndDate > selectedCourse.LastDate) {
+        return 'วันที่เลือกอยู่นอกช่วงเวลาของคอร์ส';
+      }
+    }
+
+    return null;
+  }, [showTermFields, formData.TermStartDate, formData.TermEndDate, selectedCourse]);
+
   const canSave =
     formData.CourseID &&
     formData.DayOfWeek &&
     formData.StartTime &&
     (!showTermFields || (formData.TermStartDate && formData.TermEndDate)) &&
-    conflicts.length === 0;
+    conflicts.length === 0 &&
+    !dateError;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1134,6 +1105,36 @@ function ScheduleModal({
             </select>
           </div>
 
+          {/* Course info card — แสดงข้อมูลคอร์สที่เลือกก่อนสร้างตาราง */}
+          {selectedCourse && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-1">
+                <Info className="h-3.5 w-3.5" /> ข้อมูลคอร์ส
+              </div>
+              <p className="text-xs text-neutral-700">
+                <span className="text-neutral-500">คอร์ส:</span> {selectedCourse.CourseName}
+              </p>
+              {selectedCourse.StartDate && selectedCourse.LastDate && (
+                <p className="text-xs text-neutral-700">
+                  <span className="text-neutral-500">ระยะเวลา:</span>{' '}
+                  {new Date(selectedCourse.StartDate).toLocaleDateString('th-TH')} - {new Date(selectedCourse.LastDate).toLocaleDateString('th-TH')}
+                </p>
+              )}
+              {Array.isArray(availableSubjects) && availableSubjects.length > 0 && (
+                <p className="text-xs text-neutral-700">
+                  <span className="text-neutral-500">วิชาที่รองรับ:</span>{' '}
+                  {availableSubjects.map(s => s.SubjectName).join(', ')}
+                </p>
+              )}
+              {(selectedCourse.EnrolledCount != null || selectedCourse.Capacity != null) && (
+                <p className="text-xs text-neutral-700">
+                  <span className="text-neutral-500">นักเรียน:</span>{' '}
+                  {selectedCourse.EnrolledCount ?? '—'}/{selectedCourse.Capacity ?? '—'} คน
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Subject + Room */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1144,7 +1145,7 @@ function ScheduleModal({
                 className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกวิชา</option>
-                {meta.subjects.map(s => (
+                {availableSubjects.map(s => (
                   <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>
                 ))}
               </select>
@@ -1203,9 +1204,15 @@ function ScheduleModal({
                 />
               </div>
 
-              {formData.TermStartDate && formData.TermEndDate && formData.DayOfWeek && (
+              {formData.TermStartDate && formData.TermEndDate && formData.DayOfWeek && !dateError && (
                 <p className="text-[11px] text-orange-600 mt-1">
                   * จะสร้างคาบสอนทุกวัน{DAY_MAP[formData.DayOfWeek]} ตั้งแต่ {new Date(formData.TermStartDate).toLocaleDateString('th-TH')} ถึง {new Date(formData.TermEndDate).toLocaleDateString('th-TH')}
+                </p>
+              )}
+
+              {dateError && (
+                <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3 flex-shrink-0" /> {dateError}
                 </p>
               )}
             </div>

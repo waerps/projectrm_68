@@ -1,196 +1,403 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL } from '../config';
+import { getFileUrl } from '../utils/fileUrl';
 import {
-    DollarSign, TrendingUp, TrendingDown, Users, Calendar,
-    CreditCard, FileText, Download, Search, Eye, Plus,
-    ArrowUpRight, ArrowDownRight, Target, Wallet, BarChart3,
+    TrendingUp, TrendingDown, Users, Calendar,
+    CreditCard, Download, Search, Eye, X,
+    Target, Wallet, BarChart3,
     Clock, CheckCircle, AlertCircle, XCircle, Banknote,
-    Receipt, User, Phone, X, ChevronLeft, ChevronRight, PieChart
+    Receipt, User, Phone, ChevronLeft, ChevronRight, PieChart,
+    Loader2, RefreshCw, FileText, Inbox,
 } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
-/* ─── Status & Type helpers ──────────────────────────────────────────────────── */
-const STATUS_CONFIG = {
-    completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: CheckCircle, label: 'สำเร็จ' },
-    pending:   { bg: 'bg-yellow-50',  text: 'text-yellow-700',  border: 'border-yellow-200',  icon: Clock,        label: 'รอตรวจสอบ' },
-    overdue:   { bg: 'bg-red-50',     text: 'text-red-600',     border: 'border-red-200',     icon: AlertCircle,  label: 'เกินกำหนด' },
-    cancelled: { bg: 'bg-slate-100',  text: 'text-slate-500',   border: 'border-slate-200',   icon: XCircle,      label: 'ยกเลิก' },
+const FINANCE_API = `${API_URL}/api/admin/finance`;
+const ITEMS_PER_PAGE = 10;
+
+const PIE_COLORS_A = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#c2410c', '#9a3412'];
+const PIE_COLORS_B = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#1d4ed8', '#1e3a8a'];
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DESIGN TOKENS — one system, reused everywhere. Nothing below this block
+   should declare its own one-off spacing, radius, border or shadow value.
+   ────────────────────────────────────────────────────────────────────── */
+const T = {
+    card: 'bg-white rounded-2xl border border-slate-200 shadow-sm',
+    cardPad: 'p-6',
+    cardPadSm: 'p-4',
+    transition: 'transition duration-200 ease-out',
+    title: 'text-lg font-bold text-slate-900',
+    subtitle: 'text-sm text-slate-500',
+    label: 'text-xs font-medium text-slate-500',
+    value: 'text-2xl font-bold text-slate-900 tracking-tight',
+    caption: 'text-[11px] text-slate-400',
+    chartHeight: 260,
 };
 
-function StatusBadge({ status }) {
-    const { bg, text, border, icon: Icon, label } = STATUS_CONFIG[status] ?? STATUS_CONFIG.cancelled;
+const CHART_TICK = { fontSize: 12, fill: '#94a3b8' };
+const CHART_TOOLTIP_STYLE = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 };
+
+/* ─── Helpers ─────────────────────────────────────────────────────────── */
+const formatDate = (d) => {
+    if (!d) return '—';
+    try {
+        const date = new Date(String(d).includes('T') ? d : `${d}T00:00:00`);
+        if (isNaN(date.getTime())) return '—';
+        return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch { return '—'; }
+};
+
+const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
+
+const studentDisplayName = (t) => t.Nickname || `${t.Firstname || ''} ${t.Lastname || ''}`.trim() || '—';
+
+const txDescription = (t) => {
+    const course = t.CourseName || 'ไม่ระบุคอร์ส';
+    const term = t.Term_Name ? ` (${t.Term_Name})` : '';
+    return `${course}${term} - ${studentDisplayName(t)}`;
+};
+
+function getStatusStyle(name = '') {
+    if (name.includes('รอ')) return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: Clock };
+    if (name.includes('ยกเลิก')) return { text: 'text-slate-500', bg: 'bg-slate-100', border: 'border-slate-200', icon: XCircle };
+    if (name.includes('เกิน') || name.includes('ค้าง')) return { text: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', icon: AlertCircle };
+    return { text: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200', icon: CheckCircle };
+}
+
+function StatusBadge({ name }) {
+    const { bg, text, border, icon: Icon } = getStatusStyle(name || '');
     return (
         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${bg} ${text} ${border}`}>
-            <Icon className="h-3 w-3" />{label}
+            <Icon className="h-3 w-3" />{name || 'ไม่ระบุสถานะ'}
         </span>
     );
 }
 
-function TypeBadge({ type }) {
-    if (type === 'income')
-        return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <ArrowDownRight className="h-3 w-3" />รายรับ
-            </span>
-        );
+/* ─── Shared: single Skeleton used by every loading state ───────────────
+   Same shimmer block, same radius, same border — chart / card / table
+   loading all route through this so nothing looks like a different system. */
+function Skeleton({ className = '' }) {
+    return <div className={`animate-pulse rounded-xl bg-slate-100 ${className}`} />;
+}
+
+function SkeletonBlock({ height = 'h-64' }) {
     return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 border border-red-200">
-            <ArrowUpRight className="h-3 w-3" />รายจ่าย
-        </span>
+        <div className={`w-full ${height} flex flex-col gap-3 justify-center px-2`}>
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-full w-full" />
+        </div>
     );
 }
 
-/* ─── Transaction Detail Modal ───────────────────────────────────────────────── */
-function TransactionModal({ txn, onClose }) {
+/* ─── Shared: single Error state used by every API-backed section ──────── */
+function ErrorState({ message, onRetry, minHeight }) {
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-                    <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                            <Receipt className="h-4 w-4 text-white" />
+        <div className={`flex flex-col items-center justify-center ${minHeight} text-center px-4`}>
+            <AlertCircle className="h-5 w-5 text-red-500 mb-2" />
+            <p className={`${T.caption} text-slate-500 mb-3`}>{message}</p>
+            <button
+                onClick={onRetry}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 ${T.transition}`}
+            >
+                <RefreshCw className="h-3.5 w-3.5" />ลองใหม่
+            </button>
+        </div>
+    );
+}
+
+/* ─── Shared: Empty state — icon + message + suggestion, never fake data ── */
+function EmptyState({ icon: Icon = Inbox, message, suggestion }) {
+    return (
+        <div className={`flex flex-col items-center justify-center text-center py-16 px-4`}>
+            <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-3">
+                <Icon className="h-5 w-5 text-slate-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-600">{message}</p>
+            {suggestion && <p className={`${T.caption} mt-1 max-w-xs`}>{suggestion}</p>}
+        </div>
+    );
+}
+
+/* ─── Reusable Loading / Error wrapper for each API-backed section ──────── */
+function ApiState({ loading, error, onRetry, minHeight = 'h-40', skeletonHeight, children }) {
+    if (loading) return <SkeletonBlock height={skeletonHeight || minHeight} />;
+    if (error) return <ErrorState message={error} onRetry={onRetry} minHeight={minHeight} />;
+    return children;
+}
+
+/* ─── Shared: SectionCard — every card in the dashboard is this ─────────
+   Equal padding, equal radius, equal border, equal shadow. Optional
+   icon+title header keeps every section's hierarchy identical. */
+function SectionCard({ title, icon: Icon, action, children, className = '', bodyClassName = '' }) {
+    return (
+        <div className={`${T.card} ${T.cardPad} flex flex-col h-full ${className}`}>
+            {title && (
+                <div className="flex items-center justify-between mb-4 shrink-0">
+                    <h3 className={`${T.title} flex items-center gap-2`}>
+                        {Icon && <Icon className="h-4 w-4 text-orange-500" />}
+                        {title}
+                    </h3>
+                    {action}
+                </div>
+            )}
+            <div className={`flex-1 min-h-0 ${bodyClassName}`}>{children}</div>
+        </div>
+    );
+}
+
+/* ─── Shared: KPICard — same height, same type scale, icon small & quiet ── */
+function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
+    const toneText = {
+        neutral: 'text-slate-400',
+        green: 'text-green-600',
+        red: 'text-red-600',
+        blue: 'text-blue-600',
+        orange: 'text-orange-500',
+    }[tone];
+
+    return (
+        <div className={`${T.card} ${T.cardPadSm} h-full flex flex-col justify-between hover:shadow-md ${T.transition}`}>
+            <div className="flex items-center justify-between mb-2">
+                <p className={T.label}>{label}</p>
+                {Icon && <Icon className={`h-3.5 w-3.5 shrink-0 ${toneText}`} />}
+            </div>
+            <p className={T.value}>{value}</p>
+            {sub && <p className={`${T.caption} mt-1 truncate`}>{sub}</p>}
+        </div>
+    );
+}
+
+/* ─── Shared: SegmentedControl — replaces the old underline tab bar ──────── */
+function SegmentedControl({ options, value, onChange }) {
+    return (
+        <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+            {options.map(({ id, label, icon: Icon }) => (
+                <button
+                    key={id}
+                    onClick={() => onChange(id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${T.transition} ${
+                        value === id ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                    <Icon className="h-4 w-4" />{label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+/* ─── Hero: minimal white card, thin orange accent, the 5-second answer ── */
+function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, profit, profitMargin, expense, expenseCount, outstanding, outstandingCount }) {
+    return (
+        <div className={`${T.card} ${T.cardPad} relative overflow-hidden`}>
+            <div className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
+            <div className="flex items-center justify-between mb-5">
+                <div>
+                    <h2 className={T.title}>ภาพรวมเดือนนี้</h2>
+                    <p className={T.subtitle}>สรุปสถานะการเงินล่าสุด ณ ตอนนี้</p>
+                </div>
+            </div>
+
+            <ApiState loading={loading} error={error} onRetry={onRetry} minHeight="h-28" skeletonHeight="h-28">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div>
+                        <p className={T.label}>รายรับเดือนนี้</p>
+                        <p className={`${T.value} text-3xl mt-1`}>{formatMoney(revenue)}</p>
+                        <p className={`${T.caption} mt-1.5 flex items-center gap-1`}>
+                            {revenueGrowth !== null && (
+                                <span className={`inline-flex items-center gap-0.5 font-semibold ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {revenueGrowth >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                    {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth}%
+                                </span>
+                            )}
+                            <span>เทียบเดือนก่อน</span>
+                        </p>
+                    </div>
+                    <div>
+                        <p className={T.label}>กำไรสุทธิ</p>
+                        <p className={`${T.value} text-3xl mt-1 ${profit < 0 ? 'text-red-600' : ''}`}>{formatMoney(profit)}</p>
+                        <p className={`${T.caption} mt-1.5`}>{profitMargin === null ? 'ยังไม่มีข้อมูลเดือนนี้' : `Margin ${profitMargin}%`}</p>
+                    </div>
+                    <div>
+                        <p className={T.label}>รายจ่าย (ติวเตอร์)</p>
+                        <p className={`${T.value} text-3xl mt-1`}>{formatMoney(expense)}</p>
+                        <p className={`${T.caption} mt-1.5`}>{expenseCount} รายการ</p>
+                    </div>
+                    <div>
+                        <p className={T.label}>ยอดค้างชำระ</p>
+                        <p className={`${T.value} text-3xl mt-1 ${outstanding > 0 ? 'text-red-600' : ''}`}>{formatMoney(outstanding)}</p>
+                        <p className={`${T.caption} mt-1.5`}>{outstandingCount} รายการ</p>
+                    </div>
+                </div>
+            </ApiState>
+        </div>
+    );
+}
+
+/* ─── Transaction Detail Modal — always re-fetches GET /transaction/:id ── */
+function TransactionDetailModal({ transactionId, onClose }) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const load = () => {
+        setLoading(true); setError(null);
+        axios.get(`${FINANCE_API}/transaction/${transactionId}`)
+            .then(r => setData(r.data))
+            .catch(e => setError(e.response?.data?.message || 'โหลดรายละเอียดธุรกรรมไม่สำเร็จ'))
+            .finally(() => setLoading(false));
+    };
+
+    useEffect(() => { load(); /* eslint-disable-next-line */ }, [transactionId]);
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`${T.card} w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col`}>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+                    <h3 className={`${T.title} flex items-center gap-2.5`}>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
+                            <Receipt className="h-4 w-4 text-orange-500" />
                         </span>
                         รายละเอียดธุรกรรม
                     </h3>
-                    <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+                    <button onClick={onClose} className={`p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 ${T.transition}`}>
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                <div className="overflow-y-auto flex-1 p-6 space-y-5">
-                    {/* Amount header */}
-                    <div className="bg-slate-50 rounded-xl border border-slate-200 p-5">
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="font-mono text-sm font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-lg">
-                                {txn.id}
-                            </span>
-                            <StatusBadge status={txn.status} />
-                        </div>
-                        <p className={`text-2xl font-black mb-1.5 ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {txn.type === 'income' ? '+' : '-'}฿{txn.amount.toLocaleString()}
-                        </p>
-                        <p className="text-sm text-slate-600">{txn.description}</p>
-                    </div>
+                <div className="overflow-y-auto flex-1 p-6">
+                    <ApiState loading={loading} error={error} onRetry={load} minHeight="h-64">
+                        {data && (
+                            <div className="space-y-5">
+                                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="font-mono text-sm font-bold text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-xl">
+                                            #{data.StudentPaymentId}
+                                        </span>
+                                        <StatusBadge name={data.Status_Payment_Name} />
+                                    </div>
+                                    <p className="text-2xl font-bold mb-1.5 text-green-600">+{formatMoney(data.Price)}</p>
+                                    <p className="text-sm text-slate-600">{txDescription(data)}</p>
+                                </div>
 
-                    {/* Details grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                        {[
-                            { label: 'ประเภท',    value: <TypeBadge type={txn.type} /> },
-                            { label: 'หมวดหมู่',  value: txn.category },
-                            { label: 'วันที่',     value: txn.date, icon: Calendar },
-                            { label: 'วิธีชำระ',  value: txn.paymentMethod, icon: CreditCard },
-                        ].map(({ label, value, icon: Icon }) => (
-                            <div key={label} className="bg-white rounded-xl border border-slate-200 p-4">
-                                <p className="text-xs text-slate-500 font-medium mb-1.5">{label}</p>
-                                {typeof value === 'string' ? (
-                                    <p className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
-                                        {Icon && <Icon className="h-3.5 w-3.5 text-orange-500" />}
-                                        {value}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'ประเภทคอร์ส', value: data.CourseTypeName || data.Course_Type || '—' },
+                                        { label: 'เทอม', value: data.Term_Name || '—' },
+                                        { label: 'วันที่ชำระ', value: formatDate(data.PaymentDate), icon: Calendar },
+                                        { label: 'วิธีชำระ', value: data.PaymentType || '—', icon: CreditCard },
+                                        { label: 'เลขที่บิล', value: data.BillNo || '—', icon: FileText },
+                                        { label: 'ธนาคาร/บัญชี', value: data.BankAccountName ? `${data.BankAccountName}${data.PaymentBankName ? ' · ' + data.PaymentBankName : ''}` : '—', icon: Banknote },
+                                    ].map(({ label, value, icon: Icon }) => (
+                                        <div key={label} className={`${T.card} ${T.cardPadSm}`}>
+                                            <p className={`${T.label} mb-1.5`}>{label}</p>
+                                            <p className="text-sm font-semibold text-slate-900 flex items-center gap-1.5">
+                                                {Icon && <Icon className="h-3.5 w-3.5 text-orange-500" />}
+                                                {value}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 space-y-2">
+                                    <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">ข้อมูลผู้ชำระ</p>
+                                    <div className="flex items-center gap-2 text-sm text-slate-900">
+                                        <User className="h-4 w-4 text-blue-500 shrink-0" />
+                                        <span className="font-semibold">{data.Firstname} {data.Lastname}</span>
+                                    </div>
+                                    {data.PhoneNo && (
+                                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                                            <Phone className="h-4 w-4 text-blue-500 shrink-0" />
+                                            <span>{data.PhoneNo}</span>
+                                        </div>
+                                    )}
+                                    {(data.PaymentSender || data.PaymentReceiver) && (
+                                        <div className="pt-1 text-xs text-slate-500 space-y-0.5">
+                                            {data.PaymentSender && <p>ผู้โอน: {data.PaymentSender}</p>}
+                                            {data.PaymentReceiver && <p>ผู้รับโอน: {data.PaymentReceiver}</p>}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className={`${T.card} ${T.cardPadSm}`}>
+                                    <p className={`${T.label} mb-3 flex items-center gap-1.5`}>
+                                        <FileText className="h-3.5 w-3.5 text-orange-500" />สลิปการโอนเงิน
                                     </p>
-                                ) : value}
-                            </div>
-                        ))}
-                    </div>
+                                    {data.PaymentPicture ? (
+                                        <img
+                                            src={getFileUrl(data.PaymentPicture)}
+                                            alt="สลิปการโอนเงิน"
+                                            className="w-full max-h-72 object-contain rounded-xl border border-slate-200 bg-slate-50"
+                                        />
+                                    ) : (
+                                        <EmptyState icon={FileText} message="ไม่มีสลิปแนบ" />
+                                    )}
+                                </div>
 
-                    {/* Payer info */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
-                        <p className="text-xs font-bold text-blue-700 uppercase tracking-wide mb-2">ข้อมูลผู้ชำระ</p>
-                        <div className="flex items-center gap-2 text-sm text-slate-900">
-                            <User className="h-4 w-4 text-blue-500 shrink-0" />
-                            <span className="font-semibold">{txn.payer}</span>
-                        </div>
-                        {txn.phone !== '-' && (
-                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                <Phone className="h-4 w-4 text-blue-500 shrink-0" />
-                                <span>{txn.phone}</span>
+                                <button
+                                    onClick={() => window.print()}
+                                    className={`w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 ${T.transition}`}
+                                >
+                                    พิมพ์ใบเสร็จ
+                                </button>
                             </div>
                         )}
-                    </div>
-
-                    {/* Slip */}
-                    {txn.slip && (
-                        <div className="bg-white border border-slate-200 rounded-xl p-4">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                                <FileText className="h-3.5 w-3.5 text-orange-500" />สลิปการโอนเงิน
-                            </p>
-                            <div className="bg-slate-100 rounded-lg h-36 flex items-center justify-center border border-dashed border-slate-300">
-                                <p className="text-sm text-slate-400">{txn.slip}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="flex gap-3 pt-1">
-                        <button className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
-                            พิมพ์ใบเสร็จ
-                        </button>
-                        {txn.status === 'pending' && (
-                            <button className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 transition">
-                                อนุมัติรายการ
-                            </button>
-                        )}
-                        {txn.status === 'overdue' && (
-                            <button className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 transition">
-                                ติดตามการชำระ
-                            </button>
-                        )}
-                    </div>
+                    </ApiState>
                 </div>
             </div>
         </div>
     );
 }
 
-/* ─── Transaction Row ────────────────────────────────────────────────────────── */
+/* ─── Transaction Row ────────────────────────────────────────────────── */
 function TransactionRow({ txn, onView }) {
     return (
-        <tr className="hover:bg-orange-50/40 transition-colors">
+        <tr className={`hover:bg-slate-50 ${T.transition}`}>
             <td className="px-4 py-3">
                 <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                    {txn.id}
+                    #{txn.StudentPaymentId}
                 </span>
             </td>
             <td className="px-4 py-3">
-                <p className="text-sm font-semibold text-slate-900 leading-tight max-w-[200px] truncate">{txn.description}</p>
-                <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />{txn.date}
+                <p className="text-sm font-semibold text-slate-900 leading-tight max-w-[220px] truncate">{txDescription(txn)}</p>
+                <p className={`${T.caption} mt-0.5 flex items-center gap-1`}>
+                    <Calendar className="h-3 w-3" />{formatDate(txn.PaymentDate)}
                 </p>
             </td>
-            <td className="px-4 py-3"><TypeBadge type={txn.type} /></td>
             <td className="px-4 py-3">
                 <span className="text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
-                    {txn.category}
+                    {txn.CourseTypeName || txn.Course_Type || '—'}
                 </span>
             </td>
             <td className="px-4 py-3">
                 <div className="flex items-center gap-1.5 text-xs text-slate-600">
                     <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {txn.payer}
+                    {studentDisplayName(txn)}
                 </div>
-                {txn.phone !== '-' && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-0.5">
-                        <Phone className="h-3 w-3 shrink-0" />{txn.phone}
+                {txn.PhoneNo && (
+                    <div className={`flex items-center gap-1.5 ${T.caption} mt-0.5`}>
+                        <Phone className="h-3 w-3 shrink-0" />{txn.PhoneNo}
                     </div>
                 )}
             </td>
             <td className="px-4 py-3">
                 <span className="flex items-center gap-1.5 text-xs text-slate-500">
                     <CreditCard className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {txn.paymentMethod}
+                    {txn.PaymentType || '—'}
                 </span>
             </td>
             <td className="px-4 py-3 text-right">
-                <p className={`text-sm font-black ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {txn.type === 'income' ? '+' : '-'}฿{txn.amount.toLocaleString()}
-                </p>
+                <p className="text-sm font-bold text-green-600">+{formatMoney(txn.Price)}</p>
             </td>
-            <td className="px-4 py-3"><StatusBadge status={txn.status} /></td>
+            <td className="px-4 py-3"><StatusBadge name={txn.Status_Payment_Name} /></td>
             <td className="px-4 py-3">
                 <button
-                    onClick={() => onView(txn)}
-                    className="p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition"
+                    onClick={() => onView(txn.StudentPaymentId)}
+                    className={`p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 ${T.transition}`}
                     title="ดูรายละเอียด"
                 >
                     <Eye className="h-3.5 w-3.5" />
@@ -200,466 +407,553 @@ function TransactionRow({ txn, onView }) {
     );
 }
 
-/* ─── Main Page ──────────────────────────────────────────────────────────────── */
+/* ─── Main Page ──────────────────────────────────────────────────────── */
 export default function AdminFinance() {
-    const [selectedPeriod, setSelectedPeriod] = useState('month');
     const [selectedTab, setSelectedTab] = useState('overview');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [typeFilter, setTypeFilter] = useState('all');
+
+    /* summary */
+    const [summary, setSummary] = useState(null);
+    const [summaryLoading, setSummaryLoading] = useState(true);
+    const [summaryError, setSummaryError] = useState(null);
+
+    /* monthly chart */
+    const [monthly, setMonthly] = useState([]);
+    const [monthlyLoading, setMonthlyLoading] = useState(true);
+    const [monthlyError, setMonthlyError] = useState(null);
+
+    /* pie charts */
+    const [charts, setCharts] = useState({ byCourseType: [], byTerm: [], byStatus: [] });
+    const [chartsLoading, setChartsLoading] = useState(true);
+    const [chartsError, setChartsError] = useState(null);
+
+    /* filters meta */
+    const [filtersMeta, setFiltersMeta] = useState({ terms: [], statuses: [], paymentTypes: [], courses: [] });
+    const [filtersLoading, setFiltersLoading] = useState(true);
+    const [filtersError, setFiltersError] = useState(null);
+
+    /* transactions */
+    const [txData, setTxData] = useState([]);
+    const [txPagination, setTxPagination] = useState({ page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 1 });
+    const [txLoading, setTxLoading] = useState(true);
+    const [txError, setTxError] = useState(null);
+
+    /* filters state */
+    const [searchInput, setSearchInput] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [monthFilter, setMonthFilter] = useState(''); // yyyy-mm from <input type="month">, empty = all
+    const [termId, setTermId] = useState('all');
+    const [statusId, setStatusId] = useState('all');
+    const [paymentType, setPaymentType] = useState('all');
+    const [courseId, setCourseId] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-    const ITEMS_PER_PAGE = 10;
+    const [viewTxId, setViewTxId] = useState(null);
+    const [exporting, setExporting] = useState(false);
+    const [missingPriceCount, setMissingPriceCount] = useState(0);
 
-    const stats = {
-        totalRevenue: 2450000,
-        monthlyRevenue: 385000,
-        pendingPayments: 125000,
-        expenses: 180000,
-        profit: 205000,
-        totalStudents: 247,
-        activeStudents: 195,
-        tutorSalaries: 165000,
-        revenueGrowth: 15.3,
-        profitMargin: 53.2,
+    /* ── Fetchers (unchanged endpoints / params — presentation layer only) ── */
+    const fetchSummary = () => {
+        setSummaryLoading(true); setSummaryError(null);
+        axios.get(`${FINANCE_API}/summary`)
+            .then(r => setSummary(r.data))
+            .catch(e => setSummaryError(e.response?.data?.message || 'โหลดข้อมูลสรุปการเงินไม่สำเร็จ'))
+            .finally(() => setSummaryLoading(false));
     };
 
-    const monthlyRevenueData = [
-        { month: 'ส.ค.', revenue: 320000, expenses: 145000, profit: 175000 },
-        { month: 'ก.ย.', revenue: 340000, expenses: 152000, profit: 188000 },
-        { month: 'ต.ค.', revenue: 365000, expenses: 165000, profit: 200000 },
-        { month: 'พ.ย.', revenue: 350000, expenses: 158000, profit: 192000 },
-        { month: 'ธ.ค.', revenue: 395000, expenses: 172000, profit: 223000 },
-        { month: 'ม.ค.', revenue: 385000, expenses: 180000, profit: 205000 },
-    ];
+    const fetchMonthly = () => {
+        setMonthlyLoading(true); setMonthlyError(null);
+        axios.get(`${FINANCE_API}/monthly`, { params: { months: 6 } })
+            .then(r => setMonthly(r.data))
+            .catch(e => setMonthlyError(e.response?.data?.message || 'โหลดข้อมูลรายเดือนไม่สำเร็จ'))
+            .finally(() => setMonthlyLoading(false));
+    };
 
-    const revenueSourcesData = [
-        { name: 'คอร์สรวม',  value: 185000, color: '#f97316' },
-        { name: 'คอร์สเดี่ยว', value: 95000, color: '#fb923c' },
-        { name: 'NETSAT',   value: 75000, color: '#fdba74' },
-        { name: 'A-Level',  value: 30000, color: '#fed7aa' },
-    ];
+    const fetchCharts = () => {
+        setChartsLoading(true); setChartsError(null);
+        axios.get(`${FINANCE_API}/charts`)
+            .then(r => setCharts(r.data))
+            .catch(e => setChartsError(e.response?.data?.message || 'โหลดข้อมูลกราฟไม่สำเร็จ'))
+            .finally(() => setChartsLoading(false));
+    };
 
-    const expensesData = [
-        { name: 'เงินเดือนติวเตอร์', value: 165000, color: '#3b82f6' },
-        { name: 'ค่าเช่าสถานที่',    value: 45000,  color: '#60a5fa' },
-        { name: 'สื่อการสอน',        value: 25000,  color: '#93c5fd' },
-        { name: 'สาธารณูปโภค',       value: 18000,  color: '#bfdbfe' },
-        { name: 'อื่นๆ',             value: 12000,  color: '#dbeafe' },
-    ];
+    const fetchFiltersMeta = () => {
+        setFiltersLoading(true); setFiltersError(null);
+        axios.get(`${FINANCE_API}/filters-meta`)
+            .then(r => setFiltersMeta(r.data))
+            .catch(e => setFiltersError(e.response?.data?.message || 'โหลดตัวเลือกตัวกรองไม่สำเร็จ'))
+            .finally(() => setFiltersLoading(false));
+    };
 
-    const [transactions] = useState([
-        { id: 'TXN001', date: '15 ม.ค. 2568', type: 'income',  category: 'คอร์สรวม',  description: 'ชำระค่าเทอม 1/2568 - ด.ญ. สมใจ รักเรียน',    amount: 17000, status: 'completed', paymentMethod: 'โอนเงิน',     payer: 'คุณสมศรี รักเรียน',  phone: '089-765-4321', slip: 'slip_001.jpg' },
-        { id: 'TXN002', date: '15 ม.ค. 2568', type: 'expense', category: 'เงินเดือนติวเตอร์', description: 'เงินเดือน ม.ค. 2568 - อ.สมชาย ใจดี',    amount: 35000, status: 'completed', paymentMethod: 'โอนเงิน',     payer: 'สถาบัน',            phone: '-',            slip: null },
-        { id: 'TXN003', date: '14 ม.ค. 2568', type: 'income',  category: 'NETSAT',    description: 'ชำระค่าคอร์ส NETSAT - ด.ช. วิทย์ ขยัน',       amount: 15000, status: 'completed', paymentMethod: 'เงินสด',      payer: 'คุณมานิต ขยัน',     phone: '088-654-3210', slip: null },
-        { id: 'TXN004', date: '14 ม.ค. 2568', type: 'income',  category: 'คอร์สเดี่ยว', description: 'ชำระค่าคอร์สเดี่ยว - ด.ญ. สุดา เก่ง',      amount: 8500,  status: 'pending',   paymentMethod: 'รอตรวจสอบ',  payer: 'คุณวิมล เก่ง',      phone: '087-543-2109', slip: 'slip_004.jpg' },
-        { id: 'TXN005', date: '13 ม.ค. 2568', type: 'expense', category: 'ค่าเช่า',   description: 'ค่าเช่าสถานที่ ม.ค. 2568',                     amount: 45000, status: 'completed', paymentMethod: 'โอนเงิน',     payer: 'สถาบัน',            phone: '-',            slip: null },
-        { id: 'TXN006', date: '12 ม.ค. 2568', type: 'income',  category: 'คอร์สรวม',  description: 'ชำระค่าเทอม 1/2568 - ด.ช. มานะ พยายาม',        amount: 17000, status: 'overdue',   paymentMethod: 'ยังไม่ชำระ', payer: 'คุณสมพร พยายาม',   phone: '086-432-1098', slip: null },
-        { id: 'TXN007', date: '11 ม.ค. 2568', type: 'expense', category: 'สื่อการสอน', description: 'ซื้อหนังสือและเอกสาร',                         amount: 12500, status: 'completed', paymentMethod: 'เงินสด',      payer: 'สถาบัน',            phone: '-',            slip: null },
-        { id: 'TXN008', date: '10 ม.ค. 2568', type: 'income',  category: 'A-Level',   description: 'ชำระค่าคอร์ส A-Level - ด.ญ. ปัญญา ฉลาด',       amount: 22000, status: 'completed', paymentMethod: 'โอนเงิน',     payer: 'คุณสุรีย์ ฉลาด',   phone: '085-321-0987', slip: 'slip_008.jpg' },
-    ]);
+    const buildTxParams = (withPaging) => {
+        const params = {};
+        if (debouncedSearch) params.search = debouncedSearch;
+        if (monthFilter) {
+            const [y, m] = monthFilter.split('-');
+            params.year = y;
+            params.month = m;
+        }
+        if (termId !== 'all') params.termId = termId;
+        if (statusId !== 'all') params.statusId = statusId;
+        if (paymentType !== 'all') params.paymentType = paymentType;
+        if (courseId !== 'all') params.courseId = courseId;
+        if (withPaging) {
+            params.page = currentPage;
+            params.limit = ITEMS_PER_PAGE;
+        }
+        return params;
+    };
 
-    const filtered = transactions.filter(t => {
-        const q = searchQuery.toLowerCase();
-        const matchSearch = !q || t.description.toLowerCase().includes(q) || t.id.toLowerCase().includes(q) || t.payer.toLowerCase().includes(q);
-        const matchStatus = statusFilter === 'all' || t.status === statusFilter;
-        const matchType   = typeFilter   === 'all' || t.type   === typeFilter;
-        return matchSearch && matchStatus && matchType;
-    });
+    const fetchTransactions = () => {
+        setTxLoading(true); setTxError(null);
+        axios.get(`${FINANCE_API}/transactions`, { params: buildTxParams(true) })
+            .then(r => {
+                setTxData(r.data.data || []);
+                setTxPagination(r.data.pagination || { page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 1 });
+            })
+            .catch(e => setTxError(e.response?.data?.message || 'โหลดรายการธุรกรรมไม่สำเร็จ'))
+            .finally(() => setTxLoading(false));
+    };
 
-    const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-    const paginated  = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const handleExport = async () => {
+        setExporting(true);
+        try {
+            const res = await axios.get(`${FINANCE_API}/export`, {
+                params: buildTxParams(false),
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `finance_transactions_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            alert(e.response?.data?.message || 'ส่งออกข้อมูลไม่สำเร็จ');
+        } finally {
+            setExporting(false);
+        }
+    };
 
-    const pendingCount = transactions.filter(t => t.status === 'pending' || t.status === 'overdue').length;
+    /* ── Effects ───────────────────────────────────────────────────────── */
+    useEffect(() => { fetchSummary(); }, []);
+    useEffect(() => { fetchMonthly(); }, []);
+    useEffect(() => { fetchCharts(); }, []);
+    useEffect(() => { fetchFiltersMeta(); }, []);
+    useEffect(() => {
+        axios.get(`${FINANCE_API}/missing-price`)
+            .then(r => setMissingPriceCount(r.data?.count || 0))
+            .catch(() => { });
+    }, []);
+
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
+        return () => clearTimeout(t);
+    }, [searchInput]);
+
+    useEffect(() => { setCurrentPage(1); }, [debouncedSearch, monthFilter, termId, statusId, paymentType, courseId]);
+
+    useEffect(() => {
+        fetchTransactions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedSearch, monthFilter, termId, statusId, paymentType, courseId, currentPage]);
+
+    /* ── Derived values (same arithmetic as before — no new business logic) ── */
+    const monthlyRevenue = summary?.monthlyRevenue ?? 0;
+    const monthlyProfit = summary?.monthlyProfit ?? 0;
+    const monthlyTutorExpense = summary?.monthlyTutorExpense ?? 0;
+    const monthlyTutorExpenseCount = summary?.monthlyTutorExpenseCount ?? 0;
+    const pendingApprovalAmount = summary?.pendingApprovalAmount ?? 0;
+    const pendingApprovalCount = summary?.pendingApprovalCount ?? 0;
+    const monthlyPendingApprovalCount = summary?.monthlyPendingApprovalCount ?? 0;
+    const totalRevenueAllTime = summary?.totalRevenueAllTime ?? 0;
+    const paidEnrollCount = summary?.paidEnrollCount ?? 0;
+    const totalEnrollCount = summary?.totalEnrollCount ?? 0;
+    const outstandingTotalAmount = summary?.outstandingTotalAmount ?? 0;
+    const outstandingEnrollCount = summary?.outstandingEnrollCount ?? 0;
+    const monthlyTransactionCount = summary?.monthlyTransactionCount ?? 0;
+
+    const profitMargin = monthlyRevenue > 0
+        ? Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10
+        : null;
+
+    const revenueGrowth = (() => {
+        if (monthly.length < 2) return null;
+        const prev = monthly[monthly.length - 2].revenue;
+        const curr = monthly[monthly.length - 1].revenue;
+        if (!prev) return null;
+        return Math.round(((curr - prev) / prev) * 1000) / 10;
+    })();
+
+    const approvalSuccessRate = monthlyTransactionCount > 0
+        ? Math.round(((monthlyTransactionCount - Math.min(monthlyPendingApprovalCount, monthlyTransactionCount)) / monthlyTransactionCount) * 100)
+        : null;
+
+    const avgRevenuePerStudent = paidEnrollCount > 0 ? Math.round(monthlyRevenue / paidEnrollCount) : 0;
+    const paidRate = totalEnrollCount > 0 ? Math.round((paidEnrollCount / totalEnrollCount) * 100) : 0;
+
+    const monthlyChartData = monthly.map(m => ({
+        month: m.label,
+        revenue: m.revenue,
+        expenses: m.expense,
+        profit: m.profit,
+        profitTrend: m.hasActivity ? m.profit : null,
+    }));
+
+    const revenueByCourseType = (charts.byCourseType || []).map((c, i) => ({
+        name: c.TypeName || 'ไม่ระบุ',
+        value: Number(c.revenue) || 0,
+        color: PIE_COLORS_A[i % PIE_COLORS_A.length],
+    }));
+
+    const revenueByStatus = (charts.byStatus || []).map((c, i) => ({
+        name: c.Status_Payment_Name || 'ไม่ระบุ',
+        value: Number(c.revenue) || 0,
+        color: PIE_COLORS_B[i % PIE_COLORS_B.length],
+    }));
+
+    const totalPages = txPagination.totalPages || 1;
+    const currentPageNum = txPagination.page || 1;
+    const totalTx = txPagination.total || 0;
 
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="grid grid-cols-12 gap-6 mt-[90px]">
 
-            {/* ── Header ── */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* ── Page header ── */}
+            <div className="col-span-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">การเงินสถาบัน</h1>
-                    <p className="text-sm text-slate-500 mt-1">ภาพรวมรายรับ-รายจ่าย และจัดการธุรกรรมทั้งหมด</p>
+                    <p className={`${T.subtitle} mt-1`}>ภาพรวมรายรับ-รายจ่าย และจัดการธุรกรรมทั้งหมด</p>
                 </div>
-                <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition shadow-sm">
-                        <Download className="h-4 w-4" />ส่งออกรายงาน
-                    </button>
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-sm shadow-sm transition">
-                        <Plus className="h-4 w-4" />บันทึกรายการ
-                    </button>
-                </div>
+                <SegmentedControl
+                    value={selectedTab}
+                    onChange={setSelectedTab}
+                    options={[
+                        { id: 'overview', label: 'สรุปภาพรวม', icon: BarChart3 },
+                        { id: 'transactions', label: 'รายการธุรกรรม', icon: Receipt },
+                    ]}
+                />
             </div>
 
-            {/* ── Period selector ── */}
-            <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 font-medium mr-1">ช่วงเวลา</span>
-                {[
-                    { key: 'day', label: 'วันนี้' },
-                    { key: 'week', label: 'สัปดาห์' },
-                    { key: 'month', label: 'เดือนนี้' },
-                    { key: 'year', label: 'ปีนี้' },
-                ].map(({ key, label }) => (
-                    <button
-                        key={key}
-                        onClick={() => setSelectedPeriod(key)}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${
-                            selectedPeriod === key
-                                ? 'bg-orange-500 text-white shadow-sm'
-                                : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                    >
-                        {label}
-                    </button>
-                ))}
+            {missingPriceCount > 0 && (
+                <div className="col-span-12 flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-2xl text-sm text-orange-700">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ
+                </div>
+            )}
+
+            {/* ── Hero: the 5-second answer — no scrolling required ── */}
+            <div className="col-span-12">
+                <HeroSummary
+                    loading={summaryLoading}
+                    error={summaryError}
+                    onRetry={fetchSummary}
+                    revenue={monthlyRevenue}
+                    revenueGrowth={revenueGrowth}
+                    profit={monthlyProfit}
+                    profitMargin={profitMargin}
+                    expense={monthlyTutorExpense}
+                    expenseCount={monthlyTutorExpenseCount}
+                    outstanding={outstandingTotalAmount}
+                    outstandingCount={outstandingEnrollCount}
+                />
             </div>
 
-            {/* ── Stats cards ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                    {
-                        label: 'รายรับเดือนนี้',
-                        value: `฿${stats.monthlyRevenue.toLocaleString()}`,
-                        sub: `+${stats.revenueGrowth}% จากเดือนที่แล้ว`,
-                        color: 'bg-emerald-500',
-                        icon: TrendingUp,
-                    },
-                    {
-                        label: 'กำไรสุทธิ',
-                        value: `฿${stats.profit.toLocaleString()}`,
-                        sub: `Margin ${stats.profitMargin}%`,
-                        color: 'bg-blue-500',
-                        icon: Target,
-                    },
-                    {
-                        label: 'รอตรวจสอบ/ชำระ',
-                        value: `฿${stats.pendingPayments.toLocaleString()}`,
-                        sub: `${pendingCount} รายการรออนุมัติ`,
-                        color: 'bg-yellow-500',
-                        icon: Clock,
-                    },
-                    {
-                        label: 'ค่าใช้จ่ายเดือนนี้',
-                        value: `฿${stats.expenses.toLocaleString()}`,
-                        sub: `เงินเดือนติวเตอร์ ฿${stats.tutorSalaries.toLocaleString()}`,
-                        color: 'bg-red-500',
-                        icon: TrendingDown,
-                    },
-                ].map(({ label, value, sub, color, icon: Icon }, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-                        <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
-                            <Icon className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-xs text-slate-500 font-medium truncate">{label}</p>
-                            <p className="text-lg font-black text-slate-900 leading-tight">{value}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>
-                        </div>
+            {/* ── Secondary KPIs — same existing summary fields, quieter design ── */}
+            <div className="col-span-12">
+                <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-24" skeletonHeight="h-24">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <KPICard
+                            label="รายรับสะสมทั้งหมด"
+                            value={formatMoney(totalRevenueAllTime)}
+                            sub="ตั้งแต่เริ่มดำเนินการ"
+                            icon={Banknote}
+                            tone="orange"
+                        />
+                        <KPICard
+                            label="รอตรวจสอบ/ชำระ"
+                            value={formatMoney(pendingApprovalAmount)}
+                            sub={`${pendingApprovalCount} รายการรออนุมัติ`}
+                            icon={Clock}
+                            tone="blue"
+                        />
+                        <KPICard
+                            label="นักเรียนที่ชำระแล้ว"
+                            value={`${paidEnrollCount} / ${totalEnrollCount}`}
+                            sub={`${paidRate}% ของนักเรียนทั้งหมด`}
+                            icon={Users}
+                            tone="green"
+                        />
+                        <KPICard
+                            label="อัตราการอนุมัติสำเร็จ"
+                            value={approvalSuccessRate === null ? '—' : `${approvalSuccessRate}%`}
+                            sub={`${monthlyTransactionCount} รายการเดือนนี้`}
+                            icon={CheckCircle}
+                            tone="green"
+                        />
+                        <KPICard
+                            label="รายรับเฉลี่ย/นักเรียน"
+                            value={formatMoney(avgRevenuePerStudent)}
+                            sub="คำนวณจากนักเรียนที่ชำระแล้ว"
+                            icon={Target}
+                            tone="neutral"
+                        />
                     </div>
-                ))}
+                </ApiState>
             </div>
 
-            {/* ── Tabs ── */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <div className="flex border-b border-slate-200 overflow-x-auto">
-                    {[
-                        { id: 'overview',      label: 'ภาพรวม',        icon: BarChart3 },
-                        { id: 'transactions',  label: 'รายการธุรกรรม', icon: Receipt },
-                    ].map(({ id, label, icon: Icon }) => (
-                        <button
-                            key={id}
-                            onClick={() => setSelectedTab(id)}
-                            className={`flex items-center gap-2 px-6 py-4 text-sm font-semibold whitespace-nowrap transition ${
-                                selectedTab === id
-                                    ? 'text-orange-600 border-b-2 border-orange-500 -mb-px'
-                                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Icon className="h-4 w-4" />{label}
-                        </button>
-                    ))}
-                </div>
+            {/* ── Overview Tab ── */}
+            {selectedTab === 'overview' && (
+                <>
+                    <div className="col-span-12 lg:col-span-6">
+                        <SectionCard title="รายรับ - รายจ่าย (6 เดือน)" icon={BarChart3}>
+                            <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
+                                <ResponsiveContainer width="100%" height={T.chartHeight}>
+                                    <BarChart data={monthlyChartData} barGap={4}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis dataKey="month" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                                        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
+                                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                                        <Bar dataKey="revenue" name="รายรับ" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="expenses" name="รายจ่าย" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="profit" name="กำไร" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </ApiState>
+                        </SectionCard>
+                    </div>
 
-                <div className="p-6">
-                    {/* ── Overview Tab ── */}
-                    {selectedTab === 'overview' && (
-                        <div className="space-y-6">
-                            {/* Charts row */}
-                            <div className="grid gap-5 lg:grid-cols-2">
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                        <BarChart3 className="h-4 w-4 text-orange-500" />
-                                        รายรับ - รายจ่าย (6 เดือน)
-                                    </h3>
-                                    <ResponsiveContainer width="100%" height={260}>
-                                        <BarChart data={monthlyRevenueData} barGap={4}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                            <Tooltip
-                                                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }}
-                                                formatter={v => `฿${v.toLocaleString()}`}
-                                            />
-                                            <Legend wrapperStyle={{ fontSize: 12 }} />
-                                            <Bar dataKey="revenue"  name="รายรับ"  fill="#22c55e" radius={[6,6,0,0]} />
-                                            <Bar dataKey="expenses" name="รายจ่าย" fill="#ef4444" radius={[6,6,0,0]} />
-                                            <Bar dataKey="profit"   name="กำไร"    fill="#3b82f6" radius={[6,6,0,0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
+                    <div className="col-span-12 lg:col-span-6">
+                        <SectionCard title="แนวโน้มกำไร" icon={TrendingUp}>
+                            <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
+                                <ResponsiveContainer width="100%" height={T.chartHeight}>
+                                    <LineChart data={monthlyChartData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis dataKey="month" tick={CHART_TICK} axisLine={false} tickLine={false} />
+                                        <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
+                                        <Line type="monotone" dataKey="profitTrend" stroke="#f97316" strokeWidth={2.5} name="กำไร" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} connectNulls={false} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </ApiState>
+                        </SectionCard>
+                    </div>
 
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                        <TrendingUp className="h-4 w-4 text-orange-500" />
-                                        แนวโน้มกำไร
-                                    </h3>
-                                    <ResponsiveContainer width="100%" height={260}>
-                                        <LineChart data={monthlyRevenueData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                                            <Tooltip
-                                                contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }}
-                                                formatter={v => `฿${v.toLocaleString()}`}
-                                            />
-                                            <Line type="monotone" dataKey="profit" stroke="#f97316" strokeWidth={2.5} name="กำไร" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} />
-                                        </LineChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Pie charts row */}
-                            <div className="grid gap-5 lg:grid-cols-2">
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                        <PieChart className="h-4 w-4 text-orange-500" />
-                                        แหล่งรายรับ
-                                    </h3>
+                    <div className="col-span-12 lg:col-span-6">
+                        <SectionCard title="แหล่งรายรับ (ตามประเภทคอร์ส)" icon={PieChart}>
+                            <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
+                                {revenueByCourseType.length === 0 ? (
+                                    <EmptyState message="ยังไม่มีข้อมูลรายรับ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
+                                ) : (
                                     <div className="flex items-center gap-4">
                                         <ResponsiveContainer width="50%" height={180}>
                                             <RePieChart>
-                                                <Pie data={revenueSourcesData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
-                                                    {revenueSourcesData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                                                <Pie data={revenueByCourseType} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
+                                                    {revenueByCourseType.map((e, i) => <Cell key={i} fill={e.color} />)}
                                                 </Pie>
-                                                <Tooltip formatter={v => `฿${v.toLocaleString()}`} />
+                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
                                             </RePieChart>
                                         </ResponsiveContainer>
                                         <div className="flex-1 space-y-2.5">
-                                            {revenueSourcesData.map((item, i) => (
+                                            {revenueByCourseType.map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between text-sm">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
                                                         <span className="text-slate-600 text-xs">{item.name}</span>
                                                     </div>
-                                                    <span className="font-bold text-slate-900 text-xs">฿{item.value.toLocaleString()}</span>
+                                                    <span className="font-bold text-slate-900 text-xs">{formatMoney(item.value)}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
-                                </div>
+                                )}
+                            </ApiState>
+                        </SectionCard>
+                    </div>
 
-                                <div className="bg-white border border-slate-200 rounded-xl p-5">
-                                    <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                                        <Wallet className="h-4 w-4 text-orange-500" />
-                                        ค่าใช้จ่ายแยกหมวด
-                                    </h3>
+                    <div className="col-span-12 lg:col-span-6">
+                        <SectionCard title="รายรับแยกตามสถานะการชำระ" icon={Wallet}>
+                            <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
+                                {revenueByStatus.length === 0 ? (
+                                    <EmptyState message="ยังไม่มีข้อมูลสถานะการชำระ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
+                                ) : (
                                     <div className="flex items-center gap-4">
                                         <ResponsiveContainer width="50%" height={180}>
                                             <RePieChart>
-                                                <Pie data={expensesData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
-                                                    {expensesData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                                                <Pie data={revenueByStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
+                                                    {revenueByStatus.map((e, i) => <Cell key={i} fill={e.color} />)}
                                                 </Pie>
-                                                <Tooltip formatter={v => `฿${v.toLocaleString()}`} />
+                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
                                             </RePieChart>
                                         </ResponsiveContainer>
                                         <div className="flex-1 space-y-2.5">
-                                            {expensesData.map((item, i) => (
+                                            {revenueByStatus.map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
                                                         <span className="text-slate-600 text-xs">{item.name}</span>
                                                     </div>
-                                                    <span className="font-bold text-slate-900 text-xs">฿{item.value.toLocaleString()}</span>
+                                                    <span className="font-bold text-slate-900 text-xs">{formatMoney(item.value)}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
+                                )}
+                            </ApiState>
+                        </SectionCard>
+                    </div>
+                </>
+            )}
+
+            {/* ── Transactions Tab ── */}
+            {selectedTab === 'transactions' && (
+                <>
+                    {/* Filter row — search, month, status, payment, course on one line; export at far right */}
+                    <div className="col-span-12">
+                        <div className={`${T.card} ${T.cardPadSm}`}>
+                            <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                                <div className="relative flex-1 min-w-[200px]">
+                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        value={searchInput}
+                                        onChange={e => setSearchInput(e.target.value)}
+                                        placeholder="ค้นหาชื่อ, เลขบิล, คอร์ส..."
+                                        className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
+                                    />
                                 </div>
+                                <input
+                                    type="month"
+                                    value={monthFilter}
+                                    onChange={e => setMonthFilter(e.target.value)}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
+                                />
+                                <select
+                                    value={statusId}
+                                    onChange={e => setStatusId(e.target.value)}
+                                    disabled={filtersLoading}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 ${T.transition}`}
+                                >
+                                    <option value="all">ทุกสถานะ</option>
+                                    {filtersMeta.statuses.map(s => (
+                                        <option key={s.Status_Payment_Id} value={s.Status_Payment_Id}>{s.Status_Payment_Name}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={paymentType}
+                                    onChange={e => setPaymentType(e.target.value)}
+                                    disabled={filtersLoading}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 ${T.transition}`}
+                                >
+                                    <option value="all">ทุกวิธีชำระ</option>
+                                    {filtersMeta.paymentTypes.map(p => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={courseId}
+                                    onChange={e => setCourseId(e.target.value)}
+                                    disabled={filtersLoading}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 lg:max-w-[180px] ${T.transition}`}
+                                >
+                                    <option value="all">ทุกคอร์ส</option>
+                                    {filtersMeta.courses.map(c => (
+                                        <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    onClick={handleExport}
+                                    disabled={exporting}
+                                    className={`flex items-center gap-2 h-10 px-4 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 lg:ml-auto ${T.transition}`}
+                                >
+                                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}ส่งออก
+                                </button>
                             </div>
-
-                            {/* Quick KPIs */}
-                            <div className="grid gap-4 md:grid-cols-3">
-                                <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl">
-                                    <div className="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
-                                        <Users className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-slate-500 font-medium">นักเรียนที่ชำระแล้ว</p>
-                                        <p className="text-lg font-black text-slate-900">{stats.activeStudents} / {stats.totalStudents}</p>
-                                        <div className="mt-1.5 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${(stats.activeStudents / stats.totalStudents) * 100}%` }} />
-                                        </div>
-                                    </div>
+                            {filtersError && (
+                                <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    {filtersError}
+                                    <button onClick={fetchFiltersMeta} className="font-semibold underline underline-offset-2">ลองใหม่</button>
                                 </div>
-
-                                <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl">
-                                    <div className="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0">
-                                        <CheckCircle className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium">อัตราชำระตรงเวลา</p>
-                                        <p className="text-lg font-black text-slate-900">78.9%</p>
-                                        <p className="text-[10px] text-emerald-600 mt-0.5">↑ ดีขึ้น +5% จากเดือนที่แล้ว</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 p-4 bg-white border border-slate-200 rounded-xl">
-                                    <div className="h-10 w-10 rounded-xl bg-blue-500 flex items-center justify-center shrink-0">
-                                        <Banknote className="h-5 w-5 text-white" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-slate-500 font-medium">รายรับเฉลี่ย/นักเรียน</p>
-                                        <p className="text-lg font-black text-slate-900">
-                                            ฿{Math.round(stats.monthlyRevenue / stats.activeStudents).toLocaleString()}
-                                        </p>
-                                        <p className="text-[10px] text-slate-400 mt-0.5">คำนวณจากนักเรียนที่ชำระแล้ว</p>
-                                    </div>
-                                </div>
-                            </div>
+                            )}
+                            <p className={`${T.caption} mt-2 pl-1`}>
+                                แสดง {txData.length} จาก {totalTx.toLocaleString()} รายการ
+                            </p>
                         </div>
-                    )}
+                    </div>
 
-                    {/* ── Transactions Tab ── */}
-                    {selectedTab === 'transactions' && (
-                        <div className="space-y-4">
-                            {/* Sub-stats */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {[
-                                    { label: 'รายรับทั้งหมด',  value: `฿${filtered.filter(t => t.type==='income').reduce((s,t) => s+t.amount, 0).toLocaleString()}`,  color: 'bg-emerald-500', icon: TrendingUp },
-                                    { label: 'รายจ่ายทั้งหมด', value: `฿${filtered.filter(t => t.type==='expense').reduce((s,t) => s+t.amount, 0).toLocaleString()}`, color: 'bg-red-500',     icon: TrendingDown },
-                                    { label: 'รายการทั้งหมด',  value: `${filtered.length} รายการ`,                                                                       color: 'bg-blue-500',    icon: Receipt },
-                                    { label: 'รอดำเนินการ',    value: `${filtered.filter(t => t.status==='pending'||t.status==='overdue').length} รายการ`,               color: 'bg-yellow-500',  icon: Clock },
-                                ].map(({ label, value, color, icon: Icon }, i) => (
-                                    <div key={i} className="flex items-center gap-3 p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                        <div className={`h-8 w-8 rounded-lg ${color} flex items-center justify-center shrink-0`}>
-                                            <Icon className="h-4 w-4 text-white" />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-slate-500 font-medium truncate">{label}</p>
-                                            <p className="text-sm font-black text-slate-900">{value}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Search & filter */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                                <div className="flex flex-col md:flex-row gap-3">
-                                    <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            value={searchQuery}
-                                            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                                            placeholder="ค้นหารายการ, รหัส, ชื่อผู้ชำระ..."
-                                            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
-                                        />
-                                    </div>
-                                    <select
-                                        value={typeFilter}
-                                        onChange={e => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-                                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                                    >
-                                        <option value="all">ทุกประเภท</option>
-                                        <option value="income">รายรับ</option>
-                                        <option value="expense">รายจ่าย</option>
-                                    </select>
-                                    <select
-                                        value={statusFilter}
-                                        onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                                        className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                                    >
-                                        <option value="all">ทุกสถานะ</option>
-                                        <option value="completed">สำเร็จ</option>
-                                        <option value="pending">รอตรวจสอบ</option>
-                                        <option value="overdue">เกินกำหนด</option>
-                                        <option value="cancelled">ยกเลิก</option>
-                                    </select>
-                                    <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition">
-                                        <Download className="h-4 w-4" />ส่งออก
-                                    </button>
-                                </div>
-                                <p className="text-xs text-slate-400 mt-2 pl-1">
-                                    แสดง {filtered.length} จาก {transactions.length} รายการ
-                                </p>
-                            </div>
-
-                            {/* Table */}
-                            {paginated.length === 0 ? (
-                                <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-                                    <div className="text-5xl mb-3">🧾</div>
-                                    <p className="text-slate-500 font-medium">ไม่พบรายการที่ค้นหา</p>
+                    {/* Table */}
+                    <div className="col-span-12">
+                        <ApiState loading={txLoading} error={txError} onRetry={fetchTransactions} minHeight="h-64" skeletonHeight="h-64">
+                            {txData.length === 0 ? (
+                                <div className={T.card}>
+                                    <EmptyState
+                                        icon={Receipt}
+                                        message="ไม่พบรายการที่ค้นหา"
+                                        suggestion="ลองปรับตัวกรองหรือคำค้นหา แล้วลองใหม่อีกครั้ง"
+                                    />
                                 </div>
                             ) : (
-                                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className={`${T.card} overflow-hidden`}>
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    {['รหัส', 'รายการ', 'ประเภท', 'หมวดหมู่', 'ผู้ชำระ', 'วิธีชำระ', 'จำนวนเงิน', 'สถานะ', ''].map((h, i) => (
-                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i >= 6 ? 'text-right' : 'text-left'}`}>
+                                                    {['รหัส', 'รายการ', 'หมวดหมู่', 'ผู้ชำระ', 'วิธีชำระ', 'จำนวนเงิน', 'สถานะ', ''].map((h, i) => (
+                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i === 5 ? 'text-right' : 'text-left'}`}>
                                                             {h}
                                                         </th>
                                                     ))}
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {paginated.map(txn => (
-                                                    <TransactionRow key={txn.id} txn={txn} onView={setSelectedTransaction} />
+                                                {txData.map(txn => (
+                                                    <TransactionRow key={txn.StudentPaymentId} txn={txn} onView={setViewTxId} />
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
                             )}
+                        </ApiState>
+                    </div>
 
-                            {/* Pagination */}
-                            {totalPages > 1 && (
-                                <div className="flex items-center justify-between">
-                                    <p className="text-sm text-slate-500">
-                                        แสดง <span className="font-semibold">{(currentPage-1)*ITEMS_PER_PAGE+1}–{Math.min(currentPage*ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> รายการ
-                                    </p>
-                                    <div className="flex items-center gap-1.5">
-                                        <button onClick={() => setCurrentPage(p => Math.max(1, p-1))} disabled={currentPage===1}
-                                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                                            <ChevronLeft className="h-4 w-4" />
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="col-span-12 flex items-center justify-between flex-wrap gap-3">
+                            <p className={T.subtitle}>
+                                หน้า <span className="font-semibold text-slate-700">{currentPageNum}</span> จาก <span className="font-semibold text-slate-700">{totalPages}</span> · ทั้งหมด <span className="font-semibold text-slate-700">{totalTx.toLocaleString()}</span> รายการ
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPageNum === 1}
+                                    className={`flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
+                                    <ChevronLeft className="h-4 w-4" />
+                                </button>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPageNum) <= 1)
+                                    .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...'); acc.push(p); return acc; }, [])
+                                    .map((p, idx) => p === '...' ? (
+                                        <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
+                                    ) : (
+                                        <button key={p} onClick={() => setCurrentPage(p)}
+                                            className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-medium ${T.transition} ${currentPageNum === p ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600'}`}>
+                                            {p}
                                         </button>
-                                        {Array.from({ length: totalPages }, (_, i) => i+1)
-                                            .filter(p => p===1 || p===totalPages || Math.abs(p-currentPage)<=1)
-                                            .reduce((acc, p, idx, arr) => { if (idx>0 && p-arr[idx-1]>1) acc.push('...'); acc.push(p); return acc; }, [])
-                                            .map((p, idx) => p==='...' ? (
-                                                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                                            ) : (
-                                                <button key={p} onClick={() => setCurrentPage(p)}
-                                                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage===p ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600'}`}>
-                                                    {p}
-                                                </button>
-                                            ))}
-                                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))} disabled={currentPage===totalPages}
-                                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                                            <ChevronRight className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                                    ))}
+                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPageNum === totalPages}
+                                    className={`flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
+                                    <ChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
                     )}
-                </div>
-            </div>
+                </>
+            )}
 
             {/* ── Transaction Detail Modal ── */}
-            {selectedTransaction && (
-                <TransactionModal txn={selectedTransaction} onClose={() => setSelectedTransaction(null)} />
+            {viewTxId && (
+                <TransactionDetailModal transactionId={viewTxId} onClose={() => setViewTxId(null)} />
             )}
         </div>
     );
