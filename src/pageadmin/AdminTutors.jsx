@@ -328,7 +328,6 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
       {/* List */}
       {filtered.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="text-6xl mb-3">📋</div>
           <p className="text-slate-500 font-medium">ไม่พบใบสมัครในสถานะนี้</p>
         </div>
       ) : (
