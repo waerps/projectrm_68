@@ -89,8 +89,8 @@ export function Login() {
 
       <div className="w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2 border border-gray-100">
 
-        {/* ================= Left Section (Slider + Buttons) ================= */}
-        <div className="hidden md:flex flex-col relative">
+        {/* ================= Left Section (Slider + Buttons) ================= แก้รอบแรกไม่ไป */}
+        <div className="hidden md:flex flex-col relative"> 
 
           {/* ส่วนแสดงรูปภาพสไลด์ */}
           <div className="relative overflow-hidden group" style={{ height: "400px" }}>
