@@ -1,16 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-/**
- * FloatingChatbot
- * - ปุ่มวงกลมลอยมุมขวาล่าง (ทุกหน้า)
- * - กดแล้วเปิดหน้าต่างแชต
- * - มีปุ่มขยายเป็น Fullscreen (ซ้าย: ประวัติ/ New Chat, ขวา: แชต)
- * - รองรับหลายบทสนทนา (Threads)
- *
- * ต่อ API จริง:
- * - แก้ function askBot() ให้เรียก backend ของคุณแล้ว return ข้อความตอบกลับ
- */
-
 // ---- mock bot (เปลี่ยนเป็นเรียก API จริงได้) ----
 const N8N_CHAT_WEBHOOK =
   "https://cpkku.app.n8n.cloud/webhook/488ca9d1-0cb9-4a10-93df-3b8fb52fc2c8/chat"
