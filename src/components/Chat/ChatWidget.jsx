@@ -18,7 +18,8 @@ export default function ChatWidget() {
 
   if (!isOpen && !isFullscreen) {
     return (
-      <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-10 z-50 h-16 w-16 rounded-full text-white shadow-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110 animate-botFloat">
+      //แก้
+      <button onClick={() => setIsOpen(true)} className="fixed bottom-6 right-10 z-50 h-16 w-16 rounded-full bg-transparent text-white shadow-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110 animate-botFloat">
         <img src="/chatbot.png" alt="Chatbot" className="h-14 w-14 select-none pointer-events-none" draggable="false" />
       </button>
     )

@@ -9,6 +9,7 @@ const BOT_GREETING =
 
 const N8N_CHAT_WEBHOOK =
   "http://localhost:5678/webhook/chat-webhook-sornserm-003/chat"
+  "https://cpkku.app.n8n.cloud/webhook/b42b005c-977e-47c2-8512-d29e5b7ae11d/chat"
 
   
 function extractReply(data) {
