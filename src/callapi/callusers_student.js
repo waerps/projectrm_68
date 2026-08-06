@@ -25,8 +25,12 @@ function throwNiceError(error) {
 
 export async function studentLogin(username, password) {
   try {
-    const res = await apiClient.post("/api/student/login", { username, password });
-    return res.data; // { token, user }
+    const res = await apiClient.post('/auth/login', {
+      username,
+      password,
+    });
+
+    return res.data;
   } catch (error) {
     throwNiceError(error);
   }

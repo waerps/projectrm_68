@@ -142,7 +142,16 @@ export async function deleteCourse(courseId) {
   }
 }
 
-
+export async function applyTutor(formData) {
+  try {
+    const res = await apiClient.post("/api/tutorapply", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
 
 export async function getdataProducts() {
   return getCourses();

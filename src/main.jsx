@@ -103,8 +103,17 @@ const router = createBrowserRouter([
           { path: "schedule", element: <Schedule /> },
           { path: "notifications", element: <Notifications /> },
           { path: "my-courses", element: <StudentCourses /> },
-          { path: "course-detail", element: <StudentCourseDetail /> },
-          { path: "course-content", element: <StudentCourseContent /> },
+
+          {
+            path: "course-detail/:courseId",
+            element: <StudentCourseDetail />,
+          },
+
+          {
+            path: "course-content/:courseId",
+            element: <StudentCourseContent />,
+          },
+
           { path: "attendance", element: <Attendance /> },
         ],
       },

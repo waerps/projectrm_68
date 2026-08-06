@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Search, Heart, ShoppingCart, X, Trash2, BookOpen, ChevronRight, SlidersHorizontal } from "lucide-react"
 import { useShop } from "../context/ShopContext"
 import { getCourses } from "../callapi/callusers"
+import { getStudentProfile } from "../callapi/callusers_student"
 import { getFileUrl } from "../utils/fileUrl"
 
 // ── ตัวเลือกฟิลเตอร์: อ้างอิงจากตาราง subjects / course_availability ที่ส่งมา ──
@@ -64,8 +65,46 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user")
-    if (savedUser) setUserData(JSON.parse(savedUser))
+    const syncUser = () => {
+      const savedUser = localStorage.getItem("user")
+      if (savedUser) {
+        const user = JSON.parse(savedUser)
+        setUserData({
+          ...user,
+          id: user.id ?? user.UserId ?? user.userId,
+          nickname: user.nickname ?? user.Nickname ?? user.username ?? user.Username ?? "นักเรียน",
+          username: user.username ?? user.Username ?? "",
+          photo: user.photo ?? user.Photo ?? null,
+        })
+      }
+    }
+    syncUser()
+    window.addEventListener("student-profile-updated", syncUser)
+    return () => window.removeEventListener("student-profile-updated", syncUser)
+  }, [])
+
+  useEffect(() => {
+    const token = localStorage.getItem("student_token")
+    const role = localStorage.getItem("user_role")
+    if (!token || (role && role !== "student" && role !== "3")) return
+
+    let cancelled = false
+    getStudentProfile(token).then((response) => {
+      if (cancelled) return
+      const profile = response?.profile ?? response?.student ?? response?.data ?? response ?? {}
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}")
+      const mergedUser = {
+        ...savedUser,
+        id: profile.userId ?? profile.UserId ?? savedUser.id ?? savedUser.UserId,
+        nickname: profile.nickname ?? profile.Nickname ?? savedUser.nickname ?? savedUser.Nickname ?? "นักเรียน",
+        username: profile.username ?? profile.Username ?? savedUser.username ?? savedUser.Username ?? "",
+        photo: profile.photo ?? profile.Photo ?? savedUser.photo ?? savedUser.Photo ?? null,
+      }
+      localStorage.setItem("user", JSON.stringify(mergedUser))
+      setUserData(mergedUser)
+    }).catch((error) => console.warn("โหลดชื่อเล่นนักเรียนไม่สำเร็จ:", error))
+
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
@@ -590,7 +629,7 @@ const cartTotal = cart.reduce((sum, item) => {
                         ? getFileUrl(userData.photo)
                         : `https://api.dicebear.com/7.x/avataaars/svg?seed=user_${userData.id || userData.username}&backgroundColor=dbeafe`
                     }
-                    alt={userData.nickname || userData.username}
+                    alt={userData.nickname || userData.username || "นักเรียน"}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=user_${userData.id || userData.username}&backgroundColor=dbeafe`
@@ -598,7 +637,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   />
                 </div>
                 <span className={`font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500 border-b-2 border-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
-                  {userData.nickname}
+                  {userData.nickname || userData.username || "นักเรียน"}
                 </span>
               </div>
               <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-100">

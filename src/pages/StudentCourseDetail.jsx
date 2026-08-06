@@ -1,14 +1,15 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Users, Calendar, Video, Award, BarChart2, ChevronRight, PlayCircle,
   CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import {
-  getStudentProfile, // ⚠️ ต้องมีฟังก์ชันนี้ใน callusers_student.js (เรียก GET /api/student/profile)
-  getStudentAttendance, // ⚠️ ต้องมีฟังก์ชันนี้ (เรียก GET /api/student/attendance)
+  getStudentProfile,
+  getStudentSchedule,
+  getStudentCourses,
   getStudentVideos,
 } from "../callapi/callusers_student";
 
@@ -38,12 +39,18 @@ const generateMockScores = (seedId) => {
 };
 
 export default function StudentCourseDetail() {
+  const { courseId: routeCourseId } = useParams();
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get("courseId");
-  const courseName = searchParams.get("courseName") || "คอร์สเรียน";
+
+  // รองรับทั้ง /student/courses/:courseId และ ?courseId=...
+  const courseId = routeCourseId || searchParams.get("courseId");
   const token = localStorage.getItem("student_token");
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [courseName, setCourseName] = useState(
+    searchParams.get("courseName") || "คอร์สเรียน"
+  );
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -51,37 +58,162 @@ export default function StudentCourseDetail() {
   const [activeTab, setActiveTab] = useState("attendance");
 
   useEffect(() => {
-    (async () => {
-      try {
-        const profile = await getStudentProfile(token);
-        setStudent(profile);
-        setScores(generateMockScores(profile.UserId));
+    let cancelled = false;
 
-        // ⚠️ ตอนนี้ /api/student/attendance คืนทุกคอร์สรวมกัน ต้องกรองด้วย CourseName
-        //     ทางที่ดีควรแก้ backend ให้ส่ง CourseID กลับมาด้วย แล้ว filter ด้วย id แทนชื่อ (แม่นกว่า)
+    const loadCourseDetail = async () => {
+      if (!token) {
+        setError("ไม่พบโทเคน กรุณาเข้าสู่ระบบใหม่");
+        setLoading(false);
+        return;
+      }
+
+      if (!courseId) {
+        setError("ไม่พบรหัสคอร์ส");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const profileResponse = await getStudentProfile(token);
+        const rawProfile =
+          profileResponse?.profile ??
+          profileResponse?.student ??
+          profileResponse?.data ??
+          profileResponse;
+
+        const normalizedProfile = {
+          UserId: rawProfile?.UserId ?? rawProfile?.userId,
+          Firstname: rawProfile?.Firstname ?? rawProfile?.firstname ?? "",
+          Lastname: rawProfile?.Lastname ?? rawProfile?.lastname ?? "",
+          Nickname: rawProfile?.Nickname ?? rawProfile?.nickname ?? "student",
+          SchoolName: rawProfile?.SchoolName ?? rawProfile?.schoolName ?? "",
+          PhoneNo: rawProfile?.PhoneNo ?? rawProfile?.phoneNo ?? "",
+          GradeDetail:
+            rawProfile?.GradeDetail ??
+            rawProfile?.gradeDetail ??
+            rawProfile?.GradeLevelId ??
+            rawProfile?.gradeLevelId ??
+            "ไม่ระบุระดับชั้น",
+        };
+
+        if (!cancelled) {
+          setStudent(normalizedProfile);
+          setScores(generateMockScores(normalizedProfile.UserId));
+        }
+
+        // ใช้ endpoint ตารางเรียนที่มีอยู่จริง แทน /api/student/attendance ที่ไม่มี route
         try {
-          const att = await getStudentAttendance(token);
-          setAttendance(att.filter((a) => a.CourseName === courseName));
-        } catch { setAttendance([]); }
+          const scheduleResponse = await getStudentSchedule(token);
+          const allSchedules = Array.isArray(scheduleResponse)
+            ? scheduleResponse
+            : Array.isArray(scheduleResponse?.schedule)
+              ? scheduleResponse.schedule
+              : [];
+
+          const courseAttendance = allSchedules
+            .filter((item) =>
+              String(item.CourseID ?? item.courseId) === String(courseId)
+            )
+            .map((item) => ({
+              StudentAttendanceId:
+                item.StudentAttendanceId ??
+                item.attendanceId ??
+                item.CourseScheduleDetailId ??
+                item.courseScheduleDetailId,
+              CourseID: item.CourseID ?? item.courseId,
+              CourseName: item.CourseName ?? item.courseName,
+              SubjectName: item.SubjectName ?? item.subjectName,
+              StartDateTime:
+                item.StartDateTime ??
+                item.startDateTime ??
+                (item.classDate && item.startTime
+                  ? `${item.classDate}T${item.startTime}`
+                  : item.classDate),
+              Status:
+                item.Status ??
+                item.AttendanceStatus ??
+                item.attendanceStatus ??
+                "unknown",
+            }));
+
+          if (!cancelled) setAttendance(courseAttendance);
+        } catch (attendanceError) {
+          console.error("โหลดประวัติการเข้าเรียนไม่สำเร็จ:", attendanceError);
+          if (!cancelled) setAttendance([]);
+        }
 
         try {
           const vids = await getStudentVideos(token, courseId);
-          setVideos(
-            (vids || []).map((v) => ({
-              id: v.VideoId,
-              title: v.VideoTitle,
-              duration: v.Duration || "-",
-              watched: (v.WatchPercent || 0) >= 80,
-              watchedAt: v.WatchDate,
-              progress: Math.round(v.WatchPercent || 0),
-            }))
+          const videoList = Array.isArray(vids)
+            ? vids
+            : Array.isArray(vids?.videos)
+              ? vids.videos
+              : [];
+
+          const normalizedVideos = videoList.map((video) => {
+            const watchPercent = Number(
+              video.WatchPercent ?? video.watchPercent ?? 0
+            );
+
+            return {
+              id: video.VideoId ?? video.videoId,
+              title: video.VideoTitle ?? video.videoTitle ?? "ไม่มีชื่อคลิป",
+              duration: video.Duration ?? video.duration ?? "-",
+              watched: watchPercent >= 80,
+              watchedAt: video.WatchDate ?? video.watchDate,
+              progress: Math.round(watchPercent),
+            };
+          });
+
+          if (!cancelled) setVideos(normalizedVideos);
+        } catch (videoError) {
+          console.error("โหลดวิดีโอไม่สำเร็จ:", videoError);
+          if (!cancelled) setVideos([]);
+        }
+
+        // หา CourseName จากรายการคอร์ส เพราะ URL แบบ /:courseId ไม่มีชื่อคอร์สติดมา
+        try {
+          const courseResponse = await getStudentCourses(token);
+          const courseList = Array.isArray(courseResponse)
+            ? courseResponse
+            : Array.isArray(courseResponse?.courses)
+              ? courseResponse.courses
+              : [];
+
+          const selectedCourse = courseList.find((course) =>
+            String(course.CourseID ?? course.courseId) === String(courseId)
           );
-        } catch { setVideos([]); }
-      } catch (e) {
-        console.error(e);
-      } finally { setLoading(false); }
-    })();
-  }, [courseId]);
+
+          if (selectedCourse && !cancelled) {
+            setCourseName(
+              selectedCourse.CourseName ??
+              selectedCourse.courseName ??
+              "คอร์สเรียน"
+            );
+          }
+        } catch (courseError) {
+          console.error("โหลดชื่อคอร์สไม่สำเร็จ:", courseError);
+        }
+      } catch (loadError) {
+        console.error("โหลดรายละเอียดคอร์สไม่สำเร็จ:", loadError);
+        if (!cancelled) {
+          setStudent(null);
+          setError(loadError?.message || "โหลดรายละเอียดคอร์สไม่สำเร็จ");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadCourseDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, token]);
 
   const attendedCount = attendance.filter((a) => a.Status === "present").length;
   const absentCount = attendance.filter((a) => a.Status === "absent").length;
@@ -115,12 +247,13 @@ export default function StudentCourseDetail() {
   const rateText = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
   if (loading) return <div className="mt-[90px] text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>;
+  if (error) return <div className="mt-[90px] text-center p-10 text-red-500">{error}</div>;
   if (!student) return <div className="mt-[90px] text-center p-10 text-neutral-500">ไม่พบข้อมูลนักเรียน</div>;
 
   return (
     <div className="space-y-6 mt-[90px]">
       <div className="flex items-center text-sm text-neutral-500 gap-2">
-        <Link to="/student/courses" className="hover:text-orange-600 transition font-medium">คอร์สเรียนของฉัน</Link>
+        <Link to="/profile/my-courses" className="hover:text-orange-600 transition font-medium">คอร์สเรียนของฉัน</Link>
         <ChevronRight className="h-4 w-4" />
         <span className="text-neutral-800 font-semibold">{courseName}</span>
       </div>

@@ -1,9 +1,9 @@
 // ===================== 2) StudentCourseContent.jsx =====================
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { ChevronRight, Video, FileText, Calendar, Download, Loader2, PlayCircle, X, Clock } from "lucide-react";
-import { getStudentVideos, getStudentFiles, updateVideoProgress } from "../callapi/callusers_student";
+import { useSearchParams, useParams, Link } from "react-router-dom";
+import { ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
+import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoProgress } from "../callapi/callusers_student";
 
 let ytApiPromise = null;
 function loadYoutubeApi() {
@@ -126,12 +126,14 @@ function FileRow({ file }) {
 }
 
 export default function StudentCourseContent() {
+  const { courseId: routeCourseId } = useParams();
   const [searchParams] = useSearchParams();
-  const courseId = searchParams.get("courseId") || "";
-  const courseName = searchParams.get("courseName") || "คอร์สเรียน";
+  const courseId = routeCourseId || searchParams.get("courseId") || "";
   const token = localStorage.getItem("student_token");
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [courseName, setCourseName] = useState(searchParams.get("courseName") || "คอร์สเรียน");
   const [videos, setVideos] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -143,17 +145,58 @@ export default function StudentCourseContent() {
   const getVideoType = (url) => (/youtube\.com|youtu\.be/.test(url) ? "youtube" : /drive\.google\.com/.test(url) ? "drive" : "other");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      if (!courseId) { setLoading(false); return; }
+      if (!courseId) { setError("ไม่พบรหัสคอร์ส"); setLoading(false); return; }
+      if (!token) { setError("กรุณาเข้าสู่ระบบใหม่"); setLoading(false); return; }
       try {
-        const [v, f] = await Promise.all([getStudentVideos(token, courseId), getStudentFiles(token, courseId)]);
-        setVideos(v || []);
-        setDocuments(f || []);
+        setError("");
+        const [videoResult, fileResult, courseResult] = await Promise.allSettled([
+          getStudentVideos(token, courseId),
+          getStudentFiles(token, courseId),
+          getStudentCourses(token),
+        ]);
+
+        if (cancelled) return;
+        if (videoResult.status === "rejected" && fileResult.status === "rejected") {
+          throw videoResult.reason;
+        }
+
+        const videoPayload = videoResult.status === "fulfilled" ? videoResult.value : [];
+        const filePayload = fileResult.status === "fulfilled" ? fileResult.value : [];
+        const videoList = Array.isArray(videoPayload) ? videoPayload : videoPayload?.videos ?? videoPayload?.data ?? [];
+        const fileList = Array.isArray(filePayload) ? filePayload : filePayload?.files ?? filePayload?.documents ?? filePayload?.data ?? [];
+
+        setVideos(videoList.map((video) => ({
+          ...video,
+          VideoId: video.VideoId ?? video.videoId ?? video.id,
+          VideoTitle: video.VideoTitle ?? video.videoTitle ?? video.title ?? "วิดีโอไม่มีชื่อ",
+          VideoUrl: video.VideoUrl ?? video.videoUrl ?? video.url ?? "",
+          Duration: video.Duration ?? video.duration,
+          WatchPercent: Number(video.WatchPercent ?? video.watchPercent ?? 0),
+        })));
+        setDocuments(fileList.map((file) => ({
+          ...file,
+          FileId: file.FileId ?? file.fileId ?? file.id,
+          FileName: file.FileName ?? file.fileName ?? file.name ?? "เอกสารไม่มีชื่อ",
+          FilePath: file.FilePath ?? file.filePath ?? file.url ?? "",
+          FileSize: file.FileSize ?? file.fileSize ?? "",
+          SubjectName: file.SubjectName ?? file.subjectName ?? "เอกสารประกอบการเรียน",
+        })));
+
+        if (courseResult.status === "fulfilled") {
+          const payload = courseResult.value;
+          const list = Array.isArray(payload) ? payload : payload?.courses ?? payload?.data ?? [];
+          const course = list.find((item) => String(item.CourseID ?? item.CourseId ?? item.courseId ?? item.id) === String(courseId));
+          if (course) setCourseName(course.CourseName ?? course.courseName ?? course.name ?? "คอร์สเรียน");
+        }
       } catch (e) {
         console.error(e);
-      } finally { setLoading(false); }
+        if (!cancelled) setError(typeof e === "string" ? e : e?.message || "โหลดเนื้อหาคอร์สไม่สำเร็จ");
+      } finally { if (!cancelled) setLoading(false); }
     })();
-  }, [courseId]);
+    return () => { cancelled = true; };
+  }, [courseId, token]);
 
   if (loading) {
     return (
@@ -164,12 +207,16 @@ export default function StudentCourseContent() {
     );
   }
 
+  if (error) {
+    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+  }
+
   return (
     <div className="min-h-screen mt-[70px] pb-12">
       <div className="mx-auto">
         <div className="py-6">
           <div className="mb-3 flex items-center text-sm text-neutral-500">
-            <Link to="/student/courses" className="hover:text-orange-600 transition">คอร์สเรียนของฉัน</Link>
+            <Link to="/profile/my-courses" className="hover:text-orange-600 transition">คอร์สเรียนของฉัน</Link>
             <ChevronRight className="mx-1.5 h-4 w-4" />
             <span className="text-neutral-800 font-medium">เนื้อหาในคอร์ส</span>
           </div>
