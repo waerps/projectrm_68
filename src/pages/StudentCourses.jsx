@@ -1,9 +1,21 @@
 // ===================== 1) StudentCourses.jsx =====================
-import { API_URL } from "../config";
 import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getStudentCourses } from "../callapi/callusers_student";
+import {
+  getStudentCourses,
+  getStudentFiles,
+  getStudentSchedule,
+  getStudentVideos,
+} from "../callapi/callusers_student";
+
+function unwrapList(payload, keys = []) {
+  if (Array.isArray(payload)) return payload;
+  for (const key of keys) {
+    if (Array.isArray(payload?.[key])) return payload[key];
+  }
+  return Array.isArray(payload?.data) ? payload.data : [];
+}
 
 export default function StudentCourses() {
   const token = localStorage.getItem("student_token");
@@ -12,9 +24,13 @@ export default function StudentCourses() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // ── สถานะคอร์ส (คำนวณจากวันที่ เหมือนของติวเตอร์) ──────────────
   const mapStatus = (startDate, lastDate) => {
+    if (!startDate || !lastDate) {
+      return { id: "upcoming", text: "รอกำหนดวันเรียน", colorClass: "bg-blue-100 text-blue-700" };
+    }
     const today = new Date();
     const start = new Date(startDate);
     const end = new Date(lastDate);
@@ -38,42 +54,106 @@ export default function StudentCourses() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        // ⚠️ ใช้ endpoint เดิม GET /api/student/courses (ดู student.routes.js)
         const data = await getStudentCourses(token);
+        const courseList = unwrapList(data, ["courses"]);
 
-        const formatted = data.map((c) => {
-          const statusInfo = mapStatus(c.StartDate, c.LastDate);
-          const progress = calcProgress(c.CompletedSessions, c.TotalSessions, statusInfo.id);
+        const scheduleResult = await getStudentSchedule(token).catch(() => []);
+        const allSchedules = unwrapList(scheduleResult, ["schedule", "schedules"]);
 
+        const contentByCourse = await Promise.all(courseList.map(async (course) => {
+          const id = course.courseId ?? course.CourseId ?? course.CourseID ?? course.id;
+          const [videoResult, fileResult] = await Promise.allSettled([
+            getStudentVideos(token, id),
+            getStudentFiles(token, id),
+          ]);
           return {
-            id: c.CourseID,
-            enrollId: c.EnrollId,
-            name: c.CourseName,
-            startDate: c.StartDate
-              ? new Date(c.StartDate).toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" })
-              : "ไม่ระบุ",
-            totalSessions: c.TotalSessions || 0,
-            completedSessions: statusInfo.id === "completed" ? (c.TotalSessions || 0) : (c.CompletedSessions || 0),
-            totalVideos: c.TotalVideos || 0,
-            watchedVideos: c.WatchedVideos || 0,
-            totalFiles: c.TotalFiles || 0,
-
-            statusId: statusInfo.id,
-            statusText: statusInfo.text,
-            statusColor: statusInfo.colorClass,
-            progress,
+            id: String(id),
+            videos: videoResult.status === "fulfilled" ? unwrapList(videoResult.value, ["videos"]) : [],
+            files: fileResult.status === "fulfilled" ? unwrapList(fileResult.value, ["files", "documents"]) : [],
           };
-        });
+        }));
+        const contentMap = new Map(contentByCourse.map((item) => [item.id, item]));
+
+const formatted = courseList.map((c) => {
+  const courseId = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
+  const startDate = c.startDate ?? c.StartDate;
+  const lastDate = c.lastDate ?? c.LastDate;
+
+  const courseSchedules = allSchedules.filter((item) =>
+    String(item.CourseID ?? item.CourseId ?? item.courseId) === String(courseId)
+  );
+  const courseContent = contentMap.get(String(courseId)) ?? { videos: [], files: [] };
+
+  const apiTotalSessions = Number(c.totalSessions ?? c.TotalSessions ?? 0);
+  const totalSessions = courseSchedules.length || apiTotalSessions;
+
+  const derivedCompletedSessions = courseSchedules.filter((item) => {
+      const status = String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase();
+      if (status === "present") return true;
+      if (status === "absent") return false;
+      const date = new Date(item.StartDateTime ?? item.startDateTime ?? item.ClassDate ?? item.classDate);
+      return !Number.isNaN(date.getTime()) && date < new Date();
+    }).length;
+  const completedSessions = courseSchedules.length
+    ? derivedCompletedSessions
+    : Number(c.completedSessions ?? c.CompletedSessions ?? 0);
+
+  const statusInfo = mapStatus(startDate, lastDate);
+
+  const progress = calcProgress(
+    completedSessions,
+    totalSessions,
+    statusInfo.id
+  );
+
+  return {
+    id: courseId,
+    enrollId: c.enrollId ?? c.EnrollId,
+    name: c.courseName ?? c.CourseName ?? c.name ?? "คอร์สเรียน",
+
+    startDate: startDate
+      ? new Date(startDate).toLocaleDateString("th-TH", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "ไม่ระบุ",
+
+    totalSessions,
+
+    completedSessions:
+      statusInfo.id === "completed"
+        ? totalSessions
+        : completedSessions,
+
+    totalVideos:
+      courseContent.videos.length || Number(c.totalVideos ?? c.TotalVideos ?? 0),
+
+    watchedVideos:
+      courseContent.videos.length
+        ? courseContent.videos.filter((video) => Number(video.WatchPercent ?? video.watchPercent ?? 0) >= 80).length
+        : Number(c.watchedVideos ?? c.WatchedVideos ?? 0),
+
+    totalFiles:
+      courseContent.files.length || Number(c.totalFiles ?? c.TotalFiles ?? 0),
+
+    statusId: statusInfo.id,
+    statusText: statusInfo.text,
+    statusColor: statusInfo.colorClass,
+    progress,
+  };
+});
 
         setCourses(formatted);
       } catch (err) {
         console.error("Error fetching student courses:", err);
+        setError(typeof err === "string" ? err : err?.message || "โหลดข้อมูลคอร์สไม่สำเร็จ");
       } finally {
         setLoading(false);
       }
     };
     fetchCourses();
-  }, []);
+  }, [token]);
 
   // ── สถิติรวมด้านบน ─────────────────────────────────────────
   const activeCount = courses.filter((c) => c.statusId === "active").length;
@@ -87,12 +167,16 @@ export default function StudentCourses() {
 
   const filteredCourses = courses.filter((c) => {
     const statusMatch = filterStatus === "all" || c.statusId === filterStatus;
-    const searchMatch = search === "" || c.name.toLowerCase().includes(search.toLowerCase());
+    const searchMatch = search === "" || String(c.name || "").toLowerCase().includes(search.toLowerCase());
     return statusMatch && searchMatch;
   });
 
   if (loading) {
     return <div className="mt-[90px] text-center p-10 font-medium text-neutral-500">กำลังโหลดข้อมูลคอร์ส...</div>;
+  }
+
+  if (error) {
+    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
   }
 
   return (
@@ -222,14 +306,14 @@ export default function StudentCourses() {
                 {/* ปุ่ม 2 ปุ่ม ตามที่ขอ */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
                   <Link
-                      to={`/profile/course-content?courseId=${course.id}&subjectId=${course.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(course.subjectName || "")}`}
+                    to={`/profile/course-content/${course.id}`}
                     className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                   >
                     <FileText className="h-4 w-4" /> เนื้อหาในคอร์ส
                   </Link>
 
                   <Link
-                      to={`/profile/course-detail?courseId=${course.id}&subjectId=${course.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(course.subjectName || "")}`}
+                    to={`/profile/course-detail/${course.id}`}
                     className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
                   >
                     <Users className="h-4 w-4 text-neutral-400" /> ดูรายละเอียด

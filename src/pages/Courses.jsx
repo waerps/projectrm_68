@@ -247,7 +247,17 @@ export default function CourseDetail() {
   const canEnroll = status ? status.canEnroll : true; // ไม่รู้สถานะ = ไม่บล็อกไว้ก่อน
 
   const isFav = favorites.some((c) => c.id === course.id);
-  const courseData = { id: course.id, title: course.title, price: course.price };
+  const courseData = {
+    id: course.id,
+    title: course.title,
+    price: course.price,
+    discount: course.discount,
+    fullCost: course.fullCost,
+    image: course.image,
+    dateRange: formatDateRange(course.startDate, course.endDate),
+    termName: course.termName,
+    availabilityName: course.availabilityName,
+  };
 
   const toggleOpen = (i) => setOpenIdx((prev) => (prev === i ? null : i));
 

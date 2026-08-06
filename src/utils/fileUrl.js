@@ -10,5 +10,5 @@ export const getFileUrl = (path) => {
   ) {
     return path;
   }
-  return `${API_URL}${path}`;
+  return `${API_URL}${path.startsWith('/') ? '' : '/'}${path}`;
 };
