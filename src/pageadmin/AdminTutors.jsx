@@ -15,6 +15,13 @@ import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
+// Tutor-application routes are protected by authRequired + admin role.
+// The login page stores the JWT under this key.
+const getAdminAuthConfig = () => {
+  const token = localStorage.getItem("student_token");
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+};
+
 // ─── FIX #8-equivalent: handle format วันที่ที่หลากหลาย
 const formatDate = (d) => {
   if (!d) return "ไม่ระบุ";
@@ -282,7 +289,11 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
   const handleApprove = async (applicationId, data) => {
     setIsSubmitting(true);
     try {
-      await axios.post(`${API}/tutor-applications/${applicationId}/approve`, data);
+      await axios.post(
+        `${API}/tutor-applications/${applicationId}/approve`,
+        data,
+        getAdminAuthConfig(),
+      );
       showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ!");
       setApprovingApp(null);
       onRefresh();
@@ -294,7 +305,11 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
   // ★ เพิ่มกลับเข้ามาตรงนี้ — เป็นคนละตัวกับที่ลบออกจาก AdminTutorsPage
   const handleReject = async (applicationId, reason) => {
     try {
-      await axios.patch(`${API}/tutor-applications/${applicationId}/reject`, { reason });
+      await axios.patch(
+        `${API}/tutor-applications/${applicationId}/reject`,
+        { reason },
+        getAdminAuthConfig(),
+      );
       showToast("success", "ปฏิเสธใบสมัครสำเร็จ");
       onRefresh();
     } catch (e) {
@@ -2006,10 +2021,16 @@ export default function AdminTutorsPage() {
 
   const fetchApplications = async () => {
     try {
-      const res = await axios.get(`${API}/tutor-applications`);
-      setApplications(res.data);
+      const res = await axios.get(`${API}/tutor-applications`, getAdminAuthConfig());
+      setApplications(Array.isArray(res.data) ? res.data : (res.data?.data || []));
     } catch (e) {
       console.error("fetch applications error:", e);
+      setApplications([]);
+      showToast(
+        "error",
+        "โหลดใบสมัครติวเตอร์ไม่สำเร็จ",
+        e.response?.data?.message || "กรุณาเข้าสู่ระบบด้วยบัญชีแอดมินอีกครั้ง",
+      );
     }
   };
 
