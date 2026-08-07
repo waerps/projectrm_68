@@ -76,7 +76,7 @@ export default function ChatWidget() {
     <>
       <div className="fixed inset-0" onClick={() => setIsOpen(false)} />
 
-      <div className="fixed z-50 bg-white rounded-3xl shadow-2xl flex flex-col right-4 bottom-4 w-[calc(100vw-2rem)] max-w-[420px] h-[72vh] max-h-[640px] md:right-6 md:bottom-6 md:h-[470px] animate-chatPopIn origin-bottom-right relative">
+      <div className="fixed z-50 bg-white rounded-3xl shadow-2xl flex flex-col right-4 bottom-4 w-[calc(100vw-2rem)] max-w-[420px] h-[72vh] max-h-[640px] md:right-6 md:bottom-6 md:h-[470px] animate-chatPopIn origin-bottom-right">
         {/* Header - โค้ดส่วนเดิม */}
         <div className="px-5 py-4 border-b border-gray-100 rounded-t-3xl flex items-center justify-between">
           <div className="flex items-center gap-3">
