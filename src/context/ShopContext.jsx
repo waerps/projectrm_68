@@ -28,6 +28,11 @@ export function ShopProvider({ children }) {
     setCart((prev) => prev.filter((c) => c.id !== id));
   };
 
+  const removeManyFromCart = (ids) => {
+    const removedIds = new Set(ids.map(String));
+    setCart((prev) => prev.filter((c) => !removedIds.has(String(c.id))));
+  };
+
   const toggleFavorite = (course) => {
     setFavorites((prev) =>
       prev.find((c) => c.id === course.id)
@@ -37,7 +42,7 @@ export function ShopProvider({ children }) {
   };
 
   return (
-    <ShopContext.Provider value={{ cart, favorites, addToCart, removeFromCart, toggleFavorite }}>
+    <ShopContext.Provider value={{ cart, favorites, addToCart, removeFromCart, removeManyFromCart, toggleFavorite }}>
       {children}
     </ShopContext.Provider>
   );

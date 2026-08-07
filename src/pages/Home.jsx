@@ -19,6 +19,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import { getCourses } from "../callapi/callusers";
+import { getStudentCourses } from "../callapi/callusers_student";
 import { useShop } from "../context/ShopContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -394,7 +395,7 @@ function AboutFlashcard({ courses }) {
  * โครงสร้าง/แท็กยึดตาม CourseCard ใน Admincoures.jsx (ไม่รวมจำนวนนักเรียน)
  * ปุ่มเพิ่มลงตะกร้า/ถูกใจ ใช้สไตล์เดียวกับ CourseSearch.jsx
  */
-const CourseCard = ({ item, isFav, inCart, onAddToCart, onToggleFavorite }) => {
+const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavorite }) => {
   const statusBadge = STATUS_BADGE[item.status];
 
   return (
@@ -461,11 +462,11 @@ const CourseCard = ({ item, isFav, inCart, onAddToCart, onToggleFavorite }) => {
               e.stopPropagation();
               onAddToCart();
             }}
-            disabled={inCart}
+            disabled={inCart || isEnrolled}
             className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ShoppingCart className="h-3.5 w-3.5" />
-            {inCart ? "อยู่ในตะกร้าแล้ว" : "เพิ่มลงตะกร้า"}
+            {isEnrolled ? "มีคอร์สนี้แล้ว" : inCart ? "อยู่ในตะกร้าแล้ว" : "เพิ่มลงตะกร้า"}
           </button>
           <button
             type="button"
@@ -493,7 +494,7 @@ const CourseCard = ({ item, isFav, inCart, onAddToCart, onToggleFavorite }) => {
  * แสดงคอร์สของแต่ละเทอมแบบแถวเดียว เลื่อนซ้าย/ขวาได้
  * กด "ทั้งหมด" เพื่อขยายเป็น grid เต็ม (ดันเนื้อหาถัดไปลงมา)
  */
-function CourseCarousel({ group, favorites, cart, addToCart, toggleFavorite, toCourseCardItem }) {
+function CourseCarousel({ group, favorites, cart, enrolledCourseIds, addToCart, toggleFavorite, toCourseCardItem }) {
   const scrollRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -507,6 +508,7 @@ function CourseCarousel({ group, favorites, cart, addToCart, toggleFavorite, toC
     const item = toCourseCardItem(c);
     const isFav = favorites.some((f) => f.id === c.CourseID);
     const inCart = cart.some((f) => f.id === c.CourseID);
+    const isEnrolled = enrolledCourseIds.has(String(c.CourseID));
     const courseData = item;
     return (
       <Link key={c.CourseID} to={`/courses/${c.CourseID}`} className="block h-full">
@@ -514,6 +516,7 @@ function CourseCarousel({ group, favorites, cart, addToCart, toggleFavorite, toC
           item={item}
           isFav={isFav}
           inCart={inCart}
+          isEnrolled={isEnrolled}
           onAddToCart={() => addToCart(courseData)}
           onToggleFavorite={() => toggleFavorite(courseData)}
         />
@@ -891,10 +894,22 @@ export default function Home() {
   const [data, setData] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
   const [heroIndex, setHeroIndex] = useState(0);
+  const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
 
   const [selectedId, setSelectedId] = useState(null);
 
   const { cart, favorites, addToCart, toggleFavorite } = useShop();
+
+  useEffect(() => {
+    const token = localStorage.getItem("student_token");
+    if (!token) return;
+    getStudentCourses(token)
+      .then((courses) => {
+        const rows = Array.isArray(courses) ? courses : courses?.courses ?? courses?.data ?? [];
+        setEnrolledCourseIds(new Set(rows.map((course) => String(course.CourseID ?? course.courseId ?? course.id))));
+      })
+      .catch((error) => console.warn("โหลดคอร์สที่ลงทะเบียนแล้วไม่สำเร็จ:", error));
+  }, []);
 
   useEffect(() => {
     async function fetchCourses() {
@@ -950,12 +965,12 @@ export default function Home() {
       .map((tid) => ({
         id: tid,
         label: TERM_LABELS[tid],
-        courses: visibleCourses.filter((c) => c.Term_Id === tid),
+        courses: visibleCourses.filter((c) => Number(c.Term_Id) === tid),
       }))
       .filter((g) => g.courses.length > 0);
 
     // กันคอร์สที่ Term_Id ไม่ตรงกับ 1-4 (หรือไม่มีค่า) หายไปเงียบๆ
-    const others = visibleCourses.filter((c) => ![1, 2, 3, 4].includes(c.Term_Id));
+    const others = visibleCourses.filter((c) => ![1, 2, 3, 4].includes(Number(c.Term_Id)));
     if (others.length) known.push({ id: "other", label: "คอร์สอื่นๆ", courses: others });
 
     return known;
@@ -988,12 +1003,15 @@ export default function Home() {
     installments: Number(c.Installments || 1),
     installmentAmounts: c.InstallmentAmounts || null,
     totalCourseHours: Number(c.TotalCourseHours || 0),
+    termName: c.Term_Name ?? TERM_LABELS[Number(c.Term_Id)] ?? null,
+    Term_Name: c.Term_Name ?? TERM_LABELS[Number(c.Term_Id)] ?? null,
+    Term_Id: c.Term_Id,
   });
 
   return (
-    <div className="pb-24" style={{ fontFamily: "'Sarabun', sans-serif" }}>
+    <div className="pb-24" style={{ fontFamily: "'Kanit', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Sarabun:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');
       `}</style>
 
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
@@ -1141,6 +1159,7 @@ export default function Home() {
                 group={group}
                 favorites={favorites}
                 cart={cart}
+                enrolledCourseIds={enrolledCourseIds}
                 addToCart={addToCart}
                 toggleFavorite={toggleFavorite}
                 toCourseCardItem={toCourseCardItem}
