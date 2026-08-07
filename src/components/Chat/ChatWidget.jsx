@@ -47,7 +47,7 @@ export default function ChatWidget() {
     return (
       <div className="fixed bottom-6 right-10 z-50">
         {showTooltip && (
-          <div className="absolute bottom-full right-0 mb-1.5 w-40 bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
+          <div className="absolute bottom-full right-0 mb-1.5 whitespace-nowrap bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
             มีอะไรให้น้องศรเสริมช่วยไหมครับ 😊
           </div>
         )}
