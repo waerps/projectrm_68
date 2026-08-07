@@ -10,7 +10,7 @@ const BOT_GREETING =
 const N8N_CHAT_WEBHOOK =
   "https://cpkku.app.n8n.cloud/webhook/b42b005c-977e-47c2-8512-d29e5b7ae11d/chat"
 
-  
+
 function extractReply(data) {
   return (
     data?.reply ??
@@ -45,6 +45,7 @@ export default function ChatProvider({ children }) {
     { id: 1, text: BOT_GREETING, sender: "bot" },
   ])
   const [inputValue, setInputValue] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const [chatHistory, setChatHistory] = useState([
     {
@@ -66,7 +67,7 @@ export default function ChatProvider({ children }) {
     return fresh
   })
 
-    useEffect(() => {
+  useEffect(() => {
     setIsOpen(false)
     setIsFullscreen(false)
   }, [location.pathname])
@@ -99,6 +100,7 @@ export default function ChatProvider({ children }) {
     const afterUser = [...messages, userMessage]
     setMessages(afterUser)
     setInputValue("")
+    setIsLoading(true)
 
     try {
       const res = await fetch(N8N_CHAT_WEBHOOK, {
@@ -149,12 +151,14 @@ export default function ChatProvider({ children }) {
       console.error("Webhook error:", err)
       const failMsg = {
         id: afterUser.length + 1,
-        text: "ขอโทษครับ ตอนนี้เชื่อมต่อบอทไม่ได้ ลองใหม่อีกครั้งนะ 😢",
+        text: "ขอโทษครับ ตอนนี้เชื่อมต่อน้องบอคไม่ได้ ลองใหม่อีกครั้งนะ 😢",
         sender: "bot",
       }
       const finalMessages = [...afterUser, failMsg]
       setMessages(finalMessages)
       syncHistory(currentChatId, finalMessages)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -196,6 +200,7 @@ export default function ChatProvider({ children }) {
       chatHistory,
       currentChatId,
       messagesEndRef,
+      isLoading,
 
       setIsOpen,
       setIsFullscreen,
@@ -205,7 +210,7 @@ export default function ChatProvider({ children }) {
       loadChat,
       formatDate,
     }),
-    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId]
+    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, isLoading]
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
