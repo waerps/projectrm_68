@@ -3,6 +3,8 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import Navbar from "../components/Navbar.jsx"
 import Footer from "../components/footer.jsx"
 import ChatWidget from "../components/Chat/ChatWidget"
+import ChatFullscreen from "../components/Chat/ChatFullscreen"   // ➕ เพิ่มบรรทัดนี้
+
 export default function AppShell() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -24,9 +26,9 @@ export default function AppShell() {
           </div>
         </main>
         <Footer />
-
       </div>
       <ChatWidget />
+      <ChatFullscreen />   {/* ➕ เพิ่มบรรทัดนี้ */}
     </>
   )
 }

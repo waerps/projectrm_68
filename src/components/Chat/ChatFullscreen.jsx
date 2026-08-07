@@ -1,4 +1,5 @@
-import React from "react"
+import React, { useState, useRef, useEffect } from "react"
+import ReactMarkdown from 'react-markdown';
 import { useChat } from "./ChatProvider"
 
 export default function ChatFullscreen() {
@@ -19,6 +20,30 @@ export default function ChatFullscreen() {
     isLoading,
   } = useChat()
 
+  const scrollContainerRef = useRef(null)
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
+
+  const placeholders = ["พิมพ์ข้อความ...", "ถามเรื่องคอร์สเรียน...", "ถามค่าเรียน...", "ถามตารางเรียน..."]
+  const [placeholderIndex, setPlaceholderIndex] = useState(0)
+
+  const handleScroll = () => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowScrollBtn(distanceFromBottom > 100)
+  }
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((i) => (i + 1) % placeholders.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
   if (!isFullscreen) return null
 
   return (
@@ -31,7 +56,7 @@ export default function ChatFullscreen() {
               onClick={handleNewChat}
               className="w-full bg-orange-500 text-white rounded-2xl py-3 font-semibold hover:bg-orange-600 transition-colors mb-4 flex items-center justify-center gap-2"
             >
-              <span className="text-lg">+</span> New Chat
+              <span className="text-lg">+</span> แชตใหม่
             </button>
             <div className="flex-1 overflow-y-auto space-y-2">
               <div className="text-xs font-semibold text-gray-400 px-3 py-2">ประวัติการสนทนา</div>
@@ -39,9 +64,8 @@ export default function ChatFullscreen() {
                 <button
                   key={chat.id}
                   onClick={() => loadChat(chat.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${
-                    currentChatId === chat.id ? "bg-orange-50 border border-orange-200" : "hover:bg-gray-50"
-                  }`}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${currentChatId === chat.id ? "bg-orange-50 border border-orange-200" : "hover:bg-gray-50"
+                    }`}
                 >
                   <div className="font-medium text-sm truncate">{chat.title}</div>
                   <div className="text-xs text-gray-400 mt-1">{formatDate(chat.date)}</div>
@@ -51,13 +75,13 @@ export default function ChatFullscreen() {
           </div>
 
           {/* Chat Area */}
-          <div className="flex-1 bg-white rounded-3xl shadow-lg flex flex-col">
+          <div className="flex-1 bg-white rounded-3xl shadow-lg flex flex-col relative">
             {/* Header - โค้ดส่วนเดิม */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold">ศร</div>
                 <div>
-                  <div className="font-semibold">ศรเสริมติวเตอร์ Bot</div>
+                  <div className="font-semibold">ศรเสริมแชตบอต</div>
                   <div className="text-xs text-green-500 flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span> ออนไลน์
                   </div>
@@ -67,16 +91,48 @@ export default function ChatFullscreen() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 relative" ref={scrollContainerRef} onScroll={handleScroll}>
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[70%] px-4 py-3 rounded-2xl whitespace-pre-wrap ${
-                    msg.sender === "user" ? "bg-orange-500 text-white rounded-br-sm" : "bg-gray-100 text-gray-800 rounded-bl-sm"
-                  }`}>
-                    {msg.text}
+                  <div className="flex flex-col gap-2 max-w-[70%]">
+                    {msg.sender === "user" ? (
+                      <div className="px-4 py-3 rounded-2xl bg-orange-500 text-white rounded-br-sm">
+                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.text.split('\n').filter(line => line.trim() !== '').map((line, index) => (
+                        <div key={index} className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-800 rounded-bl-sm">
+                          {line.startsWith('•') || line.startsWith('-') ? (
+                            <span className="flex gap-2">
+                              <span className="text-orange-500">•</span>
+                              <span>
+                                <ReactMarkdown components={{ p: ({ node, ...props }) => <span {...props} /> }}>
+                                  {line.replace(/^[•-]\s*/, '')}
+                                </ReactMarkdown>
+                              </span>
+                            </span>
+                          ) : (
+                            <ReactMarkdown components={{ p: ({ node, ...props }) => <span {...props} /> }}>
+                              {line}
+                            </ReactMarkdown>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               ))}
+
+              {messages.length === 1 && (
+                <div className="flex flex-wrap gap-2">
+                  {["ดูคอร์สเรียน", "ค่าเรียน", "ติดต่อสถาบัน"].map((label) => (
+                    <button key={label} onClick={() => handleSend(label)}
+                      className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50">
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* 🔴 Typing Indicator สำหรับหน้า Fullscreen */}
               {isLoading && (
@@ -91,6 +147,15 @@ export default function ChatFullscreen() {
               <div ref={messagesEndRef} />
             </div>
 
+            {showScrollBtn && (
+              <button
+                onClick={scrollToBottom}
+                className="absolute bottom-24 right-8 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-500 hover:bg-gray-50 transition"
+              >
+                ↓
+              </button>
+            )}
+
             {/* Input - โค้ดส่วนเดิม */}
             <div className="p-4 border-t border-gray-100">
               <div className="flex gap-3">
@@ -99,7 +164,7 @@ export default function ChatFullscreen() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  placeholder="พิมพ์ข้อความ..."
+                  placeholder={placeholders[placeholderIndex]}
                   className="flex-1 px-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:border-orange-500"
                 />
                 <button onClick={handleSend} disabled={isLoading} className="w-12 h-12 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center">➤</button>
@@ -108,6 +173,6 @@ export default function ChatFullscreen() {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   )
 }
