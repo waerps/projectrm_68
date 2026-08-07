@@ -47,7 +47,7 @@ export default function ChatWidget() {
     return (
       <div className="fixed bottom-6 right-10 z-50">
         {showTooltip && (
-          <div className="absolute bottom-full right-0 mb-3 w-48 bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-2 animate-fadeIn">
+          <div className="absolute bottom-full right-0 mb-1.5 w-40 bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
             มีอะไรให้ช่วยไหมครับ 😊
           </div>
         )}
@@ -92,11 +92,11 @@ export default function ChatWidget() {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={scrollContainerRef} onScroll={handleScroll}>
           {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-4`}>
+            <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start items-end gap-2"} mb-4`}>
+              {msg.sender === "bot" && (
+                <img src="/chatbot.png" alt="" className="h-6 w-6 rounded-full flex-shrink-0" />
+              )}
               <div className="flex flex-col gap-2 max-w-[85%]"> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
-                {msg.sender === "bot" && (
-                  <img src="/chatbot.png" alt="" className="h-6 w-6 rounded-full flex-shrink-0 mb-1" />
-                )}
                 {msg.sender === "user" ? (
                   // ของ User ให้แสดงปกติ
                   <div className="px-4 py-2.5 rounded-2xl text-sm bg-orange-500 text-white rounded-br-sm shadow-sm">

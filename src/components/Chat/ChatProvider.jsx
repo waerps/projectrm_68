@@ -75,6 +75,11 @@ export default function ChatProvider({ children }) {
 
   const messagesEndRef = useRef(null)
 
+  const isOpenRef = useRef(isOpen)
+  useEffect(() => {
+    isOpenRef.current = isOpen
+  }, [isOpen])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isOpen, isFullscreen, currentChatId])
@@ -87,6 +92,7 @@ export default function ChatProvider({ children }) {
   const playNotifSound = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === "suspended") ctx.resume()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
@@ -158,7 +164,7 @@ export default function ChatProvider({ children }) {
 
         setMessages(mapped)
         syncHistory(currentChatId, mapped)
-        if (!isOpen) {
+        if (!isOpenRef.current) {
           setUnreadCount((c) => c + 1)
           playNotifSound()
         }
@@ -175,7 +181,7 @@ export default function ChatProvider({ children }) {
       const finalMessages = [...afterUser, botMessage]
       setMessages(finalMessages)
       syncHistory(currentChatId, finalMessages)
-      if (!isOpen) {
+      if (!isOpenRef.current) {
         setUnreadCount((c) => c + 1)
         playNotifSound()
       }
