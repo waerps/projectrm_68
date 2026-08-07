@@ -10,7 +10,7 @@ const BOT_GREETING =
 const N8N_CHAT_WEBHOOK =
   "https://cpkku.app.n8n.cloud/webhook/b42b005c-977e-47c2-8512-d29e5b7ae11d/chat"
 
-  
+
 function extractReply(data) {
   return (
     data?.reply ??
@@ -45,6 +45,7 @@ export default function ChatProvider({ children }) {
     { id: 1, text: BOT_GREETING, sender: "bot" },
   ])
   const [inputValue, setInputValue] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const [chatHistory, setChatHistory] = useState([
     {
@@ -55,6 +56,7 @@ export default function ChatProvider({ children }) {
     },
   ])
   const [currentChatId, setCurrentChatId] = useState(1)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // sessionId จำบทสนทนา
   const [sessionId] = useState(() => {
@@ -66,16 +68,45 @@ export default function ChatProvider({ children }) {
     return fresh
   })
 
-    useEffect(() => {
+  useEffect(() => {
     setIsOpen(false)
     setIsFullscreen(false)
   }, [location.pathname])
 
   const messagesEndRef = useRef(null)
 
+  const isOpenRef = useRef(isOpen)
+  useEffect(() => {
+    isOpenRef.current = isOpen
+  }, [isOpen])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isOpen, isFullscreen, currentChatId])
+
+  const openChat = () => {
+    setIsOpen(true)
+    setUnreadCount(0)
+  }
+
+  const playNotifSound = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === "suspended") ctx.resume()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.setValueAtTime(880, ctx.currentTime)
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.25)
+    } catch (e) {
+      console.error("Notif sound error:", e)
+    }
+  }
 
   const syncHistory = (chatId, nextMessages) => {
     setChatHistory((prev) =>
@@ -86,8 +117,8 @@ export default function ChatProvider({ children }) {
   }
 
 
-  const handleSend = async () => {
-    const text = inputValue.trim()
+  const handleSend = async (overrideText) => {
+    const text = (overrideText ?? inputValue).trim()
     if (!text) return
 
     const userMessage = {
@@ -99,6 +130,7 @@ export default function ChatProvider({ children }) {
     const afterUser = [...messages, userMessage]
     setMessages(afterUser)
     setInputValue("")
+    setIsLoading(true)
 
     try {
       const res = await fetch(N8N_CHAT_WEBHOOK, {
@@ -132,6 +164,10 @@ export default function ChatProvider({ children }) {
 
         setMessages(mapped)
         syncHistory(currentChatId, mapped)
+        if (!isOpenRef.current) {
+          setUnreadCount((c) => c + 1)
+          playNotifSound()
+        }
         return
       }
 
@@ -145,16 +181,22 @@ export default function ChatProvider({ children }) {
       const finalMessages = [...afterUser, botMessage]
       setMessages(finalMessages)
       syncHistory(currentChatId, finalMessages)
+      if (!isOpenRef.current) {
+        setUnreadCount((c) => c + 1)
+        playNotifSound()
+      }
     } catch (err) {
       console.error("Webhook error:", err)
       const failMsg = {
         id: afterUser.length + 1,
-        text: "ขอโทษครับ ตอนนี้เชื่อมต่อบอทไม่ได้ ลองใหม่อีกครั้งนะ 😢",
+        text: "ขอโทษครับ ตอนนี้เชื่อมต่อน้องบอตไม่ได้ ลองใหม่อีกครั้งนะ 😢",
         sender: "bot",
       }
       const finalMessages = [...afterUser, failMsg]
       setMessages(finalMessages)
       syncHistory(currentChatId, finalMessages)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -196,6 +238,9 @@ export default function ChatProvider({ children }) {
       chatHistory,
       currentChatId,
       messagesEndRef,
+      unreadCount,
+      openChat,
+      isLoading,
 
       setIsOpen,
       setIsFullscreen,
@@ -205,7 +250,7 @@ export default function ChatProvider({ children }) {
       loadChat,
       formatDate,
     }),
-    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId]
+    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, isLoading, unreadCount]
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
