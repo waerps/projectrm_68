@@ -48,7 +48,7 @@ export default function ChatWidget() {
       <div className="fixed bottom-6 right-10 z-50">
         {showTooltip && (
           <div className="absolute bottom-full right-0 mb-1.5 w-40 bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
-            มีอะไรให้ช่วยไหมครับ 😊
+            มีอะไรให้น้องศรเสริมช่วยไหมครับ 😊
           </div>
         )}
         <button
@@ -134,7 +134,7 @@ export default function ChatWidget() {
           ))}
 
           {messages.length === 1 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 ml-8">
               {["ดูคอร์สเรียน", "ค่าเรียน", "ติดต่อสถาบัน"].map((label) => (
                 <button key={label} onClick={() => handleSend(label)}
                   className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50">
