@@ -12,6 +12,26 @@ import {
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
+// ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
+async function forceDownload(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("download failed");
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename || "resume";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("[forceDownload]", err);
+    window.open(url, "_blank"); // fallback เดิมถ้า fetch พัง
+  }
+}
+
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
@@ -270,115 +290,288 @@ function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting
   );
 }
 
+// ─── ★ ใหม่: ดูรายละเอียดใบสมัคร ก่อนอนุมัติ/ปฏิเสธ/ดาวน์โหลด Resume (สไตล์เดียวกับ TutorDetailModal) ──
+function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
+  const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
+  const status = appStatusOf(application.Status);
+  const [downloading, setDownloading] = useState(false);
+
+  // ★ แก้: ใช้ axios (มี auth token แนบอยู่แล้ว) + responseType blob แทน fetch ธรรมดา
+  const handleDownload = async () => {
+    if (!application.ApplicationId) return;
+    setDownloading(true);
+    try {
+      const res = await axios.get(`${API}/tutor-applications/${application.ApplicationId}/resume`, {
+        responseType: "blob",
+      });
+      const blobUrl = window.URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `resume-${application.Nickname || application.Firstname}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("[handleDownload]", err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <Modal title={`ใบสมัคร: ${displayName}`} icon={Eye} onClose={onClose}>
+      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+        <InitialsAvatar name={displayName} seed={application.ApplicationId}
+          className="h-16 w-16 rounded-2xl text-lg border-2 border-white/30" />
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-lg">{displayName}</p>
+          <p className="text-sm text-orange-100">{application.Firstname} {application.Lastname}</p>
+          <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/20">
+            {status.label}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">เบอร์โทร</p>
+          <p className="text-sm text-slate-800">{application.PhoneNo || "—"}</p>
+        </div>
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">LINE ID</p>
+          <p className="text-sm text-slate-800">{application.LineID || "—"}</p>
+        </div>
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">อาชีพ</p>
+          <p className="text-sm text-slate-800">{application.Occupation || "—"}</p>
+        </div>
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">วันที่สมัคร</p>
+          <p className="text-sm text-slate-800">{formatDate(application.Created_at)}</p>
+        </div>
+      </div>
+
+      {application.Status === 3 && application.RejectReason && (
+        <div className="mb-5 bg-red-50 border border-red-100 rounded-xl p-3">
+          <p className="text-[11px] font-semibold text-red-500 uppercase tracking-wide mb-1">เหตุผลการปฏิเสธ</p>
+          <p className="text-sm text-red-700">{application.RejectReason}</p>
+        </div>
+      )}
+
+      <div className="mb-5">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">ไฟล์ Resume</p>
+        {application.ResumePath ? (
+          <button onClick={handleDownload} disabled={downloading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 disabled:opacity-50 transition">
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+            {downloading ? "กำลังดาวน์โหลด..." : "ดาวน์โหลด Resume"}
+          </button>
+        ) : (
+          <p className="text-xs text-slate-400">ไม่มีไฟล์แนบ</p>
+        )}
+      </div>
+
+      {application.Status === 1 && (
+        <div className="flex gap-3 pt-4 border-t border-slate-100">
+          <button onClick={() => onReject(application)}
+            className="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl font-bold text-sm hover:bg-red-100 transition">
+            ปฏิเสธ
+          </button>
+          <button onClick={() => onApprove(application)}
+            className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 transition">
+            อนุมัติ
+          </button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function TutorApplicationList({ applications, onRefresh, showToast, allTutors, allSubjects }) {
   const [filterStatus, setFilterStatus] = useState("1");
+  const [search, setSearch] = useState("");                 // ★ เพิ่ม
   const [approvingApp, setApprovingApp] = useState(null);
   const [rejectingApp, setRejectingApp] = useState(null);
+  const [viewingApp, setViewingApp] = useState(null);        // ★ เพิ่ม
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filtered = applications.filter(a => filterStatus === "all" || String(a.Status) === filterStatus);
-  const countOf = (status) => applications.filter(a => status === "all" || String(a.Status) === status).length;
+  const matchSearchFn = (a) => {
+    const displayName = (a.Nickname || `${a.Firstname} ${a.Lastname}`).toLowerCase();
+    const s = search.toLowerCase();
+    return !s || displayName.includes(s) || (a.PhoneNo || "").includes(s) || (a.Occupation || "").toLowerCase().includes(s);
+  };
+
+  const filtered = applications.filter(a => (filterStatus === "all" || String(a.Status) === filterStatus) && matchSearchFn(a));
+  const countOf = (status) => applications.filter(a => (status === "all" || String(a.Status) === status) && matchSearchFn(a)).length;
 
   const handleApprove = async (applicationId, data) => {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/tutor-applications/${applicationId}/approve`, data);
       showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ!");
-      setApprovingApp(null);
+      setApprovingApp(null); setViewingApp(null);
       onRefresh();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
-  // ★ เพิ่มกลับเข้ามาตรงนี้ — เป็นคนละตัวกับที่ลบออกจาก AdminTutorsPage
   const handleReject = async (applicationId, reason) => {
     try {
       await axios.patch(`${API}/tutor-applications/${applicationId}/reject`, { reason });
       showToast("success", "ปฏิเสธใบสมัครสำเร็จ");
+      setViewingApp(null);
       onRefresh();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
     }
   };
 
+  const FILTERS = [
+    { key: "1", label: "รอตรวจสอบ", icon: Info },
+    { key: "2", label: "อนุมัติแล้ว", icon: UserCheck },
+    { key: "3", label: "ปฏิเสธ", icon: UserX },
+    { key: "all", label: "ทั้งหมด", icon: Users },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h1>
         <p className="text-sm text-slate-500 mt-1">ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2 flex-wrap">
+      {/* ★ เพิ่ม: Stats cards เหมือนหน้ารายชื่อติวเตอร์ */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { key: "1", label: "รอตรวจสอบ" },
-          { key: "2", label: "อนุมัติแล้ว" },
-          { key: "3", label: "ปฏิเสธ" },
-          { key: "all", label: "ทั้งหมด" },
-        ].map(f => (
-          <button key={f.key} onClick={() => setFilterStatus(f.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition
-              ${filterStatus === f.key ? "bg-orange-500 text-white" : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-            {f.label} ({countOf(f.key)})
-          </button>
+          { label: "ทั้งหมด", value: countOf("all"), color: "bg-orange-500" },
+          { label: "รอตรวจสอบ", value: countOf("1"), color: "bg-amber-500" },
+          { label: "อนุมัติแล้ว", value: countOf("2"), color: "bg-emerald-500" },
+          { label: "ปฏิเสธ", value: countOf("3"), color: "bg-red-500" },
+        ].map(({ label, value, color }, i) => (
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+              <Users className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500 font-medium">{label}</p>
+              <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* List */}
+      {/* ★ แก้: Search + ปุ่มกรอง — ใช้สีเข้ม (slate-900) แยกให้ชัดจาก badge สถานะสีอ่อนในตาราง */}
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหาชื่อ, เบอร์โทร, อาชีพ..."
+              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            />
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {FILTERS.map(f => (
+              <button key={f.key} onClick={() => setFilterStatus(f.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border
+                  ${filterStatus === f.key
+                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                <f.icon className="h-3.5 w-3.5" /> {f.label} ({countOf(f.key)})
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ★ แก้: Table แทน list การ์ด — เหมือนหน้ารายชื่อติวเตอร์ */}
       {filtered.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
           <p className="text-slate-500 font-medium">ไม่พบใบสมัครในสถานะนี้</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100">
-          {filtered.map(a => {
-            const status = appStatusOf(a.Status);
-            const displayName = a.Nickname || `${a.Firstname} ${a.Lastname}`;
-            return (
-              <div key={a.ApplicationId} className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50/40 transition-colors">
-                <InitialsAvatar name={displayName} seed={a.ApplicationId} className="h-10 w-10 rounded-xl text-sm shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
-                  <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-slate-500">
-                    {a.PhoneNo && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{a.PhoneNo}</span>}
-                    {a.Occupation && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{a.Occupation}</span>}
-                    <span className="text-slate-400">{formatDate(a.Created_at)}</span>
-                  </div>
-                  {a.Status === 3 && a.RejectReason && (
-                    <p className="text-[11px] text-red-500 mt-1">เหตุผล: {a.RejectReason}</p>
-                  )}
-                </div>
-
-                {a.ResumePath && (
-                  <a href={getFileUrl(a.ResumePath)} target="_blank" rel="noreferrer"
-                    className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition shrink-0" title="ดู Resume">
-                    <Eye className="h-3.5 w-3.5" />
-                  </a>
-                )}
-
-                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${status.bg} ${status.text} ${status.border}`}>
-                  {status.label}
-                </span>
-
-                {a.Status === 1 && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => setApprovingApp(a)}
-                      className="px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition">
-                      อนุมัติ
-                    </button>
-                    <button onClick={() => setRejectingApp(a)}
-                      className="px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
-                      ปฏิเสธ
-                    </button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้สมัคร</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ / อาชีพ</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map(a => {
+                  const status = appStatusOf(a.Status);
+                  const displayName = a.Nickname || `${a.Firstname} ${a.Lastname}`;
+                  return (
+                    <tr key={a.ApplicationId} className="hover:bg-orange-50/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <InitialsAvatar name={displayName} seed={a.ApplicationId} className="h-10 w-10 rounded-xl text-sm shrink-0" />
+                          <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {a.PhoneNo && (
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                            <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span>{a.PhoneNo}</span>
+                          </div>
+                        )}
+                        {a.Occupation && (
+                          <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mt-0.5">
+                            <Briefcase className="h-3.5 w-3.5 shrink-0" /><span>{a.Occupation}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button onClick={() => setViewingApp(a)}
+                            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูรายละเอียด">
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                          {a.Status === 1 && (
+                            <>
+                              <button onClick={() => setApprovingApp(a)}
+                                className="px-2.5 py-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition">
+                                อนุมัติ
+                              </button>
+                              <button onClick={() => setRejectingApp(a)}
+                                className="px-2.5 py-1.5 text-[11px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition">
+                                ปฏิเสธ
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
+      {viewingApp && (
+        <ApplicationDetailModal
+          application={viewingApp}
+          onClose={() => setViewingApp(null)}
+          onApprove={(app) => { setViewingApp(null); setApprovingApp(app); }}
+          onReject={(app) => { setViewingApp(null); setRejectingApp(app); }}
+        />
+      )}
       {approvingApp && (
         <ApproveApplicationModal
           application={approvingApp}
