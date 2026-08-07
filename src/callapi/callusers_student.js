@@ -67,6 +67,18 @@ export async function getStudentCourses(token) {
   }
 }
 
+export async function getStudentCourseDetail(token, courseId) {
+  try {
+    const res = await apiClient.get(
+      `/api/student/courses/${courseId}/detail`,
+      withAuth(token)
+    );
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Schedule ────────────────────────────────────────────────────────────────
 
 export async function getStudentSchedule(token) {
