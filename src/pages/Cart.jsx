@@ -17,10 +17,8 @@ import {
   CircleHelp,
   CreditCard,
   FileText,
-  Landmark,
   Loader2,
   LockKeyhole,
-  QrCode,
   ReceiptText,
   ShieldCheck,
   ShoppingBag,
@@ -406,10 +404,9 @@ function SlipToast({ toast, onClose }) {
   );
 }
 
-function CheckoutModal({ items, total, onClose }) {
+function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [step, setStep] = useState(0);
   const [payPlan, setPayPlan] = useState("full");
-  const [channel, setChannel] = useState("promptpay");
   const [slipFile, setSlipFile] = useState(null);
   const [slipName, setSlipName] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
@@ -420,9 +417,6 @@ function CheckoutModal({ items, total, onClose }) {
   const fileRef = useRef(null);
   const promptPayId = String(import.meta.env.VITE_PROMPTPAY_ID || "").replace(/\D/g, "");
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
-  const bankName = import.meta.env.VITE_BANK_NAME || "";
-  const bankAccountName = import.meta.env.VITE_BANK_ACCOUNT_NAME || "";
-  const bankAccountNumber = import.meta.env.VITE_BANK_ACCOUNT_NUMBER || "";
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   const installmentRows = useMemo(() => {
@@ -461,7 +455,7 @@ function CheckoutModal({ items, total, onClose }) {
 
   useEffect(() => {
     let active = true;
-    if (channel !== "promptpay" || step !== 2) return () => { active = false; };
+    if (step !== 2) return () => { active = false; };
 
     const createQr = async () => {
       setQrDataUrl("");
@@ -495,7 +489,15 @@ function CheckoutModal({ items, total, onClose }) {
 
     createQr();
     return () => { active = false; };
-  }, [channel, dueNow, promptPayId, step]);
+  }, [dueNow, promptPayId, step]);
+
+  const downloadQr = () => {
+    if (!qrDataUrl) return;
+    const link = document.createElement("a");
+    link.href = qrDataUrl;
+    link.download = `promptpay-${Math.round(dueNow * 100) / 100}.png`;
+    link.click();
+  };
 
   const handleSlipFileChange = (event) => {
     const file = event.target.files?.[0] || null;
@@ -534,6 +536,24 @@ function CheckoutModal({ items, total, onClose }) {
         return;
       }
 
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const userId = savedUser.id ?? savedUser.UserId ?? savedUser.userId;
+      if (!userId) throw new Error("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่");
+
+      const enrollRes = await fetch(`${API_BASE}/enroll/bulk`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ UserIds: [userId], CourseIDs: items.map((item) => item.id) }),
+      });
+      const enrollResult = await enrollRes.json().catch(() => null);
+      if (!enrollRes.ok || (enrollResult?.failed?.length && !enrollResult?.success?.length)) {
+        throw new Error(enrollResult?.message || enrollResult?.failed?.[0]?.message || "เพิ่มคอร์สให้ผู้ใช้ไม่สำเร็จ");
+      }
+      onEnrollmentComplete(items.map((item) => item.id));
+
       setSlipToast({
         type: "success",
         message: `ยอดโอน ${money(result.data?.amount ?? dueNow)} ตรงกับยอดที่ต้องชำระ กำลังไปขั้นตอนถัดไป…`,
@@ -545,7 +565,7 @@ function CheckoutModal({ items, total, onClose }) {
     } catch (error) {
       setSlipToast({
         type: "error",
-        message: "เชื่อมต่อระบบตรวจสอบสลิปไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่",
+        message: error?.message || "เชื่อมต่อระบบตรวจสอบสลิปไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่",
       });
     } finally {
       setCheckingSlip(false);
@@ -595,8 +615,6 @@ function CheckoutModal({ items, total, onClose }) {
                 {installmentEnabled && <PaymentChoice icon={WalletCards} active={payPlan === "installment"} title="ผ่อนชำระตามแผนคอร์ส" price={`งวดแรก ${money(installmentRows[0]?.amount ?? total)}`} detail={`รวมแผนผ่อนที่ผู้ดูแลกำหนด สูงสุด ${installmentCount} งวด`} onClick={() => setPayPlan("installment")} />}
               </div>
 
-              {!installmentEnabled && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">คอร์สทั้งหมดในคำสั่งซื้อนี้กำหนดให้ชำระครั้งเดียวจากหน้า Admin Courses</div>}
-
               {payPlan === "installment" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
                   <div className="flex flex-wrap items-center justify-between gap-3"><strong className="text-sm text-[#14213D]">ตารางผ่อนจาก Admin Courses</strong><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{installmentCount} งวด</span></div>
@@ -631,13 +649,7 @@ function CheckoutModal({ items, total, onClose }) {
               <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-600">Secure payment</p>
               <h2 className="mt-1 text-2xl font-black text-[#14213D]">ชำระ {money(dueNow)}</h2>
               <p className="mt-2 text-sm text-slate-500">{payPlan === "full" ? "ยอดชำระเต็มจำนวน" : `งวดแรกจากแผนรวมทั้งหมด ${installmentCount} งวด`}</p>
-              <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5">
-                <button onClick={() => setChannel("promptpay")} className={cn("flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-bold", channel === "promptpay" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500")}><QrCode className="h-4 w-4" />พร้อมเพย์</button>
-                <button onClick={() => setChannel("transfer")} className={cn("flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-bold", channel === "transfer" ? "bg-white text-orange-600 shadow-sm" : "text-slate-500")}><Landmark className="h-4 w-4" />โอนธนาคาร</button>
-              </div>
-
               <div className="mt-4 rounded-2xl border border-slate-200 p-5 text-center">
-                {channel === "promptpay" ? (
                   <>
                     <div className="mx-auto grid h-52 w-52 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md sm:h-64 sm:w-64">
                       {qrLoading && <div className="text-xs font-semibold text-slate-400">กำลังสร้าง PromptPay QR…</div>}
@@ -647,17 +659,10 @@ function CheckoutModal({ items, total, onClose }) {
                     <p className="mt-4 text-sm font-bold text-[#14213D]">สแกนด้วยแอปธนาคาร · ล็อกยอด {money(dueNow)}</p>
                     <p className="mt-1 text-xs text-slate-500">{promptPayAccountName}</p>
                     <p className="mt-1 text-[10px] text-slate-400">กรุณาตรวจสอบชื่อผู้รับในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
+                    <button type="button" onClick={downloadQr} disabled={!qrDataUrl} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 disabled:opacity-40">
+                      บันทึก QR เป็นรูปภาพ
+                    </button>
                   </>
-                ) : (
-                  <>
-                    <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-blue-700"><Landmark className="h-6 w-6" /></span>
-                    {bankName && bankAccountName && bankAccountNumber ? (
-                      <><p className="mt-4 text-sm font-bold text-[#14213D]">{bankName} · {bankAccountName}</p><p className="mt-2 text-xl font-black tracking-wider text-blue-700">{bankAccountNumber}</p></>
-                    ) : (
-                      <p className="mt-4 text-sm font-semibold text-red-600">ยังไม่ได้ตั้งค่าข้อมูลบัญชีธนาคารใน Environment</p>
-                    )}
-                  </>
-                )}
                 <div className="mx-auto mt-4 max-w-sm rounded-xl bg-orange-50 px-4 py-3"><span className="text-xs text-slate-500">ยอดที่ต้องชำระ</span><strong className="ml-2 text-lg text-orange-600">{money(dueNow)}</strong></div>
               </div>
 
@@ -681,7 +686,7 @@ function CheckoutModal({ items, total, onClose }) {
               <span className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-emerald-100 text-emerald-700"><BadgeCheck className="h-10 w-10" /></span>
               <p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-emerald-700">Payment submitted</p>
               <h2 className="mt-2 text-2xl font-black text-[#14213D]">ตรวจสอบสลิปสำเร็จ</h2>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">ระบบตรวจสอบสลิปและยืนยันยอดชำระเรียบร้อยแล้ว เจ้าหน้าที่จะดำเนินการยืนยันสิทธิ์เรียนในระบบต่อไป</p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">ระบบตรวจสอบสลิปและเพิ่มคอร์สให้คุณเรียบร้อยแล้ว ดูคอร์สที่ซื้อแล้วได้จากหน้าโปรไฟล์ ในเมนู “คอร์สเรียนของฉัน”</p>
               <div className="mx-auto mt-6 max-w-sm rounded-2xl border border-slate-200 p-4 text-left text-sm"><div className="flex justify-between"><span className="text-slate-500">ยอดที่ตรวจสอบผ่าน</span><b className="text-orange-600">{money(dueNow)}</b></div><div className="mt-3 flex justify-between"><span className="text-slate-500">สถานะ</span><b className="text-emerald-600">ตรวจสอบสลิปผ่านแล้ว</b></div></div>
             </div>
           )}
@@ -700,7 +705,7 @@ function CheckoutModal({ items, total, onClose }) {
               {checkingSlip ? "กำลังตรวจสอบสลิป..." : "ยืนยันการชำระเงิน"}
             </button>
           )}
-          {step === 3 && <button onClick={onClose} className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600">กลับไปหน้าคอร์สของฉัน</button>}
+          {step === 3 && <Link to="/" onClick={onClose} className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600">กลับไปหน้าแรก</Link>}
         </div>
       </div>
     </div>
@@ -708,7 +713,7 @@ function CheckoutModal({ items, total, onClose }) {
 }
 
 export default function Cart() {
-  const { cart, removeFromCart } = useShop();
+  const { cart, removeFromCart, removeManyFromCart } = useShop();
   const [courseDetails, setCourseDetails] = useState({});
   const items = useMemo(
     () =>
@@ -762,8 +767,8 @@ export default function Cart() {
   }, [cart, courseDetails]);
 
   return (
-    <main className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Sarabun', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Sarabun:wght@400;500;600;700;800&display=swap');`}</style>
+    <main className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Kanit', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');`}</style>
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div><h1 className="mt-1 text-3xl font-black text-orange-600 sm:text-4xl" style={{ fontFamily: "'Kanit', sans-serif" }}>ตะกร้าคอร์สเรียน</h1><p className="mt-2 text-sm text-slate-500">ตรวจสอบรายละเอียด ตารางเรียน และรูปแบบการชำระก่อนยืนยัน</p></div>
@@ -780,7 +785,7 @@ export default function Cart() {
         </div>
       </div>
 
-      {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} />}
+      {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} onEnrollmentComplete={removeManyFromCart} />}
     </main>
   );
 }
