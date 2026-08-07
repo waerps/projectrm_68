@@ -177,7 +177,7 @@ export default function ChatWidget() {
               placeholder={placeholders[placeholderIndex]}
               className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:border-orange-500 text-sm"
             />
-            <button onClick={handleSend} disabled={isLoading} className="w-10 h-10 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform duration-150">➤</button>
+            <button onClick={() => handleSend()} disabled={isLoading} className="w-10 h-10 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform duration-150">➤</button>
           </div>
         </div>
       </div>
