@@ -68,6 +68,17 @@ export default function ChatProvider({ children }) {
     return fresh
   })
 
+  const audioCtxRef = useRef(null)
+  const getAudioContext = () => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      audioCtxRef.current.resume()
+    }
+    return audioCtxRef.current
+  }
+
   useEffect(() => {
     setIsOpen(false)
     setIsFullscreen(false)
@@ -96,9 +107,7 @@ export default function ChatProvider({ children }) {
 
   const playNotifSound = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === "suspended") ctx.resume()
-
+      const ctx = getAudioContext()
       const playTone = (freq, startTime, duration) => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
@@ -112,19 +121,16 @@ export default function ChatProvider({ children }) {
         osc.start(startTime)
         osc.stop(startTime + duration)
       }
-
-      playTone(988, ctx.currentTime, 0.18)        // โน้ตแรก
-      playTone(1318, ctx.currentTime + 0.1, 0.3)  // โน้ตสอง สูงกว่า เด่นกว่า
+      playTone(988, ctx.currentTime, 0.18)
+      playTone(1318, ctx.currentTime + 0.1, 0.3)
     } catch (e) {
       console.error("Notif sound error:", e)
     }
   }
 
-  // เสียงตอนกดส่ง — swoosh/pop สั้นๆ (ความถี่ไล่ลงเร็ว)
   const playSendSound = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === "suspended") ctx.resume()
+      const ctx = getAudioContext()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
@@ -141,21 +147,21 @@ export default function ChatProvider({ children }) {
     }
   }
 
-  // เสียงคลิกคีย์บอร์ด 1 ครั้ง — สั้น แหลม แน่น
+  // เสียงพิมพ์แบบ Messenger — นุ่มกว่าเดิม ไม่ใช้ square wave (เสียงแหลมกร้าน)
   const playKeyClick = () => {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)()
-      if (ctx.state === "suspended") ctx.resume()
+      const ctx = getAudioContext()
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
-      osc.type = "square"
-      osc.frequency.setValueAtTime(1200 + Math.random() * 300, ctx.currentTime)
-      gain.gain.setValueAtTime(0.04, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03)
+      osc.type = "sine"
+      osc.frequency.setValueAtTime(420 + Math.random() * 60, ctx.currentTime)
+      gain.gain.setValueAtTime(0.001, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.09)
       osc.start()
-      osc.stop(ctx.currentTime + 0.03)
+      osc.stop(ctx.currentTime + 0.09)
     } catch (e) {
       console.error("Key click error:", e)
     }
@@ -242,9 +248,9 @@ export default function ChatProvider({ children }) {
       const finalMessages = [...afterUser, botMessage]
       setMessages(finalMessages)
       syncHistory(currentChatId, finalMessages)
-      if (!isOpenRef.current) {
+      playNotifSound()
+      if (!isOpenRef.current && !isFullscreenRef.current) {
         setUnreadCount((c) => c + 1)
-        playNotifSound()
       }
     } catch (err) {
       console.error("Webhook error:", err)
