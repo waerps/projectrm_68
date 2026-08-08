@@ -207,7 +207,7 @@ export default function ChatFullscreen() {
                   placeholder={placeholders[placeholderIndex]}
                   className="flex-1 px-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:border-orange-500"
                 />
-                <button onClick={handleSend} disabled={isLoading} className="w-12 h-12 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center">➤</button>
+                <button onClick={() => handleSend()} disabled={isLoading} className="w-12 h-12 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center">➤</button>
               </div>
             </div>
           </div>
