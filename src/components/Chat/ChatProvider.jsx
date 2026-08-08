@@ -98,22 +98,30 @@ export default function ChatProvider({ children }) {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       if (ctx.state === "suspended") ctx.resume()
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.type = "sine"
-      osc.frequency.setValueAtTime(880, ctx.currentTime)
-      gain.gain.setValueAtTime(0.15, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
-      osc.start()
-      osc.stop(ctx.currentTime + 0.25)
+
+      const playTone = (freq, startTime, duration) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.type = "sine"
+        osc.frequency.setValueAtTime(freq, startTime)
+        gain.gain.setValueAtTime(0.001, startTime)
+        gain.gain.exponentialRampToValueAtTime(0.18, startTime + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration)
+        osc.start(startTime)
+        osc.stop(startTime + duration)
+      }
+
+      playTone(988, ctx.currentTime, 0.18)        // โน้ตแรก
+      playTone(1318, ctx.currentTime + 0.1, 0.3)  // โน้ตสอง สูงกว่า เด่นกว่า
     } catch (e) {
       console.error("Notif sound error:", e)
     }
   }
 
-  const playTypingSound = () => {
+  // เสียงตอนกดส่ง — swoosh/pop สั้นๆ (ความถี่ไล่ลงเร็ว)
+  const playSendSound = () => {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)()
       if (ctx.state === "suspended") ctx.resume()
@@ -122,18 +130,43 @@ export default function ChatProvider({ children }) {
       osc.connect(gain)
       gain.connect(ctx.destination)
       osc.type = "sine"
-      osc.frequency.setValueAtTime(600, ctx.currentTime)
-      gain.gain.setValueAtTime(0.08, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      osc.frequency.setValueAtTime(700, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12)
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12)
       osc.start()
-      osc.stop(ctx.currentTime + 0.15)
+      osc.stop(ctx.currentTime + 0.12)
     } catch (e) {
-      console.error("Typing sound error:", e)
+      console.error("Send sound error:", e)
     }
   }
-  
+
+  // เสียงคลิกคีย์บอร์ด 1 ครั้ง — สั้น แหลม แน่น
+  const playKeyClick = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === "suspended") ctx.resume()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "square"
+      osc.frequency.setValueAtTime(1200 + Math.random() * 300, ctx.currentTime)
+      gain.gain.setValueAtTime(0.04, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.03)
+    } catch (e) {
+      console.error("Key click error:", e)
+    }
+  }
+
   useEffect(() => {
-    if (isLoading) playTypingSound()
+    if (!isLoading) return
+    const interval = setInterval(() => {
+      playKeyClick()
+    }, 130) // ความถี่การคลิก ปรับเร็ว/ช้าได้ตรงนี้
+    return () => clearInterval(interval)
   }, [isLoading])
 
   const syncHistory = (chatId, nextMessages) => {
@@ -157,6 +190,7 @@ export default function ChatProvider({ children }) {
     const afterUser = [...messages, userMessage]
     setMessages(afterUser)
     setInputValue("")
+    playSendSound()
     setIsLoading(true)
 
     try {
