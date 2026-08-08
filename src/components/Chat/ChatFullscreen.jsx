@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import ReactMarkdown from 'react-markdown';
 import { useChat } from "./ChatProvider"
+import { Pencil, Trash2 } from "lucide-react"
 
 export default function ChatFullscreen() {
   const {
@@ -17,7 +18,9 @@ export default function ChatFullscreen() {
     loadChat,
     formatDate,
     messagesEndRef,
-    isLoading,
+    isLoading, // 🔴 ดึงค่านี้มาใช้
+    deleteChat,
+    renameChat,
   } = useChat()
 
   const scrollContainerRef = useRef(null)
@@ -36,6 +39,9 @@ export default function ChatFullscreen() {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
+
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState("")
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -61,15 +67,49 @@ export default function ChatFullscreen() {
             <div className="flex-1 overflow-y-auto space-y-2">
               <div className="text-xs font-semibold text-gray-400 px-3 py-2">ประวัติการสนทนา</div>
               {chatHistory.map((chat) => (
-                <button
+                <div
                   key={chat.id}
-                  onClick={() => loadChat(chat.id)}
-                  className={`w-full text-left px-4 py-3 rounded-xl transition-colors ${currentChatId === chat.id ? "bg-orange-50 border border-orange-200" : "hover:bg-gray-50"
+                  className={`group relative rounded-xl transition-colors ${currentChatId === chat.id ? "bg-orange-50 border border-orange-200" : "hover:bg-gray-50"
                     }`}
                 >
-                  <div className="font-medium text-sm truncate">{chat.title}</div>
-                  <div className="text-xs text-gray-400 mt-1">{formatDate(chat.date)}</div>
-                </button>
+                  {editingId === chat.id ? (
+                    <input
+                      autoFocus
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => { renameChat(chat.id, editValue.trim() || chat.title); setEditingId(null) }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { renameChat(chat.id, editValue.trim() || chat.title); setEditingId(null) }
+                        if (e.key === "Escape") setEditingId(null)
+                      }}
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-orange-300 text-sm font-medium outline-none"
+                    />
+                  ) : (
+                    <button onClick={() => loadChat(chat.id)} className="w-full text-left px-4 py-3 pr-16">
+                      <div className="font-medium text-sm truncate">{chat.title}</div>
+                      <div className="text-xs text-gray-400 mt-1">{formatDate(chat.date)}</div>
+                    </button>
+                  )}
+
+                  {editingId !== chat.id && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingId(chat.id); setEditValue(chat.title) }}
+                        className="w-7 h-7 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
+                        title="แก้ไขชื่อ"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
+                        className="w-7 h-7 rounded-full hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
+                        title="ลบ"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -79,7 +119,7 @@ export default function ChatFullscreen() {
             {/* Header - โค้ดส่วนเดิม */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold">ศร</div>
+                <img src="/chatbot.png" alt="Chatbot" className="w-10 h-10 rounded-full object-cover" />
                 <div>
                   <div className="font-semibold">ศรเสริมแชตบอต</div>
                   <div className="text-xs text-green-500 flex items-center gap-1">
@@ -137,10 +177,10 @@ export default function ChatFullscreen() {
               {/* 🔴 Typing Indicator สำหรับหน้า Fullscreen */}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm">
-                    <div className="typing-indicator">
-                      <span></span><span></span><span></span>
-                    </div>
+                  <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                    <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
                   </div>
                 </div>
               )}

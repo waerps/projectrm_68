@@ -80,6 +80,11 @@ export default function ChatProvider({ children }) {
     isOpenRef.current = isOpen
   }, [isOpen])
 
+  const isFullscreenRef = useRef(isFullscreen)
+  useEffect(() => {
+    isFullscreenRef.current = isFullscreen
+  }, [isFullscreen])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isOpen, isFullscreen, currentChatId])
@@ -108,6 +113,29 @@ export default function ChatProvider({ children }) {
     }
   }
 
+  const playTypingSound = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)()
+      if (ctx.state === "suspended") ctx.resume()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.setValueAtTime(600, ctx.currentTime)
+      gain.gain.setValueAtTime(0.08, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.15)
+    } catch (e) {
+      console.error("Typing sound error:", e)
+    }
+  }
+  
+  useEffect(() => {
+    if (isLoading) playTypingSound()
+  }, [isLoading])
+
   const syncHistory = (chatId, nextMessages) => {
     setChatHistory((prev) =>
       prev.map((chat) =>
@@ -115,7 +143,6 @@ export default function ChatProvider({ children }) {
       )
     )
   }
-
 
   const handleSend = async (overrideText) => {
     const text = (overrideText ?? inputValue).trim()
@@ -164,9 +191,9 @@ export default function ChatProvider({ children }) {
 
         setMessages(mapped)
         syncHistory(currentChatId, mapped)
-        if (!isOpenRef.current) {
+        playNotifSound()
+        if (!isOpenRef.current && !isFullscreenRef.current) {
           setUnreadCount((c) => c + 1)
-          playNotifSound()
         }
         return
       }
@@ -214,6 +241,27 @@ export default function ChatProvider({ children }) {
     setMessages(newChat.messages)
   }
 
+  const deleteChat = (chatId) => {
+    setChatHistory((prev) => {
+      const filtered = prev.filter((c) => c.id !== chatId)
+      if (currentChatId === chatId) {
+        if (filtered.length) {
+          setCurrentChatId(filtered[0].id)
+          setMessages(filtered[0].messages)
+        } else {
+          handleNewChat()
+        }
+      }
+      return filtered
+    })
+  }
+
+  const renameChat = (chatId, newTitle) => {
+    setChatHistory((prev) =>
+      prev.map((c) => (c.id === chatId ? { ...c, title: newTitle } : c))
+    )
+  }
+
   const loadChat = (chatId) => {
     const chat = chatHistory.find((c) => c.id === chatId)
     if (!chat) return
@@ -249,8 +297,10 @@ export default function ChatProvider({ children }) {
       handleNewChat,
       loadChat,
       formatDate,
+      deleteChat,
+      renameChat,
     }),
-    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, isLoading, unreadCount]
+    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, isLoading, unreadCount, deleteChat, renameChat]
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
