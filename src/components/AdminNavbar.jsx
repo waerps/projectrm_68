@@ -111,6 +111,12 @@ export default function Navbar() {
                                 </li>
 
                                 <li>
+                                    <Link to="rooms" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">
+                                        ห้องเรียน
+                                    </Link>
+                                </li>
+
+                                <li>
                                     <Link
                                         to="announcements"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
