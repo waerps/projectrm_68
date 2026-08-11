@@ -18,6 +18,8 @@ const ROOM_STATUS_STYLE = {
 };
 const styleOf = (id) => ROOM_STATUS_STYLE[id] || ROOM_STATUS_STYLE[3];
 
+const DAY_NAMES = ["", "อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
 // ★ ย้ายมาไว้ตรงนี้ — ระดับโมดูล ใช้ได้ทุก component
 const blockNegativeKeys = (e) => {
     if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
@@ -223,8 +225,89 @@ function ConfirmDelete({ room, onConfirm, onCancel, isDeleting }) {
     );
 }
 
+// ─── RoomStatusModal — เปลี่ยนสถานะห้อง พร้อมเหตุผล/วันที่คาดว่าจะเปิดใช้ ──
+function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
+    const [statusRoomId, setStatusRoomId] = useState(room.Status_Room_Id);
+    const [reason, setReason] = useState(room.Status_Reason || "");
+    const [expectedReopenDate, setExpectedReopenDate] = useState(room.Expected_Reopen_Date?.slice(0, 10) || "");
+    const [loading, setLoading] = useState(false);
+
+    const isMaintenance = Number(statusRoomId) === 2;
+
+    const submit = async () => {
+        if (isMaintenance && !reason.trim())
+            return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณาระบุเหตุผลการปิดปรับปรุง");
+        setLoading(true);
+        try {
+            await axios.patch(`${API}/rooms/${room.RoomId}/status`, {
+                statusRoomId,
+                reason: isMaintenance ? reason.trim() : null,
+                expectedReopenDate: isMaintenance ? (expectedReopenDate || null) : null,
+            });
+            showToast("success", "เปลี่ยนสถานะห้องสำเร็จ");
+            onSaved();
+            onClose();
+        } catch (e) {
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
+        } finally { setLoading(false); }
+    };
+
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
+
+    return (
+        <Modal title={`เปลี่ยนสถานะ: ${room.RoomDetail}`} icon={AlertTriangle} onClose={onClose}>
+            <div className="space-y-4">
+                <div>
+                    <label className={lbl}>สถานะห้อง</label>
+                    <select className={inp} value={statusRoomId} onChange={e => setStatusRoomId(Number(e.target.value))}>
+                        {statuses.map(s => (
+                            <option key={s.Status_Room_Id} value={s.Status_Room_Id}>{s.Status_Room_Name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {isMaintenance && (
+                    <>
+                        <div>
+                            <label className={lbl}>เหตุผลการปิดปรับปรุง <span className="text-red-400 normal-case">*</span></label>
+                            <textarea
+                                rows={3}
+                                className={inp}
+                                value={reason}
+                                onChange={e => setReason(e.target.value)}
+                                placeholder="เช่น ซ่อมเครื่องปรับอากาศ / ทาสีใหม่..."
+                            />
+                        </div>
+                        <div>
+                            <label className={lbl}>วันที่คาดว่าจะเปิดใช้ได้ (ไม่บังคับ)</label>
+                            <input
+                                type="date"
+                                className={inp}
+                                value={expectedReopenDate}
+                                onChange={e => setExpectedReopenDate(e.target.value)}
+                            />
+                        </div>
+                    </>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                    <button onClick={onClose} disabled={loading}
+                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        ยกเลิก
+                    </button>
+                    <button onClick={submit} disabled={loading}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
+                    </button>
+                </div>
+            </div>
+        </Modal>
+    );
+}
+
 // ─── RoomCard ────────────────────────────────────────────────────────────────
-function RoomCard({ room, index, onEdit, onDelete, onView }) {
+function RoomCard({ room, index, onEdit, onDelete, onView, onStatusChange }) {
     const st = styleOf(room.Status_Room_Id);
     return (
         <div className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 transition-all duration-300 overflow-hidden">
@@ -263,15 +346,28 @@ function RoomCard({ room, index, onEdit, onDelete, onView }) {
                         className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all" title="ลบ">
                         <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                    <button onClick={() => onStatusChange(room)}
+                        className="p-1.5 text-slate-500 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 active:scale-95 transition-all" title="เปลี่ยนสถานะ">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                    </button>
                 </div>
             </div>
         </div>
     );
 }
 
-// ─── RoomDetailModal ──────────────────────────────────────────────────────────
 function RoomDetailModal({ room, onClose }) {
     const st = styleOf(room.Status_Room_Id);
+    const [schedule, setSchedule] = useState([]);
+    const [loadingSchedule, setLoadingSchedule] = useState(true);
+
+    useEffect(() => {
+        axios.get(`${API}/rooms/${room.RoomId}/schedule`)
+            .then(res => setSchedule(res.data))
+            .catch(() => setSchedule([]))
+            .finally(() => setLoadingSchedule(false));
+    }, [room.RoomId]);
+
     return (
         <Modal title={`ห้องเรียน: ${room.RoomDetail}`} icon={DoorOpen} onClose={onClose}>
             <RoomIsoPreview statusId={room.Status_Room_Id} seed={room.RoomId} />
@@ -292,11 +388,49 @@ function RoomDetailModal({ room, onClose }) {
                     </span>
                 </div>
             </div>
-            <div className="mt-4 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
-                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-700 leading-relaxed">
-                    ระบบจัดโต๊ะ/เก้าอี้และ Facilities ของห้องนี้จะเปิดใช้งานในเฟสถัดไป
-                </p>
+
+            {Number(room.Status_Room_Id) === 2 && (room.Status_Reason || room.Expected_Reopen_Date) && (
+                <div className="mt-4 bg-amber-50 border border-amber-100 rounded-xl p-3">
+                    {room.Status_Reason && (
+                        <p className="text-xs text-amber-800"><b>เหตุผล:</b> {room.Status_Reason}</p>
+                    )}
+                    {room.Expected_Reopen_Date && (
+                        <p className="text-xs text-amber-700 mt-1">
+                            <b>คาดว่าจะเปิดใช้:</b> {new Date(room.Expected_Reopen_Date).toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* ─── ตารางการใช้ห้อง ─── */}
+            <div className="mt-5">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ตารางการใช้ห้อง (คาบที่กำลังจะถึง)</p>
+                {loadingSchedule ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-400" /></div>
+                ) : schedule.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        ยังไม่มีคาบสอนที่จองห้องนี้
+                    </p>
+                ) : (
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                        {schedule.map(item => (
+                            <div key={item.CourseScheduleDetailId} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
+                                <div className="text-center shrink-0 w-14">
+                                    <p className="text-[10px] text-slate-400">{DAY_NAMES[item.DayOfWeek]}</p>
+                                    <p className="text-xs font-bold text-slate-700">{item.ClassDate?.slice(5).replace("-", "/")}</p>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800 truncate">{item.CourseName}</p>
+                                    <p className="text-[11px] text-slate-500">
+                                        {item.SubjectName && `${item.SubjectName} · `}
+                                        {item.TutorNickname || "ไม่ระบุติวเตอร์"}
+                                    </p>
+                                </div>
+                                <span className="text-[11px] font-bold text-orange-600 shrink-0">{item.StartTime}–{item.EndTime}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </Modal>
     );
@@ -318,6 +452,7 @@ export default function AdminRooms() {
     const [editingRoom, setEditingRoom] = useState(null);
     const [deletingRoom, setDeletingRoom] = useState(null);
     const [viewingRoom, setViewingRoom] = useState(null);
+    const [statusRoom, setStatusRoom] = useState(null);
 
     const fetchAll = async () => {
         try {
@@ -475,7 +610,8 @@ export default function AdminRooms() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filtered.map((room, i) => (
                         <RoomCard key={room.RoomId} room={room} index={i}
-                            onEdit={setEditingRoom} onDelete={setDeletingRoom} onView={setViewingRoom} />
+                            onEdit={setEditingRoom} onDelete={setDeletingRoom} onView={setViewingRoom}
+                            onStatusChange={setStatusRoom} />
                     ))}
                 </div>
             )}
@@ -495,6 +631,15 @@ export default function AdminRooms() {
             )}
             {viewingRoom && (
                 <RoomDetailModal room={viewingRoom} onClose={() => setViewingRoom(null)} />
+            )}
+            {statusRoom && (
+                <RoomStatusModal
+                    room={statusRoom}
+                    statuses={statuses}
+                    onClose={() => setStatusRoom(null)}
+                    onSaved={fetchAll}
+                    showToast={showToast}
+                />
             )}
         </div>
     );
