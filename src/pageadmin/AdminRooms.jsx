@@ -76,26 +76,26 @@ function RoomIsoPreview({ statusId, seed = 0 }) {
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
     return (
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
-        <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-            <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-              {Icon && (
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                  <Icon className="h-4 w-4 text-white" />
-                </span>
-              )}
-              {title}
-            </h3>
-            <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+                    <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                        {Icon && (
+                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                                <Icon className="h-4 w-4 text-white" />
+                            </span>
+                        )}
+                        {title}
+                    </h3>
+                    <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+                        <X className="h-5 w-5" />
+                    </button>
+                </div>
+                <div className="overflow-y-auto flex-1 p-6">{children}</div>
+            </div>
         </div>
-      </div>
     );
-  }
+}
 
 // ─── RoomForm ───────────────────────────────────────────────────────────────
 function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting }) {
@@ -141,19 +141,18 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting }) {
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className={lbl}>ชั้น <span className="text-red-400 normal-case">*</span></label>
-                    <input
-                        type="number" min="0" step="1"
-                        className={`${inp} ${errors.floor ? errInp : ""}`}
-                        value={form.floor}
-                        onChange={e => set("floor", e.target.value)}
-                        placeholder="1"
-                    />
+                    <select className={`${inp} ${errors.floor ? errInp : ""}`} value={form.floor} onChange={e => set("floor", e.target.value)}>
+                        <option value="">เลือกชั้น</option>
+                        {Array.from({ length: 3 }, (_, i) => i + 1).map(f => (
+                            <option key={f} value={f}>ชั้น {f}</option>
+                        ))}
+                    </select>
                     {errors.floor && <p className="text-xs text-red-500 mt-1">{errors.floor}</p>}
                 </div>
                 <div>
                     <label className={lbl}>ความจุ (คน)</label>
                     <input
-                        type="number" min="0" step="1"
+                        type="number" min="0" step="1" onKeyDown={blockNegativeKeys}
                         className={`${inp} ${errors.capacity ? errInp : ""}`}
                         value={form.capacity}
                         onChange={e => set("capacity", e.target.value)}
@@ -236,7 +235,7 @@ function RoomCard({ room, index, onEdit, onDelete, onView }) {
                 {/* Overlay: ชื่อห้อง + ชั้น มุมล่างซ้าย บนพื้นไล่สีจาง */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 pt-8 pb-3 bg-gradient-to-t from-black/40 to-transparent">
                     <p className="font-bold text-white text-sm truncate drop-shadow">{room.RoomDetail}</p>
-                    <p className="text-[11px] text-white/80">ชั้น {room.Floor} · #{room.RoomId}</p>
+                    <p className="text-[11px] text-white/80">ชั้น {room.Floor}</p>
                 </div>
             </div>
 
@@ -386,6 +385,10 @@ export default function AdminRooms() {
     const totalCapacity = rooms.reduce((sum, r) => sum + (Number(r.Capacity) || 0), 0);
     const availableCount = rooms.filter(r => Number(r.Status_Room_Id) === 1).length;
 
+    const blockNegativeKeys = (e) => {
+        if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+      };
+
     if (loading) return (
         <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
@@ -397,30 +400,36 @@ export default function AdminRooms() {
         <div className="space-y-6 mt-[90px] px-4 md:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">จัดการห้องเรียน</h1>
-                    <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
+            <div className="relative rounded-3xl overflow-hidden h-44 md:h-52">
+                <img src={classroomCoverImg} alt="จัดการห้องเรียน" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+                <div className="absolute inset-0 flex flex-col md:flex-row md:items-end md:justify-between p-5 gap-3">
+                    <div>
+                        <h1 className="text-2xl font-bold text-white drop-shadow">จัดการห้องเรียน</h1>
+                        <p className="text-sm text-white/90 drop-shadow mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
+                    </div>
+                    <button onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-lg transition text-sm active:scale-95 w-fit">
+                        <Plus className="h-4 w-4" /> Add Classroom
+                    </button>
                 </div>
-                <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
-                    <Plus className="h-4 w-4" /> Add Classroom
-                </button>
             </div>
-
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 bg-white rounded-xl border border-slate-100 shadow-sm text-sm">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                    <DoorOpen className="h-4 w-4 text-orange-400" />
-                    ทั้งหมด <b className="text-slate-900">{rooms.length}</b> ห้อง
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-600">
-                    <Check className="h-4 w-4 text-emerald-500" />
-                    พร้อมใช้งาน <b className="text-slate-900">{availableCount}</b> ห้อง
-                </span>
-                <span className="flex items-center gap-1.5 text-slate-600">
-                    <Users className="h-4 w-4 text-amber-500" />
-                    ความจุรวม <b className="text-slate-900">{totalCapacity.toLocaleString()}</b> คน
-                </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {[
+                    { label: "ห้องเรียนทั้งหมด", value: rooms.length, color: "bg-orange-500", icon: DoorOpen },
+                    { label: "ห้องพร้อมใช้งาน", value: availableCount, color: "bg-emerald-500", icon: Check },
+                    { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()} คน`, color: "bg-amber-500", icon: Users },
+                ].map(({ label, value, color, icon: Icon }, i) => (
+                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+                        <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+                            <Icon className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 font-medium">{label}</p>
+                            <p className="text-xl font-black text-slate-900">{value}</p>
+                        </div>
+                    </div>
+                ))}
             </div>
 
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
