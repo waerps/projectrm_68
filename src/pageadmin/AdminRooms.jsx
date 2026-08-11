@@ -18,6 +18,11 @@ const ROOM_STATUS_STYLE = {
 };
 const styleOf = (id) => ROOM_STATUS_STYLE[id] || ROOM_STATUS_STYLE[3];
 
+// ★ ย้ายมาไว้ตรงนี้ — ระดับโมดูล ใช้ได้ทุก component
+const blockNegativeKeys = (e) => {
+    if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
+};
+
 // ─── Isometric Room Preview (SVG placeholder — เตรียมต่อยอด Furniture/Facilities) ──
 // ─── Isometric Room Preview — โต๊ะครู, แถวโต๊ะนักเรียน, กระดาน, ประตู ──────────
 function RoomIsoPreview({ statusId, seed = 0 }) {
@@ -385,10 +390,6 @@ export default function AdminRooms() {
     const totalCapacity = rooms.reduce((sum, r) => sum + (Number(r.Capacity) || 0), 0);
     const availableCount = rooms.filter(r => Number(r.Status_Room_Id) === 1).length;
 
-    const blockNegativeKeys = (e) => {
-        if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
-      };
-
     if (loading) return (
         <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
@@ -401,7 +402,7 @@ export default function AdminRooms() {
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
             <div className="relative rounded-3xl overflow-hidden h-44 md:h-52">
-                <img src={classroomCoverImg} alt="จัดการห้องเรียน" className="w-full h-full object-cover" />
+                <img src="/classroom-cover.png" alt="จัดการห้องเรียน" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
                 <div className="absolute inset-0 flex flex-col md:flex-row md:items-end md:justify-between p-5 gap-3">
                     <div>
