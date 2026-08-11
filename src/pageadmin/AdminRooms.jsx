@@ -229,20 +229,31 @@ function RoomCard({ room, index, onEdit, onDelete, onView }) {
     return (
         <div className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 transition-all duration-300 overflow-hidden">
             <div className="relative">
-                <RoomIsoPreview statusId={room.Status_Room_Id} seed={index} />
+  <div className="h-44 w-full overflow-hidden rounded-t-2xl">
+    <img
+      src="/classroom-cover.png"
+      alt={room.RoomDetail}
+      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+    />
+    {Number(room.Status_Room_Id) === 3 && (
+      <span className="absolute inset-0 flex items-center justify-center bg-slate-900/40 backdrop-blur-[1px]">
+        <span className="text-[11px] font-bold text-white bg-slate-600/80 px-2 py-0.5 rounded-full">ไม่ใช้งาน</span>
+      </span>
+    )}
+  </div>
 
-                {/* Overlay: สถานะ มุมขวาบน */}
-                <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border backdrop-blur-sm shadow-sm ${st.bg} ${st.text} ${st.border}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                    {room.Status_Room_Name || "ไม่ระบุสถานะ"}
-                </span>
+  {/* Overlay: สถานะ มุมขวาบน */}
+  <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border backdrop-blur-sm shadow-sm ${st.bg} ${st.text} ${st.border}`}>
+    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+    {room.Status_Room_Name || "ไม่ระบุสถานะ"}
+  </span>
 
-                {/* Overlay: ชื่อห้อง + ชั้น มุมล่างซ้าย บนพื้นไล่สีจาง */}
-                <div className="absolute bottom-0 left-0 right-0 px-4 pt-8 pb-3 bg-gradient-to-t from-black/40 to-transparent">
-                    <p className="font-bold text-white text-sm truncate drop-shadow">{room.RoomDetail}</p>
-                    <p className="text-[11px] text-white/80">ชั้น {room.Floor}</p>
-                </div>
-            </div>
+  {/* Overlay: ชื่อห้อง + ชั้น มุมล่างซ้าย */}
+  <div className="absolute bottom-0 left-0 right-0 px-4 pt-8 pb-3 bg-gradient-to-t from-black/50 to-transparent">
+    <p className="font-bold text-white text-sm truncate drop-shadow">{room.RoomDetail}</p>
+    <p className="text-[11px] text-white/80">ชั้น {room.Floor}</p>
+  </div>
+</div>
 
             <div className="p-3">
                 <div className="flex items-center justify-center gap-1.5 mb-3 text-xs text-slate-500">
@@ -401,20 +412,16 @@ export default function AdminRooms() {
         <div className="space-y-6 mt-[90px] px-4 md:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            <div className="relative rounded-3xl overflow-hidden h-44 md:h-52">
-                <img src="/classroom-cover.png" alt="จัดการห้องเรียน" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                <div className="absolute inset-0 flex flex-col md:flex-row md:items-end md:justify-between p-5 gap-3">
-                    <div>
-                        <h1 className="text-2xl font-bold text-white drop-shadow">จัดการห้องเรียน</h1>
-                        <p className="text-sm text-white/90 drop-shadow mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
-                    </div>
-                    <button onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-lg transition text-sm active:scale-95 w-fit">
-                        <Plus className="h-4 w-4" /> Add Classroom
-                    </button>
-                </div>
-            </div>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <div>
+    <h1 className="text-2xl font-bold text-slate-900">จัดการห้องเรียน</h1>
+    <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
+  </div>
+  <button onClick={() => setShowAddModal(true)}
+    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
+    <Plus className="h-4 w-4" /> Add Classroom
+  </button>
+</div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                     { label: "ห้องเรียนทั้งหมด", value: rooms.length, color: "bg-orange-500", icon: DoorOpen },
