@@ -169,15 +169,6 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting }) {
                 </div>
             </div>
 
-            <div>
-                <label className={lbl}>สถานะห้อง</label>
-                <select className={inp} value={form.statusRoomId} onChange={e => set("statusRoomId", e.target.value)}>
-                    {statuses.map(s => (
-                        <option key={s.Status_Room_Id} value={s.Status_Room_Id}>{s.Status_Room_Name}</option>
-                    ))}
-                </select>
-            </div>
-
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
                     className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
