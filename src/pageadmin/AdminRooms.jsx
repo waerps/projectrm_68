@@ -114,6 +114,30 @@ function UtilizationGauge({ rate = 0, level = "low", size = 44, strokeWidth = 5,
     );
 }
 
+// ─── Seat Fill Grid — แสดงสัดส่วนที่นั่งที่ใช้จริงเทียบความจุ (max 10 ไอคอนแสดงผล) ──
+function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
+    const displayMax = 10;
+    const ratio = capacity > 0 ? Math.min(1, filled / capacity) : 0;
+    const filledCount = Math.round(ratio * displayMax);
+    const dim = size === "lg" ? "h-3.5 w-3.5" : "h-2 w-2";
+    const gap = size === "lg" ? "gap-1" : "gap-0.5";
+
+    const color =
+        ratio >= 0.6 ? "bg-rose-400" :
+            ratio >= 0.25 ? "bg-amber-400" : "bg-cyan-400";
+
+    return (
+        <div className={`flex flex-wrap ${gap} max-w-[110px]`}>
+            {Array.from({ length: displayMax }, (_, i) => (
+                <span
+                    key={i}
+                    className={`${dim} rounded-sm transition-colors duration-500 ${i < filledCount ? color : "bg-slate-200"}`}
+                />
+            ))}
+        </div>
+    );
+}
+
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
     return (
@@ -386,7 +410,7 @@ function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange 
                 {/* ★ Utilization chip — มุมซ้ายบน */}
                 {util && (
                     <span className="absolute top-3 left-3 flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-slate-100">
-                        <UtilizationGauge rate={util.UtilizationRate} level={util.Level} size={24} strokeWidth={3} />
+                        <UtilizationGauge rate={util.UtilizationRate} level={util.Level} size={24} strokeWidth={3} uid={room.RoomId} />
                         <span className="text-[9px] font-bold text-slate-500">ใช้งาน</span>
                     </span>
                 )}
@@ -404,9 +428,17 @@ function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange 
             </div>
 
             <div className="p-3">
-                <div className="flex items-center justify-center gap-1.5 mb-3 text-xs text-slate-500">
-                    <Users className="h-3.5 w-3.5 text-orange-400" />
-                    {room.Capacity ? `${room.Capacity} ที่นั่ง` : "ไม่ระบุความจุ"}
+                <div className="flex flex-col items-center gap-1.5 mb-3">
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
+                        <Users className="h-3.5 w-3.5 text-orange-400" />
+                        {room.Capacity ? `${room.Capacity} ที่นั่ง` : "ไม่ระบุความจุ"}
+                    </div>
+                    {util?.SeatEfficiency != null && room.Capacity > 0 && (
+                        <div className="flex flex-col items-center gap-0.5">
+                            <SeatFillGrid filled={util.AvgStudentsPerBooking} capacity={room.Capacity} />
+                            <span className="text-[9px] text-slate-400">เฉลี่ย {util.AvgStudentsPerBooking} คน/คาบ</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -528,6 +560,23 @@ function RoomDetailModal({ room, util, onClose }) {
                     </div>
                 )}
             </div>
+
+            {!loadingUtil && utilDetail?.byCourse?.length > 0 && (
+                <div className="mt-3">
+                    <p className="text-[10px] text-slate-400 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
+                    <div className="space-y-2">
+                        {utilDetail.byCourse.map(c => (
+                            <div key={c.CourseID} className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                <span className="text-xs font-semibold text-slate-700 truncate flex-1">{c.CourseName}</span>
+                                <SeatFillGrid filled={c.EnrolledCount} capacity={utilDetail.capacity} size="lg" />
+                                <span className="text-[11px] font-bold text-slate-500 shrink-0 w-14 text-right">
+                                    {c.EnrolledCount}/{utilDetail.capacity} คน
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* ─── ตารางการใช้ห้อง ─── */}
             <div className="mt-5">
@@ -693,6 +742,9 @@ export default function AdminRooms() {
         .filter(u => u.Level === "low")
         .sort((a, b) => a.UtilizationRate - b.UtilizationRate);
 
+    const mismatchedRooms = utilValues
+        .filter(u => u.Level === "high" && u.SeatLevel === "low")
+        .sort((a, b) => a.SeatEfficiency - b.SeatEfficiency);
     const sorted = [...filtered].sort((a, b) => {
         if (sortBy === "util_desc") return (utilization[b.RoomId]?.UtilizationRate ?? 0) - (utilization[a.RoomId]?.UtilizationRate ?? 0);
         if (sortBy === "util_asc") return (utilization[a.RoomId]?.UtilizationRate ?? 0) - (utilization[b.RoomId]?.UtilizationRate ?? 0);
@@ -753,6 +805,23 @@ export default function AdminRooms() {
                         <p className="text-xs text-cyan-600 mt-0.5">
                             {underutilizedRooms.slice(0, 3).map(u => rooms.find(r => r.RoomId === u.RoomId)?.RoomDetail).filter(Boolean).join(", ")}
                             {" "}— ลองพิจารณาปรับตารางเรียนหรือใช้พื้นที่ให้เกิดประโยชน์มากขึ้น
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {mismatchedRooms.length > 0 && (
+                <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-100 rounded-2xl">
+                    <div className="h-9 w-9 rounded-xl bg-rose-500 flex items-center justify-center shrink-0">
+                        <Users className="h-[18px] w-[18px] text-white" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-rose-800">
+                            มี {mismatchedRooms.length} ห้องที่จองเต็มตาราง แต่ใช้ที่นั่งได้ไม่คุ้มขนาดห้อง
+                        </p>
+                        <p className="text-xs text-rose-600 mt-0.5">
+                            {mismatchedRooms.slice(0, 3).map(u => rooms.find(r => r.RoomId === u.RoomId)?.RoomDetail).filter(Boolean).join(", ")}
+                            {" "}— ลองสลับไปใช้ห้องเล็กกว่า แล้วเก็บห้องนี้ไว้รับคอร์สที่คนเยอะ
                         </p>
                     </div>
                 </div>
