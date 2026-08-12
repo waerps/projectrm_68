@@ -138,6 +138,96 @@ function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
     );
 }
 
+function FacilityEditor({ roomId }) {
+    const [facilityList, setFacilityList] = useState([]);
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [newName, setNewName] = useState("");
+
+    useEffect(() => {
+        Promise.all([
+            axios.get(`${API}/facilities`),
+            axios.get(`${API}/rooms/${roomId}/facilities`),
+        ]).then(([fListRes, fRes]) => {
+            setFacilityList(fListRes.data);
+            setItems(fRes.data.map(f => ({
+                facilitiesId: f.FacilitiesId,
+                facilitiesName: f.Facilities_Name,
+                quantity: f.Quantity,
+            })));
+        }).catch(() => { }).finally(() => setLoading(false));
+    }, [roomId]);
+
+    const addFacility = () => {
+        const name = newName.trim();
+        if (!name) return;
+        if (items.some(i => i.facilitiesName.toLowerCase() === name.toLowerCase())) { setNewName(""); return; }
+        const existing = facilityList.find(t => t.Facilities_Name.toLowerCase() === name.toLowerCase());
+        setItems(prev => [...prev, {
+            facilitiesId: existing?.FacilitiesId || null,
+            facilitiesName: existing?.Facilities_Name || name,
+            quantity: 1,
+        }]);
+        setNewName("");
+    };
+
+    const updateQty = (idx, delta) =>
+        setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it));
+    const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
+
+    const save = async () => {
+        setSaving(true);
+        try {
+            await axios.put(`${API}/rooms/${roomId}/facilities`, {
+                items: items.map(i => ({
+                    facilitiesId: i.facilitiesId,
+                    facilitiesName: i.facilitiesId ? undefined : i.facilitiesName,
+                    quantity: i.quantity,
+                })),
+            });
+        } catch (e) { console.error(e); } finally { setSaving(false); }
+    };
+
+    if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>;
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-2 mb-3">
+                {items.map((it, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
+                        <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
+                        <button onClick={() => updateQty(idx, -1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">−</button>
+                        <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
+                        <button onClick={() => updateQty(idx, 1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">+</button>
+                        <button onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500">
+                            <X className="h-3 w-3" />
+                        </button>
+                    </div>
+                ))}
+                {items.length === 0 && <p className="text-xs text-slate-400">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
+            </div>
+            <div className="flex gap-2">
+                <input
+                    list="facility-suggestions"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && addFacility()}
+                    placeholder="พิมพ์ชื่ออุปกรณ์ เช่น เครื่องปรับอากาศ..."
+                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
+                />
+                <datalist id="facility-suggestions">
+                    {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
+                </datalist>
+                <button onClick={addFacility} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 shrink-0">เพิ่ม</button>
+                <button onClick={save} disabled={saving} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 disabled:opacity-50 shrink-0">
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "บันทึก"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
     return (
@@ -514,6 +604,11 @@ function RoomDetailModal({ room, util, onClose }) {
                     )}
                 </div>
             )}
+
+            <div className="mt-5">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">สิ่งอำนวยความสะดวก</p>
+                <FacilityEditor roomId={room.RoomId} />
+            </div>
 
             {/* ★ ส่วนใหม่: อัตราการใช้งาน */}
             <div className="mt-5">
