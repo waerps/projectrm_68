@@ -6,7 +6,8 @@ import { ToastContainer } from "../components/Toast";
 import {
     Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, Layers, Users, DoorOpen, ChevronDown, Info,
-    Activity, ArrowUpDown, // ★ เพิ่ม
+    Activity, ArrowUpDown,
+    Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package, // ★ เพิ่ม
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
@@ -20,6 +21,20 @@ const ROOM_STATUS_STYLE = {
 const styleOf = (id) => ROOM_STATUS_STYLE[id] || ROOM_STATUS_STYLE[3];
 
 const DAY_NAMES = ["", "อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+const FACILITY_ICON_MAP = [
+    { keys: ["แอร์", "เครื่องปรับอากาศ", "air"], icon: Wind },
+    { keys: ["พัดลม", "fan"], icon: Fan },
+    { keys: ["ทีวี", "โทรทัศน์", "tv"], icon: Tv },
+    { keys: ["โปรเจคเตอร์", "projector", "จอฉาย"], icon: Presentation },
+    { keys: ["จอ", "monitor", "คอม"], icon: Monitor },
+    { keys: ["wifi", "ไวไฟ", "อินเทอร์เน็ต"], icon: Wifi },
+    { keys: ["ลำโพง", "เสียง", "speaker"], icon: Volume2 },
+];
+function iconForFacility(name = "") {
+    const n = name.toLowerCase();
+    return FACILITY_ICON_MAP.find(f => f.keys.some(k => n.includes(k)))?.icon || Package;
+}
 
 // ★ ย้ายมาไว้ตรงนี้ — ระดับโมดูล ใช้ได้ทุก component
 const blockNegativeKeys = (e) => {
@@ -138,7 +153,7 @@ function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
     );
 }
 
-function FacilityEditor({ roomId }) {
+function FacilityEditor({ roomId, showToast }) {
     const [facilityList, setFacilityList] = useState([]);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -186,7 +201,11 @@ function FacilityEditor({ roomId }) {
                     quantity: i.quantity,
                 })),
             });
-        } catch (e) { console.error(e); } finally { setSaving(false); }
+            showToast?.("success", "บันทึกสิ่งอำนวยความสะดวกสำเร็จ");
+        } catch (e) {
+            console.error(e);
+            showToast?.("error", "บันทึกสิ่งอำนวยความสะดวกไม่สำเร็จ", e.response?.data?.message);
+        } finally { setSaving(false); }
     };
 
     if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>;
@@ -194,17 +213,21 @@ function FacilityEditor({ roomId }) {
     return (
         <div>
             <div className="flex flex-wrap gap-2 mb-3">
-                {items.map((it, idx) => (
-                    <div key={idx} className="flex items-center gap-1.5 pl-3 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
-                        <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
-                        <button onClick={() => updateQty(idx, -1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">−</button>
-                        <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
-                        <button onClick={() => updateQty(idx, 1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">+</button>
-                        <button onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500">
-                            <X className="h-3 w-3" />
-                        </button>
-                    </div>
-                ))}
+                {items.map((it, idx) => {
+                    const FIcon = iconForFacility(it.facilitiesName);
+                    return (
+                        <div key={idx} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
+                            <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                            <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
+                            <button onClick={() => updateQty(idx, -1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">−</button>
+                            <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
+                            <button onClick={() => updateQty(idx, 1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">+</button>
+                            <button onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    );
+                })}
                 {items.length === 0 && <p className="text-xs text-slate-400">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
             </div>
             <div className="flex gap-2">
@@ -252,8 +275,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
     );
 }
 
-// ─── RoomForm ───────────────────────────────────────────────────────────────
-function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting }) {
+function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting, showToast }) {
     const [form, setForm] = useState({
         roomDetail: initial.RoomDetail || "",
         floor: initial.Floor ?? "",
@@ -316,6 +338,13 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting }) {
                     {errors.capacity && <p className="text-xs text-red-500 mt-1">{errors.capacity}</p>}
                 </div>
             </div>
+
+            {initial.RoomId && (
+                <div className="pt-2 border-t border-slate-100">
+                    <label className={lbl}>สิ่งอำนวยความสะดวก</label>
+                    <FacilityEditor roomId={initial.RoomId} showToast={showToast} />
+                </div>
+            )}
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
@@ -605,11 +634,6 @@ function RoomDetailModal({ room, util, onClose }) {
                 </div>
             )}
 
-            <div className="mt-5">
-                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">สิ่งอำนวยความสะดวก</p>
-                <FacilityEditor roomId={room.RoomId} />
-            </div>
-
             {/* ★ ส่วนใหม่: อัตราการใช้งาน */}
             <div className="mt-5">
                 <div className="flex items-center justify-between mb-2">
@@ -753,7 +777,7 @@ export default function AdminRooms() {
     const [viewingRoom, setViewingRoom] = useState(null);
     const [statusRoom, setStatusRoom] = useState(null);
 
-    const [utilization, setUtilization] = useState({});   // { [RoomId]: {UtilizationRate, Level, BookingsCount, BookedHours} }
+    const [utilization, setUtilization] = useState({});   // {[RoomId]: {UtilizationRate, Level, BookingsCount, BookedHours} }
     const [utilDays, setUtilDays] = useState(30);
     const [sortBy, setSortBy] = useState("default");       // "default" | "util_desc" | "util_asc"
 
@@ -983,17 +1007,7 @@ export default function AdminRooms() {
                     ))}
                 </div>
             )}
-
-            {showAddModal && (
-                <Modal title="เพิ่มห้องเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
-                    <RoomForm statuses={statuses} onSave={handleCreate} onCancel={() => setShowAddModal(false)} isSubmitting={isSubmitting} />
-                </Modal>
-            )}
-            {editingRoom && (
-                <Modal title={`แก้ไขห้องเรียน: ${editingRoom.RoomDetail}`} icon={Edit2} onClose={() => setEditingRoom(null)}>
-                    <RoomForm initial={editingRoom} statuses={statuses} onSave={handleUpdate} onCancel={() => setEditingRoom(null)} isSubmitting={isSubmitting} />
-                </Modal>
-            )}
+            
             {deletingRoom && (
                 <ConfirmDelete room={deletingRoom} onConfirm={handleDelete} onCancel={() => setDeletingRoom(null)} isDeleting={isDeleting} />
             )}
@@ -1008,6 +1022,16 @@ export default function AdminRooms() {
                     onSaved={fetchAll}
                     showToast={showToast}
                 />
+            )}
+            {showAddModal && (
+                <Modal title="เพิ่มห้องเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
+                    <RoomForm statuses={statuses} onSave={handleCreate} onCancel={() => setShowAddModal(false)} isSubmitting={isSubmitting} showToast={showToast} />
+                </Modal>
+            )}
+            {editingRoom && (
+                <Modal title={`แก้ไขห้องเรียน: ${editingRoom.RoomDetail}`} icon={Edit2} onClose={() => setEditingRoom(null)}>
+                    <RoomForm initial={editingRoom} statuses={statuses} onSave={handleUpdate} onCancel={() => setEditingRoom(null)} isSubmitting={isSubmitting} showToast={showToast} />
+                </Modal>
             )}
         </div>
     );
