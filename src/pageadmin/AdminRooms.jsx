@@ -5,9 +5,9 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
     Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
-    AlertTriangle, Layers, Users, DoorOpen, ChevronDown, Info,
+    AlertTriangle, Users, DoorOpen, ChevronDown,
     Activity, ArrowUpDown,
-    Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package, // ★ เพิ่ม
+    Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package,
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
@@ -36,7 +36,6 @@ function iconForFacility(name = "") {
     return FACILITY_ICON_MAP.find(f => f.keys.some(k => n.includes(k)))?.icon || Package;
 }
 
-// ★ ย้ายมาไว้ตรงนี้ — ระดับโมดูล ใช้ได้ทุก component
 const blockNegativeKeys = (e) => {
     if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
@@ -95,11 +94,13 @@ function RoomIsoPreview({ statusId, seed = 0 }) {
     );
 }
 
+// ─── UtilizationGauge ───────────────────────────────────────────────────────
+// สี: แดง = ใช้งานน้อย (<25%) · เหลือง = ปานกลาง (25-59%) · ฟ้า = ใช้งานมาก (≥60%)
 function UtilizationGauge({ rate = 0, level = "low", size = 44, strokeWidth = 5, uid = "" }) {
     const palette = {
-        low: { from: "#22D3EE", to: "#0891B2" },
-        medium: { from: "#FBBF24", to: "#D97706" },
-        high: { from: "#FB7185", to: "#E11D48" },
+        low: { from: "#FB7185", to: "#E11D48" },      // แดง
+        medium: { from: "#FBBF24", to: "#D97706" },   // เหลือง
+        high: { from: "#38BDF8", to: "#0284C7" },      // ฟ้า
     }[level] || { from: "#CBD5E1", to: "#94A3B8" };
 
     const r = (size - strokeWidth) / 2;
@@ -129,21 +130,28 @@ function UtilizationGauge({ rate = 0, level = "low", size = 44, strokeWidth = 5,
     );
 }
 
-// ─── Seat Fill Grid — แสดงสัดส่วนที่นั่งที่ใช้จริงเทียบความจุ (max 10 ไอคอนแสดงผล) ──
+// ─── Seat Fill Grid ─────────────────────────────────────────────────────────
+// จำนวนช่อง = ความจุห้องจริง (สูงสุด 12 ช่องเพื่อไม่ให้ล้น) ไม่ใช่ช่องคงที่ 10 ช่องเหมือนเดิม
+// เพื่อให้ตัวเลข "ที่นั่งที่ใช้จริง/ความจุ" ตรงกับจำนวนช่องที่ระบายสีเสมอ
+// สี: แดง = ใช้ที่นั่งน้อย (<25%) · เหลือง = ปานกลาง (25-59%) · ฟ้า = ใช้ที่นั่งมาก (≥60%)
 function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
-    const displayMax = 10;
-    const ratio = capacity > 0 ? Math.min(1, filled / capacity) : 0;
-    const filledCount = Math.round(ratio * displayMax);
-    const dim = size === "lg" ? "h-3.5 w-3.5" : "h-2 w-2";
-    const gap = size === "lg" ? "gap-1" : "gap-0.5";
+    const maxBoxes = 12;
+    if (capacity <= 0) return null;
 
+    const boxes = Math.min(capacity, maxBoxes);
+    const scale = capacity > maxBoxes ? maxBoxes / capacity : 1;
+    const filledCount = Math.round(Math.min(filled, capacity) * scale);
+    const ratio = Math.min(1, filled / capacity);
+
+    const dim = size === "lg" ? "h-3.5 w-3.5" : "h-2.5 w-2.5";
+    const gap = size === "lg" ? "gap-1" : "gap-0.5";
     const color =
-        ratio >= 0.6 ? "bg-rose-400" :
-            ratio >= 0.25 ? "bg-amber-400" : "bg-cyan-400";
+        ratio >= 0.6 ? "bg-sky-400" :
+            ratio >= 0.25 ? "bg-amber-400" : "bg-rose-400";
 
     return (
-        <div className={`flex flex-wrap ${gap} max-w-[110px]`}>
-            {Array.from({ length: displayMax }, (_, i) => (
+        <div className={`flex flex-wrap ${gap} max-w-[140px]`}>
+            {Array.from({ length: boxes }, (_, i) => (
                 <span
                     key={i}
                     className={`${dim} rounded-sm transition-colors duration-500 ${i < filledCount ? color : "bg-slate-200"}`}
@@ -153,11 +161,12 @@ function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
     );
 }
 
+// ─── FacilityEditor — เพิ่ม/แก้จำนวน/ลบ จะบันทึกทันที ไม่มีปุ่มบันทึกซ้ำซ้อน ──
 function FacilityEditor({ roomId, showToast }) {
     const [facilityList, setFacilityList] = useState([]);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    const [busy, setBusy] = useState(false);
     const [newName, setNewName] = useState("");
 
     useEffect(() => {
@@ -174,38 +183,48 @@ function FacilityEditor({ roomId, showToast }) {
         }).catch(() => { }).finally(() => setLoading(false));
     }, [roomId]);
 
-    const addFacility = () => {
-        const name = newName.trim();
-        if (!name) return;
-        if (items.some(i => i.facilitiesName.toLowerCase() === name.toLowerCase())) { setNewName(""); return; }
-        const existing = facilityList.find(t => t.Facilities_Name.toLowerCase() === name.toLowerCase());
-        setItems(prev => [...prev, {
-            facilitiesId: existing?.FacilitiesId || null,
-            facilitiesName: existing?.Facilities_Name || name,
-            quantity: 1,
-        }]);
-        setNewName("");
-    };
-
-    const updateQty = (idx, delta) =>
-        setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it));
-    const removeItem = (idx) => setItems(prev => prev.filter((_, i) => i !== idx));
-
-    const save = async () => {
-        setSaving(true);
+    // บันทึกทันทีทุกครั้งที่ items เปลี่ยน (เพิ่ม/ลบ/ปรับจำนวน) — ไม่ต้องกดปุ่มบันทึกซ้ำ
+    const persist = async (nextItems) => {
+        setBusy(true);
         try {
             await axios.put(`${API}/rooms/${roomId}/facilities`, {
-                items: items.map(i => ({
+                items: nextItems.map(i => ({
                     facilitiesId: i.facilitiesId,
                     facilitiesName: i.facilitiesId ? undefined : i.facilitiesName,
                     quantity: i.quantity,
                 })),
             });
-            showToast?.("success", "บันทึกสิ่งอำนวยความสะดวกสำเร็จ");
+            setItems(nextItems);
         } catch (e) {
             console.error(e);
             showToast?.("error", "บันทึกสิ่งอำนวยความสะดวกไม่สำเร็จ", e.response?.data?.message);
-        } finally { setSaving(false); }
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const addFacility = () => {
+        const name = newName.trim();
+        if (!name || busy) return;
+        if (items.some(i => i.facilitiesName.toLowerCase() === name.toLowerCase())) { setNewName(""); return; }
+        const existing = facilityList.find(t => t.Facilities_Name.toLowerCase() === name.toLowerCase());
+        const nextItems = [...items, {
+            facilitiesId: existing?.FacilitiesId || null,
+            facilitiesName: existing?.Facilities_Name || name,
+            quantity: 1,
+        }];
+        setNewName("");
+        persist(nextItems);
+    };
+
+    const updateQty = (idx, delta) => {
+        if (busy) return;
+        const nextItems = items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it);
+        persist(nextItems);
+    };
+    const removeItem = (idx) => {
+        if (busy) return;
+        persist(items.filter((_, i) => i !== idx));
     };
 
     if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>;
@@ -219,10 +238,13 @@ function FacilityEditor({ roomId, showToast }) {
                         <div key={idx} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
                             <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
                             <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
-                            <button onClick={() => updateQty(idx, -1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">−</button>
+                            <button onClick={() => updateQty(idx, -1)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">−</button>
                             <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
-                            <button onClick={() => updateQty(idx, 1)} className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100">+</button>
-                            <button onClick={() => removeItem(idx)} className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500">
+                            <button onClick={() => updateQty(idx, 1)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">+</button>
+                            <button onClick={() => removeItem(idx)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
                                 <X className="h-3 w-3" />
                             </button>
                         </div>
@@ -237,14 +259,15 @@ function FacilityEditor({ roomId, showToast }) {
                     onChange={e => setNewName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && addFacility()}
                     placeholder="พิมพ์ชื่ออุปกรณ์ เช่น เครื่องปรับอากาศ..."
-                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none"
+                    disabled={busy}
+                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50"
                 />
                 <datalist id="facility-suggestions">
                     {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
                 </datalist>
-                <button onClick={addFacility} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 shrink-0">เพิ่ม</button>
-                <button onClick={save} disabled={saving} className="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 disabled:opacity-50 shrink-0">
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "บันทึก"}
+                <button onClick={addFacility} disabled={busy}
+                    className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
+                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "เพิ่ม"}
                 </button>
             </div>
         </div>
@@ -399,7 +422,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
     const [reason, setReason] = useState(room.Status_Reason || "");
     const [expectedReopenDate, setExpectedReopenDate] = useState(room.Expected_Reopen_Date?.slice(0, 10) || "");
     const [loading, setLoading] = useState(false);
-    const [conflicts, setConflicts] = useState(null); // ★ null = ยังไม่เช็ค, [] = ไม่ชน, [...] = ชน
+    const [conflicts, setConflicts] = useState(null); // null = ยังไม่เช็ค, [] = ไม่ชน, [...] = ชน
 
     const isMaintenance = Number(statusRoomId) === 2;
 
@@ -418,7 +441,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
             onSaved();
             onClose();
         } catch (e) {
-            // ★ ถ้า backend ตอบ conflict มา ให้แสดง warning แทนการ error ทั่วไป
+            // ถ้า backend ตอบ conflict มา ให้แสดง warning แทนการ error ทั่วไป
             if (e.response?.status === 409 && e.response?.data?.conflict) {
                 setConflicts(e.response.data.conflicts);
             } else {
@@ -430,7 +453,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
     const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
-    // ★ หน้าจอ warning เมื่อมีคาบเรียนชน
+    // หน้าจอ warning เมื่อมีคาบเรียนชน
     if (conflicts && conflicts.length > 0) {
         return (
             <Modal title={`ห้องนี้มีคาบเรียนจองอยู่`} icon={AlertTriangle} onClose={onClose}>
@@ -519,6 +542,9 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
 }
 
 // ─── RoomCard ────────────────────────────────────────────────────────────────
+// หมายเหตุ: ตัดวิดเจ็ต "เฉลี่ยคน/คาบ" ที่เคยอยู่ตรงนี้ออก เพราะเป็นค่าเฉลี่ยถ่วงน้ำหนักตาม
+// จำนวนครั้งที่ห้องถูกจอง (ไม่ใช่ต่อคอร์ส) อ่านแล้วเข้าใจยากและไม่ช่วยตัดสินใจในมุมมองรายการห้อง
+// รายละเอียดเชิงลึกเรื่องที่นั่ง/คอร์ส ไปดูได้ในหน้าต่าง "ดู" แทน
 function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange }) {
     const st = styleOf(room.Status_Room_Id);
     return (
@@ -526,7 +552,6 @@ function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange 
             <div className="relative">
                 <RoomIsoPreview statusId={room.Status_Room_Id} seed={index} />
 
-                {/* ★ Utilization chip — มุมซ้ายบน */}
                 {util && (
                     <span className="absolute top-3 left-3 flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-slate-100">
                         <UtilizationGauge rate={util.UtilizationRate} level={util.Level} size={24} strokeWidth={3} uid={room.RoomId} />
@@ -547,17 +572,9 @@ function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange 
             </div>
 
             <div className="p-3">
-                <div className="flex flex-col items-center gap-1.5 mb-3">
-                    <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500">
-                        <Users className="h-3.5 w-3.5 text-orange-400" />
-                        {room.Capacity ? `${room.Capacity} ที่นั่ง` : "ไม่ระบุความจุ"}
-                    </div>
-                    {util?.SeatEfficiency != null && room.Capacity > 0 && (
-                        <div className="flex flex-col items-center gap-0.5">
-                            <SeatFillGrid filled={util.AvgStudentsPerBooking} capacity={room.Capacity} />
-                            <span className="text-[9px] text-slate-400">เฉลี่ย {util.AvgStudentsPerBooking} คน/คาบ</span>
-                        </div>
-                    )}
+                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-500 mb-3">
+                    <Users className="h-3.5 w-3.5 text-orange-400" />
+                    {room.Capacity ? `${room.Capacity} ที่นั่ง` : "ไม่ระบุความจุ"}
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -589,15 +606,17 @@ function RoomDetailModal({ room, util, onClose }) {
     const [loadingSchedule, setLoadingSchedule] = useState(true);
     const [statusLogs, setStatusLogs] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(true);
-    const [utilDetail, setUtilDetail] = useState(null); // ★
-    const [loadingUtil, setLoadingUtil] = useState(true); // ★
+    const [utilDetail, setUtilDetail] = useState(null);
+    const [loadingUtil, setLoadingUtil] = useState(true);
+    const [facilities, setFacilities] = useState([]);
+    const [loadingFacilities, setLoadingFacilities] = useState(true);
 
     useEffect(() => {
         axios.get(`${API}/rooms/${room.RoomId}/schedule`).then(r => setSchedule(r.data)).catch(() => setSchedule([])).finally(() => setLoadingSchedule(false));
         axios.get(`${API}/rooms/${room.RoomId}/status-logs`).then(r => setStatusLogs(r.data)).catch(() => setStatusLogs([])).finally(() => setLoadingLogs(false));
-        // ★
         axios.get(`${API}/rooms/${room.RoomId}/utilization`, { params: { weeks: 8 } })
             .then(r => setUtilDetail(r.data)).catch(() => setUtilDetail(null)).finally(() => setLoadingUtil(false));
+        axios.get(`${API}/rooms/${room.RoomId}/facilities`).then(r => setFacilities(r.data)).catch(() => setFacilities([])).finally(() => setLoadingFacilities(false));
     }, [room.RoomId]);
 
     return (
@@ -634,7 +653,32 @@ function RoomDetailModal({ room, util, onClose }) {
                 </div>
             )}
 
-            {/* ★ ส่วนใหม่: อัตราการใช้งาน */}
+            {/* สิ่งอำนวยความสะดวก */}
+            <div className="mt-5">
+                <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">สิ่งอำนวยความสะดวก</p>
+                {loadingFacilities ? (
+                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>
+                ) : facilities.length === 0 ? (
+                    <p className="text-xs text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        ยังไม่มีสิ่งอำนวยความสะดวก
+                    </p>
+                ) : (
+                    <div className="flex flex-wrap gap-2">
+                        {facilities.map(f => {
+                            const FIcon = iconForFacility(f.Facilities_Name);
+                            return (
+                                <div key={f.Room_Facilities_Id} className="flex items-center gap-1.5 pl-2.5 pr-3 py-1 bg-orange-50 border border-orange-100 rounded-full">
+                                    <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                                    <span className="text-xs font-semibold text-orange-700">{f.Facilities_Name}</span>
+                                    <span className="text-[10px] font-bold text-orange-400">×{f.Quantity}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* อัตราการใช้งาน */}
             <div className="mt-5">
                 <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">อัตราการใช้งานห้อง (30 วันล่าสุด)</p>
@@ -697,7 +741,7 @@ function RoomDetailModal({ room, util, onClose }) {
                 </div>
             )}
 
-            {/* ─── ตารางการใช้ห้อง ─── */}
+            {/* ตารางการใช้ห้อง */}
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ตารางการใช้ห้อง (คาบที่กำลังจะถึง)</p>
                 {loadingSchedule ? (
@@ -728,7 +772,7 @@ function RoomDetailModal({ room, util, onClose }) {
                 )}
             </div>
 
-            {/* ★ ประวัติการเปลี่ยนสถานะ */}
+            {/* ประวัติการเปลี่ยนสถานะ */}
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ประวัติการเปลี่ยนสถานะ</p>
                 {loadingLogs ? (
@@ -799,7 +843,7 @@ export default function AdminRooms() {
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchAll(); }, [utilDays]); // ★ เปลี่ยนจาก [] เป็น [utilDays]
+    useEffect(() => { fetchAll(); }, [utilDays]);
 
     const handleCreate = async (form) => {
         setIsSubmitting(true);
@@ -809,7 +853,6 @@ export default function AdminRooms() {
             setShowAddModal(false);
             fetchAll();
         } catch (e) {
-            // ★ 409 = ชื่อห้องซ้ำ แสดงข้อความชัดเจน
             showToast("error", e.response?.status === 409 ? "ชื่อห้องซ้ำ" : "เกิดข้อผิดพลาด!", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
@@ -897,7 +940,7 @@ export default function AdminRooms() {
                     { label: "ห้องเรียนทั้งหมด", value: rooms.length, color: "bg-orange-500", icon: DoorOpen },
                     { label: "ห้องพร้อมใช้งาน", value: availableCount, color: "bg-emerald-500", icon: Check },
                     { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()}`, color: "bg-amber-500", icon: Users },
-                    { label: `อัตราการใช้งานเฉลี่ย (${utilDays} วัน)`, value: `${avgUtilization}%`, color: "bg-cyan-600", icon: Activity }, // ★
+                    { label: `อัตราการใช้งานเฉลี่ย (${utilDays} วัน)`, value: `${avgUtilization}%`, color: "bg-cyan-600", icon: Activity },
                 ].map(({ label, value, color, icon: Icon }, i) => (
                     <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -911,7 +954,7 @@ export default function AdminRooms() {
                 ))}
             </div>
 
-            {/* ★ Insight banner — ตอบคำถามธุรกิจตรงๆ */}
+            {/* Insight banner — ตอบคำถามธุรกิจตรงๆ */}
             {underutilizedRooms.length > 0 && (
                 <div className="flex items-start gap-3 p-4 bg-cyan-50 border border-cyan-100 rounded-2xl">
                     <div className="h-9 w-9 rounded-xl bg-cyan-500 flex items-center justify-center shrink-0">
@@ -986,7 +1029,6 @@ export default function AdminRooms() {
             </div>
 
             {filtered.length === 0 ? (
-                // ใหม่
                 <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
                     <svg viewBox="0 0 200 150" className="h-28 w-28 mx-auto opacity-70">
                         <polygon points="100,25 180,65 100,105 20,65" fill="#E2E8F0" opacity="0.6" />
@@ -1001,13 +1043,13 @@ export default function AdminRooms() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {sorted.map((room, i) => (
                         <RoomCard key={room.RoomId} room={room} index={i}
-                            util={utilization[room.RoomId]}   // ★ ขาดบรรทัดนี้ — ตอนนี้ gauge จะไม่ขึ้นเลยที่การ์ด
+                            util={utilization[room.RoomId]}
                             onEdit={setEditingRoom} onDelete={setDeletingRoom} onView={setViewingRoom}
                             onStatusChange={setStatusRoom} />
                     ))}
                 </div>
             )}
-            
+
             {deletingRoom && (
                 <ConfirmDelete room={deletingRoom} onConfirm={handleDelete} onCancel={() => setDeletingRoom(null)} isDeleting={isDeleting} />
             )}
