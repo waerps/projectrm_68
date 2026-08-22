@@ -6,7 +6,6 @@ import { ToastContainer } from "../components/Toast";
 import {
     Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, Users, DoorOpen, ChevronDown,
-    Activity, ArrowUpDown,
     Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package,
 } from "lucide-react";
 
@@ -90,42 +89,6 @@ function RoomIsoPreview({ statusId, seed = 0 }) {
                     <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-full">ไม่ใช้งาน</span>
                 </span>
             )}
-        </div>
-    );
-}
-
-// ─── UtilizationGauge ───────────────────────────────────────────────────────
-// สี: แดง = ใช้งานน้อย (<25%) · เหลือง = ปานกลาง (25-59%) · ฟ้า = ใช้งานมาก (≥60%)
-function UtilizationGauge({ rate = 0, level = "low", size = 44, strokeWidth = 5, uid = "" }) {
-    const palette = {
-        low: { from: "#FB7185", to: "#E11D48" },      // แดง
-        medium: { from: "#FBBF24", to: "#D97706" },   // เหลือง
-        high: { from: "#38BDF8", to: "#0284C7" },      // ฟ้า
-    }[level] || { from: "#CBD5E1", to: "#94A3B8" };
-
-    const r = (size - strokeWidth) / 2;
-    const c = 2 * Math.PI * r;
-    const offset = c * (1 - Math.min(100, rate) / 100);
-    const gradId = `util-grad-${level}-${size}-${uid}`;
-
-    return (
-        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-            <svg width={size} height={size} className="-rotate-90">
-                <defs>
-                    <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor={palette.from} />
-                        <stop offset="100%" stopColor={palette.to} />
-                    </linearGradient>
-                </defs>
-                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#F1F5F9" strokeWidth={strokeWidth} />
-                <circle
-                    cx={size / 2} cy={size / 2} r={r} fill="none"
-                    stroke={`url(#${gradId})`} strokeWidth={strokeWidth}
-                    strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-                    className="transition-all duration-700 ease-out"
-                />
-            </svg>
-            <span className="absolute text-[10px] font-black text-slate-700">{Math.round(rate)}%</span>
         </div>
     );
 }
@@ -542,22 +505,12 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
 }
 
 // ─── RoomCard ────────────────────────────────────────────────────────────────
-// หมายเหตุ: ตัดวิดเจ็ต "เฉลี่ยคน/คาบ" ที่เคยอยู่ตรงนี้ออก เพราะเป็นค่าเฉลี่ยถ่วงน้ำหนักตาม
-// จำนวนครั้งที่ห้องถูกจอง (ไม่ใช่ต่อคอร์ส) อ่านแล้วเข้าใจยากและไม่ช่วยตัดสินใจในมุมมองรายการห้อง
-// รายละเอียดเชิงลึกเรื่องที่นั่ง/คอร์ส ไปดูได้ในหน้าต่าง "ดู" แทน
-function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange }) {
+function RoomCard({ room, index, onEdit, onDelete, onView, onStatusChange }) {
     const st = styleOf(room.Status_Room_Id);
     return (
         <div className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-orange-200 transition-all duration-300 overflow-hidden">
             <div className="relative">
                 <RoomIsoPreview statusId={room.Status_Room_Id} seed={index} />
-
-                {util && (
-                    <span className="absolute top-3 left-3 flex items-center gap-1 pl-0.5 pr-2 py-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-sm border border-slate-100">
-                        <UtilizationGauge rate={util.UtilizationRate} level={util.Level} size={24} strokeWidth={3} uid={room.RoomId} />
-                        <span className="text-[9px] font-bold text-slate-500">ใช้งาน</span>
-                    </span>
-                )}
 
                 <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border backdrop-blur-sm shadow-sm ${st.bg} ${st.text} ${st.border}`}>
                     <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
@@ -600,7 +553,7 @@ function RoomCard({ room, index, util, onEdit, onDelete, onView, onStatusChange 
     );
 }
 
-function RoomDetailModal({ room, util, onClose }) {
+function RoomDetailModal({ room, onClose }) {
     const st = styleOf(room.Status_Room_Id);
     const [schedule, setSchedule] = useState([]);
     const [loadingSchedule, setLoadingSchedule] = useState(true);
@@ -678,30 +631,13 @@ function RoomDetailModal({ room, util, onClose }) {
                 )}
             </div>
 
-            {/* อัตราการใช้งาน */}
+            {/* ความหนาแน่นการจองแยกตามวัน */}
             <div className="mt-5">
-                <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">อัตราการใช้งานห้อง (30 วันล่าสุด)</p>
-                    {util && <span className="text-[10px] text-slate-400">{util.BookingsCount} คาบ · {util.BookedHours} ชม.</span>}
-                </div>
-                <div className="flex items-center gap-4 bg-slate-50 border border-slate-100 rounded-xl p-4">
-                    <UtilizationGauge rate={util?.UtilizationRate || 0} level={util?.Level || "low"} size={64} strokeWidth={7} />
-                    <div>
-                        <p className="text-sm font-bold text-slate-800">
-                            {util?.Level === "high" ? "ใช้งานสูง — ห้องนี้เป็นที่นิยม" :
-                                util?.Level === "medium" ? "ใช้งานปานกลาง" :
-                                    "ใช้งานน้อย — พิจารณาปรับตาราง/ใช้งานอื่น"}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">คำนวณจากคาบเรียนที่จองจริงเทียบกับชั่วโมงเปิดทำการ</p>
-                    </div>
-                </div>
-
-                {/* Heatmap รายวันในสัปดาห์ */}
                 {loadingUtil ? (
                     <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-cyan-400" /></div>
                 ) : utilDetail?.byDay?.length > 0 && (
-                    <div className="mt-3">
-                        <p className="text-[10px] text-slate-400 mb-1.5">ความหนาแน่นการจองแยกตามวัน (8 สัปดาห์ล่าสุด)</p>
+                    <>
+                        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ความหนาแน่นการจองแยกตามวัน (8 สัปดาห์ล่าสุด)</p>
                         <div className="grid grid-cols-7 gap-1.5">
                             {[1, 2, 3, 4, 5, 6, 7].map(d => {
                                 const rec = utilDetail.byDay.find(x => Number(x.DayOfWeek) === d);
@@ -720,7 +656,7 @@ function RoomDetailModal({ room, util, onClose }) {
                                 );
                             })}
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
 
@@ -821,29 +757,21 @@ export default function AdminRooms() {
     const [viewingRoom, setViewingRoom] = useState(null);
     const [statusRoom, setStatusRoom] = useState(null);
 
-    const [utilization, setUtilization] = useState({});   // {[RoomId]: {UtilizationRate, Level, BookingsCount, BookedHours} }
-    const [utilDays, setUtilDays] = useState(30);
-    const [sortBy, setSortBy] = useState("default");       // "default" | "util_desc" | "util_asc"
-
     const fetchAll = async () => {
         try {
-            const [rRes, sRes, uRes] = await Promise.all([
+            const [rRes, sRes] = await Promise.all([
                 axios.get(`${API}/rooms`),
                 axios.get(`${API}/status-room`),
-                axios.get(`${API}/rooms/utilization`, { params: { days: utilDays } }),
             ]);
             setRooms(rRes.data);
             setStatuses(sRes.data);
-            const map = {};
-            (uRes.data.rooms || []).forEach(u => { map[u.RoomId] = u; });
-            setUtilization(map);
         } catch (e) {
             console.error("fetch rooms error:", e.response?.status, e.response?.data || e.message);
             showToast("error", "โหลดข้อมูลห้องเรียนไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { fetchAll(); }, [utilDays]);
+    useEffect(() => { fetchAll(); }, []);
 
     const handleCreate = async (form) => {
         setIsSubmitting(true);
@@ -896,23 +824,6 @@ export default function AdminRooms() {
     const totalCapacity = rooms.reduce((sum, r) => sum + (Number(r.Capacity) || 0), 0);
     const availableCount = rooms.filter(r => Number(r.Status_Room_Id) === 1).length;
 
-    const utilValues = Object.values(utilization);
-    const avgUtilization = utilValues.length
-        ? Math.round(utilValues.reduce((s, u) => s + u.UtilizationRate, 0) / utilValues.length)
-        : 0;
-    const underutilizedRooms = utilValues
-        .filter(u => u.Level === "low")
-        .sort((a, b) => a.UtilizationRate - b.UtilizationRate);
-
-    const mismatchedRooms = utilValues
-        .filter(u => u.Level === "high" && u.SeatLevel === "low")
-        .sort((a, b) => a.SeatEfficiency - b.SeatEfficiency);
-    const sorted = [...filtered].sort((a, b) => {
-        if (sortBy === "util_desc") return (utilization[b.RoomId]?.UtilizationRate ?? 0) - (utilization[a.RoomId]?.UtilizationRate ?? 0);
-        if (sortBy === "util_asc") return (utilization[a.RoomId]?.UtilizationRate ?? 0) - (utilization[b.RoomId]?.UtilizationRate ?? 0);
-        return 0;
-    });
-
     if (loading) return (
         <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
@@ -935,12 +846,11 @@ export default function AdminRooms() {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                     { label: "ห้องเรียนทั้งหมด", value: rooms.length, color: "bg-orange-500", icon: DoorOpen },
                     { label: "ห้องพร้อมใช้งาน", value: availableCount, color: "bg-emerald-500", icon: Check },
                     { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()}`, color: "bg-amber-500", icon: Users },
-                    { label: `อัตราการใช้งานเฉลี่ย (${utilDays} วัน)`, value: `${avgUtilization}%`, color: "bg-cyan-600", icon: Activity },
                 ].map(({ label, value, color, icon: Icon }, i) => (
                     <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -953,41 +863,6 @@ export default function AdminRooms() {
                     </div>
                 ))}
             </div>
-
-            {/* Insight banner — ตอบคำถามธุรกิจตรงๆ */}
-            {underutilizedRooms.length > 0 && (
-                <div className="flex items-start gap-3 p-4 bg-cyan-50 border border-cyan-100 rounded-2xl">
-                    <div className="h-9 w-9 rounded-xl bg-cyan-500 flex items-center justify-center shrink-0">
-                        <Activity className="h-[18px] w-[18px] text-white" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-cyan-800">
-                            มี {underutilizedRooms.length} ห้องที่ถูกใช้งานน้อย (ต่ำกว่า 25%) ในช่วง {utilDays} วันที่ผ่านมา
-                        </p>
-                        <p className="text-xs text-cyan-600 mt-0.5">
-                            {underutilizedRooms.slice(0, 3).map(u => rooms.find(r => r.RoomId === u.RoomId)?.RoomDetail).filter(Boolean).join(", ")}
-                            {" "}— ลองพิจารณาปรับตารางเรียนหรือใช้พื้นที่ให้เกิดประโยชน์มากขึ้น
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            {mismatchedRooms.length > 0 && (
-                <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-100 rounded-2xl">
-                    <div className="h-9 w-9 rounded-xl bg-rose-500 flex items-center justify-center shrink-0">
-                        <Users className="h-[18px] w-[18px] text-white" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-rose-800">
-                            มี {mismatchedRooms.length} ห้องที่จองเต็มตาราง แต่ใช้ที่นั่งได้ไม่คุ้มขนาดห้อง
-                        </p>
-                        <p className="text-xs text-rose-600 mt-0.5">
-                            {mismatchedRooms.slice(0, 3).map(u => rooms.find(r => r.RoomId === u.RoomId)?.RoomDetail).filter(Boolean).join(", ")}
-                            {" "}— ลองสลับไปใช้ห้องเล็กกว่า แล้วเก็บห้องนี้ไว้รับคอร์สที่คนเยอะ
-                        </p>
-                    </div>
-                </div>
-            )}
 
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-3">
@@ -1015,15 +890,6 @@ export default function AdminRooms() {
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
-                    <div className="relative">
-                        <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px]">
-                            <option value="default">เรียงตามปกติ</option>
-                            <option value="util_desc">ใช้งานมากไปน้อย</option>
-                            <option value="util_asc">ใช้งานน้อยไปมาก</option>
-                        </select>
-                        <ArrowUpDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
-                    </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {rooms.length} ห้อง</p>
             </div>
@@ -1041,9 +907,8 @@ export default function AdminRooms() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {sorted.map((room, i) => (
+                    {filtered.map((room, i) => (
                         <RoomCard key={room.RoomId} room={room} index={i}
-                            util={utilization[room.RoomId]}
                             onEdit={setEditingRoom} onDelete={setDeletingRoom} onView={setViewingRoom}
                             onStatusChange={setStatusRoom} />
                     ))}
@@ -1054,7 +919,7 @@ export default function AdminRooms() {
                 <ConfirmDelete room={deletingRoom} onConfirm={handleDelete} onCancel={() => setDeletingRoom(null)} isDeleting={isDeleting} />
             )}
             {viewingRoom && (
-                <RoomDetailModal room={viewingRoom} util={utilization[viewingRoom.RoomId]} onClose={() => setViewingRoom(null)} />
+                <RoomDetailModal room={viewingRoom} onClose={() => setViewingRoom(null)} />
             )}
             {statusRoom && (
                 <RoomStatusModal
