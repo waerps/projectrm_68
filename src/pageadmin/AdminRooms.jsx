@@ -124,6 +124,68 @@ function SeatFillGrid({ filled = 0, capacity = 0, size = "sm" }) {
     );
 }
 
+// ─── FacilityPicker — UI ล้วนๆ ไม่ยุ่งกับ API, ใช้ได้ทั้ง local state (create) และ persist (edit) ──
+function FacilityPicker({ items, facilityList, onAdd, onUpdateQty, onRemove, busy }) {
+    const [newName, setNewName] = useState("");
+
+    const handleAdd = () => {
+        const name = newName.trim();
+        if (!name || busy) return;
+        if (items.some(i => i.facilitiesName.toLowerCase() === name.toLowerCase())) { setNewName(""); return; }
+        const existing = facilityList.find(t => t.Facilities_Name.toLowerCase() === name.toLowerCase());
+        onAdd({
+            facilitiesId: existing?.FacilitiesId || null,
+            facilitiesName: existing?.Facilities_Name || name,
+            quantity: 1,
+        });
+        setNewName("");
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-2 mb-3">
+                {items.map((it, idx) => {
+                    const FIcon = iconForFacility(it.facilitiesName);
+                    return (
+                        <div key={idx} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
+                            <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                            <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
+                            <button onClick={() => onUpdateQty(idx, -1)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">−</button>
+                            <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
+                            <button onClick={() => onUpdateQty(idx, 1)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">+</button>
+                            <button onClick={() => onRemove(idx)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    );
+                })}
+                {items.length === 0 && <p className="text-xs text-slate-400">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
+            </div>
+            <div className="flex gap-2">
+                <input
+                    list="facility-suggestions"
+                    value={newName}
+                    onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAdd()}
+                    placeholder="พิมพ์ชื่ออุปกรณ์ เช่น เครื่องปรับอากาศ..."
+                    disabled={busy}
+                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50"
+                />
+                <datalist id="facility-suggestions">
+                    {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
+                </datalist>
+                <button onClick={handleAdd} disabled={busy}
+                    className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
+                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "เพิ่ม"}
+                </button>
+            </div>
+        </div>
+    );
+}
+
 // ─── FacilityEditor — เพิ่ม/แก้จำนวน/ลบ จะบันทึกทันที ไม่มีปุ่มบันทึกซ้ำซ้อน ──
 function FacilityEditor({ roomId, showToast }) {
     const [facilityList, setFacilityList] = useState([]);
@@ -193,47 +255,14 @@ function FacilityEditor({ roomId, showToast }) {
     if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>;
 
     return (
-        <div>
-            <div className="flex flex-wrap gap-2 mb-3">
-                {items.map((it, idx) => {
-                    const FIcon = iconForFacility(it.facilitiesName);
-                    return (
-                        <div key={idx} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-orange-50 border border-orange-100 rounded-full">
-                            <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-                            <span className="text-xs font-semibold text-orange-700">{it.facilitiesName}</span>
-                            <button onClick={() => updateQty(idx, -1)} disabled={busy}
-                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">−</button>
-                            <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
-                            <button onClick={() => updateQty(idx, 1)} disabled={busy}
-                                className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">+</button>
-                            <button onClick={() => removeItem(idx)} disabled={busy}
-                                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
-                                <X className="h-3 w-3" />
-                            </button>
-                        </div>
-                    );
-                })}
-                {items.length === 0 && <p className="text-xs text-slate-400">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
-            </div>
-            <div className="flex gap-2">
-                <input
-                    list="facility-suggestions"
-                    value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && addFacility()}
-                    placeholder="พิมพ์ชื่ออุปกรณ์ เช่น เครื่องปรับอากาศ..."
-                    disabled={busy}
-                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50"
-                />
-                <datalist id="facility-suggestions">
-                    {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
-                </datalist>
-                <button onClick={addFacility} disabled={busy}
-                    className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
-                    {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "เพิ่ม"}
-                </button>
-            </div>
-        </div>
+        <FacilityPicker
+            items={items}
+            facilityList={facilityList}
+            busy={busy}
+            onAdd={(item) => persist([...items, item])}
+            onUpdateQty={(idx, delta) => persist(items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it))}
+            onRemove={(idx) => persist(items.filter((_, i) => i !== idx))}
+        />
     );
 }
 
@@ -261,7 +290,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
     );
 }
 
-function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting, showToast }) {
+function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel, isSubmitting, showToast }) {
     const [form, setForm] = useState({
         roomDetail: initial.RoomDetail || "",
         floor: initial.Floor ?? "",
@@ -270,6 +299,7 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting, show
     });
     const [errors, setErrors] = useState({});
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+    const [facilities, setFacilities] = useState([]);
 
     const validate = () => {
         const e = {};
@@ -282,7 +312,19 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting, show
         return Object.keys(e).length === 0;
     };
 
-    const submit = () => { if (validate()) onSave(form); };
+    const submit = () => {
+        if (!validate()) return;
+        onSave({
+            ...form,
+            ...(initial.RoomId ? {} : {
+                facilities: facilities.map(f => ({
+                    facilitiesId: f.facilitiesId || undefined,
+                    facilitiesName: f.facilitiesId ? undefined : f.facilitiesName,
+                    quantity: f.quantity,
+                })),
+            }),
+        });
+    };
 
     const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const errInp = "border-red-300 focus:ring-red-300";
@@ -325,12 +367,21 @@ function RoomForm({ initial = {}, statuses, onSave, onCancel, isSubmitting, show
                 </div>
             </div>
 
-            {initial.RoomId && (
-                <div className="pt-2 border-t border-slate-100">
-                    <label className={lbl}>สิ่งอำนวยความสะดวก</label>
+            <div className="pt-2 border-t border-slate-100">
+                <label className={lbl}>สิ่งอำนวยความสะดวก</label>
+                {initial.RoomId ? (
                     <FacilityEditor roomId={initial.RoomId} showToast={showToast} />
-                </div>
-            )}
+                ) : (
+                    <FacilityPicker
+                        items={facilities}
+                        facilityList={facilityList}
+                        busy={false}
+                        onAdd={(item) => setFacilities(f => [...f, item])}
+                        onUpdateQty={(idx, delta) => setFacilities(f => f.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it))}
+                        onRemove={(idx) => setFacilities(f => f.filter((_, i) => i !== idx))}
+                    />
+                )}
+            </div>
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
@@ -744,6 +795,7 @@ export default function AdminRooms() {
     const { toasts, showToast, removeToast } = useToast();
     const [rooms, setRooms] = useState([]);
     const [statuses, setStatuses] = useState([]);
+    const [facilityList, setFacilityList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [filterFloor, setFilterFloor] = useState("all");
@@ -759,12 +811,14 @@ export default function AdminRooms() {
 
     const fetchAll = async () => {
         try {
-            const [rRes, sRes] = await Promise.all([
+            const [rRes, sRes, fRes] = await Promise.all([
                 axios.get(`${API}/rooms`),
                 axios.get(`${API}/status-room`),
+                axios.get(`${API}/facilities`),
             ]);
             setRooms(rRes.data);
             setStatuses(sRes.data);
+            setFacilityList(fRes.data);
         } catch (e) {
             console.error("fetch rooms error:", e.response?.status, e.response?.data || e.message);
             showToast("error", "โหลดข้อมูลห้องเรียนไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
@@ -776,8 +830,8 @@ export default function AdminRooms() {
     const handleCreate = async (form) => {
         setIsSubmitting(true);
         try {
-            await axios.post(`${API}/rooms`, form);
-            showToast("success", "เพิ่มห้องเรียนสำเร็จ!");
+            const res = await axios.post(`${API}/rooms`, form);
+            showToast(res.data.facilitiesWarning ? "warning" : "success", res.data.message || "เพิ่มห้องเรียนสำเร็จ!");
             setShowAddModal(false);
             fetchAll();
         } catch (e) {
@@ -932,7 +986,7 @@ export default function AdminRooms() {
             )}
             {showAddModal && (
                 <Modal title="เพิ่มห้องเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
-                    <RoomForm statuses={statuses} onSave={handleCreate} onCancel={() => setShowAddModal(false)} isSubmitting={isSubmitting} showToast={showToast} />
+                    <RoomForm statuses={statuses} facilityList={facilityList} onSave={handleCreate} onCancel={() => setShowAddModal(false)} isSubmitting={isSubmitting} showToast={showToast} />
                 </Modal>
             )}
             {editingRoom && (
