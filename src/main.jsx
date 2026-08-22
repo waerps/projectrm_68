@@ -55,6 +55,7 @@ import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import AdminRooms from "./pageadmin/AdminRooms.jsx"
+import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
 import ChatProvider from "../src/components/Chat/ChatProvider.jsx"
 import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx";
@@ -114,7 +115,8 @@ const router = createBrowserRouter(
             { path: "notification", element: <AdminNotification /> },
             { path: "create-tutor", element: <CreateTutorForm /> },
             { path: "attendance", element: <AdminAttendanceDashboard /> },
-            { path: "rooms", element: <AdminRooms /> }
+            { path: "rooms", element: <AdminRooms /> },
+            { path: "common-facilities", element: <AdminCommonFacilities /> }
           ],
         },
         {
