@@ -499,7 +499,14 @@ function DetailModal({ item, onClose }) {
                 )}
             </div>
 
-            {item.TrackingType === "consumable" && item.MinQuantity != null && (
+            {item.Quantity === 0 && (
+                <div className="mt-4 rounded-xl p-3 border bg-rose-50 border-rose-200">
+                    <p className="text-xs font-bold text-rose-700">
+                        <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" /> หมดสต๊อก
+                    </p>
+                </div>
+            )}
+            {item.TrackingType === "consumable" && item.MinQuantity != null && item.Quantity > 0 && (
                 <div className={`mt-4 rounded-xl p-3 border ${item.Quantity <= item.MinQuantity ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
                     <p className="text-xs text-slate-600">
                         <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
@@ -547,10 +554,11 @@ function DetailModal({ item, onClose }) {
 function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjustQty }) {
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);
-    const lowStock = item.TrackingType === "consumable" && item.LowStock;
+    const outOfStock = item.Quantity === 0;
+    const lowStock = !outOfStock && item.TrackingType === "consumable" && item.LowStock;
 
     return (
-        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${lowStock ? "border-amber-300" : "border-slate-200 hover:border-orange-200"}`}>
+        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-rose-300" : lowStock ? "border-amber-300" : "border-slate-200 hover:border-orange-200"}`}>
             <div className="p-4 flex items-start gap-3">
                 <div className="h-11 w-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
                     <CIcon className="h-5 w-5 text-orange-500" />
@@ -566,16 +574,17 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
             </div>
 
             <div className="px-4 pb-3">
-                <div className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-                    <div>
-                        <p className="text-lg font-black text-slate-900 leading-none">{item.Quantity}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{item.Unit}</p>
-                    </div>
-                    <button onClick={() => onAdjustQty(item)}
-                        className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
-                        <Boxes className="h-3.5 w-3.5" /> ปรับจำนวน
-                    </button>
+                <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+                    <Boxes className="h-4 w-4 text-slate-400 shrink-0" />
+                    <p className="text-sm text-slate-700">
+                        <span className="font-black text-slate-900 text-base">{item.Quantity}</span> {item.Unit}
+                    </p>
                 </div>
+                {outOfStock && (
+                    <p className="flex items-center gap-1 text-[11px] font-bold text-rose-600 mt-2">
+                        <AlertCircle className="h-3.5 w-3.5" /> หมดสต๊อก
+                    </p>
+                )}
                 {lowStock && (
                     <p className="flex items-center gap-1 text-[11px] font-bold text-amber-600 mt-2">
                         <AlertCircle className="h-3.5 w-3.5" /> ใกล้หมด (ขั้นต่ำ {item.MinQuantity} {item.Unit})
@@ -596,6 +605,10 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
                 <button onClick={() => onEdit(item)}
                     className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
                     <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                </button>
+                <button onClick={() => onAdjustQty(item)}
+                    className="p-1.5 text-orange-500 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all" title="ปรับจำนวน">
+                    <Boxes className="h-3.5 w-3.5" />
                 </button>
                 <button onClick={() => onDelete(item)}
                     className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all" title="ลบ">
@@ -618,7 +631,7 @@ export default function AdminCommonFacilities() {
     const [statuses, setStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const [tab, setTab] = useState("asset"); // 'asset' | 'consumable'
+    const [filterType, setFilterType] = useState("all"); // 'all' | 'asset' | 'consumable'
     const [search, setSearch] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
@@ -688,7 +701,7 @@ export default function AdminCommonFacilities() {
         } finally { setIsDeleting(false); }
     };
 
-    const byTab = items.filter(i => i.TrackingType === tab);
+    const matchTypeFn = (i) => filterType === "all" || i.TrackingType === filterType;
     const matchSearchFn = (i) => {
         const s = search.toLowerCase();
         return !s || i.Name.toLowerCase().includes(s) || (i.Location || "").toLowerCase().includes(s);
@@ -696,7 +709,7 @@ export default function AdminCommonFacilities() {
     const matchCategoryFn = (i) => filterCategory === "all" || String(i.CategoryId) === filterCategory;
     const matchStatusFn = (i) => filterStatus === "all" || String(i.StatusId) === filterStatus;
 
-    const filtered = byTab.filter(i => matchSearchFn(i) && matchCategoryFn(i) && matchStatusFn(i));
+    const filtered = items.filter(i => matchTypeFn(i) && matchSearchFn(i) && matchCategoryFn(i) && matchStatusFn(i));
 
     const totalItems = items.length;
     const readyCount = items.filter(i => Number(i.StatusId) === 1).length;
@@ -715,8 +728,8 @@ export default function AdminCommonFacilities() {
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">คลังอุปกรณ์ส่วนกลาง</h1>
-                    <p className="text-sm text-slate-500 mt-1">จัดการทรัพย์สินและวัสดุที่ใช้ร่วมกันในสถาบัน ไม่ผูกกับห้องเรียนใดห้องหนึ่ง</p>
+                    <h1 className="text-2xl font-bold text-slate-900">จัดการคลังอุปกรณ์</h1>
+                    <p className="text-sm text-slate-500 mt-1">จัดการทรัพย์สินและวัสดุส่วนกลางที่ใช้ร่วมกันในสถาบัน</p>
                 </div>
                 <button onClick={() => setShowAddModal(true)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
@@ -742,19 +755,6 @@ export default function AdminCommonFacilities() {
                 ))}
             </div>
 
-            {/* Tab: ทรัพย์สิน / วัสดุสิ้นเปลือง */}
-            <div className="flex gap-2">
-                {["asset", "consumable"].map(t => (
-                    <button key={t} onClick={() => setTab(t)}
-                        className={`flex-1 md:flex-none md:px-8 py-2.5 rounded-xl text-sm font-bold transition ${tab === t
-                            ? "bg-orange-500 text-white shadow-sm"
-                            : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"}`}>
-                        {TRACKING_LABEL[t]}
-                        <span className="ml-1.5 opacity-70">({items.filter(i => i.TrackingType === t).length})</span>
-                    </button>
-                ))}
-            </div>
-
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-3">
                     <div className="relative flex-1">
@@ -764,6 +764,15 @@ export default function AdminCommonFacilities() {
                             placeholder="ค้นหาชื่ออุปกรณ์, ตำแหน่ง..."
                             className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
                         />
+                    </div>
+                    <div className="relative">
+                        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]">
+                            <option value="all">ทุกประเภท</option>
+                            <option value="asset">ทรัพย์สิน</option>
+                            <option value="consumable">วัสดุสิ้นเปลือง</option>
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                     <div className="relative">
                         <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
@@ -782,7 +791,7 @@ export default function AdminCommonFacilities() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {byTab.length} รายการ ({TRACKING_LABEL[tab]})</p>
+                <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
             </div>
 
             {filtered.length === 0 ? (

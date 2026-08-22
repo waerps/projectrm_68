@@ -118,7 +118,7 @@ export default function Navbar() {
 
                                 <li>
                                     <Link to="common-facilities" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">
-                                        คลังอุปกรณ์ส่วนกลาง
+                                        คลังอุปกรณ์
                                     </Link>
                                 </li>
 
