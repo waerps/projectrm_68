@@ -1,6 +1,6 @@
 // src/pages/Home.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   ChevronLeft,
@@ -21,6 +21,7 @@ import {
 import { getCourses } from "../callapi/callusers";
 import { getStudentCourses } from "../callapi/callusers_student";
 import { useShop } from "../context/ShopContext";
+import { CourseCheckoutModal } from "./Cart";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -395,8 +396,10 @@ function AboutFlashcard({ courses }) {
  * โครงสร้าง/แท็กยึดตาม CourseCard ใน Admincoures.jsx (ไม่รวมจำนวนนักเรียน)
  * ปุ่มเพิ่มลงตะกร้า/ถูกใจ ใช้สไตล์เดียวกับ CourseSearch.jsx
  */
-const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavorite }) => {
+const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAddToCart, onToggleFavorite }) => {
   const statusBadge = STATUS_BADGE[item.status];
+  const actionDisabled = isEnrolled || !canEnroll;
+  const actionLabel = isEnrolled ? "มีคอร์สนี้แล้ว" : !canEnroll ? statusBadge?.label || "ไม่เปิดรับสมัคร" : "ซื้อคอร์สเรียน";
 
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
@@ -435,7 +438,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavo
         </div>
 
         {/* แสดงเฉพาะข้อมูลหลักของคอร์ส: โปรโมชัน / เทอม / ประเภท / รูปแบบเรียน */}
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
           {item.isPromotion && (
             <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
               <Sparkles className="h-3 w-3" /> โปรโมชัน
@@ -453,8 +456,21 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavo
           )}
         </div>
 
-        {/* เส้นแบ่ง + ปุ่มเพิ่มลงตะกร้า / ถูกใจ — สไตล์เดียวกับ CourseSearch.jsx */}
-        <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3 mt-3">
+        {/* ปุ่มซื้อหลัก ตามด้วยตะกร้าและรายการโปรดขนาดเท่ากัน */}
+        <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onBuyNow();
+            }}
+            disabled={actionDisabled}
+            title={!canEnroll ? `คอร์สนี้${statusBadge?.label || "ไม่เปิดรับสมัคร"}` : undefined}
+            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300 disabled:opacity-100"
+          >
+            {actionLabel}
+          </button>
           <button
             type="button"
             onClick={(e) => {
@@ -462,11 +478,17 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavo
               e.stopPropagation();
               onAddToCart();
             }}
-            disabled={inCart || isEnrolled}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isEnrolled}
+            aria-pressed={inCart}
+            aria-label={isEnrolled ? "มีคอร์สนี้แล้ว" : inCart ? "นำออกจากตะกร้า" : "เพิ่มลงตะกร้า"}
+            title={isEnrolled ? "มีคอร์สนี้แล้ว" : inCart ? "นำออกจากตะกร้า" : "เพิ่มลงตะกร้า"}
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition disabled:cursor-not-allowed disabled:opacity-50 ${
+              inCart
+                ? "border-orange-300 bg-orange-100 text-orange-600 hover:border-orange-400 hover:bg-orange-100"
+                : "border-gray-200 bg-white text-gray-400 hover:border-orange-200 hover:text-orange-400"
+            }`}
           >
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {isEnrolled ? "มีคอร์สนี้แล้ว" : inCart ? "อยู่ในตะกร้าแล้ว" : "เพิ่มลงตะกร้า"}
+            <ShoppingCart className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -475,7 +497,9 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavo
               e.stopPropagation();
               onToggleFavorite();
             }}
-            className={`rounded-xl border p-2.5 transition ${
+            aria-label={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"}
+            title={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"}
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${
               isFav
                 ? "border-red-200 bg-red-50 text-red-500"
                 : "border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:text-red-400"
@@ -494,7 +518,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, onAddToCart, onToggleFavo
  * แสดงคอร์สของแต่ละเทอมแบบแถวเดียว เลื่อนซ้าย/ขวาได้
  * กด "ทั้งหมด" เพื่อขยายเป็น grid เต็ม (ดันเนื้อหาถัดไปลงมา)
  */
-function CourseCarousel({ group, favorites, cart, enrolledCourseIds, addToCart, toggleFavorite, toCourseCardItem }) {
+function CourseCarousel({ group, favorites, cart, enrolledCourseIds, onBuyNow, toggleCart, toggleFavorite, toCourseCardItem }) {
   const scrollRef = useRef(null);
   const [expanded, setExpanded] = useState(false);
 
@@ -509,6 +533,7 @@ function CourseCarousel({ group, favorites, cart, enrolledCourseIds, addToCart, 
     const isFav = favorites.some((f) => f.id === c.CourseID);
     const inCart = cart.some((f) => f.id === c.CourseID);
     const isEnrolled = enrolledCourseIds.has(String(c.CourseID));
+    const canEnroll = ![STATUS.CLOSED_REG, STATUS.CLOSED_COURSE].includes(Number(c.Status_Course_Id));
     const courseData = item;
     return (
       <Link key={c.CourseID} to={`/courses/${c.CourseID}`} className="block h-full">
@@ -517,7 +542,9 @@ function CourseCarousel({ group, favorites, cart, enrolledCourseIds, addToCart, 
           isFav={isFav}
           inCart={inCart}
           isEnrolled={isEnrolled}
-          onAddToCart={() => addToCart(courseData)}
+          canEnroll={canEnroll}
+          onBuyNow={() => onBuyNow(courseData)}
+          onAddToCart={() => toggleCart(courseData)}
           onToggleFavorite={() => toggleFavorite(courseData)}
         />
       </Link>
@@ -891,6 +918,7 @@ function Features() {
 /** ---------- main page ---------- */
 
 export default function Home() {
+  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -898,7 +926,17 @@ export default function Home() {
 
   const [selectedId, setSelectedId] = useState(null);
 
-  const { cart, favorites, addToCart, toggleFavorite } = useShop();
+  const { cart, favorites, toggleCart, toggleFavorite } = useShop();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [buyNowCourse, setBuyNowCourse] = useState(null);
+
+  const handleBuyNow = (course) => {
+    if (!localStorage.getItem("student_token")) {
+      setLoginPromptOpen(true);
+      return;
+    }
+    setBuyNowCourse(course);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("student_token");
@@ -989,7 +1027,9 @@ export default function Home() {
     dateRange: formatDateRange(c.StartDate, c.LastDate),
     status: c.Status_Course_Id,
     img: resolveCourseImg(c),
-    isPromotion: isTruthyFlag(c.Is_Promotion ?? c.isPromotion ?? c.IsPromotion ?? c.is_promotion),
+    isPromotion:
+      isTruthyFlag(c.Is_Promotion ?? c.isPromotion ?? c.IsPromotion ?? c.is_promotion) ||
+      Number(c.Discount || 0) > 0,
     courseType:
       getOptionLabel(c.Course_Type ?? c.CourseType, ["Course_Type", "courseType", "Type_Name"]) ||
       ((Array.isArray(c.Subjects) ? c.Subjects.length : 0) > 1 ? "bundle" : "single"),
@@ -1160,7 +1200,8 @@ export default function Home() {
                 favorites={favorites}
                 cart={cart}
                 enrolledCourseIds={enrolledCourseIds}
-                addToCart={addToCart}
+                onBuyNow={handleBuyNow}
+                toggleCart={toggleCart}
                 toggleFavorite={toggleFavorite}
                 toCourseCardItem={toCourseCardItem}
               />
@@ -1223,6 +1264,28 @@ export default function Home() {
           newsId={selectedId}
           onClose={() => setSelectedId(null)}
         />
+      )}
+
+      {buyNowCourse && (
+        <CourseCheckoutModal
+          course={buyNowCourse}
+          onClose={() => setBuyNowCourse(null)}
+        />
+      )}
+
+      {loginPromptOpen && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="login-required-title" onClick={() => setLoginPromptOpen(false)}>
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setLoginPromptOpen(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="ปิด">
+              <X className="h-5 w-5" />
+            </button>
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500"><Users className="h-7 w-7" /></span>
+            <h2 id="login-required-title" className="mt-5 text-xl font-extrabold text-[#14213D]">กรุณาเข้าสู่ระบบก่อนซื้อคอร์ส</h2>
+            <p className="mt-2 text-sm leading-relaxed text-gray-500">เข้าสู่ระบบนักเรียนเพื่อดำเนินการชำระเงินและบันทึกคอร์สไว้ในบัญชีของคุณ</p>
+            <button type="button" onClick={() => navigate("/login", { state: { returnTo: "/" } })} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600">ไปหน้าเข้าสู่ระบบ</button>
+            <button type="button" onClick={() => setLoginPromptOpen(false)} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-500 transition hover:bg-gray-50">เลือกดูคอร์สต่อ</button>
+          </div>
+        </div>
       )}
     </div>
   );

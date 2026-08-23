@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import generatePromptPayPayload from "promptpay-qr";
-import QRCode from "qrcode";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
 import { getCourseById, getCourseSchedule, getCourseSubjects } from "../callapi/callusers";
 import { getFileUrl } from "../utils/fileUrl";
@@ -404,7 +402,7 @@ function SlipToast({ toast, onClose }) {
   );
 }
 
-function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
+export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [step, setStep] = useState(0);
   const [payPlan, setPayPlan] = useState("full");
   const [slipFile, setSlipFile] = useState(null);
@@ -413,11 +411,15 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [qrError, setQrError] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
   const [checkingSlip, setCheckingSlip] = useState(false);
+  const [paymentIndex, setPaymentIndex] = useState(0);
+  const [activeInstallment, setActiveInstallment] = useState(null);
+  const [lineCode, setLineCode] = useState("");
+  const [lineLoading, setLineLoading] = useState(false);
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
   const fileRef = useRef(null);
-  const promptPayId = String(import.meta.env.VITE_PROMPTPAY_ID || "").replace(/\D/g, "");
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const lineOaUrl = import.meta.env.VITE_LINE_OA_URL || "https://line.me/R/ti/p/@137nxpki";
 
   const installmentRows = useMemo(() => {
     const maxInstallments = Math.max(...items.map((item) => item.installments), 1);
@@ -440,7 +442,10 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   const installmentEnabled = items.some((item) => item.installmentEligible);
   const installmentCount = installmentRows.length;
-  const dueNow = payPlan === "full" ? total : installmentRows[0]?.amount ?? total;
+  const paymentItem = items[paymentIndex];
+  const dueNow = activeInstallment?.amount ?? (payPlan === "full"
+    ? paymentItem?.salePrice ?? total
+    : paymentItem?.installmentAmounts?.[0] ?? paymentItem?.salePrice ?? total);
 
   useEffect(() => {
     const closeOnEscape = (event) => event.key === "Escape" && onClose();
@@ -455,31 +460,44 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   useEffect(() => {
     let active = true;
-    if (step !== 2) return () => { active = false; };
+    if (step !== 2 || !paymentItem) return () => { active = false; };
 
     const createQr = async () => {
       setQrDataUrl("");
       setQrError("");
-      if (![10, 13, 15].includes(promptPayId.length)) {
-        setQrError("ยังไม่ได้ตั้งค่า VITE_PROMPTPAY_ID หรือรูปแบบไม่ถูกต้อง");
-        return;
-      }
-      if (!Number.isFinite(dueNow) || dueNow <= 0) {
-        setQrError("ยอดชำระไม่ถูกต้อง จึงยังสร้าง QR ไม่ได้");
-        return;
-      }
-
       setQrLoading(true);
       try {
-        const lockedAmount = Math.round(dueNow * 100) / 100;
-        const payload = generatePromptPayPayload(promptPayId, { amount: lockedAmount });
-        const dataUrl = await QRCode.toDataURL(payload, {
-          width: 420,
-          margin: 2,
-          errorCorrectionLevel: "M",
-          color: { dark: "#14213D", light: "#FFFFFF" },
+        const token = localStorage.getItem("student_token");
+        const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+        let orderId;
+        const orderResponse = await fetch(`${API_BASE}/api/payments/orders`, {
+          method: "POST", headers,
+          body: JSON.stringify({
+            courseId: paymentItem.id,
+            paymentPlan: payPlan === "installment" && paymentItem.installmentEligible ? "installment" : "full",
+          }),
         });
-        if (active) setQrDataUrl(dataUrl);
+        const orderResult = await orderResponse.json().catch(() => ({}));
+        if (orderResponse.ok) {
+          orderId = orderResult.orderId;
+        } else if (orderResponse.status === 409) {
+          orderId = orderResult.data?.OrderId;
+        } else {
+          throw new Error(orderResult.message || "สร้างรายการชำระเงินไม่สำเร็จ");
+        }
+        const ordersResponse = await fetch(`${API_BASE}/api/payments/orders`, { headers: { Authorization: `Bearer ${token}` } });
+        const orders = await ordersResponse.json().catch(() => []);
+        if (!ordersResponse.ok) throw new Error(orders?.message || "โหลดงวดชำระเงินไม่สำเร็จ");
+        const installment = orders.find((row) => Number(row.orderId) === Number(orderId) && Number(row.installmentNo) === 1);
+        if (!installment) throw new Error("ไม่พบข้อมูลงวดแรกของคอร์สนี้");
+        if (installment.installmentStatus === "paid") throw new Error("งวดแรกของคอร์สนี้ชำระแล้ว");
+        const qrResponse = await fetch(`${API_BASE}/api/payments/installments/${installment.installmentId}/qr`, { headers: { Authorization: `Bearer ${token}` } });
+        const qrResult = await qrResponse.json().catch(() => ({}));
+        if (!qrResponse.ok) throw new Error(qrResult.message || "สร้าง QR ไม่สำเร็จ");
+        if (active) {
+          setActiveInstallment({ ...installment, amount: qrResult.amount });
+          setQrDataUrl(qrResult.qrUrl);
+        }
       } catch (error) {
         if (active) setQrError(error?.message || "ไม่สามารถสร้าง PromptPay QR ได้");
       } finally {
@@ -489,7 +507,7 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
     createQr();
     return () => { active = false; };
-  }, [dueNow, promptPayId, step]);
+  }, [API_BASE, payPlan, paymentIndex, paymentItem, step]);
 
   const downloadQr = () => {
     if (!qrDataUrl) return;
@@ -506,9 +524,29 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     setSlipToast(null); // เลือกไฟล์ใหม่ ล้าง toast เก่าทิ้ง
   };
 
+  const requestLineCode = async () => {
+    try {
+      setLineLoading(true);
+      setSlipToast(null);
+      const token = localStorage.getItem("student_token");
+      const response = await fetch(`${API_BASE}/api/payments/line-link-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: "{}",
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || "สร้างรหัสเชื่อม LINE ไม่สำเร็จ");
+      setLineCode(result.code);
+    } catch (error) {
+      setSlipToast({ type: "error", message: error.message || "สร้างรหัสเชื่อม LINE ไม่สำเร็จ" });
+    } finally {
+      setLineLoading(false);
+    }
+  };
+
   // ยิงไปเช็คสลิปกับ backend (ต่อ SlipOK) ก่อนตัดสินใจว่าจะไป step สำเร็จหรือไม่
   const handleConfirmPayment = async () => {
-    if (!slipFile || checkingSlip) return;
+    if (!slipFile || !activeInstallment || checkingSlip) return;
 
     setCheckingSlip(true);
     setSlipToast(null);
@@ -518,7 +556,7 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
       const formData = new FormData();
       formData.append("slipImage", slipFile);
-      formData.append("expectedAmount", dueNow);
+      formData.append("installmentId", activeInstallment.installmentId);
 
       const res = await fetch(`${API_BASE}/api/payments/check-slip`, {
         method: "POST",
@@ -536,31 +574,24 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
         return;
       }
 
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const userId = savedUser.id ?? savedUser.UserId ?? savedUser.userId;
-      if (!userId) throw new Error("ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่");
-
-      const enrollRes = await fetch(`${API_BASE}/enroll/bulk`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ UserIds: [userId], CourseIDs: items.map((item) => item.id) }),
-      });
-      const enrollResult = await enrollRes.json().catch(() => null);
-      if (!enrollRes.ok || (enrollResult?.failed?.length && !enrollResult?.success?.length)) {
-        throw new Error(enrollResult?.message || enrollResult?.failed?.[0]?.message || "เพิ่มคอร์สให้ผู้ใช้ไม่สำเร็จ");
-      }
-      onEnrollmentComplete(items.map((item) => item.id));
-
       setSlipToast({
         type: "success",
         message: `ยอดโอน ${money(result.data?.amount ?? dueNow)} ตรงกับยอดที่ต้องชำระ กำลังไปขั้นตอนถัดไป…`,
       });
 
-      // โชว์ toast สำเร็จให้เห็นสักครู่ก่อนเด้งไป step 3
-      setTimeout(() => setStep(3), 900);
+      // Backend เป็นผู้สร้าง enrollment หลังตรวจสลิปผ่าน จากนั้นชำระคอร์สถัดไปในตะกร้า
+      setTimeout(() => {
+        if (paymentIndex < items.length - 1) {
+          setPaymentIndex((value) => value + 1);
+          setActiveInstallment(null);
+          setQrDataUrl("");
+          setSlipFile(null);
+          setSlipName("");
+        } else {
+          onEnrollmentComplete(items.map((item) => item.id));
+          setStep(3);
+        }
+      }, 900);
 
     } catch (error) {
       setSlipToast({
@@ -641,6 +672,13 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   <div className="mt-3 rounded-xl bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">ระบบไม่ได้หารยอดใหม่ แต่รวม InstallmentAmounts ของแต่ละคอร์สตามลำดับงวดโดยตรง คอร์สที่กำหนดชำระครั้งเดียวจะอยู่ในงวดแรก ส่วนคอร์สที่มีจำนวนงวดน้อยกว่าจะสิ้นสุดก่อน</div>
                 </div>
               )}
+              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div><b className="text-sm text-green-900">เชื่อม LINE เพื่อรับ QR และแจ้งเตือนงวดถัดไป</b><p className="mt-1 text-xs text-green-700">เพิ่มเพื่อน OA แล้วสร้างรหัส จากนั้นส่งข้อความ LINK ตามที่ระบบแสดง</p></div>
+                  <div className="flex flex-wrap gap-2"><a href={lineOaUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-green-300 bg-white px-3 py-2 text-xs font-bold text-green-700">เพิ่มเพื่อน OA</a><button type="button" onClick={requestLineCode} disabled={lineLoading} className="rounded-xl bg-green-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังสร้าง..." : "สร้างรหัสเชื่อม LINE"}</button></div>
+                </div>
+                {lineCode && <button type="button" onClick={() => navigator.clipboard?.writeText(`LINK ${lineCode}`)} className="mt-3 w-full rounded-xl bg-white px-4 py-3 font-mono font-bold tracking-wider text-green-800 shadow-sm">LINK {lineCode}<span className="ml-2 font-sans text-[10px] font-normal text-neutral-400">แตะเพื่อคัดลอก · หมดอายุใน 10 นาที</span></button>}
+              </div>
             </div>
           )}
 
@@ -648,7 +686,7 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
             <div>
               <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-600">Secure payment</p>
               <h2 className="mt-1 text-2xl font-black text-[#14213D]">ชำระ {money(dueNow)}</h2>
-              <p className="mt-2 text-sm text-slate-500">{payPlan === "full" ? "ยอดชำระเต็มจำนวน" : `งวดแรกจากแผนรวมทั้งหมด ${installmentCount} งวด`}</p>
+              <p className="mt-2 text-sm text-slate-500">คอร์ส {paymentIndex + 1}/{items.length}: {paymentItem?.title} · {payPlan === "full" || !paymentItem?.installmentEligible ? "ยอดชำระเต็มจำนวน" : "งวดแรก"}</p>
               <div className="mt-4 rounded-2xl border border-slate-200 p-5 text-center">
                   <>
                     <div className="mx-auto grid h-52 w-52 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md sm:h-64 sm:w-64">
@@ -697,7 +735,7 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           {step < 2 && <button onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
           {step === 2 && (
             <button
-              disabled={!slipFile || checkingSlip}
+              disabled={!slipFile || !activeInstallment || checkingSlip || qrLoading}
               onClick={handleConfirmPayment}
               className="flex items-center gap-2 rounded-xl bg-orange-600 px-5 py-3 text-sm font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -712,7 +750,21 @@ function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   );
 }
 
+export function CourseCheckoutModal({ course, onClose }) {
+  const item = useMemo(() => normalizeCartItem(course), [course]);
+  return (
+    <CheckoutModal
+      items={[item]}
+      total={item.salePrice}
+      onClose={onClose}
+      onEnrollmentComplete={onClose}
+    />
+  );
+}
+
 export default function Cart() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { cart, removeFromCart, removeManyFromCart } = useShop();
   const [courseDetails, setCourseDetails] = useState({});
   const items = useMemo(
@@ -734,6 +786,22 @@ export default function Cart() {
     [cart, courseDetails]
   );
   const [checkoutTotal, setCheckoutTotal] = useState(null);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+
+  const requestCheckout = (total) => {
+    if (!localStorage.getItem("student_token")) {
+      setLoginPromptOpen(true);
+      return;
+    }
+    setCheckoutTotal(total);
+  };
+
+  useEffect(() => {
+    if (!location.state?.openCheckout || !items.length) return;
+    const total = items.reduce((sum, item) => sum + item.salePrice, 0);
+    requestCheckout(total);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [items.length, location.state?.openCheckout]);
 
   useEffect(() => {
     let active = true;
@@ -776,7 +844,7 @@ export default function Cart() {
 
         <div className="mt-8 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="space-y-4">{items.length ? items.map((item) => <CourseCard key={item.id} item={item} onRemove={removeFromCart} />) : <EmptyCart />}</section>
-          <Summary items={items} onCheckout={setCheckoutTotal} />
+          <Summary items={items} onCheckout={requestCheckout} />
         </div>
 
         <div className="mt-8 rounded-[26px] border border-orange-100 bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-6">
@@ -786,6 +854,18 @@ export default function Cart() {
       </div>
 
       {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} onEnrollmentComplete={removeManyFromCart} />}
+      {loginPromptOpen && (
+        <div className="fixed inset-0 z-[80] grid place-items-center bg-[#0B1224]/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cart-login-title" onClick={() => setLoginPromptOpen(false)}>
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <button type="button" onClick={() => setLoginPromptOpen(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="ปิด"><X className="h-5 w-5" /></button>
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500"><LockKeyhole className="h-7 w-7" /></span>
+            <h2 id="cart-login-title" className="mt-5 text-xl font-extrabold text-[#14213D]">กรุณาเข้าสู่ระบบก่อนชำระเงิน</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">ระบบจะเก็บรายการในตะกร้าไว้ให้คุณ หลังเข้าสู่ระบบแล้วสามารถกลับมาชำระเงินต่อได้ทันที</p>
+            <button type="button" onClick={() => navigate("/login", { state: { returnTo: "/cart", openCheckout: true } })} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600">ไปหน้าเข้าสู่ระบบ</button>
+            <button type="button" onClick={() => setLoginPromptOpen(false)} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">กลับไปดูตะกร้า</button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
