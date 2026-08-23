@@ -64,6 +64,7 @@ import AdminRooms from "./pageadmin/AdminRooms.jsx"
 import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
 import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
+import AdminManagement from "./pageadmin/AdminManagement.jsx"
 
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
@@ -151,6 +152,7 @@ const router = createBrowserRouter(
             { path: "attendance", element: <AdminAttendanceDashboard /> },
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
+            { path: "management", element: <AdminManagement /> },
           ],
         },
       ],
