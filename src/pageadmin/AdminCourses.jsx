@@ -1598,11 +1598,6 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
         </p>
       </div>
 
-      {/* <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-neutral-400 leading-relaxed">
-          ต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> (คงที่ ไม่ขึ้นกับจำนวนนักเรียน) ·
-          ราคาสุทธิต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
-        </p> */}
       <div className="p-4 space-y-3 bg-white">
         <p className="text-[11px] text-neutral-400 leading-relaxed">
           ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
@@ -1625,14 +1620,6 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
           </div>
         </div>
 
-        {/* <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
-          {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
-          <span>
-            {isProfitable
-              ? `คุ้มทุนแล้ว (ต้องการอย่างน้อย ${breakEvenStudents} คน มีอยู่ ${currentStudentCount || 0} คน)`
-              : `ยังไม่คุ้มทุน — ต้องมีนักเรียนอีก ${Math.max(0, breakEvenStudents - Number(currentStudentCount || 0))} คน จึงจะคุ้มทุน`}
-          </span>
-        </div> */}
         <div className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold ${isProfitable ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
           {isProfitable ? <Check className="h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
           <span>
@@ -1642,14 +1629,6 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
           </span>
         </div>
 
-        {/* {maxCount !== null && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
-            <span className="text-neutral-500">หากรับเต็มจำนวน ({maxCount} คน)</span>
-            <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
-              {maxProfit >= 0 ? "คุ้มทุน" : "ยังขาดทุน"} (฿{formatPrice(maxProfit)})
-            </span>
-          </div>
-        )} */}
         {maxCount !== null && (
           <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
             <span className="text-neutral-500">หากมีนักเรียนเป้าหมายเต็มจำนวนนักเรียนสูงสุด ({maxCount} คน)</span>
@@ -1749,6 +1728,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
   const [existingStudentCount, setExistingStudentCount] = useState(0);
   const [existingTutorCount, setExistingTutorCount] = useState(0);
+  // ★ เพิ่ม (Step 1 — UI): แท็บของฟอร์ม แยกข้อมูลเป็นหมวดแทนการรวมทุกอย่างไว้ในฟอร์มยาวเดียว
+  const [activeTab, setActiveTab] = useState("basic");
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -1785,6 +1766,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
   const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
 
+  // ★ เพิ่ม (Step 1 — UI): นิยามแท็บของฟอร์ม พร้อม badge/สัญลักษณ์เตือนต่อแท็บ
+  // เพื่อให้ผู้ใช้เห็นได้ทันทีว่าแท็บไหนมีข้อมูลค้าง/ผิดพลาดอยู่ โดยไม่ต้องไล่เลื่อนหาเอง
+  const TABS = [
+    { key: "basic", label: "ข้อมูลพื้นฐาน", icon: BookOpen },
+    { key: "pricing", label: "ราคา & ผ่อนชำระ", icon: DollarSign, warn: installmentMismatch },
+    { key: "subjects", label: "วิชา & ต้นทุน", icon: Tag, badge: tutorCount || null, warn: hoursMismatch },
+    { key: "students", label: "นักเรียนในคอร์ส", icon: Users, badge: currentStudentCount || null },
+    { key: "videos", label: "คลิปตัวอย่าง", icon: Video },
+  ];
+
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
     set(key, cleaned);
@@ -1806,6 +1797,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
 
     if (hoursMismatch) {
+      setActiveTab("subjects");
       return showToast(
         "error",
         hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
@@ -1815,6 +1807,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
     // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
     if (installmentMismatch) {
+      setActiveTab("pricing");
       return showToast(
         "error",
         "ยอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ",
@@ -1837,6 +1830,36 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
   return (
     <div className="space-y-5">
+      {/* ═══ Tab Navigation (Step 1 — UI) ═══ */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 sticky top-0 bg-white z-10">
+        {TABS.map((t) => {
+          const Icon = t.icon;
+          const active = activeTab === t.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setActiveTab(t.key)}
+              className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition
+                ${active ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+              {typeof t.badge === "number" && t.badge > 0 && (
+                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black ${active ? "bg-white/25" : "bg-orange-100 text-orange-600"}`}>
+                  {t.badge}
+                </span>
+              )}
+              {t.warn && (
+                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white" title="มีข้อมูลที่ต้องตรวจสอบ" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ═══ TAB: ข้อมูลพื้นฐาน ═══ */}
+      <div className={activeTab === "basic" ? "space-y-5" : "hidden"}>
       <div>
         <label className={labelCls}>ชื่อคอร์ส <span className="text-red-400 normal-case">*</span></label>
         <input
@@ -1864,115 +1887,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
         </p>
       )}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div>
-          <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
-          <input
-            type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
-            onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
-            className={inputCls} placeholder="5,900" />
-        </div>
-        <div>
-          <label className={labelCls}>ส่วนลด (บาท)</label>
-          <input
-            type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
-            onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
-            className={inputCls} placeholder="0" />
-        </div>
-        <div>
-          <label className={labelCls}>ราคาสุทธิ</label>
-          <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
-            ฿{formatPrice(fullCost)}
-          </div>
-        </div>
-        <div>
-          <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
-          <input
-            type="number" min="0" step="1" value={form.MaxStudents}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
-            }}
-            className={inputCls} placeholder="ไม่บังคับ" />
-        </div>
-      </div>
-
-
-
-      {/* ★ แก้: ชั่วโมงรวม + จำนวนงวด อยู่แถวเดียวกัน (2 คอลัมน์) แล้วให้กำหนดยอดผ่อนแต่ละงวดลงมาแถวถัดไปเต็มความกว้าง */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
-          <input
-            type="number" min="0" step="0.5" value={form.TotalCourseHours}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
-            }}
-            className={inputCls} placeholder="เช่น 120"
-          />
-          {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
-          <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
-            {!monthsSpanned
-              ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
-              : !form.TotalCourseHours
-                ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
-                : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
-          </p>
-        </div>
-
-        <div>
-          <label className={labelCls}>จำนวนงวด</label>
-          <input
-            type="number" min="0" step="1" value={form.Installments}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
-                set("Installments", v);
-                // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
-                set("InstallmentAmounts", null);
-              }
-            }}
-            className={inputCls} />
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
-              {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
-            </span>
-            {isInstallmentEnabled && (
-              <span className="text-[11px] text-neutral-500">
-                ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
-              </span>
-            )}
-          </div>
-          {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
-          {isInstallmentEnabled && monthsSpanned > 0 && (
-            <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
-              <Info className="h-3 w-3 shrink-0" />
-              ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
-            </p>
-          )}
-        </div>
-
-        <div className="md:col-span-2">
-          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
-          {isInstallmentEnabled ? (
-            <InstallmentAmountsEditor
-              installments={installmentsCount}
-              fullCost={fullCost}
-              value={form.InstallmentAmounts}
-              onChange={(v) => set("InstallmentAmounts", v)}
-            />
-          ) : (
-            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
-              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
-            </div>
-          )}
-        </div>
-      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -2081,6 +1995,148 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </p>
         )}
       </div>
+      </div>
+      {/* ═══ END TAB: ข้อมูลพื้นฐาน ═══ */}
+
+      {/* ═══ TAB: ราคา & ผ่อนชำระ ═══ */}
+      <div className={activeTab === "pricing" ? "space-y-5" : "hidden"}>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div>
+          <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
+          <input
+            type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
+            onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
+            className={inputCls} placeholder="5,900" />
+        </div>
+        <div>
+          <label className={labelCls}>ส่วนลด (บาท)</label>
+          <input
+            type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
+            onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
+            className={inputCls} placeholder="0" />
+        </div>
+        <div>
+          <label className={labelCls}>ราคาสุทธิ</label>
+          <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
+            ฿{formatPrice(fullCost)}
+          </div>
+        </div>
+        <div>
+          <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
+          <input
+            type="number" min="0" step="1" value={form.MaxStudents}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+            }}
+            className={inputCls} placeholder="ไม่บังคับ" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div>
+          <label className={labelCls}>จำนวนงวด</label>
+          <input
+            type="number" min="0" step="1" value={form.Installments}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
+                set("Installments", v);
+                // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
+                set("InstallmentAmounts", null);
+              }
+            }}
+            className={inputCls} />
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
+              {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
+            </span>
+            {isInstallmentEnabled && (
+              <span className="text-[11px] text-neutral-500">
+                ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+              </span>
+            )}
+          </div>
+          {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
+          {isInstallmentEnabled && monthsSpanned > 0 && (
+            <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+              <Info className="h-3 w-3 shrink-0" />
+              ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
+          {isInstallmentEnabled ? (
+            <InstallmentAmountsEditor
+              installments={installmentsCount}
+              fullCost={fullCost}
+              value={form.InstallmentAmounts}
+              onChange={(v) => set("InstallmentAmounts", v)}
+            />
+          ) : (
+            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+            </div>
+          )}
+        </div>
+      </div>
+
+      {totalTutorCost > 0 && (
+        <div>
+          <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
+          <PricingCalculator
+            tutorCost={totalTutorCost}
+            currentPrice={fullCost}
+            currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
+            onApplyPrice={(targetNetPrice) => {
+              const discount = Number(form.Discount || 0);
+              set("Price", String(targetNetPrice + discount));
+            }}
+          />
+        </div>
+      )}
+
+      {totalTutorCost > 0 && (
+        <div>
+          <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
+          <BreakEvenAnalysis
+            tutorCost={totalTutorCost}
+            fullCost={fullCost}
+            currentStudentCount={currentStudentCount}
+            maxStudents={form.MaxStudents}
+          />
+        </div>
+      )}
+      </div>
+      {/* ═══ END TAB: ราคา & ผ่อนชำระ ═══ */}
+
+      {/* ═══ TAB: วิชา & ต้นทุน ═══ */}
+      <div className={activeTab === "subjects" ? "space-y-5" : "hidden"}>
+      <div>
+        <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
+        <input
+          type="number" min="0" step="0.5" value={form.TotalCourseHours}
+          onKeyDown={blockNegativeKeys}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
+          }}
+          className={inputCls} placeholder="เช่น 120"
+        />
+        {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
+        <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+          {!monthsSpanned
+            ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
+            : !form.TotalCourseHours
+              ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
+              : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
+        </p>
+      </div>
 
       <div>
         <label className={labelCls}>วิชาและติวเตอร์</label>
@@ -2144,98 +2200,26 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </div>
 
           <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
-            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในส่วน "วิเคราะห์กำไร" ด้านล่าง
+            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
           </p>
         </div>
       )}
-      {/* {totalTutorCost > 0 && (() => {
-        const isLoss = totalTutorCost > fullCost;
-        const diff = Math.abs(fullCost - totalTutorCost);
-        return (
-          <div className={`mt-2.5 rounded-2xl border overflow-hidden
-              ${isLoss ? "border-amber-200 bg-amber-50/60" : "border-emerald-200 bg-emerald-50/60"}`}>
-            <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-              <span className={`flex h-6 w-6 items-center justify-center rounded-full shrink-0
-                  ${isLoss ? "bg-amber-400" : "bg-emerald-500"}`}>
-                {isLoss
-                  ? <AlertTriangle className="h-3.5 w-3.5 text-white" />
-                  : <Check className="h-3.5 w-3.5 text-white" />}
-              </span>
-              <p className={`text-xs font-bold ${isLoss ? "text-amber-700" : "text-emerald-700"}`}>
-                สรุปต้นทุน–รายรับของคอร์สนี้
-              </p>
-            </div>
+      </div>
+      {/* ═══ END TAB: วิชา & ต้นทุน ═══ */}
 
-            <p className="px-4 py-2 text-[10px] text-neutral-400 bg-neutral-50/70 border-t border-neutral-200/60 leading-relaxed">
-              คำนวณจากค่าติวเตอร์เท่านั้น ยังไม่รวมค่าใช้จ่ายอื่นของสถาบัน
-            </p>
-
-            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 pb-2">
-              <div className="pr-3 py-1.5">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
-                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
-              </div>
-              <div className="pl-3 py-1.5">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาขายคอร์ส (สุทธิ)</p>
-                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(fullCost)}</p>
-              </div>
-            </div>
-
-            <div className={`px-4 py-2 text-xs font-semibold flex items-center justify-between
-                ${isLoss ? "bg-amber-100/70 text-amber-700" : "bg-emerald-100/70 text-emerald-700"}`}>
-              <span>{isLoss ? "ส่วนต่างที่ต้องจ่ายเพิ่ม" : "กำไรขั้นต้นโดยประมาณ"}</span>
-              <span className="text-sm font-bold">฿{formatPrice(diff)}</span>
-            </div>
-
-            {isLoss && (
-              <p className="px-4 py-2 text-[11px] text-amber-700/80 bg-amber-50 border-t border-amber-200/60 leading-relaxed">
-                💡 คอร์สนี้ขายราคาต่ำกว่าเรทปัจจุบันติวเตอร์ — ไม่เป็นไรหากตั้งใจอยู่แล้ว เช่น โปรโมชันดึงลูกค้าใหม่
-                หรือมีรายได้ชดเชยจากทางอื่น (ค่าสมัคร, คอร์สพ่วง, ฯลฯ) ระบบเพียงแจ้งให้ทราบกรณีพิมพ์ราคาผิดพลาด
-              </p>
-            )}
-          </div>
-        );
-      })()} */}
-
-      {totalTutorCost > 0 && (
-        <div>
-          <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
-          {/* <PricingCalculator
-            tutorCost={totalTutorCost}
-            currentPrice={fullCost}
-            onApplyPrice={(targetNetPrice) => { */}
-          <PricingCalculator
-            tutorCost={totalTutorCost}
-            currentPrice={fullCost}
-            currentStudentCount={currentStudentCount}
-            maxStudents={form.MaxStudents}
-            onApplyPrice={(targetNetPrice) => {
-              const discount = Number(form.Discount || 0);
-              set("Price", String(targetNetPrice + discount));
-            }}
-          />
-        </div>
-      )}
-
-      {totalTutorCost > 0 && (
-        <div>
-          <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
-          <BreakEvenAnalysis
-            tutorCost={totalTutorCost}
-            fullCost={fullCost}
-            currentStudentCount={currentStudentCount}
-            maxStudents={form.MaxStudents}
-          />
-        </div>
-      )}
-
+      {/* ═══ TAB: นักเรียนในคอร์ส ═══ */}
+      <div className={activeTab === "students" ? "space-y-5" : "hidden"}>
       <div>
         <label className={labelCls}>นักเรียนในคอร์ส</label>
         {initial.CourseID
           ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
           : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
       </div>
+      </div>
+      {/* ═══ END TAB: นักเรียนในคอร์ส ═══ */}
 
+      {/* ═══ TAB: คลิปตัวอย่าง ═══ */}
+      <div className={activeTab === "videos" ? "space-y-5" : "hidden"}>
       <div>
         <label className={labelCls}>คลิปตัวอย่าง</label>
         {initial.CourseID ? (
@@ -2246,8 +2230,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </div>
         )}
       </div>
+      </div>
+      {/* ═══ END TAB: คลิปตัวอย่าง ═══ */}
 
-      <div className="flex gap-3 pt-2">
+      {/* ═══ ปุ่มบันทึก/ยกเลิก — แสดงตลอด ไม่ขึ้นกับแท็บ ═══ */}
+      <div className="flex gap-3 pt-2 border-t border-neutral-100">
         <button
           onClick={onCancel}
           disabled={isSubmitting}
@@ -2263,6 +2250,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
+      {(hoursMismatch || installmentMismatch) && (
+        <p className="text-[11px] text-red-500 flex items-center gap-1 -mt-3">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          ยังบันทึกไม่ได้ — มีข้อมูลที่ต้องแก้ไขในแท็บที่มีจุดสีแดงกำกับอยู่ด้านบน
+        </p>
+      )}
 
       {initial.CourseID && (
         <>
