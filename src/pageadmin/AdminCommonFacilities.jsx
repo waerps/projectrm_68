@@ -39,8 +39,6 @@ const blockNegativeKeys = (e) => {
     if (["-", "e", "E", "+"].includes(e.key)) e.preventDefault();
 };
 
-const TRACKING_LABEL = { asset: "ทรัพย์สิน", consumable: "วัสดุสิ้นเปลือง" };
-
 // ─── Modal wrapper ─────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
     return (
@@ -332,6 +330,12 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             onChange={e => setReasonNote(e.target.value)}
                             placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ)"
                         />
+                        {(reasonPreset === "ชำรุด" || reasonPreset === "สูญหาย") && (
+                            <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                อย่าลืมกดปุ่ม "เปลี่ยนสถานะ" แยกต่างหาก ถ้าอยากให้สถานะอุปกรณ์สะท้อนสภาพนี้ด้วย
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <div>
@@ -454,7 +458,8 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
 }
 
 // ─── DetailModal — รายละเอียด + ประวัติการเปลี่ยนแปลง ──────────────────────
-function DetailModal({ item, onClose }) {
+function DetailModal({ item, statuses, onClose }) {
+    const statusNameOf = (id) => statuses.find(s => String(s.Status_Id) === String(id))?.Status_Name || `#${id}`;
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);
     const [logs, setLogs] = useState([]);
@@ -500,18 +505,18 @@ function DetailModal({ item, onClose }) {
             </div>
 
             {item.Quantity === 0 && (
-                <div className="mt-4 rounded-xl p-3 border bg-rose-50 border-rose-200">
-                    <p className="text-xs font-bold text-rose-700">
+                <div className="mt-4 rounded-xl p-3 border bg-red-50 border-red-200">
+                    <p className="text-xs font-bold text-red-700">
                         <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" /> หมดสต๊อก
                     </p>
                 </div>
             )}
             {item.TrackingType === "consumable" && item.MinQuantity != null && item.Quantity > 0 && (
-                <div className={`mt-4 rounded-xl p-3 border ${item.Quantity <= item.MinQuantity ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
+                <div className={`mt-4 rounded-xl p-3 border ${item.Quantity <= item.MinQuantity ? "bg-yellow-50 border-yellow-200" : "bg-slate-50 border-slate-200"}`}>
                     <p className="text-xs text-slate-600">
                         <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
                         แจ้งเตือนเมื่อเหลือน้อยกว่า <b>{item.MinQuantity} {item.Unit}</b>
-                        {item.Quantity <= item.MinQuantity && <span className="text-amber-700 font-bold"> — ใกล้หมดแล้ว</span>}
+                        {item.Quantity <= item.MinQuantity && <span className="text-yellow-700 font-bold"> — ใกล้หมดแล้ว</span>}
                     </p>
                 </div>
             )}
@@ -534,7 +539,7 @@ function DetailModal({ item, onClose }) {
                                     <p className="text-xs font-semibold text-slate-700">
                                         {log.ActionType === "quantity_change"
                                             ? `จำนวน: ${log.Old_Value} → ${log.New_Value} ${item.Unit}`
-                                            : `สถานะ: #${log.Old_Value} → #${log.New_Value}`}
+                                            : `สถานะ: ${statusNameOf(log.Old_Value)} → ${statusNameOf(log.New_Value)}`}
                                     </p>
                                     <span className="text-[10px] text-slate-400">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
@@ -555,10 +560,10 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);
     const outOfStock = item.Quantity === 0;
-    const lowStock = !outOfStock && item.TrackingType === "consumable" && item.LowStock;
+    const lowStock = !outOfStock && item.LowStock;
 
     return (
-        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-rose-300" : lowStock ? "border-amber-300" : "border-slate-200 hover:border-orange-200"}`}>
+        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-red-300" : lowStock ? "border-yellow-300" : "border-slate-200 hover:border-orange-200"}`}>
             <div className="p-4 flex items-start gap-3">
                 <div className="h-11 w-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
                     <CIcon className="h-5 w-5 text-orange-500" />
@@ -581,12 +586,12 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
                     </p>
                 </div>
                 {outOfStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-rose-600 mt-2">
-                        <AlertCircle className="h-3.5 w-3.5" /> หมดสต๊อก
+                    <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-2">
+                        <AlertCircle className="h-3.5 w-3.5" /> สต๊อก: หมดแล้ว
                     </p>
                 )}
                 {lowStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-amber-600 mt-2">
+                    <p className="flex items-center gap-1 text-[11px] font-bold text-yellow-700 mt-2">
                         <AlertCircle className="h-3.5 w-3.5" /> ใกล้หมด (ขั้นต่ำ {item.MinQuantity} {item.Unit})
                     </p>
                 )}
@@ -635,6 +640,7 @@ export default function AdminCommonFacilities() {
     const [search, setSearch] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
+    const [filterStock, setFilterStock] = useState("all"); // 'all' | 'instock' | 'low' | 'out'
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -708,12 +714,19 @@ export default function AdminCommonFacilities() {
     };
     const matchCategoryFn = (i) => filterCategory === "all" || String(i.CategoryId) === filterCategory;
     const matchStatusFn = (i) => filterStatus === "all" || String(i.StatusId) === filterStatus;
+    const matchStockFn = (i) => {
+        if (filterStock === "all") return true;
+        if (filterStock === "out") return i.Quantity === 0;
+        if (filterStock === "low") return i.LowStock;
+        if (filterStock === "instock") return i.Quantity > 0 && !i.LowStock;
+        return true;
+    };
 
-    const filtered = items.filter(i => matchTypeFn(i) && matchSearchFn(i) && matchCategoryFn(i) && matchStatusFn(i));
+    const filtered = items.filter(i => matchTypeFn(i) && matchSearchFn(i) && matchCategoryFn(i) && matchStatusFn(i) && matchStockFn(i));
 
     const totalItems = items.length;
     const readyCount = items.filter(i => Number(i.StatusId) === 1).length;
-    const lowStockCount = items.filter(i => i.TrackingType === "consumable" && i.LowStock).length;
+    const lowStockCount = items.filter(i => i.OutOfStock || i.LowStock).length;
 
     if (loading) return (
         <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
@@ -740,7 +753,7 @@ export default function AdminCommonFacilities() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                     { label: "รายการทั้งหมด", value: totalItems, color: "bg-orange-500", icon: Boxes },
-                    { label: "พร้อมใช้งาน", value: readyCount, color: "bg-emerald-500", icon: Check },
+                    { label: "สภาพพร้อมใช้งาน", value: readyCount, color: "bg-emerald-500", icon: Check },
                     { label: "ใกล้หมด/ต้องเติม", value: lowStockCount, color: "bg-amber-500", icon: AlertCircle },
                 ].map(({ label, value, color, icon: Icon }, i) => (
                     <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
@@ -757,38 +770,63 @@ export default function AdminCommonFacilities() {
 
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-3">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                            value={search} onChange={e => setSearch(e.target.value)}
-                            placeholder="ค้นหาชื่ออุปกรณ์, ตำแหน่ง..."
-                            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
-                        />
+                    <div className="flex-1">
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">ค้นหา</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                value={search} onChange={e => setSearch(e.target.value)}
+                                placeholder="ชื่ออุปกรณ์, ตำแหน่ง..."
+                                className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+                            />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]">
-                            <option value="all">ทุกประเภท</option>
-                            <option value="asset">ทรัพย์สิน</option>
-                            <option value="consumable">วัสดุสิ้นเปลือง</option>
-                        </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">ประเภท</label>
+                        <div className="relative">
+                            <select value={filterType} onChange={e => setFilterType(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="asset">ทรัพย์สิน</option>
+                                <option value="consumable">วัสดุสิ้นเปลือง</option>
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]">
-                            <option value="all">ทุกหมวดหมู่</option>
-                            {categories.map(c => <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">หมวดหมู่</label>
+                        <div className="relative">
+                            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                                <option value="all">ทั้งหมด</option>
+                                {categories.map(c => <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        </div>
                     </div>
-                    <div className="relative">
-                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]">
-                            <option value="all">ทุกสถานะ</option>
-                            {statuses.map(s => <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">สถานะอุปกรณ์</label>
+                        <div className="relative">
+                            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                                <option value="all">ทั้งหมด</option>
+                                {statuses.map(s => <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>)}
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">จำนวนในคลัง</label>
+                        <div className="relative">
+                            <select value={filterStock} onChange={e => setFilterStock(e.target.value)}
+                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                                <option value="all">ทั้งหมด</option>
+                                <option value="instock">มีของปกติ</option>
+                                <option value="low">ใกล้หมด</option>
+                                <option value="out">หมดสต๊อก</option>
+                            </select>
+                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        </div>
                     </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
@@ -813,7 +851,7 @@ export default function AdminCommonFacilities() {
                 <ConfirmDelete item={deletingItem} onConfirm={handleDelete} onCancel={() => setDeletingItem(null)} isDeleting={isDeleting} />
             )}
             {viewingItem && (
-                <DetailModal item={viewingItem} onClose={() => setViewingItem(null)} />
+                <DetailModal item={viewingItem} statuses={statuses} onClose={() => setViewingItem(null)} />
             )}
             {statusItem && (
                 <StatusChangeModal
