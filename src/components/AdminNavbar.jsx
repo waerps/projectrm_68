@@ -152,14 +152,21 @@ export default function Navbar() {
 
                                 <li>
                                     <Link
+                                        to="management"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        ผู้ดูแลระบบ
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
                                         to="notification"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         การแจ้งเตือน
                                     </Link>
                                 </li>
-
-
 
                                 <li>
                                     <button
