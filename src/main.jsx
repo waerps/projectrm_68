@@ -61,6 +61,8 @@ import AdminFinance from "./pageadmin/AdminFinance.jsx"
 import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
 import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
+import AdminRooms from "./pageadmin/AdminRooms.jsx"
+import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
@@ -68,9 +70,79 @@ import Cart from "./pages/Cart.jsx"
 import Favorites from "./pages/Favorites.jsx"
 import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 
-const router = createBrowserRouter([
-  { path: "login", element: <Login /> },
-  { path: "register", element: <Register /> },
+const router = createBrowserRouter(
+  [
+    { path: "login", element: <Login /> },
+    { path: "register", element: <Register /> },
+    {
+      path: "/",
+      element: (
+        <ChatProvider>
+          <AppShell />
+        </ChatProvider>
+      ),
+      children: [
+        { index: true, element: <Home /> },
+        { path: "schedule", element: <Schedule /> },
+        { path: "courses", element: <Courses /> },
+        { path: "courses/:id", element: <Courses /> },
+        { path: "performance", element: <Performance /> },
+        { path: "salary", element: <Salary /> },
+        { path: "new", element: <New /> },
+        {
+          path: "tutor",
+          element: <TutorLayout />,
+          children: [
+            { index: true, element: <TutorMain /> },
+            { path: "schedule", element: <TutorSchedule /> },
+            { path: "profile", element: <TutorProfile /> },
+            { path: "courses", element: <TutorCourses /> },
+            { path: "analytics", element: <TutorAnalytics /> },
+            { path: "students", element: <TutorStudents /> },
+            { path: "students/detail", element: <TutorStudentDetail /> },
+            { path: "test", element: <Test /> },
+            { path: "income", element: <TutorIncome /> },
+            { path: "notification", element: <TutorNotification /> },
+            { path: "exam", element: <TutorExam /> },
+            { path: "examanalytics", element: <TutorExamAnalytics /> },
+            { path: "manage", element: <TutorManage /> },  // ← เพิ่มบรรทัดนี้
+          ],
+        },
+        {
+          path: "admin",
+          element: <AdminLayout />,
+          children: [
+            { index: true, element: <AdminDashboard /> },
+            { path: "dashboard", element: <AdminDashboard /> },
+            { path: "courses", element: <AdminCourses /> },
+            { path: "schedule", element: <AdminSchedule /> },
+            { path: "students", element: <AdminStudents /> },
+            { path: "tutors", element: <AdminTutors /> },
+            { path: "finance", element: <AdminFinance /> },
+            { path: "announcements", element: <AdminAnnouncements /> },
+            { path: "media", element: <AdminMedia /> },
+            { path: "notification", element: <AdminNotification /> },
+            { path: "create-tutor", element: <CreateTutorForm /> },
+            { path: "attendance", element: <AdminAttendanceDashboard /> },
+            { path: "rooms", element: <AdminRooms /> },
+            { path: "common-facilities", element: <AdminCommonFacilities /> }
+          ],
+        },
+        {
+          path: "profile",
+          element: <ProfileLayout />,
+          children: [
+            { index: true, element: <Profile /> },
+            { path: "schedule", element: <Schedule /> },
+            { path: "notifications", element: <Notifications /> },
+            { path: "my-courses", element: <Mycourses /> },
+            { path: "attendance", element: <Attendance /> },
+          ],
+        },
+        { path: "apply-tutor", element: <TutorApply /> },
+      ],
+    },
+  ],
   {
     path: "/",
     element: (
