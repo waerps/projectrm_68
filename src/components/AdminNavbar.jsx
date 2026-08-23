@@ -54,14 +54,15 @@ export default function Navbar() {
                             )}
                         </div>
 
-                        <div
-                            className={`flex items-center gap-1 cursor-pointer font-medium text-sm transition-colors pb-1 ${isActive("/profile")
+                        <Link
+                            to="profile"
+                            className={`flex items-center gap-1 font-medium text-sm transition-colors pb-1 ${isActive("/admin/profile")
                                 ? "text-orange-500 border-b-2 border-orange-500"
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >
                             <span>แอดมิน {user?.firstname || "ไม่ทราบชื่อ"}</span>
-                        </div>
+                        </Link>
 
                         <div
                             className="
@@ -131,16 +132,6 @@ export default function Navbar() {
                                     </Link>
                                 </li>
 
-                                {/* <li>
-                                    <Link
-                                        to=""
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        คลิป/เอกสาร
-                                    </Link>
-                                </li> */}
-
-
                                 <li>
                                     <Link
                                         to="finance"
@@ -165,6 +156,15 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         การแจ้งเตือน
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
+                                        to="profile"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        ข้อมูลส่วนตัว
                                     </Link>
                                 </li>
 
