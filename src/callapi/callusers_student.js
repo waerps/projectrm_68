@@ -148,6 +148,51 @@ export async function getStudentPayments(token) {
   }
 }
 
+export async function createLineLinkCode(token) {
+  try {
+    const res = await apiClient.post("/api/payments/line-link-code", {}, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getPaymentOrders(token) {
+  try {
+    const res = await apiClient.get("/api/payments/orders", withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getInstallmentQr(token, installmentId) {
+  try {
+    const res = await apiClient.get(`/api/payments/installments/${installmentId}/qr`, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function verifyInstallmentSlip(token, installmentId, slipImage) {
+  try {
+    const form = new FormData();
+    form.append("installmentId", installmentId);
+    form.append("slipImage", slipImage);
+    const res = await apiClient.post("/api/payments/check-slip", form, {
+      ...withAuth(token),
+      headers: {
+        ...withAuth(token).headers,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 export async function getStudentNotifications(token) {

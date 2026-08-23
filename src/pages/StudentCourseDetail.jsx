@@ -5,8 +5,10 @@ import { useState, useEffect } from "react";
 import {
   Users, Calendar, Video, FileText, Download, BarChart2, ChevronRight, PlayCircle,
   CheckCircle, XCircle, Clock,
+  WalletCards,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
+import CoursePaymentsTab from "../components/CoursePaymentsTab";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -182,6 +184,7 @@ export default function StudentCourseDetail() {
           { key: "videos", label: "รายการคลิป", icon: <Video className="h-4 w-4" /> },
           { key: "files", label: "เอกสารประกอบ", icon: <FileText className="h-4 w-4" /> },
           { key: "overview", label: "ภาพรวม", icon: <BarChart2 className="h-4 w-4" /> },
+          { key: "payments", label: "ค่าชำระคอร์ส", icon: <WalletCards className="h-4 w-4" /> },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
@@ -411,6 +414,8 @@ export default function StudentCourseDetail() {
           </div>
         </div>
       )}
+
+      {activeTab === "payments" && <CoursePaymentsTab courseId={courseId} />}
     </div>
   );
 }

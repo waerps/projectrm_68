@@ -1,6 +1,7 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // 1. นำเข้า useNavigate เพื่อใช้เปลี่ยนหน้า
+import { useLocation, useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
 
 // รายการรูปภาพสำหรับสไลด์
 const images = [
@@ -20,6 +21,7 @@ export function Login() {
   });
 
   const navigate = useNavigate(); // เรียกใช้ hook สำหรับเปลี่ยนหน้า
+  const location = useLocation();
 
   // ตั้งเวลาเปลี่ยนรูปภาพอัตโนมัติ
   useEffect(() => {
@@ -63,7 +65,8 @@ export function Login() {
         localStorage.setItem("user", JSON.stringify(data.user));
 
         if (role === "user") {
-          navigate("/");
+          const returnTo = location.state?.returnTo || "/";
+          navigate(returnTo, { replace: true, state: { openCheckout: Boolean(location.state?.openCheckout) } });
         } else {
           if (data.user.roleId === 1) {
             navigate("/admin");
@@ -83,11 +86,14 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-gray-50/50">
+    <div className="min-h-screen flex items-center justify-center relative bg-gray-50/50 p-4">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full blur-3xl opacity-20 animate-pulse -z-10"></div>
 
-      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2 border border-gray-100">
+      <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2 border border-gray-100">
+        <button type="button" onClick={() => navigate("/")} className="absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-gray-500 shadow-md backdrop-blur transition hover:bg-white hover:text-orange-500" aria-label="ปิดและกลับหน้า Home" title="กลับหน้า Home">
+          <X className="h-5 w-5" />
+        </button>
 
         {/* ================= Left Section (Slider + Buttons) ================= แก้รอบแรกไม่ไป */}
         <div className="hidden md:flex flex-col relative"> 

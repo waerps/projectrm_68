@@ -25,7 +25,15 @@ export function ShopProvider({ children }) {
   };
 
   const removeFromCart = (id) => {
-    setCart((prev) => prev.filter((c) => c.id !== id));
+    setCart((prev) => prev.filter((c) => String(c.id) !== String(id)));
+  };
+
+  const toggleCart = (course) => {
+    setCart((prev) =>
+      prev.some((c) => String(c.id) === String(course.id))
+        ? prev.filter((c) => String(c.id) !== String(course.id))
+        : [...prev, course]
+    );
   };
 
   const removeManyFromCart = (ids) => {
@@ -42,7 +50,7 @@ export function ShopProvider({ children }) {
   };
 
   return (
-    <ShopContext.Provider value={{ cart, favorites, addToCart, removeFromCart, removeManyFromCart, toggleFavorite }}>
+    <ShopContext.Provider value={{ cart, favorites, addToCart, toggleCart, removeFromCart, removeManyFromCart, toggleFavorite }}>
       {children}
     </ShopContext.Provider>
   );
