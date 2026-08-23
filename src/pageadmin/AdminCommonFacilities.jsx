@@ -7,12 +7,12 @@ import {
     Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, ChevronDown, Package, Cpu, Printer, Sofa,
     Refrigerator, PenTool, FileText, MapPin, History, Minus,
-    TrendingDown, TrendingUp, Boxes, AlertCircle,
+    TrendingDown, TrendingUp, Boxes, AlertCircle, Info,
 } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
 
-// ─── Status style map (พร้อมใช้งาน / ชำรุด / กำลังซ่อม / หมด) ────────────────
+// ─── Status style map (พร้อมใช้งาน / ชำรุด / กำลังซ่อม / [หมด — legacy]) ───
 const STATUS_STYLE = {
     1: { bg: "bg-emerald-100", text: "text-emerald-700", border: "border-emerald-200", dot: "bg-emerald-500" },
     2: { bg: "bg-rose-100", text: "text-rose-700", border: "border-rose-200", dot: "bg-rose-500" },
@@ -20,6 +20,11 @@ const STATUS_STYLE = {
     4: { bg: "bg-slate-200", text: "text-slate-600", border: "border-slate-300", dot: "bg-slate-400" },
 };
 const styleOf = (id) => STATUS_STYLE[id] || STATUS_STYLE[4];
+
+// สถานะ "หมด" ไม่ใช่สภาพอุปกรณ์ (เป็นเรื่องของจำนวน/Quantity) — จึงไม่ให้เลือกใหม่อีกต่อไป
+// แต่ถ้า Database เก่ายังมีอยู่ ก็ไม่ลบ/ไม่แก้ migration เอง แค่ไม่เอามาให้เลือกใน UI
+const NON_ASSIGNABLE_STATUS_NAME = "หมด";
+const assignableStatuses = (statuses = []) => statuses.filter(s => s.Status_Name !== NON_ASSIGNABLE_STATUS_NAME);
 
 // ─── Category icon map — จับคู่ตามชื่อหมวดหมู่จริง (ไม่ hardcode id) ────────
 const CATEGORY_ICON_MAP = [
@@ -68,12 +73,13 @@ function Modal({ title, icon: Icon, onClose, children }) {
 // แก้ไข: ไม่แตะจำนวน/สถานะตรงนี้ — ให้ปรับผ่านปุ่มเฉพาะ (มี log เก็บประวัติ)
 function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCancel, isSubmitting }) {
     const isEdit = Boolean(initial.CommonFacilityId);
+    const selectableStatuses = assignableStatuses(statuses);
     const [form, setForm] = useState({
         name: initial.Name || "",
         categoryId: initial.CategoryId || (categories[0]?.CategoryId ?? ""),
         quantity: initial.Quantity ?? "0",
         unit: initial.Unit || "ชิ้น",
-        statusId: initial.StatusId || (statuses[0]?.Status_Id ?? 1),
+        statusId: initial.StatusId || (selectableStatuses[0]?.Status_Id ?? 1),
         location: initial.Location || "",
         detail: initial.Detail || "",
         trackingType: initial.TrackingType || "asset",
@@ -116,6 +122,17 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
     return (
         <div className="space-y-4">
+            {isEdit && (
+                <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <Info className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                        ฟอร์มนี้ใช้แก้ <b>ข้อมูลทั่วไป</b> ของอุปกรณ์เท่านั้น
+                        หากต้องการปรับ <b>จำนวน</b> หรือเปลี่ยน <b>สถานะ</b> ให้ปิดหน้านี้แล้วใช้ปุ่ม
+                        "ปรับจำนวน" / "เปลี่ยนสถานะ" ในหน้ารายละเอียดแทน (ระบบจะเก็บประวัติแยกไว้)
+                    </p>
+                </div>
+            )}
+
             <div>
                 <label className={lbl}>ชื่ออุปกรณ์ <span className="text-red-400 normal-case">*</span></label>
                 <input
@@ -182,7 +199,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                     <div>
                         <label className={lbl}>สถานะเริ่มต้น</label>
                         <select className={inp} value={form.statusId} onChange={e => set("statusId", Number(e.target.value))}>
-                            {statuses.map(s => (
+                            {selectableStatuses.map(s => (
                                 <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>
                             ))}
                         </select>
@@ -192,7 +209,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             {form.trackingType === "consumable" && (
                 <div>
-                    <label className={lbl}>แจ้งเตือนเมื่อเหลือน้อยกว่า (ไม่บังคับ)</label>
+                    <label className={lbl}>แจ้งเตือนเมื่อเหลือไม่เกิน (ไม่บังคับ)</label>
                     <input
                         type="number" min="0" step="1" onKeyDown={blockNegativeKeys}
                         className={`${inp} ${errors.minQuantity ? errInp : ""}`}
@@ -215,7 +232,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
             </div>
 
             <div>
-                <label className={lbl}>รายละเอียดเพิ่มเติม</label>
+                <label className={lbl}>รายละเอียดอุปกรณ์ (ยี่ห้อ, รุ่น ฯลฯ)</label>
                 <textarea
                     rows={2}
                     className={inp}
@@ -240,9 +257,15 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 }
 
 // ─── QuantityAdjustModal — เพิ่ม/ลดจำนวน — ลดต้องกรอกเหตุผลเสมอ ────────────
-const REMOVE_REASONS = ["ใช้หมด", "ชำรุด", "สูญหาย", "อื่นๆ"];
+// เหตุผลแยกตามประเภท: Consumable = เบิกใช้/หมดสภาพการใช้งาน, Asset = จำหน่าย/โอนย้าย
+// (ไม่ใช้ "ชำรุด" เป็นเหตุผลลดจำนวน เพราะ "สภาพอุปกรณ์" ให้ไปเปลี่ยนที่ปุ่ม "เปลี่ยนสถานะ" แทน)
+const CONSUMABLE_REMOVE_REASONS = ["เบิกใช้", "ใช้หมด", "สูญหาย", "อื่นๆ"];
+const ASSET_REMOVE_REASONS = ["จำหน่ายออก/ปลดระวาง", "โอนย้ายออกนอกคลัง", "สูญหาย", "อื่นๆ"];
 
 function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
+    const isConsumable = item.TrackingType === "consumable";
+    const REMOVE_REASONS = isConsumable ? CONSUMABLE_REMOVE_REASONS : ASSET_REMOVE_REASONS;
+
     const [mode, setMode] = useState("add"); // 'add' | 'remove'
     const [amount, setAmount] = useState("1");
     const [reasonPreset, setReasonPreset] = useState(REMOVE_REASONS[0]);
@@ -251,11 +274,13 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
 
     const isRemove = mode === "remove";
     const amountNum = Math.max(0, Number(amount) || 0);
-    const nextQty = isRemove ? Math.max(0, item.Quantity - amountNum) : item.Quantity + amountNum;
+    const exceedsStock = isRemove && amountNum > item.Quantity;
+    const nextQty = isRemove ? item.Quantity - amountNum : item.Quantity + amountNum;
 
     const submit = async () => {
         if (amountNum <= 0) return showToast("error", "กรุณาระบุจำนวนที่มากกว่า 0");
         if (isRemove && !reasonPreset) return showToast("error", "กรุณาเลือกเหตุผลการลดจำนวน");
+        if (exceedsStock) return showToast("error", "จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ");
 
         setLoading(true);
         try {
@@ -278,7 +303,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
     return (
-        <Modal title={`ปรับจำนวน: ${item.Name}`} icon={item.TrackingType === "consumable" ? TrendingDown : Boxes} onClose={onClose}>
+        <Modal title={`ปรับจำนวน: ${item.Name}`} icon={isConsumable ? TrendingDown : Boxes} onClose={onClose}>
             <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => setMode("add")}
@@ -304,7 +329,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                         </button>
                         <input
                             type="number" min="1" step="1" onKeyDown={blockNegativeKeys}
-                            className={`${inp} text-center`}
+                            className={`${inp} text-center ${exceedsStock ? "border-red-300 focus:ring-red-300" : ""}`}
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
                         />
@@ -313,9 +338,15 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             <Plus className="h-4 w-4" />
                         </button>
                     </div>
-                    <p className="text-xs text-slate-400 mt-1.5">
-                        จาก {item.Quantity} {item.Unit} → <span className="font-bold text-slate-700">{nextQty} {item.Unit}</span>
-                    </p>
+                    {exceedsStock ? (
+                        <p className="text-xs text-red-500 mt-1.5 font-medium flex items-center gap-1">
+                            <AlertCircle className="h-3.5 w-3.5" /> จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ (มีอยู่ {item.Quantity} {item.Unit})
+                        </p>
+                    ) : (
+                        <p className="text-xs text-slate-400 mt-1.5">
+                            จาก {item.Quantity} {item.Unit} → <span className="font-bold text-slate-700">{nextQty} {item.Unit}</span>
+                        </p>
+                    )}
                 </div>
 
                 {isRemove ? (
@@ -330,10 +361,10 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             onChange={e => setReasonNote(e.target.value)}
                             placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ)"
                         />
-                        {(reasonPreset === "ชำรุด" || reasonPreset === "สูญหาย") && (
+                        {!isConsumable && (
                             <p className="text-[11px] text-amber-600 mt-2 flex items-center gap-1">
                                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                                อย่าลืมกดปุ่ม "เปลี่ยนสถานะ" แยกต่างหาก ถ้าอยากให้สถานะอุปกรณ์สะท้อนสภาพนี้ด้วย
+                                การลดจำนวนนี้ไม่ได้บันทึกสภาพอุปกรณ์ — ถ้าอุปกรณ์ชำรุดหรือกำลังซ่อม ให้ใช้ปุ่ม "เปลี่ยนสถานะ" แยกต่างหาก
                             </p>
                         )}
                     </div>
@@ -354,7 +385,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                         className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                         ยกเลิก
                     </button>
-                    <button onClick={submit} disabled={loading}
+                    <button onClick={submit} disabled={loading || exceedsStock}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isRemove ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยัน</>}
                     </button>
@@ -365,8 +396,12 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
 }
 
 // ─── StatusChangeModal ──────────────────────────────────────────────────────
+// Status = สภาพอุปกรณ์เท่านั้น ("หมด" ไม่ใช่ตัวเลือกอีกต่อไป เพราะเป็นเรื่องของจำนวน)
 function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
-    const [statusId, setStatusId] = useState(item.StatusId);
+    const selectableStatuses = assignableStatuses(statuses);
+    const [statusId, setStatusId] = useState(
+        selectableStatuses.some(s => s.Status_Id === item.StatusId) ? item.StatusId : (selectableStatuses[0]?.Status_Id ?? item.StatusId)
+    );
     const [reason, setReason] = useState("");
     const [loading, setLoading] = useState(false);
 
@@ -391,10 +426,19 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
     return (
         <Modal title={`เปลี่ยนสถานะ: ${item.Name}`} icon={AlertTriangle} onClose={onClose}>
             <div className="space-y-4">
+                {item.TrackingType === "asset" && item.Quantity > 1 && (
+                    <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <Info className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+                        <p className="text-xs text-slate-500 leading-relaxed">
+                            อุปกรณ์นี้มีทั้งหมด {item.Quantity} {item.Unit} ระบบยังไม่รองรับการติดตามสภาพรายชิ้น
+                            สถานะที่เลือกจะถูกบันทึกเป็น <b>ภาพรวม</b> ของอุปกรณ์ทั้งหมดนี้
+                        </p>
+                    </div>
+                )}
                 <div>
                     <label className={lbl}>สถานะ</label>
                     <select className={inp} value={statusId} onChange={e => setStatusId(Number(e.target.value))}>
-                        {statuses.map(s => (
+                        {selectableStatuses.map(s => (
                             <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>
                         ))}
                     </select>
@@ -424,7 +468,7 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
     );
 }
 
-// ─── ConfirmDelete ─────────────────────────────────────────────────────────
+// ─── ConfirmDelete — Backend ใช้ Soft Delete จริง จึงต้องสื่อสารให้ตรง ──────
 function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -434,8 +478,8 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
                         <AlertTriangle className="h-6 w-6 text-red-500" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-900">ยืนยันการลบอุปกรณ์</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+                        <h3 className="font-bold text-slate-900">ยืนยันการนำอุปกรณ์ออกจากรายการ</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">อุปกรณ์นี้จะถูกซ่อนออกจากรายการ ข้อมูลและประวัติยังถูกเก็บไว้ในระบบ</p>
                     </div>
                 </div>
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
@@ -449,7 +493,7 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "นำออกจากรายการ"}
                     </button>
                 </div>
             </div>
@@ -457,13 +501,14 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
     );
 }
 
-// ─── DetailModal — รายละเอียด + ประวัติการเปลี่ยนแปลง ──────────────────────
-function DetailModal({ item, statuses, onClose }) {
+// ─── DetailModal — รายละเอียด + Action รอง + ประวัติการเปลี่ยนแปลง ─────────
+function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusChange, onDelete }) {
     const statusNameOf = (id) => statuses.find(s => String(s.Status_Id) === String(id))?.Status_Name || `#${id}`;
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);
     const [logs, setLogs] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(true);
+    const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
 
     useEffect(() => {
         axios.get(`${API}/common-facilities/${item.CommonFacilityId}/logs`)
@@ -482,11 +527,16 @@ function DetailModal({ item, statuses, onClose }) {
                     <p className="text-sm text-slate-800 font-semibold">{item.Category_Name}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ</p>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ (สภาพอุปกรณ์)</p>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                         {item.Status_Name}
                     </span>
+                    {isAssetMultiUnit && (
+                        <p className="text-[11px] text-slate-400 mt-1.5">
+                            * เป็นสถานะภาพรวมของอุปกรณ์ทั้งหมด {item.Quantity} ชิ้น (ยังไม่รองรับสถานะรายชิ้น)
+                        </p>
+                    )}
                 </div>
                 {item.Location && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
@@ -498,7 +548,7 @@ function DetailModal({ item, statuses, onClose }) {
                 )}
                 {item.Detail && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">รายละเอียด</p>
+                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">รายละเอียดอุปกรณ์</p>
                         <p className="text-sm text-slate-700">{item.Detail}</p>
                     </div>
                 )}
@@ -515,11 +565,31 @@ function DetailModal({ item, statuses, onClose }) {
                 <div className={`mt-4 rounded-xl p-3 border ${item.Quantity <= item.MinQuantity ? "bg-yellow-50 border-yellow-200" : "bg-slate-50 border-slate-200"}`}>
                     <p className="text-xs text-slate-600">
                         <AlertCircle className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
-                        แจ้งเตือนเมื่อเหลือน้อยกว่า <b>{item.MinQuantity} {item.Unit}</b>
+                        แจ้งเตือนเมื่อเหลือไม่เกิน <b>{item.MinQuantity} {item.Unit}</b>
                         {item.Quantity <= item.MinQuantity && <span className="text-yellow-700 font-bold"> — ใกล้หมดแล้ว</span>}
                     </p>
                 </div>
             )}
+
+            {/* Action รอง: ปรับจำนวน / เปลี่ยนสถานะ / ลบ */}
+            <div className="mt-5 grid grid-cols-3 gap-2">
+                <button onClick={() => onAdjustQty(item)}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
+                    <Boxes className="h-4 w-4" /> ปรับจำนวน
+                </button>
+                <button onClick={() => onStatusChange(item)}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 active:scale-95 transition-all">
+                    <AlertTriangle className="h-4 w-4" /> เปลี่ยนสถานะ
+                </button>
+                <button onClick={() => onDelete(item)}
+                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 active:scale-95 transition-all">
+                    <Trash2 className="h-4 w-4" /> นำออก
+                </button>
+            </div>
+            <button onClick={() => onEdit(item)}
+                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
+                <Edit2 className="h-3.5 w-3.5" /> แก้ไขข้อมูลทั่วไป
+            </button>
 
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -545,7 +615,7 @@ function DetailModal({ item, statuses, onClose }) {
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
-                                {log.Reason && <p className="text-[11px] text-slate-500 mt-0.5">เหตุผล: {log.Reason}</p>}
+                                {log.Reason && <p className="text-[11px] text-slate-500 mt-0.5">เหตุผล/หมายเหตุ: {log.Reason}</p>}
                             </div>
                         ))}
                     </div>
@@ -555,12 +625,13 @@ function DetailModal({ item, statuses, onClose }) {
     );
 }
 
-// ─── FacilityCard ────────────────────────────────────────────────────────────
-function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjustQty }) {
+// ─── FacilityCard — ปุ่มหลักเท่านั้น: ดู / แก้ไข (Action รองย้ายเข้า Detail) ──
+function FacilityCard({ item, onEdit, onView }) {
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);
     const outOfStock = item.Quantity === 0;
     const lowStock = !outOfStock && item.LowStock;
+    const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
 
     return (
         <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-red-300" : lowStock ? "border-yellow-300" : "border-slate-200 hover:border-orange-200"}`}>
@@ -585,6 +656,9 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
                         <span className="font-black text-slate-900 text-base">{item.Quantity}</span> {item.Unit}
                     </p>
                 </div>
+                {isAssetMultiUnit && (
+                    <p className="text-[10px] text-slate-400 mt-1.5">สถานะเป็นภาพรวมของทั้งหมด {item.Quantity} ชิ้น</p>
+                )}
                 {outOfStock && (
                     <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-2">
                         <AlertCircle className="h-3.5 w-3.5" /> สต๊อก: หมดแล้ว
@@ -602,26 +676,14 @@ function FacilityCard({ item, onEdit, onDelete, onView, onStatusChange, onAdjust
                 )}
             </div>
 
-            <div className="px-4 pb-4 flex items-center gap-1.5">
+            <div className="px-4 pb-4 flex items-center gap-2">
                 <button onClick={() => onView(item)}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
-                    <Eye className="h-3.5 w-3.5" /> ดู
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                    <Eye className="h-3.5 w-3.5" /> ดูรายละเอียด
                 </button>
                 <button onClick={() => onEdit(item)}
-                    className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
                     <Edit2 className="h-3.5 w-3.5" /> แก้ไข
-                </button>
-                <button onClick={() => onAdjustQty(item)}
-                    className="p-1.5 text-orange-500 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all" title="ปรับจำนวน">
-                    <Boxes className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => onDelete(item)}
-                    className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all" title="ลบ">
-                    <Trash2 className="h-3.5 w-3.5" />
-                </button>
-                <button onClick={() => onStatusChange(item)}
-                    className="p-1.5 text-slate-500 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 active:scale-95 transition-all" title="เปลี่ยนสถานะ">
-                    <AlertTriangle className="h-3.5 w-3.5" />
                 </button>
             </div>
         </div>
@@ -670,6 +732,11 @@ export default function AdminCommonFacilities() {
 
     useEffect(() => { fetchAll(); }, []);
 
+    // Asset ไม่ควรถูกกรองด้วยแนวคิด "ใกล้หมด" (เป็นแนวคิดของ Consumable เท่านั้น)
+    useEffect(() => {
+        if (filterType === "asset" && filterStock === "low") setFilterStock("all");
+    }, [filterType, filterStock]);
+
     const handleCreate = async (form) => {
         setIsSubmitting(true);
         try {
@@ -699,7 +766,7 @@ export default function AdminCommonFacilities() {
         setIsDeleting(true);
         try {
             await axios.delete(`${API}/common-facilities/${deletingItem.CommonFacilityId}`);
-            showToast("success", "ลบอุปกรณ์สำเร็จ!");
+            showToast("success", "นำอุปกรณ์ออกจากรายการสำเร็จ!");
             setDeletingItem(null);
             fetchAll();
         } catch (e) {
@@ -727,6 +794,20 @@ export default function AdminCommonFacilities() {
     const totalItems = items.length;
     const readyCount = items.filter(i => Number(i.StatusId) === 1).length;
     const lowStockCount = items.filter(i => i.OutOfStock || i.LowStock).length;
+
+    // ตัวเลือก "จำนวนในคลัง" — ซ่อน "ใกล้หมด" เมื่อกำลังดูเฉพาะ Asset เพราะไม่ใช่แนวคิดของ Asset
+    const stockOptions = filterType === "asset"
+        ? [
+            { value: "all", label: "ทั้งหมด" },
+            { value: "instock", label: "มีของ" },
+            { value: "out", label: "หมดสต๊อก" },
+        ]
+        : [
+            { value: "all", label: "ทั้งหมด" },
+            { value: "instock", label: "มีของปกติ" },
+            { value: "low", label: "ใกล้หมด" },
+            { value: "out", label: "หมดสต๊อก" },
+        ];
 
     if (loading) return (
         <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
@@ -768,10 +849,10 @@ export default function AdminCommonFacilities() {
                 ))}
             </div>
 
+            {/* Filter bar — ไม่มี header/label กำกับแต่ละช่อง ให้ดูเป็นชุดเดียวกัน */}
             <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-3">
                     <div className="flex-1">
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">ค้นหา</label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
@@ -781,52 +862,37 @@ export default function AdminCommonFacilities() {
                             />
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">ประเภท</label>
-                        <div className="relative">
-                            <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="asset">ทรัพย์สิน</option>
-                                <option value="consumable">วัสดุสิ้นเปลือง</option>
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        </div>
+                    <div className="relative">
+                        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                            <option value="all">ทุกประเภท</option>
+                            <option value="asset">ทรัพย์สิน</option>
+                            <option value="consumable">วัสดุสิ้นเปลือง</option>
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">หมวดหมู่</label>
-                        <div className="relative">
-                            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
-                                <option value="all">ทั้งหมด</option>
-                                {categories.map(c => <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        </div>
+                    <div className="relative">
+                        <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                            <option value="all">ทุกหมวดหมู่</option>
+                            {categories.map(c => <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">สถานะอุปกรณ์</label>
-                        <div className="relative">
-                            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
-                                <option value="all">ทั้งหมด</option>
-                                {statuses.map(s => <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>)}
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        </div>
+                    <div className="relative">
+                        <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                            <option value="all">ทุกสถานะ</option>
+                            {statuses.map(s => <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1 pl-1">จำนวนในคลัง</label>
-                        <div className="relative">
-                            <select value={filterStock} onChange={e => setFilterStock(e.target.value)}
-                                className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
-                                <option value="all">ทั้งหมด</option>
-                                <option value="instock">มีของปกติ</option>
-                                <option value="low">ใกล้หมด</option>
-                                <option value="out">หมดสต๊อก</option>
-                            </select>
-                            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        </div>
+                    <div className="relative">
+                        <select value={filterStock} onChange={e => setFilterStock(e.target.value)}
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                            {stockOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
                 <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
@@ -841,8 +907,7 @@ export default function AdminCommonFacilities() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {filtered.map(item => (
                         <FacilityCard key={item.CommonFacilityId} item={item}
-                            onEdit={setEditingItem} onDelete={setDeletingItem} onView={setViewingItem}
-                            onStatusChange={setStatusItem} onAdjustQty={setAdjustItem} />
+                            onEdit={setEditingItem} onView={setViewingItem} />
                     ))}
                 </div>
             )}
@@ -851,7 +916,15 @@ export default function AdminCommonFacilities() {
                 <ConfirmDelete item={deletingItem} onConfirm={handleDelete} onCancel={() => setDeletingItem(null)} isDeleting={isDeleting} />
             )}
             {viewingItem && (
-                <DetailModal item={viewingItem} statuses={statuses} onClose={() => setViewingItem(null)} />
+                <DetailModal
+                    item={viewingItem}
+                    statuses={statuses}
+                    onClose={() => setViewingItem(null)}
+                    onEdit={(it) => { setViewingItem(null); setEditingItem(it); }}
+                    onAdjustQty={(it) => { setViewingItem(null); setAdjustItem(it); }}
+                    onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
+                    onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
+                />
             )}
             {statusItem && (
                 <StatusChangeModal
