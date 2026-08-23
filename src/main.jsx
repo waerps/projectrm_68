@@ -10,20 +10,25 @@ import ProfileLayout from "./layouts/ProfileLayout.jsx"
 // Pages Imports
 import Home from "./pages/Home.jsx"
 import Schedule from "./pages/Schedule.jsx"
-import Courses from "./pages/Courses.jsx"
+import CourseDetail from "./pages/Courses.jsx"
 import Performance from "./pages/Performance.jsx"
 import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 
-
 import Notifications from "./pages/Notifications.jsx"
-import Mycourses from "./pages/Mycourses.jsx"
+import StudentCourses from "./pages/StudentCourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
+import News from "./pages/News.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
+import About from "./pages/About.jsx"
+import Promotion from "./pages/Promotion.jsx"
+import CourseSearch from "./pages/CourseSearch.jsx"
+import StudentCourseContent from "./pages/StudentCourseContent.jsx"
+import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
 
 // CSS
 import "./index.css"
@@ -36,12 +41,13 @@ import TutorProfile from "./pagetutor/TutorProfile.jsx"
 import TutorCourses from "./pagetutor/TutorCourses.jsx"
 import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
 import TutorStudents from "./pagetutor/TutorStudents.jsx"
-import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"   // ✅ เพิ่มบรรทัดนี้
+import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"
 import TutorManage from "./pagetutor/TutorManage.jsx"
 import Test from "./pagetutor/Test.jsx"
 import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
+import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -57,9 +63,12 @@ import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import AdminRooms from "./pageadmin/AdminRooms.jsx"
 import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
-import ChatProvider from "../src/components/Chat/ChatProvider.jsx"
-import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx";
-import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx";
+import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
+
+import ChatProvider from "./components/Chat/ChatProvider.jsx"
+import { ShopProvider } from "./context/ShopContext"
+import Cart from "./pages/Cart.jsx"
+import Favorites from "./pages/Favorites.jsx"
 
 const router = createBrowserRouter(
   [
@@ -75,11 +84,34 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <Home /> },
         { path: "schedule", element: <Schedule /> },
-        { path: "courses", element: <Courses /> },
-        { path: "courses/:id", element: <Courses /> },
+        { path: "courses", element: <CourseSearch /> },
+        { path: "courses/:id", element: <CourseDetail /> },
         { path: "performance", element: <Performance /> },
         { path: "salary", element: <Salary /> },
         { path: "new", element: <New /> },
+        { path: "news", element: <News /> },
+        { path: "cart", element: <Cart /> },
+        { path: "favorites", element: <Favorites /> },
+        { path: "about", element: <About /> },
+        { path: "promotion", element: <Promotion /> },
+        { path: "apply-tutor", element: <TutorApply /> },
+
+        // เส้นทาง Profile (Nested Layout)
+        {
+          path: "profile",
+          element: <ProfileLayout />,
+          children: [
+            { index: true, element: <Profile /> },
+            { path: "schedule", element: <Schedule /> },
+            { path: "notifications", element: <Notifications /> },
+            { path: "my-courses", element: <StudentCourses /> },
+            { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
+            { path: "course-content/:courseId", element: <StudentCourseContent /> },
+            { path: "attendance", element: <Attendance /> },
+          ],
+        },
+
+        // === เส้นทางสำหรับติวเตอร์ (Tutor) ===
         {
           path: "tutor",
           element: <TutorLayout />,
@@ -96,9 +128,11 @@ const router = createBrowserRouter(
             { path: "notification", element: <TutorNotification /> },
             { path: "exam", element: <TutorExam /> },
             { path: "examanalytics", element: <TutorExamAnalytics /> },
-            { path: "manage", element: <TutorManage /> },  // ← เพิ่มบรรทัดนี้
+            { path: "manage", element: <TutorManage /> },
           ],
         },
+
+        // === เส้นทางสำหรับผู้ดูแลระบบ (Admin) ===
         {
           path: "admin",
           element: <AdminLayout />,
@@ -116,21 +150,9 @@ const router = createBrowserRouter(
             { path: "create-tutor", element: <CreateTutorForm /> },
             { path: "attendance", element: <AdminAttendanceDashboard /> },
             { path: "rooms", element: <AdminRooms /> },
-            { path: "common-facilities", element: <AdminCommonFacilities /> }
+            { path: "common-facilities", element: <AdminCommonFacilities /> },
           ],
         },
-        {
-          path: "profile",
-          element: <ProfileLayout />,
-          children: [
-            { index: true, element: <Profile /> },
-            { path: "schedule", element: <Schedule /> },
-            { path: "notifications", element: <Notifications /> },
-            { path: "my-courses", element: <Mycourses /> },
-            { path: "attendance", element: <Attendance /> },
-          ],
-        },
-        { path: "apply-tutor", element: <TutorApply /> },
       ],
     },
   ],
@@ -143,8 +165,10 @@ const router = createBrowserRouter(
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_I}>
-      <RouterProvider router={router} />
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <ShopProvider>
+        <RouterProvider router={router} />
+      </ShopProvider>
     </GoogleOAuthProvider>
   </React.StrictMode>
 )
