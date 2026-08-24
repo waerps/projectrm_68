@@ -21,6 +21,9 @@ export default function CoursesPage() {
   const navigateToAction = (course, subject, action) => {
     if (action === "content") {
       navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+    } else if (action === "exam") {
+      // ⚠️ ปรับ path ให้ตรงกับ route จริงของหน้า TutorExamManagement ในระบบ router ของคุณ
+      navigate(`/tutor/exammanagement?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
     }
   };
 
@@ -213,6 +216,20 @@ export default function CoursesPage() {
                       <p className="text-xs text-neutral-500 flex items-center gap-1 font-medium">
                         <Clock className="w-3 h-3" /> เริ่มสอน: {course.startDate}
                       </p>
+
+                      {course.subjects && course.subjects.length > 0 && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] text-neutral-400 font-semibold">วิชาที่รับผิดชอบ:</span>
+                          {course.subjects.map((s) => (
+                            <span
+                              key={s.subjectId}
+                              className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-[11px] font-semibold"
+                            >
+                              {s.subjectName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <span className={`px-3 py-1 rounded-full text-[11px] font-black whitespace-nowrap shadow-sm border border-white/50 ${course.statusColor}`}>
                       {course.statusText}
@@ -290,129 +307,129 @@ export default function CoursesPage() {
                     <FileText className="h-4 w-4" /> จัดการเนื้อหา
                   </button>
 
-                  <Link
-                    to={`/tutor/exam-subjects?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`}
+                  <button
+                    onClick={() => handleSubjectAction(course, "exam")}
                     className="flex-1 bg-blue-50 text-blue-600 border-2 border-blue-100 rounded-xl py-2.5 hover:bg-blue-100 hover:border-blue-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                   >
                     <FileText className="h-4 w-4" /> จัดการข้อสอบ
-                  </Link>
+                  </button>
                 </div>
               </div>
             ))
           )}
         </div>
         {subjectModal && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    {/* Overlay */}
-    <div
-      className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
-      onClick={() => setSubjectModal(null)}
-    />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
+              onClick={() => setSubjectModal(null)}
+            />
 
-    {/* Modal */}
-    <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-      
-      {/* Header */}
-      <div className="px-6 pt-6 pb-5 border-b border-neutral-100">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
-              <BookOpen size={22} />
-            </div>
+            {/* Modal */}
+            <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
 
-            <div>
-              <h3 className="text-lg font-bold text-neutral-900">
-                เลือกวิชา
-              </h3>
-              <p className="mt-0.5 text-xs text-neutral-500">
-                เลือกวิชาที่ต้องการจัดการ
-              </p>
+              {/* Header */}
+              <div className="px-6 pt-6 pb-5 border-b border-neutral-100">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                      <BookOpen size={22} />
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-neutral-900">
+                        เลือกวิชา
+                      </h3>
+                      <p className="mt-0.5 text-xs text-neutral-500">
+                        เลือกวิชาที่ต้องการจัดการ
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Close */}
+                  <button
+                    onClick={() => setSubjectModal(null)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+                  >
+                    <X size={19} />
+                  </button>
+                </div>
+
+                {/* Course */}
+                <div className="mt-5 rounded-2xl bg-neutral-50 px-4 py-3">
+                  <p className="text-xs font-medium text-neutral-500 mb-1">
+                    คอร์ส
+                  </p>
+                  <p className="text-sm font-semibold text-neutral-800 leading-relaxed">
+                    {subjectModal.course.name}
+                  </p>
+                </div>
+              </div>
+
+              {/* Subjects */}
+              <div className="px-6 py-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-neutral-800">
+                    วิชาที่รับผิดชอบ
+                  </p>
+
+                  <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
+                    {subjectModal.course.subjects.length} วิชา
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {subjectModal.course.subjects.map((subject, index) => (
+                    <button
+                      key={subject.subjectId}
+                      onClick={() => {
+                        navigateToAction(
+                          subjectModal.course,
+                          subject,
+                          subjectModal.action
+                        );
+                        setSubjectModal(null);
+                      }}
+                      className="group flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
+                    >
+                      {/* Number */}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+                        {String(index + 1).padStart(2, "0")}
+                      </div>
+
+                      {/* Subject name */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-neutral-800 group-hover:text-orange-700">
+                          {subject.subjectName}
+                        </p>
+                        <p className="mt-0.5 text-xs text-neutral-400">
+                          คลิกเพื่อจัดการวิชานี้
+                        </p>
+                      </div>
+
+                      {/* Arrow */}
+                      <ChevronRight
+                        size={19}
+                        className="shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-500"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="border-t border-neutral-100 bg-neutral-50/70 px-6 py-4">
+                <button
+                  onClick={() => setSubjectModal(null)}
+                  className="w-full rounded-xl py-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700"
+                >
+                  ยกเลิก
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* Close */}
-          <button
-            onClick={() => setSubjectModal(null)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
-          >
-            <X size={19} />
-          </button>
-        </div>
-
-        {/* Course */}
-        <div className="mt-5 rounded-2xl bg-neutral-50 px-4 py-3">
-          <p className="text-xs font-medium text-neutral-500 mb-1">
-            คอร์ส
-          </p>
-          <p className="text-sm font-semibold text-neutral-800 leading-relaxed">
-            {subjectModal.course.name}
-          </p>
-        </div>
-      </div>
-
-      {/* Subjects */}
-      <div className="px-6 py-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-neutral-800">
-            วิชาที่รับผิดชอบ
-          </p>
-
-          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
-            {subjectModal.course.subjects.length} วิชา
-          </span>
-        </div>
-
-        <div className="space-y-2.5">
-          {subjectModal.course.subjects.map((subject, index) => (
-            <button
-              key={subject.subjectId}
-              onClick={() => {
-                navigateToAction(
-                  subjectModal.course,
-                  subject,
-                  subjectModal.action
-                );
-                setSubjectModal(null);
-              }}
-              className="group flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
-            >
-              {/* Number */}
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
-                {String(index + 1).padStart(2, "0")}
-              </div>
-
-              {/* Subject name */}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-neutral-800 group-hover:text-orange-700">
-                  {subject.subjectName}
-                </p>
-                <p className="mt-0.5 text-xs text-neutral-400">
-                  คลิกเพื่อจัดการวิชานี้
-                </p>
-              </div>
-
-              {/* Arrow */}
-              <ChevronRight
-                size={19}
-                className="shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-500"
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-neutral-100 bg-neutral-50/70 px-6 py-4">
-        <button
-          onClick={() => setSubjectModal(null)}
-          className="w-full rounded-xl py-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700"
-        >
-          ยกเลิก
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+        )}
       </div>
     </div>
   );
