@@ -5,7 +5,9 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
-  const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+  // const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const tutorId = user.id ?? user.UserId ?? user.userId;
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -47,6 +49,9 @@ export default function CoursesPage() {
         // ยิง API พร้อมพารามิเตอร์ adminId
         const response = await axios.get(`${API_URL}/courses?adminId=${tutorId}`);
 
+        console.log("Tutor ID:", tutorId);
+        console.log("Courses API:", response.data);
+
         const formattedData = response.data.map(course => {
           const statusInfo = mapStatus(course.Status_Course_Id, course.StartDate, course.LastDate);
 
@@ -61,8 +66,8 @@ export default function CoursesPage() {
           return {
             id: course.CourseID,
             subjectId: course.SubjectId,
-            name: course.SubjectName 
-              ? `${course.CourseName} (${course.SubjectName})` 
+            name: course.SubjectName
+              ? `${course.CourseName} (${course.SubjectName})`
               : course.CourseName,
             subjectName: course.SubjectName,
             startDate: course.StartDate
