@@ -47,7 +47,7 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
     const fetchCourses = async () => {
       try {
         // ยิง API พร้อมพารามิเตอร์ adminId
-        const response = await axios.get(`${API_URL}/courses?adminId=${tutorId}`);
+        const response = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`);
         console.log("RAW API RESPONSE:", response.data); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
 
         const formattedData = response.data.map(course => {
