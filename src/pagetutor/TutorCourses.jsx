@@ -5,7 +5,9 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
-  const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+  console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
+const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบรรทัดนี้ด้วย
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
