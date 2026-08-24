@@ -3,21 +3,25 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  RefreshCw, AlertCircle, AlertTriangle, Info, ChevronRight,
-  BookOpen, Users, GraduationCap, Wallet, TrendingUp, TrendingDown,
-  Calendar, DoorOpen, Boxes, Megaphone, Shield, Clock, CheckCircle,
-  UserCheck, Award, Bell, Sparkles,
+  AlertCircle, AlertTriangle, Info, ChevronRight,
+  BookOpen, GraduationCap, Wallet, TrendingUp, TrendingDown,
+  Calendar, DoorOpen, Boxes, Clock, CheckCircle,
+  UserCheck, Bell, Sparkles, PieChart as PieChartIcon,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart as RPieChart, Pie, Cell,
 } from "recharts";
+
+// เก็บไว้เผื่อนำ Section "Refresh / ประชาสัมพันธ์ / ผู้ดูแลระบบ" กลับมาใช้ในอนาคต:
+// ไอคอนที่ต้องเพิ่มกลับ: RefreshCw, Megaphone, Shield
 
 const API_BASE = `${API_URL}/api/admin/dashboard`;
 const READ_STORAGE_KEY = "admin_dashboard_read_alerts";
 
-/* ─── Design tokens (ยืมมาจาก AdminFinance.jsx เพื่อให้ระบบดูเป็นชุดเดียวกัน) ─── */
+/* ─── Design tokens (อิงจาก AdminStudent.jsx / AdminTutors.jsx เพื่อให้เป็นระบบเดียวกัน) ─── */
 const T = {
-  card: "bg-white rounded-2xl border border-slate-200 shadow-sm",
+  card: "bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition",
   cardPad: "p-5",
   transition: "transition duration-200 ease-out",
   title: "text-base font-bold text-slate-900",
@@ -32,6 +36,16 @@ const SEVERITY_STYLE = {
   warning: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: AlertCircle, iconColor: "text-amber-500" },
   info: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: Info, iconColor: "text-blue-500" },
 };
+
+// สีสำหรับ Donut Chart — โทนเดียวกับระบบ (orange เป็นสีหลัก) พร้อมคู่สี light สำหรับทำ gradient/ความลึก
+const PIE_COLORS = [
+  { base: "#f97316", light: "#fdba74" }, // orange (ธีมหลัก)
+  { base: "#10b981", light: "#6ee7b7" }, // emerald
+  { base: "#3b82f6", light: "#93c5fd" }, // blue
+  { base: "#f59e0b", light: "#fcd34d" }, // amber
+  { base: "#94a3b8", light: "#cbd5e1" }, // slate
+  { base: "#a855f7", light: "#d8b4fe" }, // purple (สำรอง)
+];
 
 const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
 
@@ -59,7 +73,7 @@ function ErrorState({ message, onRetry }) {
         onClick={onRetry}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-xl hover:bg-orange-100 transition"
       >
-        <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+        ลองใหม่
       </button>
     </div>
   );
@@ -80,19 +94,18 @@ function SectionCard({ title, icon: Icon, action, children, className = "" }) {
   );
 }
 
-function KPICard({ label, value, sub, icon: Icon, tone = "neutral" }) {
-  const toneText = {
-    neutral: "text-slate-400", green: "text-green-600", red: "text-red-600",
-    blue: "text-blue-600", orange: "text-orange-500",
-  }[tone];
+// ─── KPICard — สไตล์เดียวกับ Stats Card ของ AdminStudent / AdminTutors (ไอคอนกล่องสีด้านซ้าย + ตัวเลขด้านขวา) ──
+function KPICard({ label, value, sub, icon: Icon, colorClass = "bg-orange-500" }) {
   return (
-    <div className={`${T.card} p-4 h-full flex flex-col justify-between hover:shadow-md ${T.transition}`}>
-      <div className="flex items-center justify-between mb-2">
-        <p className={T.label}>{label}</p>
-        {Icon && <Icon className={`h-4 w-4 shrink-0 ${toneText}`} />}
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+      <div className={`h-12 w-12 rounded-xl ${colorClass} flex items-center justify-center shrink-0`}>
+        {Icon && <Icon className="h-6 w-6 text-white" />}
       </div>
-      <p className={T.value}>{value}</p>
-      {sub && <p className={`${T.caption} mt-1 truncate`}>{sub}</p>}
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-slate-500 font-medium">{label}</p>
+        <p className="text-xl font-black text-slate-900 truncate">{value}</p>
+        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+      </div>
     </div>
   );
 }
@@ -129,11 +142,9 @@ function ActionCenter({ items, loading, error, onRetry, readIds, onMarkRead, onN
   if (loading) return <SkeletonGrid count={3} />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
-  const unread = items.filter((i) => !readIds.includes(i.id));
-
   if (items.length === 0) {
     return (
-      <div className={`${T.card} ${T.cardPad} flex items-center gap-3 bg-emerald-50/60 border-emerald-200`}>
+      <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-5 flex items-center gap-3 bg-emerald-50/60">
         <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
           <Sparkles className="h-5 w-5 text-emerald-600" />
         </div>
@@ -171,6 +182,89 @@ function ActionCenter({ items, loading, error, onRetry, readIds, onMarkRead, onN
   );
 }
 
+/* ─── ★ ใหม่: Course Status Donut (3D-style) ──────────────────────────────
+   แนวคิด: ใช้ radial gradient ต่อชิ้น + drop-shadow บนตัว Pie + วงเงา (disc) เบลอวางไว้ด้านหลัง
+   เพื่อจำลองความหนา/ความลึกแบบ 3D โดยไม่ copy ภาพตัวอย่างแบบเป๊ะ ๆ
+   ข้อมูล: สัดส่วนคอร์สตามสถานะ (courses.byStatus) — ตอบคำถาม
+   "ตอนนี้คอร์สทั้งหมดแบ่งเป็นสถานะอะไรบ้าง" ซึ่งเป็นข้อมูลที่เจ้าของสถาบันต้องการเห็นภาพรวมมากที่สุด
+─────────────────────────────────────────────────────────────────────── */
+function CourseStatusDonut({ byStatus = [], total = 0 }) {
+  const chartData = byStatus
+    .filter((s) => Number(s.cnt) > 0)
+    .map((s, i) => ({
+      name: s.Status_Course_Name,
+      value: Number(s.cnt),
+      color: PIE_COLORS[i % PIE_COLORS.length],
+    }));
+
+  if (chartData.length === 0) {
+    return <EmptyMini text="ยังไม่มีข้อมูลคอร์สในระบบ" />;
+  }
+
+  return (
+    <div className="flex flex-col md:flex-row items-center gap-6">
+      <div className="relative w-48 h-48 shrink-0 mx-auto md:mx-0">
+        {/* วงเงาด้านหลัง จำลองความหนาของจาน (depth disc) */}
+        <div className="absolute inset-3 rounded-full bg-slate-300/40 blur-md translate-y-2" />
+        <ResponsiveContainer width="100%" height="100%">
+          <RPieChart>
+            <defs>
+              {chartData.map((d, i) => (
+                <radialGradient id={`courseGrad-${i}`} key={i} cx="35%" cy="30%" r="75%">
+                  <stop offset="0%" stopColor={d.color.light} />
+                  <stop offset="100%" stopColor={d.color.base} />
+                </radialGradient>
+              ))}
+            </defs>
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={46}
+              outerRadius={80}
+              paddingAngle={3}
+              cornerRadius={4}
+              stroke="#ffffff"
+              strokeWidth={2}
+              style={{ filter: "drop-shadow(0 8px 8px rgba(15,23,42,0.28))" }}
+              isAnimationActive={false}
+            >
+              {chartData.map((d, i) => (
+                <Cell key={i} fill={`url(#courseGrad-${i})`} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value, name) => [`${value} คอร์ส`, name]}
+              contentStyle={{ borderRadius: 12, fontSize: 12 }}
+            />
+          </RPieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-2xl font-black text-slate-900">{total}</p>
+          <p className="text-[10px] text-slate-400">คอร์สทั้งหมด</p>
+        </div>
+      </div>
+
+      <div className="flex-1 w-full space-y-2.5">
+        {chartData.map((d, i) => (
+          <div key={i} className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color.base }} />
+              <span className="text-slate-600 truncate">{d.name}</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-bold text-slate-800">{d.value}</span>
+              <span className="text-[11px] text-slate-400 w-9 text-right">
+                {total ? Math.round((d.value / total) * 100) : 0}%
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Component ──────────────────────────────────────────────────── */
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -188,7 +282,7 @@ export default function AdminDashboard() {
     const token = localStorage.getItem("student_token");
     return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
   };
-  
+
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError(null);
@@ -248,10 +342,12 @@ export default function AdminDashboard() {
   const scheduleToday = data?.scheduleToday || {};
   const rooms = data?.rooms || {};
   const facilities = data?.facilities || {};
-  const announcements = data?.announcements || {};
-  const adminMgmt = data?.adminManagement || {};
+  // เก็บไว้เผื่อนำ Section "ประชาสัมพันธ์" และ "ผู้ดูแลระบบ" กลับมาใช้:
+  // const announcements = data?.announcements || {};
+  // const adminMgmt = data?.adminManagement || {};
 
-  const statusLabelOf = (list, id) => list.find((r) => r.Status_Course_Id === id || r.Status_Room_Id === id);
+  const revenueUp = (kpi.revenueGrowthPct ?? 0) >= 0;
+  const profitUp = (kpi.monthlyProfit ?? 0) >= 0;
 
   return (
     <div className="space-y-6 mt-[90px]">
@@ -268,6 +364,7 @@ export default function AdminDashboard() {
             )}
           </p>
         </div>
+        {/* ★ เอาปุ่ม Refresh ออกจาก UI ตามที่ร้องขอ — คง logic ไว้ใช้ภายหลังได้ (fetchData(true) ยังทำงานปกติ)
         <button
           onClick={() => fetchData(true)}
           disabled={refreshing}
@@ -276,6 +373,7 @@ export default function AdminDashboard() {
           <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
           รีเฟรช
         </button>
+        */}
       </div>
 
       {/* ── Action Center ─────────────────────────────────────────── */}
@@ -295,76 +393,67 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/* ── KPI หลัก ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* ── KPI หลัก — เหลือเพียง 3 Cards ตามที่ร้องขอ ──────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KPICard
           label="รายรับเดือนนี้"
           value={formatMoney(kpi.monthlyRevenue)}
-          sub={`${kpi.revenueGrowthPct >= 0 ? "+" : ""}${kpi.revenueGrowthPct ?? 0}% จากเดือนก่อน`}
-          icon={kpi.revenueGrowthPct >= 0 ? TrendingUp : TrendingDown}
-          tone={kpi.revenueGrowthPct >= 0 ? "green" : "red"}
+          sub={`${revenueUp ? "+" : ""}${kpi.revenueGrowthPct ?? 0}% จากเดือนก่อน`}
+          icon={revenueUp ? TrendingUp : TrendingDown}
+          colorClass={revenueUp ? "bg-emerald-500" : "bg-red-500"}
         />
         <KPICard
           label="กำไรสุทธิเดือนนี้"
           value={formatMoney(kpi.monthlyProfit)}
           sub={kpi.profitMargin !== null ? `Margin ${kpi.profitMargin}%` : "ยังไม่มีข้อมูล"}
           icon={Wallet}
-          tone={kpi.monthlyProfit >= 0 ? "green" : "red"}
+          colorClass={profitUp ? "bg-orange-500" : "bg-red-500"}
         />
         <KPICard
           label="ยอดค้างชำระ"
           value={formatMoney(kpi.outstandingAmount)}
           sub={`${kpi.outstandingCount ?? 0} รายการ`}
           icon={Clock}
-          tone={kpi.outstandingCount > 0 ? "orange" : "neutral"}
-        />
-        <KPICard
-          label="คอร์สทั้งหมด"
-          value={kpi.totalCourses ?? 0}
-          sub={`กำลังสอน ${kpi.activeCourses ?? 0} · เปิดรับสมัคร ${kpi.openCourses ?? 0}`}
-          icon={BookOpen}
-          tone="orange"
-        />
-        <KPICard
-          label="นักเรียนทั้งหมด"
-          value={kpi.totalStudents ?? 0}
-          sub={`ลงทะเบียนแล้ว ${kpi.enrolledStudents ?? 0} คน`}
-          icon={GraduationCap}
-          tone="blue"
-        />
-        <KPICard
-          label="ติวเตอร์ทั้งหมด"
-          value={kpi.totalTutors ?? 0}
-          sub={`กำลังสอน ${kpi.activeTutors ?? 0} คน`}
-          icon={UserCheck}
-          tone="blue"
+          colorClass={kpi.outstandingCount > 0 ? "bg-amber-500" : "bg-slate-400"}
         />
       </div>
 
-      {/* ── การเงิน (trend) ──────────────────────────────────────── */}
-      <SectionCard title="แนวโน้มการเงิน (6 เดือนล่าสุด)" icon={Wallet}
-        action={
-          <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
-            ดูรายละเอียด <ChevronRight className="h-3 w-3" />
-          </button>
-        }
-      >
-        {finance.trend && finance.trend.length > 0 ? (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={finance.trend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(v) => formatMoney(v)} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-              <Line type="monotone" dataKey="revenue" name="รายรับ" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="expense" name="รายจ่าย" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="profit" name="กำไร" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <EmptyMini text="ยังไม่มีข้อมูลรายรับ-รายจ่ายในช่วงนี้" />
-        )}
-      </SectionCard>
+      {/* ── แนวโน้มการเงิน + สัดส่วนคอร์สตามสถานะ (3D Donut) ───────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SectionCard title="แนวโน้มการเงิน (6 เดือนล่าสุด)" icon={Wallet}
+          action={
+            <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
+              ดูรายละเอียด <ChevronRight className="h-3 w-3" />
+            </button>
+          }
+        >
+          {finance.trend && finance.trend.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={finance.trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v) => formatMoney(v)} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+                <Line type="monotone" dataKey="revenue" name="รายรับ" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="expense" name="รายจ่าย" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="profit" name="กำไร" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyMini text="ยังไม่มีข้อมูลรายรับ-รายจ่ายในช่วงนี้" />
+          )}
+        </SectionCard>
+
+        <SectionCard title="สัดส่วนคอร์สตามสถานะ" icon={PieChartIcon}
+          action={
+            <button onClick={() => navigate("/admin/courses")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
+              ดูทั้งหมด <ChevronRight className="h-3 w-3" />
+            </button>
+          }
+        >
+          <CourseStatusDonut byStatus={courses.byStatus || []} total={courses.total || 0} />
+        </SectionCard>
+      </div>
 
       {/* ── คอร์ส / นักเรียน / ติวเตอร์ ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -465,7 +554,7 @@ export default function AdminDashboard() {
         </SectionCard>
       </div>
 
-      {/* ── ตารางเรียนวันนี้ / ห้องเรียน / คลังอุปกรณ์ ─────────────── */}
+      {/* ── ตารางเรียนวันนี้ / ห้องเรียน / คลังอุปกรณ์ (รวมใกล้หมด+หมดสต๊อกไว้การ์ดเดียว) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SectionCard title="ตารางเรียนวันนี้" icon={Calendar}
           action={<button onClick={() => navigate("/admin/schedule")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูตารางเต็ม <ChevronRight className="h-3 w-3" /></button>}
@@ -516,10 +605,11 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
 
+        {/* ★ แก้: รวม "อุปกรณ์ใกล้หมด" และ "อุปกรณ์หมดสต๊อก" ไว้ในการ์ดเดียว (2 บรรทัดสถานะ) แทนการแยก 2 การ์ด */}
         <SectionCard title="คลังอุปกรณ์" icon={Boxes}
           action={<button onClick={() => navigate("/admin/common-facilities")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด <ChevronRight className="h-3 w-3" /></button>}
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-center">
               <p className="text-[10px] text-slate-500">ทั้งหมด</p>
               <p className="text-base font-bold text-slate-800">{facilities.total ?? 0}</p>
@@ -528,19 +618,24 @@ export default function AdminDashboard() {
               <p className="text-[10px] text-emerald-600">พร้อมใช้งาน</p>
               <p className="text-base font-bold text-emerald-700">{facilities.ready ?? 0}</p>
             </div>
-            <div className="bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100 text-center">
-              <p className="text-[10px] text-amber-600">ใกล้หมด</p>
-              <p className="text-base font-bold text-amber-700">{facilities.lowStock ?? 0}</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${facilities.lowStock > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100"}`}>
+              <span className={`text-xs font-medium ${facilities.lowStock > 0 ? "text-amber-700" : "text-slate-500"}`}>ใกล้หมด</span>
+              <span className={`text-sm font-bold ${facilities.lowStock > 0 ? "text-amber-700" : "text-slate-400"}`}>{facilities.lowStock ?? 0}</span>
             </div>
-            <div className="bg-red-50 rounded-xl px-3 py-2.5 border border-red-100 text-center">
-              <p className="text-[10px] text-red-500">หมดสต๊อก</p>
-              <p className="text-base font-bold text-red-600">{facilities.outOfStock ?? 0}</p>
+            <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${facilities.outOfStock > 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
+              <span className={`text-xs font-medium ${facilities.outOfStock > 0 ? "text-red-600" : "text-slate-500"}`}>หมดสต๊อก</span>
+              <span className={`text-sm font-bold ${facilities.outOfStock > 0 ? "text-red-600" : "text-slate-400"}`}>{facilities.outOfStock ?? 0}</span>
             </div>
           </div>
         </SectionCard>
       </div>
 
-      {/* ── ประชาสัมพันธ์ / ผู้ดูแลระบบ ───────────────────────────── */}
+      {/* ★ เอา Section "ประชาสัมพันธ์" และ "ผู้ดูแลระบบ" ออกจาก UI ตามที่ร้องขอ
+          คง JSX เดิมไว้ทั้งหมดเพื่อนำกลับมาใช้ภายหลังได้ทันที
+          (ต้องดึง const announcements / const adminMgmt กลับมา และ import Megaphone, Shield ก่อนใช้งาน)
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SectionCard title="ประชาสัมพันธ์" icon={Megaphone} className="lg:col-span-2"
           action={<button onClick={() => navigate("/admin/announcements")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด ({announcements.total ?? 0}) <ChevronRight className="h-3 w-3" /></button>}
@@ -581,6 +676,7 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
       </div>
+      */}
     </div>
   );
 }
