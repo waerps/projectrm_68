@@ -680,12 +680,6 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   <div className="mt-3 rounded-xl bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">ระบบไม่ได้หารยอดใหม่ แต่รวม InstallmentAmounts ของแต่ละคอร์สตามลำดับงวดโดยตรง คอร์สที่กำหนดชำระครั้งเดียวจะอยู่ในงวดแรก ส่วนคอร์สที่มีจำนวนงวดน้อยกว่าจะสิ้นสุดก่อน</div>
                 </div>
               )}
-              <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div><b className="text-sm text-green-900">{lineLinked ? "เชื่อม LINE สำเร็จแล้ว" : "เชื่อม LINE เพื่อรับ QR และแจ้งเตือนงวดถัดไป"}</b><p className="mt-1 text-xs text-green-700">{lineLinked ? "ระบบพร้อมส่งการแจ้งเตือนให้บัญชีนี้" : "ผู้เลือกผ่อนชำระต้องเชื่อม LINE ก่อนดำเนินการต่อ"}</p></div>
-                  {!lineLinked && <button type="button" onClick={connectLine} disabled={lineLoading} className="rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังเปิด LINE..." : "เชื่อมบัญชีกับ LINE"}</button>}
-                </div>
-              </div>
             </div>
           )}
 
@@ -733,13 +727,24 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
               <h2 className="mt-2 text-2xl font-black text-[#14213D]">ตรวจสอบสลิปสำเร็จ</h2>
               <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">ระบบตรวจสอบสลิปและเพิ่มคอร์สให้คุณเรียบร้อยแล้ว ดูคอร์สที่ซื้อแล้วได้จากหน้าโปรไฟล์ ในเมนู “คอร์สเรียนของฉัน”</p>
               <div className="mx-auto mt-6 max-w-sm rounded-2xl border border-slate-200 p-4 text-left text-sm"><div className="flex justify-between"><span className="text-slate-500">ยอดที่ตรวจสอบผ่าน</span><b className="text-orange-600">{money(dueNow)}</b></div><div className="mt-3 flex justify-between"><span className="text-slate-500">สถานะ</span><b className="text-emerald-600">ตรวจสอบสลิปผ่านแล้ว</b></div></div>
+              {payPlan === "installment" && (
+                <div className="mx-auto mt-5 max-w-lg rounded-2xl border border-green-200 bg-green-50 p-4 text-left">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <b className="text-sm text-green-900">{lineLinked ? "เชื่อม LINE สำเร็จแล้ว" : "รับ QR และแจ้งเตือนงวดถัดไปทาง LINE"}</b>
+                      <p className="mt-1 text-xs leading-relaxed text-green-700">{lineLinked ? "ระบบพร้อมส่งการแจ้งเตือนค่างวดให้บัญชีนี้" : "เชื่อม LINE หลังชำระงวดแรก เพื่อไม่พลาดกำหนดชำระงวดถัดไป"}</p>
+                    </div>
+                    {!lineLinked && <button type="button" onClick={connectLine} disabled={lineLoading} className="shrink-0 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังเปิด LINE..." : "เชื่อมบัญชีกับ LINE"}</button>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-8">
           {step > 0 && step < 3 ? <button onClick={() => setStep((value) => value - 1)} className="flex items-center gap-2 px-2 py-3 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />ย้อนกลับ</button> : <span />}
-          {step < 2 && <button disabled={step === 1 && payPlan === "installment" && !lineLinked} onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
+          {step < 2 && <button onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
           {step === 2 && (
             <button
               disabled={!slipFile || !activeInstallment || checkingSlip || qrLoading}
