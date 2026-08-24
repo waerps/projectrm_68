@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, ExternalLink, Loader2, MessageCircle, QrCode, RefreshCw, UploadCloud, WalletCards } from "lucide-react";
+import { CheckCircle2, Clock3, Loader2, MessageCircle, QrCode, Unlink, UploadCloud, WalletCards } from "lucide-react";
 import {
-  createLineLinkCode,
+  disconnectLine,
   getInstallmentQr,
+  getLineLoginStatus,
   getPaymentOrders,
+  startLineLogin,
   verifyInstallmentSlip,
 } from "../callapi/callusers_student";
-
-const LINE_OA_URL = import.meta.env.VITE_LINE_OA_URL || "https://line.me/R/ti/p/@137nxpki";
 
 const money = (value) => new Intl.NumberFormat("th-TH", {
   style: "currency", currency: "THB", minimumFractionDigits: 2,
@@ -31,10 +31,8 @@ export default function CoursePaymentsTab({ courseId }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [linkCode, setLinkCode] = useState("");
-  const [expiresAt, setExpiresAt] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(0);
   const [linkLoading, setLinkLoading] = useState(false);
+  const [lineLinked, setLineLinked] = useState(false);
   const [activeInstallment, setActiveInstallment] = useState(null);
   const [qr, setQr] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -45,8 +43,12 @@ export default function CoursePaymentsTab({ courseId }) {
     try {
       setLoading(true);
       setError("");
-      const data = await getPaymentOrders(token);
+      const [data, lineStatus] = await Promise.all([
+        getPaymentOrders(token),
+        getLineLoginStatus(token),
+      ]);
       setRows(data.filter((row) => String(row.courseId) === String(courseId)));
+      setLineLinked(Boolean(lineStatus.linked));
     } catch (err) {
       setError(typeof err === "string" ? err : "โหลดข้อมูลการชำระเงินไม่สำเร็จ");
     } finally {
@@ -55,28 +57,32 @@ export default function CoursePaymentsTab({ courseId }) {
   }, [courseId, token]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
-  useEffect(() => {
-    if (!expiresAt) return;
-    const tick = () => setSecondsLeft(Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
-    tick();
-    const timer = setInterval(tick, 1000);
-    return () => clearInterval(timer);
-  }, [expiresAt]);
 
   const summary = useMemo(() => ({
     total: rows[0]?.totalAmount || 0,
     paid: rows.filter((row) => row.installmentStatus === "paid").reduce((sum, row) => sum + Number(row.amount || 0), 0),
   }), [rows]);
 
-  const requestLinkCode = async () => {
+  const connectLine = async () => {
     try {
       setLinkLoading(true);
       setNotice(null);
-      const result = await createLineLinkCode(token);
-      setLinkCode(result.code);
-      setExpiresAt(Date.now() + Number(result.expiresInSeconds || 600) * 1000);
+      const returnPath = `${window.location.pathname}${window.location.search}`;
+      const result = await startLineLogin(token, returnPath);
+      window.location.assign(result.authorizationUrl);
     } catch (err) {
-      setNotice({ type: "error", text: typeof err === "string" ? err : "สร้างรหัสเชื่อม LINE ไม่สำเร็จ" });
+      setNotice({ type: "error", text: typeof err === "string" ? err : "เริ่มเชื่อม LINE ไม่สำเร็จ" });
+    } finally { setLinkLoading(false); }
+  };
+
+  const unlinkLine = async () => {
+    try {
+      setLinkLoading(true);
+      await disconnectLine(token);
+      setLineLinked(false);
+      setNotice({ type: "success", text: "ยกเลิกการเชื่อม LINE แล้ว" });
+    } catch (err) {
+      setNotice({ type: "error", text: typeof err === "string" ? err : "ยกเลิกการเชื่อม LINE ไม่สำเร็จ" });
     } finally { setLinkLoading(false); }
   };
 
@@ -118,15 +124,13 @@ export default function CoursePaymentsTab({ courseId }) {
       <section className="rounded-2xl border border-green-200 bg-green-50/60 p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 font-bold text-neutral-900"><MessageCircle className="h-5 w-5 text-green-600" />เชื่อมบัญชีกับ LINE</h2>
-            <p className="mt-1 text-sm text-neutral-600">ใช้รับ QR งวดถัดไป การแจ้งเตือนค้างชำระ และการคืนสิทธิ์อัตโนมัติ</p>
+            <h2 className="flex items-center gap-2 font-bold text-neutral-900"><MessageCircle className="h-5 w-5 text-green-600" />{lineLinked ? "เชื่อมบัญชีกับ LINE แล้ว" : "เชื่อมบัญชีกับ LINE"}</h2>
+            <p className="mt-1 text-sm text-neutral-600">{lineLinked ? "ระบบพร้อมส่ง QR และแจ้งเตือนค่างวดให้บัญชีนี้" : "กดปุ่มเดียวเพื่อรับ QR งวดถัดไป การแจ้งเตือนค้างชำระ และการคืนสิทธิ์อัตโนมัติ"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href={LINE_OA_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl border border-green-300 bg-white px-4 py-2.5 text-sm font-bold text-green-700"><ExternalLink className="h-4 w-4" />เพิ่มเพื่อน OA</a>
-            <button onClick={requestLinkCode} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{linkLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}สร้างรหัสเชื่อม LINE</button>
+            {lineLinked ? <button onClick={unlinkLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-600 disabled:opacity-50"><Unlink className="h-4 w-4" />ยกเลิกการเชื่อม</button> : <button onClick={connectLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl bg-[#06C755] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{linkLoading && <Loader2 className="h-4 w-4 animate-spin" />}เชื่อมบัญชีกับ LINE</button>}
           </div>
         </div>
-        {linkCode && secondsLeft > 0 && <div className="mt-4 rounded-xl border border-green-200 bg-white p-4 text-center"><p className="text-xs text-neutral-500">ส่งข้อความนี้ในแชต LINE OA ภายใน {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} นาที</p><button onClick={() => navigator.clipboard?.writeText(`LINK ${linkCode}`)} className="mt-2 rounded-lg bg-neutral-900 px-5 py-2 font-mono text-lg font-bold tracking-wider text-white">LINK {linkCode}</button><p className="mt-2 text-xs text-neutral-400">แตะข้อความเพื่อคัดลอก แล้วนำไปส่งให้ OA</p></div>}
       </section>
 
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
