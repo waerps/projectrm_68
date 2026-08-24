@@ -1,7 +1,7 @@
 import { API_URL } from "../config";
 import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
@@ -14,6 +14,23 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const navigate = useNavigate();
+const [subjectModal, setSubjectModal] = useState(null); // { course, action } | null
+
+const navigateToAction = (course, subject, action) => {
+  if (action === "content") {
+    navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+  }
+};
+
+const handleSubjectAction = (course, action) => {
+  if (course.subjects.length === 1) {
+    navigateToAction(course, course.subjects[0], action);
+  } else {
+    setSubjectModal({ course, action });
+  }
+};
 
   // 1. ฟังก์ชันเช็คสถานะคอร์สจากวันที่
   const mapStatus = (statusId, startDate, lastDate) => {
@@ -50,42 +67,47 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
         const response = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`);
         console.log("RAW API RESPONSE:", response.data); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
 
-        const formattedData = response.data.map(course => {
-          const statusInfo = mapStatus(course.Status_Course_Id, course.StartDate, course.LastDate);
+        // ✅ Group ตาม CourseID เพื่อรวมหลายวิชาไว้ใน Course เดียว
+const courseMap = new Map();
 
-          // รับค่าชั่วโมงจริงที่ส่งมาจาก Backend
-          const actualTotalHours = Number(course.TotalHoursScheduled) || 0;
-          const actualCompletedHours = Number(course.CompletedHours) || 0;
+response.data.forEach(row => {
+  const statusInfo = mapStatus(row.Status_Course_Id, row.StartDate, row.LastDate);
+  const subjectTotalHours = Number(row.TotalHoursScheduled) || 0;
+  const subjectCompletedHours = Number(row.CompletedHours) || 0;
 
-          const actualProgress = calculateProgressByHours(actualCompletedHours, actualTotalHours, statusInfo.id);
-          const displayCompletedHours = statusInfo.id === 'completed' ? actualTotalHours : actualCompletedHours;
+  if (!courseMap.has(row.CourseID)) {
+    courseMap.set(row.CourseID, {
+      id: row.CourseID,
+      name: row.CourseName, // ไม่ต่อชื่อวิชาแล้ว
+      startDate: row.StartDate
+        ? new Date(row.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+        : "ไม่ระบุ",
+      totalHours: 0,
+      completedHours: 0,
+      StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
+      VideoCount: 0,
+      FileCount: 0,
+      statusId: statusInfo.id,
+      statusText: statusInfo.text,
+      statusColor: statusInfo.colorClass,
+      subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
+    });
+  }
 
+  const c = courseMap.get(row.CourseID);
+  c.totalHours += subjectTotalHours;
+  c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
+  c.VideoCount += row.VideoCount || 0;
+  c.FileCount += row.FileCount || 0;
+  c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName });
+});
 
-          return {
-            id: course.CourseID,
-            subjectId: course.SubjectId,
-            name: course.SubjectName 
-              ? `${course.CourseName} (${course.SubjectName})` 
-              : course.CourseName,
-            subjectName: course.SubjectName,
-            startDate: course.StartDate
-              ? new Date(course.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-              : "ไม่ระบุ",
-            totalHours: actualTotalHours,
-            completedHours: displayCompletedHours,
-            // completedHours: actualCompletedHours,
-            StudentCount: course.StudentCount || 0,
-            VideoCount: course.VideoCount || 0,
-            FileCount: course.FileCount || 0,
+const formattedData = Array.from(courseMap.values()).map(c => ({
+  ...c,
+  progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
+}));
 
-            statusId: statusInfo.id,
-            statusText: statusInfo.text,
-            statusColor: statusInfo.colorClass,
-            progress: actualProgress
-          };
-        });
-
-        setCourses(formattedData);
+setCourses(formattedData);
       } catch (error) {
         console.error("Error fetching courses:", error);
       } finally {
@@ -181,7 +203,7 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
             </div>
           ) : (
             filteredCourses.map((course) => (
-              <div key={`${course.id}-${course.subjectId}`} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
+              <div key={course.id} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
                 <div className="p-5 border-b border-neutral-100 flex-1">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1 pr-4">
@@ -254,19 +276,19 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
 
                 {/* ✅ แก้ไขปุ่ม Action (ส่งชื่อคอร์สและวิชาไปใน URL ด้วย) */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
-                  <Link
-                    to={`/tutor/students?courseId=${course.id}&subjectId=${course.subjectId}`}
-                    className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
-                  >
-                    <Users className="h-4 w-4 text-neutral-400" /> ดูนักเรียน
-                  </Link>
+                <Link
+  to={`/tutor/students?courseId=${course.id}`}
+  className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
+>
+  <Users className="h-4 w-4 text-neutral-400" /> ดูนักเรียน
+</Link>
 
-                  <Link
-                    to={`/tutor/manage?courseId=${course.id}&subjectId=${course.subjectId}&courseName=${course.name}&subjectName=${course.subjectName}`}
-                    className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
-                  >
-                    <FileText className="h-4 w-4" /> จัดการเนื้อหา
-                  </Link>
+<button
+  onClick={() => handleSubjectAction(course, "content")}
+  className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+>
+  <FileText className="h-4 w-4" /> จัดการเนื้อหา
+</button>
 
                   <Link
                     to={`/tutor/exam-subjects?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`}
@@ -279,6 +301,36 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
             ))
           )}
         </div>
+        {subjectModal && (
+  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+      <h3 className="text-lg font-bold text-neutral-900 mb-1">เลือกวิชา</h3>
+      <p className="text-sm text-neutral-500 mb-4">
+        {subjectModal.course.name} — เลือกวิชาที่ต้องการจัดการเนื้อหา
+      </p>
+      <div className="space-y-2">
+        {subjectModal.course.subjects.map((subject) => (
+          <button
+            key={subject.subjectId}
+            onClick={() => {
+              navigateToAction(subjectModal.course, subject, subjectModal.action);
+              setSubjectModal(null);
+            }}
+            className="w-full text-left px-4 py-3 rounded-xl border-2 border-neutral-200 hover:border-orange-400 hover:bg-orange-50 transition font-medium text-neutral-700"
+          >
+            {subject.subjectName}
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => setSubjectModal(null)}
+        className="mt-4 w-full text-center py-2 text-sm text-neutral-500 hover:text-neutral-700"
+      >
+        ยกเลิก
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );
