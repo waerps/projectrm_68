@@ -13,6 +13,7 @@ export default function TutorCourseManagePage() {
   const courseId = searchParams.get("courseId") || "";
   const subjectId = searchParams.get("subjectId") || "";
   const courseName = searchParams.get("courseName") || "คอร์สรวม (แพ็กเกจ)";
+  const subjectName = searchParams.get("subjectName") || "";
   const adminId = JSON.parse(localStorage.getItem("user"))?.id;
 
   const [loading, setLoading] = useState(true);
@@ -169,13 +170,18 @@ export default function TutorCourseManagePage() {
 
         {/* Header */}
         <div className="py-6">
-          <div className="mb-3 flex items-center text-sm text-neutral-500">
-            <Link to="/tutor/courses" className="hover:text-orange-600 transition">คอร์สของฉัน</Link>
-            <ChevronRight className="mx-1.5 h-4 w-4" />
-            <span className="text-neutral-800 font-medium">จัดการเนื้อหา</span>
-          </div>
-          <h1 className="text-2xl font-bold text-neutral-900">{courseName}</h1>
-        </div>
+  <div className="mb-3 flex items-center text-sm text-neutral-500">
+    <Link to="/tutor/courses" className="hover:text-orange-600 transition">คอร์สของฉัน</Link>
+    <ChevronRight className="mx-1.5 h-4 w-4" />
+    <span className="text-neutral-800 font-medium">จัดการเนื้อหา</span>
+  </div>
+  <h1 className="text-2xl font-bold text-neutral-900">
+    จัดการเนื้อหา{subjectName ? ` — ${subjectName}` : ""}
+  </h1>
+  <p className="text-sm text-neutral-500 mt-1">
+    {courseName} {subjectName ? `• ${subjectName}` : ""}
+  </p>
+</div>
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}

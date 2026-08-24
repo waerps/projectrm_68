@@ -1094,12 +1094,12 @@ export default function TutorExamManagement() {
           คอร์ส
         </Link>
         <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <Link
+        {/* <Link
           to={`/tutor/exam-subjects?courseId=${courseId}&courseName=${encodeURIComponent(courseName)}`}
           className="font-medium text-gray-500 hover:text-orange-600 transition"
         >
           {courseName || "คอร์ส"}
-        </Link>
+        </Link> */}
         <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
         <span className="font-medium text-gray-800">{subjectName || "จัดการการสอบ"}</span>
       </div>
