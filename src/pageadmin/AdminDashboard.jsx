@@ -184,11 +184,16 @@ export default function AdminDashboard() {
     } catch { return []; }
   });
 
+  const getAdminAuthConfig = () => {
+    const token = localStorage.getItem("student_token");
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
+  
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`${API_BASE}/summary`);
+      const res = await axios.get(`${API_BASE}/summary`, getAdminAuthConfig());
       setData(res.data);
     } catch (e) {
       setError(e.response?.data?.message || "โหลดข้อมูลแดชบอร์ดไม่สำเร็จ");
