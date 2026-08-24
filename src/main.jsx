@@ -48,7 +48,7 @@ import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
-import TutorExamSubjectSelection from "./pages/TutorExamSubjectSelection";
+import TutorExamSubjectSelection from "./pagetutor/TutorExamSubjectSelection.jsx";
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
