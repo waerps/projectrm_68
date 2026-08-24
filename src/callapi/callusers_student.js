@@ -157,6 +157,33 @@ export async function createLineLinkCode(token) {
   }
 }
 
+export async function getLineLoginStatus(token) {
+  try {
+    const res = await apiClient.get("/api/line/login/status", withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function startLineLogin(token, returnPath) {
+  try {
+    const res = await apiClient.post("/api/line/login/start", { returnPath }, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function disconnectLine(token) {
+  try {
+    const res = await apiClient.delete("/api/line/login/connection", withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 export async function getPaymentOrders(token) {
   try {
     const res = await apiClient.get("/api/payments/orders", withAuth(token));

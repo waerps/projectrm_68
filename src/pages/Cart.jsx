@@ -413,13 +413,12 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [checkingSlip, setCheckingSlip] = useState(false);
   const [paymentIndex, setPaymentIndex] = useState(0);
   const [activeInstallment, setActiveInstallment] = useState(null);
-  const [lineCode, setLineCode] = useState("");
   const [lineLoading, setLineLoading] = useState(false);
+  const [lineLinked, setLineLinked] = useState(false);
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
   const fileRef = useRef(null);
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  const lineOaUrl = import.meta.env.VITE_LINE_OA_URL || "https://line.me/R/ti/p/@137nxpki";
 
   const installmentRows = useMemo(() => {
     const maxInstallments = Math.max(...items.map((item) => item.installments), 1);
@@ -439,6 +438,15 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
       };
     });
   }, [items]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("student_token");
+    if (!token) return;
+    fetch(`${API_BASE}/api/line/login/status`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((result) => setLineLinked(Boolean(result.linked)))
+      .catch(() => setLineLinked(false));
+  }, [API_BASE]);
 
   const installmentEnabled = items.some((item) => item.installmentEligible);
   const installmentCount = installmentRows.length;
@@ -524,21 +532,21 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     setSlipToast(null); // เลือกไฟล์ใหม่ ล้าง toast เก่าทิ้ง
   };
 
-  const requestLineCode = async () => {
+  const connectLine = async () => {
     try {
       setLineLoading(true);
       setSlipToast(null);
       const token = localStorage.getItem("student_token");
-      const response = await fetch(`${API_BASE}/api/payments/line-link-code`, {
+      const response = await fetch(`${API_BASE}/api/line/login/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: "{}",
+        body: JSON.stringify({ returnPath: "/cart" }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.message || "สร้างรหัสเชื่อม LINE ไม่สำเร็จ");
-      setLineCode(result.code);
+      if (!response.ok || !result.authorizationUrl) throw new Error(result.message || "เริ่มเชื่อม LINE ไม่สำเร็จ");
+      window.location.assign(result.authorizationUrl);
     } catch (error) {
-      setSlipToast({ type: "error", message: error.message || "สร้างรหัสเชื่อม LINE ไม่สำเร็จ" });
+      setSlipToast({ type: "error", message: error.message || "เริ่มเชื่อม LINE ไม่สำเร็จ" });
     } finally {
       setLineLoading(false);
     }
@@ -674,10 +682,9 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
               )}
               <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div><b className="text-sm text-green-900">เชื่อม LINE เพื่อรับ QR และแจ้งเตือนงวดถัดไป</b><p className="mt-1 text-xs text-green-700">เพิ่มเพื่อน OA แล้วสร้างรหัส จากนั้นส่งข้อความ LINK ตามที่ระบบแสดง</p></div>
-                  <div className="flex flex-wrap gap-2"><a href={lineOaUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-green-300 bg-white px-3 py-2 text-xs font-bold text-green-700">เพิ่มเพื่อน OA</a><button type="button" onClick={requestLineCode} disabled={lineLoading} className="rounded-xl bg-green-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังสร้าง..." : "สร้างรหัสเชื่อม LINE"}</button></div>
+                  <div><b className="text-sm text-green-900">{lineLinked ? "เชื่อม LINE สำเร็จแล้ว" : "เชื่อม LINE เพื่อรับ QR และแจ้งเตือนงวดถัดไป"}</b><p className="mt-1 text-xs text-green-700">{lineLinked ? "ระบบพร้อมส่งการแจ้งเตือนให้บัญชีนี้" : "ผู้เลือกผ่อนชำระต้องเชื่อม LINE ก่อนดำเนินการต่อ"}</p></div>
+                  {!lineLinked && <button type="button" onClick={connectLine} disabled={lineLoading} className="rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังเปิด LINE..." : "เชื่อมบัญชีกับ LINE"}</button>}
                 </div>
-                {lineCode && <button type="button" onClick={() => navigator.clipboard?.writeText(`LINK ${lineCode}`)} className="mt-3 w-full rounded-xl bg-white px-4 py-3 font-mono font-bold tracking-wider text-green-800 shadow-sm">LINK {lineCode}<span className="ml-2 font-sans text-[10px] font-normal text-neutral-400">แตะเพื่อคัดลอก · หมดอายุใน 10 นาที</span></button>}
               </div>
             </div>
           )}
@@ -732,7 +739,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-8">
           {step > 0 && step < 3 ? <button onClick={() => setStep((value) => value - 1)} className="flex items-center gap-2 px-2 py-3 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />ย้อนกลับ</button> : <span />}
-          {step < 2 && <button onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
+          {step < 2 && <button disabled={step === 1 && payPlan === "installment" && !lineLinked} onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
           {step === 2 && (
             <button
               disabled={!slipFile || !activeInstallment || checkingSlip || qrLoading}
