@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import {
   BookOpen, Users, Clock, QrCode, Copy, X, Check,
@@ -69,7 +70,7 @@ const MOCK_BANK = [
 // ─── xlsx template download ──────────────────────────────────────────────────
 
 const downloadXlsxTemplate = () => {
-  const headers = ["question","option_a","option_b","option_c","option_d","correct_answer","score","level","category"];
+  const headers = ["question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category"];
   const sample = [
     { question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต" },
     { question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ" },
@@ -77,23 +78,23 @@ const downloadXlsxTemplate = () => {
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...sample.map((r) => headers.map((h) => r[h]))];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws["!cols"] = [{ wch: 60 },{ wch: 28 },{ wch: 28 },{ wch: 28 },{ wch: 28 },{ wch: 16 },{ wch: 8 },{ wch: 12 },{ wch: 18 }];
+  ws["!cols"] = [{ wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }];
   const instr = [
-    ["📋 คำอธิบาย Template ข้อสอบ"],[],
-    ["คอลัมน์","คำอธิบาย","ค่าที่รองรับ","บังคับ?"],
-    ["question","โจทย์ข้อสอบ","ข้อความ (รองรับ LaTeX เช่น $x^2$)","✅ บังคับ"],
-    ["option_a","ตัวเลือก A","ข้อความ","✅ บังคับ"],
-    ["option_b","ตัวเลือก B","ข้อความ","✅ บังคับ"],
-    ["option_c","ตัวเลือก C","ข้อความ","✅ บังคับ"],
-    ["option_d","ตัวเลือก D","ข้อความ","✅ บังคับ"],
-    ["correct_answer","เฉลย","A, B, C หรือ D (ตัวพิมพ์ใหญ่)","✅ บังคับ"],
-    ["score","คะแนนต่อข้อ","ตัวเลข เช่น 1, 2, 3 …","ไม่บังคับ (default = 1)"],
-    ["level","ระดับความยาก","ง่าย / ปานกลาง / ยาก","ไม่บังคับ (default = ปานกลาง)"],
-    ["category","หมวดหมู่","ข้อความใดก็ได้ เช่น พีชคณิต","ไม่บังคับ"],
-    [],[],["• ห้ามลบแถวหัวตาราง"],["• correct_answer ต้องเป็น A B C D เท่านั้น"],
+    ["📋 คำอธิบาย Template ข้อสอบ"], [],
+    ["คอลัมน์", "คำอธิบาย", "ค่าที่รองรับ", "บังคับ?"],
+    ["question", "โจทย์ข้อสอบ", "ข้อความ (รองรับ LaTeX เช่น $x^2$)", "✅ บังคับ"],
+    ["option_a", "ตัวเลือก A", "ข้อความ", "✅ บังคับ"],
+    ["option_b", "ตัวเลือก B", "ข้อความ", "✅ บังคับ"],
+    ["option_c", "ตัวเลือก C", "ข้อความ", "✅ บังคับ"],
+    ["option_d", "ตัวเลือก D", "ข้อความ", "✅ บังคับ"],
+    ["correct_answer", "เฉลย", "A, B, C หรือ D (ตัวพิมพ์ใหญ่)", "✅ บังคับ"],
+    ["score", "คะแนนต่อข้อ", "ตัวเลข เช่น 1, 2, 3 …", "ไม่บังคับ (default = 1)"],
+    ["level", "ระดับความยาก", "ง่าย / ปานกลาง / ยาก", "ไม่บังคับ (default = ปานกลาง)"],
+    ["category", "หมวดหมู่", "ข้อความใดก็ได้ เช่น พีชคณิต", "ไม่บังคับ"],
+    [], [], ["• ห้ามลบแถวหัวตาราง"], ["• correct_answer ต้องเป็น A B C D เท่านั้น"],
   ];
   const ws2 = XLSX.utils.aoa_to_sheet(instr);
-  ws2["!cols"] = [{ wch: 20 },{ wch: 40 },{ wch: 36 },{ wch: 14 }];
+  ws2["!cols"] = [{ wch: 20 }, { wch: 40 }, { wch: 36 }, { wch: 14 }];
   XLSX.utils.book_append_sheet(wb, ws, "Template");
   XLSX.utils.book_append_sheet(wb, ws2, "คำอธิบาย");
   XLSX.writeFile(wb, "exam_template.xlsx");
@@ -118,7 +119,7 @@ const parseXlsx = (file) =>
             options: [String(r.option_a || ""), String(r.option_b || ""), String(r.option_c || ""), String(r.option_d || "")],
             correct: OPTION_MAP[String(r.correct_answer || "").toUpperCase()] ?? null,
             score: Number(r.score) || 1,
-            level: ["ง่าย","ปานกลาง","ยาก"].includes(r.level) ? r.level : "ปานกลาง",
+            level: ["ง่าย", "ปานกลาง", "ยาก"].includes(r.level) ? r.level : "ปานกลาง",
             category: String(r.category || ""),
           }));
         resolve(parsed);
@@ -439,7 +440,7 @@ function QuestionBankModal({ show, onClose }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-100">
-                {["#","โจทย์","หมวด","ระดับ","ใช้แล้ว",""].map((h) => (
+                {["#", "โจทย์", "หมวด", "ระดับ", "ใช้แล้ว", ""].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
                 ))}
               </tr>
@@ -539,7 +540,7 @@ function DetailModal({ show, onClose, exam, students }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-neutral-50 border-b border-neutral-100">
-                {["#","ชื่อนักเรียน","เริ่มสอบ","ส่งข้อสอบ","ใช้เวลา","คะแนน","สถานะ"].map((h) => (
+                {["#", "ชื่อนักเรียน", "เริ่มสอบ", "ส่งข้อสอบ", "ใช้เวลา", "คะแนน", "สถานะ"].map((h) => (
                   <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
                 ))}
               </tr>
@@ -600,7 +601,7 @@ function ConfirmCloseModal({ show, onClose, onConfirm, examName }) {
 // ─── Exam Preview Modal ──────────────────────────────────────────────────────
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
-const OPTION_COLORS = ["bg-blue-50 border-blue-200 text-blue-800","bg-violet-50 border-violet-200 text-violet-800","bg-amber-50 border-amber-200 text-amber-800","bg-pink-50 border-pink-200 text-pink-800"];
+const OPTION_COLORS = ["bg-blue-50 border-blue-200 text-blue-800", "bg-violet-50 border-violet-200 text-violet-800", "bg-amber-50 border-amber-200 text-amber-800", "bg-pink-50 border-pink-200 text-pink-800"];
 
 function ExamPreviewModal({ show, onClose, exam, onEdit }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -619,7 +620,7 @@ function ExamPreviewModal({ show, onClose, exam, onEdit }) {
   const current = filtered[activeIdx] || null;
   const totalScore = questions.reduce((s, q) => s + (q.score || 1), 0);
   const issues = questions.filter((q) => !q.text?.trim() || q.options?.some((o) => !o.trim()) || q.correct === null);
-  const levelStats = ["ง่าย","ปานกลาง","ยาก"].map((lv) => ({ level: lv, count: questions.filter((q) => q.level === lv).length }));
+  const levelStats = ["ง่าย", "ปานกลาง", "ยาก"].map((lv) => ({ level: lv, count: questions.filter((q) => q.level === lv).length }));
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -689,7 +690,7 @@ function ExamPreviewModal({ show, onClose, exam, onEdit }) {
                 <input type="text" value={search} onChange={(e) => { setSearch(e.target.value); setActiveIdx(0); }} placeholder="ค้นหาโจทย์…" className="w-full pl-8 pr-3 py-2 text-xs border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300" />
               </div>
               <div className="flex gap-1 flex-wrap">
-                {["ทั้งหมด","ง่าย","ปานกลาง","ยาก"].map((lv) => (
+                {["ทั้งหมด", "ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
                   <button key={lv} onClick={() => { setFilterLevel(lv); setActiveIdx(0); }} className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition ${filterLevel === lv ? "bg-orange-500 text-white border-orange-500" : "bg-white border-neutral-200 text-neutral-600 hover:border-orange-200"}`}>{lv}</button>
                 ))}
               </div>
@@ -954,7 +955,7 @@ function QuestionEditorModal({ show, onClose, exam, onSaveQuestions }) {
               <div>
                 <label className="block text-xs font-semibold text-neutral-600 mb-1.5">ระดับความยาก</label>
                 <div className="flex gap-1">
-                  {["ง่าย","ปานกลาง","ยาก"].map((lv) => (
+                  {["ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
                     <button key={lv} onClick={() => patchCurrent({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${current.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-neutral-200 text-neutral-500 hover:border-neutral-300"}`}>{lv}</button>
                   ))}
                 </div>
@@ -992,21 +993,21 @@ function QuestionEditorModal({ show, onClose, exam, onSaveQuestions }) {
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 
 const MOCK_QUESTIONS_DEMO = [
-  { id: 101, text: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่าไร", options: ["x = 1 หรือ x = 6","x = 2 หรือ x = 3","x = −2 หรือ x = −3","x = 0 หรือ x = 5"], correct: 1, score: 1, level: "ง่าย", category: "พีชคณิต" },
-  { id: 102, text: "หาค่า sin 30° + cos 60°", options: ["0","0.5","1","√2"], correct: 2, score: 1, level: "ง่าย", category: "ตรีโกณมิติ" },
-  { id: 103, text: "พื้นที่วงกลมรัศมี 7 ซม. เท่ากับเท่าไร (π = 22/7)", options: ["144 ตร.ซม.","154 ตร.ซม.","164 ตร.ซม.","174 ตร.ซม."], correct: 1, score: 2, level: "ปานกลาง", category: "เรขาคณิต" },
-  { id: 104, text: "ถ้า log₂ 8 = x แล้ว x = ?", options: ["2","3","4","8"], correct: 1, score: 2, level: "ยาก", category: "ลอการิทึม" },
-  { id: 105, text: "ลำดับเลขคณิต 2, 5, 8, 11 … พจน์ที่ 20 คือเท่าไร", options: ["56","59","62","65"], correct: 1, score: 2, level: "ปานกลาง", category: "ลำดับและอนุกรม" },
+  { id: 101, text: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่าไร", options: ["x = 1 หรือ x = 6", "x = 2 หรือ x = 3", "x = −2 หรือ x = −3", "x = 0 หรือ x = 5"], correct: 1, score: 1, level: "ง่าย", category: "พีชคณิต" },
+  { id: 102, text: "หาค่า sin 30° + cos 60°", options: ["0", "0.5", "1", "√2"], correct: 2, score: 1, level: "ง่าย", category: "ตรีโกณมิติ" },
+  { id: 103, text: "พื้นที่วงกลมรัศมี 7 ซม. เท่ากับเท่าไร (π = 22/7)", options: ["144 ตร.ซม.", "154 ตร.ซม.", "164 ตร.ซม.", "174 ตร.ซม."], correct: 1, score: 2, level: "ปานกลาง", category: "เรขาคณิต" },
+  { id: 104, text: "ถ้า log₂ 8 = x แล้ว x = ?", options: ["2", "3", "4", "8"], correct: 1, score: 2, level: "ยาก", category: "ลอการิทึม" },
+  { id: 105, text: "ลำดับเลขคณิต 2, 5, 8, 11 … พจน์ที่ 20 คือเท่าไร", options: ["56", "59", "62", "65"], correct: 1, score: 2, level: "ปานกลาง", category: "ลำดับและอนุกรม" },
 ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function TutorExamManagement() {
-  const [exams, setExams] = useState([
-    { id: 1, type: "pre-test", name: "Pre-test บทที่ 1 — จำนวนจริง", fullName: "สอบก่อนเรียน", status: "inactive", totalQuestions: 5, duration: 30, questions: MOCK_QUESTIONS_DEMO },
-    { id: 2, type: "mid-test", name: "Mid-test ครั้งที่ 1", fullName: "สอบกลางเทอม", status: "active", sessionId: "MID7X2A", startTime: new Date(), totalQuestions: 30, duration: 90, questions: [] },
-    { id: 3, type: "post-test", name: "Post-test ปลายภาค", fullName: "สอบหลังเรียน", status: "closed", sessionId: null, startTime: null, totalQuestions: 40, duration: 120, questions: [] },
-  ]);
+  const [searchParams] = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const subjectId = searchParams.get("subjectId");
+  const courseName = searchParams.get("courseName") || "";
+  const subjectName = searchParams.get("subjectName") || "";
 
   const [studentProgress, setStudentProgress] = useState(MOCK_STUDENTS);
   const [timer, setTimer] = useState(0);
@@ -1086,19 +1087,32 @@ export default function TutorExamManagement() {
 
   return (
     <div className="space-y-6 mt-[90px]">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm">
-        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">คอร์ส</Link>
+      {/* Breadcrumb — เพิ่มชั้น subject */}
+      <div className="flex items-center text-sm flex-wrap gap-y-1">
+        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">
+          คอร์ส
+        </Link>
         <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <span className="font-medium text-gray-800">จัดการการสอบ</span>
+        <Link
+          to={`/tutor/exam-subjects?courseId=${courseId}&courseName=${encodeURIComponent(courseName)}`}
+          className="font-medium text-gray-500 hover:text-orange-600 transition"
+        >
+          {courseName || "คอร์ส"}
+        </Link>
+        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
+        <span className="font-medium text-gray-800">{subjectName || "จัดการการสอบ"}</span>
       </div>
 
-      {/* Header — ตัด Template .xlsx และ Analytics รวม ออก */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">จัดการการสอบ</h1>
-          <p className="text-sm text-neutral-500 mt-1">คณิตศาสตร์ ม.3 เทอม 1/2567 • นักเรียนทั้งหมด 24 คน</p>
+          <h1 className="text-2xl font-bold text-neutral-900">
+            จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            {courseName} {subjectName ? `• ${subjectName}` : ""}
+          </p>
         </div>
+
         <div className="flex gap-2">
           <button onClick={() => setShowBank(true)} className="flex items-center gap-2 border border-neutral-200 bg-white rounded-xl px-4 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 transition">
             <Database className="h-4 w-4" /> คลังข้อสอบ
@@ -1112,7 +1126,7 @@ export default function TutorExamManagement() {
       {/* Exam Table */}
       <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
         <div className="grid grid-cols-[30%_10%_13%_13%_10%_24%] px-5 py-3 bg-neutral-50 border-b border-neutral-100">
-          {["ชื่อการสอบ","ประเภท","จำนวนข้อ / เวลา","นักเรียน","สถานะ","การจัดการ"].map((h) => (
+          {["ชื่อการสอบ", "ประเภท", "จำนวนข้อ / เวลา", "นักเรียน", "สถานะ", "การจัดการ"].map((h) => (
             <p key={h} className="text-xs font-semibold text-neutral-500 text-right">{h}</p>
           ))}
         </div>

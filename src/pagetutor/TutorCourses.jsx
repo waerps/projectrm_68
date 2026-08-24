@@ -264,7 +264,7 @@ export default function CoursesPage() {
                   </Link>
 
                   <Link
-                    to={`/tutor/exam?courseId=${course.id}&subjectId=${course.subjectId}&courseName=${course.name}&subjectName=${course.subjectName}`}
+                    to={`/tutor/exam-subjects?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`}
                     className="flex-1 bg-blue-50 text-blue-600 border-2 border-blue-100 rounded-xl py-2.5 hover:bg-blue-100 hover:border-blue-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                   >
                     <FileText className="h-4 w-4" /> จัดการข้อสอบ

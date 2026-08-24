@@ -48,6 +48,7 @@ import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
+import TutorExamSubjectSelection from "./pages/TutorExamSubjectSelection";
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -131,6 +132,7 @@ const router = createBrowserRouter(
             { path: "exam", element: <TutorExam /> },
             { path: "examanalytics", element: <TutorExamAnalytics /> },
             { path: "manage", element: <TutorManage /> },
+            { path: "exam-subjects", element: <TutorExamSubjectSelection />},
           ],
         },
 
