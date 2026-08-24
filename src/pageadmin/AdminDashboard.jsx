@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -32,9 +32,9 @@ const T = {
 };
 
 const SEVERITY_STYLE = {
-  danger: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", icon: AlertTriangle, iconColor: "text-red-500" },
-  warning: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: AlertCircle, iconColor: "text-amber-500" },
-  info: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: Info, iconColor: "text-blue-500" },
+  danger: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", icon: AlertTriangle, iconColor: "text-red-500", rank: 0 },
+  warning: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", icon: AlertCircle, iconColor: "text-amber-500", rank: 1 },
+  info: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", icon: Info, iconColor: "text-blue-500", rank: 2 },
 };
 
 // สีสำหรับ Donut Chart — โทนเดียวกับระบบ (orange เป็นสีหลัก) พร้อมคู่สี light สำหรับทำ gradient/ความลึก
@@ -94,24 +94,33 @@ function SectionCard({ title, icon: Icon, action, children, className = "" }) {
   );
 }
 
-// ─── KPICard — สไตล์เดียวกับ Stats Card ของ AdminStudent / AdminTutors (ไอคอนกล่องสีด้านซ้าย + ตัวเลขด้านขวา) ──
-function KPICard({ label, value, sub, icon: Icon, colorClass = "bg-orange-500" }) {
+// ─── KPICard v2 — Executive style: ตัวเลขหลักใหญ่ + context สั้น ๆ แทน icon กล่องใหญ่ ───
+function KPICard({ label, value, trend, trendUp, sub, icon: Icon, accent = "text-orange-500" }) {
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-      <div className={`h-12 w-12 rounded-xl ${colorClass} flex items-center justify-center shrink-0`}>
-        {Icon && <Icon className="h-6 w-6 text-white" />}
+    <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+      <div className="flex items-start justify-between">
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
+        {Icon && <Icon className={`h-4 w-4 ${accent}`} />}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-black text-slate-900 truncate">{value}</p>
-        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
-      </div>
+      <p className="text-[26px] leading-tight font-black text-slate-900 mt-2 tracking-tight">{value}</p>
+      {trend && (
+        <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1 ${trendUp ? "text-emerald-600" : "text-red-500"}`}>
+          {trendUp ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+          {trend}
+        </p>
+      )}
+      {sub && !trend && <p className="text-xs font-medium text-slate-400 mt-1.5">{sub}</p>}
     </div>
   );
 }
 
-function EmptyMini({ text }) {
-  return <p className="text-xs text-slate-400 text-center py-6">{text}</p>;
+function EmptyMini({ text, hint }) {
+  return (
+    <div className="text-center py-8">
+      <p className="text-xs text-slate-400">{text}</p>
+      {hint && <p className="text-[11px] text-slate-300 mt-1">{hint}</p>}
+    </div>
+  );
 }
 
 function MiniPersonRow({ photo, name, sub, tone = "slate" }) {
@@ -137,16 +146,40 @@ function MiniPersonRow({ photo, name, sub, tone = "slate" }) {
   );
 }
 
-/* ─── Action Center ────────────────────────────────────────────────────── */
+// ─── Inline KPI row เล็ก ๆ ใช้แทนกล่อง 3 กล่องใหญ่ใน Card นักเรียน/ติวเตอร์ ───
+function InlineStat({ label, value, tone = "slate" }) {
+  const toneCls = {
+    slate: "text-slate-800",
+    emerald: "text-emerald-600",
+    amber: "text-amber-600",
+  }[tone];
+  return (
+    <div className="flex-1 text-center">
+      <p className={`text-lg font-bold ${toneCls}`}>{value}</p>
+      <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+/* ─── Action Center — กะทัดรัด: Summary + แสดงเฉพาะรายการสำคัญสุด 3–4 รายการ ───────── */
 function ActionCenter({ items, loading, error, onRetry, readIds, onMarkRead, onNavigate }) {
+  const sorted = useMemo(() => {
+    return [...items].sort((a, b) => {
+      const ra = SEVERITY_STYLE[a.severity]?.rank ?? 3;
+      const rb = SEVERITY_STYLE[b.severity]?.rank ?? 3;
+      return ra - rb;
+    });
+  }, [items]);
+  const visible = sorted.slice(0, 4);
+
   if (loading) return <SkeletonGrid count={3} />;
   if (error) return <ErrorState message={error} onRetry={onRetry} />;
 
   if (items.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-emerald-200 shadow-sm p-5 flex items-center gap-3 bg-emerald-50/60">
-        <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-          <Sparkles className="h-5 w-5 text-emerald-600" />
+      <div className="bg-emerald-50/60 rounded-2xl border border-emerald-200 shadow-sm px-4 py-3 flex items-center gap-3">
+        <div className="h-9 w-9 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+          <Sparkles className="h-4.5 w-4.5 text-emerald-600" />
         </div>
         <div>
           <p className="text-sm font-bold text-emerald-800">ไม่มีรายการที่ต้องจัดการตอนนี้</p>
@@ -157,34 +190,45 @@ function ActionCenter({ items, loading, error, onRetry, readIds, onMarkRead, onN
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-      {items.map((item) => {
-        const s = SEVERITY_STYLE[item.severity] || SEVERITY_STYLE.info;
-        const Icon = s.icon;
-        const isUnread = !readIds.includes(item.id);
-        return (
-          <button
-            key={item.id}
-            onClick={() => { onMarkRead(item.id); onNavigate(item.link); }}
-            className={`text-left flex items-start gap-3 p-4 rounded-2xl border ${s.bg} ${s.border} hover:shadow-md ${T.transition} relative`}
-          >
-            {isUnread && <span className="absolute top-3 right-3 h-2 w-2 rounded-full bg-red-500" />}
-            <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${s.iconColor}`} />
-            <div className="min-w-0 flex-1">
-              <p className={`text-sm font-bold ${s.text}`}>{item.title}</p>
-              <p className="text-xs text-slate-600 mt-0.5 line-clamp-2">{item.message}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-slate-300 shrink-0 mt-0.5" />
-          </button>
-        );
-      })}
+    <div>
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-orange-500" />
+          <h2 className="text-sm font-bold text-slate-700">
+            ต้องจัดการ <span className="text-orange-600">{items.length}</span> รายการ
+          </h2>
+        </div>
+        {items.length > visible.length && (
+          <span className="text-[11px] text-slate-400">แสดง {visible.length} รายการสำคัญสุด</span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {visible.map((item) => {
+          const s = SEVERITY_STYLE[item.severity] || SEVERITY_STYLE.info;
+          const Icon = s.icon;
+          const isUnread = !readIds.includes(item.id);
+          return (
+            <button
+              key={item.id}
+              onClick={() => { onMarkRead(item.id); onNavigate(item.link); }}
+              className={`text-left flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border ${s.bg} ${s.border} hover:shadow-sm ${T.transition} relative`}
+            >
+              {isUnread && <span className="absolute top-2 right-2 h-1.5 w-1.5 rounded-full bg-red-500" />}
+              <Icon className={`h-4 w-4 shrink-0 ${s.iconColor}`} />
+              <div className="min-w-0 flex-1">
+                <p className={`text-xs font-bold ${s.text} truncate`}>{item.title}</p>
+                <p className="text-[11px] text-slate-500 truncate">{item.message}</p>
+              </div>
+              <ChevronRight className="h-3.5 w-3.5 text-slate-300 shrink-0" />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-/* ─── ★ ใหม่: Course Status Donut (3D-style) ──────────────────────────────
-   แนวคิด: ใช้ radial gradient ต่อชิ้น + drop-shadow บนตัว Pie + วงเงา (disc) เบลอวางไว้ด้านหลัง
-   เพื่อจำลองความหนา/ความลึกแบบ 3D โดยไม่ copy ภาพตัวอย่างแบบเป๊ะ ๆ
+/* ─── Course Status Donut (3D-style) — ตรงกลางแสดงยอดรวม, segment ที่มากสุดเน้นเล็กน้อย ─────
    ข้อมูล: สัดส่วนคอร์สตามสถานะ (courses.byStatus) — ตอบคำถาม
    "ตอนนี้คอร์สทั้งหมดแบ่งเป็นสถานะอะไรบ้าง" ซึ่งเป็นข้อมูลที่เจ้าของสถาบันต้องการเห็นภาพรวมมากที่สุด
 ─────────────────────────────────────────────────────────────────────── */
@@ -195,11 +239,14 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
       name: s.Status_Course_Name,
       value: Number(s.cnt),
       color: PIE_COLORS[i % PIE_COLORS.length],
-    }));
+    }))
+    .sort((a, b) => b.value - a.value);
 
   if (chartData.length === 0) {
     return <EmptyMini text="ยังไม่มีข้อมูลคอร์สในระบบ" />;
   }
+
+  const topValue = chartData[0]?.value ?? 0;
 
   return (
     <div className="flex flex-col md:flex-row items-center gap-6">
@@ -230,7 +277,8 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
               isAnimationActive={false}
             >
               {chartData.map((d, i) => (
-                <Cell key={i} fill={`url(#courseGrad-${i})`} />
+                // segment ที่มีสัดส่วนมากที่สุด "ยื่น" ออกมาเล็กน้อยด้วย padAngle/รัศมีที่มากกว่านิดหน่อย
+                <Cell key={i} fill={`url(#courseGrad-${i})`} style={d.value === topValue ? { filter: "drop-shadow(0 10px 10px rgba(15,23,42,0.32))" } : undefined} />
               ))}
             </Pie>
             <Tooltip
@@ -247,7 +295,7 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
 
       <div className="flex-1 w-full space-y-2.5">
         {chartData.map((d, i) => (
-          <div key={i} className="flex items-center justify-between text-sm">
+          <div key={i} className={`flex items-center justify-between text-sm ${d.value === topValue ? "font-semibold" : ""}`}>
             <div className="flex items-center gap-2 min-w-0">
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color.base }} />
               <span className="text-slate-600 truncate">{d.name}</span>
@@ -315,9 +363,8 @@ export default function AdminDashboard() {
       <div className="space-y-6 mt-[90px]">
         <Skeleton className="h-14 w-full" />
         <SkeletonGrid count={3} />
-        <SkeletonGrid count={6} />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Skeleton className="h-72" />
+        <SkeletonGrid count={3} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Skeleton className="h-72" />
           <Skeleton className="h-72" />
         </div>
@@ -349,6 +396,10 @@ export default function AdminDashboard() {
   const revenueUp = (kpi.revenueGrowthPct ?? 0) >= 0;
   const profitUp = (kpi.monthlyProfit ?? 0) >= 0;
 
+  // เตรียมข้อมูลกราฟการเงินให้เหลือแค่ "รายรับ vs รายจ่าย" (2 เส้นพอ) และเช็คว่ามีข้อมูลจริงหรือไม่
+  const financeTrend = finance.trend || [];
+  const hasRealFinanceData = financeTrend.some((d) => Number(d.revenue) > 0 || Number(d.expense) > 0);
+
   return (
     <div className="space-y-6 mt-[90px]">
       {/* ── Header ─────────────────────────────────────────────── */}
@@ -376,71 +427,68 @@ export default function AdminDashboard() {
         */}
       </div>
 
-      {/* ── Action Center ─────────────────────────────────────────── */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <Bell className="h-4 w-4 text-orange-500" />
-          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">สิ่งที่ต้องจัดการ</h2>
-        </div>
-        <ActionCenter
-          items={actionItems}
-          loading={false}
-          error={null}
-          onRetry={() => fetchData()}
-          readIds={readIds}
-          onMarkRead={markRead}
-          onNavigate={goTo}
-        />
-      </div>
+      {/* ── Action Center (กะทัดรัด) ─────────────────────────────── */}
+      <ActionCenter
+        items={actionItems}
+        loading={false}
+        error={null}
+        onRetry={() => fetchData()}
+        readIds={readIds}
+        onMarkRead={markRead}
+        onNavigate={goTo}
+      />
 
-      {/* ── KPI หลัก — เหลือเพียง 3 Cards ตามที่ร้องขอ ──────────────── */}
+      {/* ── KPI หลัก — Executive style: เลขใหญ่ + context สั้น ───────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KPICard
           label="รายรับเดือนนี้"
           value={formatMoney(kpi.monthlyRevenue)}
-          sub={`${revenueUp ? "+" : ""}${kpi.revenueGrowthPct ?? 0}% จากเดือนก่อน`}
-          icon={revenueUp ? TrendingUp : TrendingDown}
-          colorClass={revenueUp ? "bg-emerald-500" : "bg-red-500"}
+          trend={`${revenueUp ? "↑" : "↓"} ${Math.abs(kpi.revenueGrowthPct ?? 0)}% จากเดือนก่อน`}
+          trendUp={revenueUp}
+          icon={Wallet}
+          accent="text-emerald-500"
         />
         <KPICard
-          label="กำไรสุทธิเดือนนี้"
+          label="กำไรสุทธิ"
           value={formatMoney(kpi.monthlyProfit)}
           sub={kpi.profitMargin !== null ? `Margin ${kpi.profitMargin}%` : "ยังไม่มีข้อมูล"}
-          icon={Wallet}
-          colorClass={profitUp ? "bg-orange-500" : "bg-red-500"}
+          icon={TrendingUp}
+          accent={profitUp ? "text-orange-500" : "text-red-500"}
         />
         <KPICard
           label="ยอดค้างชำระ"
           value={formatMoney(kpi.outstandingAmount)}
           sub={`${kpi.outstandingCount ?? 0} รายการ`}
           icon={Clock}
-          colorClass={kpi.outstandingCount > 0 ? "bg-amber-500" : "bg-slate-400"}
+          accent={kpi.outstandingCount > 0 ? "text-amber-500" : "text-slate-400"}
         />
       </div>
 
-      {/* ── แนวโน้มการเงิน + สัดส่วนคอร์สตามสถานะ (3D Donut) ───────── */}
+      {/* ── แนวโน้มการเงิน (รายรับ vs รายจ่าย) + สัดส่วนคอร์สตามสถานะ (3D Donut) ─ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <SectionCard title="แนวโน้มการเงิน (6 เดือนล่าสุด)" icon={Wallet}
+        <SectionCard title="รายรับ vs รายจ่าย (6 เดือนล่าสุด)" icon={Wallet}
           action={
             <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
               ดูรายละเอียด <ChevronRight className="h-3 w-3" />
             </button>
           }
         >
-          {finance.trend && finance.trend.length > 0 ? (
+          {hasRealFinanceData ? (
             <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={finance.trend}>
+              <LineChart data={financeTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v) => formatMoney(v)} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-                <Line type="monotone" dataKey="revenue" name="รายรับ" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="expense" name="รายจ่าย" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="profit" name="กำไร" stroke="#f97316" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="revenue" name="รายรับ" stroke="#22c55e" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line type="monotone" dataKey="expense" name="รายจ่าย" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyMini text="ยังไม่มีข้อมูลรายรับ-รายจ่ายในช่วงนี้" />
+            <EmptyMini
+              text="ยังไม่มีข้อมูลทางการเงินเพียงพอสำหรับแสดงแนวโน้ม"
+              hint="เริ่มมีรายการเมื่อมีการบันทึกรายรับหรือรายจ่าย"
+            />
           )}
         </SectionCard>
 
@@ -455,55 +503,20 @@ export default function AdminDashboard() {
         </SectionCard>
       </div>
 
-      {/* ── คอร์ส / นักเรียน / ติวเตอร์ ───────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <SectionCard title="ภาพรวมคอร์ส" icon={BookOpen}
-          action={<button onClick={() => navigate("/admin/courses")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด <ChevronRight className="h-3 w-3" /></button>}
-        >
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            {courses.byStatus?.map((s) => (
-              <div key={s.Status_Course_Id} className="bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-                <p className="text-[11px] text-slate-500">{s.Status_Course_Name}</p>
-                <p className="text-lg font-bold text-slate-800">{s.cnt}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">คอร์สใกล้เต็ม</p>
-          {courses.nearFull && courses.nearFull.length > 0 ? (
-            <div className="space-y-1">
-              {courses.nearFull.map((c) => (
-                <div key={c.CourseID} className="flex items-center justify-between text-xs py-1">
-                  <span className="text-slate-700 truncate flex-1">{c.CourseName}</span>
-                  <span className="font-bold text-orange-600 shrink-0 ml-2">{c.EnrolledCount}/{c.MaxStudents}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyMini text="ยังไม่มีคอร์สที่ใกล้เต็ม" />
-          )}
-        </SectionCard>
-
+      {/* ── นักเรียน / ติวเตอร์ ───────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SectionCard title="ภาพรวมนักเรียน" icon={GraduationCap}
           action={<button onClick={() => navigate("/admin/students")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด <ChevronRight className="h-3 w-3" /></button>}
         >
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="bg-slate-50 rounded-xl px-2.5 py-2 border border-slate-100 text-center">
-              <p className="text-[10px] text-slate-500">ทั้งหมด</p>
-              <p className="text-base font-bold text-slate-800">{students.total ?? 0}</p>
-            </div>
-            <div className="bg-emerald-50 rounded-xl px-2.5 py-2 border border-emerald-100 text-center">
-              <p className="text-[10px] text-emerald-600">ลงทะเบียน</p>
-              <p className="text-base font-bold text-emerald-700">{students.enrolled ?? 0}</p>
-            </div>
-            <div className="bg-amber-50 rounded-xl px-2.5 py-2 border border-amber-100 text-center">
-              <p className="text-[10px] text-amber-600">เข้าเรียนเฉลี่ย</p>
-              <p className="text-base font-bold text-amber-700">{students.avgAttendanceRate !== null ? `${students.avgAttendanceRate}%` : "—"}</p>
-            </div>
+          <div className="flex items-center py-1 mb-3 border-b border-slate-50">
+            <InlineStat label="ทั้งหมด" value={students.total ?? 0} />
+            <InlineStat label="ลงทะเบียน" value={students.enrolled ?? 0} tone="emerald" />
+            <InlineStat label="เข้าเรียนเฉลี่ย" value={students.avgAttendanceRate !== null ? `${students.avgAttendanceRate}%` : "—"} tone="amber" />
           </div>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เข้าเรียนต่ำ)</p>
           {students.needsAttention && students.needsAttention.length > 0 ? (
             <div>
-              {students.needsAttention.map((s) => (
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เข้าเรียนต่ำ)</p>
+              {students.needsAttention.slice(0, 4).map((s) => (
                 <MiniPersonRow
                   key={s.UserId}
                   photo={s.Photo}
@@ -521,24 +534,15 @@ export default function AdminDashboard() {
         <SectionCard title="ภาพรวมติวเตอร์" icon={UserCheck}
           action={<button onClick={() => navigate("/admin/tutors")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด <ChevronRight className="h-3 w-3" /></button>}
         >
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="bg-slate-50 rounded-xl px-2.5 py-2 border border-slate-100 text-center">
-              <p className="text-[10px] text-slate-500">ทั้งหมด</p>
-              <p className="text-base font-bold text-slate-800">{tutors.total ?? 0}</p>
-            </div>
-            <div className="bg-emerald-50 rounded-xl px-2.5 py-2 border border-emerald-100 text-center">
-              <p className="text-[10px] text-emerald-600">กำลังสอน</p>
-              <p className="text-base font-bold text-emerald-700">{tutors.active ?? 0}</p>
-            </div>
-            <div className="bg-amber-50 rounded-xl px-2.5 py-2 border border-amber-100 text-center">
-              <p className="text-[10px] text-amber-600">เช็กอินเฉลี่ย</p>
-              <p className="text-base font-bold text-amber-700">{tutors.avgCheckinRate !== null ? `${tutors.avgCheckinRate}%` : "—"}</p>
-            </div>
+          <div className="flex items-center py-1 mb-3 border-b border-slate-50">
+            <InlineStat label="ทั้งหมด" value={tutors.total ?? 0} />
+            <InlineStat label="กำลังสอน" value={tutors.active ?? 0} tone="emerald" />
+            <InlineStat label="เช็กอินเฉลี่ย" value={tutors.avgCheckinRate !== null ? `${tutors.avgCheckinRate}%` : "—"} tone="amber" />
           </div>
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เช็กอินต่ำ)</p>
           {tutors.needsAttention && tutors.needsAttention.length > 0 ? (
             <div>
-              {tutors.needsAttention.map((t) => (
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เช็กอินต่ำ)</p>
+              {tutors.needsAttention.slice(0, 4).map((t) => (
                 <MiniPersonRow
                   key={t.AdminId}
                   photo={t.Photo}
@@ -554,7 +558,7 @@ export default function AdminDashboard() {
         </SectionCard>
       </div>
 
-      {/* ── ตารางเรียนวันนี้ / ห้องเรียน / คลังอุปกรณ์ (รวมใกล้หมด+หมดสต๊อกไว้การ์ดเดียว) ─── */}
+      {/* ── ตารางเรียนวันนี้ / ห้องเรียน / คลังอุปกรณ์ ───────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SectionCard title="ตารางเรียนวันนี้" icon={Calendar}
           action={<button onClick={() => navigate("/admin/schedule")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูตารางเต็ม <ChevronRight className="h-3 w-3" /></button>}
@@ -605,21 +609,19 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
 
-        {/* ★ แก้: รวม "อุปกรณ์ใกล้หมด" และ "อุปกรณ์หมดสต๊อก" ไว้ในการ์ดเดียว (2 บรรทัดสถานะ) แทนการแยก 2 การ์ด */}
+        {/* Resource Summary — นิยามชัดเจน: "อุปกรณ์ทั้งหมด" คือผลรวมของ พร้อมใช้/ใกล้หมด/หมดสต๊อก */}
         <SectionCard title="คลังอุปกรณ์" icon={Boxes}
           action={<button onClick={() => navigate("/admin/common-facilities")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูทั้งหมด <ChevronRight className="h-3 w-3" /></button>}
         >
-          <div className="grid grid-cols-2 gap-2 mb-3">
-            <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 text-center">
-              <p className="text-[10px] text-slate-500">ทั้งหมด</p>
-              <p className="text-base font-bold text-slate-800">{facilities.total ?? 0}</p>
-            </div>
-            <div className="bg-emerald-50 rounded-xl px-3 py-2.5 border border-emerald-100 text-center">
-              <p className="text-[10px] text-emerald-600">พร้อมใช้งาน</p>
-              <p className="text-base font-bold text-emerald-700">{facilities.ready ?? 0}</p>
-            </div>
+          <div className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100 flex items-center justify-between mb-3">
+            <span className="text-xs text-slate-500">อุปกรณ์ทั้งหมด</span>
+            <span className="text-lg font-bold text-slate-800">{facilities.total ?? 0}</span>
           </div>
           <div className="space-y-1.5">
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border bg-emerald-50 border-emerald-100">
+              <span className="text-xs font-medium text-emerald-700">พร้อมใช้งาน</span>
+              <span className="text-sm font-bold text-emerald-700">{facilities.ready ?? 0}</span>
+            </div>
             <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${facilities.lowStock > 0 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100"}`}>
               <span className={`text-xs font-medium ${facilities.lowStock > 0 ? "text-amber-700" : "text-slate-500"}`}>ใกล้หมด</span>
               <span className={`text-sm font-bold ${facilities.lowStock > 0 ? "text-amber-700" : "text-slate-400"}`}>{facilities.lowStock ?? 0}</span>
