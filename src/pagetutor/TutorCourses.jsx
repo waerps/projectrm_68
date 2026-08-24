@@ -60,8 +60,10 @@ export default function CoursesPage() {
 
           return {
             id: course.CourseID,
-            subjectId: course.SubjectId, // เก็บ SubjectId ไว้ใช้งานต่อ
-            name: course.CourseName, // ชื่อนี้จะรวมชื่อวิชามาแล้ว เช่น "คอร์ส ป.3 (ภาษาไทย)"
+            subjectId: course.SubjectId,
+            name: course.SubjectName 
+              ? `${course.CourseName} (${course.SubjectName})` 
+              : course.CourseName,
             subjectName: course.SubjectName,
             startDate: course.StartDate
               ? new Date(course.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
