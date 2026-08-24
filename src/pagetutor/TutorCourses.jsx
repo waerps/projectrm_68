@@ -23,7 +23,7 @@ export default function CoursesPage() {
       navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
     } else if (action === "exam") {
       // ⚠️ ปรับ path ให้ตรงกับ route จริงของหน้า TutorExamManagement ในระบบ router ของคุณ
-      navigate(`/tutor/exammanagement?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+      navigate(`/tutor/exam?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
     }
   };
 
