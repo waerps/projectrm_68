@@ -1,13 +1,13 @@
 import { API_URL } from "../config";
-import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, X, ChevronRight, } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
   console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
-const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
-console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบรรทัดนี้ด้วย
+  const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+  console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบรรทัดนี้ด้วย
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -16,21 +16,21 @@ console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบ�
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
-const [subjectModal, setSubjectModal] = useState(null); // { course, action } | null
+  const [subjectModal, setSubjectModal] = useState(null); // { course, action } | null
 
-const navigateToAction = (course, subject, action) => {
-  if (action === "content") {
-    navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
-  }
-};
+  const navigateToAction = (course, subject, action) => {
+    if (action === "content") {
+      navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+    }
+  };
 
-const handleSubjectAction = (course, action) => {
-  if (course.subjects.length === 1) {
-    navigateToAction(course, course.subjects[0], action);
-  } else {
-    setSubjectModal({ course, action });
-  }
-};
+  const handleSubjectAction = (course, action) => {
+    if (course.subjects.length === 1) {
+      navigateToAction(course, course.subjects[0], action);
+    } else {
+      setSubjectModal({ course, action });
+    }
+  };
 
   // 1. ฟังก์ชันเช็คสถานะคอร์สจากวันที่
   const mapStatus = (statusId, startDate, lastDate) => {
@@ -68,46 +68,46 @@ const handleSubjectAction = (course, action) => {
         console.log("RAW API RESPONSE:", response.data); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
 
         // ✅ Group ตาม CourseID เพื่อรวมหลายวิชาไว้ใน Course เดียว
-const courseMap = new Map();
+        const courseMap = new Map();
 
-response.data.forEach(row => {
-  const statusInfo = mapStatus(row.Status_Course_Id, row.StartDate, row.LastDate);
-  const subjectTotalHours = Number(row.TotalHoursScheduled) || 0;
-  const subjectCompletedHours = Number(row.CompletedHours) || 0;
+        response.data.forEach(row => {
+          const statusInfo = mapStatus(row.Status_Course_Id, row.StartDate, row.LastDate);
+          const subjectTotalHours = Number(row.TotalHoursScheduled) || 0;
+          const subjectCompletedHours = Number(row.CompletedHours) || 0;
 
-  if (!courseMap.has(row.CourseID)) {
-    courseMap.set(row.CourseID, {
-      id: row.CourseID,
-      name: row.CourseName, // ไม่ต่อชื่อวิชาแล้ว
-      startDate: row.StartDate
-        ? new Date(row.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
-        : "ไม่ระบุ",
-      totalHours: 0,
-      completedHours: 0,
-      StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
-      VideoCount: 0,
-      FileCount: 0,
-      statusId: statusInfo.id,
-      statusText: statusInfo.text,
-      statusColor: statusInfo.colorClass,
-      subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
-    });
-  }
+          if (!courseMap.has(row.CourseID)) {
+            courseMap.set(row.CourseID, {
+              id: row.CourseID,
+              name: row.CourseName, // ไม่ต่อชื่อวิชาแล้ว
+              startDate: row.StartDate
+                ? new Date(row.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+                : "ไม่ระบุ",
+              totalHours: 0,
+              completedHours: 0,
+              StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
+              VideoCount: 0,
+              FileCount: 0,
+              statusId: statusInfo.id,
+              statusText: statusInfo.text,
+              statusColor: statusInfo.colorClass,
+              subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
+            });
+          }
 
-  const c = courseMap.get(row.CourseID);
-  c.totalHours += subjectTotalHours;
-  c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
-  c.VideoCount += row.VideoCount || 0;
-  c.FileCount += row.FileCount || 0;
-  c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName });
-});
+          const c = courseMap.get(row.CourseID);
+          c.totalHours += subjectTotalHours;
+          c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
+          c.VideoCount += row.VideoCount || 0;
+          c.FileCount += row.FileCount || 0;
+          c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName });
+        });
 
-const formattedData = Array.from(courseMap.values()).map(c => ({
-  ...c,
-  progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
-}));
+        const formattedData = Array.from(courseMap.values()).map(c => ({
+          ...c,
+          progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
+        }));
 
-setCourses(formattedData);
+        setCourses(formattedData);
       } catch (error) {
         console.error("Error fetching courses:", error);
       } finally {
@@ -276,19 +276,19 @@ setCourses(formattedData);
 
                 {/* ✅ แก้ไขปุ่ม Action (ส่งชื่อคอร์สและวิชาไปใน URL ด้วย) */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
-                <Link
-  to={`/tutor/students?courseId=${course.id}`}
-  className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
->
-  <Users className="h-4 w-4 text-neutral-400" /> ดูนักเรียน
-</Link>
+                  <Link
+                    to={`/tutor/students?courseId=${course.id}`}
+                    className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
+                  >
+                    <Users className="h-4 w-4 text-neutral-400" /> ดูนักเรียน
+                  </Link>
 
-<button
-  onClick={() => handleSubjectAction(course, "content")}
-  className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
->
-  <FileText className="h-4 w-4" /> จัดการเนื้อหา
-</button>
+                  <button
+                    onClick={() => handleSubjectAction(course, "content")}
+                    className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                  >
+                    <FileText className="h-4 w-4" /> จัดการเนื้อหา
+                  </button>
 
                   <Link
                     to={`/tutor/exam-subjects?courseId=${course.id}&courseName=${encodeURIComponent(course.name)}`}
@@ -302,32 +302,114 @@ setCourses(formattedData);
           )}
         </div>
         {subjectModal && (
-  <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-      <h3 className="text-lg font-bold text-neutral-900 mb-1">เลือกวิชา</h3>
-      <p className="text-sm text-neutral-500 mb-4">
-        {subjectModal.course.name} — เลือกวิชาที่ต้องการจัดการเนื้อหา
-      </p>
-      <div className="space-y-2">
-        {subjectModal.course.subjects.map((subject) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    {/* Overlay */}
+    <div
+      className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
+      onClick={() => setSubjectModal(null)}
+    />
+
+    {/* Modal */}
+    <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+      
+      {/* Header */}
+      <div className="px-6 pt-6 pb-5 border-b border-neutral-100">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+              <BookOpen size={22} />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-neutral-900">
+                เลือกวิชา
+              </h3>
+              <p className="mt-0.5 text-xs text-neutral-500">
+                เลือกวิชาที่ต้องการจัดการ
+              </p>
+            </div>
+          </div>
+
+          {/* Close */}
           <button
-            key={subject.subjectId}
-            onClick={() => {
-              navigateToAction(subjectModal.course, subject, subjectModal.action);
-              setSubjectModal(null);
-            }}
-            className="w-full text-left px-4 py-3 rounded-xl border-2 border-neutral-200 hover:border-orange-400 hover:bg-orange-50 transition font-medium text-neutral-700"
+            onClick={() => setSubjectModal(null)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
           >
-            {subject.subjectName}
+            <X size={19} />
           </button>
-        ))}
+        </div>
+
+        {/* Course */}
+        <div className="mt-5 rounded-2xl bg-neutral-50 px-4 py-3">
+          <p className="text-xs font-medium text-neutral-500 mb-1">
+            คอร์ส
+          </p>
+          <p className="text-sm font-semibold text-neutral-800 leading-relaxed">
+            {subjectModal.course.name}
+          </p>
+        </div>
       </div>
-      <button
-        onClick={() => setSubjectModal(null)}
-        className="mt-4 w-full text-center py-2 text-sm text-neutral-500 hover:text-neutral-700"
-      >
-        ยกเลิก
-      </button>
+
+      {/* Subjects */}
+      <div className="px-6 py-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-neutral-800">
+            วิชาที่รับผิดชอบ
+          </p>
+
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
+            {subjectModal.course.subjects.length} วิชา
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
+          {subjectModal.course.subjects.map((subject, index) => (
+            <button
+              key={subject.subjectId}
+              onClick={() => {
+                navigateToAction(
+                  subjectModal.course,
+                  subject,
+                  subjectModal.action
+                );
+                setSubjectModal(null);
+              }}
+              className="group flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
+            >
+              {/* Number */}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+                {String(index + 1).padStart(2, "0")}
+              </div>
+
+              {/* Subject name */}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-neutral-800 group-hover:text-orange-700">
+                  {subject.subjectName}
+                </p>
+                <p className="mt-0.5 text-xs text-neutral-400">
+                  คลิกเพื่อจัดการวิชานี้
+                </p>
+              </div>
+
+              {/* Arrow */}
+              <ChevronRight
+                size={19}
+                className="shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-500"
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-neutral-100 bg-neutral-50/70 px-6 py-4">
+        <button
+          onClick={() => setSubjectModal(null)}
+          className="w-full rounded-xl py-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700"
+        >
+          ยกเลิก
+        </button>
+      </div>
     </div>
   </div>
 )}
