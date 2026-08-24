@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import * as XLSX from "xlsx";
+import axios from "axios";
+import { API_URL } from "../config";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -27,6 +29,15 @@ const EXAM_TYPES = [
   { value: "mid-test", label: "Mid-test", sub: "สอบกลางเทอม", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-400" },
   { value: "post-test", label: "Post-test", sub: "สอบหลังเรียน", color: "text-pink-700", bg: "bg-pink-50", border: "border-pink-400" },
 ];
+
+// จับคู่ชื่อประเภทจาก DB (ExamTypeName) กับ EXAM_TYPES/TYPE_BADGE ที่มีอยู่แล้ว
+const matchExamTypeMeta = (examTypeName = "") => {
+  const key = examTypeName.toLowerCase();
+  if (key.includes("pre")) return "pre-test";
+  if (key.includes("mid")) return "mid-test";
+  if (key.includes("post")) return "post-test";
+  return "mid-test"; // fallback
+};
 
 const TYPE_BADGE = {
   "pre-test": "bg-blue-50  text-blue-700",
@@ -380,6 +391,51 @@ function AddExamModal({ show, onClose, onAdd }) {
         </button>
         <button onClick={() => step < 3 ? setStep(step + 1) : handleSubmit()} disabled={!canProceed} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
           {step === 3 ? (form.addMethod === "manual" ? "สร้างและเพิ่มข้อสอบ →" : "สร้างการสอบ ✓") : "ถัดไป →"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function PrepareExamModal({ show, onClose, exam, onConfirm }) {
+  const [examName, setExamName] = useState("");
+  const [duration, setDuration] = useState(90);
+
+  useEffect(() => {
+    if (show && exam) {
+      setExamName(exam.name && exam.name !== exam.fullName ? exam.name : `${exam.fullName || ""}`);
+      setDuration(exam.duration || 90);
+    }
+  }, [show, exam?.examTypeId]);
+
+  if (!show || !exam) return null;
+
+  return (
+    <Modal show={show} onClose={onClose} title={`เตรียมข้อสอบ — ${exam.fullName || exam.name}`} maxWidth="max-w-md">
+      <div className="p-6 space-y-4">
+        <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-700 leading-relaxed">ตั้งชื่อและเวลาสอบไว้ล่วงหน้าได้ แล้วค่อยพิมพ์โจทย์ทีหลัง โดยยังไม่เปิดให้นักเรียนเข้าสอบจนกว่าจะกด "เปิดสอบ"</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">ชื่อการสอบ</label>
+          <input type="text" value={examName} onChange={(e) => setExamName(e.target.value)}
+            placeholder="เช่น Mid-test บทที่ 2 — สมการเชิงเส้น"
+            className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">ระยะเวลาสอบ (นาที)</label>
+          <input type="number" value={duration} onChange={(e) => setDuration(e.target.value)}
+            className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2 p-6 border-t border-neutral-100">
+        <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium px-4 py-2.5">ยกเลิก</button>
+        <button
+          onClick={() => onConfirm(exam, { examName, duration })}
+          className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+        >
+          บันทึกและเริ่มพิมพ์ข้อสอบ →
         </button>
       </div>
     </Modal>
@@ -819,6 +875,16 @@ const emptyQuestion = () => ({
   category: "",
 });
 
+const mapDbQuestions = (rows = []) => rows.map((q) => ({
+  id: q.QuestionId,
+  text: q.QuestionText,
+  options: [q.OptionA, q.OptionB, q.OptionC, q.OptionD],
+  correct: { A: 0, B: 1, C: 2, D: 3 }[q.CorrectAnswer] ?? null,
+  score: q.Score || 1,
+  level: q.Level || "ปานกลาง",
+  category: q.Category || "",
+}));
+
 function QuestionEditorModal({ show, onClose, exam, onSaveQuestions }) {
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -1008,10 +1074,60 @@ export default function TutorExamManagement() {
   const subjectId = searchParams.get("subjectId");
   const courseName = searchParams.get("courseName") || "";
   const subjectName = searchParams.get("subjectName") || "";
+  const adminId = JSON.parse(localStorage.getItem("user"))?.id;
 
   const [exams, setExams] = useState([]);
-  const [studentProgress, setStudentProgress] = useState(MOCK_STUDENTS);
+  const [loadingExams, setLoadingExams] = useState(true);
+  const [studentProgress, setStudentProgress] = useState([]);
   const [timer, setTimer] = useState(0);
+
+  // ── ดึงสถานะข้อสอบจริงจาก backend (pre/mid/post) ──
+  const fetchExamStatus = async () => {
+    if (!courseId || !subjectId || !adminId) { setLoadingExams(false); return; }
+    try {
+      const res = await axios.get(`${API_URL}/api/exam/status`, {
+        params: { courseId, subjectId, adminId },
+      });
+      const mapped = res.data.map((t) => ({
+        id: t.examId,                 // null ถ้ายังไม่เคยเตรียม/เปิดสอบ
+        examTypeId: t.examTypeId,
+        type: matchExamTypeMeta(t.name),
+        name: t.examName || t.name,   // ใช้ชื่อที่ติวเตอร์ตั้งเอง ถ้ายังไม่ตั้งค่อย fallback เป็นชื่อ type
+        fullName: t.description,
+        status: t.status,             // 'inactive' | 'active' | 'closed'
+        sessionId: t.sessionId,
+        startTime: t.openedAt ? new Date(t.openedAt) : null,
+        totalQuestions: t.totalQuestions || 0,
+        duration: t.duration || 0,
+        questions: [],
+      }));
+      setExams(mapped);
+    } catch (e) {
+      console.error("fetch exam status error:", e);
+    } finally {
+      setLoadingExams(false);
+    }
+  };
+
+  useEffect(() => { fetchExamStatus(); }, [courseId, subjectId, adminId]);
+
+  useEffect(() => {
+    const fetchAllQuestions = async () => {
+      const targets = exams.filter((e) => e.id);
+      if (targets.length === 0) return;
+      const results = await Promise.all(
+        targets.map((e) =>
+          axios.get(`${API_URL}/api/exam/${e.id}/questions`).then((r) => ({ id: e.id, data: r.data })).catch(() => null)
+        )
+      );
+      setExams((prev) => prev.map((e) => {
+        const found = results.find((r) => r && r.id === e.id);
+        if (!found) return e;
+        return { ...e, totalQuestions: found.data.total, questions: mapDbQuestions(found.data.questions) };
+      }));
+    };
+    fetchAllQuestions();
+  }, [exams.map((e) => e.id).join(",")]);
 
   const [showAdd, setShowAdd] = useState(false);
   const [showBank, setShowBank] = useState(false);
@@ -1021,6 +1137,8 @@ export default function TutorExamManagement() {
   const [showEditor, setShowEditor] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [activeId, setActiveId] = useState(null);
+  const [showPrepare, setShowPrepare] = useState(false);
+  const [preparingExam, setPreparingExam] = useState(null); // exam object ที่กำลังเตรียม
 
   const activeExam = exams.find((e) => e.id === activeId) || null;
 
@@ -1031,35 +1149,49 @@ export default function TutorExamManagement() {
     return () => clearInterval(iv);
   }, [exams]);
 
-  useEffect(() => {
-    if (!showQR) return;
-    const iv = setInterval(() => {
-      setStudentProgress((prev) => {
-        const waiting = prev.filter((s) => s.status === "not-joined");
-        if (waiting.length > 0 && Math.random() > 0.55) {
-          const pick = waiting[Math.floor(Math.random() * waiting.length)];
-          return prev.map((s) => s.id === pick.id ? { ...s, status: "joined", joinedAt: new Date().toLocaleTimeString("th-TH") } : s);
-        }
-        return prev;
-      });
-    }, 3000);
-    return () => clearInterval(iv);
-  }, [showQR]);
-
-  const handleOpenExam = (id) => {
-    const sid = generateSessionId();
-    setExams((prev) => prev.map((e) => e.id === id ? { ...e, status: "active", sessionId: sid, startTime: new Date() } : e));
-    setStudentProgress(MOCK_STUDENTS);
-    setTimer(0);
-    setActiveId(id);
-    setShowQR(true);
+  const fetchStudents = async (examId) => {
+    if (!examId) return;
+    try {
+      const res = await axios.get(`${API_URL}/api/exam/${examId}/students`);
+      setStudentProgress(res.data.students);
+    } catch (e) { console.error("fetch students error:", e); }
   };
 
-  const handleCloseExam = () => {
-    setExams((prev) => prev.map((e) => e.id === activeId ? { ...e, status: "closed" } : e));
-    setShowConfirm(false);
-    setShowQR(false);
-    setActiveId(null);
+  useEffect(() => {
+    if (!showQR && !showDetail) return;
+    const targetId = activeId;
+    fetchStudents(targetId);
+    const iv = setInterval(() => fetchStudents(targetId), 4000);
+    return () => clearInterval(iv);
+  }, [showQR, showDetail, activeId]);
+
+  const handleOpenExam = async (exam) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/exam/open`, {
+        courseId, subjectId, adminId, examTypeId: exam.examTypeId,
+      });
+      setExams((prev) => prev.map((e) => e.examTypeId === exam.examTypeId
+        ? { ...e, id: res.data.examId, status: "active", sessionId: res.data.sessionId, startTime: new Date() }
+        : e));
+      setActiveId(res.data.examId);
+      setShowQR(true);
+      fetchStudents(res.data.examId);
+    } catch (err) {
+      alert(err.response?.data?.message || "เปิดสอบไม่สำเร็จ");
+    }
+  };
+
+  const handleCloseExam = async () => {
+    try {
+      await axios.put(`${API_URL}/api/exam/close/${activeId}`);
+      setExams((prev) => prev.map((e) => e.id === activeId ? { ...e, status: "closed" } : e));
+    } catch (err) {
+      alert(err.response?.data?.message || "ปิดสอบไม่สำเร็จ");
+    } finally {
+      setShowConfirm(false);
+      setShowQR(false);
+      setActiveId(null);
+    }
   };
 
   const handleAddExam = (form) => {
@@ -1080,8 +1212,55 @@ export default function TutorExamManagement() {
     if (form.addMethod === "manual") { setActiveId(newId); setShowEditor(true); }
   };
 
-  const handleSaveQuestions = (examId, completedQuestions) => {
-    setExams((prev) => prev.map((e) => e.id === examId ? { ...e, totalQuestions: completedQuestions.length || e.totalQuestions, questions: completedQuestions } : e));
+  const handleSaveQuestions = async (examId, completedQuestions) => {
+    if (!examId) { alert("ต้องเปิดสอบก่อน ระบบถึงจะสร้างชุดข้อสอบให้บันทึกได้"); return; }
+    try {
+      // เอาเฉพาะข้อที่ยังไม่มี QuestionId จริงจาก DB (id เป็นเลขสุ่มจาก emptyQuestion) → เพิ่มใหม่แบบ bulk
+      const toCreate = completedQuestions.filter((q) => typeof q.id !== "number" || q.id > 1e12);
+      const toUpdate = completedQuestions.filter((q) => typeof q.id === "number" && q.id <= 1e12);
+
+      if (toCreate.length > 0) {
+        await axios.post(`${API_URL}/api/exam/${examId}/questions/bulk`, {
+          questions: toCreate.map((q) => ({
+            questionText: q.text,
+            optionA: q.options[0], optionB: q.options[1], optionC: q.options[2], optionD: q.options[3],
+            correctAnswer: ["A", "B", "C", "D"][q.correct],
+            score: q.score, level: q.level, category: q.category,
+          })),
+        });
+      }
+      await Promise.all(toUpdate.map((q) =>
+        axios.put(`${API_URL}/api/exam/${examId}/questions/${q.id}`, {
+          questionText: q.text,
+          optionA: q.options[0], optionB: q.options[1], optionC: q.options[2], optionD: q.options[3],
+          correctAnswer: ["A", "B", "C", "D"][q.correct],
+          score: q.score, level: q.level, category: q.category,
+        })
+      ));
+
+      const refreshed = await axios.get(`${API_URL}/api/exam/${examId}/questions`);
+      setExams((prev) => prev.map((e) => e.id === examId
+        ? { ...e, totalQuestions: refreshed.data.total, questions: mapDbQuestions(refreshed.data.questions) }
+        : e));
+    } catch (err) {
+      alert(err.response?.data?.message || "บันทึกข้อสอบไม่สำเร็จ");
+    }
+  };
+
+  const handlePrepareExam = async (exam, { examName, duration }) => {
+    try {
+      const res = await axios.post(`${API_URL}/api/exam/prepare`, {
+        courseId, subjectId, adminId, examTypeId: exam.examTypeId, examName, duration,
+      });
+      setExams((prev) => prev.map((e) => e.examTypeId === exam.examTypeId
+        ? { ...e, id: res.data.examId, name: examName || e.name, duration: Number(duration) || e.duration }
+        : e));
+      setShowPrepare(false);
+      setActiveId(res.data.examId);
+      setShowEditor(true); // เปิด editor ทันทีเพื่อเริ่มพิมพ์ข้อสอบ
+    } catch (err) {
+      alert(err.response?.data?.message || "เตรียมข้อสอบไม่สำเร็จ");
+    }
   };
 
   const joinedCount = studentProgress.filter((s) => s.status === "joined").length;
@@ -1093,7 +1272,7 @@ export default function TutorExamManagement() {
         <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">
           คอร์ส
         </Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
+        {/* <ChevronRight className="mx-2 h-4 w-4 text-gray-400" /> */}
         {/* <Link
           to={`/tutor/exam-subjects?courseId=${courseId}&courseName=${encodeURIComponent(courseName)}`}
           className="font-medium text-gray-500 hover:text-orange-600 transition"
@@ -1189,17 +1368,25 @@ export default function TutorExamManagement() {
                 {exam.status === "inactive" && (
                   <>
                     <button
-                      onClick={() => handleOpenExam(exam.id)}
+                      onClick={() => handleOpenExam(exam)}
                       className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
                     >
                       <Play className="h-3 w-3" /> เปิดสอบ
                     </button>
                     <button
-                      onClick={() => { setActiveId(exam.id); setShowEditor(true); }}
-                      className="flex items-center gap-1.5 border border-orange-200 hover:bg-orange-50 text-orange-600 rounded-lg px-3 py-1.5 text-xs font-semibold transition"
-                    >
-                      <FileQuestion className="h-3 w-3" /> ข้อสอบ{qCount > 0 ? ` (${qCount})` : ""}
-                    </button>
+  onClick={() => {
+    if (exam.id) {
+      setActiveId(exam.id);
+      setShowEditor(true);
+    } else {
+      setPreparingExam(exam);
+      setShowPrepare(true);
+    }
+  }}
+  className="flex items-center gap-1.5 border border-orange-200 hover:bg-orange-50 text-orange-600 rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+>
+  <FileQuestion className="h-3 w-3" /> ข้อสอบ{qCount > 0 ? ` (${qCount})` : ""}
+</button>
                     {/* Preview เฉพาะตอนมีข้อสอบแล้ว */}
                     {qCount > 0 && (
                       <button
@@ -1259,7 +1446,7 @@ export default function TutorExamManagement() {
       </div>
 
       {/* Modals */}
-      <AddExamModal show={showAdd} onClose={() => setShowAdd(false)} onAdd={handleAddExam} />
+      <PrepareExamModal show={showPrepare} onClose={() => { setShowPrepare(false); setPreparingExam(null); }} exam={preparingExam} onConfirm={handlePrepareExam} />
       <QuestionBankModal show={showBank} onClose={() => setShowBank(false)} />
       <QRModal show={showQR} onClose={() => setShowQR(false)} exam={activeExam} />
       <DetailModal show={showDetail} onClose={() => setShowDetail(false)} exam={activeExam} students={studentProgress} />
