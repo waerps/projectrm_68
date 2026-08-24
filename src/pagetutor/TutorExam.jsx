@@ -1009,6 +1009,7 @@ export default function TutorExamManagement() {
   const courseName = searchParams.get("courseName") || "";
   const subjectName = searchParams.get("subjectName") || "";
 
+  const [exams, setExams] = useState([]);
   const [studentProgress, setStudentProgress] = useState(MOCK_STUDENTS);
   const [timer, setTimer] = useState(0);
 
