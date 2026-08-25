@@ -9,11 +9,41 @@ import {
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
+// ─── Shared page shell ───────────────────────────────────────────────────────
+// Single source of truth for top spacing/positioning across every phase
+// (loading / landing / running / result / error), so switching phases never
+// causes the page content to jump up/down.
+function PageShell({ maxWidth = "max-w-md", children }) {
+  return (
+    <div className={`${maxWidth} mx-auto mt-24 px-4`}>
+      {children}
+    </div>
+  );
+}
+
+// ─── Loading skeleton ────────────────────────────────────────────────────────
+// Mirrors LandingCard's shape/height so there's no layout jump when the real
+// landing card replaces it.
+function LoadingSkeleton() {
+  return (
+    <PageShell maxWidth="max-w-md">
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4 animate-pulse">
+        <div className="h-5 w-2/3 bg-neutral-200 rounded mx-auto" />
+        <div className="flex justify-center gap-6">
+          <div className="h-4 w-16 bg-neutral-200 rounded" />
+          <div className="h-4 w-10 bg-neutral-200 rounded" />
+        </div>
+        <div className="h-11 w-full bg-neutral-200 rounded-xl" />
+      </div>
+    </PageShell>
+  );
+}
+
 // ─── Landing screen (before starting / resuming) ────────────────────────────
 
 function LandingCard({ status, exam, onStart, starting }) {
   return (
-    <div className="max-w-md mx-auto mt-24 bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
+    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
       <h1 className="text-lg font-bold text-neutral-900">{exam.name}</h1>
       <div className="flex justify-center gap-6 text-sm text-neutral-600">
         <div className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-neutral-400" />{exam.duration} นาที</div>
@@ -32,6 +62,18 @@ function LandingCard({ status, exam, onStart, starting }) {
       >
         {starting ? "กำลังเข้าสู่ห้องสอบ…" : status === "in-progress" ? "ทำข้อสอบต่อ" : "เริ่มทำข้อสอบ"}
       </button>
+    </div>
+  );
+}
+
+// ─── Empty questions guard ───────────────────────────────────────────────────
+
+function NoQuestionsNotice() {
+  return (
+    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-3">
+      <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
+      <p className="text-sm font-semibold text-neutral-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
+      <p className="text-xs text-neutral-400">กรุณาติดต่อผู้สอนของคุณ</p>
     </div>
   );
 }
@@ -71,10 +113,11 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
 
   // Countdown — auto-submits the moment time runs out.
   useEffect(() => {
+    if (questions.length === 0) return; // nothing to time if there's no exam content
     if (remainingSec <= 0) { doSubmit(); return; }
     const iv = setInterval(() => setRemainingSec((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(iv);
-  }, [remainingSec, doSubmit]);
+  }, [remainingSec, doSubmit, questions.length]);
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
@@ -83,10 +126,16 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
     });
   };
 
+  // Guard: exam has no questions at all — show a clear message instead of
+  // crashing on current.text (current would be undefined).
+  if (questions.length === 0 || !current) {
+    return <NoQuestionsNotice />;
+  }
+
   const lowTime = remainingSec <= 60;
 
   return (
-    <div className="max-w-2xl mx-auto mt-8 space-y-4 px-4">
+    <div className="space-y-4">
       {/* Timer bar */}
       <div className={`flex items-center justify-between rounded-xl px-4 py-2.5 border ${lowTime ? "bg-red-50 border-red-200" : "bg-neutral-50 border-neutral-200"}`}>
         <span className="text-sm font-medium text-neutral-600">ตอบแล้ว {answeredCount}/{questions.length} ข้อ</span>
@@ -115,26 +164,30 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
       </div>
 
       {/* Question card */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6">
-        <div className="flex items-baseline gap-3 mb-5">
-          <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
-        </div>
-        <div className="space-y-2.5">
-          {OPTION_LABELS.map((label, optIdx) => {
-            const isSelected = current.selected === optIdx;
-            return (
-              <button
-                key={label}
-                onClick={() => pickAnswer(optIdx)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
-              >
-                <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                <span className="text-sm text-neutral-800">{current.options?.[optIdx]}</span>
-                {isSelected && <Check className="h-4 w-4 text-orange-600 ml-auto" />}
-              </button>
-            );
-          })}
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col">
+        {/* min-height keeps the Prev/Next/Submit row from jumping when
+           question text length differs between questions */}
+        <div className="min-h-[280px]">
+          <div className="flex items-baseline gap-3 mb-5">
+            <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
+            <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+          </div>
+          <div className="space-y-2.5">
+            {OPTION_LABELS.map((label, optIdx) => {
+              const isSelected = current.selected === optIdx;
+              return (
+                <button
+                  key={label}
+                  onClick={() => pickAnswer(optIdx)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
+                >
+                  <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
+                  <span className="text-sm text-neutral-800">{current.options?.[optIdx]}</span>
+                  {isSelected && <Check className="h-4 w-4 text-orange-600 ml-auto" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
@@ -184,7 +237,7 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
 function ResultCard({ result }) {
   const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
   return (
-    <div className="max-w-md mx-auto mt-24 bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
+    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
       <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
       <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
       <div className="bg-neutral-50 rounded-xl p-5">
@@ -254,41 +307,56 @@ export default function StudentExam() {
   const handleSubmitted = async (submitResult) => {
     setResult(submitResult);
     setPhase("result");
-    // best-effort refresh with the full breakdown; falls back to the submit response
+    // Best-effort refresh with the full breakdown. Merge instead of overwrite:
+    // GET /result doesn't include fields like correctCount/totalQuestions that
+    // the UI needs, so spreading `full` on top of `prev` keeps whatever the
+    // submit response already gave us for any key `full` doesn't have.
     try {
       const full = await fetchExamResult(runData.examJoinId, userId);
-      setResult(full);
+      setResult((prev) => ({ ...prev, ...full }));
     } catch { /* keep the submit response as-is */ }
   };
 
   if (phase === "loading") {
-    return <div className="mt-24 text-center text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</div>;
+    return <LoadingSkeleton />;
   }
   if (phase === "error") {
     return (
-      <div className="max-w-md mx-auto mt-24 text-center space-y-3">
-        <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
-        <p className="text-sm text-neutral-600">{errorMsg}</p>
-      </div>
+      <PageShell maxWidth="max-w-md">
+        <div className="text-center space-y-3">
+          <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
+          <p className="text-sm text-neutral-600">{errorMsg}</p>
+        </div>
+      </PageShell>
     );
   }
   if (phase === "landing") {
-    return <LandingCard status={landing.status} exam={landing.exam} onStart={handleStart} starting={starting} />;
+    return (
+      <PageShell maxWidth="max-w-md">
+        <LandingCard status={landing.status} exam={landing.exam} onStart={handleStart} starting={starting} />
+      </PageShell>
+    );
   }
   if (phase === "running") {
     return (
-      <ExamRunner
-        examJoinId={runData.examJoinId}
-        userId={userId}
-        joinedAt={runData.joinedAt}
-        durationMinutes={runData.durationMinutes}
-        questions={runData.questions}
-        onSubmitted={handleSubmitted}
-      />
+      <PageShell maxWidth="max-w-2xl">
+        <ExamRunner
+          examJoinId={runData.examJoinId}
+          userId={userId}
+          joinedAt={runData.joinedAt}
+          durationMinutes={runData.durationMinutes}
+          questions={runData.questions}
+          onSubmitted={handleSubmitted}
+        />
+      </PageShell>
     );
   }
   if (phase === "result") {
-    return <ResultCard result={result} />;
+    return (
+      <PageShell maxWidth="max-w-md">
+        <ResultCard result={result} />
+      </PageShell>
+    );
   }
   return null;
 }
