@@ -1182,6 +1182,14 @@ function DrillDownModal({ info, onClose }) {
                       {s.SubjectName || s.CourseName}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">{s.CourseName}</p>
+                    {Boolean(Number(s.WasReleasedUnfilled)) && (
+                      <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2">
+                        <p className="text-[11px] font-bold text-orange-700">ปล่อยคลาสแล้วไม่มีติวเตอร์รับ</p>
+                        {s.ReleaseReason && (
+                          <p className="mt-0.5 text-[11px] text-orange-600">เหตุผล: {s.ReleaseReason}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3 mt-2">
                       <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
                         <Clock className="w-3 h-3" />

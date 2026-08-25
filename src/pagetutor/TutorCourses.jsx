@@ -1,17 +1,20 @@
 import { API_URL } from "../config";
-import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
 export default function CoursesPage() {
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
+  const token = localStorage.getItem('student_token');
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('primary');
+  const [acceptedClasses, setAcceptedClasses] = useState([]);
 
   // 1. ฟังก์ชันเช็คสถานะคอร์สจากวันที่
   const mapStatus = (statusId, startDate, lastDate) => {
@@ -81,6 +84,12 @@ export default function CoursesPage() {
         });
 
         setCourses(formattedData);
+        if (token) {
+          const accepted = await axios.get(`${API_URL}/api/tutor/releases/accepted-classes`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setAcceptedClasses(Array.isArray(accepted.data) ? accepted.data : []);
+        }
       } catch (error) {
         console.error("Error fetching courses:", error);
       } finally {
@@ -89,7 +98,7 @@ export default function CoursesPage() {
     };
 
     fetchCourses();
-  }, [tutorId]);
+  }, [tutorId, token]);
 
   // 4. คำนวณ Stats ด้านบนสุด
   // ✅ ใหม่ (กรองให้เหลือคอร์สละ 1 ก่อน แล้วค่อยรวม)
@@ -101,6 +110,12 @@ export default function CoursesPage() {
     { label: "คอร์สทั้งหมด", value: courses.length.toString(), icon: BookOpen },
     { label: "นักเรียนรวม", value: totalStudents.toString(), icon: Users },
     { label: "ชั่วโมงสอน", value: totalHoursAllCourses.toString(), icon: Clock },
+  ];
+
+  const visibleStats = viewMode === 'primary' ? stats : [
+    { label: 'คลาสที่รับทั้งหมด', value: acceptedClasses.length.toString(), icon: BookOpen },
+    { label: 'คลาสที่กำลังจะมาถึง', value: acceptedClasses.filter(item => new Date(item.startDateTime) >= new Date()).length.toString(), icon: CalendarDays },
+    { label: 'เอกสารประกอบ', value: acceptedClasses.filter(item => item.attachmentFileId).length.toString(), icon: Paperclip },
   ];
 
   // 🔍 กรองข้อมูลตามการค้นหา
@@ -116,16 +131,22 @@ export default function CoursesPage() {
     <div className="space-y-6 mt-[90px]">
       <div className="">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">คอร์สและวิชาที่รับผิดชอบ</h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            ติดตามความคืบหน้าและจัดการข้อมูลในรายวิชาของคุณ
-          </p>
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900">คอร์สและวิชาที่รับผิดชอบ</h1>
+            <p className="text-sm text-neutral-500 mt-1">
+              {viewMode === 'primary' ? 'ติดตามความคืบหน้าและจัดการข้อมูลในรายวิชาของคุณ' : 'ดูรายละเอียดคลาสที่รับสอนแทน เนื้อหาที่ต้องสอน และเอกสารประกอบ'}
+            </p>
+          </div>
+          <div className="flex rounded-xl bg-slate-100 p-1 shadow-inner">
+            <button type="button" onClick={() => setViewMode('primary')} className={`rounded-lg px-4 py-2 text-sm font-bold transition ${viewMode === 'primary' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คอร์สที่สอนหลัก</button>
+            <button type="button" onClick={() => setViewMode('accepted')} className={`rounded-lg px-4 py-2 text-sm font-bold transition ${viewMode === 'accepted' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คลาสที่รับมาสอน</button>
+          </div>
         </div>
 
         {/* Stats */}
         <div className="mb-6 grid gap-4 md:grid-cols-3">
-          {stats.map((stat, idx) => {
+          {visibleStats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
               <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
@@ -142,7 +163,7 @@ export default function CoursesPage() {
         </div>
 
         {/* Search & Filter */}
-        <div className="bg-white border border-neutral-200 rounded-xl p-3 mb-6 shadow-sm">
+        {viewMode === 'primary' && <div className="bg-white border border-neutral-200 rounded-xl p-3 mb-6 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
@@ -165,10 +186,51 @@ export default function CoursesPage() {
               <option value="upcoming">ยังไม่เริ่มสอน</option>
             </select>
           </div>
-        </div>
+        </div>}
+
+        {viewMode === 'accepted' && (
+          <div className="grid gap-5 md:grid-cols-2">
+            {acceptedClasses.length === 0 ? (
+              <div className="col-span-2 rounded-3xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+                <BookOpen className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
+                <p className="font-medium text-neutral-500">ยังไม่มีคลาสที่รับมาสอน</p>
+              </div>
+            ) : acceptedClasses.map(item => (
+              <article key={item.releaseId} className="overflow-hidden rounded-2xl border-2 border-blue-100 bg-white shadow-sm">
+                <div className="border-b border-blue-100 bg-blue-50/60 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-blue-600">คลาสที่รับมาสอน</p>
+                      <h2 className="mt-1 text-lg font-bold text-neutral-900">{item.courseName}</h2>
+                      <p className="text-sm text-neutral-500">{item.subjectName}</p>
+                    </div>
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">รับสอนแล้ว</span>
+                  </div>
+                </div>
+                <div className="space-y-4 p-5">
+                  <div className="grid gap-2 text-sm text-neutral-600 sm:grid-cols-2">
+                    <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-orange-500" />{new Date(item.startDateTime).toLocaleDateString('th-TH', { dateStyle: 'medium' })} · {item.startTime}–{item.endTime}</p>
+                    <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-orange-500" />{item.room || 'ไม่ระบุห้อง'}</p>
+                  </div>
+                  <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-blue-600">เนื้อหาที่ต้องสอน</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-neutral-700">{item.teachingInstructions || 'ไม่ได้ระบุ'}</p>
+                  </div>
+                  <p className="text-xs text-neutral-500">รับต่อจาก: {item.ownerNickname || [item.ownerFirstname, item.ownerLastname].filter(Boolean).join(' ') || 'ไม่ระบุ'}</p>
+                  {item.attachmentFilePath ? (
+                    <a href={item.attachmentFilePath} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 hover:bg-orange-100">
+                      <span className="flex min-w-0 items-center gap-2"><Paperclip className="h-4 w-4 shrink-0" /><span className="truncate">{item.attachmentFileName}</span></span>
+                      <span>เปิดเอกสาร</span>
+                    </a>
+                  ) : <p className="text-xs text-neutral-400">ไม่มีเอกสารแนบสำหรับคลาสนี้</p>}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
 
         {/* Course Grid */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-2">
+        <div className={`${viewMode === 'primary' ? 'grid' : 'hidden'} gap-5 md:grid-cols-2 lg:grid-cols-2`}>
           {filteredCourses.length === 0 ? (
             <div className="col-span-2 text-center py-16 bg-white rounded-3xl border border-neutral-200 border-dashed">
               <div className="text-5xl mb-3">📚</div>

@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import { useState, useEffect, useMemo } from 'react'
 import React from 'react'
 import axios from 'axios'
-import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink } from 'lucide-react'
+import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -44,15 +44,28 @@ function addDays(date, n) {
 // ── สถานะของแต่ละ slot ──────────────────────────────────────────
 // รวม logic เวลาจริงแบบ AdminSchedule (เทียบวันนี้/อดีต/อนาคต)
 // เข้ากับโมเดล 2-phase เช็กอินของติวเตอร์ (phase1_done / completed)
-function getSlotStatus(cls, todayDate, slotPhases) {
+function classDateTime(cls, end = false) {
+  const [startTime, endTime] = String(cls.time || '').split('-')
+  const time = end ? endTime : startTime
+  return new Date(`${cls.classDate}T${time}:00+07:00`)
+}
+
+function getSlotStatus(cls, slotPhases, now) {
   if (!cls) return null
   const key = slotKey(cls.day, cls.time)
   const phase = slotPhases[key]?.phase
 
   if (phase === 'completed') return 'completed'
-  if (cls.classDate === todayDate) return phase === 'phase1_done' ? 'phase1_done' : 'today'
-  if (cls.classDate < todayDate) return 'missed'
-  return 'future'
+  if (phase === 'phase1_done') return 'phase1_done'
+
+  const startsAt = classDateTime(cls).getTime()
+  const endsAt = classDateTime(cls, true).getTime()
+  const nowMs = now.getTime()
+  if (cls.releaseStatus === 'open') return nowMs < startsAt ? 'released' : 'missed'
+  if (nowMs > endsAt) return 'missed'
+  if (nowMs >= startsAt - 30 * 60 * 1000) return 'checkin_ready'
+  if (nowMs <= startsAt - 48 * 60 * 60 * 1000) return 'releasable'
+  return 'upcoming'
 }
 
 const STATUS_STYLE = {
@@ -68,10 +81,22 @@ const STATUS_STYLE = {
     label: 'รอถ่ายรูปท้ายคาบ',
     Icon: Clock,
   },
-  today: {
+  checkin_ready: {
     card: 'bg-white border-orange-200 hover:border-orange-500 hover:shadow-lg cursor-pointer transform hover:-translate-y-1',
     badge: 'bg-orange-50 text-orange-600 border-orange-100',
     label: 'กดเพื่อบันทึกต้นคาบ',
+    Icon: Clock,
+  },
+  releasable: {
+    card: 'bg-white border-blue-200 hover:border-blue-500 hover:shadow-lg cursor-pointer transform hover:-translate-y-1',
+    badge: 'bg-blue-50 text-blue-700 border-blue-200',
+    label: 'ปล่อยคลาสสอน',
+    Icon: MessageCircle,
+  },
+  released: {
+    card: 'bg-blue-50 border-blue-300 cursor-pointer',
+    badge: 'bg-blue-100 text-blue-700 border-blue-200',
+    label: 'กำลังรอติวเตอร์รับ',
     Icon: Clock,
   },
   missed: {
@@ -80,10 +105,10 @@ const STATUS_STYLE = {
     label: 'เลยเวลา/ไม่มีเช็กอิน',
     Icon: AlertTriangle,
   },
-  future: {
+  upcoming: {
     card: 'bg-neutral-50 border-neutral-200 opacity-60 cursor-not-allowed',
     badge: 'bg-neutral-100 text-neutral-400 border-neutral-200',
-    label: 'ยังไม่ถึงวัน',
+    label: 'รอถึงช่วงเช็กอิน',
     Icon: null,
   },
 }
@@ -125,6 +150,18 @@ export default function TutorSchedule() {
   const [lineLinked, setLineLinked] = useState(false)
   const [lineLoading, setLineLoading] = useState(true)
   const [lineNotice, setLineNotice] = useState('')
+  const [clockNow, setClockNow] = useState(() => new Date())
+  const [scheduleVersion, setScheduleVersion] = useState(0)
+  const [referenceDate, setReferenceDate] = useState(null)
+  const [releaseModal, setReleaseModal] = useState(null)
+  const [releaseFiles, setReleaseFiles] = useState([])
+  const [releaseForm, setReleaseForm] = useState({ teachingInstructions: '', reason: '', attachmentFileId: '' })
+  const [releaseSaving, setReleaseSaving] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 30000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (!token) return
@@ -215,7 +252,8 @@ export default function TutorSchedule() {
     if (!tutorId) return
     const fetchSchedule = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule`)
+        const query = referenceDate ? `?date=${referenceDate}` : ''
+        const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule${query}`)
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
         const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
 
@@ -245,13 +283,42 @@ export default function TutorSchedule() {
       }
     }
     fetchSchedule()
-  }, [tutorId])
+  }, [tutorId, scheduleVersion, referenceDate])
 
   // ── กดเปิด Modal ───────────────────────────────────────────────
   const handleClick = async (day, time, data) => {
-    const status = getSlotStatus(data, todayDate, slotPhases)
-    // คลิกได้แค่คาบของ "วันนี้" ที่ยังไม่ completed
-    if (status !== 'today' && status !== 'phase1_done') return
+    const status = getSlotStatus(data, slotPhases, clockNow)
+
+    if (status === 'releasable') {
+      if (!lineLinked) { alert('กรุณาเชื่อมบัญชีกับ LINE ก่อนปล่อยคลาสสอน'); return }
+      try {
+        const response = await axios.get(
+          `${API_URL}/api/tutor/releases/options/${data.courseScheduleDetailId}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        setReleaseFiles(response.data?.files || [])
+        setReleaseForm({ teachingInstructions: '', reason: '', attachmentFileId: '' })
+        setReleaseModal({ day, time, ...data })
+      } catch (error) {
+        alert(error.response?.data?.message || 'โหลดข้อมูลสำหรับปล่อยคลาสไม่สำเร็จ')
+      }
+      return
+    }
+
+    if (status === 'released') {
+      if (!window.confirm('คาบนี้กำลังรอติวเตอร์รับ ต้องการยกเลิกการปล่อยคลาสหรือไม่?')) return
+      try {
+        await axios.delete(`${API_URL}/api/tutor/releases/${data.releaseId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setScheduleVersion(value => value + 1)
+      } catch (error) {
+        alert(error.response?.data?.message || 'ยกเลิกการปล่อยคลาสไม่สำเร็จ')
+      }
+      return
+    }
+
+    if (status !== 'checkin_ready' && status !== 'phase1_done') return
 
     const cId = data.courseId || data.CourseID
     if (!cId) { alert('ไม่พบรหัสคอร์สเรียน'); return }
@@ -285,6 +352,38 @@ export default function TutorSchedule() {
     }
   }
 
+  const submitRelease = async () => {
+    if (!releaseForm.teachingInstructions.trim()) {
+      alert('กรุณาระบุเนื้อหาที่ผู้รับคลาสต้องสอน')
+      return
+    }
+    setReleaseSaving(true)
+    try {
+      await axios.post(`${API_URL}/api/tutor/releases`, {
+        courseScheduleDetailId: releaseModal.courseScheduleDetailId,
+        teachingInstructions: releaseForm.teachingInstructions,
+        reason: releaseForm.reason,
+        attachmentFileId: releaseForm.attachmentFileId || null,
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      setReleaseModal(null)
+      setScheduleVersion(value => value + 1)
+      alert('ปล่อยคลาสสำเร็จ ระบบจะเปิดรับจนถึงเวลาเริ่มคาบ')
+    } catch (error) {
+      alert(error.response?.data?.message || 'ปล่อยคลาสไม่สำเร็จ')
+    } finally {
+      setReleaseSaving(false)
+    }
+  }
+
+  const moveWeek = days => {
+    const base = new Date(`${weekStart}T00:00:00`)
+    base.setDate(base.getDate() + days)
+    const year = base.getFullYear()
+    const month = String(base.getMonth() + 1).padStart(2, '0')
+    const date = String(base.getDate()).padStart(2, '0')
+    setReferenceDate(`${year}-${month}-${date}`)
+  }
+
   // ── Phase 1: บันทึกต้นคาบ ──────────────────────────────────────
   const handleSavePhase1 = async () => {
     if (!startPhoto) {
@@ -314,7 +413,7 @@ export default function TutorSchedule() {
       const res = await axios.post(
         `${API_URL}/api/tutor/record-teaching/start`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
       )
 
       const key = slotKey(selectedClass.day, selectedClass.time)
@@ -352,7 +451,7 @@ export default function TutorSchedule() {
       await axios.put(
         `${API_URL}/api/tutor/record-teaching/${recordId}/end`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
       )
 
       setSlotPhases(prev => ({
@@ -413,9 +512,28 @@ export default function TutorSchedule() {
             <p className="text-sm text-neutral-500 mt-1">บันทึกชั่วโมงการสอน</p>
           </div>
           <div className="bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md self-start md:self-center">
-            วันนี้: วัน{todayLabel}ที่ {formattedDate}
+            วัน{todayLabel}ที่ {formattedDate}
           </div>
         </div>
+
+        {weekStart && (
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+            <button type="button" onClick={() => moveWeek(-7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ก่อน">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-bold text-neutral-900">
+                {new Date(`${weekStart}T00:00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {' – '}
+                {addDays(`${weekStart}T00:00:00`, 6).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+              {referenceDate && <button type="button" onClick={() => setReferenceDate(null)} className="mt-1 text-xs font-bold text-orange-600">กลับสัปดาห์นี้</button>}
+            </div>
+            <button type="button" onClick={() => moveWeek(7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ถัดไป">
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
+        )}
 
         {/* Legend — ปรับจาก AdminSchedule (4 สถานะ) + เพิ่ม "รอถ่ายรูปท้ายคาบ" เฉพาะติวเตอร์ */}
         <div className="mb-4 flex flex-wrap gap-4 text-xs font-semibold">
@@ -426,13 +544,16 @@ export default function TutorSchedule() {
             <Clock className="h-3.5 w-3.5" /> รอถ่ายรูปท้ายคาบ
           </span>
           <span className="flex items-center gap-1.5 text-orange-600">
-            <Clock className="h-3.5 w-3.5" /> กำลังจะถึง
+            <Clock className="h-3.5 w-3.5" /> เช็กอินได้ก่อนคาบ 30 นาที
+          </span>
+          <span className="flex items-center gap-1.5 text-blue-600">
+            <MessageCircle className="h-3.5 w-3.5" /> ปล่อยคลาสได้ก่อนคาบอย่างน้อย 2 วัน
           </span>
           <span className="flex items-center gap-1.5 text-red-600">
             <AlertTriangle className="h-3.5 w-3.5" /> เลยเวลา/ไม่มีเช็กอิน
           </span>
           <span className="flex items-center gap-1.5 text-neutral-400">
-            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 inline-block" /> ยังไม่ถึงวัน
+            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 inline-block" /> รอถึงช่วงเช็กอิน
           </span>
         </div>
 
@@ -472,7 +593,7 @@ export default function TutorSchedule() {
                 ) : (
                   DAYS_GRID.map(d => {
                     const cls = scheduleMap[d]?.[slot.label]
-                    const status = getSlotStatus(cls, todayDate, slotPhases)
+                    const status = getSlotStatus(cls, slotPhases, clockNow)
                     const style = status ? STATUS_STYLE[status] : null
 
                     return (
@@ -569,6 +690,49 @@ export default function TutorSchedule() {
       </div>
 
       {/* ════════════════ MODAL ════════════════ */}
+      {releaseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b p-6">
+              <div>
+                <h2 className="text-xl font-bold">ปล่อยคลาสสอน</h2>
+                <p className="mt-1 text-sm text-neutral-500">{releaseModal.courseName} · {releaseModal.subjectName} · {releaseModal.time}</p>
+              </div>
+              <button type="button" onClick={() => setReleaseModal(null)} className="rounded-full bg-neutral-100 p-2"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="space-y-4 p-6">
+              <div>
+                <label className="mb-2 block text-sm font-bold">เนื้อหาที่ผู้รับคลาสต้องสอน <span className="text-red-500">*</span></label>
+                <textarea rows="4" value={releaseForm.teachingInstructions}
+                  onChange={event => setReleaseForm(value => ({ ...value, teachingInstructions: event.target.value }))}
+                  placeholder="เช่น ทบทวนสมการเชิงเส้น หน้า 20–28 และทำแบบฝึกหัดท้ายบท"
+                  className="w-full resize-none rounded-xl border-2 border-neutral-200 p-3 text-sm outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-bold">เอกสารประกอบการสอน</label>
+                <select value={releaseForm.attachmentFileId}
+                  onChange={event => setReleaseForm(value => ({ ...value, attachmentFileId: event.target.value }))}
+                  className="w-full rounded-xl border-2 border-neutral-200 bg-white p-3 text-sm outline-none focus:border-orange-500">
+                  <option value="">ไม่แนบเอกสาร</option>
+                  {releaseFiles.map(file => <option key={file.fileId} value={file.fileId}>{file.fileName}</option>)}
+                </select>
+                {!releaseFiles.length && <p className="mt-1 text-xs text-neutral-400">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-neutral-400">(ไม่บังคับ)</span></label>
+                <input value={releaseForm.reason} onChange={event => setReleaseForm(value => ({ ...value, reason: event.target.value }))}
+                  placeholder="เช่น ติดธุระด่วน" className="w-full rounded-xl border-2 border-neutral-200 p-3 text-sm outline-none focus:border-orange-500" />
+              </div>
+            </div>
+            <div className="flex gap-3 border-t bg-neutral-50 p-5">
+              <button type="button" onClick={() => setReleaseModal(null)} className="flex-1 rounded-xl border bg-white py-3 text-sm font-bold">ยกเลิก</button>
+              <button type="button" onClick={submitRelease} disabled={releaseSaving} className="flex-1 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white disabled:opacity-50">
+                {releaseSaving ? 'กำลังปล่อยคลาส...' : 'ยืนยันปล่อยคลาส'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {
         showModal && selectedClass && (
           <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
