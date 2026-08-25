@@ -30,6 +30,8 @@ import CourseSearch from "./pages/CourseSearch.jsx"
 import StudentCourseContent from "./pages/StudentCourseContent.jsx"
 import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
 import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
+import SubjectList from "./pages/SubjectList.jsx" //เป้วทำ
+import StudentSubjectDetail from "./pages/StudentSubjectDetail.jsx" //เป้ว
 
 // CSS
 import "./index.css"
@@ -112,6 +114,8 @@ const router = createBrowserRouter(
             { path: "my-courses", element: <StudentCourses /> },
             { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
+            { path: "course/:courseId/subjects", element: <SubjectList /> }, //เป้วเพิ่ม
+            { path: "course/:courseId/subject/:subjectId", element: <StudentSubjectDetail /> },
             { path: "attendance", element: <Attendance /> },
           ],
         },

@@ -16,11 +16,13 @@ export const formatTime = (totalSeconds) => {
 };
 
 // GET /api/student/exam/by-course/:courseId?userId= → { token } OR { choices: [...] }
-// when more than one subject in this course has an exam open at once.
-export async function fetchExamEntry(courseId, userId) {
-    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}`, { params: { userId } });
+// ถ้าส่ง subjectId มา backend จะคืน token ตรง ไม่ต้องเดา/โชว์ choices อีก
+export async function fetchExamEntry(courseId, userId, subjectId = null) {
+    const params = { userId };
+    if (subjectId) params.subjectId = subjectId;
+    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}`, { params });
     return data;
-  }
+}
 
 // GET /api/student/exam/:token?userId= → landing status (not-started / in-progress / submitted)
 export async function fetchExamByToken(token, userId) {

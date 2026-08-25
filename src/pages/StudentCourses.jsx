@@ -330,7 +330,7 @@ export default function StudentCourses() {
                 {/* ปุ่ม 3 ปุ่ม: เนื้อหา / เข้าสอบ / รายละเอียด */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
                   <Link
-                    to={`/profile/course-content/${course.id}`}
+                    to={`/profile/course/${course.id}/subjects`}
                     className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                   >
                     <FileText className="h-4 w-4" /> เนื้อหาในคอร์ส

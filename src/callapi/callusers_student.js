@@ -139,6 +139,44 @@ export async function getStudentFiles(token, courseId) {
   }
 }
 
+// ─── Subjects (course + subject scoped) ───────────────────────────────────────
+
+export async function getCourseBasic(courseId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}`);
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getStudentSubjectsProgress(token, courseId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/subjects-progress`, withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getStudentSubjectVideos(token, courseId, subjectId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/subjects/${subjectId}/videos`, withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getStudentSubjectFiles(token, courseId, subjectId) {
+  try {
+    const res = await apiClient.get(`/courses/${courseId}/subjects/${subjectId}/files`, withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Attendance ──────────────────────────────────────────────────────────────
 
 export async function getStudentAttendance(token) {
