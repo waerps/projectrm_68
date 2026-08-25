@@ -175,7 +175,7 @@ export default function TutorStudentDetail() {
     useEffect(() => {
         const fetchAll = async () => {
             try {
-                const res = await axios.get(`${API_URL}/courses/${courseId}/students`);
+                const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`);
                 const found = res.data.students.find(
                     s => String(s.UserId || s.id) === String(studentId)
                 );
@@ -195,7 +195,7 @@ export default function TutorStudentDetail() {
 
                 try {
                     const attRes = await axios.get(
-                        `${API_URL}/courses/${courseId}/students/${studentId}/attendance`
+                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/attendance`
                     );
                     console.log('attendance data:', attRes.data)
                     setAttendance(attRes.data);
@@ -205,7 +205,7 @@ export default function TutorStudentDetail() {
 
                 try {
                     const vidRes = await axios.get(
-                        `${API_URL}/courses/${courseId}/students/${studentId}/videos`
+                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/videos`
                     );
                     setVideos(vidRes.data);
                 } catch {

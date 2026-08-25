@@ -94,7 +94,7 @@ export default function TutorStudents() {
         const fetchData = async () => {
             if (!courseId || courseId === "undefined") { setLoading(false); return; }
             try {
-                const response = await axios.get(`${API_URL}/courses/${courseId}/students`);
+                const response = await axios.get(`${API_URL}/coursestutor/${courseId}/students`);
                 const dataFromApi = response.data;
                 setCourseInfo(dataFromApi.courseInfo);
                 const mappedStudents = dataFromApi.students.map((std, index) => {

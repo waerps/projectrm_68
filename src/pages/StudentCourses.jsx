@@ -1,13 +1,14 @@
 // ===================== 1) StudentCourses.jsx =====================
-import { BookOpen, Users, Clock, Video, FileText, Search } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   getStudentCourses,
   getStudentFiles,
   getStudentSchedule,
   getStudentVideos,
 } from "../callapi/callusers_student";
+import { fetchExamEntry, getCurrentUserId } from "../utils/studentExamShared";
 
 function unwrapList(payload, keys = []) {
   if (Array.isArray(payload)) return payload;
@@ -19,6 +20,29 @@ function unwrapList(payload, keys = []) {
 
 export default function StudentCourses() {
   const token = localStorage.getItem("student_token");
+  const navigate = useNavigate();
+  const [examLoadingId, setExamLoadingId] = useState(null);
+  const [examError, setExamError] = useState(null); // { courseId, message }
+  const [examChoices, setExamChoices] = useState(null); // [{ subjectId, subjectName, examName, token }]
+
+  const handleEnterExam = async (courseId) => {
+    const userId = getCurrentUserId();
+    if (!userId) return navigate("/login");
+    setExamLoadingId(courseId);
+    setExamError(null);
+    try {
+      const data = await fetchExamEntry(courseId, userId);
+      if (data.token) {
+        navigate(`/exam/${data.token}`);
+      } else if (data.choices?.length) {
+        setExamChoices(data.choices);
+      }
+    } catch (err) {
+      setExamError({ courseId, message: err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้" });
+    } finally {
+      setExamLoadingId(null);
+    }
+  };
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -74,75 +98,75 @@ export default function StudentCourses() {
         }));
         const contentMap = new Map(contentByCourse.map((item) => [item.id, item]));
 
-const formatted = courseList.map((c) => {
-  const courseId = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
-  const startDate = c.startDate ?? c.StartDate;
-  const lastDate = c.lastDate ?? c.LastDate;
+        const formatted = courseList.map((c) => {
+          const courseId = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
+          const startDate = c.startDate ?? c.StartDate;
+          const lastDate = c.lastDate ?? c.LastDate;
 
-  const courseSchedules = allSchedules.filter((item) =>
-    String(item.CourseID ?? item.CourseId ?? item.courseId) === String(courseId)
-  );
-  const courseContent = contentMap.get(String(courseId)) ?? { videos: [], files: [] };
+          const courseSchedules = allSchedules.filter((item) =>
+            String(item.CourseID ?? item.CourseId ?? item.courseId) === String(courseId)
+          );
+          const courseContent = contentMap.get(String(courseId)) ?? { videos: [], files: [] };
 
-  const apiTotalSessions = Number(c.totalSessions ?? c.TotalSessions ?? 0);
-  const totalSessions = courseSchedules.length || apiTotalSessions;
+          const apiTotalSessions = Number(c.totalSessions ?? c.TotalSessions ?? 0);
+          const totalSessions = courseSchedules.length || apiTotalSessions;
 
-  const derivedCompletedSessions = courseSchedules.filter((item) => {
-      const status = String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase();
-      if (status === "present") return true;
-      if (status === "absent") return false;
-      const date = new Date(item.StartDateTime ?? item.startDateTime ?? item.ClassDate ?? item.classDate);
-      return !Number.isNaN(date.getTime()) && date < new Date();
-    }).length;
-  const completedSessions = courseSchedules.length
-    ? derivedCompletedSessions
-    : Number(c.completedSessions ?? c.CompletedSessions ?? 0);
+          const derivedCompletedSessions = courseSchedules.filter((item) => {
+            const status = String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase();
+            if (status === "present") return true;
+            if (status === "absent") return false;
+            const date = new Date(item.StartDateTime ?? item.startDateTime ?? item.ClassDate ?? item.classDate);
+            return !Number.isNaN(date.getTime()) && date < new Date();
+          }).length;
+          const completedSessions = courseSchedules.length
+            ? derivedCompletedSessions
+            : Number(c.completedSessions ?? c.CompletedSessions ?? 0);
 
-  const statusInfo = mapStatus(startDate, lastDate);
+          const statusInfo = mapStatus(startDate, lastDate);
 
-  const progress = calcProgress(
-    completedSessions,
-    totalSessions,
-    statusInfo.id
-  );
+          const progress = calcProgress(
+            completedSessions,
+            totalSessions,
+            statusInfo.id
+          );
 
-  return {
-    id: courseId,
-    enrollId: c.enrollId ?? c.EnrollId,
-    name: c.courseName ?? c.CourseName ?? c.name ?? "คอร์สเรียน",
+          return {
+            id: courseId,
+            enrollId: c.enrollId ?? c.EnrollId,
+            name: c.courseName ?? c.CourseName ?? c.name ?? "คอร์สเรียน",
 
-    startDate: startDate
-      ? new Date(startDate).toLocaleDateString("th-TH", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        })
-      : "ไม่ระบุ",
+            startDate: startDate
+              ? new Date(startDate).toLocaleDateString("th-TH", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+              : "ไม่ระบุ",
 
-    totalSessions,
+            totalSessions,
 
-    completedSessions:
-      statusInfo.id === "completed"
-        ? totalSessions
-        : completedSessions,
+            completedSessions:
+              statusInfo.id === "completed"
+                ? totalSessions
+                : completedSessions,
 
-    totalVideos:
-      courseContent.videos.length || Number(c.totalVideos ?? c.TotalVideos ?? 0),
+            totalVideos:
+              courseContent.videos.length || Number(c.totalVideos ?? c.TotalVideos ?? 0),
 
-    watchedVideos:
-      courseContent.videos.length
-        ? courseContent.videos.filter((video) => Number(video.WatchPercent ?? video.watchPercent ?? 0) >= 80).length
-        : Number(c.watchedVideos ?? c.WatchedVideos ?? 0),
+            watchedVideos:
+              courseContent.videos.length
+                ? courseContent.videos.filter((video) => Number(video.WatchPercent ?? video.watchPercent ?? 0) >= 80).length
+                : Number(c.watchedVideos ?? c.WatchedVideos ?? 0),
 
-    totalFiles:
-      courseContent.files.length || Number(c.totalFiles ?? c.TotalFiles ?? 0),
+            totalFiles:
+              courseContent.files.length || Number(c.totalFiles ?? c.TotalFiles ?? 0),
 
-    statusId: statusInfo.id,
-    statusText: statusInfo.text,
-    statusColor: statusInfo.colorClass,
-    progress,
-  };
-});
+            statusId: statusInfo.id,
+            statusText: statusInfo.text,
+            statusColor: statusInfo.colorClass,
+            progress,
+          };
+        });
 
         setCourses(formatted);
       } catch (err) {
@@ -303,7 +327,7 @@ const formatted = courseList.map((c) => {
                   </div>
                 </div>
 
-                {/* ปุ่ม 2 ปุ่ม ตามที่ขอ */}
+                {/* ปุ่ม 3 ปุ่ม: เนื้อหา / เข้าสอบ / รายละเอียด */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
                   <Link
                     to={`/profile/course-content/${course.id}`}
@@ -311,6 +335,19 @@ const formatted = courseList.map((c) => {
                   >
                     <FileText className="h-4 w-4" /> เนื้อหาในคอร์ส
                   </Link>
+
+                  <div className="flex-1 relative">
+                    <button
+                      onClick={() => handleEnterExam(course.id)}
+                      disabled={examLoadingId === course.id}
+                      className="w-full h-full bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 disabled:opacity-50 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                    >
+                      <ClipboardList className="h-4 w-4" /> {examLoadingId === course.id ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
+                    </button>
+                    {examError?.courseId === course.id && (
+                      <p className="absolute top-full left-0 right-0 mt-1 text-[11px] text-red-500 text-center">{examError.message}</p>
+                    )}
+                  </div>
 
                   <Link
                     to={`/profile/course-detail/${course.id}`}
@@ -324,6 +361,28 @@ const formatted = courseList.map((c) => {
           )}
         </div>
       </div>
+
+      {examChoices && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setExamChoices(null)}>
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-neutral-900 mb-1 text-center">เลือกวิชาที่จะเข้าสอบ</h3>
+            <p className="text-sm text-neutral-500 mb-4 text-center">คอร์สนี้มีข้อสอบเปิดอยู่มากกว่า 1 วิชา</p>
+            <div className="space-y-2">
+              {examChoices.map((c) => (
+                <button
+                  key={c.token}
+                  onClick={() => navigate(`/exam/${c.token}`)}
+                  className="w-full text-left border-2 border-neutral-200 hover:border-green-300 hover:bg-green-50 rounded-xl px-4 py-3 transition"
+                >
+                  <p className="font-semibold text-neutral-800 text-sm">{c.subjectName}</p>
+                  <p className="text-xs text-neutral-500">{c.examName}</p>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setExamChoices(null)} className="w-full mt-4 text-sm text-neutral-500 hover:text-neutral-700 font-medium">ยกเลิก</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
