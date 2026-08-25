@@ -515,11 +515,16 @@ function PreviewTab({ exam, goToQuestions }) {
 // ─── Session Tab ─────────────────────────────────────────────────────────────
 // Live counts come from GET /api/exam/:examId/results (real exam_join rows),
 // polled while the session is active. No mock students, no random scores.
+// ─── Session Tab ─────────────────────────────────────────────────────────────
+// Live counts come from GET /api/exam/:examId/results (real exam_join rows),
+// polled while the session is active. No mock students, no random scores.
 
-function SessionTab({ exam, onOpen, onClose }) {
+function SessionTab({ exam, onOpen, onReopen, onClose }) {
   const [opening, setOpening] = useState(false);
+  const [reopening, setReopening] = useState(false);
   const [closing, setClosing] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmReopen, setConfirmReopen] = useState(false);
   const [live, setLive] = useState(null);
   const [copied, setCopied] = useState(false);
   const status = deriveStatus(exam);
@@ -541,16 +546,61 @@ function SessionTab({ exam, onOpen, onClose }) {
     return () => clearInterval(iv);
   }, [status, pollResults]);
 
+  // ── closed: offer "เปิดสอบใหม่" (reset + reopen), with a clear warning ──
   if (status === "closed") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-        <StopCircle className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">การสอบนี้ปิดแล้ว</p>
-        <p className="text-xs text-neutral-400 mt-1">ดูผลได้ที่แท็บ Results / Analytics</p>
+      <div className="max-w-md mx-auto text-center py-10 space-y-4">
+        <div className="h-14 w-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto">
+          <StopCircle className="h-6 w-6 text-neutral-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
+          <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ Results / Analytics</p>
+        </div>
+
+        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
+          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">
+            การกด "เปิดสอบใหม่" จะ<strong>ลบข้อมูลผลสอบของนักเรียนจากรอบนี้ทั้งหมด</strong>
+            (คำถามและการตั้งค่าจะยังอยู่เหมือนเดิม)
+          </p>
+        </div>
+
+        <button
+          onClick={() => setConfirmReopen(true)}
+          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+        >
+          <Play className="h-4 w-4" /> เปิดสอบใหม่
+        </button>
+
+        {confirmReopen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmReopen(false)}>
+            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center mb-5">
+                <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
+                <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
+                <p className="text-sm text-neutral-500">
+                  ข้อมูลผลสอบของนักเรียนทั้งหมดจากรอบก่อนจะถูกลบ และนักเรียนทุกคนจะต้องเริ่มสอบใหม่
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                <button
+                  onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
+                  disabled={reopening}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                >
+                  {reopening ? "กำลังเปิด…" : "เปิดสอบใหม่"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
+  // ── inactive: first-time open, nothing to reset ──
   if (status !== "active") {
     return (
       <div className="max-w-md mx-auto text-center py-10 space-y-4">
@@ -578,6 +628,7 @@ function SessionTab({ exam, onOpen, onClose }) {
     );
   }
 
+  // ── active: unchanged from before ──
   const joined = live?.joinedCount ?? 0;
   const enrolled = live?.enrolledCount ?? 0;
 
@@ -849,6 +900,7 @@ export default function TutorExamDetail() {
           <SessionTab
             exam={exam}
             onOpen={async () => { await openExamSession(exam.id); await reload(); }}
+            onReopen={async () => { await openExamSession(exam.id); await reload(); }}
             onClose={async () => { await closeExamSession(exam.id); await reload(); }}
           />
         )}
