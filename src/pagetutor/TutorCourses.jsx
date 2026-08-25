@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip, X, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
