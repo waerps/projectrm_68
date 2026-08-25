@@ -29,6 +29,7 @@ import Promotion from "./pages/Promotion.jsx"
 import CourseSearch from "./pages/CourseSearch.jsx"
 import StudentCourseContent from "./pages/StudentCourseContent.jsx"
 import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
+import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
 
 // CSS
 import "./index.css"
@@ -98,6 +99,7 @@ const router = createBrowserRouter(
         { path: "about", element: <About /> },
         { path: "promotion", element: <Promotion /> },
         { path: "apply-tutor", element: <TutorApply /> },
+        { path: "exam/:token", element: <StudentExam /> }, //เป้วทำ
 
         // เส้นทาง Profile (Nested Layout)
         {
