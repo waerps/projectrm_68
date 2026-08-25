@@ -12,8 +12,10 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 // ─── Shared page shell ───────────────────────────────────────────────────────
 function PageShell({ maxWidth = "max-w-md", children }) {
   return (
-    <div className={`min-h-[calc(100vh-6rem)] ${maxWidth} mx-auto mt-24 px-4 pb-12`}>
-      {children}
+    <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center px-4 py-12">
+      <div className={`w-full ${maxWidth}`}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -162,9 +164,14 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
         <div className="min-h-[280px]">
-          <div className="flex items-baseline gap-3 mb-5">
-            <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
-            <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+          <div className="flex items-baseline justify-between gap-3 mb-5">
+            <div className="flex items-baseline gap-3">
+              <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
+              <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+            </div>
+            <span className="flex-shrink-0 text-xs font-semibold text-neutral-400 bg-neutral-100 px-2.5 py-1 rounded-full">
+              {current.score} คะแนน
+            </span>
           </div>
           <div className="space-y-2.5">
             {OPTION_LABELS.map((label, optIdx) => {
