@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo } from 'react'
 import React from 'react'
 import axios from 'axios'
 import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
+import { useToast } from '../components/useToast'
+import { ToastContainer } from '../components/Toast'
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -115,6 +117,7 @@ const STATUS_STYLE = {
 
 // ─── Component ──────────────────────────────────────────────────────
 export default function TutorSchedule() {
+  const { toasts, showToast, removeToast } = useToast()
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id
   const token = localStorage.getItem('student_token')
 
@@ -290,7 +293,7 @@ export default function TutorSchedule() {
     const status = getSlotStatus(data, slotPhases, clockNow)
 
     if (status === 'releasable') {
-      if (!lineLinked) { alert('กรุณาเชื่อมบัญชีกับ LINE ก่อนปล่อยคลาสสอน'); return }
+      if (!lineLinked) { showToast('warning', 'ยังไม่ได้เชื่อม LINE', 'กรุณาเชื่อมบัญชีกับ LINE ก่อนปล่อยคลาสสอน'); return }
       try {
         const response = await axios.get(
           `${API_URL}/api/tutor/releases/options/${data.courseScheduleDetailId}`,
@@ -300,7 +303,7 @@ export default function TutorSchedule() {
         setReleaseForm({ teachingInstructions: '', reason: '', attachmentFileId: '' })
         setReleaseModal({ day, time, ...data })
       } catch (error) {
-        alert(error.response?.data?.message || 'โหลดข้อมูลสำหรับปล่อยคลาสไม่สำเร็จ')
+        showToast('error', 'โหลดข้อมูลไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง')
       }
       return
     }
@@ -313,7 +316,7 @@ export default function TutorSchedule() {
         })
         setScheduleVersion(value => value + 1)
       } catch (error) {
-        alert(error.response?.data?.message || 'ยกเลิกการปล่อยคลาสไม่สำเร็จ')
+        showToast('error', 'ยกเลิกการปล่อยคลาสไม่สำเร็จ', error.response?.data?.message)
       }
       return
     }
@@ -321,7 +324,7 @@ export default function TutorSchedule() {
     if (status !== 'checkin_ready' && status !== 'phase1_done') return
 
     const cId = data.courseId || data.CourseID
-    if (!cId) { alert('ไม่พบรหัสคอร์สเรียน'); return }
+    if (!cId) { showToast('error', 'ไม่พบข้อมูลคอร์ส', 'กรุณารีเฟรชหน้าแล้วลองใหม่'); return }
 
     setSelectedClass({ day, time, ...data, courseId: cId })
     setEndPhoto(null)
@@ -354,12 +357,12 @@ export default function TutorSchedule() {
 
   const submitRelease = async () => {
     if (!releaseForm.teachingInstructions.trim()) {
-      alert('กรุณาระบุเนื้อหาที่ผู้รับคลาสต้องสอน')
+      showToast('warning', 'กรอกข้อมูลไม่ครบ', 'กรุณาระบุเนื้อหาที่ผู้รับคลาสต้องสอน')
       return
     }
     setReleaseSaving(true)
     try {
-      await axios.post(`${API_URL}/api/tutor/releases`, {
+      const response = await axios.post(`${API_URL}/api/tutor/releases`, {
         courseScheduleDetailId: releaseModal.courseScheduleDetailId,
         teachingInstructions: releaseForm.teachingInstructions,
         reason: releaseForm.reason,
@@ -367,9 +370,13 @@ export default function TutorSchedule() {
       }, { headers: { Authorization: `Bearer ${token}` } })
       setReleaseModal(null)
       setScheduleVersion(value => value + 1)
-      alert('ปล่อยคลาสสำเร็จ ระบบจะเปิดรับจนถึงเวลาเริ่มคาบ')
+      showToast(
+        'success',
+        'ปล่อยคลาสสำเร็จ',
+        response.data?.message || `พบติวเตอร์ที่ได้รับประกาศ ${response.data?.recipientCount || 0} คน`
+      )
     } catch (error) {
-      alert(error.response?.data?.message || 'ปล่อยคลาสไม่สำเร็จ')
+      showToast('error', 'ปล่อยคลาสไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง')
     } finally {
       setReleaseSaving(false)
     }
@@ -387,11 +394,11 @@ export default function TutorSchedule() {
   // ── Phase 1: บันทึกต้นคาบ ──────────────────────────────────────
   const handleSavePhase1 = async () => {
     if (!startPhoto) {
-      alert('กรุณาถ่ายรูปต้นคาบก่อนบันทึก')
+      showToast('warning', 'ยังไม่มีรูปต้นคาบ', 'กรุณาถ่ายรูปต้นคาบก่อนบันทึก')
       return
     }
     if (!selectedClass?.courseScheduleDetailId) {
-      alert('ไม่พบข้อมูลคาบเรียน')
+      showToast('error', 'ไม่พบข้อมูลคาบเรียน', 'กรุณารีเฟรชหน้าแล้วลองใหม่')
       return
     }
 
@@ -423,9 +430,9 @@ export default function TutorSchedule() {
       }))
 
       closeModal()
-      alert('บันทึกต้นคาบแล้ว! อย่าลืมถ่ายรูปท้ายคาบด้วยนะ')
+      showToast('success', 'บันทึกต้นคาบแล้ว', 'อย่าลืมถ่ายรูปท้ายคาบเพื่อปิดคาบด้วยนะ')
     } catch (err) {
-      alert('เกิดข้อผิดพลาด: ' + (err.response?.data?.message || 'กรุณาลองใหม่'))
+      showToast('error', 'บันทึกต้นคาบไม่สำเร็จ', err.response?.data?.message || 'กรุณาลองใหม่')
     } finally {
       setIsSaving(false)
     }
@@ -434,13 +441,13 @@ export default function TutorSchedule() {
   // ── Phase 2: ปิดคาบ ────────────────────────────────────────────
   const handleSavePhase2 = async () => {
     if (!endPhoto) {
-      alert('กรุณาถ่ายรูปท้ายคาบก่อนปิดคาบ')
+      showToast('warning', 'ยังไม่มีรูปท้ายคาบ', 'กรุณาถ่ายรูปท้ายคาบก่อนปิดคาบ')
       return
     }
 
     const key = slotKey(selectedClass.day, selectedClass.time)
     const recordId = slotPhases[key]?.recordId
-    if (!recordId) { alert('ไม่พบข้อมูลการบันทึกต้นคาบ'); return }
+    if (!recordId) { showToast('error', 'ไม่พบข้อมูลต้นคาบ', 'กรุณารีเฟรชหน้าแล้วลองใหม่'); return }
 
     setIsSaving(true)
     try {
@@ -460,9 +467,9 @@ export default function TutorSchedule() {
       }))
 
       closeModal()
-      alert('ปิดคาบเรียบร้อย!')
+      showToast('success', 'ปิดคาบเรียบร้อย', 'บันทึกรูปท้ายคาบสำเร็จแล้ว')
     } catch (err) {
-      alert('เกิดข้อผิดพลาด: ' + (err.response?.data?.message || 'กรุณาลองใหม่'))
+      showToast('error', 'ปิดคาบไม่สำเร็จ', err.response?.data?.message || 'กรุณาลองใหม่')
     } finally {
       setIsSaving(false)
     }
@@ -503,6 +510,7 @@ export default function TutorSchedule() {
 
   return (
     <div className="space-y-6 mt-[90px] px-4 md:px-0 max-w-[1384px] mx-auto pb-10">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
 
         {/* Header */}
