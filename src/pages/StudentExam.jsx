@@ -10,20 +10,15 @@ import {
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Shared page shell ───────────────────────────────────────────────────────
-// Single source of truth for top spacing/positioning across every phase
-// (loading / landing / running / result / error), so switching phases never
-// causes the page content to jump up/down.
 function PageShell({ maxWidth = "max-w-md", children }) {
   return (
-    <div className={`${maxWidth} mx-auto mt-24 px-4`}>
+    <div className={`min-h-[calc(100vh-6rem)] ${maxWidth} mx-auto mt-24 px-4 pb-12`}>
       {children}
     </div>
   );
 }
 
 // ─── Loading skeleton ────────────────────────────────────────────────────────
-// Mirrors LandingCard's shape/height so there's no layout jump when the real
-// landing card replaces it.
 function LoadingSkeleton() {
   return (
     <PageShell maxWidth="max-w-md">
@@ -153,9 +148,8 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
             <button
               key={q.id}
               onClick={() => setActiveIdx(i)}
-              className={`h-8 w-8 rounded-lg text-xs font-semibold border-2 transition ${
-                isActive ? "border-orange-500 text-orange-600" : answered ? "border-green-300 bg-green-50 text-green-700" : "border-neutral-200 text-neutral-500"
-              }`}
+              className={`h-8 w-8 rounded-lg text-xs font-semibold border-2 transition ${isActive ? "border-orange-500 text-orange-600" : answered ? "border-green-300 bg-green-50 text-green-700" : "border-neutral-200 text-neutral-500"
+                }`}
             >
               {i + 1}
             </button>
@@ -241,7 +235,10 @@ function ResultCard({ result }) {
       <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
       <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
       <div className="bg-neutral-50 rounded-xl p-5">
-        <p className="text-3xl font-bold text-orange-600">{result.totalScore}/{result.maxScore}</p>
+        <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
+        <p className="text-3xl font-bold text-orange-600">
+          {result.totalScore}/{result.maxScore}
+        </p>
         <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
       </div>
       {result.correctCount != null && (
