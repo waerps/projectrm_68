@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ChevronRight, ChevronLeft, FileQuestion, Clock, Calendar, Users,
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
-  Download, FileSpreadsheet, QrCode, Copy, Play, StopCircle,
+  Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2,
 } from "lucide-react";
 
@@ -29,7 +29,7 @@ const TABS = [
   { key: "questions", label: "Questions", icon: FileQuestion },
   { key: "settings", label: "Exam Settings", icon: SettingsIcon },
   { key: "preview", label: "Preview", icon: Eye },
-  { key: "session", label: "Exam Session", icon: QrCode },
+  { key: "session", label: "เปิด/ปิดสอบ", icon: Play },
   { key: "results", label: "Results / Analytics", icon: BarChart2 },
 ];
 
@@ -95,6 +95,19 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel 
             </div>
           );
         })}
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-neutral-800 mb-2">
+          💡 คำอธิบายเฉลย <span className="text-xs font-normal text-neutral-400">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
+        </label>
+        <textarea
+          value={q.explanation || ""}
+          onChange={(e) => patch({ explanation: e.target.value })}
+          placeholder="อธิบายว่าทำไมคำตอบนี้ถึงถูก…"
+          rows={2}
+          className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -224,7 +237,14 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
                     <p className="text-xs text-neutral-700 truncate">{q.text || "(ไม่มีโจทย์)"}</p>
-                    <p className="text-[10px] text-neutral-400">{q.level} {q.category && `· ${q.category}`}</p>
+                    <p className="text-[10px] text-neutral-400">
+                      {q.level} {q.category && `· ${q.category}`}
+                      {q.explanation?.trim() ? (
+                        <span className="text-blue-500"> · มีคำอธิบายเฉลย</span>
+                      ) : (
+                        <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
+                      )}
+                    </p>
                   </div>
                 </div>
               );
@@ -507,17 +527,25 @@ function PreviewTab({ exam, goToQuestions }) {
             );
           })}
         </div>
+
+        {current.explanation?.trim() ? (
+          <div className="mt-4 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
+            <span className="text-sm flex-shrink-0">💡</span>
+            <div>
+              <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
+              <p className="text-xs text-blue-700/90 leading-relaxed">{current.explanation}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 flex gap-2 bg-neutral-50 border border-neutral-100 rounded-lg p-3">
+            <AlertCircle className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-neutral-400">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-// ─── Session Tab ─────────────────────────────────────────────────────────────
-// Live counts come from GET /api/exam/:examId/results (real exam_join rows),
-// polled while the session is active. No mock students, no random scores.
-// ─── Session Tab ─────────────────────────────────────────────────────────────
-// Live counts come from GET /api/exam/:examId/results (real exam_join rows),
-// polled while the session is active. No mock students, no random scores.
 
 function SessionTab({ exam, onOpen, onReopen, onClose }) {
   const [opening, setOpening] = useState(false);
@@ -526,7 +554,6 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [live, setLive] = useState(null);
-  const [copied, setCopied] = useState(false);
   const status = deriveStatus(exam);
   const ready = isExamReady(exam);
 
@@ -608,8 +635,8 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
           <Play className="h-6 w-6 text-orange-600" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-neutral-800">พร้อมเปิด Exam Session ของ {exam.name} หรือยัง?</p>
-          <p className="text-xs text-neutral-500 mt-1">การกดเปิดสอบจะสร้าง Session/QR ใหม่บน Exam เดิม ไม่ใช่การสร้าง Exam ใหม่</p>
+          <p className="text-sm font-semibold text-neutral-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
+          <p className="text-xs text-neutral-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
         </div>
         {!ready && (
           <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
@@ -622,55 +649,37 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
           disabled={!ready || opening}
           className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
         >
-          <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิด Exam Session"}
+          <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิดสอบ"}
         </button>
       </div>
     );
   }
 
-  // ── active: unchanged from before ──
+  // ── active ──
   const joined = live?.joinedCount ?? 0;
   const enrolled = live?.enrolledCount ?? 0;
+  const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="border border-neutral-200 rounded-2xl p-5 text-center space-y-3">
-          <div className="flex justify-center">
-            <div className="bg-neutral-50 border-2 border-neutral-200 rounded-xl p-4">
-              <QrCode className="h-28 w-28 text-neutral-300" />
-            </div>
-          </div>
-          <div className="bg-neutral-50 rounded-xl p-3">
-            <p className="text-xs text-neutral-500 mb-1">Session ID</p>
-            <p className="text-xl font-mono font-bold tracking-widest text-orange-600">{exam.sessionId || "—"}</p>
-          </div>
-          <button
-            onClick={() => { navigator.clipboard?.writeText(exam.examLink || ""); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-            disabled={!exam.examLink}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition"
-          >
-            {copied ? <><Check className="h-4 w-4" /> คัดลอกแล้ว!</> : <><Copy className="h-4 w-4" /> คัดลอกลิงก์เข้าสอบ</>}
-          </button>
-          {exam.examLink && <p className="text-[11px] text-neutral-400 break-all">{exam.examLink}</p>}
-        </div>
+    <div className="max-w-lg mx-auto space-y-5">
+      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+        <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
+      </div>
 
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-neutral-50 rounded-xl p-4">
-              <p className="text-2xl font-bold text-green-600">{joined}</p>
-              <p className="text-xs text-neutral-500 mt-0.5">เข้าสอบแล้ว</p>
-            </div>
-            <div className="bg-neutral-50 rounded-xl p-4">
-              <p className="text-2xl font-bold text-neutral-700">{enrolled}</p>
-              <p className="text-xs text-neutral-500 mt-0.5">นักเรียนในคอร์ส</p>
-            </div>
-          </div>
-          <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
-            <StopCircle className="h-4 w-4" /> ปิดสอบ
-          </button>
+      <div className="border border-neutral-200 rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-semibold text-neutral-700">ความคืบหน้าการเข้าสอบ</p>
+          <p className="text-sm font-bold text-orange-600">{joined}/{enrolled} คน</p>
+        </div>
+        <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700" style={{ width: `${pct}%` }} />
         </div>
       </div>
+
+      <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
+        <StopCircle className="h-4 w-4" /> ปิดสอบ
+      </button>
 
       {confirmClose && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmClose(false)}>
@@ -678,7 +687,7 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
             <div className="text-center mb-5">
               <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
               <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
-              <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบผ่าน QR/ลิงก์นี้ไม่ได้อีก</p>
+              <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>

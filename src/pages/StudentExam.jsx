@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
 
 import {
   getCurrentUserId, formatTime,
@@ -10,10 +10,10 @@ import {
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Shared page shell ───────────────────────────────────────────────────────
-function PageShell({ maxWidth = "max-w-md", children }) {
+function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
   return (
-    <div className="min-h-[calc(100vh-6rem)] flex items-center justify-center px-4 py-12">
-      <div className={`w-full ${maxWidth}`}>
+    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 py-12`}>
+      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-10" : ""}`}>
         {children}
       </div>
     </div>
@@ -77,11 +77,14 @@ function NoQuestionsNotice() {
 
 // ─── Taking the exam ─────────────────────────────────────────────────────────
 
-function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: initialQuestions, onSubmitted }) {
+function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, onSubmitted }) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [activeIdx, setActiveIdx] = useState(0);
   const [remainingSec, setRemainingSec] = useState(() => {
-    const deadline = new Date(joinedAt).getTime() + durationMinutes * 60 * 1000;
+    // deadline is anchored to the tutor's session-open time (examStartedAt),
+    // NOT each student's own JoinedAt — so everyone runs out at the same
+    // wall-clock moment regardless of when they joined.
+    const deadline = new Date(examStartedAt).getTime() + durationMinutes * 60 * 1000;
     return Math.max(0, Math.round((deadline - Date.now()) / 1000));
   });
   const [submitting, setSubmitting] = useState(false);
@@ -234,22 +237,89 @@ function ExamRunner({ examJoinId, userId, joinedAt, durationMinutes, questions: 
 }
 
 // ─── Result screen ───────────────────────────────────────────────────────────
+function QuestionReviewRow({ q, index }) {
+  const OPTION_LABELS = ["A", "B", "C", "D"];
+  const wasAnswered = q.selected !== null && q.selected !== undefined;
+
+  return (
+    <div className={`border rounded-xl p-4 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-black text-neutral-400">{index + 1}.</span>
+          <p className="text-sm font-medium text-neutral-900 leading-relaxed">{q.text}</p>
+        </div>
+        <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+          {q.isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+          {q.scoreAwarded}/{q.score} คะแนน
+        </span>
+      </div>
+
+      <div className="space-y-1.5 pl-6">
+        {(q.options || []).map((opt, optIdx) => {
+          const isCorrectOpt = optIdx === q.correct;
+          const isSelectedOpt = optIdx === q.selected;
+          let cls = "border-neutral-200 text-neutral-500";
+          if (isCorrectOpt) cls = "border-green-400 bg-green-100 text-green-800 font-medium";
+          else if (isSelectedOpt && !isCorrectOpt) cls = "border-red-300 bg-red-100 text-red-700 font-medium";
+
+          return (
+            <div key={optIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${cls}`}>
+              <span className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 bg-white/70">
+                {OPTION_LABELS[optIdx]}
+              </span>
+              <span className="flex-1">{opt}</span>
+              {isCorrectOpt && <span className="text-[10px] font-bold text-green-700">คำตอบที่ถูก</span>}
+              {isSelectedOpt && !isCorrectOpt && <span className="text-[10px] font-bold text-red-600">คำตอบของคุณ</span>}
+            </div>
+          );
+        })}
+        {!wasAnswered && (
+          <p className="text-[11px] text-neutral-400 italic pt-0.5">ไม่ได้ตอบข้อนี้</p>
+        )}
+
+        {/* ↓↓↓ เพิ่มบล็อกนี้ ↓↓↓ */}
+        {q.explanation && q.explanation.trim() && (
+          <div className="mt-3 ml-6 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
+            <span className="text-sm flex-shrink-0">💡</span>
+            <div>
+              <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
+              <p className="text-xs text-blue-700/90 leading-relaxed">{q.explanation}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ResultCard({ result }) {
   const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
+  const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
+
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
-      <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-      <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
-      <div className="bg-neutral-50 rounded-xl p-5">
-        <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
-        <p className="text-3xl font-bold text-orange-600">
-          {result.totalScore}/{result.maxScore}
-        </p>
-        <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
+    <div className="space-y-4">
+      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
+        <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+        <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
+        <div className="bg-neutral-50 rounded-xl p-5">
+          <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
+          <p className="text-3xl font-bold text-orange-600">
+            {result.totalScore}/{result.maxScore}
+          </p>
+          <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
+        </div>
+        {result.correctCount != null && (
+          <p className="text-sm text-neutral-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
+        )}
       </div>
-      {result.correctCount != null && (
-        <p className="text-sm text-neutral-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
+
+      {hasQuestions && (
+        <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-3">
+          <p className="text-sm font-semibold text-neutral-700 mb-1">เฉลยรายข้อ</p>
+          {result.questions.map((q, i) => (
+            <QuestionReviewRow key={q.id ?? i} q={q} index={i} />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -343,11 +413,11 @@ export default function StudentExam() {
   }
   if (phase === "running") {
     return (
-      <PageShell maxWidth="max-w-2xl">
+      <PageShell maxWidth="max-w-2xl" align="start">
         <ExamRunner
           examJoinId={runData.examJoinId}
           userId={userId}
-          joinedAt={runData.joinedAt}
+          examStartedAt={runData.examStartedAt}
           durationMinutes={runData.durationMinutes}
           questions={runData.questions}
           onSubmitted={handleSubmitted}
@@ -357,7 +427,7 @@ export default function StudentExam() {
   }
   if (phase === "result") {
     return (
-      <PageShell maxWidth="max-w-md">
+      <PageShell maxWidth="max-w-2xl" align="start">
         <ResultCard result={result} />
       </PageShell>
     );

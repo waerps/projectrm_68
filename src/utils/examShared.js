@@ -65,19 +65,20 @@ export const emptyQuestion = () => ({
   score: 1,
   level: "ปานกลาง",
   category: "",
+  explanation: "",
 });
 
 // ── xlsx template / import (parsing only — saving goes through addQuestions) ─
 export const downloadXlsxTemplate = () => {
-  const headers = ["question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category"];
+  const headers = ["question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation"];
   const sample = [
-    { question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต" },
-    { question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ" },
+    { question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต", explanation: "แยกตัวประกอบได้ (x−2)(x−3)=0 จึงได้ x=2 หรือ x=3" },
+    { question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ", explanation: "" },
   ];
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...sample.map((r) => headers.map((h) => r[h]))];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws["!cols"] = [{ wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }];
+  ws["!cols"] = [{ wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }];
   const instr = [
     ["📋 คำอธิบาย Template ข้อสอบ"], [],
     ["คอลัมน์", "คำอธิบาย", "ค่าที่รองรับ", "บังคับ?"],
@@ -90,6 +91,7 @@ export const downloadXlsxTemplate = () => {
     ["score", "คะแนนต่อข้อ", "ตัวเลข เช่น 1, 2, 3 …", "ไม่บังคับ (default = 1)"],
     ["level", "ระดับความยาก", "ง่าย / ปานกลาง / ยาก", "ไม่บังคับ (default = ปานกลาง)"],
     ["category", "หมวดหมู่", "ข้อความใดก็ได้ เช่น พีชคณิต", "ไม่บังคับ"],
+    ["explanation", "คำอธิบายเฉลย", "ข้อความอธิบายว่าทำไมคำตอบถึงถูก — นักเรียนจะเห็นหลังส่งข้อสอบ", "ไม่บังคับ"],
     [], [], ["• ห้ามลบแถวหัวตาราง"], ["• correct_answer ต้องเป็น A B C D เท่านั้น"],
   ];
   const ws2 = XLSX.utils.aoa_to_sheet(instr);
@@ -118,6 +120,7 @@ export const parseXlsx = (file) =>
             score: Number(r.score) || 1,
             level: ["ง่าย", "ปานกลาง", "ยาก"].includes(r.level) ? r.level : "ปานกลาง",
             category: String(r.category || ""),
+            explanation: String(r.explanation || ""),   // ← เพิ่ม
           }));
         resolve(parsed);
       } catch (err) { reject(err); }
