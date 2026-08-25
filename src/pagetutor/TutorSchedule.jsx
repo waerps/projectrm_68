@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import { useState, useEffect, useMemo } from 'react'
 import React from 'react'
 import axios from 'axios'
-import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin } from 'lucide-react'
+import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink } from 'lucide-react'
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -91,6 +91,7 @@ const STATUS_STYLE = {
 // ─── Component ──────────────────────────────────────────────────────
 export default function TutorSchedule() {
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id
+  const token = localStorage.getItem('student_token')
 
   // ── ข้อมูลตาราง ────────────────────────────────────────────────
   const [scheduleMap, setScheduleMap] = useState({})
@@ -121,6 +122,55 @@ export default function TutorSchedule() {
   const [endPhoto, setEndPhoto] = useState(null)
 
   const [isSaving, setIsSaving] = useState(false)
+  const [lineLinked, setLineLinked] = useState(false)
+  const [lineLoading, setLineLoading] = useState(true)
+  const [lineNotice, setLineNotice] = useState('')
+
+  useEffect(() => {
+    if (!token) return
+    const params = new URLSearchParams(window.location.search)
+    const result = params.get('lineLogin')
+    if (result === 'success') setLineNotice('เชื่อมบัญชีติวเตอร์กับ LINE สำเร็จแล้ว')
+    if (result === 'error') setLineNotice(params.get('message') || 'เชื่อม LINE ไม่สำเร็จ กรุณาลองใหม่')
+
+    axios.get(`${API_URL}/api/line/login/tutor/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(response => setLineLinked(Boolean(response.data?.linked)))
+      .catch(error => console.error('Error fetching tutor LINE status', error))
+      .finally(() => setLineLoading(false))
+  }, [token])
+
+  const connectTutorLine = async () => {
+    try {
+      setLineLoading(true)
+      setLineNotice('')
+      const response = await axios.post(
+        `${API_URL}/api/line/login/tutor/start`,
+        { returnPath: '/tutor/schedule' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      window.location.assign(response.data.authorizationUrl)
+    } catch (error) {
+      setLineNotice(error.response?.data?.message || 'เริ่มเชื่อม LINE ไม่สำเร็จ')
+      setLineLoading(false)
+    }
+  }
+
+  const disconnectTutorLine = async () => {
+    try {
+      setLineLoading(true)
+      await axios.delete(`${API_URL}/api/line/login/tutor/connection`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setLineLinked(false)
+      setLineNotice('ยกเลิกการเชื่อม LINE แล้ว')
+    } catch (error) {
+      setLineNotice(error.response?.data?.message || 'ยกเลิกการเชื่อม LINE ไม่สำเร็จ')
+    } finally {
+      setLineLoading(false)
+    }
+  }
 
   // ── ผสานช่วงเวลามาตรฐาน + ช่วงเวลาจริงที่ไม่ตรง default ─────────
   // (เอามาจาก AdminSchedule.jsx — derivedTimeSlots)
@@ -483,6 +533,40 @@ export default function TutorSchedule() {
           </div>
         </div>
       </div >
+
+      <div className={`rounded-2xl border p-6 shadow-sm ${lineLinked ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className={`rounded-full p-2.5 ${lineLinked ? 'bg-green-600 text-white' : 'bg-white text-green-600'}`}>
+              <MessageCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="font-bold text-neutral-900">
+                {lineLinked ? 'เชื่อมบัญชี LINE แล้ว' : 'เชื่อม LINE เพื่อรับคลาสสอน'}
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">
+                หากต้องการรับคลาสสอนที่ติวเตอร์ท่านอื่นปล่อย กรุณาเชื่อมบัญชี LINE ก่อน
+                ระบบจะแจ้งคาบสอนที่มีผู้ปล่อยผ่าน LINE นี้ และสามารถกดรับคลาสได้จากข้อความแจ้งเตือน
+              </p>
+              {lineNotice && <p className="mt-2 text-sm font-semibold text-orange-700">{lineNotice}</p>}
+            </div>
+          </div>
+
+          {lineLinked ? (
+            <button type="button" onClick={disconnectTutorLine} disabled={lineLoading}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50">
+              <Unlink className="h-4 w-4" />
+              {lineLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกการเชื่อม'}
+            </button>
+          ) : (
+            <button type="button" onClick={connectTutorLine} disabled={lineLoading || !token}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#06C755] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#05ad49] disabled:opacity-50">
+              <MessageCircle className="h-4 w-4" />
+              {lineLoading ? 'กำลังตรวจสอบ...' : 'เชื่อมบัญชีกับ LINE'}
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* ════════════════ MODAL ════════════════ */}
       {

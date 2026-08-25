@@ -115,6 +115,19 @@ export async function updateVideoProgress(token, videoId, payload) {
   }
 }
 
+export async function updateVideoWatchSegments(token, videoId, payload) {
+  try {
+    const res = await apiClient.put(
+      `/api/student/videos/${videoId}/watch-segments`,
+      payload,
+      withAuth(token)
+    );
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Files ───────────────────────────────────────────────────────────────────
 
 export async function getStudentFiles(token, courseId) {

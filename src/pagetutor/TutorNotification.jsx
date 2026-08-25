@@ -1,263 +1,31 @@
-import { useState } from 'react';
-import {
-  Bell,
-  ChevronRight,
-  DollarSign,
-  MessageCircle,
-  Calendar,
-  AlertCircle,
-  CheckCircle,
-  Trash2,
-  Check,
-} from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { API_URL } from '../config';
+import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, RefreshCw, Loader2, Repeat2 } from 'lucide-react';
 
-export default function TutorNotifications() {
-  const [filter, setFilter] = useState('all');
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'payment',
-      title: 'รับเงินค่าสอนแล้ว',
-      message: 'คุณได้รับเงินค่าสอน 32,850 บาท จากคอร์สเปิดเทอม ป.6',
-      time: '2 ชั่วโมงที่แล้ว',
-      isRead: false,
-      icon: 'payment',
-    },
-    {
-      id: 3,
-      type: 'schedule',
-      title: 'เตือนตารางสอนวันพรุ่งนี้',
-      message: 'คุณมีคลาสสอน วิชาคณิต ป.6 เวลา 17:00-18:30 น. ห้อง 1',
-      time: '1 วันที่แล้ว',
-      isRead: true,
-      icon: 'schedule',
-    },
-    {
-      id: 4,
-      type: 'alert',
-      title: 'นักเรียนขาดเรียน',
-      message: 'ด.ญ. มานี ขยัน ขาดเรียนติดต่อกัน 3 ครั้ง ในวิชาคณิต',
-      time: '1 วันที่แล้ว',
-      isRead: true,
-      icon: 'alert',
-    },
-    {
-      id: 5,
-      type: 'success',
-      title: 'อัปโหลดวิดีโอสำเร็จ',
-      message: 'วิดีโอ "บทที่ 5: สมการเชิงเส้น" อัปโหลดเรียบร้อยแล้ว',
-      time: '2 วันที่แล้ว',
-      isRead: true,
-      icon: 'success',
-    },
-    {
-      id: 6,
-      type: 'payment',
-      title: 'การชำระเงินรอดำเนินการ',
-      message: 'รอรับเงินค่าสอน 16,000 บาท จากคอร์ส วิทย์ ม.4',
-      time: '3 วันที่แล้ว',
-      isRead: true,
-      icon: 'payment',
-    },
-  ]);
+const API=`${API_URL}/api/tutor/notifications`;
+const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
+const meta={payment:{label:'การเงิน',Icon:DollarSign,bg:'bg-green-100',color:'text-green-600'},schedule:{label:'ตารางสอน',Icon:Calendar,bg:'bg-orange-100',color:'text-orange-600'},alert:{label:'ต้องจัดการ',Icon:AlertCircle,bg:'bg-red-100',color:'text-red-600'},success:{label:'สำเร็จ',Icon:CheckCircle,bg:'bg-emerald-100',color:'text-emerald-600'},release:{label:'คาบสอนแทน',Icon:Repeat2,bg:'bg-blue-100',color:'text-blue-600'}};
+function ago(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';const s=Math.max(0,Math.floor((Date.now()-d)/1000));if(s<60)return'เมื่อสักครู่';if(s<3600)return`${Math.floor(s/60)} นาทีที่แล้ว`;if(s<86400)return`${Math.floor(s/3600)} ชั่วโมงที่แล้ว`;if(s<604800)return`${Math.floor(s/86400)} วันที่แล้ว`;return d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});}
 
-  const getIcon = (type) => {
-    switch (type) {
-      case 'payment':
-        return <DollarSign className="h-5 w-5 text-green-600" />;
-      case 'message':
-        return <MessageCircle className="h-5 w-5 text-blue-600" />;
-      case 'schedule':
-        return <Calendar className="h-5 w-5 text-orange-600" />;
-      case 'alert':
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      default:
-        return <Bell className="h-5 w-5 text-neutral-600" />;
-    }
-  };
+export default function TutorNotifications(){
+  const navigate=useNavigate();
+  const [filter,setFilter]=useState('all');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
+  const load=useCallback(async()=>{setLoading(true);setError('');try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);
+  useEffect(()=>{load();},[load]);
+  const unread=items.filter(x=>!x.isRead).length;
+  const filtered=useMemo(()=>items.filter(x=>filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter),[items,filter]);
+  const types=[...new Set(items.map(x=>x.type))];
+  const mark=async id=>{setBusy(id);try{await axios.patch(`${API}/${encodeURIComponent(id)}/read`,{},auth());setItems(xs=>xs.map(x=>x.id===id?{...x,isRead:true}:x));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
+  const markAll=async()=>{setBusy('all');try{await axios.patch(`${API}/read-all`,{},auth());setItems(xs=>xs.map(x=>({...x,isRead:true})));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
+  const dismiss=async id=>{setBusy(id);try{await axios.delete(`${API}/${encodeURIComponent(id)}`,auth());setItems(xs=>xs.filter(x=>x.id!==id));}catch(err){setError(err.response?.data?.message||'ซ่อนรายการไม่สำเร็จ');}finally{setBusy('');}};
+  const act=async item=>{if(!item.isRead)await mark(item.id);if(item.link)navigate(item.link);};
 
-  const getIconBg = (type) => {
-    switch (type) {
-      case 'payment':
-        return 'bg-green-100';
-      case 'message':
-        return 'bg-blue-100';
-      case 'schedule':
-        return 'bg-orange-100';
-      case 'alert':
-        return 'bg-red-100';
-      case 'success':
-        return 'bg-green-100';
-      default:
-        return 'bg-neutral-100';
-    }
-  };
-
-  const filteredNotifications = notifications.filter((notif) => {
-    if (filter === 'all') return true;
-    if (filter === 'unread') return !notif.isRead;
-    if (filter === 'read') return notif.isRead;
-    return notif.type === filter;
-  });
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const markAsRead = (id) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-  };
-
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
-  };
-
-  const deleteNotification = (id) => {
-    setNotifications(notifications.filter((n) => n.id !== id));
-  };
-
-  return (
-    <div className="min-h-screen space-y-6 mt-[90px]">
-      <div className="mx-auto ">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
-                <Bell className="h-7 w-7 text-orange-600" />
-                การแจ้งเตือน
-              </h1>
-              <p className="mt-1 text-sm text-neutral-500">
-                คุณมีการแจ้งเตือนที่ยังไม่ได้อ่าน {unreadCount} รายการ
-              </p>
-            </div>
-
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium shadow-sm"
-              >
-                <Check className="h-4 w-4" />
-                ทำเครื่องหมายว่าอ่านทั้งหมด
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-2xl border-2 border-neutral-200 p-2 mb-6">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                filter === 'all'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              ทั้งหมด ({notifications.length})
-            </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                filter === 'unread'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              ยังไม่ได้อ่าน ({unreadCount})
-            </button>
-            <button
-              onClick={() => setFilter('payment')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                filter === 'payment'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              การเงิน
-            </button>
-
-            <button
-              onClick={() => setFilter('schedule')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                filter === 'schedule'
-                  ? 'bg-orange-500 text-white'
-                  : 'text-neutral-600 hover:bg-neutral-100'
-              }`}
-            >
-              ตารางสอน
-            </button>
-          </div>
-        </div>
-
-        {/* Notifications List */}
-        <div className="space-y-3">
-          {filteredNotifications.length === 0 ? (
-            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-12 text-center">
-              <Bell className="h-16 w-16 text-neutral-300 mx-auto mb-4" />
-              <p className="text-neutral-500">ไม่มีการแจ้งเตือน</p>
-            </div>
-          ) : (
-            filteredNotifications.map((notif) => (
-              <div
-                key={notif.id}
-                className={`bg-white rounded-2xl border-2 transition hover:border-orange-300 overflow-hidden ${
-                  notif.isRead ? 'border-neutral-200' : 'border-orange-200 bg-orange-50/30'
-                }`}
-              >
-                <div className="p-5">
-                  <div className="flex gap-4">
-                    {/* Icon */}
-                    <div className={`p-3 rounded-xl ${getIconBg(notif.type)} shrink-0 h-fit`}>
-                      {getIcon(notif.type)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className={`font-bold ${notif.isRead ? 'text-neutral-900' : 'text-neutral-900'}`}>
-                          {notif.title}
-                          {!notif.isRead && (
-                            <span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full"></span>
-                          )}
-                        </h3>
-                        <span className="text-xs text-neutral-500 whitespace-nowrap">{notif.time}</span>
-                      </div>
-
-                      <p className={`text-sm mb-3 ${notif.isRead ? 'text-neutral-600' : 'text-neutral-700'}`}>
-                        {notif.message}
-                      </p>
-
-                      {/* Actions */}
-                      <div className="flex gap-2">
-                        {!notif.isRead && (
-                          <button
-                            onClick={() => markAsRead(notif.id)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition font-medium"
-                          >
-                            <Check className="h-3 w-3" />
-                            ทำเครื่องหมายว่าอ่านแล้ว
-                          </button>
-                        )}
-                        <button
-                          onClick={() => deleteNotification(notif.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition font-medium"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          ลบ
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="min-h-screen space-y-6 mt-[90px]"><div className="mx-auto">
+    <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4"><div><h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2"><Bell className="h-7 w-7 text-orange-600"/>การแจ้งเตือน</h1><p className="mt-1 text-sm text-neutral-500">ข้อมูลจริงสำหรับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p></div><div className="flex gap-2"><button onClick={load} disabled={loading} className="flex items-center gap-2 px-4 py-2 border border-neutral-200 bg-white rounded-xl hover:bg-neutral-50 font-medium"><RefreshCw className={`h-4 w-4 ${loading?'animate-spin':''}`}/>รีเฟรช</button>{unread>0&&<button onClick={markAll} disabled={busy==='all'} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-medium disabled:opacity-60"><Check className="h-4 w-4"/>อ่านทั้งหมด</button>}</div></div>
+    {error&&<div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex justify-between"><span>{error}</span><button onClick={load} className="font-bold underline">ลองใหม่</button></div>}
+    <div className="bg-white rounded-2xl border-2 border-neutral-200 p-2 mb-6"><div className="flex flex-wrap gap-2"><button onClick={()=>setFilter('all')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter==='all'?'bg-orange-500 text-white':'text-neutral-600 hover:bg-neutral-100'}`}>ทั้งหมด ({items.length})</button><button onClick={()=>setFilter('unread')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter==='unread'?'bg-orange-500 text-white':'text-neutral-600 hover:bg-neutral-100'}`}>ยังไม่ได้อ่าน ({unread})</button>{types.map(type=><button key={type} onClick={()=>setFilter(type)} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter===type?'bg-orange-500 text-white':'text-neutral-600 hover:bg-neutral-100'}`}>{meta[type]?.label||type}</button>)}</div></div>
+    {loading?<div className="bg-white rounded-2xl border-2 border-neutral-200 p-14 text-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500 mx-auto mb-3"/><p className="text-neutral-500">กำลังโหลดงานของคุณ...</p></div>:filtered.length===0?<div className="bg-white rounded-2xl border-2 border-neutral-200 p-12 text-center"><Bell className="h-16 w-16 text-neutral-300 mx-auto mb-4"/><p className="font-semibold text-neutral-700">ไม่มีการแจ้งเตือน</p><p className="text-sm text-neutral-400 mt-1">หากไม่มีงานค้าง หน้านี้ว่างได้เป็นปกติ</p></div>:<div className="space-y-3">{filtered.map(item=>{const m=meta[item.type]||{Icon:Bell,bg:'bg-neutral-100',color:'text-neutral-600'};return <div key={item.id} className={`bg-white rounded-2xl border-2 hover:border-orange-300 overflow-hidden ${item.isRead?'border-neutral-200':'border-orange-200 bg-orange-50/30'}`}><div className="p-5 flex gap-4"><div className={`p-3 rounded-xl ${m.bg} shrink-0 h-fit`}><m.Icon className={`h-5 w-5 ${m.color}`}/></div><div className="flex-1 min-w-0"><div className="flex items-start justify-between gap-3 mb-2"><h3 className="font-bold text-neutral-900">{item.title}{!item.isRead&&<span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full"/>}</h3><span className="text-xs text-neutral-500 whitespace-nowrap">{ago(item.createdAt)}</span></div><p className="text-sm text-neutral-600 mb-3">{item.message}</p><div className="flex flex-wrap gap-2">{item.link&&<button onClick={()=>act(item)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium">{item.actionLabel||'ดูรายละเอียด'}<ChevronRight className="h-3 w-3"/></button>}{!item.isRead&&<button disabled={busy===item.id} onClick={()=>mark(item.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 font-medium"><Check className="h-3 w-3"/>อ่านแล้ว</button>}<button disabled={busy===item.id} onClick={()=>dismiss(item.id)} title="ซ่อนเฉพาะรายการแจ้งเตือน" className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium"><Trash2 className="h-3 w-3"/>ซ่อนรายการ</button></div></div></div></div>;})}</div>}
+  </div></div>;
 }

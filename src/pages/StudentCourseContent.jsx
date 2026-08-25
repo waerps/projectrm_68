@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useParams, Link } from "react-router-dom";
 import { ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
-import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoProgress } from "../callapi/callusers_student";
+import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoProgress, updateVideoWatchSegments } from "../callapi/callusers_student";
 
 let ytApiPromise = null;
 function loadYoutubeApi() {
@@ -82,6 +82,90 @@ function YoutubePlayer({ videoId, youtubeId, token }) {
   return <div className="w-full aspect-video bg-black"><div id={elementId} className="w-full h-full" /></div>;
 }
 
+function UploadedVideoPlayer({ video, token }) {
+  const videoRef = useRef(null);
+  const pendingSegments = useRef(new Set());
+  const watchedSeconds = useRef(new Map());
+  const lastSample = useRef(null);
+  const flushTimer = useRef(null);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) return undefined;
+
+    const flush = async () => {
+      if (!element.duration || !Number.isFinite(element.duration)) return;
+      const indexes = [...pendingSegments.current];
+      if (!indexes.length) return;
+      pendingSegments.current.clear();
+      try {
+        await updateVideoWatchSegments(token, video.VideoId, {
+          segmentIndexes: indexes,
+          duration: element.duration,
+          lastWatchTime: element.currentTime,
+        });
+      } catch (error) {
+        indexes.forEach(index => pendingSegments.current.add(index));
+        console.error("บันทึกช่วงการรับชมไม่สำเร็จ", error);
+      }
+    };
+
+    const resetSample = () => { lastSample.current = null; };
+    const sample = () => {
+      const now = performance.now();
+      const current = element.currentTime;
+      const previous = lastSample.current;
+      lastSample.current = { current, now };
+      if (!previous || element.paused || element.seeking || document.hidden) return;
+
+      const mediaDelta = current - previous.current;
+      const wallDelta = (now - previous.now) / 1000;
+      if (mediaDelta <= 0 || mediaDelta > 1.5 || wallDelta > 2 || Math.abs(mediaDelta - wallDelta * element.playbackRate) > 0.75) return;
+
+      const segmentIndex = Math.floor(previous.current / 10);
+      if (Math.floor(current / 10) !== segmentIndex) return;
+      const next = Math.min(10, (watchedSeconds.current.get(segmentIndex) || 0) + mediaDelta);
+      watchedSeconds.current.set(segmentIndex, next);
+      const segmentLength = Math.min(10, element.duration - segmentIndex * 10);
+      if (next >= Math.max(1, segmentLength * 0.8)) pendingSegments.current.add(segmentIndex);
+    };
+
+    const resume = () => {
+      const saved = Number(video.LastWatchTime || 0);
+      if (saved > 0 && saved < element.duration - 3) element.currentTime = saved;
+    };
+    const onPause = () => { resetSample(); flush(); };
+    const onVisibility = () => { resetSample(); if (document.hidden) flush(); };
+
+    element.addEventListener("loadedmetadata", resume, { once: true });
+    element.addEventListener("timeupdate", sample);
+    element.addEventListener("seeking", resetSample);
+    element.addEventListener("seeked", resetSample);
+    element.addEventListener("pause", onPause);
+    element.addEventListener("ended", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    flushTimer.current = setInterval(flush, 10000);
+
+    return () => {
+      clearInterval(flushTimer.current);
+      flush();
+      element.removeEventListener("timeupdate", sample);
+      element.removeEventListener("seeking", resetSample);
+      element.removeEventListener("seeked", resetSample);
+      element.removeEventListener("pause", onPause);
+      element.removeEventListener("ended", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [token, video.VideoId, video.LastWatchTime]);
+
+  return (
+    <video ref={videoRef} src={video.VideoUrl} controls controlsList="nodownload" playsInline
+      className="aspect-video w-full bg-black" preload="metadata">
+      เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
+    </video>
+  );
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 function FileRow({ file }) {
@@ -138,11 +222,15 @@ export default function StudentCourseContent() {
   const [documents, setDocuments] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
 
-  const getVideoThumbnail = (url) => {
+  const getVideoThumbnail = (url, type) => {
+    if (type === "upload" && /res\.cloudinary\.com/.test(url || "")) {
+      return url.replace("/video/upload/", "/video/upload/so_1/").replace(/\.(mp4|mov|webm)$/i, ".jpg");
+    }
     const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
     return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
   };
-  const getVideoType = (url) => (/youtube\.com|youtu\.be/.test(url) ? "youtube" : /drive\.google\.com/.test(url) ? "drive" : "other");
+  const getVideoType = (url, storedType) => storedType === "upload" || /res\.cloudinary\.com/.test(url || "")
+    ? "upload" : (/youtube\.com|youtu\.be/.test(url) ? "youtube" : /drive\.google\.com/.test(url) ? "drive" : "other");
 
   useEffect(() => {
     let cancelled = false;
@@ -172,7 +260,10 @@ export default function StudentCourseContent() {
           VideoId: video.VideoId ?? video.videoId ?? video.id,
           VideoTitle: video.VideoTitle ?? video.videoTitle ?? video.title ?? "วิดีโอไม่มีชื่อ",
           VideoUrl: video.VideoUrl ?? video.videoUrl ?? video.url ?? "",
+          VideoType: video.VideoType ?? video.videoType ?? "",
+          Thumbnail: video.Thumbnail ?? video.thumbnail ?? "",
           Duration: video.Duration ?? video.duration,
+          LastWatchTime: Number(video.LastWatchTime ?? video.lastWatchTime ?? 0),
           WatchPercent: Number(video.WatchPercent ?? video.watchPercent ?? 0),
         })));
         setDocuments(fileList.map((file) => ({
@@ -238,8 +329,8 @@ export default function StudentCourseContent() {
               {videos.length > 0 ? videos.map((video) => (
                 <div key={video.VideoId} className="rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0">
                   <button onClick={() => setSelectedVideo(video)} className="relative flex-shrink-0 w-28 bg-neutral-100 group">
-                    {getVideoThumbnail(video.VideoUrl) ? (
-                      <img src={getVideoThumbnail(video.VideoUrl)} alt="" className="w-28 h-full object-cover" />
+                    {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
+                      <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="w-28 h-full object-cover" />
                     ) : (
                       <div className="w-28 h-full flex items-center justify-center min-h-[72px]"><span className="text-2xl">📁</span></div>
                     )}
@@ -251,8 +342,8 @@ export default function StudentCourseContent() {
                   <div className="flex-1 px-3 py-3 flex flex-col justify-between min-w-0">
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl) === "youtube" ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500"}`}>
-                          {getVideoType(video.VideoUrl) === "youtube" ? "▶ YouTube" : "📁 Drive"}
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "bg-purple-50 text-purple-600" : "bg-neutral-100 text-neutral-500"}`}>
+                          {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "🎬 วิดีโอระบบ" : "คลิปเดิม"}
                         </span>
                         {video.Duration && <span className="text-[10px] text-neutral-400">{video.Duration}</span>}
                       </div>
@@ -311,7 +402,11 @@ export default function StudentCourseContent() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} token={token} />
+            {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
+              <UploadedVideoPlayer video={selectedVideo} token={token} />
+            ) : (
+              <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} token={token} />
+            )}
           </div>
         </div>
       )}

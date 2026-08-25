@@ -45,7 +45,11 @@ const CHART_TOOLTIP_STYLE = { background: '#fff', border: '1px solid #e2e8f0', b
 const formatDate = (d) => {
     if (!d) return '—';
     try {
-        const date = new Date(String(d).includes('T') ? d : `${d}T00:00:00`);
+        const raw = String(d);
+        const normalized = /^\d{8}$/.test(raw)
+            ? `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}T00:00:00`
+            : raw.includes('T') ? raw : `${raw}T00:00:00`;
+        const date = new Date(normalized);
         if (isNaN(date.getTime())) return '—';
         return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch { return '—'; }
@@ -191,7 +195,7 @@ function SegmentedControl({ options, value, onChange }) {
 }
 
 /* ─── Hero: minimal white card, thin orange accent, the 5-second answer ── */
-function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, profit, profitMargin, expense, expenseCount, outstanding, outstandingCount }) {
+function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet, cashMargin, tutorPayable, tutorAccrued, overdue, overdueCount }) {
     return (
         <div className={`${T.card} ${T.cardPad} relative overflow-hidden`}>
             <div className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
@@ -218,19 +222,19 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, profit, 
                         </p>
                     </div>
                     <div>
-                        <p className={T.label}>กำไรสุทธิ</p>
-                        <p className={`${T.value} text-3xl mt-1 ${profit < 0 ? 'text-red-600' : ''}`}>{formatMoney(profit)}</p>
-                        <p className={`${T.caption} mt-1.5`}>{profitMargin === null ? 'ยังไม่มีข้อมูลเดือนนี้' : `Margin ${profitMargin}%`}</p>
+                        <p className={T.label}>กระแสเงินสดสุทธิ</p>
+                        <p className={`${T.value} text-3xl mt-1 ${cashNet < 0 ? 'text-red-600' : ''}`}>{formatMoney(cashNet)}</p>
+                        <p className={`${T.caption} mt-1.5`}>{cashMargin === null ? 'ยังไม่มีข้อมูลเดือนนี้' : `คิดเป็น ${cashMargin}% ของรายรับ`}</p>
                     </div>
                     <div>
-                        <p className={T.label}>รายจ่าย (ติวเตอร์)</p>
-                        <p className={`${T.value} text-3xl mt-1`}>{formatMoney(expense)}</p>
-                        <p className={`${T.caption} mt-1.5`}>{expenseCount} รายการ</p>
+                        <p className={T.label}>ค่าติวเตอร์ค้างจ่าย</p>
+                        <p className={`${T.value} text-3xl mt-1 ${tutorPayable > 0 ? 'text-orange-600' : ''}`}>{formatMoney(tutorPayable)}</p>
+                        <p className={`${T.caption} mt-1.5`}>เดือนนี้เกิดขึ้น {formatMoney(tutorAccrued)}</p>
                     </div>
                     <div>
-                        <p className={T.label}>ยอดค้างชำระ</p>
-                        <p className={`${T.value} text-3xl mt-1 ${outstanding > 0 ? 'text-red-600' : ''}`}>{formatMoney(outstanding)}</p>
-                        <p className={`${T.caption} mt-1.5`}>{outstandingCount} รายการ</p>
+                        <p className={T.label}>ยอดเกินกำหนด</p>
+                        <p className={`${T.value} text-3xl mt-1 ${overdue > 0 ? 'text-red-600' : ''}`}>{formatMoney(overdue)}</p>
+                        <p className={`${T.caption} mt-1.5`}>{overdueCount} งวดที่ต้องติดตาม</p>
                     </div>
                 </div>
             </ApiState>
@@ -422,7 +426,7 @@ export default function AdminFinance() {
     const [monthlyError, setMonthlyError] = useState(null);
 
     /* pie charts */
-    const [charts, setCharts] = useState({ byCourseType: [], byTerm: [], byStatus: [] });
+    const [charts, setCharts] = useState({ byCourseType: [], byTerm: [], byStatus: [], topCourses: [], installmentStatuses: [] });
     const [chartsLoading, setChartsLoading] = useState(true);
     const [chartsError, setChartsError] = useState(null);
 
@@ -436,19 +440,24 @@ export default function AdminFinance() {
     const [txPagination, setTxPagination] = useState({ page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 1 });
     const [txLoading, setTxLoading] = useState(true);
     const [txError, setTxError] = useState(null);
+    const [transactionKind, setTransactionKind] = useState('student');
+    const [tutorData, setTutorData] = useState([]);
+    const [tutorSummary, setTutorSummary] = useState({ unpaidAmount: 0, unpaidCount: 0, paidAmount: 0, paidCount: 0 });
+    const [tutorLoading, setTutorLoading] = useState(false);
+    const [tutorError, setTutorError] = useState(null);
+    const [payoutItem, setPayoutItem] = useState(null);
 
     /* filters state */
     const [searchInput, setSearchInput] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [monthFilter, setMonthFilter] = useState(''); // yyyy-mm from <input type="month">, empty = all
-    const [termId, setTermId] = useState('all');
-    const [statusId, setStatusId] = useState('all');
-    const [paymentType, setPaymentType] = useState('all');
+    const [orderStatus, setOrderStatus] = useState('all');
+    const [paymentPlanFilter, setPaymentPlanFilter] = useState('all');
+    const [tutorStatus, setTutorStatus] = useState('all');
     const [courseId, setCourseId] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
 
     const [viewTxId, setViewTxId] = useState(null);
-    const [exporting, setExporting] = useState(false);
     const [missingPriceCount, setMissingPriceCount] = useState(0);
 
     /* ── Fetchers (unchanged endpoints / params — presentation layer only) ── */
@@ -487,14 +496,9 @@ export default function AdminFinance() {
     const buildTxParams = (withPaging) => {
         const params = {};
         if (debouncedSearch) params.search = debouncedSearch;
-        if (monthFilter) {
-            const [y, m] = monthFilter.split('-');
-            params.year = y;
-            params.month = m;
-        }
-        if (termId !== 'all') params.termId = termId;
-        if (statusId !== 'all') params.statusId = statusId;
-        if (paymentType !== 'all') params.paymentType = paymentType;
+        if (monthFilter) params.month = monthFilter;
+        if (orderStatus !== 'all') params.orderStatus = orderStatus;
+        if (paymentPlanFilter !== 'all') params.paymentPlan = paymentPlanFilter;
         if (courseId !== 'all') params.courseId = courseId;
         if (withPaging) {
             params.page = currentPage;
@@ -505,7 +509,7 @@ export default function AdminFinance() {
 
     const fetchTransactions = () => {
         setTxLoading(true); setTxError(null);
-        axios.get(`${FINANCE_API}/transactions`, { params: buildTxParams(true) })
+        axios.get(`${FINANCE_API}/student-transactions`, { params: buildTxParams(true) })
             .then(r => {
                 setTxData(r.data.data || []);
                 setTxPagination(r.data.pagination || { page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 1 });
@@ -514,26 +518,17 @@ export default function AdminFinance() {
             .finally(() => setTxLoading(false));
     };
 
-    const handleExport = async () => {
-        setExporting(true);
-        try {
-            const res = await axios.get(`${FINANCE_API}/export`, {
-                params: buildTxParams(false),
-                responseType: 'blob',
-            });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `finance_transactions_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (e) {
-            alert(e.response?.data?.message || 'ส่งออกข้อมูลไม่สำเร็จ');
-        } finally {
-            setExporting(false);
-        }
+    const fetchTutorPayables = () => {
+        setTutorLoading(true); setTutorError(null);
+        axios.get(`${FINANCE_API}/tutor-payables`, { params: {
+            ...(debouncedSearch ? { search: debouncedSearch } : {}),
+            ...(monthFilter ? { month: monthFilter } : {}),
+            ...(tutorStatus !== 'all' ? { status: tutorStatus } : {}),
+        } }).then(r => {
+            setTutorData(r.data.data || []);
+            setTutorSummary(r.data.summary || { unpaidAmount: 0, unpaidCount: 0, paidAmount: 0, paidCount: 0 });
+        }).catch(e => setTutorError(e.response?.data?.message || 'โหลดรายการค่าติวเตอร์ไม่สำเร็จ'))
+            .finally(() => setTutorLoading(false));
     };
 
     /* ── Effects ───────────────────────────────────────────────────────── */
@@ -552,27 +547,32 @@ export default function AdminFinance() {
         return () => clearTimeout(t);
     }, [searchInput]);
 
-    useEffect(() => { setCurrentPage(1); }, [debouncedSearch, monthFilter, termId, statusId, paymentType, courseId]);
+    useEffect(() => { setCurrentPage(1); }, [debouncedSearch, monthFilter, orderStatus, paymentPlanFilter, courseId]);
 
     useEffect(() => {
-        fetchTransactions();
+        if (transactionKind === 'student') fetchTransactions();
+        else fetchTutorPayables();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, monthFilter, termId, statusId, paymentType, courseId, currentPage]);
+    }, [transactionKind, debouncedSearch, monthFilter, orderStatus, paymentPlanFilter, tutorStatus, courseId, currentPage]);
 
     /* ── Derived values (same arithmetic as before — no new business logic) ── */
     const monthlyRevenue = summary?.monthlyRevenue ?? 0;
     const monthlyProfit = summary?.monthlyProfit ?? 0;
-    const monthlyTutorExpense = summary?.monthlyTutorExpense ?? 0;
-    const monthlyTutorExpenseCount = summary?.monthlyTutorExpenseCount ?? 0;
-    const pendingApprovalAmount = summary?.pendingApprovalAmount ?? 0;
-    const pendingApprovalCount = summary?.pendingApprovalCount ?? 0;
-    const monthlyPendingApprovalCount = summary?.monthlyPendingApprovalCount ?? 0;
     const totalRevenueAllTime = summary?.totalRevenueAllTime ?? 0;
     const paidEnrollCount = summary?.paidEnrollCount ?? 0;
     const totalEnrollCount = summary?.totalEnrollCount ?? 0;
     const outstandingTotalAmount = summary?.outstandingTotalAmount ?? 0;
     const outstandingEnrollCount = summary?.outstandingEnrollCount ?? 0;
-    const monthlyTransactionCount = summary?.monthlyTransactionCount ?? 0;
+    const monthlyPayingStudentCount = summary?.monthlyPayingStudentCount ?? 0;
+    const tutorPayableOutstanding = summary?.tutorPayableOutstanding ?? 0;
+    const monthlyTutorAccrued = summary?.monthlyTutorAccrued ?? 0;
+    const overdueAmount = summary?.overdueAmount ?? 0;
+    const overdueInstallmentCount = summary?.overdueInstallmentCount ?? 0;
+    const onTimePaymentRate = summary?.onTimePaymentRate ?? null;
+    const paymentPlanMix = summary?.paymentPlanMix || {
+        full: { orderCount: 0, paidAmount: 0 },
+        installment: { orderCount: 0, paidAmount: 0 },
+    };
 
     const profitMargin = monthlyRevenue > 0
         ? Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10
@@ -586,11 +586,9 @@ export default function AdminFinance() {
         return Math.round(((curr - prev) / prev) * 1000) / 10;
     })();
 
-    const approvalSuccessRate = monthlyTransactionCount > 0
-        ? Math.round(((monthlyTransactionCount - Math.min(monthlyPendingApprovalCount, monthlyTransactionCount)) / monthlyTransactionCount) * 100)
-        : null;
-
-    const avgRevenuePerStudent = paidEnrollCount > 0 ? Math.round(monthlyRevenue / paidEnrollCount) : 0;
+    const avgRevenuePerStudent = monthlyPayingStudentCount > 0
+        ? Math.round(monthlyRevenue / monthlyPayingStudentCount)
+        : 0;
     const paidRate = totalEnrollCount > 0 ? Math.round((paidEnrollCount / totalEnrollCount) * 100) : 0;
 
     const monthlyChartData = monthly.map(m => ({
@@ -607,11 +605,22 @@ export default function AdminFinance() {
         color: PIE_COLORS_A[i % PIE_COLORS_A.length],
     }));
 
-    const revenueByStatus = (charts.byStatus || []).map((c, i) => ({
-        name: c.Status_Payment_Name || 'ไม่ระบุ',
-        value: Number(c.revenue) || 0,
+    const installmentStatusData = (charts.installmentStatuses || []).map((c, i) => ({
+        name: c.label,
+        value: Number(c.count) || 0,
+        amount: Number(c.amount) || 0,
         color: PIE_COLORS_B[i % PIE_COLORS_B.length],
     }));
+
+    const topCourseData = (charts.topCourses || []).map(c => ({
+        name: c.CourseName,
+        revenue: Number(c.revenue) || 0,
+    }));
+
+    const fullOrderCount = Number(paymentPlanMix.full?.orderCount || 0);
+    const installmentOrderCount = Number(paymentPlanMix.installment?.orderCount || 0);
+    const activeOrderCount = fullOrderCount + installmentOrderCount;
+    const fullPlanPercent = activeOrderCount > 0 ? Math.round((fullOrderCount / activeOrderCount) * 100) : 0;
 
     const totalPages = txPagination.totalPages || 1;
     const currentPageNum = txPagination.page || 1;
@@ -651,19 +660,19 @@ export default function AdminFinance() {
                     onRetry={fetchSummary}
                     revenue={monthlyRevenue}
                     revenueGrowth={revenueGrowth}
-                    profit={monthlyProfit}
-                    profitMargin={profitMargin}
-                    expense={monthlyTutorExpense}
-                    expenseCount={monthlyTutorExpenseCount}
-                    outstanding={outstandingTotalAmount}
-                    outstandingCount={outstandingEnrollCount}
+                    cashNet={monthlyProfit}
+                    cashMargin={profitMargin}
+                    tutorPayable={tutorPayableOutstanding}
+                    tutorAccrued={monthlyTutorAccrued}
+                    overdue={overdueAmount}
+                    overdueCount={overdueInstallmentCount}
                 />
             </div>
 
             {/* ── Secondary KPIs — same existing summary fields, quieter design ── */}
             <div className="col-span-12">
                 <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-24" skeletonHeight="h-24">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <KPICard
                             label="รายรับสะสมทั้งหมด"
                             value={formatMoney(totalRevenueAllTime)}
@@ -672,11 +681,11 @@ export default function AdminFinance() {
                             tone="orange"
                         />
                         <KPICard
-                            label="รอตรวจสอบ/ชำระ"
-                            value={formatMoney(pendingApprovalAmount)}
-                            sub={`${pendingApprovalCount} รายการรออนุมัติ`}
+                            label="ยอดคงเหลือแผนผ่อน"
+                            value={formatMoney(outstandingTotalAmount)}
+                            sub={`${outstandingEnrollCount} แผนที่ชำระยังไม่ครบ`}
                             icon={Clock}
-                            tone="blue"
+                            tone="orange"
                         />
                         <KPICard
                             label="นักเรียนที่ชำระแล้ว"
@@ -686,18 +695,25 @@ export default function AdminFinance() {
                             tone="green"
                         />
                         <KPICard
-                            label="อัตราการอนุมัติสำเร็จ"
-                            value={approvalSuccessRate === null ? '—' : `${approvalSuccessRate}%`}
-                            sub={`${monthlyTransactionCount} รายการเดือนนี้`}
+                            label="อัตราชำระตรงเวลา"
+                            value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`}
+                            sub="เฉพาะงวดผ่อนที่ถึงกำหนดแล้ว"
                             icon={CheckCircle}
                             tone="green"
                         />
                         <KPICard
                             label="รายรับเฉลี่ย/นักเรียน"
                             value={formatMoney(avgRevenuePerStudent)}
-                            sub="คำนวณจากนักเรียนที่ชำระแล้ว"
+                            sub="คำนวณจากผู้ชำระจริงในเดือนนี้"
                             icon={Target}
                             tone="neutral"
+                        />
+                        <KPICard
+                            label="รูปแบบการชำระ"
+                            value={`${fullPlanPercent}% เต็ม`}
+                            sub={`เต็ม ${fullOrderCount} · ผ่อน ${installmentOrderCount} รายการ`}
+                            icon={CreditCard}
+                            tone="blue"
                         />
                     </div>
                 </ApiState>
@@ -707,7 +723,7 @@ export default function AdminFinance() {
             {selectedTab === 'overview' && (
                 <>
                     <div className="col-span-12 lg:col-span-6">
-                        <SectionCard title="รายรับ - รายจ่าย (6 เดือน)" icon={BarChart3}>
+                        <SectionCard title="รายรับ - เงินจ่ายติวเตอร์ (6 เดือน)" icon={BarChart3}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
                                     <BarChart data={monthlyChartData} barGap={4}>
@@ -717,8 +733,8 @@ export default function AdminFinance() {
                                         <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
                                         <Legend wrapperStyle={{ fontSize: 12 }} />
                                         <Bar dataKey="revenue" name="รายรับ" fill="#22c55e" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="expenses" name="รายจ่าย" fill="#ef4444" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="profit" name="กำไร" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="expenses" name="จ่ายติวเตอร์แล้ว" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="profit" name="เงินสดสุทธิ" fill="#3b82f6" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </ApiState>
@@ -726,7 +742,7 @@ export default function AdminFinance() {
                     </div>
 
                     <div className="col-span-12 lg:col-span-6">
-                        <SectionCard title="แนวโน้มกำไร" icon={TrendingUp}>
+                        <SectionCard title="แนวโน้มกระแสเงินสดสุทธิ" icon={TrendingUp}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
                                     <LineChart data={monthlyChartData}>
@@ -734,7 +750,7 @@ export default function AdminFinance() {
                                         <XAxis dataKey="month" tick={CHART_TICK} axisLine={false} tickLine={false} />
                                         <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} />
                                         <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
-                                        <Line type="monotone" dataKey="profitTrend" stroke="#f97316" strokeWidth={2.5} name="กำไร" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} connectNulls={false} />
+                                        <Line type="monotone" dataKey="profitTrend" stroke="#f97316" strokeWidth={2.5} name="เงินสดสุทธิ" dot={{ fill: '#f97316', r: 5, strokeWidth: 0 }} connectNulls={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </ApiState>
@@ -774,32 +790,67 @@ export default function AdminFinance() {
                     </div>
 
                     <div className="col-span-12 lg:col-span-6">
-                        <SectionCard title="รายรับแยกตามสถานะการชำระ" icon={Wallet}>
+                        <SectionCard title="สถานะงวดผ่อน" icon={Wallet}>
                             <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
-                                {revenueByStatus.length === 0 ? (
-                                    <EmptyState message="ยังไม่มีข้อมูลสถานะการชำระ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
+                                {installmentStatusData.length === 0 ? (
+                                    <EmptyState message="ยังไม่มีแผนผ่อนที่เริ่มชำระ" suggestion="ไม่นับรายการที่เพียงสร้าง QR แล้วออก" />
                                 ) : (
                                     <div className="flex items-center gap-4">
                                         <ResponsiveContainer width="50%" height={180}>
                                             <RePieChart>
-                                                <Pie data={revenueByStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
-                                                    {revenueByStatus.map((e, i) => <Cell key={i} fill={e.color} />)}
+                                                <Pie data={installmentStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
+                                                    {installmentStatusData.map((e, i) => <Cell key={i} fill={e.color} />)}
                                                 </Pie>
-                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
+                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, _n, item) => [`${v} งวด · ${formatMoney(item.payload.amount)}`, item.payload.name]} />
                                             </RePieChart>
                                         </ResponsiveContainer>
                                         <div className="flex-1 space-y-2.5">
-                                            {revenueByStatus.map((item, i) => (
+                                            {installmentStatusData.map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
                                                         <span className="text-slate-600 text-xs">{item.name}</span>
                                                     </div>
-                                                    <span className="font-bold text-slate-900 text-xs">{formatMoney(item.value)}</span>
+                                                    <span className="font-bold text-slate-900 text-xs">{item.value} งวด</span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
+                                )}
+                            </ApiState>
+                        </SectionCard>
+                    </div>
+
+                    <div className="col-span-12">
+                        <SectionCard title="5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
+                            <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
+                                {topCourseData.length === 0 ? (
+                                    <EmptyState message="ยังไม่มีข้อมูลรายรับรายคอร์ส" suggestion="จะแสดงเมื่อมีรายการชำระที่ตรวจสอบสำเร็จ" />
+                                ) : (
+                                    <ResponsiveContainer width="100%" height={Math.max(240, topCourseData.length * 52)}>
+                                        <BarChart data={topCourseData} layout="vertical" margin={{ top: 8, left: 24, right: 30, bottom: 24 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                            <XAxis
+                                                type="number"
+                                                tick={CHART_TICK}
+                                                tickFormatter={value => `฿${Number(value).toLocaleString()}`}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                label={{ value: 'แกน X: รายรับ (บาท)', position: 'insideBottom', offset: -14, fill: '#64748b', fontSize: 12 }}
+                                            />
+                                            <YAxis
+                                                type="category"
+                                                dataKey="name"
+                                                width={180}
+                                                tick={CHART_TICK}
+                                                axisLine={false}
+                                                tickLine={false}
+                                                label={{ value: 'แกน Y: ชื่อคอร์ส', angle: -90, position: 'insideLeft', offset: -12, fill: '#64748b', fontSize: 12 }}
+                                            />
+                                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
+                                            <Bar dataKey="revenue" name="รายรับ" fill="#f97316" radius={[0, 8, 8, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
                                 )}
                             </ApiState>
                         </SectionCard>
@@ -810,7 +861,13 @@ export default function AdminFinance() {
             {/* ── Transactions Tab ── */}
             {selectedTab === 'transactions' && (
                 <>
-                    {/* Filter row — search, month, status, payment, course on one line; export at far right */}
+                    <div className="col-span-12 flex justify-center">
+                        <SegmentedControl value={transactionKind} onChange={setTransactionKind} options={[
+                            { id: 'student', label: 'เงินรับจากนักเรียน', icon: Banknote },
+                            { id: 'tutor', label: 'เงินจ่ายติวเตอร์', icon: Users },
+                        ]} />
+                    </div>
+
                     <div className="col-span-12">
                         <div className={`${T.card} ${T.cardPadSm}`}>
                             <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
@@ -819,7 +876,7 @@ export default function AdminFinance() {
                                     <input
                                         value={searchInput}
                                         onChange={e => setSearchInput(e.target.value)}
-                                        placeholder="ค้นหาชื่อ, เลขบิล, คอร์ส..."
+                                        placeholder={transactionKind === 'student' ? 'ค้นหานักเรียน, Order, เลขอ้างอิง, คอร์ส...' : 'ค้นหาติวเตอร์หรือคอร์ส...'}
                                         className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
                                     />
                                 </div>
@@ -829,27 +886,12 @@ export default function AdminFinance() {
                                     onChange={e => setMonthFilter(e.target.value)}
                                     className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
                                 />
-                                <select
-                                    value={statusId}
-                                    onChange={e => setStatusId(e.target.value)}
-                                    disabled={filtersLoading}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 ${T.transition}`}
-                                >
-                                    <option value="all">ทุกสถานะ</option>
-                                    {filtersMeta.statuses.map(s => (
-                                        <option key={s.Status_Payment_Id} value={s.Status_Payment_Id}>{s.Status_Payment_Name}</option>
-                                    ))}
+                                {transactionKind === 'student' ? <>
+                                <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="all">เต็มและผ่อน</option><option value="full">เต็มจำนวน</option><option value="installment">ผ่อนชำระ</option>
                                 </select>
-                                <select
-                                    value={paymentType}
-                                    onChange={e => setPaymentType(e.target.value)}
-                                    disabled={filtersLoading}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 ${T.transition}`}
-                                >
-                                    <option value="all">ทุกวิธีชำระ</option>
-                                    {filtersMeta.paymentTypes.map(p => (
-                                        <option key={p} value={p}>{p}</option>
-                                    ))}
+                                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="all">ทุกสถานะ Order</option><option value="paid">ชำระครบ</option><option value="partially_paid">กำลังผ่อน</option>
                                 </select>
                                 <select
                                     value={courseId}
@@ -862,13 +904,9 @@ export default function AdminFinance() {
                                         <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
                                     ))}
                                 </select>
-                                <button
-                                    onClick={handleExport}
-                                    disabled={exporting}
-                                    className={`flex items-center gap-2 h-10 px-4 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-50 lg:ml-auto ${T.transition}`}
-                                >
-                                    {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}ส่งออก
-                                </button>
+                                </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                    <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
+                                </select>}
                             </div>
                             {filtersError && (
                                 <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
@@ -877,14 +915,13 @@ export default function AdminFinance() {
                                     <button onClick={fetchFiltersMeta} className="font-semibold underline underline-offset-2">ลองใหม่</button>
                                 </div>
                             )}
-                            <p className={`${T.caption} mt-2 pl-1`}>
-                                แสดง {txData.length} จาก {totalTx.toLocaleString()} รายการ
-                            </p>
+                            <p className={`${T.caption} mt-2 pl-1`}>{transactionKind === 'student'
+                                ? `แสดง ${txData.length} จาก ${totalTx.toLocaleString()} รายการรับเงินจริง`
+                                : `รอโอน ${tutorSummary.unpaidCount} รอบ ${formatMoney(tutorSummary.unpaidAmount)} · จ่ายแล้ว ${tutorSummary.paidCount} รอบ ${formatMoney(tutorSummary.paidAmount)}`}</p>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    <div className="col-span-12">
+                    {transactionKind === 'student' ? <div className="col-span-12">
                         <ApiState loading={txLoading} error={txError} onRetry={fetchTransactions} minHeight="h-64" skeletonHeight="h-64">
                             {txData.length === 0 ? (
                                 <div className={T.card}>
@@ -900,8 +937,8 @@ export default function AdminFinance() {
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    {['รหัส', 'รายการ', 'หมวดหมู่', 'ผู้ชำระ', 'วิธีชำระ', 'จำนวนเงิน', 'สถานะ', ''].map((h, i) => (
-                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i === 5 ? 'text-right' : 'text-left'}`}>
+                                                    {['รหัส', 'นักเรียน', 'คอร์ส', 'รูปแบบ', 'ยอดรับ', 'วันที่รับ', ''].map((h, i) => (
+                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i === 4 ? 'text-right' : 'text-left'}`}>
                                                             {h}
                                                         </th>
                                                     ))}
@@ -909,7 +946,7 @@ export default function AdminFinance() {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {txData.map(txn => (
-                                                    <TransactionRow key={txn.StudentPaymentId} txn={txn} onView={setViewTxId} />
+                                                    <StudentPaymentRow key={txn.TransactionId} txn={txn} onView={setViewTxId} />
                                                 ))}
                                             </tbody>
                                         </table>
@@ -917,10 +954,26 @@ export default function AdminFinance() {
                                 </div>
                             )}
                         </ApiState>
-                    </div>
+                    </div> : <div className="col-span-12">
+                        <ApiState loading={tutorLoading} error={tutorError} onRetry={fetchTutorPayables} minHeight="h-64">
+                            {tutorData.length === 0 ? <div className={T.card}><EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" /></div> :
+                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y">{tutorData.map(item => <tr key={item.key} className="hover:bg-slate-50">
+                                <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
+                                <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
+                                <td className="px-4 py-3">{item.sessionCount} คาบ</td>
+                                <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
+                                <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
+                                <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
+                                <td className="px-4 py-3">{item.status === 'unpaid' ? (item.canPay
+                                    ? <button onClick={() => setPayoutItem(item)} className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-semibold">บันทึกการโอน</button>
+                                    : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
+                                    : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-semibold">ดูสลิป</a> : '—'}</td>
+                            </tr>)}</tbody></table></div>}
+                        </ApiState>
+                    </div>}
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {transactionKind === 'student' && totalPages > 1 && (
                         <div className="col-span-12 flex items-center justify-between flex-wrap gap-3">
                             <p className={T.subtitle}>
                                 หน้า <span className="font-semibold text-slate-700">{currentPageNum}</span> จาก <span className="font-semibold text-slate-700">{totalPages}</span> · ทั้งหมด <span className="font-semibold text-slate-700">{totalTx.toLocaleString()}</span> รายการ
@@ -953,8 +1006,114 @@ export default function AdminFinance() {
 
             {/* ── Transaction Detail Modal ── */}
             {viewTxId && (
-                <TransactionDetailModal transactionId={viewTxId} onClose={() => setViewTxId(null)} />
+                <StudentPaymentDetailModal transactionId={viewTxId} onClose={() => setViewTxId(null)} />
             )}
+            {payoutItem && <TutorPayoutModal item={payoutItem} onClose={() => setPayoutItem(null)} onSuccess={() => { fetchTutorPayables(); fetchSummary(); fetchMonthly(); }} />}
         </div>
     );
+}
+
+function StudentPaymentRow({ txn, onView }) {
+    const isFull = txn.PaymentPlan === 'full';
+    return (
+        <tr className={`hover:bg-slate-50 ${T.transition}`}>
+            <td className="px-4 py-3 font-mono text-xs text-slate-500">#{txn.TransactionId}</td>
+            <td className="px-4 py-3">
+                <p className="font-semibold text-slate-900">{studentDisplayName(txn)}</p>
+                <p className={T.caption}>{txn.PhoneNo || 'ไม่มีเบอร์โทร'}</p>
+            </td>
+            <td className="px-4 py-3 max-w-[260px]">
+                <p className="font-semibold text-slate-800 truncate">{txn.CourseName}</p>
+                <p className={T.caption}>Order {String(txn.OrderCode || '').slice(0, 8)}</p>
+            </td>
+            <td className="px-4 py-3">
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+                    {isFull ? 'เต็มจำนวน' : `ผ่อน งวด ${txn.InstallmentNo}/${txn.InstallmentCount}`}
+                </span>
+            </td>
+            <td className="px-4 py-3 text-right font-bold text-green-600">+{formatMoney(txn.Amount)}</td>
+            <td className="px-4 py-3 text-xs text-slate-500">{formatDate(txn.TransDate || txn.Created_at)}</td>
+            <td className="px-4 py-3">
+                <button onClick={() => onView(txn.TransactionId)} className="p-2 rounded-lg border border-slate-200 hover:border-orange-300 hover:text-orange-600" title="ดูรายละเอียดและสลิป">
+                    <Eye className="h-4 w-4" />
+                </button>
+            </td>
+        </tr>
+    );
+}
+
+function StudentPaymentDetailModal({ transactionId, onClose }) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    useEffect(() => {
+        axios.get(`${FINANCE_API}/student-transactions/${transactionId}`)
+            .then(r => setData(r.data)).catch(e => setError(e.response?.data?.message || 'โหลดรายละเอียดไม่สำเร็จ'))
+            .finally(() => setLoading(false));
+    }, [transactionId]);
+    return (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className={`${T.card} w-full max-w-3xl max-h-[92vh] overflow-y-auto`}>
+                <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b flex justify-between items-center">
+                    <div><h3 className={T.title}>รายละเอียดรับชำระ</h3><p className={T.caption}>Transaction #{transactionId}</p></div>
+                    <button onClick={onClose}><X className="h-5 w-5" /></button>
+                </div>
+                <div className="p-6">
+                    <ApiState loading={loading} error={error} minHeight="h-64">
+                        {data && <div className="space-y-5">
+                            <div className="grid md:grid-cols-3 gap-3">
+                                <KPICard label="ยอดรับครั้งนี้" value={formatMoney(data.Amount)} icon={Banknote} tone="green" />
+                                <KPICard label="ยอดรับสะสม Order" value={formatMoney(data.PaidAmount)} sub={`จาก ${formatMoney(data.TotalAmount)}`} icon={Wallet} tone="blue" />
+                                <KPICard label="รูปแบบ" value={data.PaymentPlan === 'full' ? 'เต็มจำนวน' : `ผ่อน งวด ${data.InstallmentNo}`} icon={CreditCard} tone="orange" />
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-4 text-sm">
+                                <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>นักเรียน</p><p className="font-bold">{studentDisplayName(data)}</p><p>{data.PhoneNo || '—'}</p><p className="text-slate-500">{data.CourseName}</p></div>
+                                <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>ข้อมูลการโอน</p><p>วันที่ {formatDate(data.TransDate || data.Created_at)}</p><p>เลขอ้างอิง {data.TransRef}</p><p>{data.SendingBank || 'ไม่ระบุธนาคารต้นทาง'} → {data.ReceivingBank || 'บัญชีสถาบัน'}</p></div>
+                            </div>
+                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border rounded-xl"><table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className="border-t"><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
+                            <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
+                        </div>}
+                    </ApiState>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function TutorPayoutModal({ item, onClose, onSuccess }) {
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+    const [slip, setSlip] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const submit = async (e) => {
+        e.preventDefault(); setError('');
+        if (!slip) return setError('กรุณาแนบสลิปการโอนเงิน');
+        const form = new FormData();
+        form.append('adminId', item.adminId);
+        form.append('checkinIds', JSON.stringify(item.checkinIds));
+        form.append('paymentDate', paymentDate);
+        form.append('slip', slip);
+        setSaving(true);
+        try {
+            await axios.post(`${API_URL}/api/admin/tutor-payments`, form);
+            onSuccess(); onClose();
+        } catch (err) { setError(err.response?.data?.message || 'บันทึกการจ่ายเงินไม่สำเร็จ'); }
+        finally { setSaving(false); }
+    };
+    const bankReady = item.bankName && item.bankAccountNumber && item.bankAccountName;
+    return <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <form onSubmit={submit} className={`${T.card} w-full max-w-xl overflow-hidden`}>
+            <div className="px-6 py-4 border-b flex justify-between"><div><h3 className={T.title}>บันทึกโอนค่าติวเตอร์</h3><p className={T.caption}>{item.tutorName} · รอบ {item.period}</p></div><button type="button" onClick={onClose}><X className="h-5 w-5" /></button></div>
+            <div className="p-6 space-y-4">
+                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4"><p className={T.label}>ยอดที่ต้องโอน</p><p className="text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p><p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p></div>
+                <div className="grid grid-cols-2 gap-3 text-sm"><div><p className={T.label}>ธนาคาร</p><p className="font-semibold">{item.bankName || 'ยังไม่กรอก'}</p></div><div><p className={T.label}>เลขบัญชี</p><p className="font-semibold">{item.bankAccountNumber || 'ยังไม่กรอก'}</p></div><div className="col-span-2"><p className={T.label}>ชื่อบัญชี</p><p className="font-semibold">{item.bankAccountName || 'ยังไม่กรอก'}</p></div></div>
+                {!bankReady && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">ข้อมูลบัญชีติวเตอร์ไม่ครบ กรุณาแก้ในหน้าจัดการติวเตอร์ก่อนโอนเงิน</p>}
+                <label className="block"><span className={T.label}>วันที่โอน *</span><input required type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="mt-1 w-full border rounded-xl px-3 py-2" /></label>
+                <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className="mt-1 w-full border rounded-xl px-3 py-2" /></label>
+                <p className={T.caption}>ระบบคำนวณยอดและสร้างเลขที่ใบจ่ายให้อัตโนมัติ ไม่ตรวจ SlipOK เพราะเป็นรายการที่แอดมินโอนออก</p>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+            </div>
+            <div className="px-6 py-4 border-t flex justify-end gap-2"><button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border">ยกเลิก</button><button disabled={saving || !bankReady} className="px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'ยืนยันว่าโอนแล้ว'}</button></div>
+        </form>
+    </div>;
 }
