@@ -1,16 +1,8 @@
-// examShared.js
-// Shared constants / helpers / mock data store for the Exam Management flow.
-// Frontend-only (no backend calls). Exam records are seeded per Course+Subject
-// and persisted to sessionStorage so state survives navigation between
-// TutorExam.jsx (list) and TutorExamDetail.jsx (detail) during a session.
-//
-// IMPORTANT CONCEPT (do not break):
-//   Exam    = Pre-test / Mid-test / Post-test — these 3 already exist, always.
-//   Question = one item added into an Exam.
-//   Session  = one live "เปิดสอบ" instance of an Exam.
-// "เพิ่มข้อสอบ" (add question) must NEVER create a new Exam.
-
+import axios from "axios";
+import { API_URL } from "../config";
 import * as XLSX from "xlsx";
+
+const API_BASE = `${API_URL}/api/exam`;
 
 export const EXAM_TYPES = [
   { value: "pre-test", label: "Pre-test", sub: "สอบก่อนเรียน", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-400" },
@@ -44,9 +36,6 @@ export const LEVEL_COLOR = {
   ยาก: { dot: "bg-red-400", text: "text-red-700", pill: "bg-red-50 text-red-700 border-red-200" },
 };
 
-export const generateSessionId = () =>
-  Math.random().toString(36).substring(2, 9).toUpperCase();
-
 export const formatTime = (seconds) => {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -54,19 +43,10 @@ export const formatTime = (seconds) => {
   return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
 };
 
-export const MOCK_STUDENTS = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  name: `นักเรียน ${i + 1}`,
-  status: "not-joined",
-  joinedAt: null,
-}));
 
-// Derives the display status from stored data.
-// active/closed are explicit (set by the Exam Session tab); otherwise
-// draft/ready is computed from whether any questions exist yet.
 export function deriveStatus(exam) {
   if (exam.status === "active" || exam.status === "closed") return exam.status;
-  return (exam.questions?.length || 0) > 0 ? "ready" : "draft";
+  return (exam.questions?.length || exam.questionCount || 0) > 0 ? "ready" : "draft";
 }
 
 export function isExamReady(exam) {
@@ -77,8 +57,17 @@ export function isExamReady(exam) {
   return qs.every((q) => q.text?.trim() && q.options?.every((o) => o.trim()) && q.correct !== null && q.correct !== undefined);
 }
 
-// ── xlsx template / import (mock only, no upload to backend) ────────────────
+export const emptyQuestion = () => ({
+  id: `new-${Date.now()}-${Math.random()}`,
+  text: "",
+  options: ["", "", "", ""],
+  correct: null,
+  score: 1,
+  level: "ปานกลาง",
+  category: "",
+});
 
+// ── xlsx template / import (parsing only — saving goes through addQuestions) ─
 export const downloadXlsxTemplate = () => {
   const headers = ["question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category"];
   const sample = [
@@ -122,7 +111,7 @@ export const parseXlsx = (file) =>
         const parsed = rows
           .filter((r) => r.question && r.option_a)
           .map((r, i) => ({
-            id: Date.now() + i,
+            id: `import-${Date.now()}-${i}`,
             text: String(r.question || ""),
             options: [String(r.option_a || ""), String(r.option_b || ""), String(r.option_c || ""), String(r.option_d || "")],
             correct: OPTION_MAP[String(r.correct_answer || "").toUpperCase()] ?? null,
@@ -137,59 +126,59 @@ export const parseXlsx = (file) =>
     reader.readAsArrayBuffer(file);
   });
 
-export const emptyQuestion = () => ({
-  id: Date.now() + Math.random(),
-  text: "",
-  options: ["", "", "", ""],
-  correct: null,
-  score: 1,
-  level: "ปานกลาง",
-  category: "",
-});
+// ── API layer (real backend — /api/exam) ─────────────────────────────────────
 
-// ── Mock store (sessionStorage-backed, keyed by Course+Subject) ─────────────
-// Replace with real API calls when the backend for Exam/Question/Session
-// endpoints is ready — the shape here (`exam.settings`, `exam.questions`,
-// `exam.status`, `exam.sessionId`) is intended to map cleanly onto that.
-
-const storeKey = (courseId, subjectId) => `sornserm_exams_${courseId || "c"}_${subjectId || "s"}`;
-
-function seedExams(courseId, subjectId) {
-  return EXAM_TYPES.map((t) => ({
-    id: `${t.value}-${courseId || "c"}-${subjectId || "s"}`,
-    type: t.value,
-    name: t.label,
-    fullName: t.sub,
-    status: "inactive", // "inactive" | "active" | "closed" — draft/ready are derived
-    sessionId: null,
-    startTime: null,
-    settings: { totalQuestions: 0, duration: 60, date: "" },
-    questions: [],
-  }));
+// GET /api/exam?courseId=&subjectId=&adminId= → the 3 Exams (Pre/Mid/Post) for this Subject.
+export async function fetchExams({ courseId, subjectId, adminId }) {
+  const { data } = await axios.get(API_BASE, { params: { courseId, subjectId, adminId } });
+  return data;
 }
 
-export function loadExams(courseId, subjectId) {
-  try {
-    const raw = sessionStorage.getItem(storeKey(courseId, subjectId));
-    if (raw) return JSON.parse(raw);
-  } catch { /* ignore corrupt storage */ }
-  const seeded = seedExams(courseId, subjectId);
-  saveExams(courseId, subjectId, seeded);
-  return seeded;
+// GET /api/exam/:examId → full exam detail incl. settings + questions.
+export async function fetchExamDetail(examId) {
+  const { data } = await axios.get(`${API_BASE}/${examId}`);
+  return data;
 }
 
-export function saveExams(courseId, subjectId, exams) {
-  try {
-    sessionStorage.setItem(storeKey(courseId, subjectId), JSON.stringify(exams));
-  } catch { /* storage unavailable — mock data just won't persist */ }
+// PUT /api/exam/:examId/settings → { totalQuestions, duration, date }
+export async function updateExamSettings(examId, settings) {
+  const { data } = await axios.put(`${API_BASE}/${examId}/settings`, settings);
+  return data;
 }
 
-export function getExam(courseId, subjectId, examId) {
-  return loadExams(courseId, subjectId).find((e) => e.id === examId) || null;
+// POST /api/exam/:examId/questions → adds question(s) to the EXISTING exam.
+// `questions` is always an array (manual add sends length-1 arrays too).
+export async function addQuestions(examId, questions) {
+  const { data } = await axios.post(`${API_BASE}/${examId}/questions`, { questions });
+  return data;
 }
 
-export function saveExam(courseId, subjectId, exam) {
-  const next = loadExams(courseId, subjectId).map((e) => (e.id === exam.id ? exam : e));
-  saveExams(courseId, subjectId, next);
-  return next;
+// PUT /api/exam/questions/:questionId
+export async function updateQuestion(questionId, patch) {
+  const { data } = await axios.put(`${API_BASE}/questions/${questionId}`, patch);
+  return data;
+}
+
+// DELETE /api/exam/questions/:questionId
+export async function deleteQuestion(questionId) {
+  const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`);
+  return data;
+}
+
+// POST /api/exam/:examId/session/open → { status, sessionId, examLink }
+export async function openExamSession(examId) {
+  const { data } = await axios.post(`${API_BASE}/${examId}/session/open`);
+  return data;
+}
+
+// POST /api/exam/:examId/session/close
+export async function closeExamSession(examId) {
+  const { data } = await axios.post(`${API_BASE}/${examId}/session/close`);
+  return data;
+}
+
+// GET /api/exam/:examId/results → real results from exam_join / exam_student_answers
+export async function fetchExamResults(examId) {
+  const { data } = await axios.get(`${API_BASE}/${examId}/results`);
+  return data;
 }

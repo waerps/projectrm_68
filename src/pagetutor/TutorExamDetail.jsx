@@ -1,17 +1,18 @@
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ChevronRight, ChevronLeft, FileQuestion, Clock, Calendar, Users,
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
-  Download, FileSpreadsheet, QrCode, Copy, Play, StopCircle, Search,
-  ListChecks, Settings as SettingsIcon, Eye, BarChart2,
+  Download, FileSpreadsheet, QrCode, Copy, Play, StopCircle,
+  Settings as SettingsIcon, Eye, BarChart2,
 } from "lucide-react";
 
 import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
-  MOCK_STUDENTS, deriveStatus, isExamReady, generateSessionId, formatTime,
+  deriveStatus, isExamReady,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
-  getExam, saveExam,
+  fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
+  openExamSession, closeExamSession, fetchExamResults,
 } from "../utils/examShared";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
@@ -61,116 +62,91 @@ function AddMethodPicker({ onPick }) {
   );
 }
 
-function ManualEditor({ questions, onChange, onDone }) {
-  const [list, setList] = useState(questions.length > 0 ? questions : [emptyQuestion()]);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const current = list[activeIdx];
-
-  const patchCurrent = (patch) => setList((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, ...patch } : q)));
-  const patchOption = (optIdx, val) => { const opts = [...current.options]; opts[optIdx] = val; patchCurrent({ options: opts }); };
-  const isComplete = (q) => q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
-  const addQuestion = () => { setList((prev) => [...prev, emptyQuestion()]); setActiveIdx(list.length); };
-  const deleteQuestion = () => {
-    if (list.length === 1) { setList([emptyQuestion()]); return; }
-    const next = list.filter((_, i) => i !== activeIdx);
-    setList(next);
-    setActiveIdx(Math.min(activeIdx, next.length - 1));
-  };
-
-  const completedCount = list.filter(isComplete).length;
+// Single-question form — reused for both "add new" (loops, one POST per save)
+// and "edit existing" (one PUT per save). Every save is a real API round trip.
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel }) {
+  const [q, setQ] = useState(initial || emptyQuestion());
+  const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
+  const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
+  const complete = q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
 
   return (
-    <div className="border border-neutral-200 rounded-2xl overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 bg-neutral-50/60">
-        <p className="text-sm font-semibold text-neutral-700">{completedCount}/{list.length} ข้อสมบูรณ์</p>
-        <div className="flex gap-2">
-          <button onClick={() => onDone(list.filter(isComplete))} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-            บันทึกและเสร็จสิ้น ({completedCount} ข้อ)
-          </button>
-          <button onClick={() => onChange(null)} className="h-9 w-9 rounded-xl hover:bg-neutral-100 flex items-center justify-center text-neutral-400 transition"><X className="h-5 w-5" /></button>
+    <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-neutral-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
+        <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-neutral-800 mb-2">โจทย์</label>
+        <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none" />
+      </div>
+
+      <div className="space-y-2.5">
+        {OPTION_LABELS.map((label, optIdx) => {
+          const isCorrect = q.correct === optIdx;
+          return (
+            <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200 bg-white"}`}>
+              <button onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-neutral-300 hover:border-green-400"}`}>
+                {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
+              </button>
+              <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
+              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-neutral-800" />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
+          <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden">
+            <button onClick={() => patch({ score: Math.max(1, q.score - 1) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
+            <span className="flex-1 text-center text-sm font-semibold text-neutral-800">{q.score}</span>
+            <button onClick={() => patch({ score: q.score + 1 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Difficulty</label>
+          <div className="flex gap-1">
+            {["ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
+              <button key={lv} onClick={() => patch({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${q.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-neutral-200 text-neutral-500"}`}>{lv}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
+          <input type="text" value={q.category} onChange={(e) => patch({ category: e.target.value })} placeholder="เช่น พีชคณิต" className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
         </div>
       </div>
 
-      <div className="flex">
-        <aside className="w-52 flex-shrink-0 border-r border-neutral-100 bg-neutral-50/40">
-          <div className="p-3 border-b border-neutral-100">
-            <button onClick={addQuestion} className="w-full flex items-center justify-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-2 text-xs font-semibold transition">
-              <Plus className="h-3.5 w-3.5" /> เพิ่มข้อใหม่
-            </button>
-          </div>
-          <div className="max-h-[420px] overflow-y-auto p-2 space-y-1">
-            {list.map((q, i) => {
-              const done = isComplete(q);
-              const isActive = i === activeIdx;
-              return (
-                <button key={q.id} onClick={() => setActiveIdx(i)} className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition ${isActive ? "bg-orange-500 text-white shadow-sm" : "hover:bg-white text-neutral-700"}`}>
-                  <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${isActive ? "bg-white/20 text-white" : done ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-500"}`}>{i + 1}</span>
-                  <p className={`text-xs font-medium truncate ${isActive ? "text-white" : "text-neutral-700"}`}>{q.text ? q.text.slice(0, 24) + (q.text.length > 24 ? "…" : "") : "ยังไม่มีโจทย์"}</p>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
+      {error && (
+        <div className="flex gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
+          <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-red-600">{error}</p>
+        </div>
+      )}
 
-        <main className="flex-1 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-neutral-700">ข้อที่ {activeIdx + 1} / {list.length}</span>
-            <button onClick={deleteQuestion} className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition"><Trash2 className="h-3.5 w-3.5" /> ลบข้อนี้</button>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-neutral-800 mb-2">โจทย์</label>
-            <textarea value={current.text} onChange={(e) => patchCurrent({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none" />
-          </div>
-
-          <div className="space-y-2.5">
-            {OPTION_LABELS.map((label, optIdx) => {
-              const isCorrect = current.correct === optIdx;
-              return (
-                <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200 bg-white"}`}>
-                  <button onClick={() => patchCurrent({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-neutral-300 hover:border-green-400"}`}>
-                    {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
-                  </button>
-                  <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                  <input type="text" value={current.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-neutral-800" />
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
-              <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden">
-                <button onClick={() => patchCurrent({ score: Math.max(1, current.score - 1) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
-                <span className="flex-1 text-center text-sm font-semibold text-neutral-800">{current.score}</span>
-                <button onClick={() => patchCurrent({ score: current.score + 1 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Difficulty</label>
-              <div className="flex gap-1">
-                {["ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
-                  <button key={lv} onClick={() => patchCurrent({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${current.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-neutral-200 text-neutral-500"}`}>{lv}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-              <input type="text" value={current.category} onChange={(e) => patchCurrent({ category: e.target.value })} placeholder="เช่น พีชคณิต" className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-            </div>
-          </div>
-        </main>
+      <div className="flex justify-end gap-2 pt-1">
+        <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium px-3">ยกเลิก</button>
+        <button
+          onClick={() => onSave(q)}
+          disabled={!complete || saving}
+          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2 text-sm font-semibold transition"
+        >
+          {saving ? "กำลังบันทึก…" : (saveLabel || "บันทึก")}
+        </button>
       </div>
     </div>
   );
 }
 
-function ExcelImportFlow({ onCancel, onConfirm }) {
-  const [step, setStep] = useState(1); // 1 upload, 2 preview, 3 done
+function ExcelImportFlow({ examId, onCancel, onImported }) {
+  const [step, setStep] = useState(1); // 1 upload, 2 preview
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const fileRef = useRef();
 
   const handleFile = async (file) => {
@@ -185,6 +161,20 @@ function ExcelImportFlow({ onCancel, onConfirm }) {
     } catch (err) {
       setError(err.message || "ไฟล์ผิดพลาด กรุณาใช้ Template ที่ดาวน์โหลดมา");
     } finally { setLoading(false); }
+  };
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    setError("");
+    try {
+      const inserted = await addQuestions(examId, rows);
+      onImported(inserted);
+    } catch (err) {
+      console.error("Excel import save failed:", err);
+      setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setConfirming(false);
+    }
   };
 
   const invalidCount = rows.filter((q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null).length;
@@ -240,9 +230,17 @@ function ExcelImportFlow({ onCancel, onConfirm }) {
               );
             })}
           </div>
+          {error && (
+            <div className="flex gap-2 bg-red-50 border border-red-100 rounded-xl p-3">
+              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-600">{error}</p>
+            </div>
+          )}
           <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium">← อัปโหลดไฟล์อื่น</button>
-            <button onClick={() => onConfirm(rows)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">ยืนยันนำเข้า {rows.length} ข้อ</button>
+            <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
+              {confirming ? "กำลังบันทึก…" : `ยืนยันนำเข้า ${rows.length} ข้อ`}
+            </button>
           </div>
         </div>
       )}
@@ -250,24 +248,68 @@ function ExcelImportFlow({ onCancel, onConfirm }) {
   );
 }
 
-function QuestionsTab({ exam, onUpdateQuestions }) {
+function QuestionsTab({ examId, questions, onChanged }) {
   const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
-  const questions = exam.questions || [];
+  const [editingId, setEditingId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
-  if (mode === "manual") {
-    return <ManualEditor questions={questions} onChange={setMode} onDone={(qs) => { onUpdateQuestions(qs); setMode(null); }} />;
-  }
-  if (mode === "excel") {
-    return <ExcelImportFlow onCancel={() => setMode(null)} onConfirm={(rows) => { onUpdateQuestions([...questions, ...rows]); setMode(null); }} />;
-  }
+  const editingQuestion = questions.find((q) => q.id === editingId) || null;
+
+  const handleAddOne = async (q) => {
+    setSaving(true);
+    setFormError("");
+    try {
+      await addQuestions(examId, [q]);
+      await onChanged();
+      // stay open so the tutor can add the next question right away
+      setMode("manual-added");
+      setTimeout(() => setMode("manual"), 0);
+    } catch (err) {
+      console.error("Add question failed:", err);
+      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSave = async (q) => {
+    setSaving(true);
+    setFormError("");
+    try {
+      await updateQuestion(editingId, q);
+      await onChanged();
+      setEditingId(null);
+    } catch (err) {
+      console.error("Update question failed:", err);
+      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (questionId) => {
+    setDeletingId(questionId);
+    try {
+      await deleteQuestion(questionId);
+      await onChanged();
+    } catch (err) {
+      console.error("Delete question failed:", err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        <button onClick={() => setMode("picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-          <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
-        </button>
+        {!editingId && (
+          <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+            <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
+          </button>
+        )}
       </div>
 
       {mode === "picker" && (
@@ -278,13 +320,38 @@ function QuestionsTab({ exam, onUpdateQuestions }) {
         </div>
       )}
 
-      {questions.length === 0 ? (
+      {mode === "manual" && (
+        <QuestionFormPanel
+          saving={saving}
+          error={formError}
+          saveLabel="บันทึกและเพิ่มข้อถัดไป"
+          onSave={handleAddOne}
+          onClose={() => setMode(null)}
+        />
+      )}
+
+      {mode === "excel" && (
+        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} />
+      )}
+
+      {editingId && (
+        <QuestionFormPanel
+          initial={editingQuestion}
+          saving={saving}
+          error={formError}
+          saveLabel="บันทึกการแก้ไข"
+          onSave={handleEditSave}
+          onClose={() => { setEditingId(null); setFormError(""); }}
+        />
+      )}
+
+      {questions.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
           <p className="text-sm font-semibold text-neutral-500">ยังไม่มีข้อสอบในชุดนี้</p>
           <p className="text-xs text-neutral-400 mt-1">กด “เพิ่มข้อสอบ” เพื่อเริ่มต้น</p>
         </div>
-      ) : (
+      ) : questions.length > 0 && !editingId ? (
         <div className="border border-neutral-100 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -302,29 +369,45 @@ function QuestionsTab({ exam, onUpdateQuestions }) {
                   <td className="px-4 py-3"><span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{q.category || "—"}</span></td>
                   <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
                   <td className="px-4 py-3 text-neutral-500">{q.score}</td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => onUpdateQuestions(questions.filter((x) => x.id !== q.id))} className="text-xs text-red-400 hover:text-red-600 font-medium">ลบ</button>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
+                    <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
+                      {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 // ─── Settings Tab ────────────────────────────────────────────────────────────
 
-function SettingsTab({ exam, onSave }) {
-  const [form, setForm] = useState(exam.settings || { totalQuestions: 0, duration: 60, date: "" });
+function SettingsTab({ examId, settings, onSaved }) {
+  const [form, setForm] = useState(settings);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSave = () => {
-    onSave({ ...form, totalQuestions: Number(form.totalQuestions), duration: Number(form.duration) });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null };
+      await updateExamSettings(examId, payload);
+      await onSaved();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Save settings failed:", err);
+      setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -349,8 +432,10 @@ function SettingsTab({ exam, onSave }) {
         <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
       </div>
 
-      <button onClick={handleSave} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
-        {saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+        {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
       </button>
     </div>
   );
@@ -428,38 +513,33 @@ function PreviewTab({ exam, goToQuestions }) {
 }
 
 // ─── Session Tab ─────────────────────────────────────────────────────────────
+// Live counts come from GET /api/exam/:examId/results (real exam_join rows),
+// polled while the session is active. No mock students, no random scores.
 
 function SessionTab({ exam, onOpen, onClose }) {
-  const [students, setStudents] = useState(MOCK_STUDENTS);
-  const [timer, setTimer] = useState(0);
-  const [copied, setCopied] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [live, setLive] = useState(null);
+  const [copied, setCopied] = useState(false);
   const status = deriveStatus(exam);
   const ready = isExamReady(exam);
 
-  useEffect(() => {
-    if (status !== "active") return;
-    const iv = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(iv);
-  }, [status]);
+  const pollResults = useCallback(async () => {
+    try {
+      const data = await fetchExamResults(exam.id);
+      setLive(data);
+    } catch (err) {
+      console.error("Fetch live results failed:", err);
+    }
+  }, [exam.id]);
 
   useEffect(() => {
     if (status !== "active") return;
-    const iv = setInterval(() => {
-      setStudents((prev) => {
-        const waiting = prev.filter((s) => s.status === "not-joined");
-        if (waiting.length > 0 && Math.random() > 0.55) {
-          const pick = waiting[Math.floor(Math.random() * waiting.length)];
-          return prev.map((s) => (s.id === pick.id ? { ...s, status: "joined", joinedAt: new Date().toLocaleTimeString("th-TH") } : s));
-        }
-        return prev;
-      });
-    }, 3000);
+    pollResults();
+    const iv = setInterval(pollResults, 5000);
     return () => clearInterval(iv);
-  }, [status]);
-
-  const joined = students.filter((s) => s.status === "joined").length;
-  const url = exam.sessionId ? `https://exam.sornserm.com/t/${exam.sessionId}` : "";
+  }, [status, pollResults]);
 
   if (status === "closed") {
     return (
@@ -479,7 +559,7 @@ function SessionTab({ exam, onOpen, onClose }) {
         </div>
         <div>
           <p className="text-sm font-semibold text-neutral-800">พร้อมเปิด Exam Session ของ {exam.name} หรือยัง?</p>
-          <p className="text-xs text-neutral-500 mt-1">การกดเปิดสอบจะสร้าง Session ID และ QR Code ใหม่ ไม่ใช่การสร้าง Exam ใหม่</p>
+          <p className="text-xs text-neutral-500 mt-1">การกดเปิดสอบจะสร้าง Session/QR ใหม่บน Exam เดิม ไม่ใช่การสร้าง Exam ใหม่</p>
         </div>
         {!ready && (
           <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
@@ -488,15 +568,18 @@ function SessionTab({ exam, onOpen, onClose }) {
           </div>
         )}
         <button
-          onClick={() => onOpen()}
-          disabled={!ready}
+          onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
+          disabled={!ready || opening}
           className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
         >
-          <Play className="h-4 w-4" /> เปิด Exam Session
+          <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิด Exam Session"}
         </button>
       </div>
     );
   }
+
+  const joined = live?.joinedCount ?? 0;
+  const enrolled = live?.enrolledCount ?? 0;
 
   return (
     <div className="space-y-5">
@@ -509,14 +592,16 @@ function SessionTab({ exam, onOpen, onClose }) {
           </div>
           <div className="bg-neutral-50 rounded-xl p-3">
             <p className="text-xs text-neutral-500 mb-1">Session ID</p>
-            <p className="text-xl font-mono font-bold tracking-widest text-orange-600">{exam.sessionId}</p>
+            <p className="text-xl font-mono font-bold tracking-widest text-orange-600">{exam.sessionId || "—"}</p>
           </div>
           <button
-            onClick={() => { navigator.clipboard?.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition"
+            onClick={() => { navigator.clipboard?.writeText(exam.examLink || ""); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+            disabled={!exam.examLink}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2 transition"
           >
             {copied ? <><Check className="h-4 w-4" /> คัดลอกแล้ว!</> : <><Copy className="h-4 w-4" /> คัดลอกลิงก์เข้าสอบ</>}
           </button>
+          {exam.examLink && <p className="text-[11px] text-neutral-400 break-all">{exam.examLink}</p>}
         </div>
 
         <div className="space-y-3">
@@ -526,13 +611,9 @@ function SessionTab({ exam, onOpen, onClose }) {
               <p className="text-xs text-neutral-500 mt-0.5">เข้าสอบแล้ว</p>
             </div>
             <div className="bg-neutral-50 rounded-xl p-4">
-              <p className="text-2xl font-bold text-red-500">{students.length - joined}</p>
-              <p className="text-xs text-neutral-500 mt-0.5">ยังไม่เข้า</p>
+              <p className="text-2xl font-bold text-neutral-700">{enrolled}</p>
+              <p className="text-xs text-neutral-500 mt-0.5">นักเรียนในคอร์ส</p>
             </div>
-          </div>
-          <div className="bg-neutral-50 rounded-xl p-4 flex items-center justify-between">
-            <span className="text-xs text-neutral-500">เวลาที่ผ่านไป</span>
-            <span className="text-lg font-mono font-semibold text-neutral-800">{formatTime(timer)}</span>
           </div>
           <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
             <StopCircle className="h-4 w-4" /> ปิดสอบ
@@ -550,7 +631,13 @@ function SessionTab({ exam, onOpen, onClose }) {
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
-              <button onClick={() => { onClose(); setConfirmClose(false); }} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl py-2.5 text-sm font-semibold">ปิดสอบ</button>
+              <button
+                onClick={async () => { setClosing(true); try { await onClose(); } finally { setClosing(false); setConfirmClose(false); } }}
+                disabled={closing}
+                className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+              >
+                {closing ? "กำลังปิด…" : "ปิดสอบ"}
+              </button>
             </div>
           </div>
         </div>
@@ -563,6 +650,21 @@ function SessionTab({ exam, onOpen, onClose }) {
 
 function ResultsTab({ exam }) {
   const status = deriveStatus(exam);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (status !== "closed" && status !== "active") return;
+    let cancelled = false;
+    setLoading(true);
+    fetchExamResults(exam.id)
+      .then((data) => { if (!cancelled) setResults(data); })
+      .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [exam.id, status]);
+
   if (status !== "closed" && status !== "active") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
@@ -573,17 +675,18 @@ function ResultsTab({ exam }) {
     );
   }
 
-  const students = MOCK_STUDENTS.map((s, i) => ({ ...s, status: i < 18 ? "joined" : "not-joined" }));
-  const totalQ = exam.questions?.length || exam.settings?.totalQuestions || 30;
+  if (loading) return <p className="text-sm text-neutral-400">กำลังโหลดผลสอบ...</p>;
+  if (error) return <p className="text-sm text-red-500">{error}</p>;
+  if (!results) return null;
 
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: "เข้าสอบ", val: 18, color: "text-green-600" },
-          { label: "ไม่เข้าสอบ", val: 6, color: "text-red-500" },
-          { label: "ส่งแล้ว", val: 15, color: "text-neutral-900" },
-          { label: "คะแนนเฉลี่ย", val: "72%", color: "text-orange-600" },
+          { label: "เข้าสอบ", val: results.joinedCount, color: "text-green-600" },
+          { label: "นักเรียนในคอร์ส", val: results.enrolledCount, color: "text-neutral-700" },
+          { label: "ส่งแล้ว", val: results.submittedCount, color: "text-neutral-900" },
+          { label: "คะแนนเฉลี่ย", val: `${results.averageScorePct}%`, color: "text-orange-600" },
         ].map((s) => (
           <div key={s.label} className="bg-neutral-50 rounded-xl p-4">
             <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
@@ -596,23 +699,26 @@ function ResultsTab({ exam }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-neutral-50 border-b border-neutral-100">
-              {["#", "ชื่อนักเรียน", "คะแนน", "สถานะ"].map((h) => (
+              {["#", "ชื่อนักเรียน", "เข้าสอบเมื่อ", "คะแนน", "สถานะ"].map((h) => (
                 <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {students.map((s, i) => {
-              const score = s.status === "joined" ? Math.floor(Math.random() * (totalQ * 0.4)) + Math.floor(totalQ * 0.5) : null;
-              const pct = score ? Math.round((score / totalQ) * 100) : null;
-              const scoreCls = pct >= 80 ? "bg-green-100 text-green-700" : pct >= 60 ? "bg-amber-100 text-amber-700" : pct ? "bg-red-100 text-red-700" : "";
+            {results.students.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-neutral-400 text-sm">ยังไม่มีนักเรียนเข้าสอบ</td></tr>
+            )}
+            {results.students.map((s, i) => {
+              const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+              const scoreCls = pct >= 80 ? "bg-green-100 text-green-700" : pct >= 60 ? "bg-amber-100 text-amber-700" : pct != null ? "bg-red-100 text-red-700" : "";
               return (
-                <tr key={s.id} className="border-b border-neutral-50">
+                <tr key={s.examJoinId} className="border-b border-neutral-50">
                   <td className="px-4 py-3 text-neutral-400">{i + 1}</td>
                   <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
-                  <td className="px-4 py-3">{score ? <Badge className={scoreCls}>{score}/{totalQ} ({pct}%)</Badge> : "—"}</td>
+                  <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+                  <td className="px-4 py-3">{pct != null ? <Badge className={scoreCls}>{s.totalScore}/{s.maxScore} ({pct}%)</Badge> : "—"}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${s.status === "joined" ? "text-green-700" : "text-neutral-400"}`}>{s.status === "joined" ? "เข้าสอบแล้ว" : "ไม่เข้าสอบ"}</span>
+                    <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"}</span>
                   </td>
                 </tr>
               );
@@ -637,26 +743,39 @@ export default function TutorExamDetail() {
   const examId = searchParams.get("examId");
 
   const [exam, setExam] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState("questions");
 
-  useEffect(() => {
-    setExam(getExam(courseId, subjectId, examId));
-  }, [courseId, subjectId, examId]);
+  const reload = useCallback(async () => {
+    if (!examId) return;
+    try {
+      const data = await fetchExamDetail(examId);
+      setExam(data);
+      setLoadError("");
+    } catch (err) {
+      console.error("Fetch exam detail failed:", err);
+      setLoadError("โหลดข้อมูลการสอบไม่สำเร็จ");
+    } finally {
+      setLoading(false);
+    }
+  }, [examId]);
 
-  const persist = (nextExam) => {
-    setExam(nextExam);
-    saveExam(courseId, subjectId, nextExam);
-  };
+  useEffect(() => { setLoading(true); reload(); }, [reload]);
 
   const backToExamList = () => {
     const params = new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName });
     navigate(`/tutor/exam?${params.toString()}`);
   };
 
-  if (!exam) {
+  if (loading) {
+    return <div className="mt-[90px] text-center py-16 text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</div>;
+  }
+
+  if (loadError || !exam) {
     return (
       <div className="mt-[90px] text-center py-16">
-        <p className="text-sm text-neutral-500">ไม่พบข้อมูลการสอบนี้</p>
+        <p className="text-sm text-neutral-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
         <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
       </div>
     );
@@ -718,10 +837,10 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab exam={exam} onUpdateQuestions={(qs) => persist({ ...exam, questions: qs })} />
+          <QuestionsTab examId={exam.id} questions={exam.questions || []} onChanged={reload} />
         )}
         {tab === "settings" && (
-          <SettingsTab exam={exam} onSave={(settings) => persist({ ...exam, settings })} />
+          <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
@@ -729,8 +848,8 @@ export default function TutorExamDetail() {
         {tab === "session" && (
           <SessionTab
             exam={exam}
-            onOpen={() => persist({ ...exam, status: "active", sessionId: generateSessionId(), startTime: new Date().toISOString() })}
-            onClose={() => persist({ ...exam, status: "closed" })}
+            onOpen={async () => { await openExamSession(exam.id); await reload(); }}
+            onClose={async () => { await closeExamSession(exam.id); await reload(); }}
           />
         )}
         {tab === "results" && <ResultsTab exam={exam} />}
