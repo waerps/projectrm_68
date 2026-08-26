@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Users,
   Trophy,
+  BookOpen,
   BookOpenCheck,
   BadgeCheck,
 } from "lucide-react";
@@ -63,12 +64,38 @@ const SafeImg = ({ src, className, alt }) => (
   />
 );
 
+const CourseArtwork = ({ src, alt, className = "" }) => {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => setFailed(false), [src]);
+
+  if (!src || failed) {
+    return (
+      <div
+        className={`flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 ${className}`}
+        role="img"
+        aria-label={alt}
+      >
+        <BookOpen className="h-14 w-14 text-orange-300" />
+      </div>
+    );
+  }
+
+  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+};
+
 const resolveCourseImg = (c) =>
   c.CourseImage
     ? c.CourseImage.startsWith("http")
       ? c.CourseImage
       : `${API_URL}${c.CourseImage}`
-    : "/gray.jpg";
+    : null;
+
+const resolveAnnouncementImg = (course) => {
+  const image = course?.AnnouncementImage;
+  if (!image) return null;
+  return image.startsWith("http") || image.startsWith("blob:") ? image : `${API_URL}${image}`;
+};
 
 const resolveNewsImg = (img) => {
   if (!img) return "/gray.jpg";
@@ -242,6 +269,11 @@ function AboutFlashcard({ courses }) {
 
   return (
     <div className="relative mx-auto h-[250px] w-full max-w-[360px] md:mx-0 md:ml-auto">
+      <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl animate-pulse" />
+      <div
+        className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-orange-300/25 blur-3xl animate-pulse"
+        style={{ animationDelay: "1s" }}
+      />
       {slides.map((course, i) => {
         const offset = (i - idx + slides.length) % slides.length;
         const isTop = offset === 0;
@@ -255,7 +287,7 @@ function AboutFlashcard({ courses }) {
             key={course.CourseID}
             to={`/courses/${course.CourseID}`}
             className={[
-              "group absolute inset-0 overflow-hidden rounded-3xl border",
+              "group absolute inset-0 overflow-hidden rounded-3xl",
               "bg-white shadow-xl",
               "transition-all duration-700",
               "ease-[cubic-bezier(.16,1,.3,1)]",
@@ -266,7 +298,6 @@ function AboutFlashcard({ courses }) {
             style={{
               background:
                 "linear-gradient(160deg, #ffffff 0%, #FFF3E8 100%)",
-              borderColor: "rgba(20,33,61,0.08)",
               transform: `
                 translateY(${offset * 14}px)
                 scale(${Math.max(1 - offset * 0.05, 0.8)})
@@ -279,7 +310,7 @@ function AboutFlashcard({ courses }) {
           >
             {/* รูปภาพคอร์ส */}
             <div className="relative h-full overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-              <SafeImg
+              <CourseArtwork
                 src={resolveCourseImg(course)}
                 alt={course.CourseName || "รูปภาพคอร์ส"}
                 className={[
@@ -405,7 +436,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAd
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
       {/* รูป */}
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-        <SafeImg
+        <CourseArtwork
           src={item.img}
           alt={item.title}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -877,9 +908,9 @@ function Stats() {
 function Features() {
   const features = [
     { icon: GraduationCap, title: "ติวเตอร์คุณภาพ", desc: "คัดเลือกจากบัณฑิตครุศาสตร์ มข. อันดับต้น พร้อมอบรมเทคนิคการสอนต่อเนื่อง" },
-    { icon: Users, title: "ห้องเรียนขนาดเล็ก", desc: "จำกัดไม่เกิน 8 คนต่อห้อง เพื่อให้ครูดูแลจุดอ่อน-จุดแข็งของนักเรียนแต่ละคน" },
-    { icon: BookOpenCheck, title: "ติดตามพัฒนาการ", desc: "รายงานผลการเรียน คะแนนสอบ และการบ้าน ผ่าน LINE Official ทุกสัปดาห์" },
-    { icon: BadgeCheck, title: "ชำระเงินปลอดภัย", desc: "ตรวจสอบสลิปโอนเงินอัตโนมัติ พร้อมใบเสร็จอิเล็กทรอนิกส์ทันที" },
+    { icon: Users, title: "ห้องเรียนขนาดพอเหมาะ", desc: "เพื่อให้ครูดูแลนักเรียนแต่ละคนอย่างทั่วถึง" },
+    { icon: BookOpenCheck, title: "ติดตามพัฒนาการ", desc: "รายงานผลการเรียน คะแนนสอบ และการดูคลิปการสอน ทุกสัปดาห์" },
+    { icon: BadgeCheck, title: "ชำระเงินปลอดภัย", desc: "ตรวจสอบสลิปโอนเงินอัตโนมัติ พร้อมการผ่อนจ่าย ผ่าน LINE Official" },
   ];
   return (
     <section className="mt-14">
@@ -978,8 +1009,12 @@ export default function Home() {
     [data]
   );
 
-  // สไลด์ hero — หยิบคอร์สที่ยังแสดงอยู่มาทำเป็นประกาศคอร์สเรียน
-  const heroSlides = useMemo(() => visibleCourses.slice(0, 6), [visibleCourses]);
+  // สไลด์ประกาศใช้เฉพาะคอร์สที่แอดมินอัปโหลดรูปประกาศไว้เท่านั้น
+  // ห้าม fallback ไปใช้ CourseImage เพราะรูปหน้าปกคอร์สมีหน้าที่คนละส่วนกัน
+  const heroSlides = useMemo(
+    () => visibleCourses.filter((course) => Boolean(String(course.AnnouncementImage || "").trim())).slice(0, 6),
+    [visibleCourses]
+  );
 
   useEffect(() => {
     setHeroIndex(0);
@@ -1065,7 +1100,7 @@ export default function Home() {
                   className="group absolute inset-0 block"
                 >
                   <SafeImg
-                    src={resolveCourseImg(activeSlide)}
+                    src={resolveAnnouncementImg(activeSlide)}
                     alt={activeSlide.CourseName}
                     className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
                   />
