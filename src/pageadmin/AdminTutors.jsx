@@ -1,3 +1,4 @@
+//ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react";
