@@ -24,9 +24,10 @@ const PIE_COLORS_B = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#1
 /* ─────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS — one system, reused everywhere. Nothing below this block
    should declare its own one-off spacing, radius, border or shadow value.
+   (อิงจาก AdminStudent.jsx / AdminTutors.jsx / AdminDashboard.jsx เพื่อให้เป็นระบบเดียวกัน)
    ────────────────────────────────────────────────────────────────────── */
 const T = {
-    card: 'bg-white rounded-2xl border border-slate-200 shadow-sm',
+    card: 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition',
     cardPad: 'p-6',
     cardPadSm: 'p-4',
     transition: 'transition duration-200 ease-out',
@@ -153,38 +154,45 @@ function SectionCard({ title, icon: Icon, action, children, className = '', body
     );
 }
 
-/* ─── Shared: KPICard — same height, same type scale, icon small & quiet ── */
+/* ─── Shared: KPICard — สี icon square ตามระดับความสำคัญ (tone) เหมือน
+   StatCard ในหน้า Dashboard / การ์ดสรุปในหน้านักเรียน-ติวเตอร์ ─────────── */
 function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
-    const toneText = {
-        neutral: 'text-slate-400',
-        green: 'text-green-600',
-        red: 'text-red-600',
-        blue: 'text-blue-600',
-        orange: 'text-orange-500',
+    const toneBg = {
+        neutral: 'bg-slate-400',
+        green: 'bg-emerald-500',
+        red: 'bg-red-500',
+        blue: 'bg-blue-500',
+        orange: 'bg-orange-600',
     }[tone];
 
     return (
-        <div className={`${T.card} ${T.cardPadSm} h-full flex flex-col justify-between hover:shadow-md ${T.transition}`}>
-            <div className="flex items-center justify-between mb-2">
+        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md ${T.transition} h-full`}>
+            {Icon && (
+                <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0`}>
+                    <Icon className="h-5 w-5 text-white" />
+                </div>
+            )}
+            <div className="min-w-0 flex-1">
                 <p className={T.label}>{label}</p>
-                {Icon && <Icon className={`h-3.5 w-3.5 shrink-0 ${toneText}`} />}
+                <p className="text-xl font-black text-slate-900 tracking-tight truncate">{value}</p>
+                {sub && <p className={`${T.caption} mt-0.5 truncate`}>{sub}</p>}
             </div>
-            <p className={T.value}>{value}</p>
-            {sub && <p className={`${T.caption} mt-1 truncate`}>{sub}</p>}
         </div>
     );
 }
 
-/* ─── Shared: SegmentedControl — replaces the old underline tab bar ──────── */
+/* ─── Shared: SegmentedControl — ★ เปลี่ยนเป็นแถวปุ่มแบบเดียวกับแท็บใน
+   AdminTutorsPage (bg-orange-500 ตอน active / border ตอน inactive) แทน
+   pill พื้นเทาเดิม เพื่อให้แท็บทั้งแอปหน้าตาเดียวกัน ──────────────────── */
 function SegmentedControl({ options, value, onChange }) {
     return (
-        <div className="inline-flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+        <div className="flex gap-2 flex-wrap">
             {options.map(({ id, label, icon: Icon }) => (
                 <button
                     key={id}
                     onClick={() => onChange(id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold ${T.transition} ${
-                        value === id ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${T.transition} ${
+                        value === id ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
                     <Icon className="h-4 w-4" />{label}
@@ -259,16 +267,16 @@ function TransactionDetailModal({ transactionId, onClose }) {
     useEffect(() => { load(); /* eslint-disable-next-line */ }, [transactionId]);
 
     return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className={`${T.card} w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col`}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
-                    <h3 className={`${T.title} flex items-center gap-2.5`}>
-                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
-                            <Receipt className="h-4 w-4 text-orange-500" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+                    <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                            <Receipt className="h-4 w-4 text-white" />
                         </span>
                         รายละเอียดธุรกรรม
                     </h3>
-                    <button onClick={onClose} className={`p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600 ${T.transition}`}>
+                    <button onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -344,7 +352,7 @@ function TransactionDetailModal({ transactionId, onClose }) {
 
                                 <button
                                     onClick={() => window.print()}
-                                    className={`w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 ${T.transition}`}
+                                    className={`w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 ${T.transition}`}
                                 >
                                     พิมพ์ใบเสร็จ
                                 </button>
@@ -360,7 +368,7 @@ function TransactionDetailModal({ transactionId, onClose }) {
 /* ─── Transaction Row ────────────────────────────────────────────────── */
 function TransactionRow({ txn, onView }) {
     return (
-        <tr className={`hover:bg-slate-50 ${T.transition}`}>
+        <tr className={`hover:bg-orange-50/40 ${T.transition}`}>
             <td className="px-4 py-3">
                 <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
                     #{txn.StudentPaymentId}
@@ -669,9 +677,9 @@ export default function AdminFinance() {
                 />
             </div>
 
-            {/* ── Secondary KPIs — same existing summary fields, quieter design ── */}
+            {/* ── Secondary KPIs — same existing summary fields, สไตล์การ์ดสี icon square เหมือนหน้านักเรียน/ติวเตอร์ ── */}
             <div className="col-span-12">
-                <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-24" skeletonHeight="h-24">
+                <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                         <KPICard
                             label="รายรับสะสมทั้งหมด"
@@ -772,7 +780,7 @@ export default function AdminFinance() {
                                                 <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
                                             </RePieChart>
                                         </ResponsiveContainer>
-                                        <div className="flex-1 space-y-2.5">
+                                        <div className="flex-1 space-y-1.5">
                                             {revenueByCourseType.map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between text-sm">
                                                     <div className="flex items-center gap-2">
@@ -804,7 +812,7 @@ export default function AdminFinance() {
                                                 <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, _n, item) => [`${v} งวด · ${formatMoney(item.payload.amount)}`, item.payload.name]} />
                                             </RePieChart>
                                         </ResponsiveContainer>
-                                        <div className="flex-1 space-y-2.5">
+                                        <div className="flex-1 space-y-1.5">
                                             {installmentStatusData.map((item, i) => (
                                                 <div key={i} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
@@ -869,7 +877,7 @@ export default function AdminFinance() {
                     </div>
 
                     <div className="col-span-12">
-                        <div className={`${T.card} ${T.cardPadSm}`}>
+                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
                             <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
                                 <div className="relative flex-1 min-w-[200px]">
                                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -877,34 +885,34 @@ export default function AdminFinance() {
                                         value={searchInput}
                                         onChange={e => setSearchInput(e.target.value)}
                                         placeholder={transactionKind === 'student' ? 'ค้นหานักเรียน, Order, เลขอ้างอิง, คอร์ส...' : 'ค้นหาติวเตอร์หรือคอร์ส...'}
-                                        className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
+                                        className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
                                     />
                                 </div>
                                 <input
                                     type="month"
                                     value={monthFilter}
                                     onChange={e => setMonthFilter(e.target.value)}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
                                 />
                                 {transactionKind === 'student' ? <>
-                                <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">เต็มและผ่อน</option><option value="full">เต็มจำนวน</option><option value="installment">ผ่อนชำระ</option>
                                 </select>
-                                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">ทุกสถานะ Order</option><option value="paid">ชำระครบ</option><option value="partially_paid">กำลังผ่อน</option>
                                 </select>
                                 <select
                                     value={courseId}
                                     onChange={e => setCourseId(e.target.value)}
                                     disabled={filtersLoading}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 lg:max-w-[180px] ${T.transition}`}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 lg:max-w-[180px] ${T.transition}`}
                                 >
                                     <option value="all">ทุกคอร์ส</option>
                                     {filtersMeta.courses.map(c => (
                                         <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
                                     ))}
                                 </select>
-                                </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className="h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm">
+                                </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
                                 </select>}
                             </div>
@@ -957,7 +965,7 @@ export default function AdminFinance() {
                     </div> : <div className="col-span-12">
                         <ApiState loading={tutorLoading} error={tutorError} onRetry={fetchTutorPayables} minHeight="h-64">
                             {tutorData.length === 0 ? <div className={T.card}><EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" /></div> :
-                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y">{tutorData.map(item => <tr key={item.key} className="hover:bg-slate-50">
+                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y">{tutorData.map(item => <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
                                 <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
                                 <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
                                 <td className="px-4 py-3">{item.sessionCount} คาบ</td>
@@ -965,9 +973,9 @@ export default function AdminFinance() {
                                 <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
                                 <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
                                 <td className="px-4 py-3">{item.status === 'unpaid' ? (item.canPay
-                                    ? <button onClick={() => setPayoutItem(item)} className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-semibold">บันทึกการโอน</button>
+                                    ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
                                     : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
-                                    : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-semibold">ดูสลิป</a> : '—'}</td>
+                                    : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}</td>
                             </tr>)}</tbody></table></div>}
                         </ApiState>
                     </div>}
@@ -980,7 +988,7 @@ export default function AdminFinance() {
                             </p>
                             <div className="flex items-center gap-1.5">
                                 <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPageNum === 1}
-                                    className={`flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
+                                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
                                     <ChevronLeft className="h-4 w-4" />
                                 </button>
                                 {Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -990,12 +998,12 @@ export default function AdminFinance() {
                                         <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
                                     ) : (
                                         <button key={p} onClick={() => setCurrentPage(p)}
-                                            className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-medium ${T.transition} ${currentPageNum === p ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600'}`}>
+                                            className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium ${T.transition} ${currentPageNum === p ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600'}`}>
                                             {p}
                                         </button>
                                     ))}
                                 <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPageNum === totalPages}
-                                    className={`flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
+                                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
                                     <ChevronRight className="h-4 w-4" />
                                 </button>
                             </div>
@@ -1016,7 +1024,7 @@ export default function AdminFinance() {
 function StudentPaymentRow({ txn, onView }) {
     const isFull = txn.PaymentPlan === 'full';
     return (
-        <tr className={`hover:bg-slate-50 ${T.transition}`}>
+        <tr className={`hover:bg-orange-50/40 ${T.transition}`}>
             <td className="px-4 py-3 font-mono text-xs text-slate-500">#{txn.TransactionId}</td>
             <td className="px-4 py-3">
                 <p className="font-semibold text-slate-900">{studentDisplayName(txn)}</p>
@@ -1034,7 +1042,7 @@ function StudentPaymentRow({ txn, onView }) {
             <td className="px-4 py-3 text-right font-bold text-green-600">+{formatMoney(txn.Amount)}</td>
             <td className="px-4 py-3 text-xs text-slate-500">{formatDate(txn.TransDate || txn.Created_at)}</td>
             <td className="px-4 py-3">
-                <button onClick={() => onView(txn.TransactionId)} className="p-2 rounded-lg border border-slate-200 hover:border-orange-300 hover:text-orange-600" title="ดูรายละเอียดและสลิป">
+                <button onClick={() => onView(txn.TransactionId)} className={`p-2 rounded-lg border border-slate-200 hover:border-orange-300 hover:text-orange-600 ${T.transition}`} title="ดูรายละเอียดและสลิป">
                     <Eye className="h-4 w-4" />
                 </button>
             </td>
@@ -1052,11 +1060,21 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
             .finally(() => setLoading(false));
     }, [transactionId]);
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className={`${T.card} w-full max-w-3xl max-h-[92vh] overflow-y-auto`}>
-                <div className="sticky top-0 bg-white z-10 px-6 py-4 border-b flex justify-between items-center">
-                    <div><h3 className={T.title}>รายละเอียดรับชำระ</h3><p className={T.caption}>Transaction #{transactionId}</p></div>
-                    <button onClick={onClose}><X className="h-5 w-5" /></button>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+                <div className="sticky top-0 z-10 px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 flex justify-between items-center">
+                    <div>
+                        <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                                <Receipt className="h-4 w-4 text-white" />
+                            </span>
+                            รายละเอียดรับชำระ
+                        </h3>
+                        <p className="text-xs text-orange-100 mt-0.5 ml-[42px]">Transaction #{transactionId}</p>
+                    </div>
+                    <button onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
+                        <X className="h-5 w-5" />
+                    </button>
                 </div>
                 <div className="p-6">
                     <ApiState loading={loading} error={error} minHeight="h-64">
@@ -1070,8 +1088,8 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>นักเรียน</p><p className="font-bold">{studentDisplayName(data)}</p><p>{data.PhoneNo || '—'}</p><p className="text-slate-500">{data.CourseName}</p></div>
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>ข้อมูลการโอน</p><p>วันที่ {formatDate(data.TransDate || data.Created_at)}</p><p>เลขอ้างอิง {data.TransRef}</p><p>{data.SendingBank || 'ไม่ระบุธนาคารต้นทาง'} → {data.ReceivingBank || 'บัญชีสถาบัน'}</p></div>
                             </div>
-                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border rounded-xl"><table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className="border-t"><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
-                            <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
+                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
+                            <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border border-slate-200 object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
                         </div>}
                     </ApiState>
                 </div>
@@ -1101,19 +1119,40 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
         finally { setSaving(false); }
     };
     const bankReady = item.bankName && item.bankAccountNumber && item.bankAccountName;
-    return <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
-        <form onSubmit={submit} className={`${T.card} w-full max-w-xl overflow-hidden`}>
-            <div className="px-6 py-4 border-b flex justify-between"><div><h3 className={T.title}>บันทึกโอนค่าติวเตอร์</h3><p className={T.caption}>{item.tutorName} · รอบ {item.period}</p></div><button type="button" onClick={onClose}><X className="h-5 w-5" /></button></div>
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500">
+                <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                        <Wallet className="h-4 w-4 text-white" />
+                    </span>
+                    บันทึกโอนค่าติวเตอร์
+                </h3>
+                <button type="button" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
+                    <X className="h-5 w-5" />
+                </button>
+            </div>
+            <p className="px-6 pt-3 text-xs text-slate-400">{item.tutorName} · รอบ {item.period}</p>
             <div className="p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4"><p className={T.label}>ยอดที่ต้องโอน</p><p className="text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p><p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p></div>
                 <div className="grid grid-cols-2 gap-3 text-sm"><div><p className={T.label}>ธนาคาร</p><p className="font-semibold">{item.bankName || 'ยังไม่กรอก'}</p></div><div><p className={T.label}>เลขบัญชี</p><p className="font-semibold">{item.bankAccountNumber || 'ยังไม่กรอก'}</p></div><div className="col-span-2"><p className={T.label}>ชื่อบัญชี</p><p className="font-semibold">{item.bankAccountName || 'ยังไม่กรอก'}</p></div></div>
                 {!bankReady && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">ข้อมูลบัญชีติวเตอร์ไม่ครบ กรุณาแก้ในหน้าจัดการติวเตอร์ก่อนโอนเงิน</p>}
-                <label className="block"><span className={T.label}>วันที่โอน *</span><input required type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="mt-1 w-full border rounded-xl px-3 py-2" /></label>
-                <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className="mt-1 w-full border rounded-xl px-3 py-2" /></label>
+                <label className="block"><span className={T.label}>วันที่โอน *</span><input required type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={`mt-1 ${inp}`} /></label>
+                <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className={`mt-1 ${inp}`} /></label>
                 <p className={T.caption}>ระบบคำนวณยอดและสร้างเลขที่ใบจ่ายให้อัตโนมัติ ไม่ตรวจ SlipOK เพราะเป็นรายการที่แอดมินโอนออก</p>
                 {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
-            <div className="px-6 py-4 border-t flex justify-end gap-2"><button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border">ยกเลิก</button><button disabled={saving || !bankReady} className="px-4 py-2 rounded-xl bg-orange-500 text-white font-semibold disabled:opacity-50">{saving ? 'กำลังบันทึก...' : 'ยืนยันว่าโอนแล้ว'}</button></div>
+            <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
+                <button type="button" onClick={onClose} disabled={saving}
+                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                    ยกเลิก
+                </button>
+                <button disabled={saving || !bankReady}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันว่าโอนแล้ว"}
+                </button>
+            </div>
         </form>
     </div>;
 }
