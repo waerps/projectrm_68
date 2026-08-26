@@ -677,7 +677,6 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 rounded-xl bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">ระบบไม่ได้หารยอดใหม่ แต่รวม InstallmentAmounts ของแต่ละคอร์สตามลำดับงวดโดยตรง คอร์สที่กำหนดชำระครั้งเดียวจะอยู่ในงวดแรก ส่วนคอร์สที่มีจำนวนงวดน้อยกว่าจะสิ้นสุดก่อน</div>
                 </div>
               )}
             </div>
@@ -731,10 +730,10 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                 <div className="mx-auto mt-5 max-w-lg rounded-2xl border border-green-200 bg-green-50 p-4 text-left">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <b className="text-sm text-green-900">{lineLinked ? "เชื่อม LINE สำเร็จแล้ว" : "รับ QR และแจ้งเตือนงวดถัดไปทาง LINE"}</b>
-                      <p className="mt-1 text-xs leading-relaxed text-green-700">{lineLinked ? "ระบบพร้อมส่งการแจ้งเตือนค่างวดให้บัญชีนี้" : "เชื่อม LINE หลังชำระงวดแรก เพื่อไม่พลาดกำหนดชำระงวดถัดไป"}</p>
+                      <b className="text-sm text-green-900">{lineLinked ? "เชื่อม LINE อยู่แล้ว" : "รับ QR และแจ้งเตือนงวดถัดไปทาง LINE"}</b>
+                      <p className="mt-1 text-xs leading-relaxed text-green-700">{lineLinked ? "กดเชื่อมอีกครั้งเพื่อยืนยันบัญชีและรับข้อความทักทายสำหรับคอร์สที่เพิ่งซื้อ" : "เชื่อม LINE หลังชำระงวดแรก เพื่อไม่พลาดกำหนดชำระงวดถัดไป"}</p>
                     </div>
-                    {!lineLinked && <button type="button" onClick={connectLine} disabled={lineLoading} className="shrink-0 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังเปิด LINE..." : "เชื่อมบัญชีกับ LINE"}</button>}
+                    <button type="button" onClick={connectLine} disabled={lineLoading} className="shrink-0 rounded-xl bg-[#06C755] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50">{lineLoading ? "กำลังเปิด LINE..." : lineLinked ? "เชื่อม LINE อีกครั้ง" : "เชื่อมบัญชีกับ LINE"}</button>
                   </div>
                 </div>
               )}
