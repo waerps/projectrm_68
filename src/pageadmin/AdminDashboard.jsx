@@ -22,7 +22,7 @@ const T = {
   transition: "transition duration-200 ease-out",
   title: "text-base font-bold text-slate-900",
   subtitle: "text-sm text-slate-500",
-  chartCardH: "h-[420px]", // ความสูงคงที่ร่วมกันของการ์ดกราฟทั้งคู่ในแถวกลาง
+  chartCardH: "h-[480px]", // ความสูงคงที่ร่วมกันของการ์ดกราฟทั้งคู่ในแถวกลาง
 };
 
 // สีสำหรับ Donut Chart — โทนเดียวกับระบบ (orange เป็นสีหลัก) พร้อมคู่สี light สำหรับ gradient
@@ -247,81 +247,81 @@ function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
 
 function CourseStatusDonut({ byStatus = [], total = 0 }) {
   const chartData = byStatus
-    .filter((s) => Number(s.cnt) > 0)
-    .map((s, i) => ({
-      name: s.Status_Course_Name,
-      value: Number(s.cnt),
-      color: PIE_COLORS[i % PIE_COLORS.length],
-    }))
-    .sort((a, b) => b.value - a.value);
+      .filter((s) => Number(s.cnt) > 0)
+      .map((s, i) => ({
+          name: s.Status_Course_Name,
+          value: Number(s.cnt),
+          color: PIE_COLORS[i % PIE_COLORS.length],
+      }))
+      .sort((a, b) => b.value - a.value);
 
   if (chartData.length === 0) {
-    return <EmptyMini text="ยังไม่มีข้อมูลคอร์สในระบบ" />;
+      return <EmptyMini text="ยังไม่มีข้อมูลคอร์สในระบบ" />;
   }
 
   const topValue = chartData[0]?.value ?? 0;
 
   return (
-    <div className="flex flex-col md:flex-row items-center gap-6 h-full">
-      <div className="relative w-48 h-48 shrink-0 mx-auto md:mx-0">
-        {/* วงเงาด้านหลัง จำลองความหนาของจาน (depth disc) */}
-        <div className="absolute inset-3 rounded-full bg-slate-300/40 blur-md translate-y-2" />
-        <ResponsiveContainer width="100%" height="100%">
-          <RPieChart>
-            <defs>
-              {chartData.map((d, i) => (
-                <radialGradient id={`courseGrad-${i}`} key={i} cx="35%" cy="30%" r="75%">
-                  <stop offset="0%" stopColor={d.color.light} />
-                  <stop offset="100%" stopColor={d.color.base} />
-                </radialGradient>
-              ))}
-            </defs>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              nameKey="name"
-              innerRadius={46}
-              outerRadius={80}
-              paddingAngle={3}
-              cornerRadius={4}
-              stroke="#ffffff"
-              strokeWidth={2}
-              style={{ filter: "drop-shadow(0 8px 8px rgba(15,23,42,0.28))" }}
-              isAnimationActive={false}
-            >
-              {chartData.map((d, i) => (
-                <Cell key={i} fill={`url(#courseGrad-${i})`} style={d.value === topValue ? { filter: "drop-shadow(0 10px 10px rgba(15,23,42,0.32))" } : undefined} />
-              ))}
-            </Pie>
-            <Tooltip
-              formatter={(value, name) => [`${value} คอร์ส`, name]}
-              contentStyle={{ borderRadius: 12, fontSize: 12 }}
-            />
-          </RPieChart>
-        </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <p className="text-2xl font-black text-slate-900">{total}</p>
-          <p className="text-[10px] text-slate-400">คอร์สทั้งหมด</p>
-        </div>
-      </div>
-
-      <div className="flex-1 w-full space-y-2.5">
-        {chartData.map((d, i) => (
-          <div key={i} className={`flex items-center justify-between text-sm ${d.value === topValue ? "font-semibold" : ""}`}>
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color.base }} />
-              <span className="text-slate-600 truncate">{d.name}</span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="font-bold text-slate-800">{d.value}</span>
-              <span className="text-[11px] text-slate-400 w-9 text-right">
-                {total ? Math.round((d.value / total) * 100) : 0}%
-              </span>
-            </div>
+      <div className="flex flex-col items-center gap-6 h-full justify-center">
+          <div className="relative w-64 h-64 shrink-0">
+              {/* วงเงาด้านหลัง จำลองความหนาของจาน (depth disc) */}
+              <div className="absolute inset-4 rounded-full bg-slate-300/40 blur-md translate-y-2" />
+              <ResponsiveContainer width="100%" height="100%">
+                  <RPieChart>
+                      <defs>
+                          {chartData.map((d, i) => (
+                              <radialGradient id={`courseGrad-${i}`} key={i} cx="35%" cy="30%" r="75%">
+                                  <stop offset="0%" stopColor={d.color.light} />
+                                  <stop offset="100%" stopColor={d.color.base} />
+                              </radialGradient>
+                          ))}
+                      </defs>
+                      <Pie
+                          data={chartData}
+                          dataKey="value"
+                          nameKey="name"
+                          innerRadius={62}
+                          outerRadius={108}
+                          paddingAngle={3}
+                          cornerRadius={4}
+                          stroke="#ffffff"
+                          strokeWidth={2}
+                          style={{ filter: "drop-shadow(0 8px 8px rgba(15,23,42,0.28))" }}
+                          isAnimationActive={false}
+                      >
+                          {chartData.map((d, i) => (
+                              <Cell key={i} fill={`url(#courseGrad-${i})`} style={d.value === topValue ? { filter: "drop-shadow(0 10px 10px rgba(15,23,42,0.32))" } : undefined} />
+                          ))}
+                      </Pie>
+                      <Tooltip
+                          formatter={(value, name) => [`${value} คอร์ส`, name]}
+                          contentStyle={{ borderRadius: 12, fontSize: 12 }}
+                      />
+                  </RPieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <p className="text-3xl font-black text-slate-900">{total}</p>
+                  <p className="text-xs text-slate-400">คอร์สทั้งหมด</p>
+              </div>
           </div>
-        ))}
+
+          <div className="w-full max-w-sm space-y-1">
+              {chartData.map((d, i) => (
+                  <div key={i} className={`flex items-center justify-between text-sm py-1 px-1 rounded-lg ${d.value === topValue ? "font-semibold bg-slate-50" : ""}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                          <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color.base }} />
+                          <span className="text-slate-600 truncate">{d.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-bold text-slate-800">{d.value}</span>
+                          <span className="text-[11px] text-slate-400 w-9 text-right">
+                              {total ? Math.round((d.value / total) * 100) : 0}%
+                          </span>
+                      </div>
+                  </div>
+              ))}
+          </div>
       </div>
-    </div>
   );
 }
 
