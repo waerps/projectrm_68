@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2 } from "lucide-react";
+import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2, X } from "lucide-react";
 import { getCourseBasic, getStudentSubjectsProgress } from "../callapi/callusers_student";
 
 export default function SubjectList() {
@@ -56,20 +56,59 @@ export default function SubjectList() {
     return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
   }
 
-  return (
-    <div className="mt-[90px] mx-auto w-full max-w-[1400px] space-y-7 px-5 md:px-8 pb-12">
-      <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-white px-6 py-5">
-        <p className="text-sm font-semibold text-orange-600">{courseName}</p>
-        <h1 className="mt-1 text-3xl font-bold text-neutral-900">เลือกวิชาที่ต้องการเรียน</h1>
-        <p className="mt-2 text-sm text-neutral-500">คอร์สนี้มี {subjects.length} รายวิชา เลือกวิชาเพื่อดูคลิป เอกสาร และข้อสอบ</p>
-      </div>
+  const closeSubjectPicker = () => navigate(-1);
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {subjects.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200 text-neutral-400">
-            ยังไม่มีวิชาในคอร์สนี้
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label="ปิดหน้าต่างเลือกวิชา"
+        className="absolute inset-0 cursor-default bg-neutral-900/50 backdrop-blur-sm"
+        onClick={closeSubjectPicker}
+      />
+
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="border-b border-neutral-100 px-6 pb-5 pt-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                <BookOpen size={22} />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-neutral-900">เลือกวิชา</h1>
+                <p className="mt-0.5 text-xs text-neutral-500">เลือกวิชาที่ต้องการเรียน</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={closeSubjectPicker}
+              aria-label="ปิด"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+            >
+              <X size={19} />
+            </button>
           </div>
-        ) : subjects.map((subj) => {
+
+          <div className="mt-5 rounded-2xl bg-neutral-50 px-4 py-3">
+            <p className="mb-1 text-xs font-medium text-neutral-500">คอร์ส</p>
+            <p className="text-sm font-semibold leading-relaxed text-neutral-800">{courseName}</p>
+          </div>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto px-6 py-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-neutral-800">วิชาในคอร์ส</p>
+            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">
+              {subjects.length} วิชา
+            </span>
+          </div>
+
+          <div className="space-y-2.5">
+            {subjects.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-400">
+                ยังไม่มีวิชาในคอร์สนี้
+              </div>
+            ) : subjects.map((subj, index) => {
           const videoPct = subj.totalVideos ? Math.round((subj.watchedVideos / subj.totalVideos) * 100) : 0;
           const attendPct = subj.totalSessions ? Math.round((subj.attendedSessions / subj.totalSessions) * 100) : 0;
 
@@ -77,28 +116,40 @@ export default function SubjectList() {
             <button
               key={subj.subjectId}
               onClick={() => navigate(`/profile/course/${courseId}/subject/${subj.subjectId}`)}
-              className="group w-full min-h-[138px] flex items-center gap-5 bg-white border-2 border-neutral-200 hover:border-orange-400 hover:shadow-md rounded-2xl p-6 text-left transition"
+              className="group flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
             >
-              <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                <BookOpen className="h-6 w-6 text-orange-600" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+                {String(index + 1).padStart(2, "0")}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xl font-bold text-neutral-900 group-hover:text-orange-600">{subj.subjectName || "ไม่ระบุชื่อวิชา"}</p>
-                <div className="flex flex-wrap gap-x-5 gap-y-2 mt-2 text-sm text-neutral-500">
-                  <span className="flex items-center gap-1"><Video className="h-3.5 w-3.5" /> {subj.watchedVideos}/{subj.totalVideos} คลิป ({videoPct}%)</span>
-                  <span className="flex items-center gap-1"><FileText className="h-3.5 w-3.5" /> {subj.totalFiles} ไฟล์</span>
+                <p className="text-sm font-semibold text-neutral-800 group-hover:text-orange-700">{subj.subjectName || "ไม่ระบุชื่อวิชา"}</p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-400">
+                  <span className="flex items-center gap-1"><Video className="h-3 w-3" /> {subj.watchedVideos}/{subj.totalVideos} คลิป ({videoPct}%)</span>
+                  <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {subj.totalFiles} ไฟล์</span>
                   <span>{subj.attendedSessions}/{subj.totalSessions} คาบ ({attendPct}%)</span>
                   {subj.latestExam && (
                     <span className="flex items-center gap-1 text-green-600 font-semibold">
-                      <Trophy className="h-3.5 w-3.5" /> {subj.latestExam.score}/{subj.latestExam.maxScore}
+                      <Trophy className="h-3 w-3" /> {subj.latestExam.score}/{subj.latestExam.maxScore}
                     </span>
                   )}
                 </div>
               </div>
-              <ChevronRight className="h-5 w-5 text-neutral-300 shrink-0" />
+              <ChevronRight className="h-5 w-5 shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-500" />
             </button>
           );
-        })}
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-100 bg-neutral-50/70 px-6 py-4">
+          <button
+            type="button"
+            onClick={closeSubjectPicker}
+            className="w-full rounded-xl py-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700"
+          >
+            ยกเลิก
+          </button>
+        </div>
       </div>
     </div>
   );
