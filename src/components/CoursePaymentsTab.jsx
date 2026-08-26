@@ -138,13 +138,13 @@ export default function CoursePaymentsTab({ courseId }) {
 
       {rows.length > 0 && <>
         <section className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border bg-white p-4"><p className="text-xs text-neutral-500">ราคาคอร์ส</p><p className="mt-1 text-xl font-bold text-neutral-900">{money(summary.total)}</p></div>
-          <div className="rounded-xl border bg-white p-4"><p className="text-xs text-neutral-500">ชำระแล้ว</p><p className="mt-1 text-xl font-bold text-emerald-600">{money(summary.paid)}</p></div>
-          <div className="rounded-xl border bg-white p-4"><p className="text-xs text-neutral-500">ยอดคงเหลือ</p><p className="mt-1 text-xl font-bold text-orange-600">{money(summary.total - summary.paid)}</p></div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4"><p className="text-xs text-neutral-500">ราคาคอร์ส</p><p className="mt-1 text-xl font-bold text-neutral-900">{money(summary.total)}</p></div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4"><p className="text-xs text-neutral-500">ชำระแล้ว</p><p className="mt-1 text-xl font-bold text-emerald-600">{money(summary.paid)}</p></div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-4"><p className="text-xs text-neutral-500">ยอดคงเหลือ</p><p className="mt-1 text-xl font-bold text-orange-600">{money(summary.total - summary.paid)}</p></div>
         </section>
         <section className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
-          <div className="border-b p-4"><h2 className="flex items-center gap-2 font-bold"><WalletCards className="h-5 w-5 text-orange-600" />รายการชำระรายงวด</h2></div>
-          <div className="divide-y">
+          <div className="border-b border-neutral-200 p-4"><h2 className="flex items-center gap-2 font-bold"><WalletCards className="h-5 w-5 text-orange-600" />รายการชำระรายงวด</h2></div>
+          <div className="divide-y divide-neutral-200">
             {rows.map((row) => {
               const status = STATUS[row.installmentStatus] || [row.installmentStatus, "bg-slate-100 text-slate-600"];
               const payable = ["due", "overdue_grace", "overdue_suspended"].includes(row.installmentStatus);

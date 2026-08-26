@@ -454,6 +454,7 @@ export default function AdminFinance() {
     const [tutorLoading, setTutorLoading] = useState(false);
     const [tutorError, setTutorError] = useState(null);
     const [payoutItem, setPayoutItem] = useState(null);
+    const [tutorDetailItem, setTutorDetailItem] = useState(null);
 
     /* filters state */
     const [searchInput, setSearchInput] = useState('');
@@ -965,17 +966,19 @@ export default function AdminFinance() {
                     </div> : <div className="col-span-12">
                         <ApiState loading={tutorLoading} error={tutorError} onRetry={fetchTutorPayables} minHeight="h-64">
                             {tutorData.length === 0 ? <div className={T.card}><EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" /></div> :
-                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y">{tutorData.map(item => <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
+                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{tutorData.map(item => <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
                                 <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
                                 <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
                                 <td className="px-4 py-3">{item.sessionCount} คาบ</td>
                                 <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
                                 <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
-                                <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
-                                <td className="px-4 py-3">{item.status === 'unpaid' ? (item.canPay
-                                    ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
-                                    : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
-                                    : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}</td>
+                                <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : 'รอโอน'} /></td>
+                                <td className="px-4 py-3"><div className="flex items-center gap-2">
+                                    <button onClick={() => setTutorDetailItem(item)} title="ดูรายละเอียดการคำนวณ" className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:border-orange-300 hover:text-orange-600 ${T.transition}`}><Eye className="h-4 w-4" /></button>
+                                    {item.status === 'unpaid'
+                                        ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
+                                        : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}
+                                </div></td>
                             </tr>)}</tbody></table></div>}
                         </ApiState>
                     </div>}
@@ -1017,6 +1020,7 @@ export default function AdminFinance() {
                 <StudentPaymentDetailModal transactionId={viewTxId} onClose={() => setViewTxId(null)} />
             )}
             {payoutItem && <TutorPayoutModal item={payoutItem} onClose={() => setPayoutItem(null)} onSuccess={() => { fetchTutorPayables(); fetchSummary(); fetchMonthly(); }} />}
+            {tutorDetailItem && <TutorPaymentDetailModal item={tutorDetailItem} onClose={() => setTutorDetailItem(null)} />}
         </div>
     );
 }
@@ -1098,8 +1102,50 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
     );
 }
 
+function TutorPaymentDetailModal({ item, onClose }) {
+    const sessions = Array.isArray(item.sessions) ? item.sessions : [];
+    return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
+                <div>
+                    <h3 className="flex items-center gap-2 text-base font-bold text-white"><Eye className="h-5 w-5" />รายละเอียดค่าติวเตอร์</h3>
+                    <p className="mt-0.5 text-xs text-orange-100">{item.tutorName} · รอบ {item.period}</p>
+                </div>
+                <button onClick={onClose} className="rounded-xl p-2 text-white/80 hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="overflow-y-auto p-6">
+                <div className="mb-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className={T.label}>ยอดรวม</p><p className="mt-1 text-2xl font-bold text-orange-600">{formatMoney(item.amount)}</p></div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className={T.label}>จำนวนคาบ</p><p className="mt-1 text-2xl font-bold text-slate-900">{item.sessionCount} คาบ</p></div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className={T.label}>เรทในโปรไฟล์ติวเตอร์</p><p className="mt-1 text-2xl font-bold text-slate-900">{item.profileRate != null ? `${Number(item.profileRate).toLocaleString('th-TH')} บาท/ชม.` : 'ไม่ได้ระบุ'}</p></div>
+                </div>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    <table className="w-full min-w-[900px] text-sm">
+                        <thead className="bg-slate-50 text-xs text-slate-500"><tr>
+                            <th className="px-4 py-3 text-left">ประเภท</th><th className="px-4 py-3 text-left">วันที่/คอร์ส</th><th className="px-4 py-3 text-left">วิชา</th><th className="px-4 py-3 text-center">ผู้เรียนมา</th><th className="px-4 py-3 text-center">ชั่วโมง</th><th className="px-4 py-3 text-center">ขั้นเรท</th><th className="px-4 py-3 text-left">สูตร</th><th className="px-4 py-3 text-right">ยอด</th>
+                        </tr></thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {sessions.map(session => <tr key={session.tutorCheckinId} className="hover:bg-orange-50/30">
+                                <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${session.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{session.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}</span></td>
+                                <td className="px-4 py-3"><p className="font-semibold text-slate-800">{formatDate(session.startDateTime)}</p><p className="mt-0.5 max-w-[250px] text-xs text-slate-500">{session.courseName}</p></td>
+                                <td className="px-4 py-3">{session.subjectName || '—'}</td>
+                                <td className="px-4 py-3 text-center">{session.actualStudents} คน</td>
+                                <td className="px-4 py-3 text-center">{Number(session.durationHours).toFixed(1)} ชม.</td>
+                                <td className="px-4 py-3 text-center">{Number(session.ratePerSession).toLocaleString('th-TH')} บาท/1.5 ชม.</td>
+                                <td className="px-4 py-3 text-xs text-slate-500">{Number(session.ratePerSession).toLocaleString('th-TH')} × ({Number(session.durationHours).toFixed(1)} ÷ 1.5)</td>
+                                <td className="px-4 py-3 text-right font-bold text-orange-600">{formatMoney(session.earnedAmount)}</td>
+                            </tr>)}
+                            {!sessions.length && <tr><td colSpan="8" className="px-4 py-10 text-center text-slate-400">ไม่พบรายละเอียดคาบในรายการนี้</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>;
+}
+
 function TutorPayoutModal({ item, onClose, onSuccess }) {
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
+    const paymentDate = new Date().toISOString().slice(0, 10);
     const [slip, setSlip] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -1136,11 +1182,8 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
             <p className="px-6 pt-3 text-xs text-slate-400">{item.tutorName} · รอบ {item.period}</p>
             <div className="p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4"><p className={T.label}>ยอดที่ต้องโอน</p><p className="text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p><p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p></div>
-                <div className="grid grid-cols-2 gap-3 text-sm"><div><p className={T.label}>ธนาคาร</p><p className="font-semibold">{item.bankName || 'ยังไม่กรอก'}</p></div><div><p className={T.label}>เลขบัญชี</p><p className="font-semibold">{item.bankAccountNumber || 'ยังไม่กรอก'}</p></div><div className="col-span-2"><p className={T.label}>ชื่อบัญชี</p><p className="font-semibold">{item.bankAccountName || 'ยังไม่กรอก'}</p></div></div>
                 {!bankReady && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">ข้อมูลบัญชีติวเตอร์ไม่ครบ กรุณาแก้ในหน้าจัดการติวเตอร์ก่อนโอนเงิน</p>}
-                <label className="block"><span className={T.label}>วันที่โอน *</span><input required type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className={`mt-1 ${inp}`} /></label>
                 <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className={`mt-1 ${inp}`} /></label>
-                <p className={T.caption}>ระบบคำนวณยอดและสร้างเลขที่ใบจ่ายให้อัตโนมัติ ไม่ตรวจ SlipOK เพราะเป็นรายการที่แอดมินโอนออก</p>
                 {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
             <div className="px-6 py-4 border-t border-slate-100 flex gap-3">

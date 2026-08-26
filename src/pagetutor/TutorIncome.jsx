@@ -723,6 +723,9 @@ export default function TutorIncome() {
                             <BookOpen className="h-3 w-3" />{s.subjectName}
                           </p>
                         )}
+                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                          {s.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
+                        </span>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ml-2 ${s.levelType === 'elementary' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
                         {s.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
@@ -771,6 +774,9 @@ export default function TutorIncome() {
                               <BookOpen className="h-3 w-3" />{s.subjectName}
                             </p>
                           )}
+                          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {s.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
+                          </span>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span className={`text-xs px-2 py-1 rounded-full border ${s.levelType === 'elementary' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
@@ -779,7 +785,7 @@ export default function TutorIncome() {
                         </td>
                         <td className="px-4 py-3 text-center font-semibold text-neutral-800">{s.actualStudents} คน</td>
                         <td className="px-4 py-3 text-center text-neutral-600">{Number(s.durationHours).toFixed(1)} ชม.</td>
-                        <td className="px-4 py-3 text-center text-neutral-600">{s.ratePerSession} บ.</td>
+                        <td className="px-4 py-3 text-center text-neutral-600"><p>{s.ratePerSession} บ./1.5 ชม.</p><p className="mt-0.5 text-[10px] text-neutral-400">{s.ratePerSession} × ({Number(s.durationHours).toFixed(1)} ÷ 1.5)</p></td>
                         <td className="px-4 py-3 text-right font-bold text-orange-600">{s.earnedAmount.toLocaleString()} บ.</td>
                         <td className="px-4 py-3 text-center">
                           {s.isPaid
