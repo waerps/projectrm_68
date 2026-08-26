@@ -6,7 +6,7 @@ import {
   AlertCircle, Info, ChevronRight,
   BookOpen, GraduationCap, Wallet, Clock,
   Calendar, DoorOpen, Boxes, CheckCircle, AlertTriangle,
-  UserCheck, Bell, Sparkles, PieChart as PieChartIcon,
+  UserCheck, Bell, Sparkles, PieChart as PieChartIcon, Users,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -44,6 +44,8 @@ const ACTION_ICONS = {
   "stock-issues": Boxes,
   "rooms-maintenance": DoorOpen,
   "missing-price": AlertCircle,
+  "students-attention": AlertTriangle,   // ★ เพิ่ม
+  "tutors-attention": UserCheck,          // ★ เพิ่ม
 };
 
 const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
@@ -175,40 +177,16 @@ function MetricBox({ label, value, tone = "slate" }) {
   );
 }
 
-function StatusRow({ label, value, tone = "slate" }) {
-  const boxCls = {
-    slate: "bg-slate-50 border-slate-100",
-    emerald: "bg-emerald-50 border-emerald-100",
-    amber: "bg-amber-50 border-amber-100",
-    red: "bg-red-50 border-red-100",
-  }[tone];
-  const labelCls = {
-    slate: "text-slate-500",
-    emerald: "text-emerald-700",
-    amber: "text-amber-700",
-    red: "text-red-600",
-  }[tone];
-  const valueCls = {
-    slate: "text-slate-700",
-    emerald: "text-emerald-700",
-    amber: "text-amber-700",
-    red: "text-red-600",
-  }[tone];
+function StatusRow({ label, value }) {
   return (
-    <div className={`flex items-center justify-between px-3 py-2 rounded-xl border ${boxCls}`}>
-      <span className={`text-xs font-medium ${labelCls}`}>{label}</span>
-      <span className={`text-sm font-bold ${valueCls}`}>{value}</span>
+    <div className="flex items-center justify-between px-1 py-1.5">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className="text-sm font-semibold text-slate-700">{value}</span>
     </div>
   );
 }
 
-/* ─── ★ ใหม่: ActionSummaryStrip — แทนที่ ActionCenter การ์ดใหญ่เดิม ─────────
-   นำ "สิ่งที่ต้องจัดการ" กลับมาแสดงตลอดเวลาเหมือนเดิม (ไม่ซ่อนหลังไอคอนกระดิ่งแล้ว)
-   แต่ย่อให้เหลือแถวเดียว เลื่อนแนวนอนได้ ไม่กินพื้นที่แนวตั้งเหมือนตอนแรก
-   และรวมหมวด "อุปกรณ์ใกล้หมด" + "อุปกรณ์หมดสต๊อก" เป็นชิปเดียว
-   ดีไซน์ตั้งใจให้ "ดูเป็น summary" (สีกลาง ๆ) ไม่ใช่ "แจ้งเตือน" (สีแดง/เหลืองฉูดฉาด)
-   เพราะมีหน้าแจ้งเตือนแยกต่างหากอยู่แล้ว ─────────────────────────────────── */
-function buildActionChips(items) {
+function buildActionChips(items, extra = []) {
   const lowStock = items.find((i) => i.id === "low-stock");
   const outOfStock = items.find((i) => i.id === "out-of-stock");
   const rest = items.filter((i) => i.id !== "low-stock" && i.id !== "out-of-stock");
@@ -224,11 +202,11 @@ function buildActionChips(items) {
       link: "/admin/common-facilities",
     });
   }
-  return chips;
+  return [...chips, ...extra]; // ★ เพิ่ม
 }
 
-function ActionSummaryStrip({ items, onNavigate }) {
-  const chips = useMemo(() => buildActionChips(items), [items]);
+function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
+  const chips = useMemo(() => buildActionChips(items, extraItems), [items, extraItems]);
 
   if (chips.length === 0) {
     return (
@@ -241,7 +219,7 @@ function ActionSummaryStrip({ items, onNavigate }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
-      <div className="flex items-center gap-2.5 overflow-x-auto">
+      <div className="flex items-center gap-2.5 flex-wrap">
         <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0 pr-2.5 border-r border-slate-100 whitespace-nowrap">
           <Bell className="h-3.5 w-3.5 text-orange-500" /> ต้องจัดการ {chips.length} รายการ
         </span>
@@ -267,9 +245,6 @@ function ActionSummaryStrip({ items, onNavigate }) {
   );
 }
 
-/* ─── Course Status Donut — ★ กลับไปใช้ดีไซน์ต้นฉบับ (ก่อนแก้รอบก่อนหน้า) ─────
-   วงกลมใหญ่พร้อม depth-disc เงาด้านหลัง + legend เรียงเป็น list แนวตั้งด้านข้าง
-   ตอนนี้การ์ดนี้ถูกย้ายไปฝั่งซ้าย สลับกับกราฟรายรับ-รายจ่าย ──────────────── */
 function CourseStatusDonut({ byStatus = [], total = 0 }) {
   const chartData = byStatus
     .filter((s) => Number(s.cnt) > 0)
@@ -420,6 +395,38 @@ export default function AdminDashboard() {
   const facilitiesOut = Number(facilities.outOfStock ?? 0);
   const facilitiesTotal = Math.max(Number(facilities.total ?? 0), facilitiesReady + facilitiesLow + facilitiesOut);
 
+  const roomMaintenance = (rooms.byStatus || []).find((s) => s.Status_Room_Id === 2);
+  const localExtraChips = [
+    scheduleToday.missed > 0 && {
+      id: "missed-checkins",
+      title: "คาบวันนี้ยังไม่เช็กอิน",
+      message: `${scheduleToday.missed} คาบยังไม่เช็กอิน`,
+      count: scheduleToday.missed,
+      link: "/admin/schedule",
+    },
+    students.needsAttention?.length > 0 && {
+      id: "students-attention",
+      title: "นักเรียนเข้าเรียนต่ำ",
+      message: "เข้าเรียนต่ำกว่า 50% เดือนนี้",
+      count: students.needsAttention.length,
+      link: "/admin/students",
+    },
+    tutors.needsAttention?.length > 0 && {
+      id: "tutors-attention",
+      title: "ติวเตอร์เช็กอินต่ำ",
+      message: "เช็กอินต่ำกว่า 50% เดือนนี้",
+      count: tutors.needsAttention.length,
+      link: "/admin/tutors",
+    },
+    roomMaintenance?.cnt > 0 && {
+      id: "rooms-maintenance",
+      title: "ห้องปิดปรับปรุง",
+      message: `${roomMaintenance.cnt} ห้องปิดปรับปรุง`,
+      count: roomMaintenance.cnt,
+      link: "/admin/rooms",
+    },
+  ].filter(Boolean);
+
   return (
     <div className="space-y-6 mt-[90px]">
       {/* ── Header ─────────────────────────────────────────────── */}
@@ -436,19 +443,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* ── สิ่งที่ต้องจัดการ — แถวเดียว เลื่อนแนวนอนได้ ไม่กินพื้นที่ ─────── */}
-      <ActionSummaryStrip items={actionItems} onNavigate={goTo} />
+      <ActionSummaryStrip items={actionItems} extraItems={localExtraChips} onNavigate={goTo} />
 
       {/* ── การ์ดสรุป 3 อัน — ★ เปลี่ยนเป็นข้อมูลที่ไม่ซ้ำกับหน้าการเงิน
           (หน้าการเงินมีรายรับ/กำไร/ยอดค้างอยู่แล้ว) ใช้ดีไซน์ไอคอนสี่เหลี่ยมทึบ
           แบบเดียวกับการ์ดสรุปในหน้านักเรียน (AdminStudent.jsx) ──────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          label="นักเรียนทั้งหมด"
-          value={kpi.totalStudents ?? 0}
-          sub={`ลงทะเบียนแล้ว ${kpi.enrolledStudents ?? 0} คน`}
-          icon={GraduationCap}
-          color="bg-orange-600"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="คอร์สที่เปิดสอนอยู่"
           value={kpi.activeCourses ?? 0}
@@ -457,11 +457,29 @@ export default function AdminDashboard() {
           color="bg-blue-500"
         />
         <StatCard
-          label="อัตราเข้าเรียนเฉลี่ย"
-          value={students.avgAttendanceRate !== null && students.avgAttendanceRate !== undefined ? `${students.avgAttendanceRate}%` : "—"}
-          sub="เดือนนี้"
-          icon={UserCheck}
+          label="นักเรียนทั้งหมด"
+          value={kpi.totalStudents ?? 0}
+          sub={`ลงทะเบียนแล้ว ${kpi.enrolledStudents ?? 0} คน`}
+          icon={GraduationCap}
+          color="bg-orange-600"
+        />
+        <StatCard
+          label="ติวเตอร์ทั้งหมด"
+          value={kpi.totalTutors ?? 0}
+          sub={`กำลังสอน ${kpi.activeTutors ?? 0} คน`}
+          icon={Users}
           color="bg-emerald-500"
+        />
+        <StatCard
+          label="รายรับเดือนนี้"
+          value={formatMoney(kpi.monthlyRevenue)}
+          sub={
+            kpi.revenueGrowthPct !== undefined
+              ? `${kpi.revenueGrowthPct >= 0 ? "+" : ""}${kpi.revenueGrowthPct}% จากเดือนก่อน`
+              : undefined
+          }
+          icon={Wallet}
+          color="bg-amber-500"
         />
       </div>
 
@@ -604,12 +622,7 @@ export default function AdminDashboard() {
           </div>
           <div className="space-y-1.5">
             {rooms.byStatus?.map((s) => (
-              <StatusRow
-                key={s.Status_Room_Id}
-                label={s.Status_Room_Name}
-                value={s.cnt}
-                tone={s.Status_Room_Id === 2 ? "amber" : "slate"}
-              />
+              <StatusRow key={s.Status_Room_Id} label={s.Status_Room_Name} value={s.cnt} />
             ))}
           </div>
         </SectionCard>
@@ -622,9 +635,9 @@ export default function AdminDashboard() {
             <MetricBox label="อุปกรณ์ทั้งหมด" value={facilitiesTotal} tone="slate" />
           </div>
           <div className="space-y-1.5">
-            <StatusRow label="พร้อมใช้งาน" value={facilitiesReady} tone="emerald" />
-            <StatusRow label="ใกล้หมด" value={facilitiesLow} tone={facilitiesLow > 0 ? "amber" : "slate"} />
-            <StatusRow label="หมดสต๊อก" value={facilitiesOut} tone={facilitiesOut > 0 ? "red" : "slate"} />
+            <StatusRow label="พร้อมใช้งาน" value={facilitiesReady} />
+            <StatusRow label="ใกล้หมด" value={facilitiesLow} />
+            <StatusRow label="หมดสต๊อก" value={facilitiesOut} />
           </div>
         </SectionCard>
       </div>
