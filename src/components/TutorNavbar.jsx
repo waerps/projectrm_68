@@ -4,6 +4,7 @@ import React, { useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
+import NotificationBell from "./NotificationBell"
 
 
 export default function Navbar() {
@@ -52,6 +53,7 @@ export default function Navbar() {
 
 
                 <div className="flex items-center gap-2">
+                    <NotificationBell role="tutor" pagePath="/tutor/notification" />
                     <Link
                         to="/tutor/schedule"
                         className="relative h-11 w-11 flex items-center justify-center rounded-lg
@@ -116,17 +118,6 @@ export default function Navbar() {
                                         ข้อมูลส่วนตัว
                                     </Link>
                                 </li>
-
-                                <li>
-                                    <Link
-                                        to="notification"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        การแจ้งเตือน
-                                    </Link>
-                                </li>
-
-
 
                                 <li>
                                     <button

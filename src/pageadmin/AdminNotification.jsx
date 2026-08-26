@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, RefreshCw, Loader2, ChevronRight } from 'lucide-react';
+import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight } from 'lucide-react';
 
 const API = `${API_URL}/api/admin/notifications`;
 const auth = () => {
@@ -101,11 +101,10 @@ export default function AdminNotifications() {
       <div className="mx-auto max-w-[1400px] px-4 pb-10">
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900 flex items-center gap-2"><Bell className="h-7 w-7 text-orange-600" />การแจ้งเตือนและกิจกรรม</h1>
-            <p className="mt-1 text-sm text-neutral-500">ข้อมูลจริงจากส่วนต่าง ๆ ของระบบ · ยังไม่ได้อ่าน {unreadCount} รายการ{actionRequiredCount > 0 && <span className="text-red-600 font-semibold"> • ต้องดำเนินการ {actionRequiredCount} รายการ</span>}</p>
+            <h1 className="text-3xl font-bold text-neutral-900 flex items-center gap-3"><Bell className="h-8 w-8 text-orange-600" />การแจ้งเตือนและกิจกรรม</h1>
+            <p className="mt-2 text-base text-neutral-500">ข้อมูลจริงจากส่วนต่าง ๆ ของระบบ · ยังไม่ได้อ่าน {unreadCount} รายการ{actionRequiredCount > 0 && <span className="text-red-600 font-semibold"> • ต้องดำเนินการ {actionRequiredCount} รายการ</span>}</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={load} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-white border border-neutral-200 rounded-xl hover:bg-neutral-50 font-medium"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />รีเฟรช</button>
             {unreadCount > 0 && <button onClick={markAll} disabled={busy === 'all'} className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-medium disabled:opacity-60"><Check className="h-4 w-4" />อ่านทั้งหมด</button>}
           </div>
         </div>
@@ -128,13 +127,13 @@ export default function AdminNotifications() {
           <div className="space-y-3">{filtered.map(item => {
             const meta = typeMeta[item.type] || { label: item.type, Icon: Bell, bg: 'bg-neutral-100', color: 'text-neutral-600' };
             const priority = priorityMeta[item.priority] || priorityMeta.normal;
-            return <div key={item.id} className={`bg-white rounded-2xl border-2 hover:border-orange-300 overflow-hidden ${item.isRead ? 'border-neutral-200' : 'border-orange-200 bg-orange-50/30'}`}><div className="p-5 flex gap-4">
+            return <div key={item.id} className={`bg-white rounded-2xl border-2 hover:border-orange-300 overflow-hidden ${item.isRead ? 'border-neutral-200' : 'border-orange-200 bg-orange-50/30'}`}><div className="relative p-6 flex gap-4">
               <div className={`p-3 rounded-xl ${meta.bg} shrink-0 h-fit`}><meta.Icon className={`h-5 w-5 ${meta.color}`} /></div>
-              <div className="flex-1 min-w-0"><div className="flex items-start justify-between gap-3 mb-2"><div className="flex items-center gap-2 flex-wrap"><h3 className="font-bold text-neutral-900">{item.title}{!item.isRead && <span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full" />}</h3><span className={`px-2 py-1 rounded-full text-xs font-semibold border ${priority.cls}`}>{priority.label}</span>{item.actionRequired && <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">ต้องดำเนินการ</span>}</div><span className="text-xs text-neutral-500 whitespace-nowrap">{timeAgo(item.createdAt)}</span></div>
-                <p className="text-sm text-neutral-600 mb-3">{item.message}</p><div className="flex flex-wrap gap-2">
-                  {item.link && <button onClick={() => takeAction(item)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-orange-500 text-white rounded-lg hover:bg-orange-600 font-medium">{item.actionLabel || 'ดูรายละเอียด'}<ChevronRight className="h-3 w-3" /></button>}
-                  {!item.isRead && <button disabled={busy === item.id} onClick={() => markRead(item.id)} className="flex items-center gap-1 px-3 py-1.5 text-xs bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 font-medium"><Check className="h-3 w-3" />ทำเครื่องหมายว่าอ่าน</button>}
-                  <button disabled={busy === item.id} onClick={() => dismiss(item.id)} title="ซ่อนเฉพาะการแจ้งเตือน ไม่ลบข้อมูลต้นทาง" className="flex items-center gap-1 px-3 py-1.5 text-xs bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium"><Trash2 className="h-3 w-3" />ซ่อนรายการ</button>
+              <div className="flex-1 min-w-0 md:pr-56"><div className="flex items-start gap-3 mb-2"><div className="flex items-center gap-2 flex-wrap"><h3 className="text-lg font-bold text-neutral-900">{item.title}{!item.isRead && <span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full" />}</h3><span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-neutral-100 text-neutral-600">{meta.label}</span><span className={`px-2 py-1 rounded-full text-xs font-semibold border ${priority.cls}`}>{priority.label}</span>{item.actionRequired && <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700 border border-yellow-200">ต้องดำเนินการ</span>}</div></div>
+                <p className="text-base leading-7 text-neutral-700">{item.message}</p><span className="mt-2 block text-sm text-neutral-400">{timeAgo(item.createdAt)}</span><div className="mt-4 flex flex-wrap gap-2 md:absolute md:right-5 md:top-5 md:mt-0 md:w-48 md:flex-col">
+                  {item.link && <button onClick={() => takeAction(item)} className="flex justify-center items-center gap-1 px-4 py-2.5 text-sm bg-orange-500 text-white rounded-xl hover:bg-orange-600 font-semibold">{item.actionLabel || 'ดูรายละเอียด'}<ChevronRight className="h-4 w-4" /></button>}
+                  {!item.isRead && <button disabled={busy === item.id} onClick={() => markRead(item.id)} className="flex justify-center items-center gap-1 px-4 py-2.5 text-sm bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 font-semibold"><Check className="h-4 w-4" />ทำเครื่องหมายว่าอ่าน</button>}
+                  <button disabled={busy === item.id} onClick={() => dismiss(item.id)} title="ซ่อนเฉพาะการแจ้งเตือน ไม่ลบข้อมูลต้นทาง" className="flex justify-center items-center gap-1 px-4 py-2.5 text-sm bg-red-50 text-red-700 rounded-xl hover:bg-red-100 font-semibold"><Trash2 className="h-4 w-4" />ซ่อนรายการ</button>
                 </div></div></div></div>;
           })}</div>}
       </div>
