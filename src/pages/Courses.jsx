@@ -130,7 +130,7 @@ function CourseSkeleton() {
     <div className="animate-pulse pt-28 md:pt-36">
       <div className="container mx-auto max-w-6xl px-4">
         <div className="h-[60vh] md:h-[65vh] min-h-[440px] w-full rounded-3xl bg-neutral-200" />
-        <div className="relative z-10 -mt-10 md:-mt-14 grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3">
           {[0, 1, 2].map((i) => (
             <div key={i} className={`h-24 rounded-2xl bg-white shadow-md ${i === 0 ? "col-span-2 md:col-span-1" : ""}`} />
           ))}
@@ -361,7 +361,7 @@ export default function CourseDetail() {
                   );
                 })}
               </div>
-              <h1 className="text-3xl md:text-5xl font-bold text-white leading-[1.1] tracking-tight drop-shadow-sm">
+              <h1 className="text-2xl md:text-4xl font-bold text-white leading-[1.15] tracking-tight drop-shadow-sm">
                 {course.title}
               </h1>
             </div>
@@ -369,10 +369,10 @@ export default function CourseDetail() {
         </div>
       </div>
 
-      {/* ─── Bento strip — overlaps the bottom edge of the hero image ─── */}
+      {/* ─── Bento strip — sits below the hero image ─── */}
       <div className="container mx-auto max-w-6xl px-4">
         <div
-          className="relative z-10 -mt-10 md:-mt-14 grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4"
+          className="mt-6 grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4"
           style={{ animation: "riseIn .5s .1s cubic-bezier(0.16,1,0.3,1) both" }}
         >
           {/* price — orange hero tile */}

@@ -28,7 +28,7 @@ const TERM_OPTIONS = [
   { id: 1, name: "เปิดเทอม 1 (4 เดือน)" },
   { id: 2, name: "ตุลาคม (ปิดเทอมเล็ก)" },
   { id: 3, name: "เปิดเทอม 2" },
-  { id: 3, name: "ปิดเทอมใหญ่ (ซัมเมอร์)" },
+  { id: 4, name: "ปิดเทอมใหญ่ (ซัมเมอร์)" },
 ]
 
 const parseIds = (str) =>
@@ -94,6 +94,7 @@ export default function CourseSearch() {
   const filteredCourses = useMemo(() => {
     const q = search.trim().toLowerCase()
     return allCourses.filter((c) => {
+      if (Number(c.Status_Course_Id) === 4) return false
       const matchName = !q || (c.CourseName || "").toLowerCase().includes(q)
       return (
         matchName &&

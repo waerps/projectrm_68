@@ -769,7 +769,9 @@ export function CourseCheckoutModal({ course, onClose }) {
       items={[item]}
       total={item.salePrice}
       onClose={onClose}
-      onEnrollmentComplete={onClose}
+      // Do not close the direct-purchase modal here. CheckoutModal advances to
+      // the success screen after this callback; closing it hid step 4 for full payment.
+      onEnrollmentComplete={() => {}}
     />
   );
 }

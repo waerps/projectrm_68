@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { BadgeCheck, Calendar, Heart, Loader2, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
+import { BadgeCheck, BookOpen, Calendar, Heart, Loader2, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
 
@@ -19,7 +19,22 @@ const formatDate = (value) => {
     : "-"
 }
 const formatDateRange = (start, end) => start && end ? `${formatDate(start)} - ${formatDate(end)}` : start ? `เริ่ม ${formatDate(start)}` : "ยังไม่กำหนดวันเรียน"
-const resolveCourseImg = (course) => !course.CourseImage ? "/gray.jpg" : course.CourseImage.startsWith("http") ? course.CourseImage : `${API_URL}${course.CourseImage}`
+const resolveCourseImg = (course) => !course.CourseImage ? null : course.CourseImage.startsWith("http") ? course.CourseImage : `${API_URL}${course.CourseImage}`
+
+function CourseArtwork({ src, alt }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
+
+  if (!src || failed) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100" role="img" aria-label={alt}>
+        <BookOpen className="h-14 w-14 text-orange-300" />
+      </div>
+    )
+  }
+
+  return <img src={src} alt={alt} onError={() => setFailed(true)} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+}
 export const toCardItem = (course) => {
   const price = Number(course.Price || 0)
   const discount = Number(course.Discount || 0)
@@ -40,10 +55,11 @@ export const toCardItem = (course) => {
 
 export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggleFavorite, showDiscountBadge = false }) {
   const statusBadge = STATUS_BADGE[item.status]
+  const canEnroll = [1, 2].includes(Number(item.status))
   return (
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-        <img src={item.img} alt={item.title} onError={(e) => { e.currentTarget.src = "/gray.jpg" }} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        <CourseArtwork src={item.img} alt={item.title} />
         {showDiscountBadge && item.discountPercent > 0 && (
           <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
             <Tag className="h-3 w-3" /> ลดราคา {item.discountPercent}%
@@ -67,10 +83,10 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
           <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{item.availabilityName}</span>
         </div>
         <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBuyNow() }} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600">
-            <BadgeCheck className="h-3.5 w-3.5" />ซื้อคอร์สเรียน
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onBuyNow() }} disabled={!canEnroll} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300">
+            <BadgeCheck className="h-3.5 w-3.5" />{canEnroll ? "ซื้อคอร์สเรียน" : statusBadge?.label || "ไม่เปิดรับสมัคร"}
           </button>
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddToCart() }} disabled={inCart} aria-label={inCart ? "อยู่ในตะกร้าแล้ว" : "เพิ่มลงตะกร้า"} title={inCart ? "อยู่ในตะกร้าแล้ว" : "เพิ่มลงตะกร้า"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onAddToCart() }} disabled={inCart || !canEnroll} aria-label={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} title={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50">
             <ShoppingCart className="h-4 w-4" />
           </button>
           <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite() }} aria-label={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} title={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${isFav ? "border-red-200 bg-red-50 text-red-500" : "border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:text-red-400"}`}>
@@ -105,7 +121,10 @@ export default function Promotion() {
   const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const { cart, favorites, addToCart, toggleFavorite } = useShop()
   useEffect(() => { getCourses().then((data) => setAllCourses(Array.isArray(data) ? data : [])).finally(() => setLoading(false)) }, [])
-  const promotionCourses = useMemo(() => allCourses.filter((course) => Number(course.Discount) > 0), [allCourses])
+  const promotionCourses = useMemo(
+    () => allCourses.filter((course) => Number(course.Discount) > 0 && [1, 2].includes(Number(course.Status_Course_Id))),
+    [allCourses]
+  )
   const buyNow = (item) => {
     if (!localStorage.getItem("student_token")) return setLoginPromptOpen(true)
     addToCart(item)
