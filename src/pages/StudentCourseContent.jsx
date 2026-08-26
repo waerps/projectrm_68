@@ -1,9 +1,9 @@
 // ===================== 2) StudentCourseContent.jsx =====================
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useParams, Link } from "react-router-dom";
 import { ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
-import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoProgress, updateVideoWatchSegments } from "../callapi/callusers_student";
+import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoWatchSegments } from "../callapi/callusers_student";
 
 let ytApiPromise = null;
 function loadYoutubeApi() {
@@ -27,29 +27,13 @@ function extractYoutubeId(url) {
   return url;
 }
 
-function YoutubePlayer({ videoId, youtubeId, token }) {
+function YoutubePlayer({ videoId, youtubeId }) {
   const player = useRef(null);
-  const timer = useRef(null);
-  const lastSentPercent = useRef(0);
   const elementId = `player-${videoId}`;
 
   useEffect(() => {
     let cancelled = false;
-    lastSentPercent.current = 0;
     const realId = extractYoutubeId(youtubeId);
-
-    async function sendProgress(force = false) {
-      if (!player.current || typeof player.current.getCurrentTime !== "function") return;
-      const current = player.current.getCurrentTime();
-      const duration = player.current.getDuration();
-      if (!duration) return;
-      const percent = (current / duration) * 100;
-      if (force || Math.abs(percent - lastSentPercent.current) >= 1) {
-        lastSentPercent.current = percent;
-        try { await updateVideoProgress(token, videoId, { WatchPercent: percent, LastWatchTime: current }); }
-        catch (e) { console.error(e); }
-      }
-    }
 
     loadYoutubeApi().then(() => {
       if (cancelled) return;
@@ -58,36 +42,26 @@ function YoutubePlayer({ videoId, youtubeId, token }) {
       player.current = new window.YT.Player(elementId, {
         videoId: realId,
         playerVars: { autoplay: 0 },
-        events: {
-          onStateChange: (e) => {
-            if (e.data === window.YT.PlayerState.PLAYING) {
-              clearInterval(timer.current);
-              timer.current = setInterval(() => sendProgress(), 3000);
-            } else {
-              clearInterval(timer.current);
-              sendProgress(true);
-            }
-          },
-        },
       });
     });
 
     return () => {
       cancelled = true;
-      clearInterval(timer.current);
       if (player.current?.destroy) player.current.destroy();
     };
-  }, [videoId, youtubeId, token]);
+  }, [videoId, youtubeId]);
 
   return <div className="w-full aspect-video bg-black"><div id={elementId} className="w-full h-full" /></div>;
 }
 
-function UploadedVideoPlayer({ video, token }) {
+function UploadedVideoPlayer({ video, token, onProgress }) {
   const videoRef = useRef(null);
   const pendingSegments = useRef(new Set());
   const watchedSeconds = useRef(new Map());
   const lastSample = useRef(null);
   const flushTimer = useRef(null);
+  const furthestAllowed = useRef(0);
+  const correctingSeek = useRef(false);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -99,11 +73,16 @@ function UploadedVideoPlayer({ video, token }) {
       if (!indexes.length) return;
       pendingSegments.current.clear();
       try {
-        await updateVideoWatchSegments(token, video.VideoId, {
+        const result = await updateVideoWatchSegments(token, video.VideoId, {
           segmentIndexes: indexes,
           duration: element.duration,
           lastWatchTime: element.currentTime,
         });
+        onProgress?.(
+          video.VideoId,
+          Number(result?.data?.watchPercent ?? video.WatchPercent ?? 0),
+          Number(result?.data?.lastWatchTime ?? element.currentTime)
+        );
       } catch (error) {
         indexes.forEach(index => pendingSegments.current.add(index));
         console.error("บันทึกช่วงการรับชมไม่สำเร็จ", error);
@@ -126,20 +105,32 @@ function UploadedVideoPlayer({ video, token }) {
       if (Math.floor(current / 10) !== segmentIndex) return;
       const next = Math.min(10, (watchedSeconds.current.get(segmentIndex) || 0) + mediaDelta);
       watchedSeconds.current.set(segmentIndex, next);
+      furthestAllowed.current = Math.max(furthestAllowed.current, current);
       const segmentLength = Math.min(10, element.duration - segmentIndex * 10);
       if (next >= Math.max(1, segmentLength * 0.8)) pendingSegments.current.add(segmentIndex);
     };
 
     const resume = () => {
       const saved = Number(video.LastWatchTime || 0);
-      if (saved > 0 && saved < element.duration - 3) element.currentTime = saved;
+      const verifiedSeconds = Math.max(0, Math.min(element.duration, element.duration * Number(video.WatchPercent || 0) / 100));
+      furthestAllowed.current = Math.min(saved, verifiedSeconds);
+      if (furthestAllowed.current > 0 && furthestAllowed.current < element.duration - 3) element.currentTime = furthestAllowed.current;
+    };
+    const guardSeeking = () => {
+      resetSample();
+      if (correctingSeek.current) return;
+      if (element.currentTime > furthestAllowed.current + 1) {
+        correctingSeek.current = true;
+        element.currentTime = furthestAllowed.current;
+        queueMicrotask(() => { correctingSeek.current = false; });
+      }
     };
     const onPause = () => { resetSample(); flush(); };
     const onVisibility = () => { resetSample(); if (document.hidden) flush(); };
 
     element.addEventListener("loadedmetadata", resume, { once: true });
     element.addEventListener("timeupdate", sample);
-    element.addEventListener("seeking", resetSample);
+    element.addEventListener("seeking", guardSeeking);
     element.addEventListener("seeked", resetSample);
     element.addEventListener("pause", onPause);
     element.addEventListener("ended", flush);
@@ -150,13 +141,13 @@ function UploadedVideoPlayer({ video, token }) {
       clearInterval(flushTimer.current);
       flush();
       element.removeEventListener("timeupdate", sample);
-      element.removeEventListener("seeking", resetSample);
+      element.removeEventListener("seeking", guardSeeking);
       element.removeEventListener("seeked", resetSample);
       element.removeEventListener("pause", onPause);
       element.removeEventListener("ended", flush);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [token, video.VideoId, video.LastWatchTime]);
+  }, [token, video.VideoId, onProgress]);
 
   return (
     <video ref={videoRef} src={video.VideoUrl} controls controlsList="nodownload" playsInline
@@ -221,6 +212,15 @@ export default function StudentCourseContent() {
   const [videos, setVideos] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
+
+  const handleProgress = useCallback((videoId, watchPercent, lastWatchTime) => {
+    setVideos(current => current.map(video => String(video.VideoId) === String(videoId)
+      ? { ...video, WatchPercent: watchPercent, LastWatchTime: lastWatchTime }
+      : video));
+    setSelectedVideo(current => current && String(current.VideoId) === String(videoId)
+      ? { ...current, WatchPercent: watchPercent, LastWatchTime: lastWatchTime }
+      : current);
+  }, []);
 
   const getVideoThumbnail = (url, type) => {
     if (type === "upload" && /res\.cloudinary\.com/.test(url || "")) {
@@ -343,14 +343,14 @@ export default function StudentCourseContent() {
                     <div>
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "bg-purple-50 text-purple-600" : "bg-neutral-100 text-neutral-500"}`}>
-                          {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "🎬 วิดีโอระบบ" : "คลิปเดิม"}
+                          {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "🎬 วิดีโอระบบ" : "คลิปเดิม · ไม่นับความคืบหน้า"}
                         </span>
                         {video.Duration && <span className="text-[10px] text-neutral-400">{video.Duration}</span>}
                       </div>
                       <p className="text-sm font-semibold text-neutral-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      {video.WatchPercent != null ? (
+                      {getVideoType(video.VideoUrl, video.VideoType) === "upload" && video.WatchPercent != null ? (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${video.WatchPercent >= 80 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
                           ดูแล้ว {Math.round(video.WatchPercent)}%
                         </span>
@@ -403,9 +403,9 @@ export default function StudentCourseContent() {
               </button>
             </div>
             {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
-              <UploadedVideoPlayer video={selectedVideo} token={token} />
+              <UploadedVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} />
             ) : (
-              <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} token={token} />
+              <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} />
             )}
           </div>
         </div>

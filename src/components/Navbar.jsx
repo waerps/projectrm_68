@@ -5,6 +5,7 @@ import { useShop } from "../context/ShopContext"
 import { getCourses } from "../callapi/callusers"
 import { getStudentProfile } from "../callapi/callusers_student"
 import { getFileUrl } from "../utils/fileUrl"
+import NotificationBell from "./NotificationBell"
 
 // ── ตัวเลือกฟิลเตอร์: อ้างอิงจากตาราง subjects / course_availability ที่ส่งมา ──
 // ⚠️ เทอม ยังไม่มีตารางอ้างอิงให้ดู ใส่ placeholder ไว้ก่อน รอพี่ยืนยันชื่อ table/column
@@ -481,13 +482,15 @@ const cartTotal = cart.reduce((sum, item) => {
         </div>
 
         {/* ปุ่มด้านขวา */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-0.5">
+
+          <NotificationBell role="student" pagePath="/profile/notifications" />
 
           {/* ── Favorites ── */}
           <div className="relative" ref={favRef}>
             <button
               onClick={() => toggleDrop("fav")}
-              className={`relative h-11 w-11 flex items-center justify-center rounded-lg transition-colors ${showFavDrop ? "bg-red-50 text-red-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
+              className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showFavDrop ? "bg-red-50 text-red-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
             >
               <Heart className={`h-5 w-5 ${showFavDrop ? "fill-red-400 text-red-400" : ""}`} />
               {favorites.length > 0 && (
@@ -549,10 +552,10 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* ── Cart ── */}
-          <div className="relative mr-4" ref={cartRef}>
+          <div className="relative mr-3" ref={cartRef}>
             <button
               onClick={() => toggleDrop("cart")}
-              className={`relative h-11 w-11 flex items-center justify-center rounded-lg transition-colors ${showCartDrop ? "bg-orange-50 text-orange-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
+              className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showCartDrop ? "bg-orange-50 text-orange-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
             >
               <ShoppingCart className="h-5 w-5" />
               {cart.length > 0 && (
@@ -644,7 +647,6 @@ const cartTotal = cart.reduce((sum, item) => {
                 <ul className="py-2 text-sm text-gray-700">
                   <li><Link to="/profile" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ข้อมูลส่วนตัว</Link></li>
                   <li><Link to="/profile/schedule" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ตารางเรียน</Link></li>
-                  <li><Link to="/profile/notifications" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">การแจ้งเตือน</Link></li>
                   <li><Link to="/profile/my-courses" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">คอร์สเรียนของฉัน</Link></li>
                   <li>
                     <button
