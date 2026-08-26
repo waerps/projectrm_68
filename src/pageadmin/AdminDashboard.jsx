@@ -230,7 +230,7 @@ function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
               key={item.id}
               onClick={() => onNavigate(item.link)}
               title={item.message}
-              className={`flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-300 hover:bg-orange-50 ${T.transition} shrink-0 whitespace-nowrap`}
+              className={`flex items-center justify-between gap-2 pl-2.5 pr-2 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-300 hover:bg-orange-50 ${T.transition} flex-1 min-w-[180px] whitespace-nowrap`}
             >
               <Icon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
               <span className="text-xs font-semibold text-slate-700">{item.title}</span>
@@ -547,7 +547,7 @@ export default function AdminDashboard() {
                   key={s.UserId}
                   photo={s.Photo}
                   name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                  sub={`${Math.round((s.Attended / s.TotalClasses) * 100)}%`}
+                  sub={`${s.PerformanceScore} คะแนน`}
                   tone="red"
                 />
               ))}
