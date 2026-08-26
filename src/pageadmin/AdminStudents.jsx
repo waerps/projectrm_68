@@ -1,3 +1,4 @@
+//ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -273,10 +274,25 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     if (!isEdit) return;
     axios.get(`${API}/students/${initial.UserId}`).then(r => {
       setCourses(r.data.courses || []);
+      const st = r.data.student;   // ★ เพิ่ม
       const p = r.data.parent;
       setForm(f => ({
         ...f,
-        parentId: "", // ★ ไม่ล็อกเป็นโหมด "เลือกไว้แล้ว" จะได้แก้ไขฟิลด์ได้ตรงๆ
+        // ★ เพิ่ม: sync ข้อมูลนักเรียนหลักจาก DB จริง กันฟอร์มค้างข้อมูลเก่า/ไม่ครบ
+        firstname: st?.Firstname || f.firstname,
+        lastname: st?.Lastname || f.lastname,
+        nickname: st?.Nickname ?? f.nickname,
+        phoneNo: st?.PhoneNo ?? f.phoneNo,
+        schoolName: (st?.SchoolName || "").replace(/^โรงเรียน\s*/, "") || f.schoolName,
+        lineId: st?.LineID ?? f.lineId,
+        birthOfDate: st?.BirthOfDate ?? f.birthOfDate,
+        remark: st?.Remark ?? f.remark,
+        gpa: st?.GPA ?? f.gpa,
+        photo: st?.Photo ?? f.photo,
+        gradeLevelId: st?.GradeLevelId ?? f.gradeLevelId,
+        genderId: st?.GenderId ?? f.genderId,
+
+        parentId: "",
         parentFirstname: p?.Firstname || "",
         parentLastname: p?.Lastname || "",
         parentNickname: p?.Nickname || "",
