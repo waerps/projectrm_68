@@ -29,6 +29,9 @@ import Promotion from "./pages/Promotion.jsx"
 import CourseSearch from "./pages/CourseSearch.jsx"
 import StudentCourseContent from "./pages/StudentCourseContent.jsx"
 import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
+import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
+import SubjectList from "./pages/SubjectList.jsx" //เป้วทำ
+import StudentSubjectDetail from "./pages/StudentSubjectDetail.jsx" //เป้ว
 
 // CSS
 import "./index.css"
@@ -48,6 +51,7 @@ import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
+import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -97,6 +101,7 @@ const router = createBrowserRouter(
         { path: "about", element: <About /> },
         { path: "promotion", element: <Promotion /> },
         { path: "apply-tutor", element: <TutorApply /> },
+        { path: "exam/:token", element: <StudentExam /> }, //เป้วทำ
 
         // เส้นทาง Profile (Nested Layout)
         {
@@ -109,6 +114,8 @@ const router = createBrowserRouter(
             { path: "my-courses", element: <StudentCourses /> },
             { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
+            { path: "course/:courseId/subjects", element: <SubjectList /> }, //เป้วเพิ่ม
+            { path: "course/:courseId/subject/:subjectId", element: <StudentSubjectDetail /> },
             { path: "attendance", element: <Attendance /> },
           ],
         },
@@ -131,6 +138,7 @@ const router = createBrowserRouter(
             { path: "exam", element: <TutorExam /> },
             { path: "examanalytics", element: <TutorExamAnalytics /> },
             { path: "manage", element: <TutorManage /> },
+            { path: "exam-detail", element: <TutorExamDetail /> },
           ],
         },
 
