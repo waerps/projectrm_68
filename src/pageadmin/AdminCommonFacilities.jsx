@@ -626,65 +626,93 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
 }
 
 // ─── FacilityCard — ปุ่มหลักเท่านั้น: ดู / แก้ไข (Action รองย้ายเข้า Detail) ──
-function FacilityCard({ item, onEdit, onView }) {
-    const st = styleOf(item.StatusId);
-    const CIcon = iconForCategory(item.Category_Name);
-    const outOfStock = item.Quantity === 0;
-    const lowStock = !outOfStock && item.LowStock;
-    const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
-
+// ─── FacilityTable — แสดงข้อมูลแบบตาราง ─────────────────────────────
+function FacilityTable({ items, onEdit, onView }) {
     return (
-        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-red-300" : lowStock ? "border-yellow-300" : "border-slate-200 hover:border-orange-200"}`}>
-            <div className="p-4 flex items-start gap-3">
-                <div className="h-11 w-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-                    <CIcon className="h-5 w-5 text-orange-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 text-sm truncate">{item.Name}</p>
-                    <p className="text-[11px] text-slate-400">{item.Category_Name}</p>
-                </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${st.bg} ${st.text} ${st.border}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                    {item.Status_Name}
-                </span>
-            </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">อุปกรณ์</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
+                            <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {items.map(item => {
+                            const st = styleOf(item.StatusId);
+                            const CIcon = iconForCategory(item.Category_Name);
+                            const outOfStock = item.Quantity === 0;
+                            const lowStock = !outOfStock && item.LowStock;
+                            const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
 
-            <div className="px-4 pb-3">
-                <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-                    <Boxes className="h-4 w-4 text-slate-400 shrink-0" />
-                    <p className="text-sm text-slate-700">
-                        <span className="font-black text-slate-900 text-base">{item.Quantity}</span> {item.Unit}
-                    </p>
-                </div>
-                {isAssetMultiUnit && (
-                    <p className="text-[10px] text-slate-400 mt-1.5">สถานะเป็นภาพรวมของทั้งหมด {item.Quantity} ชิ้น</p>
-                )}
-                {outOfStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-2">
-                        <AlertCircle className="h-3.5 w-3.5" /> สต๊อก: หมดแล้ว
-                    </p>
-                )}
-                {lowStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-yellow-700 mt-2">
-                        <AlertCircle className="h-3.5 w-3.5" /> ใกล้หมด (ขั้นต่ำ {item.MinQuantity} {item.Unit})
-                    </p>
-                )}
-                {item.Location && (
-                    <p className="flex items-center gap-1 text-[11px] text-slate-400 mt-2">
-                        <MapPin className="h-3 w-3" /> {item.Location}
-                    </p>
-                )}
-            </div>
-
-            <div className="px-4 pb-4 flex items-center gap-2">
-                <button onClick={() => onView(item)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
-                    <Eye className="h-3.5 w-3.5" /> ดูรายละเอียด
-                </button>
-                <button onClick={() => onEdit(item)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
-                    <Edit2 className="h-3.5 w-3.5" /> แก้ไข
-                </button>
+                            return (
+                                <tr key={item.CommonFacilityId}
+                                    className={`hover:bg-slate-50 transition ${outOfStock ? "bg-red-50/40" : lowStock ? "bg-yellow-50/40" : ""}`}>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="h-9 w-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                                                <CIcon className="h-4 w-4 text-orange-500" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-slate-900 truncate">{item.Name}</p>
+                                                {item.Detail && <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Detail}</p>}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600">{item.Category_Name}</td>
+                                    <td className="px-4 py-3">
+                                        <p className="text-slate-700">
+                                            <span className="font-black text-slate-900">{item.Quantity}</span> {item.Unit}
+                                        </p>
+                                        {outOfStock && (
+                                            <p className="flex items-center gap-1 text-[10px] font-bold text-red-600 mt-0.5">
+                                                <AlertCircle className="h-3 w-3" /> หมดสต๊อก
+                                            </p>
+                                        )}
+                                        {lowStock && (
+                                            <p className="flex items-center gap-1 text-[10px] font-bold text-yellow-700 mt-0.5">
+                                                <AlertCircle className="h-3 w-3" /> ใกล้หมด
+                                            </p>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                                            {item.Status_Name}
+                                        </span>
+                                        {isAssetMultiUnit && (
+                                            <p className="text-[10px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                        {item.Location && (
+                                            <span className="flex items-center gap-1 text-xs">
+                                                <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button onClick={() => onView(item)}
+                                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                                                <Eye className="h-3.5 w-3.5" /> ดู
+                                            </button>
+                                            <button onClick={() => onEdit(item)}
+                                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
+                                                <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -904,12 +932,7 @@ export default function AdminCommonFacilities() {
                     <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filtered.map(item => (
-                        <FacilityCard key={item.CommonFacilityId} item={item}
-                            onEdit={setEditingItem} onView={setViewingItem} />
-                    ))}
-                </div>
+                <FacilityTable items={filtered} onEdit={setEditingItem} onView={setViewingItem} />
             )}
 
             {deletingItem && (
