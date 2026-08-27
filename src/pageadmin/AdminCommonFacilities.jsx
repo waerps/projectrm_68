@@ -755,10 +755,12 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-slate-500">
-                                        {item.Location && (
+                                        {item.Location ? (
                                             <span className="flex items-center gap-1 text-xs">
                                                 <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
                                             </span>
+                                        ) : (
+                                            <span className="text-xs text-slate-300">-</span>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
