@@ -703,7 +703,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
-                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
+                            <th className="text-center px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
                             <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">การจัดการ</th>
                         </tr>
                     </thead>
