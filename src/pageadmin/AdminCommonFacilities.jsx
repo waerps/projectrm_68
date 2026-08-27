@@ -266,29 +266,36 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
     const isConsumable = item.TrackingType === "consumable";
     const REMOVE_REASONS = isConsumable ? CONSUMABLE_REMOVE_REASONS : ASSET_REMOVE_REASONS;
 
-    const [mode, setMode] = useState("add"); // 'add' | 'remove'
-    const [amount, setAmount] = useState("1");
+    const [targetQty, setTargetQty] = useState(item.Quantity);
     const [reasonPreset, setReasonPreset] = useState(REMOVE_REASONS[0]);
     const [reasonNote, setReasonNote] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const isRemove = mode === "remove";
-    const amountNum = Math.max(0, Number(amount) || 0);
-    const exceedsStock = isRemove && amountNum > item.Quantity;
-    const nextQty = isRemove ? item.Quantity - amountNum : item.Quantity + amountNum;
+    const delta = targetQty - item.Quantity;
+    const isIncrease = delta > 0;
+    const isDecrease = delta < 0;
+    const hasChange = delta !== 0;
+
+    const step = (n) => setTargetQty(q => Math.max(0, (Number(q) || 0) + n));
+    const handleInput = (v) => {
+        if (v === "") return setTargetQty("");
+        const n = Math.max(0, Math.floor(Number(v) || 0));
+        setTargetQty(n);
+    };
 
     const submit = async () => {
-        if (amountNum <= 0) return showToast("error", "กรุณาระบุจำนวนที่มากกว่า 0");
-        if (isRemove && !reasonPreset) return showToast("error", "กรุณาเลือกเหตุผลการลดจำนวน");
-        if (exceedsStock) return showToast("error", "จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ");
+        const qty = Number(targetQty) || 0;
+        const d = qty - item.Quantity;
+        if (d === 0) return showToast("error", "กรุณาปรับจำนวนให้แตกต่างจากเดิมก่อนบันทึก");
+        if (d < 0 && !reasonPreset) return showToast("error", "กรุณาเลือกเหตุผลการลดจำนวน");
 
         setLoading(true);
         try {
-            const reason = isRemove
+            const reason = d < 0
                 ? `${reasonPreset}${reasonNote.trim() ? ` — ${reasonNote.trim()}` : ""}`
                 : (reasonNote.trim() || null);
             await axios.patch(`${API}/common-facilities/${item.CommonFacilityId}/quantity`, {
-                delta: isRemove ? -amountNum : amountNum,
+                delta: d,
                 reason,
             });
             showToast("success", "ปรับจำนวนสำเร็จ");
@@ -305,53 +312,39 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
     return (
         <Modal title={`ปรับจำนวน: ${item.Name}`} icon={isConsumable ? TrendingDown : Boxes} onClose={onClose}>
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setMode("add")}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition ${mode === "add"
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"}`}>
-                        <TrendingUp className="h-3.5 w-3.5" /> เพิ่มจำนวน
-                    </button>
-                    <button type="button" onClick={() => setMode("remove")}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition ${mode === "remove"
-                            ? "bg-rose-500 text-white border-rose-500"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"}`}>
-                        <TrendingDown className="h-3.5 w-3.5" /> ลดจำนวน
-                    </button>
-                </div>
-
                 <div>
-                    <label className={lbl}>จำนวนที่จะ{isRemove ? "ลด" : "เพิ่ม"} ({item.Unit})</label>
+                    <label className={lbl}>จำนวน ({item.Unit})</label>
                     <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setAmount(String(Math.max(1, amountNum - 1)))}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 shrink-0">
-                            <Minus className="h-4 w-4" />
+                        <button type="button" onClick={() => step(-1)}
+                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all shrink-0">
+                            <Minus className="h-5 w-5" />
                         </button>
                         <input
-                            type="number" min="1" step="1" onKeyDown={blockNegativeKeys}
-                            className={`${inp} text-center ${exceedsStock ? "border-red-300 focus:ring-red-300" : ""}`}
-                            value={amount}
-                            onChange={e => setAmount(e.target.value)}
+                            type="number" min="0" step="1" onKeyDown={blockNegativeKeys}
+                            className={`${inp} text-center text-lg font-bold`}
+                            value={targetQty}
+                            onChange={e => handleInput(e.target.value)}
                         />
-                        <button type="button" onClick={() => setAmount(String(amountNum + 1))}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 shrink-0">
-                            <Plus className="h-4 w-4" />
+                        <button type="button" onClick={() => step(1)}
+                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all shrink-0">
+                            <Plus className="h-5 w-5" />
                         </button>
                     </div>
-                    {exceedsStock ? (
-                        <p className="text-xs text-red-500 mt-1.5 font-medium flex items-center gap-1">
-                            <AlertCircle className="h-3.5 w-3.5" /> จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ (มีอยู่ {item.Quantity} {item.Unit})
+
+                    {hasChange ? (
+                        <p className={`text-xs mt-2 font-medium flex items-center gap-1 ${isIncrease ? "text-emerald-600" : "text-rose-600"}`}>
+                            {isIncrease ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                            จาก {item.Quantity} {item.Unit} → {targetQty || 0} {item.Unit}
+                            <span className="font-bold">({isIncrease ? "+" : ""}{delta})</span>
                         </p>
                     ) : (
-                        <p className="text-xs text-slate-400 mt-1.5">
-                            จาก {item.Quantity} {item.Unit} → <span className="font-bold text-slate-700">{nextQty} {item.Unit}</span>
-                        </p>
+                        <p className="text-xs text-slate-400 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
                     )}
                 </div>
 
-                {isRemove ? (
+                {isDecrease && (
                     <div>
-                        <label className={lbl}>เหตุผล <span className="text-red-400 normal-case">*</span></label>
+                        <label className={lbl}>เหตุผลที่ลดจำนวน <span className="text-red-400 normal-case">*</span></label>
                         <select className={inp} value={reasonPreset} onChange={e => setReasonPreset(e.target.value)}>
                             {REMOVE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
@@ -368,7 +361,9 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             </p>
                         )}
                     </div>
-                ) : (
+                )}
+
+                {isIncrease && (
                     <div>
                         <label className={lbl}>หมายเหตุ (ไม่บังคับ)</label>
                         <input
@@ -385,9 +380,9 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                         className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                         ยกเลิก
                     </button>
-                    <button onClick={submit} disabled={loading || exceedsStock}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isRemove ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยัน</>}
+                    <button onClick={submit} disabled={loading || !hasChange}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isDecrease ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
                 </div>
             </div>
