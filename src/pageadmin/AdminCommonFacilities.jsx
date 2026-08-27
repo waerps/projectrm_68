@@ -88,6 +88,39 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
     const [errors, setErrors] = useState({});
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+    // ─── เช็คชื่อซ้ำ/คล้าย (debounce 400ms) ────────────────────────────
+    const [nameCheck, setNameCheck] = useState({ exact: [], similar: [] });
+    const [checkingName, setCheckingName] = useState(false);
+    const [confirmSimilar, setConfirmSimilar] = useState(false);
+
+    useEffect(() => {
+        const trimmed = form.name.trim();
+        // แก้ไขแล้วชื่อไม่เปลี่ยนจากเดิม ไม่ต้องเช็คซ้ำกับตัวเอง
+        if (!trimmed || (isEdit && trimmed.toLowerCase() === (initial.Name || "").trim().toLowerCase())) {
+            setNameCheck({ exact: [], similar: [] });
+            setConfirmSimilar(false);
+            return;
+        }
+        setCheckingName(true);
+        const timer = setTimeout(async () => {
+            try {
+                const { data } = await axios.get(`${API}/common-facilities/check-name`, {
+                    params: { name: trimmed, excludeId: initial.CommonFacilityId || undefined },
+                });
+                setNameCheck(data);
+                setConfirmSimilar(false);
+            } catch {
+                setNameCheck({ exact: [], similar: [] });
+            } finally {
+                setCheckingName(false);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [form.name]);
+
+    const hasExactDup = nameCheck.exact.length > 0;
+    const hasSimilar = !hasExactDup && nameCheck.similar.length > 0;
+
     const validate = () => {
         const e = {};
         if (!form.name.trim()) e.name = "กรุณากรอกชื่ออุปกรณ์";
@@ -98,6 +131,8 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
         if (form.trackingType === "consumable" && form.minQuantity !== "" &&
             (Number(form.minQuantity) < 0 || !Number.isInteger(Number(form.minQuantity))))
             e.minQuantity = "จำนวนขั้นต่ำต้องเป็นตัวเลขไม่ติดลบ";
+        if (hasExactDup) e.name = `มีอุปกรณ์ชื่อ "${form.name.trim()}" อยู่แล้วในระบบ`;
+        if (hasSimilar && !confirmSimilar) e.name = "ชื่อนี้คล้ายกับอุปกรณ์ที่มีอยู่แล้ว กรุณายืนยันด้านล่างก่อนบันทึก";
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -135,13 +170,57 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             <div>
                 <label className={lbl}>ชื่ออุปกรณ์ <span className="text-red-400 normal-case">*</span></label>
-                <input
-                    className={`${inp} ${errors.name ? errInp : ""}`}
-                    value={form.name}
-                    onChange={e => set("name", e.target.value)}
-                    placeholder="เช่น เครื่องปริ้นเตอร์, กระดาษ A4"
-                />
+                <div className="relative">
+                    <input
+                        className={`${inp} ${errors.name || hasExactDup ? errInp : ""}`}
+                        value={form.name}
+                        onChange={e => set("name", e.target.value)}
+                        placeholder="เช่น เครื่องปริ้นเตอร์, กระดาษ A4"
+                    />
+                    {checkingName && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 animate-spin" />
+                    )}
+                </div>
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+
+                {/* ชื่อซ้ำเป๊ะ — บล็อกแน่นอน */}
+                {hasExactDup && (
+                    <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                        <p className="text-xs text-red-600 leading-relaxed">
+                            มีอุปกรณ์ชื่อ <b>"{nameCheck.exact[0].Name}"</b> อยู่แล้วในระบบ
+                            กรุณาตั้งชื่อให้แตกต่าง หรือไปปรับจำนวนที่รายการเดิมแทน
+                        </p>
+                    </div>
+                )}
+
+                {/* ชื่อคล้ายกัน — เตือนและให้ยืนยันก่อน */}
+                {hasSimilar && (
+                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700 leading-relaxed">
+                                พบชื่อที่คล้ายกันในระบบ คุณพิมพ์ผิดหรือเปล่า?
+                                <span className="block mt-1 space-y-0.5">
+                                    {nameCheck.similar.map(s => (
+                                        <span key={s.CommonFacilityId} className="block font-semibold">• {s.Name}</span>
+                                    ))}
+                                </span>
+                            </p>
+                        </div>
+                        <label className="flex items-center gap-2 mt-2.5 pl-6 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={confirmSimilar}
+                                onChange={e => setConfirmSimilar(e.target.checked)}
+                                className="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-400"
+                            />
+                            <span className="text-xs font-medium text-amber-700">
+                                ยืนยันว่าต้องการสร้างเป็นอุปกรณ์ใหม่ (ไม่ใช่รายการเดิม)
+                            </span>
+                        </label>
+                    </div>
+                )}
             </div>
 
             <div>
@@ -247,7 +326,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                     className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                     ยกเลิก
                 </button>
-                <button onClick={submit} disabled={isSubmitting}
+                <button onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
