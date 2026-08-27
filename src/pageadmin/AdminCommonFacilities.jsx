@@ -645,8 +645,8 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 </div>
             )}
 
-                        {/* Action รอง: ปรับจำนวน (ดู/แก้ไข/เปลี่ยนสถานะ/ลบ ย้ายไปแสดงในตารางแล้ว) */}
-                        <div className="mt-5 flex gap-2">
+            {/* Action รอง: ปรับจำนวน (ดู/แก้ไข/เปลี่ยนสถานะ/ลบ ย้ายไปแสดงในตารางแล้ว) */}
+            <div className="mt-5 flex gap-2">
                 <button onClick={() => onAdjustQty(item)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
                     <Boxes className="h-4 w-4" /> ปรับจำนวน
@@ -754,9 +754,9 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             <p className="text-[10px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500">
+                                    <td className="px-4 py-3 text-slate-500 text-center">
                                         {item.Location ? (
-                                            <span className="flex items-center gap-1 text-xs">
+                                            <span className="flex items-center justify-center gap-1 text-xs">
                                                 <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
                                             </span>
                                         ) : (
@@ -1006,15 +1006,15 @@ export default function AdminCommonFacilities() {
                     <Boxes className="h-16 w-16 mx-auto text-slate-200" />
                     <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
                 </div>
-                        ) : (
-                            <FacilityTable
-                                items={filtered}
-                                onEdit={setEditingItem}
-                                onView={setViewingItem}
-                                onStatusChange={setStatusItem}
-                                onDelete={setDeletingItem}
-                            />
-                        )}
+            ) : (
+                <FacilityTable
+                    items={filtered}
+                    onEdit={setEditingItem}
+                    onView={setViewingItem}
+                    onStatusChange={setStatusItem}
+                    onDelete={setDeletingItem}
+                />
+            )}
 
             {deletingItem && (
                 <ConfirmDelete item={deletingItem} onConfirm={handleDelete} onCancel={() => setDeletingItem(null)} isDeleting={isDeleting} />
@@ -1026,8 +1026,8 @@ export default function AdminCommonFacilities() {
                     onClose={() => setViewingItem(null)}
                     onEdit={(it) => { setViewingItem(null); setEditingItem(it); }}
                     onAdjustQty={(it) => { setViewingItem(null); setAdjustItem(it); }}
-                    // onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
-                    // onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
+                // onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
+                // onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
                 />
             )}
             {statusItem && (
