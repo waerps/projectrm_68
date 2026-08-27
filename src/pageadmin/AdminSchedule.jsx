@@ -254,6 +254,11 @@ export default function AdminSchedule() {
   };
 
   const openEdit = entry => {
+    // ── ใหม่: ห้ามแก้ไขคาบสอนที่ผ่านไปแล้ว ──
+    if (entry.WeekDate && isoDate(entry.WeekDate) < isoDate(new Date())) {
+      alert('ไม่สามารถแก้ไขคาบสอนที่ผ่านไปแล้วได้');
+      return;
+    }
     setSelected(entry);
 
     const f = {
@@ -814,29 +819,29 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
     // 1. แปลงวันที่จากฐานข้อมูลให้เป็น YYYY-MM-DD (เวลาไทย) ที่สะอาดเป๊ะๆ
     const entryDateStr = new Date(entry.WeekDate).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
     const todayStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
-    
+
     // 2. ประกอบวันที่ + เวลาจบคาบ ให้ถูกต้อง (ใช้ entryDateStr ที่สะอาดแล้ว)
     const classEnd = new Date(`${entryDateStr}T${entry.EndTime}:00`);
-    
+
     // 3. ตั้งค่าเวลาผ่อนผัน: 2 ชั่วโมง (แปลงเป็นมิลลิวินาที)
-    const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; 
+    const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000;
     const classEndWithGrace = new Date(classEnd.getTime() + GRACE_PERIOD_MS);
 
     if (entry.CheckinCount > 0) {
       // 1. เช็กอินแล้ว (เขียว)
-      checkinStatus = 'done'; 
+      checkinStatus = 'done';
     } else if (now > classEndWithGrace) {
       // 2. เลยเวลาจบคาบ + หมดเวลาผ่อนผัน 2 ชม. แล้วยังไม่เช็กอิน (แดง)
-      checkinStatus = 'missed'; 
+      checkinStatus = 'missed';
     } else if (entryDateStr === todayStr) {
       // 3. คาบของวันนี้ ที่ยังอยู่ในช่วงเวลาผ่อนผัน (ส้ม)
-      checkinStatus = 'upcoming'; 
+      checkinStatus = 'upcoming';
     } else if (entryDateStr < todayStr) {
       // 4. คาบของเมื่อวานที่ลืมเช็ก (แดง)
-      checkinStatus = 'missed'; 
+      checkinStatus = 'missed';
     } else {
       // 5. อนาคต พรุ่งนี้เป็นต้นไป (เทา)
-      checkinStatus = 'future'; 
+      checkinStatus = 'future';
     }
   }
 
@@ -1011,13 +1016,23 @@ function ScheduleModal({
     return null;
   }, [showTermFields, formData.TermStartDate, formData.TermEndDate, selectedCourse]);
 
+  // ── ใหม่: เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด ──
+  const timeError = useMemo(() => {
+    if (!formData.StartTime || !formData.EndTime) return null;
+    if (formData.StartTime >= formData.EndTime) {
+      return 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด';
+    }
+    return null;
+  }, [formData.StartTime, formData.EndTime]);
+
   const canSave =
     formData.CourseID &&
     formData.DayOfWeek &&
     formData.StartTime &&
     (!showTermFields || (formData.TermStartDate && formData.TermEndDate)) &&
     conflicts.length === 0 &&
-    !dateError;
+    !dateError &&
+    !timeError;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1089,6 +1104,13 @@ function ScheduleModal({
               </select>
             </div>
           </div>
+
+          {/* ── ใหม่: แสดง timeError ── */}
+          {timeError && (
+            <p className="text-[11px] text-red-600 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3 flex-shrink-0" /> {timeError}
+            </p>
+          )}
 
           {/* Course */}
           <div>
