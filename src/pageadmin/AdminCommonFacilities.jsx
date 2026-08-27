@@ -571,25 +571,17 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 </div>
             )}
 
-            {/* Action รอง: ปรับจำนวน / เปลี่ยนสถานะ / ลบ */}
-            <div className="mt-5 grid grid-cols-3 gap-2">
+                        {/* Action รอง: ปรับจำนวน (ดู/แก้ไข/เปลี่ยนสถานะ/ลบ ย้ายไปแสดงในตารางแล้ว) */}
+                        <div className="mt-5 flex gap-2">
                 <button onClick={() => onAdjustQty(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
                     <Boxes className="h-4 w-4" /> ปรับจำนวน
                 </button>
-                <button onClick={() => onStatusChange(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 active:scale-95 transition-all">
-                    <AlertTriangle className="h-4 w-4" /> เปลี่ยนสถานะ
-                </button>
-                <button onClick={() => onDelete(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 active:scale-95 transition-all">
-                    <Trash2 className="h-4 w-4" /> นำออก
+                <button onClick={() => onEdit(item)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
+                    <Edit2 className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
                 </button>
             </div>
-            <button onClick={() => onEdit(item)}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
-                <Edit2 className="h-3.5 w-3.5" /> แก้ไขข้อมูลทั่วไป
-            </button>
 
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -625,9 +617,8 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
     );
 }
 
-// ─── FacilityCard — ปุ่มหลักเท่านั้น: ดู / แก้ไข (Action รองย้ายเข้า Detail) ──
 // ─── FacilityTable — แสดงข้อมูลแบบตาราง ─────────────────────────────
-function FacilityTable({ items, onEdit, onView }) {
+function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
@@ -697,14 +688,22 @@ function FacilityTable({ items, onEdit, onView }) {
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <div className="flex items-center justify-end gap-2">
-                                            <button onClick={() => onView(item)}
-                                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
-                                                <Eye className="h-3.5 w-3.5" /> ดู
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <button onClick={() => onView(item)} title="ดูรายละเอียด"
+                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                                                <Eye className="h-3.5 w-3.5" />
                                             </button>
-                                            <button onClick={() => onEdit(item)}
-                                                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
-                                                <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                                            <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป"
+                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
+                                                <Edit2 className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ"
+                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all">
+                                                <AlertTriangle className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button onClick={() => onDelete(item)} title="นำออกจากรายการ"
+                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all">
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
                                     </td>
@@ -931,9 +930,15 @@ export default function AdminCommonFacilities() {
                     <Boxes className="h-16 w-16 mx-auto text-slate-200" />
                     <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
                 </div>
-            ) : (
-                <FacilityTable items={filtered} onEdit={setEditingItem} onView={setViewingItem} />
-            )}
+                        ) : (
+                            <FacilityTable
+                                items={filtered}
+                                onEdit={setEditingItem}
+                                onView={setViewingItem}
+                                onStatusChange={setStatusItem}
+                                onDelete={setDeletingItem}
+                            />
+                        )}
 
             {deletingItem && (
                 <ConfirmDelete item={deletingItem} onConfirm={handleDelete} onCancel={() => setDeletingItem(null)} isDeleting={isDeleting} />
@@ -945,8 +950,8 @@ export default function AdminCommonFacilities() {
                     onClose={() => setViewingItem(null)}
                     onEdit={(it) => { setViewingItem(null); setEditingItem(it); }}
                     onAdjustQty={(it) => { setViewingItem(null); setAdjustItem(it); }}
-                    onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
-                    onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
+                    // onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
+                    // onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
                 />
             )}
             {statusItem && (
