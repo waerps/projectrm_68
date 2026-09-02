@@ -115,7 +115,7 @@ const router = createBrowserRouter(
             { path: "schedule", element: <Schedule /> },
             { path: "notifications", element: <Notifications /> },
             { path: "my-courses", element: <StudentCourses /> },
-            { path: "incidents", element: <MyIncidents /> },
+            // { path: "incidents", element: <MyIncidents /> },
             { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
             { path: "course/:courseId/subjects", element: <SubjectList /> }, //เป้วเพิ่ม
