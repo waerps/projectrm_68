@@ -295,23 +295,19 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet,
                                     {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth}%
                                 </span>
                             )}
-                            <span>เทียบเดือนก่อน</span>
                         </p>
                     </div>
                     <div>
                         <p className={T.label}>กระแสเงินสดสุทธิ</p>
                         <p className={`${T.value} mt-1 ${cashNet < 0 ? 'text-red-600' : ''}`}>{formatMoney(cashNet)}</p>
-                        <p className={`${T.caption} mt-1.5`}>{cashMargin === null ? 'ยังไม่มีข้อมูลเดือนนี้' : `คิดเป็น ${cashMargin}% ของรายรับ`}</p>
                     </div>
                     <div>
                         <p className={T.label}>ค่าติวเตอร์ค้างจ่าย</p>
                         <p className={`${T.value} mt-1 ${tutorPayable > 0 ? 'text-orange-600' : ''}`}>{formatMoney(tutorPayable)}</p>
-                        <p className={`${T.caption} mt-1.5`}>เดือนนี้เกิดขึ้น {formatMoney(tutorAccrued)}</p>
                     </div>
                     <div>
                         <p className={T.label}>ยอดเกินกำหนด</p>
                         <p className={`${T.value} mt-1 ${overdue > 0 ? 'text-red-600' : ''}`}>{formatMoney(overdue)}</p>
-                        <p className={`${T.caption} mt-1.5`}>{overdueCount} งวดที่ต้องติดตาม</p>
                     </div>
                 </div>
             </ApiState>
@@ -759,12 +755,12 @@ export default function AdminFinance() {
             {/* ── Secondary KPIs ── */}
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                    <KPICard label="รายรับสะสมทั้งหมด" value={formatMoney(totalRevenueAllTime)} sub="ตั้งแต่เริ่มดำเนินการ" icon={Banknote} tone="orange" />
-                    <KPICard label="ยอดคงเหลือแผนผ่อน" value={formatMoney(outstandingTotalAmount)} sub={`${outstandingEnrollCount} แผน`} icon={Clock} tone="orange" />
-                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} sub={`${paidRate}%`} icon={Users} tone="green" />
-                    <KPICard label="อัตราชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`} sub="งวดที่ถึงกำหนดแล้ว" icon={CheckCircle} tone="green" />
-                    <KPICard label="รายรับเฉลี่ย/นักเรียน" value={formatMoney(avgRevenuePerStudent)} sub="เฉพาะเดือนนี้" icon={Target} tone="neutral" />
-                    <KPICard label="รูปแบบการชำระ" value={`${fullPlanPercent}% เต็ม`} sub={`เต็ม ${fullOrderCount} · ผ่อน ${installmentOrderCount} รายการ`} icon={CreditCard} tone="blue" />
+                    <KPICard label="รายรับสะสมทั้งหมด" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
+                    <KPICard label="ยอดคงเหลือแผนผ่อน" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="orange" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} icon={Users} tone="green" />
+                    <KPICard label="อัตราชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`} icon={CheckCircle} tone="green" />
+                    <KPICard label="รายรับเฉลี่ย/นักเรียน" value={formatMoney(avgRevenuePerStudent)} icon={Target} tone="neutral" />
+                    <KPICard label="รูปแบบการชำระ" value={`${fullPlanPercent}% เต็ม`} icon={CreditCard} tone="blue" />
                 </div>
             </ApiState>
 
