@@ -739,6 +739,7 @@ export default function AdminSchedule() {
           setScope={setEditScope}
           totalOccurrences={selected.TotalOccurrences}
           timeSlots={derivedTimeSlots}
+          excludeId={selected.CourseScheduleDetailId}   // ★ เพิ่มบรรทัดนี้
         />
       )}
 
@@ -945,6 +946,7 @@ function ScheduleModal({
   setScope,
   totalOccurrences,
   timeSlots,
+  excludeId,   // ★ เพิ่ม
 }) {
   const set = (key, val) => {
     const next = { ...formData, [key]: val };
@@ -972,6 +974,36 @@ function ScheduleModal({
   // คอร์สที่เลือกอยู่ตอนนี้ (ใช้แสดงข้อมูลคอร์ส + กรอง dropdown วิชา)
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === String(formData.CourseID));
   const availableSubjects = getCourseSubjects(selectedCourse, meta.subjects);
+
+  const [roomSuggestions, setRoomSuggestions] = useState(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const suggestTimer = useRef(null);
+
+  useEffect(() => {
+    clearTimeout(suggestTimer.current);
+    if (!formData.DayOfWeek || !formData.StartTime || !formData.EndTime) {
+      setRoomSuggestions(null);
+      return;
+    }
+    setSuggestLoading(true);
+    suggestTimer.current = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          dayOfWeek: formData.DayOfWeek,
+          startTime: formData.StartTime,
+          endTime: formData.EndTime,
+          studentCount: selectedCourse?.EnrolledCount ?? 0,
+          ...(excludeId ? { excludeId } : {}),
+        });
+        const r = await fetch(`${API_BASE}/schedule/room-suggestions?${params}`);
+        setRoomSuggestions(await r.json());
+      } catch {
+        setRoomSuggestions(null);
+      } finally {
+        setSuggestLoading(false);
+      }
+    }, 400);
+  }, [formData.DayOfWeek, formData.StartTime, formData.EndTime, selectedCourse?.EnrolledCount, excludeId]);
 
   // auto-fill term dates เมื่อเลือก course + ล้างวิชาที่ไม่ตรงกับคอร์สใหม่
   const handleCourseChange = val => {
@@ -1157,6 +1189,14 @@ function ScheduleModal({
             </div>
           )}
 
+          {/* ★ แผงแนะนำห้อง */}
+          <RoomSuggestionPanel
+            data={roomSuggestions}
+            loading={suggestLoading}
+            onPick={(roomId) => set('RoomId', String(roomId))}
+            selectedRoomId={formData.RoomId}
+          />
+
           {/* Subject + Room */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1302,5 +1342,86 @@ function Select({ value, onChange, options, placeholder }) {
         <option key={o.value} value={o.value}>{o.label}</option>
       ))}
     </select>
+  );
+}
+
+function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-neutral-400 p-3 bg-neutral-50 rounded-xl">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" /> กำลังหาห้องที่เหมาะสม...
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="text-xs text-neutral-400 p-3 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+        เลือกคอร์ส วัน และเวลาก่อน ระบบจะแนะนำห้องให้อัตโนมัติ
+      </div>
+    );
+  }
+
+  const { suggestions, busyButFits, studentCount, hasEnrollment } = data;
+
+  return (
+    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+      <p className="text-xs font-semibold text-emerald-700">
+        💡 แนะนำห้องสำหรับคาบนี้
+        {hasEnrollment ? ` (นักเรียน ${studentCount} คน)` : ' (ยังไม่มีนักเรียนลงทะเบียน)'}
+      </p>
+
+      {!hasEnrollment && (
+        <p className="text-[11px] text-amber-600">
+          ⚠ คอร์สนี้ยังไม่มีคนลงทะเบียน ระบบแนะนำห้องเล็กสุดที่ว่างไว้ก่อน
+          ถ้ามีนักเรียนสมัครเพิ่มภายหลัง ควรกลับมาปรับห้องอีกครั้ง
+        </p>
+      )}
+
+      {suggestions.length === 0 ? (
+        <p className="text-xs text-red-600">ไม่พบห้องที่ว่างและจุพอสำหรับจำนวนนักเรียนนี้</p>
+      ) : (
+        <div className="space-y-1.5">
+          {suggestions.map(r => {
+            const isSelected = String(r.RoomId) === String(selectedRoomId);
+            return (
+              <button
+                key={r.RoomId}
+                type="button"
+                onClick={() => onPick(r.RoomId)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left transition
+                  ${isSelected ? 'border-emerald-500 bg-emerald-100' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}
+              >
+                <div>
+                  <p className="text-xs font-bold text-emerald-800">
+                    {r.rank === 1 ? '⭐ แนะนำที่สุด' : `ตัวเลือกที่ ${r.rank}`}
+                  </p>
+                  <p className="text-[11px] text-neutral-600">
+                    ห้อง {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
+                    {r.isOversized && (
+                      <span className="text-amber-600"> · ใหญ่เกินความจำเป็น (เกิน {r.extraSeats} ที่นั่ง)</span>
+                    )}
+                  </p>
+                </div>
+                {isSelected && <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {busyButFits.length > 0 && (
+        <details className="text-[11px] text-neutral-500">
+          <summary className="cursor-pointer hover:text-neutral-700">
+            ห้องที่จุพอแต่ไม่ว่าง ({busyButFits.length})
+          </summary>
+          <ul className="mt-1 space-y-0.5 pl-3">
+            {busyButFits.map(r => (
+              <li key={r.RoomId}>ห้อง {r.RoomDetail} ({r.Capacity} ที่นั่ง) — ติดคาบ {r.busyWith}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
