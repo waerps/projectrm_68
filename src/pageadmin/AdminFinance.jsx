@@ -169,10 +169,11 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
         red: 'bg-red-500',
         blue: 'bg-blue-500',
         orange: 'bg-orange-600',
+        purple: 'bg-purple-500',
     }[tone];
 
     return (
-        <div className={`flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full min-h-[96px]`}>
+        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full min-h-[96px]`}>
             {Icon && (
                 <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0`}>
                     <Icon className="h-5 w-5 text-white" />
@@ -756,8 +757,8 @@ export default function AdminFinance() {
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     <KPICard label="รายรับสะสม" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
-                    <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="orange" />
-                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} icon={Users} tone="green" />
+                    <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="blue" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} icon={Users} tone="purple" />
                     <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`} icon={CheckCircle} tone="green" />
                     {/* <KPICard label="รายรับเฉลี่ย/นักเรียน" value={formatMoney(avgRevenuePerStudent)} icon={Target} tone="neutral" />
                     <KPICard label="รูปแบบการชำระ" value={`${fullPlanPercent}% เต็ม`} icon={CreditCard} tone="blue" /> */}
@@ -865,13 +866,12 @@ export default function AdminFinance() {
                 <>
                     <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
 
-                        <div className="flex items-center justify-center border-b border-slate-100">
+                        <div className="flex items-center justify-center pb-3 mb-3 border-b border-slate-100">
                             <SegmentedControl value={transactionKind} onChange={setTransactionKind} options={[
                                 { id: 'student', label: 'เงินรับจากนักเรียน', icon: Banknote },
                                 { id: 'tutor', label: 'เงินจ่ายติวเตอร์', icon: Users },
                             ]} />
                         </div>
-
                         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
                             <div className="relative flex-1 min-w-[200px]">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
