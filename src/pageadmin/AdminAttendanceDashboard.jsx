@@ -5,7 +5,7 @@ import {
   Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, X, Download,
   AlertTriangle, Clock, CheckCircle,
   Percent, Users, BookOpen, Camera,
-  EyeIcon
+  EyeIcon, CalendarX
 } from 'lucide-react';
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -527,6 +527,17 @@ export default function TutorAttendanceDashboard() {
   // auto-fetch เมื่อ selectedMonth เปลี่ยน
   useEffect(() => { fetchData(selectedMonth); }, [selectedMonth]);
 
+  const [releaseData, setReleaseData] = useState(null);
+  useEffect(() => {
+    const { startDate, endDate } = getDateRange();
+    const url = (startDate && endDate)
+      ? `${API_BASE}/tutors/release-ranking?startDate=${startDate}&endDate=${endDate}`
+      : `${API_BASE}/tutors/release-ranking`;
+    fetch(url).then(r => r.json()).then(setReleaseData).catch(() => setReleaseData(null));
+  }, [selectedMonth]);
+
+  const topReleaser = releaseData?.tutors?.[0] || null;
+
   // ดึงรายวิชาทั้งหมดในระบบ ครั้งเดียวตอน mount — ใช้ endpoint เดียวกับหน้าจัดการติวเตอร์
   useEffect(() => {
     fetch(`${API_BASE}/subjects`)
@@ -687,6 +698,14 @@ export default function TutorAttendanceDashboard() {
       icon: CheckCircle,
       color: fullyRecorded > 0 ? 'bg-emerald-500' : 'bg-slate-400',
     },
+    // ★ เพิ่มตรงนี้
+    {
+      label: 'ปล่อยคลาสบ่อยสุด',
+      value: topReleaser?.Nickname || '—',
+      sub: topReleaser ? `${topReleaser.ReleaseCount} ครั้ง` : '',
+      icon: CalendarX,
+      color: topReleaser ? 'bg-amber-500' : 'bg-slate-400',
+    },
   ];
 
   const SortIcon = ({ col }) => {
@@ -741,19 +760,23 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Stats Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {STAT_CARDS.map(({ label, value, icon: Icon, color }) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5">{value}</p>
+              <p className="text-xl font-black text-slate-900 mt-0.5 truncate">{value}</p>
+              {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
             </div>
           </div>
         ))}
       </div>
+
+      {/* ── Release Ranking ────────────────────────────── */}
+      <TutorReleaseRanking selectedMonth={selectedMonth} />
 
       {/* ── Absence Heatmap ────────────────────────────── */}
       <AbsenceHeatmap selectedMonth={selectedMonth} />
@@ -785,7 +808,7 @@ export default function TutorAttendanceDashboard() {
               <option key={sub} value={sub}>{sub} ({subjectCounts[sub] || 0})</option>
             ))}
           </select>
-          
+
           {/* Status level filter */}
           {/* <select
             value={filterStatus}
@@ -1220,6 +1243,154 @@ function DrillDownModal({ info, onClose }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { start, end } = selectedMonth || {};
+        const url = (start && end)
+          ? `${API_BASE}/tutors/${tutor.AdminId}/releases?startDate=${start}&endDate=${end}`
+          : `${API_BASE}/tutors/${tutor.AdminId}/releases`;
+        const r = await fetch(url);
+        setRows(await r.json());
+      } catch { setRows([]); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [tutor, selectedMonth]);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+        <div className="px-5 py-4 bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-between shrink-0">
+          <div>
+            <p className="text-white font-bold">{tutor.Nickname}</p>
+            <p className="text-white/70 text-xs mt-0.5">ปล่อยคลาสทั้งหมด {tutor.ReleaseCount} ครั้ง</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-400">
+              <div className="w-7 h-7 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-3" />
+              กำลังโหลด...
+            </div>
+          ) : rows.length === 0 ? (
+            <p className="text-center py-16 text-sm text-slate-400">ไม่พบรายการ</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {rows.map(r => (
+                <div key={r.ReleaseId} className="px-5 py-4">
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-slate-800 text-sm">{r.SubjectName || r.CourseName}</p>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      r.Status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
+                      : r.Status === 'open' ? 'bg-red-50 text-red-700'
+                      : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {r.Status === 'accepted' ? 'มีคนรับแล้ว' : r.Status === 'open' ? 'ยังไม่มีคนรับ' : r.Status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {shortDate(r.ClassDate)} · {r.StartTime}–{r.EndTime}
+                  </p>
+                  {r.Reason && <p className="text-xs text-slate-600 mt-1">เหตุผล: {r.Reason}</p>}
+                  {r.Status === 'accepted' && r.AcceptedByNickname && (
+                    <p className="text-xs text-emerald-600 mt-1">รับสอนโดย: {r.AcceptedByNickname}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TutorReleaseRanking({ selectedMonth }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [detailTutor, setDetailTutor] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const { start, end } = selectedMonth || {};
+        const url = (start && end)
+          ? `${API_BASE}/tutors/release-ranking?startDate=${start}&endDate=${end}`
+          : `${API_BASE}/tutors/release-ranking`;
+        const r = await fetch(url);
+        setData(await r.json());
+      } catch { setData(null); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [selectedMonth]);
+
+  if (loading) return null;
+  if (!data || !data.tutors?.length) return (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
+      <CheckCircle className="w-10 h-10 text-emerald-500 shrink-0" />
+      <div>
+        <p className="font-bold text-emerald-800">ช่วงนี้ไม่มีการปล่อยคลาสเลย 🎉</p>
+        <p className="text-sm text-emerald-600 mt-0.5">ติวเตอร์ทุกคนสอนตามตารางปกติ</p>
+      </div>
+    </div>
+  );
+
+  const top = data.tutors[0];
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl px-5 py-4">
+        <p className="text-sm text-amber-800 font-medium">
+          <span className="font-black">สรุปการปล่อยคลาส —&nbsp;</span>
+          <span className="font-black text-amber-700">{top.Nickname}</span> ปล่อยคลาสบ่อยที่สุด {top.ReleaseCount} ครั้ง
+          จากทั้งหมด {data.totalReleases} ครั้งในช่วงนี้
+        </p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="text-base font-bold text-slate-900">ติวเตอร์ที่ปล่อยคลาสบ่อยที่สุด</h2>
+          <p className="text-xs text-slate-400 mt-0.5">คลิกเพื่อดูรายละเอียดแต่ละครั้ง</p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {data.tutors.slice(0, 5).map((t, i) => (
+            <button key={t.AdminId} onClick={() => setDetailTutor(t)}
+              className="w-full flex items-center gap-3 px-5 py-3 hover:bg-amber-50/30 transition text-left">
+              <span className="text-xs font-bold text-slate-400 w-5">{i + 1}</span>
+              <TutorAvatar tutor={t} idx={i} className="w-9 h-9 rounded-xl" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800">{t.Nickname}</p>
+                <p className="text-[11px] text-slate-400">
+                  รับคืนแล้ว {t.AcceptedCount} · ไม่มีคนรับ {t.UnfilledCount}
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-700">
+                {t.ReleaseCount} ครั้ง
+              </span>
+              <ChevronRight className="w-4 h-4 text-slate-300" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {detailTutor && (
+        <ReleaseDetailModal tutor={detailTutor} selectedMonth={selectedMonth} onClose={() => setDetailTutor(null)} />
+      )}
     </div>
   );
 }
