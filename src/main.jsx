@@ -21,7 +21,7 @@ import StudentCourses from "./pages/StudentCourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
 import News from "./pages/News.jsx"
-import MyIncidents from "./pages/MyIncidents.jsx"
+// import MyIncidents from "./pages/MyIncidents.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
@@ -53,7 +53,7 @@ import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
-import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
+// import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -136,7 +136,7 @@ const router = createBrowserRouter(
             { path: "analytics", element: <TutorAnalytics /> },
             { path: "students", element: <TutorStudents /> },
             { path: "students/detail", element: <TutorStudentDetail /> },
-            { path: "incidents", element: <TutorIncidents /> },
+            // { path: "incidents", element: <TutorIncidents /> },
             { path: "test", element: <Test /> },
             { path: "income", element: <TutorIncome /> },
             { path: "notification", element: <TutorNotification /> },
