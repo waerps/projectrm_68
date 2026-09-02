@@ -1180,10 +1180,10 @@ function ScheduleModal({
                   {availableSubjects.map(s => s.SubjectName).join(', ')}
                 </p>
               )}
-              {(selectedCourse.EnrolledCount != null || selectedCourse.Capacity != null) && (
+              {selectedCourse.EnrolledCount != null && (
                 <p className="text-xs text-neutral-700">
                   <span className="text-neutral-500">นักเรียน:</span>{' '}
-                  {selectedCourse.EnrolledCount ?? '—'}/{selectedCourse.Capacity ?? '—'} คน
+                  {selectedCourse.EnrolledCount} คน
                 </p>
               )}
             </div>
@@ -1365,8 +1365,8 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
   const { suggestions, busyButFits, studentCount, hasEnrollment } = data;
 
   return (
-    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-      <p className="text-xs font-semibold text-emerald-700">
+    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+      <p className="text-xs font-semibold text-slate-600">
         💡 แนะนำห้องสำหรับคาบนี้
         {hasEnrollment ? ` (นักเรียน ${studentCount} คน)` : ' (ยังไม่มีนักเรียนลงทะเบียน)'}
       </p>
@@ -1384,26 +1384,31 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
         <div className="space-y-1.5">
           {suggestions.map(r => {
             const isSelected = String(r.RoomId) === String(selectedRoomId);
+            const isTop = r.rank === 1;
             return (
               <button
                 key={r.RoomId}
                 type="button"
                 onClick={() => onPick(r.RoomId)}
                 className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left transition
-                  ${isSelected ? 'border-emerald-500 bg-emerald-100' : 'border-emerald-200 bg-white hover:bg-emerald-50'}`}
+        ${isSelected
+                    ? 'border-orange-500 bg-orange-50'
+                    : isTop
+                      ? 'border-orange-300 bg-white hover:bg-orange-50'
+                      : 'border-neutral-200 bg-white hover:bg-neutral-50'}`}
               >
                 <div>
-                  <p className="text-xs font-bold text-emerald-800">
-                    {r.rank === 1 ? '⭐ แนะนำที่สุด' : `ตัวเลือกที่ ${r.rank}`}
+                  <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-neutral-600'}`}>
+                    {isTop ? '⭐ แนะนำที่สุด' : `ตัวเลือกที่ ${r.rank}`}
                   </p>
                   <p className="text-[11px] text-neutral-600">
-                    ห้อง {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
+                    {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
                     {r.isOversized && (
                       <span className="text-amber-600"> · ใหญ่เกินความจำเป็น (เกิน {r.extraSeats} ที่นั่ง)</span>
                     )}
                   </p>
                 </div>
-                {isSelected && <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />}
+                {isSelected && <CheckCircle className="h-4 w-4 text-orange-600 shrink-0" />}
               </button>
             );
           })}
@@ -1417,7 +1422,7 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
           </summary>
           <ul className="mt-1 space-y-0.5 pl-3">
             {busyButFits.map(r => (
-              <li key={r.RoomId}>ห้อง {r.RoomDetail} ({r.Capacity} ที่นั่ง) — ติดคาบ {r.busyWith}</li>
+              <li key={r.RoomId}>{r.RoomDetail} ({r.Capacity} ที่นั่ง) — ติดคาบ {r.busyWith}</li>
             ))}
           </ul>
         </details>
