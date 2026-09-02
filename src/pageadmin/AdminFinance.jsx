@@ -172,16 +172,16 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
     }[tone];
 
     return (
-        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full`}>
+        <div className={`flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full min-h-[96px]`}>
             {Icon && (
                 <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0`}>
                     <Icon className="h-5 w-5 text-white" />
                 </div>
             )}
             <div className="min-w-0 flex-1">
-                <p className={T.label}>{label}</p>
-                <p className="text-xl font-black text-slate-900 tracking-tight truncate">{value}</p>
-                {sub && <p className={`${T.caption} mt-0.5 truncate`}>{sub}</p>}
+                <p className={`${T.label} leading-snug`}>{label}</p>
+                <p className="text-lg font-black text-slate-900 tracking-tight truncate mt-0.5">{value}</p>
+                {sub && <p className={`${T.caption} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
             </div>
         </div>
     );
@@ -196,7 +196,7 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
     return (
         <div className="flex flex-col items-center gap-4">
             <div className="relative shrink-0" style={{ width: size, height: size }}>
-                <div className="absolute inset-4 rounded-full bg-slate-300/40 blur-md translate-y-2" />
+                <div className="absolute inset-4 rounded-full bg-slate-300/20 blur-md translate-y-1" />
                 <ResponsiveContainer width="100%" height="100%">
                     <RePieChart>
                         <defs>
@@ -217,14 +217,14 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                             cornerRadius={4}
                             stroke="#ffffff"
                             strokeWidth={2}
-                            style={{ filter: 'drop-shadow(0 8px 8px rgba(15,23,42,0.28))' }}
+                            style={{ filter: 'drop-shadow(0 4px 6px rgba(15,23,42,0.14))' }}
                             isAnimationActive={false}
                         >
                             {sorted.map((d, i) => (
                                 <Cell
                                     key={i}
                                     fill={`url(#${idPrefix}-${i})`}
-                                    style={d.value === topValue ? { filter: 'drop-shadow(0 10px 10px rgba(15,23,42,0.32))' } : undefined}
+                                    style={d.value === topValue ? { filter: 'drop-shadow(0 5px 7px rgba(15,23,42,0.18))' } : undefined}
                                 />
                             ))}
                         </Pie>
@@ -678,11 +678,19 @@ export default function AdminFinance() {
         profitTrend: m.hasActivity ? m.profit : null,
     }));
 
-    const revenueByCourseType = (charts.byCourseType || []).map((c, i) => ({
-        name: c.TypeName || 'ไม่ระบุ',
-        value: Number(c.revenue) || 0,
-        ...DONUT_COLORS[i % DONUT_COLORS.length],
-    }));
+    const NEUTRAL_DONUT = { base: '#94a3b8', light: '#cbd5e1' };
+    const namedColors = DONUT_COLORS.filter((_, i) => i !== DONUT_COLORS.length - 1); // เก็บสีเทาไว้แยกให้ "ไม่ระบุ" โดยเฉพาะ
+
+    let colorCursor = 0;
+    const revenueByCourseType = (charts.byCourseType || []).map((c) => {
+        const isUnlabeled = !c.TypeName;
+        const color = isUnlabeled ? NEUTRAL_DONUT : namedColors[colorCursor++ % namedColors.length];
+        return {
+            name: c.TypeName || 'ไม่ระบุ',
+            value: Number(c.revenue) || 0,
+            ...color,
+        };
+    });
 
     const installmentStatusData = (charts.installmentStatuses || []).map((c, i) => ({
         name: c.label,
@@ -750,7 +758,7 @@ export default function AdminFinance() {
 
             {/* ── Secondary KPIs ── */}
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                     <KPICard label="รายรับสะสมทั้งหมด" value={formatMoney(totalRevenueAllTime)} sub="ตั้งแต่เริ่มดำเนินการ" icon={Banknote} tone="orange" />
                     <KPICard label="ยอดคงเหลือแผนผ่อน" value={formatMoney(outstandingTotalAmount)} sub={`${outstandingEnrollCount} แผน`} icon={Clock} tone="orange" />
                     <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} sub={`${paidRate}%`} icon={Users} tone="green" />
@@ -859,14 +867,15 @@ export default function AdminFinance() {
             {/* ── Transactions Tab ── */}
             {selectedTab === 'transactions' && (
                 <>
-                    <div className="flex justify-center">
-                        <SegmentedControl value={transactionKind} onChange={setTransactionKind} options={[
-                            { id: 'student', label: 'เงินรับจากนักเรียน', icon: Banknote },
-                            { id: 'tutor', label: 'เงินจ่ายติวเตอร์', icon: Users },
-                        ]} />
-                    </div>
-
                     <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+
+                        <div className="flex items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100">
+                            <SegmentedControl value={transactionKind} onChange={setTransactionKind} options={[
+                                { id: 'student', label: 'เงินรับจากนักเรียน', icon: Banknote },
+                                { id: 'tutor', label: 'เงินจ่ายติวเตอร์', icon: Users },
+                            ]} />
+                        </div>
+
                         <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
                             <div className="relative flex-1 min-w-[200px]">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -888,7 +897,7 @@ export default function AdminFinance() {
                                     <option value="all">เต็มและผ่อน</option><option value="full">เต็มจำนวน</option><option value="installment">ผ่อนชำระ</option>
                                 </select>
                                 <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
-                                    <option value="all">ทุกสถานะ Order</option><option value="paid">ชำระครบ</option><option value="partially_paid">กำลังผ่อน</option>
+                                    <option value="all">ทุกสถานะชำระ</option><option value="paid">ชำระครบ</option><option value="partially_paid">กำลังผ่อน</option>
                                 </select>
                                 <select
                                     value={courseId}
@@ -966,7 +975,7 @@ export default function AdminFinance() {
                                                 ))}
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y">
+                                        <tbody className="divide-y divide-slate-100">
                                             {tutorData.map(item => (
                                                 <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
                                                     <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
