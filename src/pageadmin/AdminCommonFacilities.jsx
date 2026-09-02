@@ -88,6 +88,39 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
     const [errors, setErrors] = useState({});
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+    // ─── เช็คชื่อซ้ำ/คล้าย (debounce 400ms) ────────────────────────────
+    const [nameCheck, setNameCheck] = useState({ exact: [], similar: [] });
+    const [checkingName, setCheckingName] = useState(false);
+    const [confirmSimilar, setConfirmSimilar] = useState(false);
+
+    useEffect(() => {
+        const trimmed = form.name.trim();
+        // แก้ไขแล้วชื่อไม่เปลี่ยนจากเดิม ไม่ต้องเช็คซ้ำกับตัวเอง
+        if (!trimmed || (isEdit && trimmed.toLowerCase() === (initial.Name || "").trim().toLowerCase())) {
+            setNameCheck({ exact: [], similar: [] });
+            setConfirmSimilar(false);
+            return;
+        }
+        setCheckingName(true);
+        const timer = setTimeout(async () => {
+            try {
+                const { data } = await axios.get(`${API}/common-facilities/check-name`, {
+                    params: { name: trimmed, excludeId: initial.CommonFacilityId || undefined },
+                });
+                setNameCheck(data);
+                setConfirmSimilar(false);
+            } catch {
+                setNameCheck({ exact: [], similar: [] });
+            } finally {
+                setCheckingName(false);
+            }
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [form.name]);
+
+    const hasExactDup = nameCheck.exact.length > 0;
+    const hasSimilar = !hasExactDup && nameCheck.similar.length > 0;
+
     const validate = () => {
         const e = {};
         if (!form.name.trim()) e.name = "กรุณากรอกชื่ออุปกรณ์";
@@ -98,6 +131,8 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
         if (form.trackingType === "consumable" && form.minQuantity !== "" &&
             (Number(form.minQuantity) < 0 || !Number.isInteger(Number(form.minQuantity))))
             e.minQuantity = "จำนวนขั้นต่ำต้องเป็นตัวเลขไม่ติดลบ";
+        if (hasExactDup) e.name = `มีอุปกรณ์ชื่อ "${form.name.trim()}" อยู่แล้วในระบบ`;
+        if (hasSimilar && !confirmSimilar) e.name = "ชื่อนี้คล้ายกับอุปกรณ์ที่มีอยู่แล้ว กรุณายืนยันด้านล่างก่อนบันทึก";
         setErrors(e);
         return Object.keys(e).length === 0;
     };
@@ -135,13 +170,57 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             <div>
                 <label className={lbl}>ชื่ออุปกรณ์ <span className="text-red-400 normal-case">*</span></label>
-                <input
-                    className={`${inp} ${errors.name ? errInp : ""}`}
-                    value={form.name}
-                    onChange={e => set("name", e.target.value)}
-                    placeholder="เช่น เครื่องปริ้นเตอร์, กระดาษ A4"
-                />
+                <div className="relative">
+                    <input
+                        className={`${inp} ${errors.name || hasExactDup ? errInp : ""}`}
+                        value={form.name}
+                        onChange={e => set("name", e.target.value)}
+                        placeholder="เช่น เครื่องปริ้นเตอร์, กระดาษ A4"
+                    />
+                    {checkingName && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 animate-spin" />
+                    )}
+                </div>
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+
+                {/* ชื่อซ้ำเป๊ะ — บล็อกแน่นอน */}
+                {hasExactDup && (
+                    <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                        <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                        <p className="text-xs text-red-600 leading-relaxed">
+                            มีอุปกรณ์ชื่อ <b>"{nameCheck.exact[0].Name}"</b> อยู่แล้วในระบบ
+                            กรุณาตั้งชื่อให้แตกต่าง หรือไปปรับจำนวนที่รายการเดิมแทน
+                        </p>
+                    </div>
+                )}
+
+                {/* ชื่อคล้ายกัน — เตือนและให้ยืนยันก่อน */}
+                {hasSimilar && (
+                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-amber-700 leading-relaxed">
+                                พบชื่อที่คล้ายกันในระบบ คุณพิมพ์ผิดหรือเปล่า?
+                                <span className="block mt-1 space-y-0.5">
+                                    {nameCheck.similar.map(s => (
+                                        <span key={s.CommonFacilityId} className="block font-semibold">• {s.Name}</span>
+                                    ))}
+                                </span>
+                            </p>
+                        </div>
+                        <label className="flex items-center gap-2 mt-2.5 pl-6 cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={confirmSimilar}
+                                onChange={e => setConfirmSimilar(e.target.checked)}
+                                className="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-400"
+                            />
+                            <span className="text-xs font-medium text-amber-700">
+                                ยืนยันว่าต้องการสร้างเป็นอุปกรณ์ใหม่ (ไม่ใช่รายการเดิม)
+                            </span>
+                        </label>
+                    </div>
+                )}
             </div>
 
             <div>
@@ -247,7 +326,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                     className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                     ยกเลิก
                 </button>
-                <button onClick={submit} disabled={isSubmitting}
+                <button onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
                     className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
@@ -266,29 +345,36 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
     const isConsumable = item.TrackingType === "consumable";
     const REMOVE_REASONS = isConsumable ? CONSUMABLE_REMOVE_REASONS : ASSET_REMOVE_REASONS;
 
-    const [mode, setMode] = useState("add"); // 'add' | 'remove'
-    const [amount, setAmount] = useState("1");
+    const [targetQty, setTargetQty] = useState(item.Quantity);
     const [reasonPreset, setReasonPreset] = useState(REMOVE_REASONS[0]);
     const [reasonNote, setReasonNote] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const isRemove = mode === "remove";
-    const amountNum = Math.max(0, Number(amount) || 0);
-    const exceedsStock = isRemove && amountNum > item.Quantity;
-    const nextQty = isRemove ? item.Quantity - amountNum : item.Quantity + amountNum;
+    const delta = targetQty - item.Quantity;
+    const isIncrease = delta > 0;
+    const isDecrease = delta < 0;
+    const hasChange = delta !== 0;
+
+    const step = (n) => setTargetQty(q => Math.max(0, (Number(q) || 0) + n));
+    const handleInput = (v) => {
+        if (v === "") return setTargetQty("");
+        const n = Math.max(0, Math.floor(Number(v) || 0));
+        setTargetQty(n);
+    };
 
     const submit = async () => {
-        if (amountNum <= 0) return showToast("error", "กรุณาระบุจำนวนที่มากกว่า 0");
-        if (isRemove && !reasonPreset) return showToast("error", "กรุณาเลือกเหตุผลการลดจำนวน");
-        if (exceedsStock) return showToast("error", "จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ");
+        const qty = Number(targetQty) || 0;
+        const d = qty - item.Quantity;
+        if (d === 0) return showToast("error", "กรุณาปรับจำนวนให้แตกต่างจากเดิมก่อนบันทึก");
+        if (d < 0 && !reasonPreset) return showToast("error", "กรุณาเลือกเหตุผลการลดจำนวน");
 
         setLoading(true);
         try {
-            const reason = isRemove
+            const reason = d < 0
                 ? `${reasonPreset}${reasonNote.trim() ? ` — ${reasonNote.trim()}` : ""}`
                 : (reasonNote.trim() || null);
             await axios.patch(`${API}/common-facilities/${item.CommonFacilityId}/quantity`, {
-                delta: isRemove ? -amountNum : amountNum,
+                delta: d,
                 reason,
             });
             showToast("success", "ปรับจำนวนสำเร็จ");
@@ -305,53 +391,39 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
     return (
         <Modal title={`ปรับจำนวน: ${item.Name}`} icon={isConsumable ? TrendingDown : Boxes} onClose={onClose}>
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setMode("add")}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition ${mode === "add"
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"}`}>
-                        <TrendingUp className="h-3.5 w-3.5" /> เพิ่มจำนวน
-                    </button>
-                    <button type="button" onClick={() => setMode("remove")}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition ${mode === "remove"
-                            ? "bg-rose-500 text-white border-rose-500"
-                            : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"}`}>
-                        <TrendingDown className="h-3.5 w-3.5" /> ลดจำนวน
-                    </button>
-                </div>
-
                 <div>
-                    <label className={lbl}>จำนวนที่จะ{isRemove ? "ลด" : "เพิ่ม"} ({item.Unit})</label>
+                    <label className={lbl}>จำนวน ({item.Unit})</label>
                     <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => setAmount(String(Math.max(1, amountNum - 1)))}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 shrink-0">
-                            <Minus className="h-4 w-4" />
+                        <button type="button" onClick={() => step(-1)}
+                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all shrink-0">
+                            <Minus className="h-5 w-5" />
                         </button>
                         <input
-                            type="number" min="1" step="1" onKeyDown={blockNegativeKeys}
-                            className={`${inp} text-center ${exceedsStock ? "border-red-300 focus:ring-red-300" : ""}`}
-                            value={amount}
-                            onChange={e => setAmount(e.target.value)}
+                            type="number" min="0" step="1" onKeyDown={blockNegativeKeys}
+                            className={`${inp} text-center text-lg font-bold`}
+                            value={targetQty}
+                            onChange={e => handleInput(e.target.value)}
                         />
-                        <button type="button" onClick={() => setAmount(String(amountNum + 1))}
-                            className="w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 shrink-0">
-                            <Plus className="h-4 w-4" />
+                        <button type="button" onClick={() => step(1)}
+                            className="w-11 h-11 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all shrink-0">
+                            <Plus className="h-5 w-5" />
                         </button>
                     </div>
-                    {exceedsStock ? (
-                        <p className="text-xs text-red-500 mt-1.5 font-medium flex items-center gap-1">
-                            <AlertCircle className="h-3.5 w-3.5" /> จำนวนที่ลดต้องไม่เกินจำนวนคงเหลือ (มีอยู่ {item.Quantity} {item.Unit})
+
+                    {hasChange ? (
+                        <p className={`text-xs mt-2 font-medium flex items-center gap-1 ${isIncrease ? "text-emerald-600" : "text-rose-600"}`}>
+                            {isIncrease ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                            จาก {item.Quantity} {item.Unit} → {targetQty || 0} {item.Unit}
+                            <span className="font-bold">({isIncrease ? "+" : ""}{delta})</span>
                         </p>
                     ) : (
-                        <p className="text-xs text-slate-400 mt-1.5">
-                            จาก {item.Quantity} {item.Unit} → <span className="font-bold text-slate-700">{nextQty} {item.Unit}</span>
-                        </p>
+                        <p className="text-xs text-slate-400 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
                     )}
                 </div>
 
-                {isRemove ? (
+                {isDecrease && (
                     <div>
-                        <label className={lbl}>เหตุผล <span className="text-red-400 normal-case">*</span></label>
+                        <label className={lbl}>เหตุผลที่ลดจำนวน <span className="text-red-400 normal-case">*</span></label>
                         <select className={inp} value={reasonPreset} onChange={e => setReasonPreset(e.target.value)}>
                             {REMOVE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
@@ -368,7 +440,9 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             </p>
                         )}
                     </div>
-                ) : (
+                )}
+
+                {isIncrease && (
                     <div>
                         <label className={lbl}>หมายเหตุ (ไม่บังคับ)</label>
                         <input
@@ -385,9 +459,9 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                         className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                         ยกเลิก
                     </button>
-                    <button onClick={submit} disabled={loading || exceedsStock}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isRemove ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยัน</>}
+                    <button onClick={submit} disabled={loading || !hasChange}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isDecrease ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
                 </div>
             </div>
@@ -571,25 +645,17 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 </div>
             )}
 
-            {/* Action รอง: ปรับจำนวน / เปลี่ยนสถานะ / ลบ */}
-            <div className="mt-5 grid grid-cols-3 gap-2">
+            {/* Action รอง: ปรับจำนวน (ดู/แก้ไข/เปลี่ยนสถานะ/ลบ ย้ายไปแสดงในตารางแล้ว) */}
+            <div className="mt-5 flex gap-2">
                 <button onClick={() => onAdjustQty(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 hover:bg-orange-100 active:scale-95 transition-all">
                     <Boxes className="h-4 w-4" /> ปรับจำนวน
                 </button>
-                <button onClick={() => onStatusChange(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 hover:bg-slate-100 active:scale-95 transition-all">
-                    <AlertTriangle className="h-4 w-4" /> เปลี่ยนสถานะ
-                </button>
-                <button onClick={() => onDelete(item)}
-                    className="flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-bold text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 active:scale-95 transition-all">
-                    <Trash2 className="h-4 w-4" /> นำออก
+                <button onClick={() => onEdit(item)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
+                    <Edit2 className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
                 </button>
             </div>
-            <button onClick={() => onEdit(item)}
-                className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
-                <Edit2 className="h-3.5 w-3.5" /> แก้ไขข้อมูลทั่วไป
-            </button>
 
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2 flex items-center gap-1.5">
@@ -625,66 +691,103 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
     );
 }
 
-// ─── FacilityCard — ปุ่มหลักเท่านั้น: ดู / แก้ไข (Action รองย้ายเข้า Detail) ──
-function FacilityCard({ item, onEdit, onView }) {
-    const st = styleOf(item.StatusId);
-    const CIcon = iconForCategory(item.Category_Name);
-    const outOfStock = item.Quantity === 0;
-    const lowStock = !outOfStock && item.LowStock;
-    const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
-
+// ─── FacilityTable — แสดงข้อมูลแบบตาราง ─────────────────────────────
+function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
     return (
-        <div className={`group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden ${outOfStock ? "border-red-300" : lowStock ? "border-yellow-300" : "border-slate-200 hover:border-orange-200"}`}>
-            <div className="p-4 flex items-start gap-3">
-                <div className="h-11 w-11 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
-                    <CIcon className="h-5 w-5 text-orange-500" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <p className="font-bold text-slate-900 text-sm truncate">{item.Name}</p>
-                    <p className="text-[11px] text-slate-400">{item.Category_Name}</p>
-                </div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${st.bg} ${st.text} ${st.border}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                    {item.Status_Name}
-                </span>
-            </div>
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">อุปกรณ์</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
+                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                            <th className="text-center px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
+                            <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {items.map(item => {
+                            const st = styleOf(item.StatusId);
+                            const CIcon = iconForCategory(item.Category_Name);
+                            const outOfStock = item.Quantity === 0;
+                            const lowStock = !outOfStock && item.LowStock;
+                            const isAssetMultiUnit = item.TrackingType === "asset" && item.Quantity > 1;
 
-            <div className="px-4 pb-3">
-                <div className="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
-                    <Boxes className="h-4 w-4 text-slate-400 shrink-0" />
-                    <p className="text-sm text-slate-700">
-                        <span className="font-black text-slate-900 text-base">{item.Quantity}</span> {item.Unit}
-                    </p>
-                </div>
-                {isAssetMultiUnit && (
-                    <p className="text-[10px] text-slate-400 mt-1.5">สถานะเป็นภาพรวมของทั้งหมด {item.Quantity} ชิ้น</p>
-                )}
-                {outOfStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-2">
-                        <AlertCircle className="h-3.5 w-3.5" /> สต๊อก: หมดแล้ว
-                    </p>
-                )}
-                {lowStock && (
-                    <p className="flex items-center gap-1 text-[11px] font-bold text-yellow-700 mt-2">
-                        <AlertCircle className="h-3.5 w-3.5" /> ใกล้หมด (ขั้นต่ำ {item.MinQuantity} {item.Unit})
-                    </p>
-                )}
-                {item.Location && (
-                    <p className="flex items-center gap-1 text-[11px] text-slate-400 mt-2">
-                        <MapPin className="h-3 w-3" /> {item.Location}
-                    </p>
-                )}
-            </div>
-
-            <div className="px-4 pb-4 flex items-center gap-2">
-                <button onClick={() => onView(item)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
-                    <Eye className="h-3.5 w-3.5" /> ดูรายละเอียด
-                </button>
-                <button onClick={() => onEdit(item)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
-                    <Edit2 className="h-3.5 w-3.5" /> แก้ไข
-                </button>
+                            return (
+                                <tr key={item.CommonFacilityId}
+                                    className={`hover:bg-slate-50 transition ${outOfStock ? "bg-red-50/40" : lowStock ? "bg-yellow-50/40" : ""}`}>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="h-9 w-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                                                <CIcon className="h-4 w-4 text-orange-500" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-slate-900 truncate">{item.Name}</p>
+                                                {item.Detail && <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Detail}</p>}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600">{item.Category_Name}</td>
+                                    <td className="px-4 py-3">
+                                        <p className="text-slate-700">
+                                            <span className="font-black text-slate-900">{item.Quantity}</span> {item.Unit}
+                                        </p>
+                                        {outOfStock && (
+                                            <p className="flex items-center gap-1 text-[10px] font-bold text-red-600 mt-0.5">
+                                                <AlertCircle className="h-3 w-3" /> หมดสต๊อก
+                                            </p>
+                                        )}
+                                        {lowStock && (
+                                            <p className="flex items-center gap-1 text-[10px] font-bold text-yellow-700 mt-0.5">
+                                                <AlertCircle className="h-3 w-3" /> ใกล้หมด
+                                            </p>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                                            <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                                            {item.Status_Name}
+                                        </span>
+                                        {isAssetMultiUnit && (
+                                            <p className="text-[10px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-500 text-center">
+                                        {item.Location ? (
+                                            <span className="flex items-center justify-center gap-1 text-xs">
+                                                <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-slate-300">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                            <button onClick={() => onView(item)} title="ดูรายละเอียด"
+                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                                                <Eye className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป"
+                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
+                                                <Edit2 className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ"
+                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all">
+                                                <AlertTriangle className="h-3.5 w-3.5" />
+                                            </button>
+                                            <button onClick={() => onDelete(item)} title="นำออกจากรายการ"
+                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all">
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
@@ -904,12 +1007,13 @@ export default function AdminCommonFacilities() {
                     <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filtered.map(item => (
-                        <FacilityCard key={item.CommonFacilityId} item={item}
-                            onEdit={setEditingItem} onView={setViewingItem} />
-                    ))}
-                </div>
+                <FacilityTable
+                    items={filtered}
+                    onEdit={setEditingItem}
+                    onView={setViewingItem}
+                    onStatusChange={setStatusItem}
+                    onDelete={setDeletingItem}
+                />
             )}
 
             {deletingItem && (
@@ -922,8 +1026,8 @@ export default function AdminCommonFacilities() {
                     onClose={() => setViewingItem(null)}
                     onEdit={(it) => { setViewingItem(null); setEditingItem(it); }}
                     onAdjustQty={(it) => { setViewingItem(null); setAdjustItem(it); }}
-                    onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
-                    onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
+                // onStatusChange={(it) => { setViewingItem(null); setStatusItem(it); }}
+                // onDelete={(it) => { setViewingItem(null); setDeletingItem(it); }}
                 />
             )}
             {statusItem && (

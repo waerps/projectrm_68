@@ -15,7 +15,7 @@ import { ToastContainer } from "../components/Toast";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
-const ITEMS_PER_PAGE = 9;
+const ITEMS_PER_PAGE = 12;
 
 const STATUS_MAP = {
   1: { label: "เปิดรับสมัคร", color: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -1492,7 +1492,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-      <p className="text-[11px] text-neutral-400 leading-relaxed">
+        <p className="text-[11px] text-neutral-400 leading-relaxed">
           กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> {maxCount > 0
             ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-neutral-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
             : <>และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{capacityCount} คน</span></>}
@@ -1502,7 +1502,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
         </p>
 
         <div className="flex gap-2">
-        {[
+          {[
             { key: "profit", label: "กำไรเป้าหมายของทั้งคอร์ส (บาท)" },
             { key: "percent", label: "กรอก % กำไร (ทั้งคอร์ส)" },
             { key: "price", label: "กรอกราคาขาย (สุทธิต่อคน)" },
@@ -1546,7 +1546,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
 
         <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
-          <div className="p-3 text-center bg-neutral-50">
+            <div className="p-3 text-center bg-neutral-50">
               <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
               <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
             </div>
@@ -1642,6 +1642,39 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
   );
 }
 
+// ★ เพิ่ม: input แยกสำหรับกรอกยอดผ่อนแต่ละงวด แยก local state ออกจาก parent
+// เหตุผล: ถ้าใช้ moneyDisplay/formatPrice ใน value ทุกครั้งที่พิมพ์ ".", toLocaleString จะปัดจุดทิ้งทันทีตอน re-render
+// จึงต้องเก็บข้อความดิบไว้เองระหว่างโฟกัส แล้วค่อย sync กับ parent ตอนไม่ได้โฟกัส (เช่น ถูกงวดอื่นคำนวณแทน)
+function InstallmentAmountInput({ value, onChange }) {
+  const [text, setText] = useState(value === "" || value === null || value === undefined ? "" : String(value));
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) {
+      setText(value === "" || value === null || value === undefined ? "" : String(value));
+    }
+  }, [value]);
+
+  const handleChange = (e) => {
+    const cleaned = sanitizeMoneyInput(e.target.value); // เก็บจุดทศนิยมไว้ตามที่พิมพ์จริง ไม่ตัดทิ้ง
+    setText(cleaned);
+    onChange(cleaned);
+  };
+
+  return (
+    <input
+      type="text" inputMode="decimal" value={text}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => {
+        focusedRef.current = false;
+        setText(value === "" || value === null || value === undefined ? "" : String(value));
+      }}
+      onChange={handleChange} onKeyDown={blockNegativeKeys}
+      className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+    />
+  );
+}
+
 function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   const count = Number(installments || 1);
   const amounts = value && value.length === count ? value : distributeInstallments(fullCost, count);
@@ -1649,13 +1682,44 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   const diff = Math.round((fullCost - sum) * 100) / 100;
   const ok = Math.abs(diff) < 0.01;
 
+  // ★ เพิ่ม: จำว่างวดไหนแอดมิน "กำหนดเอง" แล้ว เพื่อคำนวณงวดที่เหลือให้อัตโนมัติจากยอดคงเหลือ
+  const [manualIndices, setManualIndices] = useState(new Set());
+
+  // รีเซ็ต manual flags เมื่อจำนวนงวดเปลี่ยน เพราะ index เดิมไม่มีความหมายกับ array ขนาดใหม่แล้ว
+  useEffect(() => {
+    setManualIndices(new Set());
+  }, [count]);
+
   const updateAt = (idx, raw) => {
+    const manualSet = new Set(manualIndices);
+    manualSet.add(idx);
+
     const next = [...amounts];
-    next[idx] = sanitizeMoneyInput(raw);
+    next[idx] = raw; // ★ raw ผ่าน sanitize มาจาก InstallmentAmountInput แล้ว ไม่ต้อง sanitize ซ้ำ
+
+    const manualSum = [...manualSet].reduce((s, i) => s + Number(next[i] || 0), 0);
+    const nonManualIndices = next.map((_, i) => i).filter((i) => !manualSet.has(i));
+
+    if (nonManualIndices.length > 0) {
+      // ★ หัวใจของข้อ 1-3: ยอดงวดที่เหลือ = ราคาสุทธิ - ยอดที่กำหนดเองไปแล้ว หารเท่า ๆ กันในงวดที่เหลือ
+      const remaining = Math.max(0, fullCost - manualSum);
+      const base = Math.floor((remaining / nonManualIndices.length) * 100) / 100;
+      nonManualIndices.forEach((i) => { next[i] = base; });
+      // ปัดเศษไปรวมงวดสุดท้ายที่ยังไม่ manual เสมอ กันปัญหา floating point ผลรวมไม่ตรงเป๊ะ
+      const lastIdx = nonManualIndices[nonManualIndices.length - 1];
+      const roundedSum = manualSum + base * nonManualIndices.length;
+      const remainder = Math.round((fullCost - roundedSum) * 100) / 100;
+      next[lastIdx] = Math.round((next[lastIdx] + remainder) * 100) / 100;
+    }
+
+    setManualIndices(manualSet);
     onChange(next);
   };
 
-  const resetToEqual = () => onChange(distributeInstallments(fullCost, count));
+  const resetToEqual = () => {
+    setManualIndices(new Set()); // ★ กด "แบ่งเท่า ๆ กันใหม่" ต้องล้าง manual flags ด้วย ไม่งั้นครั้งถัดไปจะยังล็อกงวดเดิมอยู่
+    onChange(distributeInstallments(fullCost, count));
+  };
 
   return (
     <div className="rounded-2xl border border-orange-200 overflow-hidden">
@@ -1678,11 +1742,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
         {amounts.map((amt, idx) => (
           <div key={idx} className="flex items-center gap-2">
             <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
-            <input
-              type="text" inputMode="decimal" value={moneyDisplay(amt)}
-              onChange={(e) => updateAt(idx, e.target.value)} onKeyDown={blockNegativeKeys}
-              className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
-            />
+            <InstallmentAmountInput value={amt} onChange={(v) => updateAt(idx, v)} />
             <span className="text-xs text-neutral-400 shrink-0">บาท</span>
           </div>
         ))}
@@ -1818,7 +1878,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     onSave({
       ...form,
       FullCost: fullCost,
-      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts : null,
+      // ★ แปลงเป็น Number ให้ชัวร์ก่อนส่ง กันกรณีมีข้อความดิบค้าง เช่น "8." หลุดเข้ามาตอนยังไม่ blur
+      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts.map(v => Number(v || 0)) : null,
       pendingSubjects,
       pendingStudents,
     });
@@ -1860,376 +1921,376 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
       {/* ═══ TAB: ข้อมูลพื้นฐาน ═══ */}
       <div className={activeTab === "basic" ? "space-y-5" : "hidden"}>
-      <div>
-        <label className={labelCls}>ชื่อคอร์ส <span className="text-red-400 normal-case">*</span></label>
-        <input
-          type="text"
-          value={form.CourseName}
-          onChange={(e) => set("CourseName", e.target.value)}
-          className={inputCls}
-          placeholder="เช่น คอร์สรวม (แพ็กเกจ) ป.3 ทั้งหมด 4 วิชา"
-        />
-      </div>
+        <div>
+          <label className={labelCls}>ชื่อคอร์ส <span className="text-red-400 normal-case">*</span></label>
+          <input
+            type="text"
+            value={form.CourseName}
+            onChange={(e) => set("CourseName", e.target.value)}
+            className={inputCls}
+            placeholder="เช่น คอร์สรวม (แพ็กเกจ) ป.3 ทั้งหมด 4 วิชา"
+          />
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>วันเริ่มสอน <span className="text-red-400 normal-case">*</span></label>
-          <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls} />
-        </div>
-        <div>
-          <label className={labelCls}>วันสิ้นสุด <span className="text-red-400 normal-case">*</span></label>
-          <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls} />
-        </div>
-      </div>
-
-      {form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) && (
-        <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
-          <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
-        </p>
-      )}
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>สถานะคอร์ส</label>
-          <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
-            {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>เทอม</label>
-          <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
-            {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
-          <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
-            <option value="">เลือกปีการศึกษา</option>
-            {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>รูปแบบการเรียน</label>
-          <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls}>
-            <option value="">ไม่ระบุ</option>
-            {availabilityOptions.map((a) => (
-              <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
-                {a.Course_Availability_Name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>ประเภทคอร์ส</label>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { value: "single", label: "คอร์สเดี่ยว" },
-              { value: "bundle", label: "คอร์สรวม" },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => set("Course_Type", opt.value)}
-                className={`py-2.5 rounded-xl text-sm font-bold border transition
-                  ${form.Course_Type === opt.value
-                    ? "bg-orange-500 text-white border-orange-500"
-                    : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>วันเริ่มสอน <span className="text-red-400 normal-case">*</span></label>
+            <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>วันสิ้นสุด <span className="text-red-400 normal-case">*</span></label>
+            <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls} />
           </div>
         </div>
-        <div>
-          <label className={labelCls}>คอร์สโปรโมชัน</label>
-          <button
-            type="button"
-            onClick={() => set("Is_Promotion", !form.Is_Promotion)}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
-              ${form.Is_Promotion
-                ? "bg-amber-50 border-amber-300"
-                : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
-          >
-            <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
-              <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
-              {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
-            </span>
-            {form.Is_Promotion
-              ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
-              : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
-          </button>
-        </div>
-      </div>
 
-      <div>
-        <label className={labelCls}>รูปภาพคอร์ส</label>
-        <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
-      </div>
-
-      <div>
-        <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
-        <p className="text-[11px] text-neutral-400 mb-2 normal-case">
-          ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
-        </p>
-        <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
-      </div>
-
-      <div>
-        <label className={labelCls}>หมายเหตุ / รายละเอียดเพิ่มเติม</label>
-        <textarea
-          value={form.Remark || ""}
-          onChange={(e) => set("Remark", e.target.value)}
-          className={inputCls}
-          rows={3}
-          placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
-        />
-        {form.Remark?.trim() && (
-          <p className="flex items-center justify-end gap-1 text-[11px] text-green-600 font-medium mt-1">
-            <Check className="h-3 w-3" /> บันทึกข้อความแล้ว ({form.Remark.trim().length} ตัวอักษร)
+        {form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) && (
+          <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
+            <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
           </p>
         )}
-      </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>สถานะคอร์ส</label>
+            <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
+              {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>เทอม</label>
+            <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
+              {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
+            <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
+              <option value="">เลือกปีการศึกษา</option>
+              {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>รูปแบบการเรียน</label>
+            <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls}>
+              <option value="">ไม่ระบุ</option>
+              {availabilityOptions.map((a) => (
+                <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
+                  {a.Course_Availability_Name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>ประเภทคอร์ส</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: "single", label: "คอร์สเดี่ยว" },
+                { value: "bundle", label: "คอร์สรวม" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => set("Course_Type", opt.value)}
+                  className={`py-2.5 rounded-xl text-sm font-bold border transition
+                  ${form.Course_Type === opt.value
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>คอร์สโปรโมชัน</label>
+            <button
+              type="button"
+              onClick={() => set("Is_Promotion", !form.Is_Promotion)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
+              ${form.Is_Promotion
+                  ? "bg-amber-50 border-amber-300"
+                  : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
+            >
+              <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
+                <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
+                {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
+              </span>
+              {form.Is_Promotion
+                ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
+                : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>รูปภาพคอร์ส</label>
+          <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
+        </div>
+
+        <div>
+          <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
+          <p className="text-[11px] text-neutral-400 mb-2 normal-case">
+            ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
+          </p>
+          <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
+        </div>
+
+        <div>
+          <label className={labelCls}>หมายเหตุ / รายละเอียดเพิ่มเติม</label>
+          <textarea
+            value={form.Remark || ""}
+            onChange={(e) => set("Remark", e.target.value)}
+            className={inputCls}
+            rows={3}
+            placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
+          />
+          {form.Remark?.trim() && (
+            <p className="flex items-center justify-end gap-1 text-[11px] text-green-600 font-medium mt-1">
+              <Check className="h-3 w-3" /> บันทึกข้อความแล้ว ({form.Remark.trim().length} ตัวอักษร)
+            </p>
+          )}
+        </div>
       </div>
       {/* ═══ END TAB: ข้อมูลพื้นฐาน ═══ */}
 
       {/* ═══ TAB: ราคา & ผ่อนชำระ ═══ */}
       <div className={activeTab === "pricing" ? "space-y-5" : "hidden"}>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div>
-          <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
-          <input
-            type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
-            onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
-            className={inputCls} placeholder="5,900" />
-        </div>
-        <div>
-          <label className={labelCls}>ส่วนลด (บาท)</label>
-          <input
-            type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
-            onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
-            className={inputCls} placeholder="0" />
-        </div>
-        <div>
-          <label className={labelCls}>ราคาสุทธิ</label>
-          <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
-            ฿{formatPrice(fullCost)}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
+            <input
+              type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
+              onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
+              className={inputCls} placeholder="5,900" />
+          </div>
+          <div>
+            <label className={labelCls}>ส่วนลด (บาท)</label>
+            <input
+              type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
+              onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
+              className={inputCls} placeholder="0" />
+          </div>
+          <div>
+            <label className={labelCls}>ราคาสุทธิ</label>
+            <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
+              ฿{formatPrice(fullCost)}
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
+            <input
+              type="number" min="0" step="1" value={form.MaxStudents}
+              onKeyDown={blockNegativeKeys}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+              }}
+              className={inputCls} placeholder="ไม่บังคับ" />
           </div>
         </div>
-        <div>
-          <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
-          <input
-            type="number" min="0" step="1" value={form.MaxStudents}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
-            }}
-            className={inputCls} placeholder="ไม่บังคับ" />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <div>
-          <label className={labelCls}>จำนวนงวด</label>
-          <input
-            type="number" min="0" step="1" value={form.Installments}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
-                set("Installments", v);
-                // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
-                set("InstallmentAmounts", null);
-              }
-            }}
-            className={inputCls} />
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
-              {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
-            </span>
-            {isInstallmentEnabled && (
-              <span className="text-[11px] text-neutral-500">
-                ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className={labelCls}>จำนวนงวด</label>
+            <input
+              type="number" min="0" step="1" value={form.Installments}
+              onKeyDown={blockNegativeKeys}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
+                  set("Installments", v);
+                  // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
+                  set("InstallmentAmounts", null);
+                }
+              }}
+              className={inputCls} />
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
+                {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
               </span>
+              {isInstallmentEnabled && (
+                <span className="text-[11px] text-neutral-500">
+                  ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+                </span>
+              )}
+            </div>
+            {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
+            {isInstallmentEnabled && monthsSpanned > 0 && (
+              <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
+                <Info className="h-3 w-3 shrink-0" />
+                ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+              </p>
             )}
           </div>
-          {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
-          {isInstallmentEnabled && monthsSpanned > 0 && (
-            <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
-              <Info className="h-3 w-3 shrink-0" />
-              ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
-            </p>
-          )}
+
+          <div>
+            <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
+            {isInstallmentEnabled ? (
+              <InstallmentAmountsEditor
+                installments={installmentsCount}
+                fullCost={fullCost}
+                value={form.InstallmentAmounts}
+                onChange={(v) => set("InstallmentAmounts", v)}
+              />
+            ) : (
+              <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+                เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
+              </div>
+            )}
+          </div>
         </div>
 
-        <div>
-          <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
-          {isInstallmentEnabled ? (
-            <InstallmentAmountsEditor
-              installments={installmentsCount}
-              fullCost={fullCost}
-              value={form.InstallmentAmounts}
-              onChange={(v) => set("InstallmentAmounts", v)}
+        {totalTutorCost > 0 && (
+          <div>
+            <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
+            <PricingCalculator
+              tutorCost={totalTutorCost}
+              currentPrice={fullCost}
+              currentStudentCount={currentStudentCount}
+              maxStudents={form.MaxStudents}
+              onApplyPrice={(targetNetPrice) => {
+                const discount = Number(form.Discount || 0);
+                set("Price", String(targetNetPrice + discount));
+              }}
             />
-          ) : (
-            <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
-              เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
 
-      {totalTutorCost > 0 && (
-        <div>
-          <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
-          <PricingCalculator
-            tutorCost={totalTutorCost}
-            currentPrice={fullCost}
-            currentStudentCount={currentStudentCount}
-            maxStudents={form.MaxStudents}
-            onApplyPrice={(targetNetPrice) => {
-              const discount = Number(form.Discount || 0);
-              set("Price", String(targetNetPrice + discount));
-            }}
-          />
-        </div>
-      )}
-
-      {totalTutorCost > 0 && (
-        <div>
-          <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
-          <BreakEvenAnalysis
-            tutorCost={totalTutorCost}
-            fullCost={fullCost}
-            currentStudentCount={currentStudentCount}
-            maxStudents={form.MaxStudents}
-          />
-        </div>
-      )}
+        {totalTutorCost > 0 && (
+          <div>
+            <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
+            <BreakEvenAnalysis
+              tutorCost={totalTutorCost}
+              fullCost={fullCost}
+              currentStudentCount={currentStudentCount}
+              maxStudents={form.MaxStudents}
+            />
+          </div>
+        )}
       </div>
       {/* ═══ END TAB: ราคา & ผ่อนชำระ ═══ */}
 
       {/* ═══ TAB: วิชา & ต้นทุน ═══ */}
       <div className={activeTab === "subjects" ? "space-y-5" : "hidden"}>
-      <div>
-        <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
-        <input
-          type="number" min="0" step="0.5" value={form.TotalCourseHours}
-          onKeyDown={blockNegativeKeys}
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
-          }}
-          className={inputCls} placeholder="เช่น 120"
-        />
-        {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
-        <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
-          {!monthsSpanned
-            ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
-            : !form.TotalCourseHours
-              ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
-              : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
-        </p>
-      </div>
-
-      <div>
-        <label className={labelCls}>วิชาและติวเตอร์</label>
-        {initial.CourseID
-          ? <CourseSubjects
-          courseId={initial.CourseID}
-          showToast={showToast}
-          onTotalCostChange={setExistingSubjectsCost}
-          onTotalHoursChange={setExistingSubjectsHours}
-          onSubjectCountChange={setExistingTutorCount}
-          totalCourseHours={Number(form.TotalCourseHours || 0)}
-          monthsSpanned={monthsSpanned}
-        />
-          : <PendingSubjectPicker
-            items={pendingSubjects}
-            onChange={setPendingSubjects}
-            showToast={showToast}
-            totalCourseHours={Number(form.TotalCourseHours || 0)}
-            monthsSpanned={monthsSpanned}
-          />}
-
-        {targetCourseHours > 0 && (
-          <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
-            ${hoursMismatch
-              ? (hoursDiff > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-red-50 border-red-200 text-red-700")
-              : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
-            {hoursMismatch
-              ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              : <Check className="h-3.5 w-3.5 shrink-0" />}
-            <span>
-              {hoursMismatch
-                ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
-                : "จำนวนชั่วโมงครบถ้วน"}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {totalTutorCost > 0 && (
-        <div className="mt-2.5 rounded-2xl border border-neutral-200 bg-neutral-50/60 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-400 shrink-0">
-              <Info className="h-3.5 w-3.5 text-white" />
-            </span>
-            <p className="text-xs font-bold text-neutral-700">
-              สรุปต้นทุนคอร์ส
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
-            <div className="pr-3 py-1.5">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
-              <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
-            </div>
-            <div className="pl-3 py-1.5">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
-              <p className="text-sm font-bold text-neutral-700">
-                ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
-              </p>
-            </div>
-          </div>
-
-          <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
-            ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
+        <div>
+          <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
+          <input
+            type="number" min="0" step="0.5" value={form.TotalCourseHours}
+            onKeyDown={blockNegativeKeys}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
+            }}
+            className={inputCls} placeholder="เช่น 120"
+          />
+          {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
+          <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+            {!monthsSpanned
+              ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
+              : !form.TotalCourseHours
+                ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
+                : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
           </p>
         </div>
-      )}
+
+        <div>
+          <label className={labelCls}>วิชาและติวเตอร์</label>
+          {initial.CourseID
+            ? <CourseSubjects
+              courseId={initial.CourseID}
+              showToast={showToast}
+              onTotalCostChange={setExistingSubjectsCost}
+              onTotalHoursChange={setExistingSubjectsHours}
+              onSubjectCountChange={setExistingTutorCount}
+              totalCourseHours={Number(form.TotalCourseHours || 0)}
+              monthsSpanned={monthsSpanned}
+            />
+            : <PendingSubjectPicker
+              items={pendingSubjects}
+              onChange={setPendingSubjects}
+              showToast={showToast}
+              totalCourseHours={Number(form.TotalCourseHours || 0)}
+              monthsSpanned={monthsSpanned}
+            />}
+
+          {targetCourseHours > 0 && (
+            <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
+            ${hoursMismatch
+                ? (hoursDiff > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-red-50 border-red-200 text-red-700")
+                : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+              {hoursMismatch
+                ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                : <Check className="h-3.5 w-3.5 shrink-0" />}
+              <span>
+                {hoursMismatch
+                  ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
+                  : "จำนวนชั่วโมงครบถ้วน"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {totalTutorCost > 0 && (
+          <div className="mt-2.5 rounded-2xl border border-neutral-200 bg-neutral-50/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-400 shrink-0">
+                <Info className="h-3.5 w-3.5 text-white" />
+              </span>
+              <p className="text-xs font-bold text-neutral-700">
+                สรุปต้นทุนคอร์ส
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
+              <div className="pr-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+              </div>
+              <div className="pl-3 py-1.5">
+                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+                <p className="text-sm font-bold text-neutral-700">
+                  ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
+                </p>
+              </div>
+            </div>
+
+            <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
+              ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
+            </p>
+          </div>
+        )}
       </div>
       {/* ═══ END TAB: วิชา & ต้นทุน ═══ */}
 
       {/* ═══ TAB: นักเรียนในคอร์ส ═══ */}
       <div className={activeTab === "students" ? "space-y-5" : "hidden"}>
-      <div>
-        <label className={labelCls}>นักเรียนในคอร์ส</label>
-        {initial.CourseID
-          ? <CourseStudents courseId={initial.CourseID} courseStatusId={initial.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
-          : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
-      </div>
+        <div>
+          <label className={labelCls}>นักเรียนในคอร์ส</label>
+          {initial.CourseID
+            ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
+            : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
+        </div>
       </div>
       {/* ═══ END TAB: นักเรียนในคอร์ส ═══ */}
 
       {/* ═══ TAB: คลิปตัวอย่าง ═══ */}
       <div className={activeTab === "videos" ? "space-y-5" : "hidden"}>
-      <div>
-        <label className={labelCls}>คลิปตัวอย่าง</label>
-        {initial.CourseID ? (
-          <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
-        ) : (
-          <div className="border border-dashed border-neutral-200 rounded-xl p-4 text-center">
-            <p className="text-xs text-neutral-400">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
-          </div>
-        )}
-      </div>
+        <div>
+          <label className={labelCls}>คลิปตัวอย่าง</label>
+          {initial.CourseID ? (
+            <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
+          ) : (
+            <div className="border border-dashed border-neutral-200 rounded-xl p-4 text-center">
+              <p className="text-xs text-neutral-400">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
+            </div>
+          )}
+        </div>
       </div>
       {/* ═══ END TAB: คลิปตัวอย่าง ═══ */}
 
