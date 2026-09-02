@@ -157,10 +157,9 @@ export default function Navbar() {
                                 <li>
                                     <Link
                                         to="incidents"
-                                        className="flex items-center justify-end gap-1.5 px-4 py-2 hover:bg-red-50 hover:text-red-600 transition font-semibold text-red-500"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
-                                        <AlertOctagon className="h-3.5 w-3.5" />
-                                        ศูนย์รับแจ้งเหตุการณ์
+                                        รับแจ้งเหตุการณ์
                                     </Link>
                                 </li>
 
