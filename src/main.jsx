@@ -21,6 +21,7 @@ import StudentCourses from "./pages/StudentCourses.jsx"
 import Attendance from "./pages/Attendance.jsx"
 import New from "./pages/New.jsx"
 import News from "./pages/News.jsx"
+import MyIncidents from "./pages/MyIncidents.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
@@ -52,6 +53,7 @@ import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
+import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
@@ -70,6 +72,7 @@ import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
 import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 import AdminManagement from "./pageadmin/AdminManagement.jsx"
 import AdminProfile from "./pageadmin/AdminProfile.jsx"
+import AdminIncidents from "./pageadmin/AdminIncidents.jsx"
 
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
@@ -112,6 +115,7 @@ const router = createBrowserRouter(
             { path: "schedule", element: <Schedule /> },
             { path: "notifications", element: <Notifications /> },
             { path: "my-courses", element: <StudentCourses /> },
+            { path: "incidents", element: <MyIncidents /> },
             { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
             { path: "course/:courseId/subjects", element: <SubjectList /> }, //เป้วเพิ่ม
@@ -132,6 +136,7 @@ const router = createBrowserRouter(
             { path: "analytics", element: <TutorAnalytics /> },
             { path: "students", element: <TutorStudents /> },
             { path: "students/detail", element: <TutorStudentDetail /> },
+            { path: "incidents", element: <TutorIncidents /> },
             { path: "test", element: <Test /> },
             { path: "income", element: <TutorIncome /> },
             { path: "notification", element: <TutorNotification /> },
@@ -163,6 +168,7 @@ const router = createBrowserRouter(
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },
             { path: "profile", element: <AdminProfile /> }, // ← เพิ่ม → path เต็ม = /admin/profile
+            { path: "incidents", element: <AdminIncidents /> },
           ],
         },
       ],

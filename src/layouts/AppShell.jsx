@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar.jsx"
 import Footer from "../components/footer.jsx"
 import ChatWidget from "../components/Chat/ChatWidget"
 import ChatFullscreen from "../components/Chat/ChatFullscreen"   // ➕ เพิ่มบรรทัดนี้
+import IncidentReportButton from "../components/IncidentReportButton.jsx"
 
 export default function AppShell() {
   const location = useLocation()
@@ -29,6 +30,7 @@ export default function AppShell() {
       </div>
       <ChatWidget />
       <ChatFullscreen />   {/* ➕ เพิ่มบรรทัดนี้ */}
+      <IncidentReportButton role="student" />
     </>
   )
 }
