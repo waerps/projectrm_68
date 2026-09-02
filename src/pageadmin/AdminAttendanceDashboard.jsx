@@ -702,7 +702,6 @@ export default function TutorAttendanceDashboard() {
     {
       label: 'ปล่อยคลาสบ่อยสุด',
       value: topReleaser?.Nickname || '—',
-      sub: topReleaser ? `${topReleaser.ReleaseCount} ครั้ง` : '',
       icon: CalendarX,
       color: topReleaser ? 'bg-amber-500' : 'bg-slate-400',
     },
@@ -1293,12 +1292,15 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
                 <div key={r.ReleaseId} className="px-5 py-4">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-slate-800 text-sm">{r.SubjectName || r.CourseName}</p>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      r.Status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
-                      : r.Status === 'open' ? 'bg-red-50 text-red-700'
-                      : 'bg-slate-100 text-slate-500'
-                    }`}>
-                      {r.Status === 'accepted' ? 'มีคนรับแล้ว' : r.Status === 'open' ? 'ยังไม่มีคนรับ' : r.Status}
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${r.Status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
+                        : r.Status === 'open' ? 'bg-amber-50 text-amber-700'
+                          : r.Status === 'expired' ? 'bg-red-50 text-red-700'
+                            : 'bg-slate-100 text-slate-500'
+                      }`}>
+                      {r.Status === 'accepted' ? 'มีคนรับแล้ว'
+                        : r.Status === 'open' ? 'กำลังรอคนรับ'
+                          : r.Status === 'expired' ? 'หมดเขตไม่มีคนรับ'
+                            : 'ยกเลิกแล้ว'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
