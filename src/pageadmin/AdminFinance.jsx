@@ -18,8 +18,14 @@ import {
 const FINANCE_API = `${API_URL}/api/admin/finance`;
 const ITEMS_PER_PAGE = 10;
 
-const PIE_COLORS_A = ['#f97316', '#fb923c', '#fdba74', '#fed7aa', '#ffedd5', '#c2410c', '#9a3412'];
-const PIE_COLORS_B = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#1d4ed8', '#1e3a8a'];
+const DONUT_COLORS = [
+    { base: '#f97316', light: '#fdba74' },
+    { base: '#3b82f6', light: '#93c5fd' },
+    { base: '#10b981', light: '#6ee7b7' },
+    { base: '#f59e0b', light: '#fcd34d' },
+    { base: '#a855f7', light: '#d8b4fe' },
+    { base: '#94a3b8', light: '#cbd5e1' },
+];
 
 /* ─────────────────────────────────────────────────────────────────────────
    DESIGN TOKENS — one system, reused everywhere. Nothing below this block
@@ -27,14 +33,14 @@ const PIE_COLORS_B = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe', '#1
    (อิงจาก AdminStudent.jsx / AdminTutors.jsx / AdminDashboard.jsx เพื่อให้เป็นระบบเดียวกัน)
    ────────────────────────────────────────────────────────────────────── */
 const T = {
-    card: 'bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition',
+    card: 'bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition',
     cardPad: 'p-6',
     cardPadSm: 'p-4',
     transition: 'transition duration-200 ease-out',
     title: 'text-lg font-bold text-slate-900',
     subtitle: 'text-sm text-slate-500',
     label: 'text-xs font-medium text-slate-500',
-    value: 'text-2xl font-bold text-slate-900 tracking-tight',
+    value: 'text-xl font-black text-slate-900 tracking-tight',
     caption: 'text-[11px] text-slate-400',
     chartHeight: 260,
 };
@@ -166,7 +172,7 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
     }[tone];
 
     return (
-        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md ${T.transition} h-full`}>
+        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full`}>
             {Icon && (
                 <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0`}>
                     <Icon className="h-5 w-5 text-white" />
@@ -176,6 +182,70 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
                 <p className={T.label}>{label}</p>
                 <p className="text-xl font-black text-slate-900 tracking-tight truncate">{value}</p>
                 {sub && <p className={`${T.caption} mt-0.5 truncate`}>{sub}</p>}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Donut3D — โทนเดียวกับ CourseStatusDonut ใน Dashboard ──────────── */
+function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v) => v, size = 200 }) {
+    if (!data.length) return <EmptyState message="ยังไม่มีข้อมูล" />;
+    const sorted = [...data].sort((a, b) => b.value - a.value);
+    const topValue = sorted[0]?.value ?? 0;
+
+    return (
+        <div className="flex flex-col items-center gap-4">
+            <div className="relative shrink-0" style={{ width: size, height: size }}>
+                <div className="absolute inset-4 rounded-full bg-slate-300/40 blur-md translate-y-2" />
+                <ResponsiveContainer width="100%" height="100%">
+                    <RePieChart>
+                        <defs>
+                            {sorted.map((d, i) => (
+                                <radialGradient id={`${idPrefix}-${i}`} key={i} cx="35%" cy="30%" r="75%">
+                                    <stop offset="0%" stopColor={d.light} />
+                                    <stop offset="100%" stopColor={d.base} />
+                                </radialGradient>
+                            ))}
+                        </defs>
+                        <Pie
+                            data={sorted}
+                            dataKey="value"
+                            nameKey="name"
+                            innerRadius={size * 0.28}
+                            outerRadius={size * 0.49}
+                            paddingAngle={3}
+                            cornerRadius={4}
+                            stroke="#ffffff"
+                            strokeWidth={2}
+                            style={{ filter: 'drop-shadow(0 8px 8px rgba(15,23,42,0.28))' }}
+                            isAnimationActive={false}
+                        >
+                            {sorted.map((d, i) => (
+                                <Cell
+                                    key={i}
+                                    fill={`url(#${idPrefix}-${i})`}
+                                    style={d.value === topValue ? { filter: 'drop-shadow(0 10px 10px rgba(15,23,42,0.32))' } : undefined}
+                                />
+                            ))}
+                        </Pie>
+                        <Tooltip formatter={(v) => valueFormatter(v)} contentStyle={CHART_TOOLTIP_STYLE} />
+                    </RePieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <p className="text-xl font-black text-slate-900">{centerValue}</p>
+                    <p className="text-[11px] text-slate-400">{centerLabel}</p>
+                </div>
+            </div>
+            <div className="w-full max-w-xs space-y-1">
+                {sorted.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs py-0.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.base }} />
+                            <span className="text-slate-600 truncate">{d.name}</span>
+                        </div>
+                        <span className="font-bold text-slate-800 shrink-0">{valueFormatter(d.value)}</span>
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -191,9 +261,8 @@ function SegmentedControl({ options, value, onChange }) {
                 <button
                     key={id}
                     onClick={() => onChange(id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${T.transition} ${
-                        value === id ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${T.transition} ${value === id ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
                 >
                     <Icon className="h-4 w-4" />{label}
                 </button>
@@ -218,7 +287,7 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet,
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                     <div>
                         <p className={T.label}>รายรับเดือนนี้</p>
-                        <p className={`${T.value} text-3xl mt-1`}>{formatMoney(revenue)}</p>
+                        <p className={`${T.value} mt-1`}>{formatMoney(revenue)}</p>
                         <p className={`${T.caption} mt-1.5 flex items-center gap-1`}>
                             {revenueGrowth !== null && (
                                 <span className={`inline-flex items-center gap-0.5 font-semibold ${revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -231,17 +300,17 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet,
                     </div>
                     <div>
                         <p className={T.label}>กระแสเงินสดสุทธิ</p>
-                        <p className={`${T.value} text-3xl mt-1 ${cashNet < 0 ? 'text-red-600' : ''}`}>{formatMoney(cashNet)}</p>
+                        <p className={`${T.value} mt-1 ${cashNet < 0 ? 'text-red-600' : ''}`}>{formatMoney(cashNet)}</p>
                         <p className={`${T.caption} mt-1.5`}>{cashMargin === null ? 'ยังไม่มีข้อมูลเดือนนี้' : `คิดเป็น ${cashMargin}% ของรายรับ`}</p>
                     </div>
                     <div>
                         <p className={T.label}>ค่าติวเตอร์ค้างจ่าย</p>
-                        <p className={`${T.value} text-3xl mt-1 ${tutorPayable > 0 ? 'text-orange-600' : ''}`}>{formatMoney(tutorPayable)}</p>
+                        <p className={`${T.value} mt-1 ${tutorPayable > 0 ? 'text-orange-600' : ''}`}>{formatMoney(tutorPayable)}</p>
                         <p className={`${T.caption} mt-1.5`}>เดือนนี้เกิดขึ้น {formatMoney(tutorAccrued)}</p>
                     </div>
                     <div>
                         <p className={T.label}>ยอดเกินกำหนด</p>
-                        <p className={`${T.value} text-3xl mt-1 ${overdue > 0 ? 'text-red-600' : ''}`}>{formatMoney(overdue)}</p>
+                        <p className={`${T.value} mt-1 ${overdue > 0 ? 'text-red-600' : ''}`}>{formatMoney(overdue)}</p>
                         <p className={`${T.caption} mt-1.5`}>{overdueCount} งวดที่ต้องติดตาม</p>
                     </div>
                 </div>
@@ -528,11 +597,13 @@ export default function AdminFinance() {
 
     const fetchTutorPayables = () => {
         setTutorLoading(true); setTutorError(null);
-        axios.get(`${FINANCE_API}/tutor-payables`, { params: {
-            ...(debouncedSearch ? { search: debouncedSearch } : {}),
-            ...(monthFilter ? { month: monthFilter } : {}),
-            ...(tutorStatus !== 'all' ? { status: tutorStatus } : {}),
-        } }).then(r => {
+        axios.get(`${FINANCE_API}/tutor-payables`, {
+            params: {
+                ...(debouncedSearch ? { search: debouncedSearch } : {}),
+                ...(monthFilter ? { month: monthFilter } : {}),
+                ...(tutorStatus !== 'all' ? { status: tutorStatus } : {}),
+            }
+        }).then(r => {
             setTutorData(r.data.data || []);
             setTutorSummary(r.data.summary || { unpaidAmount: 0, unpaidCount: 0, paidAmount: 0, paidCount: 0 });
         }).catch(e => setTutorError(e.response?.data?.message || 'โหลดรายการค่าติวเตอร์ไม่สำเร็จ'))
@@ -610,15 +681,17 @@ export default function AdminFinance() {
     const revenueByCourseType = (charts.byCourseType || []).map((c, i) => ({
         name: c.TypeName || 'ไม่ระบุ',
         value: Number(c.revenue) || 0,
-        color: PIE_COLORS_A[i % PIE_COLORS_A.length],
+        ...DONUT_COLORS[i % DONUT_COLORS.length],
     }));
 
     const installmentStatusData = (charts.installmentStatuses || []).map((c, i) => ({
         name: c.label,
         value: Number(c.count) || 0,
-        amount: Number(c.amount) || 0,
-        color: PIE_COLORS_B[i % PIE_COLORS_B.length],
+        ...DONUT_COLORS[i % DONUT_COLORS.length],
     }));
+
+    const revenueByCourseTypeTotal = revenueByCourseType.reduce((s, d) => s + d.value, 0);
+    const installmentTotalCount = installmentStatusData.reduce((s, d) => s + d.value, 0);
 
     const topCourseData = (charts.topCourses || []).map(c => ({
         name: c.CourseName,
@@ -635,10 +708,10 @@ export default function AdminFinance() {
     const totalTx = txPagination.total || 0;
 
     return (
-        <div className="grid grid-cols-12 gap-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px]">
 
             {/* ── Page header ── */}
-            <div className="col-span-12 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">การเงินสถาบัน</h1>
                     <p className={`${T.subtitle} mt-1`}>ภาพรวมรายรับ-รายจ่าย และจัดการธุรกรรมทั้งหมด</p>
@@ -654,83 +727,43 @@ export default function AdminFinance() {
             </div>
 
             {missingPriceCount > 0 && (
-                <div className="col-span-12 flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-2xl text-sm text-orange-700">
+                <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-2xl text-sm text-orange-700">
                     <AlertCircle className="h-4 w-4 shrink-0" />
                     พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ
                 </div>
             )}
 
-            {/* ── Hero: the 5-second answer — no scrolling required ── */}
-            <div className="col-span-12">
-                <HeroSummary
-                    loading={summaryLoading}
-                    error={summaryError}
-                    onRetry={fetchSummary}
-                    revenue={monthlyRevenue}
-                    revenueGrowth={revenueGrowth}
-                    cashNet={monthlyProfit}
-                    cashMargin={profitMargin}
-                    tutorPayable={tutorPayableOutstanding}
-                    tutorAccrued={monthlyTutorAccrued}
-                    overdue={overdueAmount}
-                    overdueCount={overdueInstallmentCount}
-                />
-            </div>
+            {/* ── Hero ── */}
+            <HeroSummary
+                loading={summaryLoading}
+                error={summaryError}
+                onRetry={fetchSummary}
+                revenue={monthlyRevenue}
+                revenueGrowth={revenueGrowth}
+                cashNet={monthlyProfit}
+                cashMargin={profitMargin}
+                tutorPayable={tutorPayableOutstanding}
+                tutorAccrued={monthlyTutorAccrued}
+                overdue={overdueAmount}
+                overdueCount={overdueInstallmentCount}
+            />
 
-            {/* ── Secondary KPIs — same existing summary fields, สไตล์การ์ดสี icon square เหมือนหน้านักเรียน/ติวเตอร์ ── */}
-            <div className="col-span-12">
-                <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <KPICard
-                            label="รายรับสะสมทั้งหมด"
-                            value={formatMoney(totalRevenueAllTime)}
-                            sub="ตั้งแต่เริ่มดำเนินการ"
-                            icon={Banknote}
-                            tone="orange"
-                        />
-                        <KPICard
-                            label="ยอดคงเหลือแผนผ่อน"
-                            value={formatMoney(outstandingTotalAmount)}
-                            sub={`${outstandingEnrollCount} แผนที่ชำระยังไม่ครบ`}
-                            icon={Clock}
-                            tone="orange"
-                        />
-                        <KPICard
-                            label="นักเรียนที่ชำระแล้ว"
-                            value={`${paidEnrollCount} / ${totalEnrollCount}`}
-                            sub={`${paidRate}% ของนักเรียนทั้งหมด`}
-                            icon={Users}
-                            tone="green"
-                        />
-                        <KPICard
-                            label="อัตราชำระตรงเวลา"
-                            value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`}
-                            sub="เฉพาะงวดผ่อนที่ถึงกำหนดแล้ว"
-                            icon={CheckCircle}
-                            tone="green"
-                        />
-                        <KPICard
-                            label="รายรับเฉลี่ย/นักเรียน"
-                            value={formatMoney(avgRevenuePerStudent)}
-                            sub="คำนวณจากผู้ชำระจริงในเดือนนี้"
-                            icon={Target}
-                            tone="neutral"
-                        />
-                        <KPICard
-                            label="รูปแบบการชำระ"
-                            value={`${fullPlanPercent}% เต็ม`}
-                            sub={`เต็ม ${fullOrderCount} · ผ่อน ${installmentOrderCount} รายการ`}
-                            icon={CreditCard}
-                            tone="blue"
-                        />
-                    </div>
-                </ApiState>
-            </div>
+            {/* ── Secondary KPIs ── */}
+            <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <KPICard label="รายรับสะสมทั้งหมด" value={formatMoney(totalRevenueAllTime)} sub="ตั้งแต่เริ่มดำเนินการ" icon={Banknote} tone="orange" />
+                    <KPICard label="ยอดคงเหลือแผนผ่อน" value={formatMoney(outstandingTotalAmount)} sub={`${outstandingEnrollCount} แผน`} icon={Clock} tone="orange" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} sub={`${paidRate}%`} icon={Users} tone="green" />
+                    <KPICard label="อัตราชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`} sub="งวดที่ถึงกำหนดแล้ว" icon={CheckCircle} tone="green" />
+                    <KPICard label="รายรับเฉลี่ย/นักเรียน" value={formatMoney(avgRevenuePerStudent)} sub="เฉพาะเดือนนี้" icon={Target} tone="neutral" />
+                    <KPICard label="รูปแบบการชำระ" value={`${fullPlanPercent}% เต็ม`} sub={`เต็ม ${fullOrderCount} · ผ่อน ${installmentOrderCount} รายการ`} icon={CreditCard} tone="blue" />
+                </div>
+            </ApiState>
 
             {/* ── Overview Tab ── */}
             {selectedTab === 'overview' && (
                 <>
-                    <div className="col-span-12 lg:col-span-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <SectionCard title="รายรับ - เงินจ่ายติวเตอร์ (6 เดือน)" icon={BarChart3}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
@@ -747,9 +780,7 @@ export default function AdminFinance() {
                                 </ResponsiveContainer>
                             </ApiState>
                         </SectionCard>
-                    </div>
 
-                    <div className="col-span-12 lg:col-span-6">
                         <SectionCard title="แนวโน้มกระแสเงินสดสุทธิ" icon={TrendingUp}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
@@ -765,136 +796,94 @@ export default function AdminFinance() {
                         </SectionCard>
                     </div>
 
-                    <div className="col-span-12 lg:col-span-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <SectionCard title="แหล่งรายรับ (ตามประเภทคอร์ส)" icon={PieChart}>
                             <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
                                 {revenueByCourseType.length === 0 ? (
                                     <EmptyState message="ยังไม่มีข้อมูลรายรับ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
                                 ) : (
-                                    <div className="flex items-center gap-4">
-                                        <ResponsiveContainer width="50%" height={180}>
-                                            <RePieChart>
-                                                <Pie data={revenueByCourseType} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
-                                                    {revenueByCourseType.map((e, i) => <Cell key={i} fill={e.color} />)}
-                                                </Pie>
-                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
-                                            </RePieChart>
-                                        </ResponsiveContainer>
-                                        <div className="flex-1 space-y-1.5">
-                                            {revenueByCourseType.map((item, i) => (
-                                                <div key={i} className="flex items-center justify-between text-sm">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                                                        <span className="text-slate-600 text-xs">{item.name}</span>
-                                                    </div>
-                                                    <span className="font-bold text-slate-900 text-xs">{formatMoney(item.value)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <Donut3D idPrefix="courseTypeDonut" data={revenueByCourseType} centerValue={formatMoney(revenueByCourseTypeTotal)} centerLabel="รายรับรวม" valueFormatter={formatMoney} />
                                 )}
                             </ApiState>
                         </SectionCard>
-                    </div>
 
-                    <div className="col-span-12 lg:col-span-6">
                         <SectionCard title="สถานะงวดผ่อน" icon={Wallet}>
                             <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
                                 {installmentStatusData.length === 0 ? (
                                     <EmptyState message="ยังไม่มีแผนผ่อนที่เริ่มชำระ" suggestion="ไม่นับรายการที่เพียงสร้าง QR แล้วออก" />
                                 ) : (
-                                    <div className="flex items-center gap-4">
-                                        <ResponsiveContainer width="50%" height={180}>
-                                            <RePieChart>
-                                                <Pie data={installmentStatusData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" paddingAngle={3}>
-                                                    {installmentStatusData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                                                </Pie>
-                                                <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, _n, item) => [`${v} งวด · ${formatMoney(item.payload.amount)}`, item.payload.name]} />
-                                            </RePieChart>
-                                        </ResponsiveContainer>
-                                        <div className="flex-1 space-y-1.5">
-                                            {installmentStatusData.map((item, i) => (
-                                                <div key={i} className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: item.color }} />
-                                                        <span className="text-slate-600 text-xs">{item.name}</span>
-                                                    </div>
-                                                    <span className="font-bold text-slate-900 text-xs">{item.value} งวด</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                    <Donut3D idPrefix="installmentDonut" data={installmentStatusData} centerValue={installmentTotalCount} centerLabel="งวดทั้งหมด" valueFormatter={(v) => `${v} งวด`} />
                                 )}
                             </ApiState>
                         </SectionCard>
                     </div>
 
-                    <div className="col-span-12">
-                        <SectionCard title="5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
-                            <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
-                                {topCourseData.length === 0 ? (
-                                    <EmptyState message="ยังไม่มีข้อมูลรายรับรายคอร์ส" suggestion="จะแสดงเมื่อมีรายการชำระที่ตรวจสอบสำเร็จ" />
-                                ) : (
-                                    <ResponsiveContainer width="100%" height={Math.max(240, topCourseData.length * 52)}>
-                                        <BarChart data={topCourseData} layout="vertical" margin={{ top: 8, left: 24, right: 30, bottom: 24 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                                            <XAxis
-                                                type="number"
-                                                tick={CHART_TICK}
-                                                tickFormatter={value => `฿${Number(value).toLocaleString()}`}
-                                                axisLine={false}
-                                                tickLine={false}
-                                                label={{ value: 'แกน X: รายรับ (บาท)', position: 'insideBottom', offset: -14, fill: '#64748b', fontSize: 12 }}
-                                            />
-                                            <YAxis
-                                                type="category"
-                                                dataKey="name"
-                                                width={180}
-                                                tick={CHART_TICK}
-                                                axisLine={false}
-                                                tickLine={false}
-                                                label={{ value: 'แกน Y: ชื่อคอร์ส', angle: -90, position: 'insideLeft', offset: -12, fill: '#64748b', fontSize: 12 }}
-                                            />
-                                            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} />
-                                            <Bar dataKey="revenue" name="รายรับ" fill="#f97316" radius={[0, 8, 8, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                )}
-                            </ApiState>
-                        </SectionCard>
-                    </div>
+                    <SectionCard title="🏆 5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
+                        <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
+                            {topCourseData.length === 0 ? (
+                                <EmptyState message="ยังไม่มีข้อมูลรายรับรายคอร์ส" suggestion="จะแสดงเมื่อมีรายการชำระที่ตรวจสอบสำเร็จ" />
+                            ) : (
+                                <ResponsiveContainer width="100%" height={Math.max(240, topCourseData.length * 56)}>
+                                    <BarChart data={topCourseData} layout="vertical" margin={{ top: 8, left: 12, right: 30, bottom: 8 }}>
+                                        <defs>
+                                            <linearGradient id="topCourseBarTop" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stopColor="#fdba74" />
+                                                <stop offset="100%" stopColor="#ea580c" />
+                                            </linearGradient>
+                                            <linearGradient id="topCourseBarRest" x1="0" y1="0" x2="1" y2="0">
+                                                <stop offset="0%" stopColor="#fed7aa" />
+                                                <stop offset="100%" stopColor="#fb923c" />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                        <XAxis type="number" tick={CHART_TICK} tickFormatter={value => `฿${Number(value).toLocaleString()}`} axisLine={false} tickLine={false} />
+                                        <YAxis type="category" dataKey="name" width={180} tick={CHART_TICK} axisLine={false} tickLine={false} />
+                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={v => formatMoney(v)} cursor={{ fill: '#f8fafc' }} />
+                                        <Bar dataKey="revenue" name="รายรับ" radius={[0, 10, 10, 0]}>
+                                            {topCourseData.map((_, i) => (
+                                                <Cell
+                                                    key={i}
+                                                    fill={i === 0 ? 'url(#topCourseBarTop)' : 'url(#topCourseBarRest)'}
+                                                    style={{ filter: i === 0 ? 'drop-shadow(2px 4px 6px rgba(234,88,12,0.35))' : 'drop-shadow(1px 2px 3px rgba(100,116,139,0.15))' }}
+                                                />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            )}
+                        </ApiState>
+                    </SectionCard>
                 </>
             )}
 
             {/* ── Transactions Tab ── */}
             {selectedTab === 'transactions' && (
                 <>
-                    <div className="col-span-12 flex justify-center">
+                    <div className="flex justify-center">
                         <SegmentedControl value={transactionKind} onChange={setTransactionKind} options={[
                             { id: 'student', label: 'เงินรับจากนักเรียน', icon: Banknote },
                             { id: 'tutor', label: 'เงินจ่ายติวเตอร์', icon: Users },
                         ]} />
                     </div>
 
-                    <div className="col-span-12">
-                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-                            <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
-                                <div className="relative flex-1 min-w-[200px]">
-                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        value={searchInput}
-                                        onChange={e => setSearchInput(e.target.value)}
-                                        placeholder={transactionKind === 'student' ? 'ค้นหานักเรียน, Order, เลขอ้างอิง, คอร์ส...' : 'ค้นหาติวเตอร์หรือคอร์ส...'}
-                                        className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
-                                    />
-                                </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                        <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
+                            <div className="relative flex-1 min-w-[200px]">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                 <input
-                                    type="month"
-                                    value={monthFilter}
-                                    onChange={e => setMonthFilter(e.target.value)}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
+                                    value={searchInput}
+                                    onChange={e => setSearchInput(e.target.value)}
+                                    placeholder={transactionKind === 'student' ? 'ค้นหานักเรียน, Order, เลขอ้างอิง, คอร์ส...' : 'ค้นหาติวเตอร์หรือคอร์ส...'}
+                                    className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
                                 />
-                                {transactionKind === 'student' ? <>
+                            </div>
+                            <input
+                                type="month"
+                                value={monthFilter}
+                                onChange={e => setMonthFilter(e.target.value)}
+                                className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
+                            />
+                            {transactionKind === 'student' ? <>
                                 <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">เต็มและผ่อน</option><option value="full">เต็มจำนวน</option><option value="installment">ผ่อนชำระ</option>
                                 </select>
@@ -912,24 +901,23 @@ export default function AdminFinance() {
                                         <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
                                     ))}
                                 </select>
-                                </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
-                                    <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
-                                </select>}
-                            </div>
-                            {filtersError && (
-                                <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
-                                    <AlertCircle className="h-3.5 w-3.5" />
-                                    {filtersError}
-                                    <button onClick={fetchFiltersMeta} className="font-semibold underline underline-offset-2">ลองใหม่</button>
-                                </div>
-                            )}
-                            <p className={`${T.caption} mt-2 pl-1`}>{transactionKind === 'student'
-                                ? `แสดง ${txData.length} จาก ${totalTx.toLocaleString()} รายการรับเงินจริง`
-                                : `รอโอน ${tutorSummary.unpaidCount} รอบ ${formatMoney(tutorSummary.unpaidAmount)} · จ่ายแล้ว ${tutorSummary.paidCount} รอบ ${formatMoney(tutorSummary.paidAmount)}`}</p>
+                            </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
+                                <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
+                            </select>}
                         </div>
+                        {filtersError && (
+                            <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
+                                <AlertCircle className="h-3.5 w-3.5" />
+                                {filtersError}
+                                <button onClick={fetchFiltersMeta} className="font-semibold underline underline-offset-2">ลองใหม่</button>
+                            </div>
+                        )}
+                        <p className={`${T.caption} mt-2 pl-1`}>{transactionKind === 'student'
+                            ? `แสดง ${txData.length} จาก ${totalTx.toLocaleString()} รายการรับเงินจริง`
+                            : `รอโอน ${tutorSummary.unpaidCount} รอบ ${formatMoney(tutorSummary.unpaidAmount)} · จ่ายแล้ว ${tutorSummary.paidCount} รอบ ${formatMoney(tutorSummary.paidAmount)}`}</p>
                     </div>
 
-                    {transactionKind === 'student' ? <div className="col-span-12">
+                    {transactionKind === 'student' ? (
                         <ApiState loading={txLoading} error={txError} onRetry={fetchTransactions} minHeight="h-64" skeletonHeight="h-64">
                             {txData.length === 0 ? (
                                 <div className={T.card}>
@@ -962,27 +950,49 @@ export default function AdminFinance() {
                                 </div>
                             )}
                         </ApiState>
-                    </div> : <div className="col-span-12">
+                    ) : (
                         <ApiState loading={tutorLoading} error={tutorError} onRetry={fetchTutorPayables} minHeight="h-64">
-                            {tutorData.length === 0 ? <div className={T.card}><EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" /></div> :
-                            <div className={`${T.card} overflow-x-auto`}><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>)}</tr></thead><tbody className="divide-y">{tutorData.map(item => <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
-                                <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
-                                <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
-                                <td className="px-4 py-3">{item.sessionCount} คาบ</td>
-                                <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
-                                <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
-                                <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
-                                <td className="px-4 py-3">{item.status === 'unpaid' ? (item.canPay
-                                    ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
-                                    : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
-                                    : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}</td>
-                            </tr>)}</tbody></table></div>}
+                            {tutorData.length === 0 ? (
+                                <div className={T.card}>
+                                    <EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" />
+                                </div>
+                            ) : (
+                                <div className={`${T.card} overflow-x-auto`}>
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                {['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => (
+                                                    <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : 'text-left'}`}>{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {tutorData.map(item => (
+                                                <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
+                                                    <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
+                                                    <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
+                                                    <td className="px-4 py-3">{item.sessionCount} คาบ</td>
+                                                    <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
+                                                    <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
+                                                    <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
+                                                    <td className="px-4 py-3">
+                                                        {item.status === 'unpaid' ? (item.canPay
+                                                            ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
+                                                            : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
+                                                            : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </ApiState>
-                    </div>}
+                    )}
 
                     {/* Pagination */}
                     {transactionKind === 'student' && totalPages > 1 && (
-                        <div className="col-span-12 flex items-center justify-between flex-wrap gap-3">
+                        <div className="flex items-center justify-between flex-wrap gap-3">
                             <p className={T.subtitle}>
                                 หน้า <span className="font-semibold text-slate-700">{currentPageNum}</span> จาก <span className="font-semibold text-slate-700">{totalPages}</span> · ทั้งหมด <span className="font-semibold text-slate-700">{totalTx.toLocaleString()}</span> รายการ
                             </p>
@@ -1012,7 +1022,7 @@ export default function AdminFinance() {
                 </>
             )}
 
-            {/* ── Transaction Detail Modal ── */}
+            {/* ── Modals ── */}
             {viewTxId && (
                 <StudentPaymentDetailModal transactionId={viewTxId} onClose={() => setViewTxId(null)} />
             )}
