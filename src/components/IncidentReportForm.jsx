@@ -14,6 +14,13 @@ import {
 
 const API = `${API_URL}/api/incidents`;
 
+// ★ แก้ 401: route นี้บังคับ authRequired ต้องแนบ token เอง
+// (ต่างจากหน้าอื่นที่ backend ยังไม่บังคับ auth) ใช้ key เดียวกับทั้งระบบ
+const getAuthConfig = () => {
+  const token = localStorage.getItem("student_token");
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+};
+
 export default function IncidentReportForm({ role, onClose, showToast }) {
   const [step, setStep] = useState(1); // 1 = เลือกหมวดหมู่, 2 = เลือกประเภทย่อย + กรอกรายละเอียด
   const [categoryKey, setCategoryKey] = useState(null);
@@ -43,8 +50,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         incidentTypeId,
         isAnonymous,
         description: description.trim(),
-        // relatedTutorId / relatedStudentId / relatedCourseId: ยังไม่ส่ง — TODO ต่อยอด
-      });
+      }, getAuthConfig());
       setResult({ severity: res.data.severity || selectedType?.severity });
     } catch (err) {
       showToast("error", "ส่งเรื่องไม่สำเร็จ", err.response?.data?.message);
@@ -88,10 +94,13 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         <p className="text-sm text-slate-500">เลือกหมวดหมู่ที่ใกล้เคียงกับสิ่งที่ต้องการแจ้งมากที่สุด</p>
         {INCIDENT_CATEGORIES.map(cat => {
           const meta = getSeverityMeta(cat.severity);
+          const Icon = meta.icon;
           return (
             <button key={cat.key} onClick={() => pickCategory(cat.key)}
-              className={`w-full flex items-center gap-3 p-4 rounded-xl border text-left transition hover:shadow-sm ${meta.bg} ${meta.border} hover:${meta.ring} hover:ring-2`}>
-              <span className="text-2xl shrink-0">{meta.emoji}</span>
+              className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition hover:shadow-sm ${meta.bg} ${meta.border} hover:ring-2`}>
+              <div className={`h-10 w-10 rounded-xl ${meta.solidBg} flex items-center justify-center shrink-0`}>
+                <Icon className="h-5 w-5 text-white" />
+              </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${meta.text}`}>{cat.label}</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -114,7 +123,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
       </button>
 
       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${previewSeverityMeta.bg} ${previewSeverityMeta.border} border`}>
-        <span>{previewSeverityMeta.emoji}</span>
+        <previewSeverityMeta.icon className={`h-4 w-4 ${previewSeverityMeta.text}`} />
         <span className={`text-xs font-bold ${previewSeverityMeta.text}`}>{selectedCategory.label}</span>
       </div>
 
@@ -125,11 +134,10 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         <div className="flex flex-wrap gap-1.5">
           {selectedCategory.types.map(t => (
             <button key={t.id} onClick={() => setIncidentTypeId(t.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${
-                incidentTypeId === t.id
-                  ? "bg-orange-600 text-white border-orange-600"
-                  : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"
-              }`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${incidentTypeId === t.id
+                ? "bg-orange-600 text-white border-orange-600"
+                : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"
+                }`}>
               {t.label}
             </button>
           ))}

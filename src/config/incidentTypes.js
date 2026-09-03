@@ -1,7 +1,4 @@
-// src/config/incidentTypes.js
-// ★ ฐานร่วมของระบบ Incident Report — ใช้ทั้งฝั่ง Report Form (student/tutor)
-// และ Admin Incident Center ห้าม hardcode severity/สี/label ซ้ำที่อื่น
-// ★ ฝั่ง backend มี mirror เป็น CommonJS (routes/config/incidentTypes.js) ต้อง sync คู่กัน
+import { ShieldAlert, AlertTriangle, Info, Lightbulb } from "lucide-react";
 
 export const SEVERITY = {
     CRITICAL: "critical",
@@ -19,22 +16,22 @@ export const SEVERITY = {
   
   export const SEVERITY_META = {
     [SEVERITY.CRITICAL]: {
-      label: "Critical", labelTh: "วิกฤต", emoji: "🔴",
+      label: "Critical", labelTh: "วิกฤต", icon: ShieldAlert,
       bg: "bg-red-50", text: "text-red-700", border: "border-red-200",
       solidBg: "bg-red-600", ring: "ring-red-200", requiresImmediateWarning: true,
     },
     [SEVERITY.HIGH]: {
-      label: "High", labelTh: "สูง", emoji: "🟠",
+      label: "High", labelTh: "สูง", icon: AlertTriangle,
       bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-200",
       solidBg: "bg-orange-600", ring: "ring-orange-200", requiresImmediateWarning: false,
     },
     [SEVERITY.MEDIUM]: {
-      label: "Medium", labelTh: "ปานกลาง", emoji: "🟡",
+      label: "Medium", labelTh: "ปานกลาง", icon: Info,
       bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200",
       solidBg: "bg-amber-500", ring: "ring-amber-200", requiresImmediateWarning: false,
     },
     [SEVERITY.LOW]: {
-      label: "Low", labelTh: "ทั่วไป", emoji: "🟢",
+      label: "Low", labelTh: "ทั่วไป", icon: Lightbulb,
       bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200",
       solidBg: "bg-emerald-500", ring: "ring-emerald-200", requiresImmediateWarning: false,
     },
