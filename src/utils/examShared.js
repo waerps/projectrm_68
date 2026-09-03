@@ -185,3 +185,9 @@ export async function fetchExamResults(examId) {
   const { data } = await axios.get(`${API_BASE}/${examId}/results`);
   return data;
 }
+
+// GET /api/exam/join/:examJoinId/detail → รายละเอียดรายข้อของนักเรียน 1 คน (คำตอบ/ผล/เวลาที่ใช้)
+export async function fetchExamJoinDetail(examJoinId) {
+  const { data } = await axios.get(`${API_BASE}/join/${examJoinId}/detail`);
+  return data;
+}

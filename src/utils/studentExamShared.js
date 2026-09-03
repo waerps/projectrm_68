@@ -53,3 +53,9 @@ export async function fetchExamResult(examJoinId, userId) {
     const { data } = await axios.get(`${API_BASE}/${examJoinId}/result`, { params: { userId } });
     return data;
 }
+
+// POST /api/student/exam/question/enter — log ว่านักเรียนเริ่มดูข้อนี้เมื่อไหร่
+export async function logQuestionEnter({ examJoinId, userId, questionId }) {
+    const { data } = await axios.post(`${API_BASE}/question/enter`, { examJoinId, userId, questionId });
+    return data;
+}

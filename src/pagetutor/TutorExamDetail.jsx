@@ -9,10 +9,10 @@ import {
 
 import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
-  deriveStatus, isExamReady,
+  deriveStatus, isExamReady, formatTime,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
   fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
-  openExamSession, closeExamSession, fetchExamResults,
+  openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
 } from "../utils/examShared";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
@@ -26,11 +26,11 @@ function Badge({ className, children }) {
 }
 
 const TABS = [
-  { key: "questions", label: "Questions", icon: FileQuestion },
-  { key: "settings", label: "Exam Settings", icon: SettingsIcon },
-  { key: "preview", label: "Preview", icon: Eye },
+  { key: "questions", label: "ข้อสอบ", icon: FileQuestion },
+  { key: "settings", label: "ตั้งค่าข้อสอบ", icon: SettingsIcon },
+  { key: "preview", label: "ดูตัวอย่างข้อสอบ", icon: Eye },
   { key: "session", label: "เปิด/ปิดสอบ", icon: Play },
-  { key: "results", label: "Results / Analytics", icon: BarChart2 },
+  { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
@@ -268,7 +268,8 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
   );
 }
 
-function QuestionsTab({ examId, questions, onChanged }) {
+function QuestionsTab({ examId, questions, status, onChanged }) {
+  const locked = status === "active";
   const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -325,12 +326,19 @@ function QuestionsTab({ examId, questions, onChanged }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        {!editingId && (
+        {!editingId && !locked && (
           <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
             <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
           </button>
         )}
       </div>
+
+      {locked && (
+        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">การสอบนี้กำลังเปิดอยู่ — เพิ่ม/ลบ/แก้ไขข้อสอบไม่ได้จนกว่าจะปิดสอบ (ไปที่แท็บ "เปิด/ปิดสอบ")</p>
+        </div>
+      )}
 
       {mode === "picker" && (
         <div className="border border-neutral-200 rounded-2xl p-5 relative">
@@ -390,10 +398,16 @@ function QuestionsTab({ examId, questions, onChanged }) {
                   <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
                   <td className="px-4 py-3 text-neutral-500">{q.score}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
-                    <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
-                      {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
-                    </button>
+                    {locked ? (
+                      <span className="text-xs text-neutral-300">ล็อกอยู่</span>
+                    ) : (
+                      <>
+                        <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
+                        <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
+                          {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -554,8 +568,20 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [live, setLive] = useState(null);
+  const [remainingSec, setRemainingSec] = useState(null);
   const status = deriveStatus(exam);
   const ready = isExamReady(exam);
+
+  // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
+  // Backend เสมอ (examStartedAt + durationMinutes) เพื่อให้ตรงกับฝั่งนักเรียน
+  useEffect(() => {
+    if (!live?.examStartedAt || live?.durationMinutes == null) { setRemainingSec(null); return; }
+    const deadline = new Date(live.examStartedAt).getTime() + live.durationMinutes * 60 * 1000;
+    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [live?.examStartedAt, live?.durationMinutes]);
 
   const pollResults = useCallback(async () => {
     try {
@@ -677,6 +703,15 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
         </div>
       </div>
 
+      {remainingSec != null && (
+        <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
+          <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
+          <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
+            <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
+          </div>
+        </div>
+      )}
+
       <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
         <StopCircle className="h-4 w-4" /> ปิดสอบ
       </button>
@@ -706,13 +741,97 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
   );
 }
 
-// ─── Results Tab ─────────────────────────────────────────────────────────────
+function StudentDetailModal({ examJoinId, onClose }) {
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+    fetchExamJoinDetail(examJoinId)
+      .then((data) => { if (!cancelled) setDetail(data); })
+      .catch((err) => { console.error("Fetch join detail failed:", err); if (!cancelled) setError("โหลดรายละเอียดไม่สำเร็จ"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [examJoinId]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-sm font-semibold text-neutral-800">{detail?.studentName || "รายละเอียดการทำข้อสอบ"}</p>
+            {detail && <p className="text-xs text-neutral-400 mt-0.5">{detail.examName}</p>}
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        </div>
+
+        {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
+        {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
+
+        {detail && !loading && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3 mb-2">
+              <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                <p className="text-lg font-bold text-orange-600">{detail.totalScore}/{detail.maxScore}</p>
+                <p className="text-xs text-neutral-500">คะแนน</p>
+              </div>
+              <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                <p className="text-lg font-bold text-neutral-700">{detail.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
+                <p className="text-xs text-neutral-500">เริ่มสอบ</p>
+              </div>
+              <div className="bg-neutral-50 rounded-xl p-3 text-center">
+                <p className="text-lg font-bold text-neutral-700">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
+                <p className="text-xs text-neutral-500">ส่งข้อสอบ</p>
+              </div>
+            </div>
+
+            {detail.questions.map((q, i) => (
+              <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
+                <div className="flex items-start justify-between gap-3 mb-1.5">
+                  <p className="text-sm font-medium text-neutral-900 flex-1"><span className="text-neutral-400 font-bold mr-1.5">{i + 1}.</span>{q.text}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                      {q.scoreAwarded}/{q.score}
+                    </span>
+                    <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
+                  </div>
+                </div>
+                {q.periods?.length > 1 && (
+                  <div className="pl-5 mt-1 space-y-0.5">
+                    {q.periods.map((p, pi) => (
+                      <p key={pi} className="text-[11px] text-neutral-400">
+                        ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Results Tab ─────────────────────────────────────────────────────────────
 function ResultsTab({ exam }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [detailJoinId, setDetailJoinId] = useState(null);
+  const [remainingSec, setRemainingSec] = useState(null);
+
+  useEffect(() => {
+    if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
+    const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
+    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [results?.examStartedAt, results?.durationMinutes]);
 
   useEffect(() => {
     if (status !== "closed" && status !== "active") return;
@@ -759,14 +878,14 @@ function ResultsTab({ exam }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-neutral-50 border-b border-neutral-100">
-              {["#", "ชื่อนักเรียน", "เข้าสอบเมื่อ", "คะแนน", "สถานะ"].map((h) => (
+              {["#", "ชื่อนักเรียน", "เข้าสอบเมื่อ", "คะแนน", "ตอบ/ไม่ตอบ", "เวลาที่ใช้", "สถานะ", ""].map((h) => (
                 <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {results.students.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-neutral-400 text-sm">ยังไม่มีนักเรียนเข้าสอบ</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-neutral-400 text-sm">ยังไม่มีนักเรียนเข้าสอบ</td></tr>
             )}
             {results.students.map((s, i) => {
               const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
@@ -777,8 +896,19 @@ function ResultsTab({ exam }) {
                   <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
                   <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
                   <td className="px-4 py-3">{pct != null ? <Badge className={scoreCls}>{s.totalScore}/{s.maxScore} ({pct}%)</Badge> : "—"}</td>
+                  <td className="px-4 py-3 text-neutral-500">{s.answeredCount ?? "—"}/{s.unansweredCount ?? "—"}</td>
+                  <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                    {s.submittedAt
+                      ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
+                      : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"}</span>
+                    <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {s.submittedAt && (
+                      <button onClick={() => setDetailJoinId(s.examJoinId)} className="text-xs text-orange-500 hover:text-orange-700 font-medium">ดูรายละเอียด</button>
+                    )}
                   </td>
                 </tr>
               );
@@ -786,6 +916,9 @@ function ResultsTab({ exam }) {
           </tbody>
         </table>
       </div>
+      {detailJoinId && (
+        <StudentDetailModal examJoinId={detailJoinId} onClose={() => setDetailJoinId(null)} />
+      )}
     </div>
   );
 }
@@ -897,7 +1030,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab examId={exam.id} questions={exam.questions || []} onChanged={reload} />
+          <QuestionsTab examId={exam.id} questions={exam.questions || []} status={status} onChanged={reload} />
         )}
         {tab === "settings" && (
           <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />
