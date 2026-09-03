@@ -9,11 +9,12 @@ import { ToastContainer } from "../components/Toast";
 import {
   AlertOctagon, Loader2, X, Eye, EyeOff, Clock, User, GraduationCap,
   BookOpen, ChevronDown, ChevronLeft, ChevronRight, UserCheck,
-  MessageSquare, Phone, Search, CheckCircle2,
+  MessageSquare, Phone, Search, CheckCircle2, Paperclip, FileText,
 } from "lucide-react";
 import {
   INCIDENT_CATEGORIES, getIncidentTypeById, getSeverityMeta, SEVERITY,
 } from "../config/incidentTypes";
+import { getFileUrl } from "../utils/fileUrl";
 
 const API = `${API_URL}/api/admin/incidents`;
 const ITEMS_PER_PAGE = 12;
@@ -113,7 +114,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
   );
   if (!data) return null;
 
-  const { incident: i, history } = data;
+  const { incident: i, attachments = [], history } = data;
   const sevMeta = getSeverityMeta(i.Severity);
   const SevIcon = sevMeta.icon;
   const typeMeta = getIncidentTypeById(i.IncidentTypeId);
@@ -187,6 +188,43 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
                 <BookOpen className="h-3.5 w-3.5" /> {i.CourseName}
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* หลักฐานแนบ */}
+      {attachments.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <Paperclip className="h-3.5 w-3.5" /> หลักฐานแนบ ({attachments.length})
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((att) => {
+              const isPdf = att.FilePath.toLowerCase().endsWith(".pdf");
+
+              return (
+                <a
+                  key={att.IncidentAttachmentId}
+                  href={getFileUrl(att.FilePath)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block"
+                >
+                  {isPdf ? (
+                    <span className="flex items-center gap-1.5 h-20 w-28 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 hover:border-orange-300 transition">
+                      <FileText className="h-4 w-4 shrink-0" /> เอกสาร PDF
+                    </span>
+                  ) : (
+                    <img
+                      src={getFileUrl(att.FilePath)}
+                      alt="หลักฐานแนบ"
+                      className="h-20 w-20 rounded-xl object-cover border border-slate-200 hover:border-orange-300 transition"
+                    />
+                  )}
+                </a>
+              );
+            })}
           </div>
         </div>
       )}

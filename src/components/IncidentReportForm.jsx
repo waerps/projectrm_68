@@ -3,8 +3,11 @@
 // ยังไม่มี dropdown เลือกติวเตอร์/คอร์สที่เกี่ยวข้อง (relatedTutorId/relatedCourseId)
 // เพราะยังไม่มี endpoint ที่ยืนยันได้ว่าดึงรายชื่อติวเตอร์ของนักเรียนคนนั้นจากไหน — TODO ต่อยอด
 import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
+import { getStudentCourses } from "../callapi/callusers_student";
+import { getCourseSubjects } from "../callapi/callusers";
 import {
   AlertTriangle, ShieldAlert, Loader2, Check, EyeOff, Eye, ChevronLeft,
 } from "lucide-react";
@@ -30,6 +33,37 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
   const [files, setFiles] = useState([]); // File[] ที่ผู้ใช้เลือก (ยังไม่อัปโหลด)
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null); // { severity } หลังส่งสำเร็จ
+
+  const token = localStorage.getItem("student_token");
+
+  const [relatedCourseId, setRelatedCourseId] = useState("");
+  const [relatedTutorId, setRelatedTutorId] = useState("");
+  const [relatedStudentId, setRelatedStudentId] = useState("");
+
+  const [myCourses, setMyCourses] = useState([]);           // student: คอร์สที่ลงทะเบียน
+  const [courseTutors, setCourseTutors] = useState([]);      // student: ติวเตอร์ในคอร์สที่เลือก
+  const [tutorData, setTutorData] = useState({ courses: [], students: [] }); // tutor: คอร์ส+นักเรียนของตัวเอง
+
+  useEffect(() => {
+    if (role === "student") {
+      getStudentCourses(token).then(setMyCourses).catch(() => setMyCourses([]));
+    } else if (role === "tutor") {
+      axios.get(`${API_URL}/api/incidents/my-students`, getAuthConfig())
+        .then(res => setTutorData(res.data))
+        .catch(() => setTutorData({ courses: [], students: [] }));
+    }
+  }, [role]);
+
+  // student เลือกคอร์สแล้ว → โหลดติวเตอร์ที่สอนคอร์สนั้น
+  useEffect(() => {
+    if (role !== "student" || !relatedCourseId) { setCourseTutors([]); return; }
+    getCourseSubjects(relatedCourseId).then(rows => {
+      const seen = new Set();
+      const unique = rows.filter(r => r.AdminId && !seen.has(r.AdminId) && seen.add(r.AdminId));
+      setCourseTutors(unique);
+    }).catch(() => setCourseTutors([]));
+    setRelatedTutorId("");
+  }, [relatedCourseId, role]);
 
   const selectedCategory = INCIDENT_CATEGORIES.find(c => c.key === categoryKey);
   const selectedType = incidentTypeId ? getIncidentTypeById(incidentTypeId) : null;
@@ -66,6 +100,9 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         incidentTypeId,
         isAnonymous,
         description: description.trim(),
+        relatedTutorId: relatedTutorId || undefined,
+        relatedStudentId: relatedStudentId || undefined,
+        relatedCourseId: relatedCourseId || undefined,
       }, getAuthConfig());
 
       const incidentId = res.data.incidentId;
@@ -189,6 +226,79 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition resize-none"
         />
         <p className="text-[11px] text-slate-400 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          เกี่ยวข้องกับใคร/คอร์สไหน (ถ้ามี)
+        </label>
+
+        {role === "student" && (
+          <>
+            <select
+              value={relatedCourseId}
+              onChange={e => setRelatedCourseId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">ไม่ระบุคอร์ส</option>
+              {myCourses.map(c => {
+                const id = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
+                const name = c.courseName ?? c.CourseName ?? c.name;
+                return <option key={id} value={id}>{name}</option>;
+              })}
+            </select>
+
+            {relatedCourseId && (
+              <select
+                value={relatedTutorId}
+                onChange={e => setRelatedTutorId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="">ไม่ระบุติวเตอร์</option>
+                {courseTutors.map(t => (
+                  <option key={t.AdminId} value={t.AdminId}>
+                    {t.Nickname || `${t.Firstname} ${t.Lastname}`}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        )}
+
+        {role === "tutor" && (
+          <>
+            <select
+              value={relatedCourseId}
+              onChange={e => {
+                setRelatedCourseId(e.target.value);
+                setRelatedStudentId("");
+              }}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">ไม่ระบุคอร์ส</option>
+              {tutorData.courses.map(c => (
+                <option key={c.CourseID} value={c.CourseID}>
+                  {c.CourseName}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={relatedStudentId}
+              onChange={e => setRelatedStudentId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">ไม่ระบุนักเรียน</option>
+              {tutorData.students
+                .filter(s => !relatedCourseId || String(s.CourseID) === String(relatedCourseId))
+                .map(s => (
+                  <option key={`${s.UserId}-${s.CourseID}`} value={s.UserId}>
+                    {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                  </option>
+                ))}
+            </select>
+          </>
+        )}
       </div>
 
       <div>
