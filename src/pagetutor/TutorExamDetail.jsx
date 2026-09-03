@@ -568,8 +568,20 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
   const [live, setLive] = useState(null);
+  const [remainingSec, setRemainingSec] = useState(null);
   const status = deriveStatus(exam);
   const ready = isExamReady(exam);
+
+  // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
+  // Backend เสมอ (examStartedAt + durationMinutes) เพื่อให้ตรงกับฝั่งนักเรียน
+  useEffect(() => {
+    if (!live?.examStartedAt || live?.durationMinutes == null) { setRemainingSec(null); return; }
+    const deadline = new Date(live.examStartedAt).getTime() + live.durationMinutes * 60 * 1000;
+    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [live?.examStartedAt, live?.durationMinutes]);
 
   const pollResults = useCallback(async () => {
     try {
@@ -691,6 +703,15 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
         </div>
       </div>
 
+      {remainingSec != null && (
+        <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
+          <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
+          <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
+            <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
+          </div>
+        </div>
+      )}
+
       <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
         <StopCircle className="h-4 w-4" /> ปิดสอบ
       </button>
@@ -801,6 +822,16 @@ function ResultsTab({ exam }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [detailJoinId, setDetailJoinId] = useState(null);
+  const [remainingSec, setRemainingSec] = useState(null);
+
+  useEffect(() => {
+    if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
+    const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
+    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [results?.examStartedAt, results?.durationMinutes]);
 
   useEffect(() => {
     if (status !== "closed" && status !== "active") return;
@@ -866,7 +897,11 @@ function ResultsTab({ exam }) {
                   <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
                   <td className="px-4 py-3">{pct != null ? <Badge className={scoreCls}>{s.totalScore}/{s.maxScore} ({pct}%)</Badge> : "—"}</td>
                   <td className="px-4 py-3 text-neutral-500">{s.answeredCount ?? "—"}/{s.unansweredCount ?? "—"}</td>
-                  <td className="px-4 py-3 text-neutral-500 font-mono text-xs">{s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
+                  <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                    {s.submittedAt
+                      ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
+                      : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
                   </td>
