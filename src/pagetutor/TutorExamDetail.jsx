@@ -26,11 +26,11 @@ function Badge({ className, children }) {
 }
 
 const TABS = [
-  { key: "questions", label: "Questions", icon: FileQuestion },
-  { key: "settings", label: "Exam Settings", icon: SettingsIcon },
-  { key: "preview", label: "Preview", icon: Eye },
+  { key: "questions", label: "ข้อสอบ", icon: FileQuestion },
+  { key: "settings", label: "ตั้งค่าข้อสอบ", icon: SettingsIcon },
+  { key: "preview", label: "ดูตัวอย่างข้อสอบ", icon: Eye },
   { key: "session", label: "เปิด/ปิดสอบ", icon: Play },
-  { key: "results", label: "Results / Analytics", icon: BarChart2 },
+  { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
 
 const OPTION_LABELS = ["A", "B", "C", "D"];

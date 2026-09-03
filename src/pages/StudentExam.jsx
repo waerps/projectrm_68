@@ -334,7 +334,7 @@ function ResultCard({ result }) {
   const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
 
   return (
-    <div className="space-y-4 pt-16">
+    <div className="space-y-4 pt-10">
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
         <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
