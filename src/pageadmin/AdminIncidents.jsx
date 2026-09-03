@@ -33,6 +33,16 @@ const STATUS_META = {
   dismissed: { label: "ปิดเรื่อง", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
 };
 
+// ★ แปลระดับความรุนแรงเป็นภาษาไทยที่คนอ่านเข้าใจทันที (ใช้แสดงผลเท่านั้น
+//   ไม่กระทบค่า key ที่ใช้เทียบ/กรองข้อมูล ซึ่งยังอิงตาม SEVERITY จาก config เดิม)
+const SEVERITY_LABEL_TH = {
+  [SEVERITY.LOW]: "ต่ำ",
+  [SEVERITY.MEDIUM]: "ปานกลาง",
+  [SEVERITY.HIGH]: "สูง",
+  [SEVERITY.CRITICAL]: "วิกฤต",
+};
+const sevLabel = (key) => SEVERITY_LABEL_TH[key] || getSeverityMeta(key).label;
+
 const formatDateTime = (d) => {
   if (!d) return "—";
   try {
@@ -116,7 +126,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
-              <SevIcon className="h-3.5 w-3.5" /> {sevMeta.label}
+              <SevIcon className="h-3.5 w-3.5" /> {sevLabel(i.Severity)}
             </span>
             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
               {statusMeta.label}
@@ -346,24 +356,21 @@ export default function AdminIncidents() {
         <p className="text-sm text-slate-500 mt-1">จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน</p>
       </div>
 
-      {/* Stats — คลิกเพื่อ filter ตามความรุนแรงได้เหมือนเดิม */}
+      {/* Stats — การ์ดสรุปภาพรวมเท่านั้น ไม่ใช่ตัวกรอง (โครง/พฤติกรรมเดียวกับสถิติในหน้า AdminStudents) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {SEVERITY_CARDS.map(s => {
           const Icon = s.icon;
-          const active = filterSeverity === s.key;
           return (
-            <button key={s.key}
-              onClick={() => setFilterSeverity(active ? "all" : s.key)}
-              className={`flex items-center gap-3 p-4 rounded-2xl border shadow-sm hover:shadow-md transition text-left ${active ? `${s.bg} ${s.border} ring-2 ${s.ring}` : "bg-white border-slate-100"
-                }`}>
+            <div key={s.key}
+              className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${s.solidBg} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium">{s.label}</p>
+                <p className="text-xs text-slate-500 font-medium">{sevLabel(s.key)}</p>
                 <p className="text-xl font-black text-slate-900">{summary[s.key] ?? 0}</p>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>
@@ -384,7 +391,7 @@ export default function AdminIncidents() {
               <option value="all">ทุกระดับความรุนแรง ({allSeverityCount})</option>
               {SEVERITY_CARDS.map(s => (
                 <option key={s.key} value={s.key}>
-                  {s.label} ({severityCounts[s.key] || 0})
+                  {sevLabel(s.key)} ({severityCounts[s.key] || 0})
                 </option>
               ))}
             </select>
@@ -468,7 +475,7 @@ export default function AdminIncidents() {
                           <span className="text-[10px] text-slate-400">
                             {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}
                           </span>
-                          {inc.IsAnonymous && (
+                          {!!inc.IsAnonymous && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-semibold">
                               <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน
                             </span>
@@ -503,7 +510,7 @@ export default function AdminIncidents() {
                       {/* คอลัมน์: ความรุนแรง */}
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
-                          {sevMeta.label}
+                          {sevLabel(inc.Severity)}
                         </span>
                       </td>
 
