@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
-
 import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
+  logQuestionEnter,
 } from "../utils/studentExamShared";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
@@ -91,6 +91,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [error, setError] = useState("");
   const submittedRef = useRef(false);
+  const didInitialLog = useRef(false); // ข้อแรกถูก log ไว้แล้วตอน /start ที่ backend
 
   const current = questions[activeIdx];
   const answeredCount = questions.filter((q) => q.selected !== null && q.selected !== undefined).length;
@@ -118,6 +119,18 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     const iv = setInterval(() => setRemainingSec((s) => Math.max(0, s - 1)), 1000);
     return () => clearInterval(iv);
   }, [remainingSec, doSubmit, questions.length]);
+
+  useEffect(() => {
+    if (!current) return;
+    if (!didInitialLog.current) {
+      // ข้อแรก (activeIdx=0 ตอน mount) backend เปิด log ให้แล้วตอน /start — ข้ามรอบนี้ไป
+      didInitialLog.current = true;
+      return;
+    }
+    logQuestionEnter({ examJoinId, userId, questionId: current.id }).catch((err) => {
+      console.error('log enter failed:', err);
+    });
+  }, [activeIdx, current, examJoinId, userId]);
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
