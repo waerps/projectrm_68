@@ -4,6 +4,7 @@ import { getMyIncidents, getIncidentsAgainstMe } from "../callapi/callusers_stud
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import { Paperclip, FileText } from "lucide-react";
+import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -22,14 +23,14 @@ const formatDate = (d) => {
     } catch { return "—"; }
 };
 
-function IncidentCard({ incident, showReporter }) {
+function IncidentCard({ incident, showReporter, onClick }) {
     const type = getIncidentTypeById(incident.IncidentTypeId);
     const severityMeta = getSeverityMeta(incident.Severity);
     const statusMeta = STATUS_META[incident.Status] || STATUS_META.new;
     const SeverityIcon = severityMeta?.icon;
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition">
+        <button onClick={onClick} disabled={!onClick} className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition disabled:cursor-default">
             <div className="flex items-start gap-3">
                 <div className={`h-10 w-10 rounded-xl ${severityMeta?.solidBg || "bg-slate-400"} flex items-center justify-center shrink-0`}>
                     {SeverityIcon && <SeverityIcon className="h-5 w-5 text-white" />}
@@ -85,7 +86,7 @@ function IncidentCard({ incident, showReporter }) {
                             })}
                         </div>
                     )}
-                    
+
                     <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
@@ -93,7 +94,7 @@ function IncidentCard({ incident, showReporter }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </button>
     );
 }
 
@@ -113,8 +114,9 @@ export default function TutorIncidents() {
     const [against, setAgainst] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [selectedId, setSelectedId] = useState(null);
 
-    useEffect(() => {
+    const load = () => {
         Promise.all([getMyIncidents(token), getIncidentsAgainstMe(token)])
             .then(([mineData, againstData]) => {
                 setMine(mineData);
@@ -122,7 +124,9 @@ export default function TutorIncidents() {
             })
             .catch((err) => setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"))
             .finally(() => setLoading(false));
-    }, [token]);
+    };
+
+    useEffect(() => { load(); }, [token]);
 
     if (loading) {
         return (
@@ -166,9 +170,22 @@ export default function TutorIncidents() {
             ) : (
                 <div className="space-y-3">
                     {list.map((i) => (
-                        <IncidentCard key={i.IncidentId} incident={i} showReporter={tab === "against"} />
+                        <IncidentCard
+                            key={i.IncidentId}
+                            incident={i}
+                            showReporter={tab === "against"}
+                            onClick={tab === "mine" ? () => setSelectedId(i.IncidentId) : undefined}
+                        />
                     ))}
                 </div>
+            )}
+
+            {selectedId && (
+                <MyIncidentDetailModal
+                    incidentId={selectedId}
+                    onClose={() => setSelectedId(null)}
+                    onCancelled={load}
+                />
             )}
         </div>
     );

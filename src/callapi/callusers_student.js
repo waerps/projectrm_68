@@ -301,3 +301,21 @@ export async function getIncidentsAgainstMe(token) {
     throwNiceError(error);
   }
 }
+
+export async function getIncidentDetail(token, incidentId) {
+  try {
+    const res = await apiClient.get(`/api/incidents/${incidentId}`, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function cancelIncident(token, incidentId) {
+  try {
+    const res = await apiClient.delete(`/api/incidents/${incidentId}`, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
