@@ -281,3 +281,23 @@ export async function getStudentNotifications(token) {
     throwNiceError(error);
   }
 }
+
+// ─── Incidents (ใช้ร่วมกันทั้ง student และ tutor — token เดียวกันทั้งระบบ) ─────
+
+export async function getMyIncidents(token) {
+  try {
+    const res = await apiClient.get("/api/incidents/mine", withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getIncidentsAgainstMe(token) {
+  try {
+    const res = await apiClient.get("/api/incidents/against-me", withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}

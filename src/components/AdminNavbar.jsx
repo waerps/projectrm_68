@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
+import { AlertOctagon } from "lucide-react";
 
 export default function Navbar() {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -77,6 +78,7 @@ export default function Navbar() {
               "
                         >
                             <ul className="py-2 text-sm text-gray-700 text-right">
+                                
                                 <li>
                                     <Link
                                         to="courses"
@@ -149,6 +151,15 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         ผู้ดูแลระบบ
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
+                                        to="incidents"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        รับแจ้งเหตุการณ์
                                     </Link>
                                 </li>
 

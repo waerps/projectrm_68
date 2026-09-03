@@ -648,6 +648,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   <li><Link to="/profile" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ข้อมูลส่วนตัว</Link></li>
                   <li><Link to="/profile/schedule" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ตารางเรียน</Link></li>
                   <li><Link to="/profile/my-courses" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">คอร์สเรียนของฉัน</Link></li>
+                  <li><Link to="/profile/incidents" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ประวัติการแจ้งเรื่อง</Link></li>
                   <li>
                     <button
                       onClick={() => { localStorage.clear(); window.location.href = "/login" }}
