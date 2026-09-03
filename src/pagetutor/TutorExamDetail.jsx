@@ -268,7 +268,8 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
   );
 }
 
-function QuestionsTab({ examId, questions, onChanged }) {
+function QuestionsTab({ examId, questions, status, onChanged }) {
+  const locked = status === "active";
   const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -325,12 +326,19 @@ function QuestionsTab({ examId, questions, onChanged }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        {!editingId && (
+        {!editingId && !locked && (
           <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
             <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
           </button>
         )}
       </div>
+
+      {locked && (
+        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">การสอบนี้กำลังเปิดอยู่ — เพิ่ม/ลบ/แก้ไขข้อสอบไม่ได้จนกว่าจะปิดสอบ (ไปที่แท็บ "เปิด/ปิดสอบ")</p>
+        </div>
+      )}
 
       {mode === "picker" && (
         <div className="border border-neutral-200 rounded-2xl p-5 relative">
@@ -390,10 +398,16 @@ function QuestionsTab({ examId, questions, onChanged }) {
                   <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
                   <td className="px-4 py-3 text-neutral-500">{q.score}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
-                    <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
-                      {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
-                    </button>
+                    {locked ? (
+                      <span className="text-xs text-neutral-300">ล็อกอยู่</span>
+                    ) : (
+                      <>
+                        <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
+                        <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
+                          {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -981,7 +995,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab examId={exam.id} questions={exam.questions || []} onChanged={reload} />
+          <QuestionsTab examId={exam.id} questions={exam.questions || []} status={status} onChanged={reload} />
         )}
         {tab === "settings" && (
           <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />

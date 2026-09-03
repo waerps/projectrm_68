@@ -13,7 +13,7 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
   return (
     <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 py-12`}>
-      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-10" : ""}`}>
+      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-36" : ""}`}>
         {children}
       </div>
     </div>
@@ -334,7 +334,7 @@ function ResultCard({ result }) {
   const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-16">
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
         <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
