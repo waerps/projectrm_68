@@ -148,34 +148,8 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const lowTime = remainingSec <= 60;
 
   return (
-    <div className="space-y-4">
-      {/* Timer bar */}
-      <div className={`flex items-center justify-between rounded-xl px-4 py-2.5 border ${lowTime ? "bg-red-50 border-red-200" : "bg-neutral-50 border-neutral-200"}`}>
-        <span className="text-sm font-medium text-neutral-600">ตอบแล้ว {answeredCount}/{questions.length} ข้อ</span>
-        <div className={`flex items-center gap-1.5 font-mono font-bold ${lowTime ? "text-red-600" : "text-neutral-700"}`}>
-          <Clock className="h-4 w-4" /> {formatTime(remainingSec)}
-        </div>
-      </div>
-
-      {/* Question navigator */}
-      <div className="flex flex-wrap gap-1.5">
-        {questions.map((q, i) => {
-          const answered = q.selected !== null && q.selected !== undefined;
-          const isActive = i === activeIdx;
-          return (
-            <button
-              key={q.id}
-              onClick={() => setActiveIdx(i)}
-              className={`h-8 w-8 rounded-lg text-xs font-semibold border-2 transition ${isActive ? "border-orange-500 text-orange-600" : answered ? "border-green-300 bg-green-50 text-green-700" : "border-neutral-200 text-neutral-500"
-                }`}
-            >
-              {i + 1}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Question card */}
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 items-start">
+      {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
@@ -221,9 +195,59 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
             </button>
           )}
         </div>
+
+        {error && <p className="text-sm text-red-500 text-center mt-3">{error}</p>}
       </div>
 
-      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+      {/* ── ฝั่งขวา: ผังข้อสอบ (Question Map) ── */}
+      <div className="bg-white border border-neutral-200 rounded-2xl p-4 space-y-4 lg:sticky lg:top-4">
+        <div>
+          <p className="text-xs font-semibold text-neutral-500 mb-2">ข้อสอบ</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {questions.map((q, i) => {
+              const answered = q.selected !== null && q.selected !== undefined;
+              const isActive = i === activeIdx;
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => setActiveIdx(i)}
+                  title={`ข้อ ${i + 1}${answered ? " (ตอบแล้ว)" : " (ยังไม่ตอบ)"}`}
+                  className={`h-9 w-full rounded-lg text-xs font-semibold border-2 transition ${isActive
+                      ? "border-orange-500 bg-orange-500 text-white"
+                      : answered
+                        ? "border-green-300 bg-green-50 text-green-700"
+                        : "border-neutral-200 text-neutral-500"
+                    }`}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-neutral-100 pt-3 space-y-1.5 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-neutral-600">
+              <span className="h-2.5 w-2.5 rounded-sm bg-green-300 border border-green-400 inline-block" /> ตอบแล้ว
+            </span>
+            <span className="font-semibold text-neutral-700">{answeredCount}/{questions.length}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-neutral-600">
+              <span className="h-2.5 w-2.5 rounded-sm bg-neutral-100 border border-neutral-300 inline-block" /> ยังไม่ตอบ
+            </span>
+            <span className="font-semibold text-neutral-700">{questions.length - answeredCount}/{questions.length}</span>
+          </div>
+        </div>
+
+        <div className={`border-t border-neutral-100 pt-3 ${lowTime ? "text-red-600" : "text-neutral-700"}`}>
+          <p className="text-xs font-semibold text-neutral-500 mb-1">เวลาที่เหลือ</p>
+          <div className="flex items-center gap-1.5 font-mono font-bold text-lg">
+            <Clock className="h-4 w-4" /> {formatTime(remainingSec)}
+          </div>
+        </div>
+      </div>
 
       {confirmSubmit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmSubmit(false)}>
