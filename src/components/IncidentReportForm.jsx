@@ -27,6 +27,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
   const [incidentTypeId, setIncidentTypeId] = useState(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [description, setDescription] = useState("");
+  const [files, setFiles] = useState([]); // File[] ที่ผู้ใช้เลือก (ยังไม่อัปโหลด)
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null); // { severity } หลังส่งสำเร็จ
 
@@ -40,6 +41,21 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
     setStep(2);
   };
 
+  const MAX_FILES = 5;
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const handleFilesSelected = (fileList) => {
+    const incoming = Array.from(fileList);
+    const oversized = incoming.find(f => f.size > MAX_SIZE);
+    if (oversized) {
+      return showToast("error", "ไฟล์ใหญ่เกินไป", `${oversized.name} เกิน 10MB`);
+    }
+    const combined = [...files, ...incoming].slice(0, MAX_FILES);
+    setFiles(combined);
+  };
+
+  const removeFile = (idx) => setFiles(files.filter((_, i) => i !== idx));
+
   const submit = async () => {
     if (!incidentTypeId) return showToast("error", "กรุณาเลือกประเภทเหตุการณ์");
     if (description.trim().length < 10) return showToast("error", "กรุณาอธิบายรายละเอียดอย่างน้อย 10 ตัวอักษร");
@@ -51,6 +67,23 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         isAnonymous,
         description: description.trim(),
       }, getAuthConfig());
+
+      const incidentId = res.data.incidentId;
+
+      if (files.length && incidentId) {
+        try {
+          const form = new FormData();
+          files.forEach(f => form.append("files", f));
+          await axios.post(`${API}/${incidentId}/attachments`, form, {
+            ...getAuthConfig(),
+            headers: { ...getAuthConfig().headers, "Content-Type": "multipart/form-data" },
+          });
+        } catch (attachErr) {
+          // เคสถูกสร้างสำเร็จแล้ว แค่แนบไฟล์ไม่สำเร็จ — แจ้งเตือนแต่ไม่บล็อกผู้ใช้
+          showToast("error", "ส่งเรื่องสำเร็จ แต่แนบไฟล์ไม่สำเร็จ", attachErr.response?.data?.message);
+        }
+      }
+
       setResult({ severity: res.data.severity || selectedType?.severity });
     } catch (err) {
       showToast("error", "ส่งเรื่องไม่สำเร็จ", err.response?.data?.message);
@@ -156,6 +189,56 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition resize-none"
         />
         <p className="text-[11px] text-slate-400 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
+          แนบหลักฐาน (ถ้ามี)
+        </label>
+
+        <label className="flex flex-col items-center justify-center h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50 cursor-pointer transition">
+          <span className="text-xs text-slate-500 font-medium">
+            คลิกเพื่อเลือกไฟล์ หรือลากมาวาง
+          </span>
+
+          <span className="text-[10px] text-slate-400 mt-0.5">
+            JPG, PNG, WEBP, PDF · สูงสุด {MAX_FILES} ไฟล์ · ไม่เกิน 10MB/ไฟล์
+          </span>
+
+          <input
+            type="file"
+            multiple
+            accept=".jpg,.jpeg,.png,.webp,.pdf"
+            className="hidden"
+            onChange={(e) =>
+              e.target.files.length && handleFilesSelected(e.target.files)
+            }
+          />
+        </label>
+
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {files.map((f, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
+              >
+                <span className="truncate max-w-[140px] text-slate-600">
+                  {f.name}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => removeFile(idx)}
+                  className="text-slate-400 hover:text-red-500"
+                >
+                  <ChevronLeft className="hidden" />
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <label className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
