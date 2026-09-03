@@ -17,16 +17,23 @@ export default function AppShell() {
     else navigate("/" + id)
   }
 
-  // อ่าน role ของ user ที่ล็อกอินอยู่จริง (เก็บไว้ตอน login ทั้ง student และ admin/tutor)
+  // role ที่เป็นไปได้: null (guest) | 'student' | 'tutor' | 'admin'
   let currentRole = null
   try {
     const storedUser = JSON.parse(localStorage.getItem("user") || "null")
-    currentRole = storedUser?.role || null // 'student' | 'tutor' | 'admin'
+    currentRole = storedUser?.role || null
   } catch {
     currentRole = null
   }
 
+  // ปุ่มแจ้งปัญหา: เฉพาะ student และ tutor
   const canReportIncident = currentRole === "student" || currentRole === "tutor"
+
+  // แชตบอต: เฉพาะ guest (ยังไม่ล็อกอิน) และ student
+  // เผื่ออนาคตอยากเปิดให้ tutor/admin ด้วย ปรับตรงนี้:
+  //   const canUseChat = true                          // เปิดทั้ง 4 บทบาท
+  //   const canUseChat = currentRole !== "admin"        // เปิดทุกคนยกเว้นแอดมิน
+  const canUseChat = currentRole === null || currentRole === "student"
 
   return (
     <>
@@ -39,8 +46,30 @@ export default function AppShell() {
         </main>
         <Footer />
       </div>
-      <ChatWidget />
-      <ChatFullscreen />
+
+      {canUseChat && (
+        <>
+          <ChatWidget />
+          <ChatFullscreen />
+        </>
+      )}
+
+      {/* ปิดไว้ชั่วคราวสำหรับ tutor — ถ้าอยากเปิด ลบ comment แล้วปรับ canUseChat ด้านบนแทน */}
+      {/* {currentRole === "tutor" && (
+        <>
+          <ChatWidget />
+          <ChatFullscreen />
+        </>
+      )} */}
+
+      {/* ปิดไว้ชั่วคราวสำหรับ admin — ถ้าอยากเปิด ลบ comment แล้วปรับ canUseChat ด้านบนแทน */}
+      {/* {currentRole === "admin" && (
+        <>
+          <ChatWidget />
+          <ChatFullscreen />
+        </>
+      )} */}
+
       {canReportIncident && <IncidentReportButton role={currentRole} />}
     </>
   )
