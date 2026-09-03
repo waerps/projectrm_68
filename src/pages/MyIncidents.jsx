@@ -4,6 +4,7 @@ import { getMyIncidents } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import { Paperclip, FileText } from "lucide-react";
+import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -22,14 +23,14 @@ const formatDate = (d) => {
     } catch { return "—"; }
 };
 
-function IncidentCard({ incident }) {
+function IncidentCard({ incident, onClick }) {
     const type = getIncidentTypeById(incident.IncidentTypeId);
     const severityMeta = getSeverityMeta(incident.Severity);
     const statusMeta = STATUS_META[incident.Status] || STATUS_META.new;
     const SeverityIcon = severityMeta?.icon || AlertOctagon;
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition">
+        <button onClick={onClick} className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm hover:border-orange-200 transition">
             <div className="flex items-start gap-3">
                 <div className={`h-10 w-10 rounded-xl ${severityMeta?.solidBg || "bg-slate-400"} flex items-center justify-center shrink-0`}>
                     <SeverityIcon className="h-5 w-5 text-white" />
@@ -74,7 +75,7 @@ function IncidentCard({ incident }) {
                             })}
                         </div>
                     )}
-                    
+
                     <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
@@ -85,7 +86,7 @@ function IncidentCard({ incident }) {
                     </div>
                 </div>
             </div>
-        </div>
+        </button>
     );
 }
 
@@ -94,13 +95,16 @@ export default function MyIncidents() {
     const [incidents, setIncidents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [selectedId, setSelectedId] = useState(null);
 
-    useEffect(() => {
+    const load = () => {
         getMyIncidents(token)
             .then(setIncidents)
             .catch((err) => setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"))
             .finally(() => setLoading(false));
-    }, [token]);
+    };
+
+    useEffect(() => { load(); }, [token]);
 
     if (loading) {
         return (
@@ -130,9 +134,17 @@ export default function MyIncidents() {
             ) : (
                 <div className="space-y-3">
                     {incidents.map((i) => (
-                        <IncidentCard key={i.IncidentId} incident={i} />
+                        <IncidentCard key={i.IncidentId} incident={i} onClick={() => setSelectedId(i.IncidentId)} />
                     ))}
                 </div>
+            )}
+
+            {selectedId && (
+                <MyIncidentDetailModal
+                    incidentId={selectedId}
+                    onClose={() => setSelectedId(null)}
+                    onCancelled={load}
+                />
             )}
         </div>
     );

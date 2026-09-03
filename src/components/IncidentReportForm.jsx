@@ -1,7 +1,4 @@
 // src/components/IncidentReportForm.jsx
-// ★ ฟอร์มแจ้งเหตุการณ์ — ใช้ร่วมกันทั้ง student และ tutor (แยกด้วย prop `role`)
-// ยังไม่มี dropdown เลือกติวเตอร์/คอร์สที่เกี่ยวข้อง (relatedTutorId/relatedCourseId)
-// เพราะยังไม่มี endpoint ที่ยืนยันได้ว่าดึงรายชื่อติวเตอร์ของนักเรียนคนนั้นจากไหน — TODO ต่อยอด
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
@@ -234,11 +231,8 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
         {role === "student" && (
           <>
-            <select
-              value={relatedCourseId}
-              onChange={e => setRelatedCourseId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
-            >
+            <select value={relatedCourseId} onChange={e => setRelatedCourseId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
               <option value="">ไม่ระบุคอร์ส</option>
               {myCourses.map(c => {
                 const id = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
@@ -246,13 +240,9 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
                 return <option key={id} value={id}>{name}</option>;
               })}
             </select>
-
             {relatedCourseId && (
-              <select
-                value={relatedTutorId}
-                onChange={e => setRelatedTutorId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
-              >
+              <select value={relatedTutorId} onChange={e => setRelatedTutorId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
                 <option value="">ไม่ระบุติวเตอร์</option>
                 {courseTutors.map(t => (
                   <option key={t.AdminId} value={t.AdminId}>
@@ -266,27 +256,15 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
         {role === "tutor" && (
           <>
-            <select
-              value={relatedCourseId}
-              onChange={e => {
-                setRelatedCourseId(e.target.value);
-                setRelatedStudentId("");
-              }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
-            >
+            <select value={relatedCourseId} onChange={e => { setRelatedCourseId(e.target.value); setRelatedStudentId(""); }}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
               <option value="">ไม่ระบุคอร์ส</option>
               {tutorData.courses.map(c => (
-                <option key={c.CourseID} value={c.CourseID}>
-                  {c.CourseName}
-                </option>
+                <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
               ))}
             </select>
-
-            <select
-              value={relatedStudentId}
-              onChange={e => setRelatedStudentId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500"
-            >
+            <select value={relatedStudentId} onChange={e => setRelatedStudentId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
               <option value="">ไม่ระบุนักเรียน</option>
               {tutorData.students
                 .filter(s => !relatedCourseId || String(s.CourseID) === String(relatedCourseId))
@@ -297,56 +275,6 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
                 ))}
             </select>
           </>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-          แนบหลักฐาน (ถ้ามี)
-        </label>
-
-        <label className="flex flex-col items-center justify-center h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50 cursor-pointer transition">
-          <span className="text-xs text-slate-500 font-medium">
-            คลิกเพื่อเลือกไฟล์ หรือลากมาวาง
-          </span>
-
-          <span className="text-[10px] text-slate-400 mt-0.5">
-            JPG, PNG, WEBP, PDF · สูงสุด {MAX_FILES} ไฟล์ · ไม่เกิน 10MB/ไฟล์
-          </span>
-
-          <input
-            type="file"
-            multiple
-            accept=".jpg,.jpeg,.png,.webp,.pdf"
-            className="hidden"
-            onChange={(e) =>
-              e.target.files.length && handleFilesSelected(e.target.files)
-            }
-          />
-        </label>
-
-        {files.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {files.map((f, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-              >
-                <span className="truncate max-w-[140px] text-slate-600">
-                  {f.name}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={() => removeFile(idx)}
-                  className="text-slate-400 hover:text-red-500"
-                >
-                  <ChevronLeft className="hidden" />
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
         )}
       </div>
 
