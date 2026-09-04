@@ -816,7 +816,7 @@ function StudentDetailModal({ examJoinId, onClose }) {
 }
 
 // ─── Results Tab ─────────────────────────────────────────────────────────────
-function ResultsTab({ exam }) {
+function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -916,6 +916,23 @@ function ResultsTab({ exam }) {
           </tbody>
         </table>
       </div>
+      {results.students.length > 0 && (
+        <div className="flex justify-end">
+          <Link
+            to={`/tutor/exam-analytics?${new URLSearchParams({
+              courseId: courseId || "",
+              subjectId: subjectId || "",
+              courseName,
+              subjectName,
+              examType: exam.type,
+            }).toString()}`}
+            className="text-sm text-orange-500 hover:text-orange-700 font-semibold"
+          >
+            ดูวิเคราะห์เชิงลึก
+          </Link>
+        </div>
+      )}
+
       {detailJoinId && (
         <StudentDetailModal examJoinId={detailJoinId} onClose={() => setDetailJoinId(null)} />
       )}
@@ -1046,7 +1063,9 @@ export default function TutorExamDetail() {
             onClose={async () => { await closeExamSession(exam.id); await reload(); }}
           />
         )}
-        {tab === "results" && <ResultsTab exam={exam} />}
+        {tab === "results" && (
+          <ResultsTab exam={exam} courseId={courseId} subjectId={subjectId} courseName={courseName} subjectName={subjectName} />
+        )}
       </div>
     </div>
   );

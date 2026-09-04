@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
+const [searchParams] = useSearchParams();
+const courseId = searchParams.get("courseId");
+const subjectId = searchParams.get("subjectId");
+const courseName = searchParams.get("courseName") || "";
+const subjectName = searchParams.get("subjectName") || "";
 
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -890,13 +895,16 @@ export default function TutorExamAnalytics() {
   return (
     <div className="space-y-6 mt-[90px]">
       {/* Breadcrumb */}
-      <div className="flex items-center text-sm gap-2 text-neutral-500">
-        <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link to="/tutor/exams" className="hover:text-orange-600 transition font-medium">จัดการการสอบ</Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="font-semibold text-neutral-800">Analytics</span>
-      </div>
+      <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
+      <ChevronRight className="h-4 w-4" />
+      <Link
+        to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
+        className="hover:text-orange-600 transition font-medium"
+      >
+        {subjectName || "จัดการการสอบ"}
+      </Link>
+      <ChevronRight className="h-4 w-4" />
+      <span className="font-semibold text-neutral-800">Analytics</span>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

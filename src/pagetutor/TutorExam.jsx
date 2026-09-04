@@ -1,6 +1,6 @@
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ChevronRight, FileQuestion, Users, Clock } from "lucide-react";
+import { ChevronRight, FileQuestion, Users, Clock, BarChart2 } from "lucide-react";
 
 import {
   EXAM_TYPES,
@@ -73,13 +73,24 @@ export default function TutorExam() {
         <span className="font-medium text-gray-800">{subjectName || "จัดการการสอบ"}</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold text-neutral-900">
-          จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
-        </h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          {courseName} {subjectName ? `• ${subjectName}` : ""}
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-neutral-900">
+            จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
+          </h1>
+          <p className="text-sm text-neutral-500 mt-1">
+            {courseName} {subjectName ? `• ${subjectName}` : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            const params = new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName });
+            navigate(`/tutor/exam-analytics?${params.toString()}`);
+          }}
+          className="flex items-center gap-2 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-700 hover:text-orange-600 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+        >
+          <BarChart2 className="h-4 w-4" /> ดูภาพรวมพัฒนาการ
+        </button>
       </div>
 
       {loading && <p className="text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</p>}
