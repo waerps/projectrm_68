@@ -1020,6 +1020,12 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore);
   const passedCount = passEligible.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
   const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
+  const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
+  const submittedPct = results?.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
+  const avgScoreRaw = passEligible.length
+    ? passEligible.reduce((sum, s) => sum + s.totalScore, 0) / passEligible.length
+    : null;
+  const examMaxScore = passEligible.length ? passEligible[0].maxScore : (results?.students?.[0]?.maxScore ?? null);
 
   if (status !== "closed" && status !== "active") {
     return (
@@ -1037,16 +1043,33 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatCard icon={Users} label="เข้าสอบ" value={results.joinedCount} color="bg-blue-500" />
-        <StatCard icon={FileQuestion} label="นักเรียนในคอร์ส" value={results.enrolledCount} color="bg-neutral-500" />
-        <StatCard icon={Check} label="ส่งแล้ว" value={results.submittedCount} color="bg-teal-500" />
-        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={`${results.averageScorePct}%`} color="bg-orange-500" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard
+          icon={Users}
+          label="เข้าสอบ"
+          value={`${joinedPct}%`}
+          sub={`${results.joinedCount} จาก ${results.enrolledCount} คน`}
+          color="bg-blue-500"
+        />
+        <StatCard
+          icon={Check}
+          label="ส่งแล้ว"
+          value={`${submittedPct}%`}
+          sub={`${results.submittedCount} จาก ${results.enrolledCount} คน`}
+          color="bg-teal-500"
+        />
+        <StatCard
+          icon={Award}
+          label="คะแนนเฉลี่ย"
+          value={`${results.averageScorePct}%`}
+          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีคนส่ง"}
+          color="bg-orange-500"
+        />
         <StatCard
           icon={CheckCircle}
           label="ผ่านเกณฑ์"
-          value={passRatePct != null ? passedCount : "—"}
-          sub={passRatePct != null ? `${passRatePct}%` : "ยังไม่มีคนส่ง"}
+          value={passRatePct != null ? `${passRatePct}%` : "—"}
+          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีคนส่ง"}
           color="bg-emerald-500"
         />
         <StatCard

@@ -644,6 +644,8 @@ function ItemAnalysisTab({ data }) {
 */
 
 // ─── Tab 3: ผลนักเรียน ───────────────────────────────────────────────────────
+// ★ ปิดใช้งานชั่วคราวตามคำขอ — ไม่ลบโค้ด เก็บ StudentTab component ไว้
+// เผื่อนำกลับมาใช้ภายหลัง (เหมือนแนวทางเดียวกับ ItemAnalysisTab ด้านบน)
 
 function StudentTab({ data, examLabel }) {
   const [search, setSearch] = useState("");
@@ -867,7 +869,7 @@ const exportToExcel = (data, examLabel) => {
 const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
   // { id: "items", label: "วิเคราะห์ข้อสอบ", icon: Target }, // ★ ปิดใช้งานชั่วคราว — ดู ItemAnalysisTab (คอมเมนต์ไว้ด้านบน)
-  { id: "students", label: "ผลนักเรียน", icon: Users },
+  // { id: "students", label: "ผลนักเรียน", icon: Users },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
 ];
 
@@ -887,8 +889,8 @@ export default function TutorExamAnalytics() {
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
   const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
   const requestedTab = searchParams.get("tab") ?? "overview";
-  // กันกรณี URL เก่าชี้มาที่ ?tab=items ซึ่งปิดใช้งานอยู่ตอนนี้ (ข้อ 4)
-  const initialTab = requestedTab === "items" ? "overview" : requestedTab;
+  // กันกรณี URL เก่าชี้มาที่ ?tab=items หรือ ?tab=students ซึ่งปิดใช้งานอยู่ตอนนี้
+  const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
@@ -953,7 +955,7 @@ export default function TutorExamAnalytics() {
       {/* Content */}
       {activeTab === "overview" && <OverviewTab data={data} />}
       {/* {activeTab === "items" && <ItemAnalysisTab data={data} />} */}
-      {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />}
+      {/* {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />} */}
       {activeTab === "compare" && <ComparisonTab />}
     </div>
   );
