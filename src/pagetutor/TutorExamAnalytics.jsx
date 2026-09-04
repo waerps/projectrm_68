@@ -909,13 +909,13 @@ export default function TutorExamAnalytics() {
           {subjectName || "จัดการการสอบ"}
         </Link>
         <ChevronRight className="h-4 w-4" />
-        <span className="font-semibold text-slate-700">Analytics</span>
+        <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Analytics & Reporting</h1>
+          <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
           <p className="text-sm text-slate-500 mt-1">คณิตศาสตร์ ม.3 เทอม 1/2567 · นักเรียน {data.length} คน · {QUESTIONS.length} ข้อ · {MAX_SCORE} คะแนน</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
