@@ -1,10 +1,10 @@
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   ChevronRight, ChevronLeft, FileQuestion, Clock, Calendar, Users,
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
-  Settings as SettingsIcon, Eye, BarChart2,
+  Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
 } from "lucide-react";
 
 import {
@@ -15,6 +15,9 @@ import {
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
 } from "../utils/examShared";
 
+// เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
+const PASS_PCT = 60;
+
 // ─── small shared bits ───────────────────────────────────────────────────────
 
 function Badge({ className, children }) {
@@ -22,6 +25,22 @@ function Badge({ className, children }) {
     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${className}`}>
       {children}
     </span>
+  );
+}
+
+// StatCard สไตล์เดียวกับ TutorExamAnalytics.jsx (ไอคอนสี่เหลี่ยมทึบ + label/value/sub)
+function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500" }) {
+  return (
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full">
+      <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-neutral-500 font-medium">{label}</p>
+        <p className="text-xl font-black text-neutral-900">{value}</p>
+        {sub && <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{sub}</p>}
+      </div>
+    </div>
   );
 }
 
@@ -608,7 +627,7 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
         </div>
         <div>
           <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
-          <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ Results / Analytics</p>
+          <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
         </div>
 
         <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
@@ -741,7 +760,17 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
   );
 }
 
-function StudentDetailModal({ examJoinId, onClose }) {
+// ─── Student Detail Modal ─────────────────────────────────────────────────────
+// UI ปรับให้ยึด StudentModal ของ TutorExamAnalytics.jsx เป็น visual reference
+// แต่ข้อมูลทั้งหมดมาจาก fetchExamJoinDetail() จริง (ไม่ใช้ mock)
+//
+// หมายเหตุเรื่อง "คะแนนรายหัวข้อ": response ของ fetchExamJoinDetail ที่ให้มา
+// ไม่มี field หมวดหมู่ (category) ต่อข้อคำถามโดยตรง — เรา join ข้อมูลนี้จาก
+// exam.questions ที่ parent component โหลดไว้แล้ว (ข้อมูลจริงจาก backend
+// เดียวกัน ไม่ใช่ mock) โดยจับคู่ด้วย question id แทนที่จะเรียก API เพิ่ม
+// ถ้าในอนาคต fetchExamJoinDetail() ส่ง category ต่อข้อมาด้วยโดยตรง ให้ใช้ค่า
+// จาก response นั้นแทนการ join นี้ได้เลย
+function StudentDetailModal({ student, examJoinId, examName, examQuestions, onClose }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -755,74 +784,155 @@ function StudentDetailModal({ examJoinId, onClose }) {
     return () => { cancelled = true; };
   }, [examJoinId]);
 
+  const enrichedQuestions = useMemo(() => {
+    if (!detail?.questions) return [];
+    const byId = new Map((examQuestions || []).map((q) => [q.id, q]));
+    return detail.questions.map((q) => ({ ...q, category: byId.get(q.id)?.category || null }));
+  }, [detail, examQuestions]);
+
+  const topicBreakdown = useMemo(() => {
+    const cats = [...new Set(enrichedQuestions.map((q) => q.category).filter(Boolean))];
+    if (cats.length === 0) return null; // ไม่มีข้อมูลหมวดหมู่ให้ join ได้ — ข้ามส่วนนี้ไป
+    return cats.map((cat) => {
+      const qs = enrichedQuestions.filter((q) => q.category === cat);
+      const maxSc = qs.reduce((s, q) => s + q.score, 0);
+      const sc = qs.reduce((s, q) => s + (q.isCorrect ? q.score : 0), 0);
+      return { category: cat, sc, maxSc, pct: maxSc ? sc / maxSc : 0 };
+    });
+  }, [enrichedQuestions]);
+
+  const pct = student?.maxScore ? Math.round((student.totalScore / student.maxScore) * 100) : null;
+  const passed = student?.submittedAt && pct != null ? pct >= PASS_PCT : null;
+  const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
+  const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-semibold text-neutral-800">{detail?.studentName || "รายละเอียดการทำข้อสอบ"}</p>
-            {detail && <p className="text-xs text-neutral-400 mt-0.5">{detail.examName}</p>}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-neutral-800">รายละเอียดผลสอบ</p>
+            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
           </div>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-        </div>
 
-        {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
-        {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
-
-        {detail && !loading && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3 mb-2">
-              <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                <p className="text-lg font-bold text-orange-600">{detail.totalScore}/{detail.maxScore}</p>
-                <p className="text-xs text-neutral-500">คะแนน</p>
-              </div>
-              <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                <p className="text-lg font-bold text-neutral-700">{detail.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
-                <p className="text-xs text-neutral-500">เริ่มสอบ</p>
-              </div>
-              <div className="bg-neutral-50 rounded-xl p-3 text-center">
-                <p className="text-lg font-bold text-neutral-700">{detail.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
-                <p className="text-xs text-neutral-500">ส่งข้อสอบ</p>
+          {/* Header / summary card — สไตล์เดียวกับ StudentModal ของ Analytics */}
+          <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+            <div className="h-14 w-14 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center flex-shrink-0">
+              <Users className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-[160px]">
+              <p className="font-bold text-lg">{detail?.studentName || student?.name}</p>
+              <p className="text-sm text-orange-100">{detail?.examName || examName} · ใช้เวลา {student?.secondsUsed != null ? formatTime(student.secondsUsed) : "—"}</p>
+            </div>
+            <div className="flex gap-3 flex-shrink-0">
+              {passed != null && (
+                <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                  <p className="text-xl font-black">{passed ? "✓" : "✗"}</p>
+                  <p className="text-[10px] text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
+                </div>
+              )}
+              <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                <p className="text-xl font-black">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}</p>
+                <p className="text-[10px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
               </div>
             </div>
-
-            {detail.questions.map((q, i) => (
-              <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
-                <div className="flex items-start justify-between gap-3 mb-1.5">
-                  <p className="text-sm font-medium text-neutral-900 flex-1"><span className="text-neutral-400 font-bold mr-1.5">{i + 1}.</span>{q.text}</p>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                      {q.scoreAwarded}/{q.score}
-                    </span>
-                    <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
-                  </div>
-                </div>
-                {q.periods?.length > 1 && (
-                  <div className="pl-5 mt-1 space-y-0.5">
-                    {q.periods.map((p, pi) => (
-                      <p key={pi} className="text-[11px] text-neutral-400">
-                        ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
           </div>
-        )}
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-green-600">{correctCount ?? "—"}</p>
+              <p className="text-xs text-neutral-500">ตอบถูก</p>
+            </div>
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"}</p>
+              <p className="text-xs text-neutral-500">ตอบผิด</p>
+            </div>
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-neutral-700">{student?.answeredCount ?? "—"}</p>
+              <p className="text-xs text-neutral-500">ตอบแล้ว</p>
+            </div>
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-neutral-700">{student?.unansweredCount ?? "—"}</p>
+              <p className="text-xs text-neutral-500">ไม่ตอบ</p>
+            </div>
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-neutral-700">{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className="text-xs text-neutral-500">เริ่มสอบ</p>
+            </div>
+            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-neutral-700">{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className="text-xs text-neutral-500">ส่งข้อสอบ</p>
+            </div>
+          </div>
+
+          {topicBreakdown && (
+            <div className="mb-6">
+              <p className="text-sm font-bold text-neutral-800 mb-3">คะแนนรายหัวข้อ</p>
+              <div className="space-y-2.5">
+                {topicBreakdown.map((t) => (
+                  <div key={t.category} className="flex items-center gap-3">
+                    <p className="text-xs text-neutral-500 w-32 flex-shrink-0 truncate">{t.category}</p>
+                    <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-orange-400" style={{ width: `${t.pct * 100}%` }} />
+                    </div>
+                    <p className="text-xs font-semibold text-neutral-700 w-24 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
+          {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
+
+          {detail && !loading && (
+            <div>
+              <p className="text-sm font-bold text-neutral-800 mb-3">รายข้อ</p>
+              <div className="space-y-2.5">
+                {enrichedQuestions.map((q, i) => (
+                  <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
+                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                      <p className="text-sm font-medium text-neutral-900 flex-1"><span className="text-neutral-400 font-bold mr-1.5">{i + 1}.</span>{q.text}</p>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                          {q.scoreAwarded}/{q.score}
+                        </span>
+                        <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
+                      </div>
+                    </div>
+                    {q.periods?.length > 1 && (
+                      <div className="pl-5 mt-1 space-y-0.5">
+                        {q.periods.map((p, pi) => (
+                          <p key={pi} className="text-[11px] text-neutral-400">
+                            ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── Results Tab ─────────────────────────────────────────────────────────────
-function ResultsTab({ exam }) {
+function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [detailJoinId, setDetailJoinId] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [remainingSec, setRemainingSec] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterPass, setFilterPass] = useState("ทั้งหมด");
+  const [sortKey, setSortKey] = useState("rank");
+  const [sortDir, setSortDir] = useState(1);
 
   useEffect(() => {
     if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
@@ -844,6 +954,79 @@ function ResultsTab({ exam }) {
     return () => { cancelled = true; };
   }, [exam.id, status]);
 
+  // อันดับต้องยึดคะแนนเป็นหลักเสมอ (มาก → น้อย, เท่ากันใช้ชื่อ) และคำนวณจาก
+  // ชุดข้อมูลหลัง search/filter เท่านั้น — ห้ามใช้ index ดิบของ array ทั้งหมด
+  // ไม่งั้นอันดับจะผิดเมื่อ filter เหลือนักเรียนบางส่วน
+  // อันดับนี้จะ "ไม่" เปลี่ยนตาม sortKey ที่ผู้ใช้เลือกดูอยู่ (เช่น sort ตามชื่อ)
+  // เพราะอันดับควรสื่อถึงลำดับคะแนนจริงเสมอ ไม่ใช่ลำดับที่กำลังแสดงผลอยู่
+  const rankedStudents = useMemo(() => {
+    const students = results?.students || [];
+    let base = students;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      base = base.filter((s) => s.name?.toLowerCase().includes(q));
+    }
+    if (filterPass === "ผ่าน" || filterPass === "ไม่ผ่าน") {
+      base = base.filter((s) => {
+        if (!s.submittedAt || !s.maxScore) return false;
+        const isPass = (s.totalScore / s.maxScore) * 100 >= PASS_PCT;
+        return filterPass === "ผ่าน" ? isPass : !isPass;
+      });
+    }
+    const byScore = [...base].sort((a, b) => {
+      const pa = a.maxScore ? a.totalScore / a.maxScore : -1;
+      const pb = b.maxScore ? b.totalScore / b.maxScore : -1;
+      if (pb !== pa) return pb - pa;
+      return (a.name || "").localeCompare(b.name || "", "th");
+    });
+    return byScore.map((s, i) => ({ ...s, rank: i + 1 }));
+  }, [results, search, filterPass]);
+
+  const displayedStudents = useMemo(() => {
+    const arr = [...rankedStudents];
+    const dir = sortDir;
+    const cmp = (a, b) => {
+      let res = 0;
+      if (sortKey === "name") res = (a.name || "").localeCompare(b.name || "", "th");
+      else if (sortKey === "score") {
+        const pa = a.maxScore ? a.totalScore / a.maxScore : -1;
+        const pb = b.maxScore ? b.totalScore / b.maxScore : -1;
+        res = pa - pb;
+      } else if (sortKey === "time") {
+        const ta = a.secondsUsed ?? -1;
+        const tb = b.secondsUsed ?? -1;
+        res = ta - tb;
+      } else {
+        res = a.rank - b.rank; // "rank" = ลำดับคะแนนตามธรรมชาติ
+      }
+      if (res !== 0) return dir * res;
+      return (a.name || "").localeCompare(b.name || "", "th");
+    };
+    return arr.sort(cmp);
+  }, [rankedStudents, sortKey, sortDir]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => d * -1);
+    else { setSortKey(key); setSortDir(key === "name" ? 1 : -1); }
+  };
+  const SortIcon = ({ k }) => (sortKey === k ? <span className="ml-0.5 text-orange-500">{sortDir === 1 ? "▲" : "▼"}</span> : null);
+
+  // ค่าเฉลี่ยต้องคำนวณจากนักเรียนที่มีค่าจริงเท่านั้น — คนที่ยังสอบไม่เสร็จ
+  // หรือ secondsUsed เป็น null ต้องไม่ถูกนำมารวมจนค่าเฉลี่ยผิดเพี้ยน
+  const submittedWithTime = (results?.students || []).filter((s) => s.submittedAt && s.secondsUsed != null);
+  const avgTimeSec = submittedWithTime.length
+    ? Math.round(submittedWithTime.reduce((sum, s) => sum + s.secondsUsed, 0) / submittedWithTime.length)
+    : null;
+  const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore);
+  const passedCount = passEligible.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
+  const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
+  const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
+  const submittedPct = results?.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
+  const avgScoreRaw = passEligible.length
+    ? passEligible.reduce((sum, s) => sum + s.totalScore, 0) / passEligible.length
+    : null;
+  const examMaxScore = passEligible.length ? passEligible[0].maxScore : (results?.students?.[0]?.maxScore ?? null);
+
   if (status !== "closed" && status !== "active") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
@@ -859,65 +1042,194 @@ function ResultsTab({ exam }) {
   if (!results) return null;
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { label: "เข้าสอบ", val: results.joinedCount, color: "text-green-600" },
-          { label: "นักเรียนในคอร์ส", val: results.enrolledCount, color: "text-neutral-700" },
-          { label: "ส่งแล้ว", val: results.submittedCount, color: "text-neutral-900" },
-          { label: "คะแนนเฉลี่ย", val: `${results.averageScorePct}%`, color: "text-orange-600" },
-        ].map((s) => (
-          <div key={s.label} className="bg-neutral-50 rounded-xl p-4">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.val}</p>
-            <p className="text-xs text-neutral-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
+    <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard
+          icon={Users}
+          label="เข้าสอบ"
+          value={`${joinedPct}%`}
+          sub={`${results.joinedCount} จาก ${results.enrolledCount} คน`}
+          color="bg-blue-500"
+        />
+        <StatCard
+          icon={Check}
+          label="ส่งแล้ว"
+          value={`${submittedPct}%`}
+          sub={`${results.submittedCount} จาก ${results.enrolledCount} คน`}
+          color="bg-teal-500"
+        />
+        <StatCard
+          icon={Award}
+          label="คะแนนเฉลี่ย"
+          value={`${results.averageScorePct}%`}
+          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีคนส่ง"}
+          color="bg-orange-500"
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="ผ่านเกณฑ์"
+          value={passRatePct != null ? `${passRatePct}%` : "—"}
+          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีคนส่ง"}
+          color="bg-emerald-500"
+        />
+        <StatCard
+          icon={Clock}
+          label="เวลาเฉลี่ย"
+          value={avgTimeSec != null ? `${formatTime(avgTimeSec)} น.` : "—"}
+          sub="ต่อคน"
+          color="bg-amber-500"
+        />
       </div>
 
-      <div className="border border-neutral-100 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-neutral-50 border-b border-neutral-100">
-              {["#", "ชื่อนักเรียน", "เข้าสอบเมื่อ", "คะแนน", "ตอบ/ไม่ตอบ", "เวลาที่ใช้", "สถานะ", ""].map((h) => (
-                <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {results.students.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-6 text-center text-neutral-400 text-sm">ยังไม่มีนักเรียนเข้าสอบ</td></tr>
-            )}
-            {results.students.map((s, i) => {
-              const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
-              const scoreCls = pct >= 80 ? "bg-green-100 text-green-700" : pct >= 60 ? "bg-amber-100 text-amber-700" : pct != null ? "bg-red-100 text-red-700" : "";
-              return (
-                <tr key={s.examJoinId} className="border-b border-neutral-50">
-                  <td className="px-4 py-3 text-neutral-400">{i + 1}</td>
-                  <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
-                  <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
-                  <td className="px-4 py-3">{pct != null ? <Badge className={scoreCls}>{s.totalScore}/{s.maxScore} ({pct}%)</Badge> : "—"}</td>
-                  <td className="px-4 py-3 text-neutral-500">{s.answeredCount ?? "—"}/{s.unansweredCount ?? "—"}</td>
-                  <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
-                    {s.submittedAt
-                      ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
-                      : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {s.submittedAt && (
-                      <button onClick={() => setDetailJoinId(s.examJoinId)} className="text-xs text-orange-500 hover:text-orange-700 font-medium">ดูรายละเอียด</button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Search & Filter */}
+      <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหานักเรียน..."
+              className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            />
+          </div>
+          <div className="flex rounded-xl overflow-hidden border border-neutral-200 flex-shrink-0">
+            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilterPass(f)}
+                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-neutral-400 mt-2 pl-1">แสดง {displayedStudents.length} จาก {results.students.length} คน</p>
       </div>
-      {detailJoinId && (
-        <StudentDetailModal examJoinId={detailJoinId} onClose={() => setDetailJoinId(null)} />
+
+      {/* Table */}
+      {displayedStudents.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
+          <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        </div>
+      ) : (
+        <div className="border border-neutral-100 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-neutral-50 border-b border-neutral-100">
+                  {[
+                    ["rank", "อันดับ"],
+                    ["name", "ชื่อนักเรียน"],
+                    [null, "เข้าสอบเมื่อ"],
+                    ["score", "คะแนน"],
+                    [null, "ตอบ/ไม่ตอบ"],
+                    ["time", "เวลาที่ใช้"],
+                    [null, "สถานะ"],
+                    [null, "ผล"],
+                    [null, ""],
+                  ].map(([k, label]) => (
+                    <th
+                      key={label}
+                      onClick={k ? () => handleSort(k) : undefined}
+                      className={`text-left text-xs font-semibold text-neutral-500 px-4 py-2.5 whitespace-nowrap ${k ? "cursor-pointer hover:text-neutral-700 select-none" : ""}`}
+                    >
+                      {label}{k && <SortIcon k={k} />}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayedStudents.map((s) => {
+                  const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+                  const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+                  return (
+                    <tr key={s.examJoinId} className="border-b border-neutral-50 hover:bg-neutral-50 transition">
+                      <td className="px-4 py-3">
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
+                      </td>
+                      <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
+                      <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+                      <td className="px-4 py-3">
+                        {pct != null ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
+                              </div>
+                              <span className="font-semibold text-neutral-700">{pct}%</span>
+                            </div>
+                            <p className="text-neutral-400 mt-0.5 text-xs">{s.totalScore}/{s.maxScore}</p>
+                          </>
+                        ) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-xs whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
+                        <span className="text-neutral-300 mx-1">/</span>
+                        <span className="inline-flex items-center gap-1 text-neutral-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                      </td>
+                      <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                        {s.submittedAt
+                          ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
+                          : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {passed == null ? (
+                          <span className="text-xs text-neutral-300">—</span>
+                        ) : (
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                            {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {s.submittedAt && (
+                          <button
+                            onClick={() => setSelectedStudent(s)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition ml-auto"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> ดูผล
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {results.students.length > 0 && (
+        <div className="flex justify-end">
+          <Link
+            to={`/tutor/exam-analytics?${new URLSearchParams({
+              courseId: courseId || "",
+              subjectId: subjectId || "",
+              courseName,
+              subjectName,
+              examType: exam.type,
+            }).toString()}`}
+            className="text-sm text-orange-500 hover:text-orange-700 font-semibold"
+          >
+            ดูวิเคราะห์เชิงลึก
+          </Link>
+        </div>
+      )}
+
+      {selectedStudent && (
+        <StudentDetailModal
+          student={selectedStudent}
+          examJoinId={selectedStudent.examJoinId}
+          examName={exam.name}
+          examQuestions={exam.questions}
+          onClose={() => setSelectedStudent(null)}
+        />
       )}
     </div>
   );
@@ -1046,7 +1358,9 @@ export default function TutorExamDetail() {
             onClose={async () => { await closeExamSession(exam.id); await reload(); }}
           />
         )}
-        {tab === "results" && <ResultsTab exam={exam} />}
+        {tab === "results" && (
+          <ResultsTab exam={exam} courseId={courseId} subjectId={subjectId} courseName={courseName} subjectName={subjectName} />
+        )}
       </div>
     </div>
   );

@@ -1,3 +1,30 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwind from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [react(), tailwind()],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['use-sync-external-store', 'react-redux', '@reduxjs/toolkit'],
+  },
+  server: {
+    proxy: {
+      "/api/chat": {
+        target: "http://localhost:5678",
+        changeOrigin: true,
+        rewrite: (path) =>
+          path.replace(
+            /^\/api\/chat/,
+            "/webhook/chat-webhook-sornserm-003/chat"
+          ),
+      },
+    },
+  },
+})
+
 // import { defineConfig } from 'vite'
 // import react from '@vitejs/plugin-react'
 // import tailwindcss from '@tailwindcss/vite'
@@ -17,23 +44,25 @@
 //   plugins: [react(), tailwind()],
 // })
 
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwind from '@tailwindcss/vite'
+// import { defineConfig } from 'vite'
+// import react from '@vitejs/plugin-react'
+// import tailwind from '@tailwindcss/vite'
 
-export default defineConfig({
-  plugins: [react(), tailwind()],
-  server: {
-    proxy: {
-      "/api/chat": {
-        target: "http://localhost:5678",
-        changeOrigin: true,
-        rewrite: (path) =>
-          path.replace(
-            /^\/api\/chat/,
-            "/webhook/chat-webhook-sornserm-003/chat"
-          ),
-      },
-    },
-  },
-})
+// export default defineConfig({
+//   plugins: [react(), tailwind()],
+//   server: {
+//     proxy: {
+//       "/api/chat": {
+//         target: "http://localhost:5678",
+//         changeOrigin: true,
+//         rewrite: (path) =>
+//           path.replace(
+//             /^\/api\/chat/,
+//             "/webhook/chat-webhook-sornserm-003/chat"
+//           ),
+//       },
+//     },
+//   },
+// })
+
+

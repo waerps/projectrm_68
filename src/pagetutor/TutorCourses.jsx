@@ -137,15 +137,15 @@ export default function CoursesPage() {
   const totalHoursAllCourses = courses.reduce((sum, course) => sum + Number(course.totalHours), 0);
 
   const stats = [
-    { label: "คอร์สทั้งหมด", value: courses.length.toString(), icon: BookOpen },
-    { label: "นักเรียนรวม", value: totalStudents.toString(), icon: Users },
-    { label: "ชั่วโมงสอน", value: totalHoursAllCourses.toString(), icon: Clock },
+    { label: "คอร์สทั้งหมด", value: courses.length.toString(), icon: BookOpen, color: "bg-blue-500" },
+    { label: "นักเรียนรวม", value: totalStudents.toString(), icon: Users, color: "bg-emerald-500" },
+    { label: "ชั่วโมงสอน", value: totalHoursAllCourses.toString(), icon: Clock, color: "bg-amber-500" },
   ];
-
+  
   const visibleStats = viewMode === 'primary' ? stats : [
-    { label: 'คลาสที่รับทั้งหมด', value: acceptedClasses.length.toString(), icon: BookOpen },
-    { label: 'คลาสที่กำลังจะมาถึง', value: acceptedClasses.filter(item => new Date(item.startDateTime) >= new Date()).length.toString(), icon: CalendarDays },
-    { label: 'เอกสารประกอบ', value: acceptedClasses.filter(item => item.attachmentFileId).length.toString(), icon: Paperclip },
+    { label: 'คลาสที่รับทั้งหมด', value: acceptedClasses.length.toString(), icon: BookOpen, color: "bg-blue-500" },
+    { label: 'คลาสที่กำลังจะมาถึง', value: acceptedClasses.filter(item => new Date(item.startDateTime) >= new Date()).length.toString(), icon: CalendarDays, color: "bg-violet-500" },
+    { label: 'เอกสารประกอบ', value: acceptedClasses.filter(item => item.attachmentFileId).length.toString(), icon: Paperclip, color: "bg-rose-500" },
   ];
 
   // 🔍 กรองข้อมูลตามการค้นหา
@@ -180,7 +180,7 @@ export default function CoursesPage() {
             const Icon = stat.icon;
             return (
               <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.color}`}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
                 <div>

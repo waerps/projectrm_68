@@ -5,14 +5,12 @@ import {
   ResponsiveContainer, LineChart, Line, Legend, Cell, ReferenceLine,
 } from "recharts";
 import {
-  BarChart2, Target, Users, TrendingUp, Download, AlertTriangle,
-  CheckCircle, Search, Info, Award, Clock, BookOpen,
+  BarChart2, Users, TrendingUp, Download, AlertTriangle,
+  CheckCircle, Search, Award, Clock, BookOpen,
   X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight,
   ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-
-
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -152,45 +150,106 @@ const buildHistogram = (data) => {
   return bins;
 };
 
-// ─── UI Helpers ───────────────────────────────────────────────────────────────
+// ─── Cross-exam per-student data ───────────────────────────────────────────
+// Data shape ล็อกไว้ตรงนี้ — ตอนต่อของจริงแก้แค่ข้างในฟังก์ชันนี้ ไม่ต้องแตะ UI
+// ของจริง: studentIndex จะเปลี่ยนเป็น UserId, และต้องเช็คว่า UserId นี้มีอยู่
+// ใน exam_join ของแต่ละรอบจริงไหม ถ้าไม่มี → submitted: false, ค่าอื่น null หมด
+function getStudentCrossExamData(studentIndex) {
+  const name = STUDENT_NAMES[studentIndex];
+  const exams = EXAMS_META.map((meta, examId) => {
+    const studentData = ALL_DATA[examId][studentIndex];
+    const submitted = true; // mock: สมมติสอบครบทุกรอบ
+    const topicPcts = TOPICS.reduce((acc, topic) => {
+      const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
+      const maxSc = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
+      const sc = qIdx.reduce((s, i) => s + (studentData.answers[i].correct ? QUESTIONS[i].score : 0), 0);
+      acc[topic] = maxSc ? sc / maxSc : 0;
+      return acc;
+    }, {});
+    return {
+      examType: ["pre-test", "mid-test", "post-test"][examId],
+      label: meta.label,
+      submitted,
+      pct: submitted ? studentData.pct : null,
+      totalScore: submitted ? studentData.totalScore : null,
+      maxScore: submitted ? MAX_SCORE : null,
+      topicPcts: submitted ? topicPcts : null,
+    };
+  });
+  return { studentId: studentIndex, name, exams };
+}
 
-const PValColor = v => v >= 0.7 ? "text-green-700 bg-green-50" : v >= 0.3 ? "text-amber-700 bg-amber-50" : "text-red-700 bg-red-50";
-const DIdxColor = v => v >= 0.3 ? "text-green-700 bg-green-50" : v >= 0.2 ? "text-amber-700 bg-amber-50" : "text-red-700 bg-red-50";
-const LevelBadge = { "ง่าย": "bg-green-100 text-green-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
+// ─── UI Primitives ──────────────────────────────────────────────────────────
+// รื้อ UI ใหม่ทั้งหมดในไฟล์นี้ โดยยึด AdminTutors.jsx / AdminStudents.jsx /
+// AdminDashboard.jsx เป็น Design System อ้างอิง (Modal, StatCard, ตาราง,
+// search/filter bar, badge, tab bar, ปุ่ม ฯลฯ ให้หน้าตา/พฤติกรรมตรงกัน)
 
-function StatCard({ icon: Icon, label, value, sub, color = "orange", tooltip }) {
-  const cfg = {
-    orange: { ring: "bg-orange-100", ic: "text-orange-500", val: "text-orange-600" },
-    green: { ring: "bg-green-100", ic: "text-green-500", val: "text-green-600" },
-    blue: { ring: "bg-blue-100", ic: "text-blue-500", val: "text-blue-600" },
-    red: { ring: "bg-red-100", ic: "text-red-500", val: "text-red-600" },
-    purple: { ring: "bg-purple-100", ic: "text-purple-500", val: "text-purple-600" },
-  }[color];
+const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
 
+// ── Modal (เหมือน AdminStudents.jsx / AdminTutors.jsx ทุกจุด) ──────────────
+function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200 p-5 flex flex-col gap-3">
-      <div className={`h-10 w-10 rounded-xl ${cfg.ring} flex items-center justify-center`}>
-        <Icon className={`h-5 w-5 ${cfg.ic}`} />
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+            {Icon && (
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+                <Icon className="h-4 w-4 text-white" />
+              </span>
+            )}
+            {title}
+          </h3>
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-6">{children}</div>
       </div>
-      <div>
-        <p className={`text-3xl font-bold ${cfg.val}`}>{value}</p>
+    </div>
+  );
+}
 
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <p className="text-sm font-medium text-neutral-700">{label}</p>
+// ── StatCard (เหมือน AdminDashboard.jsx / AdminStudents.jsx: ไอคอนสี่เหลี่ยมทึบ + label/value) ──
+function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tooltip }) {
+  return (
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
+      <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs text-slate-500 font-medium">{label}</p>
           {tooltip && (
             <div className="relative group">
-              <span className="h-4 w-4 rounded-full border border-neutral-300 flex items-center justify-center text-[10px] text-neutral-400 cursor-default">
+              <span className="h-3.5 w-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[9px] text-slate-400 cursor-default shrink-0">
                 ?
               </span>
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 bg-white border border-neutral-200 rounded-xl p-3 text-xs text-neutral-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
+              <div className="absolute bottom-full left-0 mb-2 w-60 bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
                 {tooltip}
               </div>
             </div>
           )}
         </div>
-
-        {sub && <p className="text-xs text-neutral-400 mt-0.5">{sub}</p>}
+        <p className="text-xl font-black text-slate-900">{value}</p>
+        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
       </div>
+    </div>
+  );
+}
+
+// ── SectionCard (การ์ดกราฟ/เนื้อหา — เหมือน AdminDashboard.jsx) ───────────
+function SectionCard({ title, icon: Icon, children, action, className = "" }) {
+  return (
+    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-5 ${className}`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+          {Icon && <Icon className="h-4 w-4 text-orange-500" />}
+          {title}
+        </h3>
+        {action}
+      </div>
+      {children}
     </div>
   );
 }
@@ -198,8 +257,8 @@ function StatCard({ icon: Icon, label, value, sub, color = "orange", tooltip }) 
 const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl shadow-lg px-3 py-2 text-xs">
-      <p className="font-semibold text-neutral-700 mb-1">{label}</p>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
+      <p className="font-semibold text-slate-700 mb-1">{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color }}>{p.name}: <strong>{typeof p.value === "number" && p.value < 1.5 ? fmtPct(p.value) : p.value}</strong></p>
       ))}
@@ -218,72 +277,69 @@ function StudentModal({ student, examLabel, onClose }) {
     return { topic, sc, maxSc, pct: sc / maxSc, color: TOPIC_COLORS[topic] };
   });
   const grade = student.pct >= 0.90 ? "A" : student.pct >= 0.80 ? "B+" : student.pct >= 0.70 ? "B" : student.pct >= 0.60 ? "C" : "F";
-  const gradeColor = student.pct >= 0.70 ? "text-green-600" : student.pct >= 0.60 ? "text-amber-600" : "text-red-600";
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-start p-6 border-b border-neutral-100">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-xl bg-orange-100 flex items-center justify-center">
-              <span className="text-lg font-bold text-orange-600">{student.id}</span>
-            </div>
-            <div>
-              <p className="font-bold text-neutral-900 text-lg">{student.name}</p>
-              <p className="text-xs text-neutral-500">{examLabel} • ใช้เวลา {fmtMin(student.timeSec)}</p>
-            </div>
+    <Modal title={`ผลสอบ: ${student.name}`} icon={Eye} onClose={onClose} wide>
+      {/* Profile / summary card — เหมือน StudentDetailModal / TutorDetailModal */}
+      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+        <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center shrink-0">
+          <span className="text-lg font-bold text-white">{student.id}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-lg">{student.name}</p>
+          <p className="text-sm text-orange-100">{examLabel} · ใช้เวลา {fmtMin(student.timeSec)}</p>
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{grade}</p>
+            <p className="text-[10px] text-orange-100">เกรด</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-center">
-              <p className={`text-4xl font-black ${gradeColor}`}>{grade}</p>
-              <p className="text-xs text-neutral-400">เกรด</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-neutral-800">{student.totalScore}/{MAX_SCORE}</p>
-              <p className="text-xs text-neutral-400">{fmtPct(student.pct)}</p>
-            </div>
-            <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-neutral-100 text-neutral-400 transition">
-              <X className="h-5 w-5" />
-            </button>
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{student.totalScore}/{MAX_SCORE}</p>
+            <p className="text-[10px] text-orange-100">{fmtPct(student.pct)}</p>
           </div>
         </div>
-        <div className="overflow-y-auto flex-1 p-6 space-y-5">
-          <div>
-            <p className="text-sm font-semibold text-neutral-700 mb-3">คะแนนรายหัวข้อ</p>
-            <div className="space-y-2.5">
-              {topicBreakdown.map(t => (
-                <div key={t.topic} className="flex items-center gap-3">
-                  <p className="text-xs text-neutral-600 w-36 flex-shrink-0">{t.topic}</p>
-                  <div className="flex-1 h-5 bg-neutral-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${t.pct * 100}%`, backgroundColor: t.color }} />
-                  </div>
-                  <p className="text-xs font-semibold text-neutral-700 w-16 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+      </div>
+
+      <div className="space-y-5">
+        <div>
+          <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหัวข้อ</p>
+          <div className="space-y-2.5">
+            {topicBreakdown.map(t => (
+              <div key={t.topic} className="flex items-center gap-3">
+                <p className="text-xs text-slate-500 w-36 flex-shrink-0">{t.topic}</p>
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${t.pct * 100}%`, backgroundColor: t.color }} />
                 </div>
-              ))}
-            </div>
+                <p className="text-xs font-semibold text-slate-700 w-20 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+              </div>
+            ))}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-neutral-700 mb-3">รายข้อ</p>
-            <div className="border border-neutral-100 rounded-xl overflow-hidden">
-              <table className="w-full text-xs">
+        </div>
+
+        <div>
+          <p className="text-sm font-bold text-slate-800 mb-3">รายข้อ</p>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-neutral-50 border-b border-neutral-100">
+                  <tr className="bg-slate-50 border-b border-slate-200">
                     {["ข้อ", "หัวข้อ", "ระดับ", "ผล", "คะแนน", "เวลา"].map(h => (
-                      <th key={h} className="text-left font-semibold text-neutral-500 px-3 py-2">{h}</th>
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-100">
                   {QUESTIONS.map((q, qi) => {
                     const ans = student.answers[qi];
                     return (
-                      <tr key={q.id} className={`border-b border-neutral-50 last:border-0 ${ans.correct ? "bg-green-50/30" : "bg-red-50/30"}`}>
-                        <td className="px-3 py-2 font-medium text-neutral-600">{q.id}</td>
-                        <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
-                        <td className="px-3 py-2"><span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${LevelBadge[q.level]}`}>{q.level}</span></td>
-                        <td className="px-3 py-2">{ans.correct ? <span className="flex items-center gap-1 text-green-700 font-semibold"><CheckCircle className="h-3 w-3" /> ถูก</span> : <span className="flex items-center gap-1 text-red-500 font-semibold"><X className="h-3 w-3" /> ผิด</span>}</td>
-                        <td className="px-3 py-2 text-neutral-700">{ans.correct ? q.score : 0}/{q.score}</td>
-                        <td className="px-3 py-2 text-neutral-500">{Math.floor(ans.timeSec / 60)}:{String(ans.timeSec % 60).padStart(2, "0")} น.</td>
+                      <tr key={q.id} className={ans.correct ? "bg-emerald-50/30" : "bg-red-50/30"}>
+                        <td className="px-4 py-2.5 font-medium text-slate-600">{q.id}</td>
+                        <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
+                        <td className="px-4 py-2.5"><span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${LevelBadge[q.level]}`}>{q.level}</span></td>
+                        <td className="px-4 py-2.5">{ans.correct ? <span className="flex items-center gap-1 text-emerald-700 font-semibold text-xs"><CheckCircle className="h-3 w-3" /> ถูก</span> : <span className="flex items-center gap-1 text-red-500 font-semibold text-xs"><X className="h-3 w-3" /> ผิด</span>}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{ans.correct ? q.score : 0}/{q.score}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{Math.floor(ans.timeSec / 60)}:{String(ans.timeSec % 60).padStart(2, "0")} น.</td>
                       </tr>
                     );
                   })}
@@ -293,12 +349,11 @@ function StudentModal({ student, examLabel, onClose }) {
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
 // ─── Tab 1: ภาพรวม ────────────────────────────────────────────────────────────
-// ตัด Heatmap ออก เหลือแค่ stat cards + histogram + topic chart
 
 function OverviewTab({ data }) {
   const pcts = data.map(s => s.pct);
@@ -314,62 +369,48 @@ function OverviewTab({ data }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * MAX_SCORE).toFixed(1)} / ${MAX_SCORE} คะแนน`} color="orange" />
-        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${data.filter(s => s.passed).length} จาก ${data.length} คน`} color="green" />
-        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub="ช่วงคะแนน" color="blue" />
+        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * MAX_SCORE).toFixed(1)} / ${MAX_SCORE} คะแนน`} color="bg-orange-500" />
+        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${data.filter(s => s.passed).length} จาก ${data.length} คน`} color="bg-emerald-500" />
+        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub="ช่วงคะแนน" color="bg-blue-500" />
         <StatCard
           icon={BarChart2}
           label="ส่วนเบี่ยงเบนมาตรฐาน"
           value={fmtPct(sdPct)}
           sub="σ (sigma)"
-          color="purple"
+          color="bg-amber-500"
           tooltip={
             <div className="space-y-2">
-              <p className="font-medium text-neutral-800">ส่วนเบี่ยงเบนมาตรฐาน (σ) คืออะไร?</p>
-              <p className="text-neutral-500 leading-relaxed">
-                วัดว่าคะแนนนักเรียนกระจายห่างจากค่าเฉลี่ยมากแค่ไหน
-                ค่ายิ่งสูง = นักเรียนมีระดับต่างกันมาก
+              <p className="font-semibold text-slate-800">ส่วนเบี่ยงเบนมาตรฐาน (σ) คืออะไร?</p>
+              <p className="text-slate-500 leading-relaxed">
+                วัดว่าคะแนนนักเรียนกระจายห่างจากค่าเฉลี่ยมากแค่ไหน ค่ายิ่งสูง = นักเรียนมีระดับต่างกันมาก
               </p>
-              <div className="space-y-1 pt-1 border-t border-neutral-100">
+              <div className="space-y-1 pt-1 border-t border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />
-                  <span><span className="font-medium text-neutral-700">น้อยกว่า 10%</span> — คะแนนใกล้เคียงกัน นักเรียนอยู่ในระดับเดียวกัน</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
+                  <span><span className="font-medium text-slate-700">น้อยกว่า 10%</span> — คะแนนใกล้เคียงกัน</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                  <span><span className="font-medium text-neutral-700">10–20%</span> — มีความต่างบ้าง แต่ยังแยกระดับได้ดี</span>
+                  <span><span className="font-medium text-slate-700">10–20%</span> — มีความต่างบ้าง แต่ยังแยกระดับได้ดี</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                  <span><span className="font-medium text-neutral-700">มากกว่า 20%</span> — ช่องว่างสูง เด็กเก่งกับเด็กอ่อนห่างกันมาก</span>
+                  <span><span className="font-medium text-slate-700">มากกว่า 20%</span> — ช่องว่างสูง ควรพิจารณาแบ่งกลุ่ม</span>
                 </div>
               </div>
-              <p className="text-neutral-400 text-[11px] pt-1 border-t border-neutral-100">
-                ค่าของคุณตอนนี้: <span className="font-medium text-purple-600">{fmtPct(sdPct)}</span>
-                {sdPct < 0.10 ? " — นักเรียนมีระดับใกล้เคียงกัน"
-                  : sdPct < 0.20 ? " — กระจายตัวในเกณฑ์ดี"
-                    : " — ควรพิจารณาแบ่งกลุ่ม"}
-              </p>
             </div>
           }
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Score Distribution */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-7 w-7 rounded-lg bg-orange-100 flex items-center justify-center">
-              <BarChart2 className="h-3.5 w-3.5 text-orange-500" />
-            </div>
-            <p className="text-sm font-bold text-neutral-800">การกระจายตัวของคะแนน</p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SectionCard title="การกระจายตัวของคะแนน" icon={BarChart2}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={hist} barCategoryGap="15%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
-              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#a3a3a3" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#a3a3a3" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "#fafafa" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f8fafc" }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
                 {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
               </Bar>
@@ -377,55 +418,36 @@ function OverviewTab({ data }) {
           </ResponsiveContainer>
           <div className="flex gap-4 justify-center mt-2 flex-wrap">
             {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–59% ใกล้ผ่าน"], ["#22c55e", "60%+ ผ่าน"]].map(([c, l]) => (
-              <span key={l} className="flex items-center gap-1.5 text-[11px] text-neutral-500">
+              <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
                 <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: c }} />{l}
               </span>
             ))}
           </div>
-        </div>
+        </SectionCard>
 
-        {/* Topic Performance */}
-        <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                <BookOpen className="h-3.5 w-3.5 text-blue-500" />
-              </div>
-              <p className="text-sm font-bold text-neutral-800">คะแนนเฉลี่ยรายหัวข้อ</p>
-            </div>
-          </div>
-
-          {/* คำอธิบาย */}
-          <p className="text-xs text-neutral-400 mb-1 ml-9">
-            ห้องนี้เข้าใจเรื่องไหนดี และเรื่องไหนที่ควรสอนซ้ำ
-          </p>
-
-          {/* Legend เกณฑ์ */}
-          <div className="flex items-center gap-4 mb-4 ml-9">
-            <span className="flex items-center gap-1.5 text-[11px] text-neutral-500">
-              <span className="h-2 w-2 rounded-full bg-green-400" />
-              70%+ ผ่านเกณฑ์ดี
+        <SectionCard title="คะแนนเฉลี่ยรายหัวข้อ" icon={BookOpen}>
+          <p className="text-xs text-slate-400 mb-3">ห้องนี้เข้าใจเรื่องไหนดี และเรื่องไหนที่ควรสอนซ้ำ</p>
+          <div className="flex items-center gap-4 mb-4">
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" /> 70%+ ผ่านเกณฑ์ดี
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-neutral-500">
-              <span className="h-2 w-2 rounded-full bg-amber-400" />
-              50–69% พอใช้
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-amber-400" /> 50–69% พอใช้
             </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-neutral-500">
-              <span className="h-2 w-2 rounded-full bg-red-400" />
-              ต่ำกว่า 50% ควรทบทวน
+            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+              <span className="h-2 w-2 rounded-full bg-red-400" /> ต่ำกว่า 50% ควรทบทวน
             </span>
           </div>
 
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={topicData} layout="vertical" barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" horizontal={false} />
-              {/* เส้นเกณฑ์ 60% */}
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
               <ReferenceLine x={0.6} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
               <XAxis
                 type="number"
                 domain={[0, 1]}
                 tickFormatter={v => `${(v * 100).toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#a3a3a3" }}
+                tick={{ fontSize: 10, fill: "#94a3b8" }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -433,7 +455,7 @@ function OverviewTab({ data }) {
                 dataKey="topic"
                 type="category"
                 width={100}
-                tick={{ fontSize: 10, fill: "#525252" }}
+                tick={{ fontSize: 10, fill: "#475569" }}
                 tickLine={false}
                 axisLine={false}
               />
@@ -446,16 +468,16 @@ function OverviewTab({ data }) {
                       pct >= 0.5 ? "พอใช้ ควรทบทวนเล็กน้อย" :
                         "ควรสอนซ้ำบทนี้";
                   return (
-                    <div className="bg-white border border-neutral-200 rounded-xl shadow-lg px-3 py-2 text-xs">
-                      <p className="font-semibold text-neutral-700 mb-1">{label}</p>
-                      <p className="text-neutral-600">{fmtPct(pct)}</p>
-                      <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-green-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
+                      <p className="font-semibold text-slate-700 mb-1">{label}</p>
+                      <p className="text-slate-600">{fmtPct(pct)}</p>
+                      <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
                         → {msg}
                       </p>
                     </div>
                   );
                 }}
-                cursor={{ fill: "#fafafa" }}
+                cursor={{ fill: "#f8fafc" }}
               />
               <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ย">
                 {topicData.map((entry, i) => (
@@ -472,7 +494,6 @@ function OverviewTab({ data }) {
             </BarChart>
           </ResponsiveContainer>
 
-          {/* Action hint สำหรับ bar สีแดง */}
           {topicData.some(t => t.avgPct < 0.5) && (
             <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
               <AlertTriangle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
@@ -483,17 +504,20 @@ function OverviewTab({ data }) {
                 {" "}— นักเรียนส่วนใหญ่ทำได้ต่ำกว่า 50% ควรพิจารณาสอนซ้ำก่อนสอบครั้งถัดไป
               </p>
             </div>
-          )
-          }
-        </div>
+          )}
+        </SectionCard>
       </div>
     </div>
   );
 }
 
 // ─── Tab 2: วิเคราะห์ข้อสอบ ──────────────────────────────────────────────────
-// ตัด legend ยาว + ย้าย P-value/D-index คำอธิบายไปอยู่ใน tooltip แทน
-
+// ★ ปิดใช้งานชั่วคราวตามคำขอ (ข้อ 4) — ไม่ลบโค้ด เก็บ implementation เดิมไว้
+// ในคอมเมนต์เพื่อนำกลับมาใช้ภายหลังได้ ไม่แสดง/เปิดใช้งาน tab นี้ในตอนนี้
+// (ไม่ได้ปรับ UI ให้เข้ากับ Design System ใหม่ เพราะยังไม่เปิดใช้งาน — เมื่อ
+// จะนำกลับมาใช้ ควรปรับหน้าตาให้ตรงกับ AdminTutors/AdminStudents เช่นเดียวกับ
+// tab อื่น ๆ ในไฟล์นี้ก่อน)
+/*
 function ItemAnalysisTab({ data }) {
   const [filterTopic, setFilterTopic] = useState("ทั้งหมด");
   const [filterFlag, setFilterFlag] = useState("ทั้งหมด");
@@ -529,7 +553,6 @@ function ItemAnalysisTab({ data }) {
 
   return (
     <div className="space-y-5">
-      {/* Summary — compact 3 cards */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0"><AlertTriangle className="h-4 w-4 text-red-500" /></div>
@@ -551,7 +574,6 @@ function ItemAnalysisTab({ data }) {
         </div>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2">
         <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-orange-300">
           <option>ทั้งหมด</option>
@@ -571,7 +593,6 @@ function ItemAnalysisTab({ data }) {
         <p className="ml-auto flex items-center text-xs text-neutral-400 self-center">{filtered.length} ข้อ</p>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
@@ -649,8 +670,11 @@ function ItemAnalysisTab({ data }) {
     </div>
   );
 }
+*/
 
 // ─── Tab 3: ผลนักเรียน ───────────────────────────────────────────────────────
+// ★ ปิดใช้งานชั่วคราวตามคำขอ — ไม่ลบโค้ด เก็บ StudentTab component ไว้
+// เผื่อนำกลับมาใช้ภายหลัง (เหมือนแนวทางเดียวกับ ItemAnalysisTab ด้านบน)
 
 function StudentTab({ data, examLabel }) {
   const [search, setSearch] = useState("");
@@ -683,98 +707,257 @@ function StudentTab({ data, examLabel }) {
   const passCount = data.filter(s => s.passed).length;
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
-          <CheckCircle className="h-8 w-8 text-green-500 flex-shrink-0" />
-          <div><p className="text-2xl font-bold text-green-600">{passCount}</p><p className="text-xs text-neutral-500">ผ่าน ({fmtPct(passCount / data.length)})</p></div>
-        </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
-          <X className="h-8 w-8 text-red-400 flex-shrink-0" />
-          <div><p className="text-2xl font-bold text-red-500">{data.length - passCount}</p><p className="text-xs text-neutral-500">ไม่ผ่าน ({fmtPct((data.length - passCount) / data.length)})</p></div>
-        </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
-          <Clock className="h-8 w-8 text-blue-400 flex-shrink-0" />
-          <div><p className="text-xl font-bold text-blue-600">{fmtMin(Math.round(avg(data.map(s => s.timeSec))))}</p><p className="text-xs text-neutral-500">เวลาเฉลี่ย</p></div>
-        </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard icon={CheckCircle} label="ผ่านเกณฑ์" value={passCount} sub={fmtPct(passCount / data.length)} color="bg-emerald-500" />
+        <StatCard icon={X} label="ไม่ผ่านเกณฑ์" value={data.length - passCount} sub={fmtPct((data.length - passCount) / data.length)} color="bg-red-500" />
+        <StatCard icon={Clock} label="เวลาเฉลี่ย" value={fmtMin(Math.round(avg(data.map(s => s.timeSec))))} sub="ต่อคน" color="bg-blue-500" />
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหานักเรียน…" className="pl-9 pr-3 py-2 text-xs border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-300 w-48" />
+      {/* Search & Filter — เหมือน AdminStudentsPage / AdminTutorsPage */}
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหานักเรียน..."
+              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            />
+          </div>
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 shrink-0">
+            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map(f => (
+              <button key={f} onClick={() => setFilterPass(f)}
+                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex rounded-xl overflow-hidden border border-neutral-200">
-          {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map(f => (
-            <button key={f} onClick={() => setFilterPass(f)} className={`px-3 py-2 text-xs font-medium transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}>{f}</button>
-          ))}
-        </div>
-        <p className="ml-auto text-xs text-neutral-400">{displayed.length} / {data.length} คน</p>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {displayed.length} จาก {data.length} คน</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-neutral-50 border-b border-neutral-100">
-              {[["rank", "อันดับ"], ["name", "ชื่อ"], ["totalScore", "คะแนน"], [null, "รายหัวข้อ"], ["timeSec", "เวลา"], [null, "ผล"], [null, ""]].map(([k, label]) => (
-                <th key={label} onClick={k ? () => handleSort(k) : undefined} className={`text-left font-semibold text-neutral-500 px-4 py-3 ${k ? "cursor-pointer hover:text-neutral-700" : ""}`}>
-                  {label}{k && <SortIcon k={k} />}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {displayed.map(s => {
-              const topicPcts = TOPICS.map(topic => {
-                const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
-                const maxSc = qIdx.reduce((sum, i) => sum + QUESTIONS[i].score, 0);
-                const sc = qIdx.reduce((sum, i) => sum + (s.answers[i].correct ? QUESTIONS[i].score : 0), 0);
-                return sc / maxSc;
-              });
-              return (
-                <tr key={s.id} className="border-b border-neutral-50 last:border-0 hover:bg-neutral-50/60 transition">
-                  <td className="px-4 py-3">
-                    <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
-                  </td>
-                  <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${s.pct * 100}%`, backgroundColor: s.pct >= 0.7 ? "#22c55e" : s.pct >= 0.6 ? "#f97316" : "#ef4444" }} />
-                      </div>
-                      <span className="font-semibold text-neutral-700">{Math.round(s.pct * 100)}%</span>
-                    </div>
-                    <p className="text-neutral-400 mt-0.5">{s.totalScore}/{MAX_SCORE}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1">
-                      {topicPcts.map((pct, ti) => (
-                        <div key={ti} title={`${TOPICS[ti]}: ${Math.round(pct * 100)}%`} className="h-4 w-4 rounded-sm" style={{ backgroundColor: pct >= 0.7 ? TOPIC_COLORS[TOPICS[ti]] : pct >= 0.4 ? `${TOPIC_COLORS[TOPICS[ti]]}88` : "#fee2e2" }} />
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-neutral-500">{fmtMin(s.timeSec)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${s.passed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{s.passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setSelected(s)} className="flex items-center gap-1 border border-neutral-200 hover:bg-neutral-100 text-neutral-600 rounded-lg px-2 py-1 text-[10px] font-semibold transition">
-                      <Eye className="h-3 w-3" /> ดูผล
-                    </button>
-                  </td>
+      {/* Table */}
+      {displayed.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+          <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  {[["rank", "อันดับ"], ["name", "ชื่อ"], ["totalScore", "คะแนน"], [null, "รายหัวข้อ"], ["timeSec", "เวลา"], [null, "ผล"], [null, ""]].map(([k, label]) => (
+                    <th key={label} onClick={k ? () => handleSort(k) : undefined}
+                      className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${k ? "cursor-pointer hover:text-slate-700" : ""}`}>
+                      {label}{k && <SortIcon k={k} />}
+                    </th>
+                  ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {displayed.map(s => {
+                  const topicPcts = TOPICS.map(topic => {
+                    const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
+                    const maxSc = qIdx.reduce((sum, i) => sum + QUESTIONS[i].score, 0);
+                    const sc = qIdx.reduce((sum, i) => sum + (s.answers[i].correct ? QUESTIONS[i].score : 0), 0);
+                    return sc / maxSc;
+                  });
+                  return (
+                    <tr key={s.id} className="hover:bg-orange-50/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${s.pct * 100}%`, backgroundColor: s.pct >= 0.7 ? "#22c55e" : s.pct >= 0.6 ? "#f97316" : "#ef4444" }} />
+                          </div>
+                          <span className="font-semibold text-slate-700">{Math.round(s.pct * 100)}%</span>
+                        </div>
+                        <p className="text-slate-400 mt-0.5 text-xs">{s.totalScore}/{MAX_SCORE}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          {topicPcts.map((pct, ti) => (
+                            <div key={ti} title={`${TOPICS[ti]}: ${Math.round(pct * 100)}%`} className="h-4 w-4 rounded-sm" style={{ backgroundColor: pct >= 0.7 ? TOPIC_COLORS[TOPICS[ti]] : pct >= 0.4 ? `${TOPIC_COLORS[TOPICS[ti]]}88` : "#fee2e2" }} />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">{fmtMin(s.timeSec)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${s.passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>{s.passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setSelected(s)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
+                          <Eye className="h-3.5 w-3.5" /> ดูผล
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {selected && <StudentModal student={selected} examLabel={examLabel} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
+// ─── Tab: รายคน (cross-exam) ────────────────────────────────────────────────
+function StudentProgressTab() {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const students = useMemo(() =>
+    STUDENT_NAMES.map((name, i) => {
+      const d = getStudentCrossExamData(i);
+      const submittedCount = d.exams.filter(e => e.submitted).length;
+      const latestPct = [...d.exams].reverse().find(e => e.submitted)?.pct ?? null;
+      return { index: i, name, submittedCount, totalExams: d.exams.length, latestPct };
+    }), []);
+
+  const filtered = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="ค้นหานักเรียน..."
+            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+          />
+        </div>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                {["ชื่อ", "สอบครบ", "คะแนนล่าสุด", ""].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map(s => (
+                <tr key={s.index} className="hover:bg-orange-50/40 transition-colors">
+                  <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      s.submittedCount === s.totalExams
+                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        : "bg-amber-100 text-amber-700 border-amber-200"
+                    }`}>
+                      {s.submittedCount}/{s.totalExams} รอบ
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{s.latestPct != null ? fmtPct(s.latestPct) : "—"}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setSelected(s.index)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
+                      <Eye className="h-3.5 w-3.5" /> ดูพัฒนาการ
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selected != null && <StudentProgressModal studentIndex={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function StudentProgressModal({ studentIndex, onClose }) {
+  const data = useMemo(() => getStudentCrossExamData(studentIndex), [studentIndex]);
+  const lineData = data.exams.map(e => ({ label: e.label, pct: e.submitted ? Math.round(e.pct * 1000) / 10 : null }));
+  const missingExams = data.exams.filter(e => !e.submitted);
+
+  const topicTrend = TOPICS.map(topic => {
+    const row = { topic: topic.replace("ลำดับและอนุกรม", "ลำดับฯ") };
+    data.exams.forEach(e => { row[e.label] = e.submitted ? Math.round(e.topicPcts[topic] * 1000) / 10 : null; });
+    return row;
+  });
+
+  return (
+    <Modal title={`พัฒนาการของ ${data.name}`} icon={TrendingUp} onClose={onClose} wide>
+      {missingExams.length > 0 && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">
+            ยังไม่มีข้อมูล: {missingExams.map(e => e.label).join(", ")} — กราฟแสดงเฉพาะรอบที่มีข้อมูลจริงเท่านั้น
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {data.exams.map(e => (
+          <div key={e.label} className={`rounded-2xl border p-4 text-center ${e.submitted ? "border-slate-100 bg-white" : "border-dashed border-slate-200 bg-slate-50"}`}>
+            <p className="text-xs font-bold text-slate-500 mb-1">{e.label}</p>
+            {e.submitted ? (
+              <>
+                <p className="text-2xl font-black text-slate-900">{fmtPct(e.pct)}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{e.totalScore}/{e.maxScore} คะแนน</p>
+              </>
+            ) : <p className="text-sm text-slate-300 italic mt-2">ยังไม่สอบ</p>}
+          </div>
+        ))}
+      </div>
+
+      <SectionCard title="คะแนนรวม % ข้ามรอบ" icon={TrendingUp} className="mb-5">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={lineData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#475569" }} tickLine={false} axisLine={false} />
+            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+            <Tooltip formatter={v => (v == null ? "ไม่มีข้อมูล" : `${v}%`)} content={<ChartTooltip />} />
+            <Line type="monotone" dataKey="pct" stroke="#f97316" strokeWidth={2.5} dot={{ fill: "#f97316", r: 5 }} activeDot={{ r: 7 }} connectNulls={false} name="คะแนนรวม" />
+          </LineChart>
+        </ResponsiveContainer>
+      </SectionCard>
+
+      <SectionCard title="พัฒนาการรายหัวข้อ" icon={BookOpen}>
+        <div className="space-y-3">
+          {topicTrend.map(row => (
+            <div key={row.topic} className="flex items-center gap-3">
+              <p className="text-xs text-slate-500 w-28 flex-shrink-0 truncate">{row.topic}</p>
+              <div className="flex-1 flex items-center gap-2">
+                {data.exams.map(e => {
+                  const v = row[e.label];
+                  return (
+                    <div key={e.label} className="flex-1">
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        {v != null && <div className="h-full rounded-full bg-orange-400" style={{ width: `${v}%` }} />}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 text-center">{v != null ? `${v}%` : "—"}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center gap-4 mt-3">
+          {data.exams.map(e => <span key={e.label} className="text-[10px] text-slate-400">{e.label}</span>)}
+        </div>
+      </SectionCard>
+    </Modal>
+  );
+}
+
 // ─── Tab 4: เปรียบเทียบ ──────────────────────────────────────────────────────
-// ตัด "นักเรียนที่พัฒนา/ต้องเอาใจใส่" ออก เหลือแค่ progress summary + topic trend
 
 function ComparisonTab() {
   const topicTrendData = useMemo(() =>
@@ -795,18 +978,17 @@ function ComparisonTab() {
 
   return (
     <div className="space-y-6">
-      {/* Progress summary cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {EXAMS_META.map((e, i) => (
-          <div key={e.id} className="bg-white rounded-2xl border border-neutral-200 p-5">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${e.badge}`}>{e.label}</span>
-            <p className="text-4xl font-black text-neutral-800 mt-2">{overallAvg[i]}%</p>
-            <p className="text-xs text-neutral-500 mt-0.5">คะแนนเฉลี่ย</p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
-              <span className="font-semibold text-green-600">{passRates[i]}%</span> อัตราผ่าน
+          <div key={e.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${e.badge}`}>{e.label}</span>
+            <p className="text-3xl font-black text-slate-900 mt-2">{overallAvg[i]}%</p>
+            <p className="text-xs text-slate-500 mt-0.5">คะแนนเฉลี่ย</p>
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="font-semibold text-emerald-600">{passRates[i]}%</span> อัตราผ่าน
             </div>
             {i > 0 && (
-              <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${+overallAvg[i] > +overallAvg[i - 1] ? "text-green-600" : "text-red-500"}`}>
+              <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${+overallAvg[i] > +overallAvg[i - 1] ? "text-emerald-600" : "text-red-500"}`}>
                 {+overallAvg[i] > +overallAvg[i - 1]
                   ? <><ArrowUpRight className="h-3.5 w-3.5" /> +{(+overallAvg[i] - +overallAvg[i - 1]).toFixed(1)}% จาก {EXAMS_META[i - 1].label}</>
                   : <><ArrowDownRight className="h-3.5 w-3.5" /> {(+overallAvg[i] - +overallAvg[i - 1]).toFixed(1)}% จาก {EXAMS_META[i - 1].label}</>}
@@ -816,19 +998,12 @@ function ComparisonTab() {
         ))}
       </div>
 
-      {/* Topic trend chart */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-7 w-7 rounded-lg bg-green-100 flex items-center justify-center">
-            <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-          </div>
-          <p className="text-sm font-bold text-neutral-800">พัฒนาการรายหัวข้อ (Pre → Mid → Post)</p>
-        </div>
+      <SectionCard title="พัฒนาการรายหัวข้อ (Pre → Mid → Post)" icon={TrendingUp}>
         <ResponsiveContainer width="100%" height={280}>
           <LineChart data={topicTrendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-            <XAxis dataKey="topic" tick={{ fontSize: 10, fill: "#525252" }} tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "#a3a3a3" }} tickLine={false} axisLine={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="topic" tick={{ fontSize: 10, fill: "#475569" }} tickLine={false} axisLine={false} />
+            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
             <Tooltip formatter={v => `${v}%`} content={<ChartTooltip />} />
             <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
             <Line type="monotone" dataKey="Pre-test" stroke="#93c5fd" strokeWidth={2} dot={{ fill: "#93c5fd", r: 4 }} activeDot={{ r: 6 }} />
@@ -836,7 +1011,7 @@ function ComparisonTab() {
             <Line type="monotone" dataKey="Post-test" stroke="#22c55e" strokeWidth={2.5} dot={{ fill: "#22c55e", r: 4 }} activeDot={{ r: 6 }} />
           </LineChart>
         </ResponsiveContainer>
-      </div>
+      </SectionCard>
     </div>
   );
 }
@@ -870,16 +1045,30 @@ const exportToExcel = (data, examLabel) => {
 
 const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
-  { id: "items", label: "วิเคราะห์ข้อสอบ", icon: Target },
-  { id: "students", label: "ผลนักเรียน", icon: Users },
+  // { id: "items", label: "วิเคราะห์ข้อสอบ", icon: Target }, // ★ ปิดใช้งานชั่วคราว — ดู ItemAnalysisTab (คอมเมนต์ไว้ด้านบน)
+  // { id: "students", label: "ผลนักเรียน", icon: Users },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
+  { id: "progress", label: "รายคน", icon: Users },
 ];
 
 export default function TutorExamAnalytics() {
+  // ★ FIX: จุดนี้คือสาเหตุของ Production Build Error ("Cannot read properties of
+  // null (reading 'useRef')") — เดิม useSearchParams() และตัวแปรที่ derive จากมัน
+  // ถูกประกาศไว้ที่ระดับ module (นอก component) ซึ่งผิด Rules of Hooks
+  // (เรียก hook นอก component) แก้โดยย้าย useSearchParams() และตัวแปรทั้งหมดที่
+  // อ่านค่าจากมันเข้ามาไว้ภายใน TutorExamAnalytics() เท่านั้น ไม่มีการ workaround
+  // หรือเปลี่ยน library ใด ๆ
   const [searchParams] = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const subjectId = searchParams.get("subjectId");
+  const courseName = searchParams.get("courseName") || "";
+  const subjectName = searchParams.get("subjectName") || "";
+
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
   const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
-  const initialTab = searchParams.get("tab") ?? "overview";
+  const requestedTab = searchParams.get("tab") ?? "overview";
+  // กันกรณี URL เก่าชี้มาที่ ?tab=items หรือ ?tab=students ซึ่งปิดใช้งานอยู่ตอนนี้
+  const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
@@ -890,42 +1079,50 @@ export default function TutorExamAnalytics() {
   return (
     <div className="space-y-6 mt-[90px]">
       {/* Breadcrumb */}
-      <div className="flex items-center text-sm gap-2 text-neutral-500">
+      <div className="flex items-center gap-1.5 text-sm text-slate-400">
         <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
         <ChevronRight className="h-4 w-4" />
-        <Link to="/tutor/exams" className="hover:text-orange-600 transition font-medium">จัดการการสอบ</Link>
+        <Link
+          to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
+          className="hover:text-orange-600 transition font-medium"
+        >
+          {subjectName || "จัดการการสอบ"}
+        </Link>
         <ChevronRight className="h-4 w-4" />
-        <span className="font-semibold text-neutral-800">Analytics</span>
+        <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Analytics & Reporting</h1>
-          <p className="text-sm text-neutral-500 mt-1">คณิตศาสตร์ ม.3 เทอม 1/2567 • นักเรียน {data.length} คน • {QUESTIONS.length} ข้อ • {MAX_SCORE} คะแนน</p>
+          <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
+          <p className="text-sm text-slate-500 mt-1">คณิตศาสตร์ ม.3 เทอม 1/2567 · นักเรียน {data.length} คน · {QUESTIONS.length} ข้อ · {MAX_SCORE} คะแนน</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Exam Selector — เหลือแค่ที่นี่ที่เดียว */}
-          <div className="flex rounded-xl overflow-hidden border border-neutral-200">
+          <div className="flex rounded-xl overflow-hidden border border-slate-200">
             {EXAMS_META.map(e => (
-              <button key={e.id} onClick={() => setExamId(e.id)} className={`px-3 py-2 text-xs font-semibold transition ${examId === e.id ? "bg-neutral-900 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}>
+              <button key={e.id} onClick={() => setExamId(e.id)}
+                className={`px-3 py-2 text-xs font-bold transition ${examId === e.id ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
                 {e.label}
               </button>
             ))}
           </div>
-          <button onClick={() => exportToExcel(data, examLabel)} className="flex items-center gap-2 border border-green-200 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl px-4 py-2 text-sm font-medium transition">
+          <button onClick={() => exportToExcel(data, examLabel)}
+            className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
             <Download className="h-4 w-4" /> Export Excel
           </button>
         </div>
       </div>
 
-      {/* Tab Nav */}
-      <div className="flex gap-1 bg-neutral-100 rounded-2xl p-1 w-fit">
+      {/* Tab Nav — เหมือน AdminTutorsPage (list / attendance / applications) */}
+      <div className="flex gap-2 flex-wrap">
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${isActive ? "bg-white text-orange-600 shadow-sm" : "text-neutral-500 hover:text-neutral-700"}`}>
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition
+                ${isActive ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
               <Icon className="h-4 w-4" />
               {tab.label}
             </button>
@@ -935,9 +1132,10 @@ export default function TutorExamAnalytics() {
 
       {/* Content */}
       {activeTab === "overview" && <OverviewTab data={data} />}
-      {activeTab === "items" && <ItemAnalysisTab data={data} />}
-      {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />}
+      {/* {activeTab === "items" && <ItemAnalysisTab data={data} />} */}
+      {/* {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />} */}
       {activeTab === "compare" && <ComparisonTab />}
+      {activeTab === "progress" && <StudentProgressTab />}
     </div>
   );
 }
