@@ -7,19 +7,17 @@ import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Tra
 const API=`${API_URL}/api/tutor/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
 
-// ── meta: เพิ่ม accent (สำหรับแถบซ้าย + badge) ให้ตรงโทนเว็บ (ส้ม/แดง/เขียว/น้ำเงิน) ──
 const meta={
-  payment:{label:'การเงิน',Icon:DollarSign,accent:'border-emerald-400',bg:'bg-emerald-50',text:'text-emerald-700',border:'border-emerald-200'},
-  schedule:{label:'ตารางสอน',Icon:Calendar,accent:'border-orange-400',bg:'bg-orange-50',text:'text-orange-700',border:'border-orange-200'},
-  alert:{label:'ต้องจัดการ',Icon:AlertCircle,accent:'border-red-400',bg:'bg-red-50',text:'text-red-700',border:'border-red-200'},
-  success:{label:'สำเร็จ',Icon:CheckCircle,accent:'border-teal-400',bg:'bg-teal-50',text:'text-teal-700',border:'border-teal-200'},
-  release:{label:'คาบสอนแทน',Icon:Repeat2,accent:'border-blue-400',bg:'bg-blue-50',text:'text-blue-700',border:'border-blue-200'},
+  payment:{label:'การเงิน',Icon:DollarSign,accentBar:'bg-emerald-400',bg:'bg-emerald-50',text:'text-emerald-700',border:'border-emerald-100'},
+  schedule:{label:'ตารางสอน',Icon:Calendar,accentBar:'bg-orange-400',bg:'bg-orange-50',text:'text-orange-700',border:'border-orange-100'},
+  alert:{label:'ต้องจัดการ',Icon:AlertCircle,accentBar:'bg-red-400',bg:'bg-red-50',text:'text-red-700',border:'border-red-100'},
+  success:{label:'สำเร็จ',Icon:CheckCircle,accentBar:'bg-teal-400',bg:'bg-teal-50',text:'text-teal-700',border:'border-teal-100'},
+  release:{label:'คาบสอนแทน',Icon:Repeat2,accentBar:'bg-blue-400',bg:'bg-blue-50',text:'text-blue-700',border:'border-blue-100'},
 };
-const fallbackMeta = {label:'',Icon:Bell,accent:'border-slate-300',bg:'bg-slate-100',text:'text-slate-600',border:'border-slate-200'};
+const fallbackMeta = {label:'',Icon:Bell,accentBar:'bg-slate-300',bg:'bg-slate-100',text:'text-slate-600',border:'border-slate-200'};
 
 function ago(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';const s=Math.max(0,Math.floor((Date.now()-d)/1000));if(s<60)return'เมื่อสักครู่';if(s<3600)return`${Math.floor(s/60)} นาทีที่แล้ว`;if(s<86400)return`${Math.floor(s/3600)} ชั่วโมงที่แล้ว`;if(s<604800)return`${Math.floor(s/86400)} วันที่แล้ว`;return d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});}
 
-// ★ ใหม่ (UI only): จัดกลุ่มรายการตามวัน — ไม่กระทบข้อมูลจริง แค่จัดการแสดงผล
 function groupByDate(items){
   const now=new Date();
   const startOf=(d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
@@ -85,7 +83,7 @@ export default function TutorNotifications(){
         </div>
       )}
 
-      {/* Filter bar */}
+      {/* Filter bar — เหมือน search/filter card ของหน้า admin */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-wrap gap-2">
           <button onClick={()=>setFilter('all')} className={pillClass(filter==='all')}>ทั้งหมด ({items.length})</button>
@@ -114,7 +112,6 @@ export default function TutorNotifications(){
         <div className="space-y-6">
           {grouped.map(([groupLabel, groupItems]) => (
             <div key={groupLabel}>
-              {/* หัวกลุ่มวัน — sticky เล็กน้อยให้รู้ว่ากำลังอยู่ช่วงไหน */}
               <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">{groupLabel}</h2>
                 <div className="h-px flex-1 bg-slate-200" />
@@ -125,29 +122,20 @@ export default function TutorNotifications(){
                 {groupItems.map(item=>{
                   const m=meta[item.type]||fallbackMeta;
                   return (
+                    // ── การ์ด: border สีเทาเรียบเหมือนตาราง admin, radius 2xl ให้ตรงกัน ──
                     <div key={item.id}
-                      className={`group relative bg-white rounded-xl border ${item.isRead?'border-slate-200':'border-orange-200'} border-l-4 ${m.accent} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${!item.isRead ? 'bg-orange-50/20' : ''}`}>
+                      className={`relative bg-white rounded-2xl border ${item.isRead?'border-slate-200':'border-orange-200 bg-orange-50/20'} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden`}>
 
-                      {/* ปุ่ม action มุมขวาบน — compact icon เท่านั้น (C) */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        {!item.isRead && (
-                          <button disabled={busy===item.id} onClick={()=>mark(item.id)} title="อ่านแล้ว"
-                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50">
-                            <Check className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        <button disabled={busy===item.id} onClick={()=>dismiss(item.id)} title="ซ่อนรายการ"
-                          className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-red-200 text-red-500 hover:bg-red-50 shadow-sm transition disabled:opacity-50">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                      {/* แถบสีซ้าย — แยกเป็น div ต่างหาก ไม่ปนกับ border class (แก้บั๊กเดิม) */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${m.accentBar}`} />
 
                       <div className="p-4 pl-5 flex gap-3">
-                        <div className={`h-9 w-9 rounded-lg ${m.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                        {/* icon square — เพิ่ม border ให้เข้าชุดกับปุ่ม action ด้านล่าง */}
+                        <div className={`h-9 w-9 rounded-lg ${m.bg} border ${m.border} flex items-center justify-center shrink-0 mt-0.5`}>
                           <m.Icon className={`h-4.5 w-4.5 ${m.text}`} />
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-16">
+                        <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="text-sm font-bold text-slate-900">
                               {item.title}
@@ -158,14 +146,26 @@ export default function TutorNotifications(){
                             </span>
                           </div>
                           <p className="text-sm leading-6 text-slate-600">{item.message}</p>
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-xs text-slate-400">{ago(item.createdAt)}</span>
+                          <span className="mt-1.5 block text-xs text-slate-400">{ago(item.createdAt)}</span>
+
+                          {/* ── ปุ่ม action: bg อ่อนเห็นตลอด เหมือนปุ่มแก้ไข/รีเซ็ต/ปิดใช้งานในตาราง admin ── */}
+                          <div className="mt-3 flex items-center gap-1.5">
                             {item.link && (
                               <button onClick={()=>act(item)}
-                                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
                                 {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>
                             )}
+                            {!item.isRead && (
+                              <button disabled={busy===item.id} onClick={()=>mark(item.id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg hover:bg-emerald-100 transition disabled:opacity-50">
+                                <Check className="h-3.5 w-3.5" /> อ่านแล้ว
+                              </button>
+                            )}
+                            <button disabled={busy===item.id} onClick={()=>dismiss(item.id)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition disabled:opacity-50">
+                              <Trash2 className="h-3.5 w-3.5" /> ซ่อนรายการ
+                            </button>
                           </div>
                         </div>
                       </div>
