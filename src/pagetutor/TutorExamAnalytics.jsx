@@ -150,6 +150,35 @@ const buildHistogram = (data) => {
   return bins;
 };
 
+// ─── Cross-exam per-student data ───────────────────────────────────────────
+// Data shape ล็อกไว้ตรงนี้ — ตอนต่อของจริงแก้แค่ข้างในฟังก์ชันนี้ ไม่ต้องแตะ UI
+// ของจริง: studentIndex จะเปลี่ยนเป็น UserId, และต้องเช็คว่า UserId นี้มีอยู่
+// ใน exam_join ของแต่ละรอบจริงไหม ถ้าไม่มี → submitted: false, ค่าอื่น null หมด
+function getStudentCrossExamData(studentIndex) {
+  const name = STUDENT_NAMES[studentIndex];
+  const exams = EXAMS_META.map((meta, examId) => {
+    const studentData = ALL_DATA[examId][studentIndex];
+    const submitted = true; // mock: สมมติสอบครบทุกรอบ
+    const topicPcts = TOPICS.reduce((acc, topic) => {
+      const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
+      const maxSc = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
+      const sc = qIdx.reduce((s, i) => s + (studentData.answers[i].correct ? QUESTIONS[i].score : 0), 0);
+      acc[topic] = maxSc ? sc / maxSc : 0;
+      return acc;
+    }, {});
+    return {
+      examType: ["pre-test", "mid-test", "post-test"][examId],
+      label: meta.label,
+      submitted,
+      pct: submitted ? studentData.pct : null,
+      totalScore: submitted ? studentData.totalScore : null,
+      maxScore: submitted ? MAX_SCORE : null,
+      topicPcts: submitted ? topicPcts : null,
+    };
+  });
+  return { studentId: studentIndex, name, exams };
+}
+
 // ─── UI Primitives ──────────────────────────────────────────────────────────
 // รื้อ UI ใหม่ทั้งหมดในไฟล์นี้ โดยยึด AdminTutors.jsx / AdminStudents.jsx /
 // AdminDashboard.jsx เป็น Design System อ้างอิง (Modal, StatCard, ตาราง,
@@ -780,6 +809,154 @@ function StudentTab({ data, examLabel }) {
   );
 }
 
+// ─── Tab: รายคน (cross-exam) ────────────────────────────────────────────────
+function StudentProgressTab() {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const students = useMemo(() =>
+    STUDENT_NAMES.map((name, i) => {
+      const d = getStudentCrossExamData(i);
+      const submittedCount = d.exams.filter(e => e.submitted).length;
+      const latestPct = [...d.exams].reverse().find(e => e.submitted)?.pct ?? null;
+      return { index: i, name, submittedCount, totalExams: d.exams.length, latestPct };
+    }), []);
+
+  const filtered = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="ค้นหานักเรียน..."
+            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+          />
+        </div>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                {["ชื่อ", "สอบครบ", "คะแนนล่าสุด", ""].map(h => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map(s => (
+                <tr key={s.index} className="hover:bg-orange-50/40 transition-colors">
+                  <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+                      s.submittedCount === s.totalExams
+                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        : "bg-amber-100 text-amber-700 border-amber-200"
+                    }`}>
+                      {s.submittedCount}/{s.totalExams} รอบ
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{s.latestPct != null ? fmtPct(s.latestPct) : "—"}</td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => setSelected(s.index)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
+                      <Eye className="h-3.5 w-3.5" /> ดูพัฒนาการ
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selected != null && <StudentProgressModal studentIndex={selected} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function StudentProgressModal({ studentIndex, onClose }) {
+  const data = useMemo(() => getStudentCrossExamData(studentIndex), [studentIndex]);
+  const lineData = data.exams.map(e => ({ label: e.label, pct: e.submitted ? Math.round(e.pct * 1000) / 10 : null }));
+  const missingExams = data.exams.filter(e => !e.submitted);
+
+  const topicTrend = TOPICS.map(topic => {
+    const row = { topic: topic.replace("ลำดับและอนุกรม", "ลำดับฯ") };
+    data.exams.forEach(e => { row[e.label] = e.submitted ? Math.round(e.topicPcts[topic] * 1000) / 10 : null; });
+    return row;
+  });
+
+  return (
+    <Modal title={`พัฒนาการของ ${data.name}`} icon={TrendingUp} onClose={onClose} wide>
+      {missingExams.length > 0 && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">
+            ยังไม่มีข้อมูล: {missingExams.map(e => e.label).join(", ")} — กราฟแสดงเฉพาะรอบที่มีข้อมูลจริงเท่านั้น
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {data.exams.map(e => (
+          <div key={e.label} className={`rounded-2xl border p-4 text-center ${e.submitted ? "border-slate-100 bg-white" : "border-dashed border-slate-200 bg-slate-50"}`}>
+            <p className="text-xs font-bold text-slate-500 mb-1">{e.label}</p>
+            {e.submitted ? (
+              <>
+                <p className="text-2xl font-black text-slate-900">{fmtPct(e.pct)}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{e.totalScore}/{e.maxScore} คะแนน</p>
+              </>
+            ) : <p className="text-sm text-slate-300 italic mt-2">ยังไม่สอบ</p>}
+          </div>
+        ))}
+      </div>
+
+      <SectionCard title="คะแนนรวม % ข้ามรอบ" icon={TrendingUp} className="mb-5">
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={lineData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#475569" }} tickLine={false} axisLine={false} />
+            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+            <Tooltip formatter={v => (v == null ? "ไม่มีข้อมูล" : `${v}%`)} content={<ChartTooltip />} />
+            <Line type="monotone" dataKey="pct" stroke="#f97316" strokeWidth={2.5} dot={{ fill: "#f97316", r: 5 }} activeDot={{ r: 7 }} connectNulls={false} name="คะแนนรวม" />
+          </LineChart>
+        </ResponsiveContainer>
+      </SectionCard>
+
+      <SectionCard title="พัฒนาการรายหัวข้อ" icon={BookOpen}>
+        <div className="space-y-3">
+          {topicTrend.map(row => (
+            <div key={row.topic} className="flex items-center gap-3">
+              <p className="text-xs text-slate-500 w-28 flex-shrink-0 truncate">{row.topic}</p>
+              <div className="flex-1 flex items-center gap-2">
+                {data.exams.map(e => {
+                  const v = row[e.label];
+                  return (
+                    <div key={e.label} className="flex-1">
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        {v != null && <div className="h-full rounded-full bg-orange-400" style={{ width: `${v}%` }} />}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 text-center">{v != null ? `${v}%` : "—"}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex justify-center gap-4 mt-3">
+          {data.exams.map(e => <span key={e.label} className="text-[10px] text-slate-400">{e.label}</span>)}
+        </div>
+      </SectionCard>
+    </Modal>
+  );
+}
+
 // ─── Tab 4: เปรียบเทียบ ──────────────────────────────────────────────────────
 
 function ComparisonTab() {
@@ -871,6 +1048,7 @@ const TABS = [
   // { id: "items", label: "วิเคราะห์ข้อสอบ", icon: Target }, // ★ ปิดใช้งานชั่วคราว — ดู ItemAnalysisTab (คอมเมนต์ไว้ด้านบน)
   // { id: "students", label: "ผลนักเรียน", icon: Users },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
+  { id: "progress", label: "รายคน", icon: Users },
 ];
 
 export default function TutorExamAnalytics() {
@@ -957,6 +1135,7 @@ export default function TutorExamAnalytics() {
       {/* {activeTab === "items" && <ItemAnalysisTab data={data} />} */}
       {/* {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />} */}
       {activeTab === "compare" && <ComparisonTab />}
+      {activeTab === "progress" && <StudentProgressTab />}
     </div>
   );
 }
