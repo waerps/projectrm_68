@@ -6,19 +6,43 @@ import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Tra
 
 const API=`${API_URL}/api/tutor/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
+
+// ── meta: เพิ่ม accent (สำหรับแถบซ้าย + badge) ให้ตรงโทนเว็บ (ส้ม/แดง/เขียว/น้ำเงิน) ──
 const meta={
-  payment:{label:'การเงิน',Icon:DollarSign,bg:'bg-emerald-50',color:'text-emerald-600',border:'border-emerald-200'},
-  schedule:{label:'ตารางสอน',Icon:Calendar,bg:'bg-orange-50',color:'text-orange-600',border:'border-orange-200'},
-  alert:{label:'ต้องจัดการ',Icon:AlertCircle,bg:'bg-red-50',color:'text-red-600',border:'border-red-200'},
-  success:{label:'สำเร็จ',Icon:CheckCircle,bg:'bg-teal-50',color:'text-teal-600',border:'border-teal-200'},
-  release:{label:'คาบสอนแทน',Icon:Repeat2,bg:'bg-blue-50',color:'text-blue-600',border:'border-blue-200'},
+  payment:{label:'การเงิน',Icon:DollarSign,accent:'border-emerald-400',bg:'bg-emerald-50',text:'text-emerald-700',border:'border-emerald-200'},
+  schedule:{label:'ตารางสอน',Icon:Calendar,accent:'border-orange-400',bg:'bg-orange-50',text:'text-orange-700',border:'border-orange-200'},
+  alert:{label:'ต้องจัดการ',Icon:AlertCircle,accent:'border-red-400',bg:'bg-red-50',text:'text-red-700',border:'border-red-200'},
+  success:{label:'สำเร็จ',Icon:CheckCircle,accent:'border-teal-400',bg:'bg-teal-50',text:'text-teal-700',border:'border-teal-200'},
+  release:{label:'คาบสอนแทน',Icon:Repeat2,accent:'border-blue-400',bg:'bg-blue-50',text:'text-blue-700',border:'border-blue-200'},
 };
+const fallbackMeta = {label:'',Icon:Bell,accent:'border-slate-300',bg:'bg-slate-100',text:'text-slate-600',border:'border-slate-200'};
+
 function ago(value){const d=new Date(value);if(Number.isNaN(d.getTime()))return'—';const s=Math.max(0,Math.floor((Date.now()-d)/1000));if(s<60)return'เมื่อสักครู่';if(s<3600)return`${Math.floor(s/60)} นาทีที่แล้ว`;if(s<86400)return`${Math.floor(s/3600)} ชั่วโมงที่แล้ว`;if(s<604800)return`${Math.floor(s/86400)} วันที่แล้ว`;return d.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});}
 
-// ── UI helper เท่านั้น ไม่มีผลต่อ logic — สไตล์ pill filter แบบเดียวกับ AdminTutors (TutorApplicationList)
+// ★ ใหม่ (UI only): จัดกลุ่มรายการตามวัน — ไม่กระทบข้อมูลจริง แค่จัดการแสดงผล
+function groupByDate(items){
+  const now=new Date();
+  const startOf=(d)=>new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const today=startOf(now);
+  const yesterday=new Date(today); yesterday.setDate(today.getDate()-1);
+  const weekAgo=new Date(today); weekAgo.setDate(today.getDate()-7);
+
+  const groups={ 'วันนี้':[], 'เมื่อวาน':[], 'สัปดาห์นี้':[], 'ก่อนหน้านี้':[] };
+  for(const item of items){
+    const d=new Date(item.createdAt);
+    if(Number.isNaN(d.getTime())){ groups['ก่อนหน้านี้'].push(item); continue; }
+    const dayStart=startOf(d);
+    if(dayStart.getTime()===today.getTime()) groups['วันนี้'].push(item);
+    else if(dayStart.getTime()===yesterday.getTime()) groups['เมื่อวาน'].push(item);
+    else if(dayStart.getTime()>weekAgo.getTime()) groups['สัปดาห์นี้'].push(item);
+    else groups['ก่อนหน้านี้'].push(item);
+  }
+  return Object.entries(groups).filter(([,arr])=>arr.length>0);
+}
+
 const pillClass = (active) =>
   `flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border ${
-    active ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+    active ? 'bg-orange-500 text-white border-orange-500 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
 
 export default function TutorNotifications(){
@@ -34,9 +58,11 @@ export default function TutorNotifications(){
   const dismiss=async id=>{setBusy(id);try{await axios.delete(`${API}/${encodeURIComponent(id)}`,auth());setItems(xs=>xs.filter(x=>x.id!==id));}catch(err){setError(err.response?.data?.message||'ซ่อนรายการไม่สำเร็จ');}finally{setBusy('');}};
   const act=async item=>{if(!item.isRead)await mark(item.id);if(item.link)navigate(item.link);};
 
+  const grouped = useMemo(()=>groupByDate(filtered),[filtered]);
+
   return (
     <div className="space-y-6 mt-[90px]">
-      {/* Header — เหมือน AdminTutorsPage/AdminStudentsPage */}
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
@@ -59,7 +85,7 @@ export default function TutorNotifications(){
         </div>
       )}
 
-      {/* Filter bar — เหมือน search/filter card ของ AdminTutors */}
+      {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-wrap gap-2">
           <button onClick={()=>setFilter('all')} className={pillClass(filter==='all')}>ทั้งหมด ({items.length})</button>
@@ -85,51 +111,70 @@ export default function TutorNotifications(){
           <p className="text-sm text-slate-400 mt-1">หากไม่มีงานค้าง หน้านี้ว่างได้เป็นปกติ</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(item=>{
-            const m=meta[item.type]||{label:item.type,Icon:Bell,bg:'bg-slate-100',color:'text-slate-600',border:'border-slate-200'};
-            return (
-              <div key={item.id} className={`bg-white rounded-2xl border shadow-sm hover:border-orange-300 transition overflow-hidden ${item.isRead?'border-slate-200':'border-orange-200 bg-orange-50/30'}`}>
-                <div className="relative p-5 flex gap-4">
-                  <div className={`h-10 w-10 rounded-xl ${m.bg} border ${m.border} flex items-center justify-center shrink-0`}>
-                    <m.Icon className={`h-5 w-5 ${m.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0 md:pr-52">
-                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                      <h3 className="text-sm font-bold text-slate-900">
-                        {item.title}
-                        {!item.isRead && <span className="ml-2 inline-block w-2 h-2 bg-orange-500 rounded-full align-middle" />}
-                      </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${m.bg} ${m.color} ${m.border}`}>
-                        {m.label}
-                      </span>
-                    </div>
-                    <p className="text-sm leading-6 text-slate-600">{item.message}</p>
-                    <span className="mt-1.5 block text-xs text-slate-400">{ago(item.createdAt)}</span>
-
-                    <div className="mt-3 flex flex-wrap gap-2 md:absolute md:right-5 md:top-5 md:mt-0 md:w-44 md:flex-col">
-                      {item.link && (
-                        <button onClick={()=>act(item)}
-                          className="flex justify-center items-center gap-1 px-3 py-2 text-xs font-bold text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition">
-                          {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      {!item.isRead && (
-                        <button disabled={busy===item.id} onClick={()=>mark(item.id)}
-                          className="flex justify-center items-center gap-1 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition disabled:opacity-50">
-                          <Check className="h-3.5 w-3.5" /> อ่านแล้ว
-                        </button>
-                      )}
-                      <button disabled={busy===item.id} onClick={()=>dismiss(item.id)}
-                        className="flex justify-center items-center gap-1 px-3 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition disabled:opacity-50">
-                        <Trash2 className="h-3.5 w-3.5" /> ซ่อนรายการ
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-6">
+          {grouped.map(([groupLabel, groupItems]) => (
+            <div key={groupLabel}>
+              {/* หัวกลุ่มวัน — sticky เล็กน้อยให้รู้ว่ากำลังอยู่ช่วงไหน */}
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">{groupLabel}</h2>
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-[11px] text-slate-400">{groupItems.length} รายการ</span>
               </div>
-            );
-          })}
+
+              <div className="space-y-3">
+                {groupItems.map(item=>{
+                  const m=meta[item.type]||fallbackMeta;
+                  return (
+                    <div key={item.id}
+                      className={`group relative bg-white rounded-xl border ${item.isRead?'border-slate-200':'border-orange-200'} border-l-4 ${m.accent} shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden ${!item.isRead ? 'bg-orange-50/20' : ''}`}>
+
+                      {/* ปุ่ม action มุมขวาบน — compact icon เท่านั้น (C) */}
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        {!item.isRead && (
+                          <button disabled={busy===item.id} onClick={()=>mark(item.id)} title="อ่านแล้ว"
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50">
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button disabled={busy===item.id} onClick={()=>dismiss(item.id)} title="ซ่อนรายการ"
+                          className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-red-200 text-red-500 hover:bg-red-50 shadow-sm transition disabled:opacity-50">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="p-4 pl-5 flex gap-3">
+                        <div className={`h-9 w-9 rounded-lg ${m.bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                          <m.Icon className={`h-4.5 w-4.5 ${m.text}`} />
+                        </div>
+
+                        <div className="flex-1 min-w-0 pr-16">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h3 className="text-sm font-bold text-slate-900">
+                              {item.title}
+                              {!item.isRead && <span className="ml-1.5 inline-block w-1.5 h-1.5 bg-orange-500 rounded-full align-middle" />}
+                            </h3>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${m.bg} ${m.text}`}>
+                              {m.label}
+                            </span>
+                          </div>
+                          <p className="text-sm leading-6 text-slate-600">{item.message}</p>
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-xs text-slate-400">{ago(item.createdAt)}</span>
+                            {item.link && (
+                              <button onClick={()=>act(item)}
+                                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+                                {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
