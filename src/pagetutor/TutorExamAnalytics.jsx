@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -6,10 +6,11 @@ import {
 } from "recharts";
 import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
-  CheckCircle, Search, Award, Clock, BookOpen,
+  CheckCircle, Search, Award, Clock, BookOpen, Info,
   X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronLeft,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { fetchExams, fetchExamResults } from "../utils/examShared";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ const EXAMS_META = [
   { id: 2, label: "Post-test", badge: "bg-pink-50 text-pink-700" },
 ];
 
-// ─── Questions ────────────────────────────────────────────────────────────────
+// ─── Questions (mock — ยังใช้กับ Export Excel / ตัวเลขคำถามชั่วคราว จนกว่าจะมี item-level endpoint จริง) ──
 
 const QUESTIONS = [
   { id: 1, topic: "พีชคณิต", level: "ง่าย", score: 1, text: "x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับ" },
@@ -73,7 +74,7 @@ const QUESTIONS = [
 
 const MAX_SCORE = QUESTIONS.reduce((s, q) => s + q.score, 0);
 
-// ─── Pseudo-random helpers ────────────────────────────────────────────────────
+// ─── Pseudo-random helpers (mock — ยังใช้กับ Export Excel ชั่วคราว) ────────────
 
 const pr = (a, b, c = 0) => {
   let x = (Math.imul(a | 0, 2654435761) ^ Math.imul(b | 0, 2246822519) ^ Math.imul(c | 0, 1664525)) >>> 0;
@@ -149,55 +150,51 @@ const buildHistogram = (data) => {
   return bins;
 };
 
-function computeExamRankMap(examId) {
-  const data = ALL_DATA[examId];
-  const sorted = [...data].sort((a, b) => b.pct - a.pct);
-  const rankMap = new Map();
-  sorted.forEach((s, i) => rankMap.set(s.id, i + 1));
-  return rankMap;
-}
+// ─── ข้อมูลจริงข้ามรอบสอบ (แทนที่ getStudentCrossExamData เดิมทั้งฟังก์ชัน) ──
+// รวมคนคนเดียวกันข้าม 3 รอบด้วย userId จริงจาก backend (ไม่ใช่ index มั่วแบบ mock)
+// topicPcts ยังเป็น null เสมอ — รอ backend endpoint สรุปคะแนนรายหัวข้อทั้งห้อง
 
-// ── คำนวณ rank map ของทั้ง 3 exam ครั้งเดียวตอนโหลดไฟล์ ──
-// เก็บเป็น array ที่ index ตรงกับ examId (0=pre, 1=mid, 2=post)
-const RANK_MAPS = EXAMS_META.map((_, examId) => computeExamRankMap(examId));
+function buildRealCrossExamData(examResults) {
+  const userMap = new Map(); // userId -> { userId, name, exams: [null,null,null] }
 
-function getStudentCrossExamData(studentIndex) {
-  const name = STUDENT_NAMES[studentIndex];
-  const exams = EXAMS_META.map((meta, examId) => {
-    const studentData = ALL_DATA[examId][studentIndex];
-    const submitted = true;
-    const rankMap = RANK_MAPS[examId]; // ← ใช้ค่าที่คำนวณไว้แล้ว ไม่คำนวณซ้ำ
-    const topicPcts = TOPICS.reduce((acc, topic) => {
-      const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
-      const maxSc = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
-      const sc = qIdx.reduce((s, i) => s + (studentData.answers[i].correct ? QUESTIONS[i].score : 0), 0);
-      acc[topic] = maxSc ? sc / maxSc : 0;
-      return acc;
-    }, {});
-    return {
-      examType: ["pre-test", "mid-test", "post-test"][examId],
-      label: meta.label,
-      submitted,
-      pct: submitted ? studentData.pct : null,
-      totalScore: submitted ? studentData.totalScore : null,
-      maxScore: submitted ? MAX_SCORE : null,
-      topicPcts: submitted ? topicPcts : null,
-      rank: submitted ? rankMap.get(studentData.id) : null,
-      totalStudents: ALL_DATA[examId].length,
-      avgTimePerQuestion: submitted ? studentData.timeSec / QUESTIONS.length : null,
-    };
+  examResults.forEach((r, examId) => {
+    if (!r) return;
+    const sorted = [...r.students].filter(s => s.submittedAt && s.maxScore)
+      .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
+    const rankByUser = new Map(sorted.map((s, i) => [s.userId, i + 1]));
+
+    r.students.forEach((s) => {
+      if (!userMap.has(s.userId)) userMap.set(s.userId, { userId: s.userId, name: s.name, exams: [null, null, null] });
+      const entry = userMap.get(s.userId);
+      if (s.submittedAt && s.maxScore) {
+        entry.exams[examId] = {
+          label: EXAMS_META[examId].label,
+          submitted: true,
+          pct: s.totalScore / s.maxScore,
+          totalScore: s.totalScore,
+          maxScore: s.maxScore,
+          rank: rankByUser.get(s.userId),
+          totalStudents: sorted.length,
+          avgTimePerQuestion: s.secondsUsed != null && s.totalQuestions ? s.secondsUsed / s.totalQuestions : null,
+        };
+      }
+    });
   });
-  return { studentId: studentIndex, name, exams };
+
+  return Array.from(userMap.values()).map((u) => ({
+    studentId: u.userId,
+    name: u.name,
+    exams: u.exams.map((e, i) => e || {
+      label: EXAMS_META[i].label, submitted: false, pct: null, totalScore: null,
+      maxScore: null, topicPcts: null, rank: null, totalStudents: null, avgTimePerQuestion: null,
+    }),
+  }));
 }
 
 // ─── UI Primitives ──────────────────────────────────────────────────────────
-// รื้อ UI ใหม่ทั้งหมดในไฟล์นี้ โดยยึด AdminTutors.jsx / AdminStudents.jsx /
-// AdminDashboard.jsx เป็น Design System อ้างอิง (Modal, StatCard, ตาราง,
-// search/filter bar, badge, tab bar, ปุ่ม ฯลฯ ให้หน้าตา/พฤติกรรมตรงกัน)
 
 const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
 
-// ── Modal (เหมือน AdminStudents.jsx / AdminTutors.jsx ทุกจุด) ──────────────
 function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -221,7 +218,6 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   );
 }
 
-// ── StatCard (เหมือน AdminDashboard.jsx / AdminStudents.jsx: ไอคอนสี่เหลี่ยมทึบ + label/value) ──
 function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tooltip }) {
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
@@ -249,7 +245,6 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tool
   );
 }
 
-// ── SectionCard (การ์ดกราฟ/เนื้อหา — เหมือน AdminDashboard.jsx) ───────────
 function SectionCard({ title, icon: Icon, children, action, className = "" }) {
   return (
     <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-5 ${className}`}>
@@ -277,7 +272,7 @@ const ChartTooltip = ({ active, payload, label }) => {
   );
 };
 
-// ─── Student Drill-down Modal ─────────────────────────────────────────────────
+// ─── Student Drill-down Modal (mock — ใช้ใน StudentTab ที่ปิดใช้งานอยู่) ──────
 
 function StudentModal({ student, examLabel, onClose }) {
   if (!student) return null;
@@ -291,7 +286,6 @@ function StudentModal({ student, examLabel, onClose }) {
 
   return (
     <Modal title={`ผลสอบ: ${student.name}`} icon={Eye} onClose={onClose} wide>
-      {/* Profile / summary card — เหมือน StudentDetailModal / TutorDetailModal */}
       <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
         <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center shrink-0">
           <span className="text-lg font-bold text-white">{student.id}</span>
@@ -364,170 +358,68 @@ function StudentModal({ student, examLabel, onClose }) {
   );
 }
 
-// ─── Tab 1: ภาพรวม ────────────────────────────────────────────────────────────
+// ─── Tab 1: ภาพรวม (ข้อมูลจริงจาก fetchExamResults) ────────────────────────
 
-function OverviewTab({ data }) {
-  const pcts = data.map(s => s.pct);
+function OverviewTab({ results }) {
+  const submitted = (results?.students || []).filter(s => s.submittedAt && s.maxScore);
+
+  if (!results || submitted.length === 0) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
+        <BarChart2 className="h-10 w-10 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">ยังไม่มีข้อมูลผลสอบรอบนี้</p>
+        <p className="text-xs text-slate-400">ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คน</p>
+      </div>
+    );
+  }
+
+  const pcts = submitted.map(s => s.totalScore / s.maxScore);
   const avgPct = avg(pcts);
   const sdPct = sdev(pcts);
-  const passRate = data.filter(s => s.passed).length / data.length;
+  const passRate = submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length / submitted.length;
   const maxPct = Math.max(...pcts);
   const minPct = Math.min(...pcts);
+  const maxScore = submitted[0].maxScore;
 
-  const hist = useMemo(() => buildHistogram(data), [data]);
-  const topicData = useMemo(() => computeTopicStats(data), [data]);
+  const hist = useMemo(() => {
+    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
+    submitted.forEach(s => { bins[Math.min(9, Math.floor((s.totalScore / s.maxScore) * 10))].count++; });
+    return bins;
+  }, [submitted]);
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * MAX_SCORE).toFixed(1)} / ${MAX_SCORE} คะแนน`} color="bg-orange-500" />
-        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${data.filter(s => s.passed).length} จาก ${data.length} คน`} color="bg-emerald-500" />
+        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * maxScore).toFixed(1)} / ${maxScore} คะแนน`} color="bg-orange-500" />
+        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length} จาก ${submitted.length} คน`} color="bg-emerald-500" />
         <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub="ช่วงคะแนน" color="bg-blue-500" />
-        <StatCard
-          icon={BarChart2}
-          label="ส่วนเบี่ยงเบนมาตรฐาน"
-          value={fmtPct(sdPct)}
-          sub="σ (sigma)"
-          color="bg-amber-500"
-          tooltip={
-            <div className="space-y-2">
-              <p className="font-semibold text-slate-800">ส่วนเบี่ยงเบนมาตรฐาน (σ) คืออะไร?</p>
-              <p className="text-slate-500 leading-relaxed">
-                วัดว่าคะแนนนักเรียนกระจายห่างจากค่าเฉลี่ยมากแค่ไหน ค่ายิ่งสูง = นักเรียนมีระดับต่างกันมาก
-              </p>
-              <div className="space-y-1 pt-1 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" />
-                  <span><span className="font-medium text-slate-700">น้อยกว่า 10%</span> — คะแนนใกล้เคียงกัน</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-                  <span><span className="font-medium text-slate-700">10–20%</span> — มีความต่างบ้าง แต่ยังแยกระดับได้ดี</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />
-                  <span><span className="font-medium text-slate-700">มากกว่า 20%</span> — ช่องว่างสูง ควรพิจารณาแบ่งกลุ่ม</span>
-                </div>
-              </div>
-            </div>
-          }
-        />
+        <StatCard icon={BarChart2} label="ส่วนเบี่ยงเบนมาตรฐาน" value={fmtPct(sdPct)} sub="σ (sigma)" color="bg-amber-500" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SectionCard title="การกระจายตัวของคะแนน" icon={BarChart2}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={hist} barCategoryGap="15%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f8fafc" }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
-                {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="flex gap-4 justify-center mt-2 flex-wrap">
-            {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–59% ใกล้ผ่าน"], ["#22c55e", "60%+ ผ่าน"]].map(([c, l]) => (
-              <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: c }} />{l}
-              </span>
-            ))}
-          </div>
-        </SectionCard>
+      <SectionCard title="การกระจายตัวของคะแนน" icon={BarChart2}>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={hist} barCategoryGap="15%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f8fafc" }} />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
+              {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </SectionCard>
 
-        <SectionCard title="คะแนนเฉลี่ยรายหัวข้อ" icon={BookOpen}>
-          <p className="text-xs text-slate-400 mb-3">ห้องนี้เข้าใจเรื่องไหนดี และเรื่องไหนที่ควรสอนซ้ำ</p>
-          <div className="flex items-center gap-4 mb-4">
-            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" /> 70%+ ผ่านเกณฑ์ดี
-            </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-amber-400" /> 50–69% พอใช้
-            </span>
-            <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-red-400" /> ต่ำกว่า 50% ควรทบทวน
-            </span>
-          </div>
-
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={topicData} layout="vertical" barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-              <ReferenceLine x={0.6} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
-              <XAxis
-                type="number"
-                domain={[0, 1]}
-                tickFormatter={v => `${(v * 100).toFixed(0)}%`}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                dataKey="topic"
-                type="category"
-                width={100}
-                tick={{ fontSize: 10, fill: "#475569" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  const pct = payload[0].value;
-                  const msg =
-                    pct >= 0.7 ? "ผ่านเกณฑ์ดี ไม่ต้องสอนซ้ำ" :
-                      pct >= 0.5 ? "พอใช้ ควรทบทวนเล็กน้อย" :
-                        "ควรสอนซ้ำบทนี้";
-                  return (
-                    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
-                      <p className="font-semibold text-slate-700 mb-1">{label}</p>
-                      <p className="text-slate-600">{fmtPct(pct)}</p>
-                      <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
-                        → {msg}
-                      </p>
-                    </div>
-                  );
-                }}
-                cursor={{ fill: "#f8fafc" }}
-              />
-              <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ย">
-                {topicData.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={
-                      entry.avgPct >= 0.7 ? "#22c55e" :
-                        entry.avgPct >= 0.5 ? "#f97316" :
-                          "#ef4444"
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-
-          {topicData.some(t => t.avgPct < 0.5) && (
-            <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-red-600">
-                <span className="font-semibold">
-                  {topicData.filter(t => t.avgPct < 0.5).map(t => t.topic).join(", ")}
-                </span>
-                {" "}— นักเรียนส่วนใหญ่ทำได้ต่ำกว่า 50% ควรพิจารณาสอนซ้ำก่อนสอบครั้งถัดไป
-              </p>
-            </div>
-          )}
-        </SectionCard>
+      {/* กราฟ "คะแนนเฉลี่ยรายหัวข้อ" เอาออกชั่วคราว — รอ backend endpoint ใหม่ */}
+      <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+        <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700">คะแนนแยกรายหัวข้อจะกลับมาแสดงเมื่อเชื่อมข้อมูลจริงเสร็จ (ต้องเพิ่ม backend endpoint เพิ่มเติม)</p>
       </div>
     </div>
   );
 }
 
-// ─── Tab 2: วิเคราะห์ข้อสอบ ──────────────────────────────────────────────────
-// ★ ปิดใช้งานชั่วคราวตามคำขอ (ข้อ 4) — ไม่ลบโค้ด เก็บ implementation เดิมไว้
-// ในคอมเมนต์เพื่อนำกลับมาใช้ภายหลังได้ ไม่แสดง/เปิดใช้งาน tab นี้ในตอนนี้
-// (ไม่ได้ปรับ UI ให้เข้ากับ Design System ใหม่ เพราะยังไม่เปิดใช้งาน — เมื่อ
-// จะนำกลับมาใช้ ควรปรับหน้าตาให้ตรงกับ AdminTutors/AdminStudents เช่นเดียวกับ
-// tab อื่น ๆ ในไฟล์นี้ก่อน)
+// ─── Tab 2: วิเคราะห์ข้อสอบ — ปิดใช้งานชั่วคราว (mock, ไม่แตะ) ────────────────
 /*
 function ItemAnalysisTab({ data }) {
   const [filterTopic, setFilterTopic] = useState("ทั้งหมด");
@@ -683,9 +575,7 @@ function ItemAnalysisTab({ data }) {
 }
 */
 
-// ─── Tab 3: ผลนักเรียน ───────────────────────────────────────────────────────
-// ★ ปิดใช้งานชั่วคราวตามคำขอ — ไม่ลบโค้ด เก็บ StudentTab component ไว้
-// เผื่อนำกลับมาใช้ภายหลัง (เหมือนแนวทางเดียวกับ ItemAnalysisTab ด้านบน)
+// ─── Tab 3: ผลนักเรียน — ปิดใช้งานชั่วคราว (mock, dead code — ไม่แตะ) ─────────
 
 function StudentTab({ data, examLabel }) {
   const [search, setSearch] = useState("");
@@ -725,7 +615,6 @@ function StudentTab({ data, examLabel }) {
         <StatCard icon={Clock} label="เวลาเฉลี่ย" value={fmtMin(Math.round(avg(data.map(s => s.timeSec))))} sub="ต่อคน" color="bg-blue-500" />
       </div>
 
-      {/* Search & Filter — เหมือน AdminStudentsPage / AdminTutorsPage */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
@@ -748,7 +637,6 @@ function StudentTab({ data, examLabel }) {
         <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {displayed.length} จาก {data.length} คน</p>
       </div>
 
-      {/* Table */}
       {displayed.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
           <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
@@ -820,29 +708,41 @@ function StudentTab({ data, examLabel }) {
   );
 }
 
-// ─── Tab: รายคน (cross-exam) ────────────────────────────────────────────────
-function StudentProgressTab() {
+// ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
+
+function StudentProgressTab({ examResults }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
 
+  const crossExamData = useMemo(() => buildRealCrossExamData(examResults), [examResults]);
+
   const students = useMemo(() =>
-    STUDENT_NAMES.map((name, i) => {
-      const d = getStudentCrossExamData(i);
+    crossExamData.map((d) => {
       const submittedList = d.exams.filter(e => e.submitted);
       const latest = submittedList[submittedList.length - 1] ?? null;
       const first = submittedList[0] ?? null;
       const rankChange = (first && latest && first !== latest) ? first.rank - latest.rank : null;
       return {
-        index: i, name,
+        studentId: d.studentId, name: d.name,
         submittedCount: submittedList.length, totalExams: d.exams.length,
         latestPct: latest?.pct ?? null,
         latestRank: latest?.rank ?? null,
         totalStudents: latest?.totalStudents ?? null,
         rankChange,
       };
-    }), []);
+    }), [crossExamData]);
 
   const filtered = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
+
+  if (crossExamData.length === 0) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
+        <Users className="h-10 w-10 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">ยังไม่มีข้อมูลนักเรียน</p>
+        <p className="text-xs text-slate-400">ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คนในรอบใดรอบหนึ่ง</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -870,7 +770,7 @@ function StudentProgressTab() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map(s => (
-                <tr key={s.index} className="hover:bg-orange-50/40 transition-colors">
+                <tr key={s.studentId} className="hover:bg-orange-50/40 transition-colors">
                   <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${s.submittedCount === s.totalExams ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200"
@@ -898,7 +798,7 @@ function StudentProgressTab() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setSelected(s.index)} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
+                    <button onClick={() => setSelected(s.studentId)} className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
                       <Eye className="h-3.5 w-3.5" /> ดูพัฒนาการ
                     </button>
                   </td>
@@ -909,13 +809,15 @@ function StudentProgressTab() {
         </div>
       </div>
 
-      {selected != null && <StudentProgressModal studentIndex={selected} onClose={() => setSelected(null)} />}
+      {selected != null && <StudentProgressModal studentId={selected} crossExamData={crossExamData} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-function StudentProgressModal({ studentIndex, onClose }) {
-  const data = useMemo(() => getStudentCrossExamData(studentIndex), [studentIndex]);
+function StudentProgressModal({ studentId, crossExamData, onClose }) {
+  const data = crossExamData.find(d => d.studentId === studentId);
+  if (!data) return null;
+
   const submittedExams = data.exams.filter(e => e.submitted);
   const hasEnoughData = submittedExams.length >= 2;
   const missingExams = data.exams.filter(e => !e.submitted);
@@ -924,22 +826,7 @@ function StudentProgressModal({ studentIndex, onClose }) {
   const last = submittedExams[submittedExams.length - 1];
   const rankChange = hasEnoughData ? first.rank - last.rank : null; // + = อันดับดีขึ้น (เลขน้อยลง)
 
-  const persistentWeakTopics = hasEnoughData
-    ? TOPICS.filter(topic => submittedExams.every(e => e.topicPcts[topic] < 0.5))
-    : [];
-
-  const mostImproved = hasEnoughData
-    ? TOPICS.map(topic => ({ topic, delta: last.topicPcts[topic] - first.topicPcts[topic] }))
-      .reduce((best, t) => (t.delta > best.delta ? t : best), { topic: null, delta: -Infinity })
-    : null;
-
   const lineData = data.exams.map(e => ({ label: e.label, pct: e.submitted ? Math.round(e.pct * 1000) / 10 : null }));
-
-  const topicTrend = TOPICS.map(topic => {
-    const row = { topic, label: topic.replace("ลำดับและอนุกรม", "ลำดับฯ") };
-    data.exams.forEach(e => { row[e.label] = e.submitted ? Math.round(e.topicPcts[topic] * 1000) / 10 : null; });
-    return row;
-  });
 
   return (
     <Modal title={`พัฒนาการของ ${data.name}`} icon={TrendingUp} onClose={onClose} wide>
@@ -952,7 +839,7 @@ function StudentProgressModal({ studentIndex, onClose }) {
         </div>
       )}
 
-      {/* การ์ดคะแนน+อันดับต่อรอบ — โชว์ได้แม้มีแค่รอบเดียว */}
+      {/* การ์ดคะแนน+อันดับต่อรอบ */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {data.exams.map(e => (
           <div key={e.label} className={`rounded-2xl border p-4 text-center ${e.submitted ? "border-slate-100 bg-white" : "border-dashed border-slate-200 bg-slate-50"}`}>
@@ -961,16 +848,17 @@ function StudentProgressModal({ studentIndex, onClose }) {
               <>
                 <p className="text-2xl font-black text-slate-900">{fmtPct(e.pct)}</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">{e.totalScore}/{e.maxScore} คะแนน</p>
-                <p className="text-[11px] font-semibold text-orange-600 mt-1.5 inline-flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
-                  อันดับ {e.rank}/{e.totalStudents}
-                </p>
+                {e.rank != null && (
+                  <p className="text-[11px] font-semibold text-orange-600 mt-1.5 inline-flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
+                    อันดับ {e.rank}/{e.totalStudents}
+                  </p>
+                )}
               </>
             ) : <p className="text-sm text-slate-300 italic mt-2">ยังไม่สอบ</p>}
           </div>
         ))}
       </div>
 
-      {/* ── Insufficient-data state ── ต้องมี ≥2 รอบถึงจะเทียบพัฒนาการได้ */}
       {!hasEnoughData ? (
         <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
           <div className="h-12 w-12 rounded-full bg-white border border-slate-200 flex items-center justify-center">
@@ -979,71 +867,39 @@ function StudentProgressModal({ studentIndex, onClose }) {
           <div>
             <p className="text-sm font-semibold text-slate-600">ยังมีข้อมูลไม่พอเทียบพัฒนาการ</p>
             <p className="text-xs text-slate-400 mt-1 max-w-sm">
-              ต้องปิดสอบอีกอย่างน้อย 1 รอบ ถึงจะเห็นอันดับที่เปลี่ยนไป หัวข้อที่พัฒนา และหัวข้อที่ควรทบทวนซ้ำ
+              ต้องปิดสอบอีกอย่างน้อย 1 รอบ ถึงจะเห็นอันดับที่เปลี่ยนไปและคะแนนรวมเทียบข้ามรอบ
             </p>
           </div>
         </div>
       ) : (
         <>
-          {/* อันดับเทียบเพื่อนร่วมห้อง — ใช้แทนคะแนนดิบเพราะแต่ละรอบยากง่ายไม่เท่ากัน */}
-          <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${rankChange > 0 ? "bg-emerald-50 border-emerald-100" : rankChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"
-            }`}>
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${rankChange > 0 ? "bg-emerald-500" : rankChange < 0 ? "bg-red-400" : "bg-slate-400"
-              }`}>
-              {rankChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
-                : rankChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
-                  : <span className="text-white text-xs font-bold">=</span>}
+          {rankChange != null && (
+            <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${rankChange > 0 ? "bg-emerald-50 border-emerald-100" : rankChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${rankChange > 0 ? "bg-emerald-500" : rankChange < 0 ? "bg-red-400" : "bg-slate-400"}`}>
+                {rankChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
+                  : rankChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
+                    : <span className="text-white text-xs font-bold">=</span>}
+              </div>
+              <div>
+                <p className={`text-sm font-bold ${rankChange > 0 ? "text-emerald-700" : rankChange < 0 ? "text-red-600" : "text-slate-600"}`}>
+                  อันดับ {first.rank}/{first.totalStudents} → {last.rank}/{last.totalStudents}
+                  {rankChange > 0 && ` (ดีขึ้น ${rankChange} อันดับ)`}
+                  {rankChange < 0 && ` (ลดลง ${Math.abs(rankChange)} อันดับ)`}
+                  {rankChange === 0 && ` (อันดับเท่าเดิม)`}
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  เทียบจาก {first.label} ถึง {last.label} — ใช้อันดับเพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน คะแนนดิบเทียบตรงๆ ไม่ยุติธรรม
+                </p>
+              </div>
             </div>
-            <div>
-              <p className={`text-sm font-bold ${rankChange > 0 ? "text-emerald-700" : rankChange < 0 ? "text-red-600" : "text-slate-600"}`}>
-                อันดับ {first.rank}/{first.totalStudents} → {last.rank}/{last.totalStudents}
-                {rankChange > 0 && ` (ดีขึ้น ${rankChange} อันดับ)`}
-                {rankChange < 0 && ` (ลดลง ${Math.abs(rankChange)} อันดับ)`}
-                {rankChange === 0 && ` (อันดับเท่าเดิม)`}
-              </p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                เทียบจาก {first.label} ถึง {last.label} — ใช้อันดับเพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน คะแนนดิบเทียบตรงๆ ไม่ยุติธรรม
-              </p>
-            </div>
+          )}
+
+          {/* หัวข้ออ่อนซ้ำ / พัฒนาเร็วที่สุด — ตัดออกชั่วคราว (topicPcts ยังเป็น null) */}
+          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3 mb-5">
+            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700">หัวข้ออ่อนซ้ำ / หัวข้อที่พัฒนาเร็วที่สุด จะกลับมาแสดงเมื่อเชื่อมข้อมูลจริงเสร็จ (ต้องเพิ่ม backend endpoint สำหรับคะแนนรายหัวข้อ)</p>
           </div>
 
-          {/* หัวข้ออ่อนซ้ำ + หัวข้อพัฒนาเร็วที่สุด */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-            <div className={`rounded-2xl p-4 border ${persistentWeakTopics.length > 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
-              <p className={`text-xs font-bold flex items-center gap-1.5 mb-2 ${persistentWeakTopics.length > 0 ? "text-red-700" : "text-emerald-700"}`}>
-                {persistentWeakTopics.length > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                {persistentWeakTopics.length > 0 ? "อ่อนซ้ำทุกรอบ — ควรแทรกแซงเป็นพิเศษ" : "ไม่มีหัวข้อที่อ่อนซ้ำทุกรอบ"}
-              </p>
-              {persistentWeakTopics.length > 0 ? (
-                <>
-                  <div className="flex flex-wrap gap-1.5">
-                    {persistentWeakTopics.map(t => (
-                      <span key={t} className="text-[11px] font-semibold px-2 py-1 rounded-lg" style={{ backgroundColor: TOPIC_LIGHT[t], color: TOPIC_COLORS[t] }}>{t}</span>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-red-500 mt-2">ต่ำกว่า 50% ทุกรอบที่สอบมา</p>
-                </>
-              ) : (
-                <p className="text-[11px] text-emerald-600">ทุกหัวข้อผ่าน 50% ได้อย่างน้อย 1 รอบ</p>
-              )}
-            </div>
-
-            <div className={`rounded-2xl p-4 border ${mostImproved.topic && mostImproved.delta > 0 ? "bg-blue-50 border-blue-100" : "bg-slate-50 border-slate-100"}`}>
-              <p className={`text-xs font-bold flex items-center gap-1.5 mb-2 ${mostImproved.topic && mostImproved.delta > 0 ? "text-blue-700" : "text-slate-500"}`}>
-                <TrendingUp className="h-3.5 w-3.5" /> พัฒนาเร็วที่สุด
-              </p>
-              {mostImproved.topic && mostImproved.delta > 0 ? (
-                <>
-                  <p className="text-sm font-bold" style={{ color: TOPIC_COLORS[mostImproved.topic] }}>{mostImproved.topic}</p>
-                  <p className="text-[11px] text-blue-600 mt-1">+{(mostImproved.delta * 100).toFixed(1)}% จาก {first.label} → {last.label}</p>
-                </>
-              ) : (
-                <p className="text-[11px] text-slate-400">ยังไม่มีหัวข้อที่ดีขึ้นชัดเจนในช่วงนี้</p>
-              )}
-            </div>
-          </div>
-
-          {/* คะแนนรวม % ข้ามรอบ */}
           <SectionCard title="คะแนนรวม % ข้ามรอบ" icon={TrendingUp} className="mb-5">
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={lineData}>
@@ -1056,47 +912,24 @@ function StudentProgressModal({ studentIndex, onClose }) {
             </ResponsiveContainer>
           </SectionCard>
 
-          {/* พัฒนาการรายหัวข้อ — สีตาม TOPIC_COLORS ไม่ใช้ส้มล้วน */}
-          <SectionCard title="พัฒนาการรายหัวข้อ" icon={BookOpen} className="mb-5">
-            <div className="space-y-3">
-              {topicTrend.map(row => (
-                <div key={row.topic} className="flex items-center gap-3">
-                  <p className="text-xs text-slate-500 w-28 flex-shrink-0 truncate">{row.label}</p>
-                  <div className="flex-1 flex items-center gap-2">
-                    {data.exams.map(e => {
-                      const v = row[e.label];
-                      return (
-                        <div key={e.label} className="flex-1">
-                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            {v != null && <div className="h-full rounded-full" style={{ width: `${v}%`, backgroundColor: TOPIC_COLORS[row.topic] }} />}
-                          </div>
-                          <p className="text-[10px] text-slate-400 mt-0.5 text-center">{v != null ? `${v}%` : "—"}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-center gap-4 mt-3">
-              {data.exams.map(e => <span key={e.label} className="text-[10px] text-slate-400">{e.label}</span>)}
-            </div>
-          </SectionCard>
-
-          {/* เวลาเฉลี่ยต่อข้อ — อ่านคู่กับ % เสมอ */}
+          {/* เวลาเฉลี่ยต่อข้อ — ใช้ต่อได้เลย เพราะคำนวณจาก secondsUsed/totalQuestions ที่มาจาก backend จริง */}
           <SectionCard title="เวลาเฉลี่ยต่อข้อ เทียบข้ามรอบ" icon={Clock}>
             <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${submittedExams.length}, 1fr)` }}>
               {submittedExams.map((e, i) => {
                 const prev = submittedExams[i - 1];
-                const timeDelta = prev ? e.avgTimePerQuestion - prev.avgTimePerQuestion : null;
+                const timeDelta = (prev && e.avgTimePerQuestion != null && prev.avgTimePerQuestion != null) ? e.avgTimePerQuestion - prev.avgTimePerQuestion : null;
                 const pctDelta = prev ? e.pct - prev.pct : null;
                 const genuineImprovement = timeDelta != null && timeDelta < 0 && pctDelta != null && pctDelta >= 0;
                 const guessingWarning = timeDelta != null && timeDelta < 0 && pctDelta != null && pctDelta < 0;
                 return (
                   <div key={e.label} className="bg-slate-50 rounded-xl p-3 text-center">
                     <p className="text-[11px] font-semibold text-slate-500 mb-1">{e.label}</p>
-                    <p className="text-lg font-black text-slate-800">{Math.round(e.avgTimePerQuestion)} วิ</p>
-                    <p className="text-[10px] text-slate-400">ต่อข้อ (เฉลี่ย)</p>
+                    {e.avgTimePerQuestion != null ? (
+                      <>
+                        <p className="text-lg font-black text-slate-800">{Math.round(e.avgTimePerQuestion)} วิ</p>
+                        <p className="text-[10px] text-slate-400">ต่อข้อ (เฉลี่ย)</p>
+                      </>
+                    ) : <p className="text-xs text-slate-300 italic mt-2">ไม่มีข้อมูล</p>}
                     {timeDelta != null && (
                       <p className={`text-[10px] mt-1.5 font-semibold ${timeDelta < 0 ? "text-blue-600" : timeDelta > 0 ? "text-amber-600" : "text-slate-400"}`}>
                         {timeDelta < 0 ? "▼" : timeDelta > 0 ? "▲" : "="} {Math.abs(Math.round(timeDelta))} วิ จากรอบก่อน
@@ -1116,66 +949,55 @@ function StudentProgressModal({ studentIndex, onClose }) {
   );
 }
 
-// ─── Tab 4: เปรียบเทียบ ──────────────────────────────────────────────────────
+// ─── Tab 4: เปรียบเทียบ (ข้อมูลจริงจาก fetchExamResults) ────────────────────
 
-function ComparisonTab() {
-  const topicTrendData = useMemo(() =>
-    TOPICS.map(topic => {
-      const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
-      const maxSc = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
-      const calc = (data) => avg(data.map(s => qIdx.reduce((sc, i) => sc + (s.answers[i].correct ? QUESTIONS[i].score : 0), 0))) / maxSc;
-      return {
-        topic: topic.replace("ลำดับและอนุกรม", "ลำดับฯ"),
-        "Pre-test": parseFloat((calc(ALL_DATA[0]) * 100).toFixed(1)),
-        "Mid-test": parseFloat((calc(ALL_DATA[1]) * 100).toFixed(1)),
-        "Post-test": parseFloat((calc(ALL_DATA[2]) * 100).toFixed(1)),
-      };
-    }), []);
+function ComparisonTab({ examResults }) {
+  const validResults = examResults.filter(r => r && r.submittedCount > 0);
 
-  const overallAvg = ALL_DATA.map(d => (avg(d.map(s => s.pct)) * 100).toFixed(1));
-  const passRates = ALL_DATA.map(d => (d.filter(s => s.passed).length / d.length * 100).toFixed(1));
+  if (validResults.length < 2) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
+        <TrendingUp className="h-10 w-10 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">ยังมีข้อมูลไม่พอเปรียบเทียบ</p>
+        <p className="text-xs text-slate-400 max-w-sm">ต้องมีอย่างน้อย 2 รอบสอบที่มีคนส่งข้อสอบแล้ว ถึงจะเทียบพัฒนาการได้</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {EXAMS_META.map((e, i) => (
-          <div key={e.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${e.badge}`}>{e.label}</span>
-            <p className="text-3xl font-black text-slate-900 mt-2">{overallAvg[i]}%</p>
-            <p className="text-xs text-slate-500 mt-0.5">คะแนนเฉลี่ย</p>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="font-semibold text-emerald-600">{passRates[i]}%</span> อัตราผ่าน
+        {EXAMS_META.map((e, i) => {
+          const r = examResults[i];
+          const passCount = r?.students?.filter(s => s.submittedAt && s.maxScore && (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length || 0;
+          const passEligible = r?.students?.filter(s => s.submittedAt && s.maxScore).length || 0;
+          return (
+            <div key={e.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${e.badge}`}>{e.label}</span>
+              {r ? (
+                <>
+                  <p className="text-3xl font-black text-slate-900 mt-2">{r.averageScorePct}%</p>
+                  <p className="text-xs text-slate-500 mt-0.5">คะแนนเฉลี่ย · {r.submittedCount} คนส่งแล้ว</p>
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                    <span className="font-semibold text-emerald-600">{passEligible ? Math.round((passCount / passEligible) * 100) : 0}%</span> อัตราผ่าน
+                  </div>
+                </>
+              ) : <p className="text-sm text-slate-300 italic mt-2">ยังไม่มีข้อมูล</p>}
             </div>
-            {i > 0 && (
-              <div className={`mt-2 flex items-center gap-1 text-xs font-semibold ${+overallAvg[i] > +overallAvg[i - 1] ? "text-emerald-600" : "text-red-500"}`}>
-                {+overallAvg[i] > +overallAvg[i - 1]
-                  ? <><ArrowUpRight className="h-3.5 w-3.5" /> +{(+overallAvg[i] - +overallAvg[i - 1]).toFixed(1)}% จาก {EXAMS_META[i - 1].label}</>
-                  : <><ArrowDownRight className="h-3.5 w-3.5" /> {(+overallAvg[i] - +overallAvg[i - 1]).toFixed(1)}% จาก {EXAMS_META[i - 1].label}</>}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      <SectionCard title="พัฒนาการรายหัวข้อ (Pre → Mid → Post)" icon={TrendingUp}>
-        <ResponsiveContainer width="100%" height={280}>
-          <LineChart data={topicTrendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="topic" tick={{ fontSize: 10, fill: "#475569" }} tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-            <Tooltip formatter={v => `${v}%`} content={<ChartTooltip />} />
-            <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "11px" }} />
-            <Line type="monotone" dataKey="Pre-test" stroke="#93c5fd" strokeWidth={2} dot={{ fill: "#93c5fd", r: 4 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="Mid-test" stroke="#f97316" strokeWidth={2} dot={{ fill: "#f97316", r: 4 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey="Post-test" stroke="#22c55e" strokeWidth={2.5} dot={{ fill: "#22c55e", r: 4 }} activeDot={{ r: 6 }} />
-          </LineChart>
-        </ResponsiveContainer>
-      </SectionCard>
+      {/* กราฟ "พัฒนาการรายหัวข้อ" เอาออกชั่วคราว — รอ backend endpoint ใหม่ */}
+      <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+        <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+        <p className="text-xs text-blue-700">กราฟพัฒนาการรายหัวข้อ (Pre → Mid → Post) จะกลับมาแสดงเมื่อเชื่อมข้อมูลจริงเสร็จ (ต้องเพิ่ม backend endpoint สำหรับคะแนนรายหัวข้อ)</p>
+      </div>
     </div>
   );
 }
 
-// ─── Export ───────────────────────────────────────────────────────────────────
+// ─── Export (mock — ยังไม่ต่อข้อมูลจริง จนกว่าจะมี item-level endpoint) ──────
 
 const exportToExcel = (data, examLabel) => {
   const wb = XLSX.utils.book_new();
@@ -1204,19 +1026,11 @@ const exportToExcel = (data, examLabel) => {
 
 const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
-  // { id: "items", label: "วิเคราะห์ข้อสอบ", icon: Target }, // ★ ปิดใช้งานชั่วคราว — ดู ItemAnalysisTab (คอมเมนต์ไว้ด้านบน)
-  // { id: "students", label: "ผลนักเรียน", icon: Users },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
   { id: "progress", label: "รายคน", icon: Users },
 ];
 
 export default function TutorExamAnalytics() {
-  // ★ FIX: จุดนี้คือสาเหตุของ Production Build Error ("Cannot read properties of
-  // null (reading 'useRef')") — เดิม useSearchParams() และตัวแปรที่ derive จากมัน
-  // ถูกประกาศไว้ที่ระดับ module (นอก component) ซึ่งผิด Rules of Hooks
-  // (เรียก hook นอก component) แก้โดยย้าย useSearchParams() และตัวแปรทั้งหมดที่
-  // อ่านค่าจากมันเข้ามาไว้ภายใน TutorExamAnalytics() เท่านั้น ไม่มีการ workaround
-  // หรือเปลี่ยน library ใด ๆ
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const courseId = searchParams.get("courseId");
@@ -1227,12 +1041,49 @@ export default function TutorExamAnalytics() {
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
   const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
   const requestedTab = searchParams.get("tab") ?? "overview";
-  // กันกรณี URL เก่าชี้มาที่ ?tab=items หรือ ?tab=students ซึ่งปิดใช้งานอยู่ตอนนี้
   const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
 
+  // ── Step 1: รายชื่อ exam จริงจาก backend ─────────────────────────────────
+  const adminId = JSON.parse(localStorage.getItem("user") || "null")?.id;
+
+  const [examList, setExamList] = useState([]); // [{id, type, ...}] จาก backend จริง
+  const [loadingExams, setLoadingExams] = useState(true);
+
+  useEffect(() => {
+    if (!courseId || !subjectId || !adminId) {
+      setLoadingExams(false);
+      return;
+    }
+    fetchExams({ courseId, subjectId, adminId })
+      .then((data) => setExamList(data))
+      .catch((err) => console.error("Fetch exam list failed:", err))
+      .finally(() => setLoadingExams(false));
+  }, [courseId, subjectId, adminId]);
+
+  // จับคู่ EXAMS_META (pre/mid/post) กับ examId จริงจาก backend ตามลำดับ type
+  const realExamId = (id) => examList.find((e) => e.type === ["pre-test", "mid-test", "post-test"][id])?.id ?? null;
+
+  // ── Step 2: ผลสอบจริงต่อรอบ ──────────────────────────────────────────────
+  const [examResults, setExamResults] = useState([null, null, null]); // ผลจริงของ pre/mid/post
+
+  useEffect(() => {
+    if (loadingExams || examList.length === 0) return;
+    Promise.all(
+      [0, 1, 2].map((i) => {
+        const id = realExamId(i);
+        if (!id) return Promise.resolve(null);
+        return fetchExamResults(id).catch((err) => {
+          console.error(`Fetch results for exam ${id} failed:`, err);
+          return null;
+        });
+      })
+    ).then(setExamResults);
+  }, [loadingExams, examList]);
+
+  // mock — ยังใช้กับ Export Excel เท่านั้น จนกว่าจะมี item-level endpoint จริง
   const data = ALL_DATA[examId];
   const examLabel = EXAMS_META[examId].label;
 
@@ -1264,7 +1115,9 @@ export default function TutorExamAnalytics() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
-          <p className="text-sm text-slate-500 mt-1">คณิตศาสตร์ ม.3 เทอม 1/2567 · นักเรียน {data.length} คน · {QUESTIONS.length} ข้อ · {MAX_SCORE} คะแนน</p>
+          <p className="text-sm text-slate-500 mt-1">
+            คณิตศาสตร์ ม.3 เทอม 1/2567 · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน · {QUESTIONS.length} ข้อ · {MAX_SCORE} คะแนน
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {activeTab === "overview" && (
@@ -1286,7 +1139,7 @@ export default function TutorExamAnalytics() {
         </div>
       </div>
 
-      {/* Tab Nav — เหมือน AdminTutorsPage (list / attendance / applications) */}
+      {/* Tab Nav */}
       <div className="flex gap-2 flex-wrap">
         {TABS.map(tab => {
           const Icon = tab.icon;
@@ -1303,11 +1156,9 @@ export default function TutorExamAnalytics() {
       </div>
 
       {/* Content */}
-      {activeTab === "overview" && <OverviewTab data={data} />}
-      {/* {activeTab === "items" && <ItemAnalysisTab data={data} />} */}
-      {/* {activeTab === "students" && <StudentTab data={data} examLabel={examLabel} />} */}
-      {activeTab === "compare" && <ComparisonTab />}
-      {activeTab === "progress" && <StudentProgressTab />}
+      {activeTab === "overview" && <OverviewTab results={examResults[examId]} />}
+      {activeTab === "compare" && <ComparisonTab examResults={examResults} />}
+      {activeTab === "progress" && <StudentProgressTab examResults={examResults} />}
     </div>
   );
 }

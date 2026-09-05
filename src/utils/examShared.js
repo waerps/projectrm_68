@@ -191,3 +191,8 @@ export async function fetchExamJoinDetail(examJoinId) {
   const { data } = await axios.get(`${API_BASE}/join/${examJoinId}/detail`);
   return data;
 }
+
+export async function fetchTopicBreakdown(examId) {
+  const { data } = await axios.get(`${API_BASE}/${examId}/topic-breakdown`);
+  return data;
+}
