@@ -196,3 +196,17 @@ export async function fetchTopicBreakdown(examId) {
   const { data } = await axios.get(`${API_BASE}/${examId}/topic-breakdown`);
   return data;
 }
+
+
+// GET /api/exam/subject/:subjectId/categories?adminId= → หมวดทั้งหมดที่เคยใช้ในวิชานี้ (ข้าม 3 รอบ)
+export async function fetchSubjectCategories({ subjectId, adminId }) {
+  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/categories`, { params: { adminId } });
+  return data;
+}
+
+
+// PUT /api/exam/subject/:subjectId/categories/rename → รวม/เปลี่ยนชื่อหมวด (cascade ทุก exam ของวิชานี้)
+export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
+  const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to });
+  return data;
+}

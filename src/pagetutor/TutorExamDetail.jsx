@@ -1,10 +1,12 @@
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+
 import {
   ChevronRight, ChevronLeft, FileQuestion, Clock, Calendar, Users,
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
+  Tags, Merge,
 } from "lucide-react";
 
 import {
@@ -13,6 +15,7 @@ import {
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
   fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
+  fetchSubjectCategories, renameSubjectCategory,
 } from "../utils/examShared";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
@@ -81,9 +84,120 @@ function AddMethodPicker({ onPick }) {
   );
 }
 
+// ─── Manage Categories Modal ─────────────────────────────────────────────────
+// รวม/เปลี่ยนชื่อหมวดย้อนหลัง — สำหรับซ่อมกรณีพิมพ์ผิด/พิมพ์ไม่ตรงกันระหว่างรอบสอบ
+// cascade อัปเดตทุก exam (Pre/Mid/Post) ของวิชานี้ในครั้งเดียว
+function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [renamingFrom, setRenamingFrom] = useState(null);
+  const [renameTo, setRenameTo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    fetchSubjectCategories({ subjectId, adminId })
+      .then(setCategories)
+      .catch((err) => { console.error("Fetch categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, [subjectId, adminId]);
+
+  const startRename = (cat) => { setRenamingFrom(cat); setRenameTo(cat); setSaveError(""); };
+
+  const confirmRename = async () => {
+    if (!renameTo.trim() || renameTo.trim() === renamingFrom) { setRenamingFrom(null); return; }
+    setSaving(true);
+    setSaveError("");
+    try {
+      await renameSubjectCategory({ subjectId, adminId, from: renamingFrom, to: renameTo.trim() });
+      setRenamingFrom(null);
+      load();
+      await onChanged(); // reload exam detail ที่หน้าหลัก เพื่อให้ตาราง Questions อัปเดตชื่อหมวดใหม่ด้วย
+    } catch (err) {
+      console.error("Rename category failed:", err);
+      setSaveError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <p className="text-sm font-semibold text-neutral-800 flex items-center gap-2"><Tags className="h-4 w-4 text-orange-500" /> จัดการหมวดหมู่ (Category)</p>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              รวม 2 หมวดที่จริงๆ เป็นเรื่องเดียวกันแต่พิมพ์ไม่ตรงกัน (เช่น "พีชคณิต" กับ "พีชคณิค") — การกด "เปลี่ยนชื่อ" จะอัปเดตทุกข้อในวิชานี้ ทุกรอบสอบ (Pre/Mid/Post) ทันที
+            </p>
+          </div>
+
+          {loading && <p className="text-sm text-neutral-400 text-center py-6">กำลังโหลด...</p>}
+          {error && <p className="text-sm text-red-500 text-center py-6">{error}</p>}
+
+          {!loading && !error && categories.length === 0 && (
+            <p className="text-sm text-neutral-400 text-center py-6">ยังไม่มีหมวดหมู่ในวิชานี้</p>
+          )}
+
+          {!loading && !error && categories.length > 0 && (
+            <div className="border border-neutral-100 rounded-xl divide-y divide-neutral-50 overflow-hidden">
+              {categories.map((c) => (
+                <div key={c.category} className="px-4 py-3">
+                  {renamingFrom === c.category ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={renameTo}
+                        onChange={(e) => setRenameTo(e.target.value)}
+                        list="category-options-manage"
+                        className="flex-1 border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                      <datalist id="category-options-manage">
+                        {categories.filter((x) => x.category !== c.category).map((x) => (
+                          <option key={x.category} value={x.category} />
+                        ))}
+                      </datalist>
+                      <button onClick={confirmRename} disabled={saving} className="text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-lg px-3 py-1.5">
+                        {saving ? "กำลังบันทึก…" : "ยืนยัน"}
+                      </button>
+                      <button onClick={() => setRenamingFrom(null)} className="text-xs font-medium text-neutral-500 hover:text-neutral-700 px-2">ยกเลิก</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-neutral-800 truncate">{c.category}</p>
+                        <p className="text-xs text-neutral-400">{c.questionCount} ข้อ</p>
+                      </div>
+                      <button onClick={() => startRename(c.category)} className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5 hover:bg-orange-100 transition flex-shrink-0">
+                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวมหมวด
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
-function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel }) {
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions }) {
   const [q, setQ] = useState(initial || emptyQuestion());
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
@@ -148,7 +262,22 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel 
         </div>
         <div>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-          <input type="text" value={q.category} onChange={(e) => patch({ category: e.target.value })} placeholder="เช่น พีชคณิต" className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+          <input
+            type="text"
+            list="category-options"
+            value={q.category}
+            onChange={(e) => patch({ category: e.target.value })}
+            placeholder="เช่น พีชคณิต"
+            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          />
+          <datalist id="category-options">
+            {(categoryOptions || []).map((c) => (
+              <option key={c.category} value={c.category} />
+            ))}
+          </datalist>
+          {categoryOptions?.length > 0 && (
+            <p className="text-[10px] text-neutral-400 mt-1">หมวดที่เคยใช้ในวิชานี้: {categoryOptions.map((c) => c.category).join(", ")}</p>
+          )}
         </div>
       </div>
 
@@ -173,8 +302,9 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel 
   );
 }
 
-function ExcelImportFlow({ examId, onCancel, onImported }) {
+function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
+  const knownCategories = new Set((categoryOptions || []).map((c) => c.category.trim().toLowerCase()));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -264,6 +394,9 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
                         <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
                       )}
                     </p>
+                    {q.category?.trim() && knownCategories.size > 0 && !knownCategories.has(q.category.trim().toLowerCase()) && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">⚠️ หมวด "{q.category}" ยังไม่เคยใช้ในวิชานี้ — พิมพ์ผิดหรือหมวดใหม่จริง?</p>
+                    )}
                   </div>
                 </div>
               );
@@ -287,13 +420,24 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
   );
 }
 
-function QuestionsTab({ examId, questions, status, onChanged }) {
+function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged }) {
   const locked = status === "active";
   const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [showManageCategories, setShowManageCategories] = useState(false);
+
+  const loadCategories = () => {
+    if (!subjectId || !adminId) return;
+    fetchSubjectCategories({ subjectId, adminId })
+      .then(setCategoryOptions)
+      .catch((err) => console.error("Fetch subject categories failed:", err));
+  };
+
+  useEffect(() => { loadCategories(); }, [subjectId, adminId]);
 
   const editingQuestion = questions.find((q) => q.id === editingId) || null;
 
@@ -343,14 +487,30 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        {!editingId && !locked && (
-          <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-            <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {categoryOptions.length > 0 && (
+            <button onClick={() => setShowManageCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-600 hover:text-orange-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+              <Tags className="h-4 w-4" /> จัดการหมวดหมู่
+            </button>
+          )}
+          {!editingId && !locked && (
+            <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+              <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
+            </button>
+          )}
+        </div>
       </div>
+
+      {showManageCategories && (
+        <ManageCategoriesModal
+          subjectId={subjectId}
+          adminId={adminId}
+          onClose={() => setShowManageCategories(false)}
+          onChanged={async () => { loadCategories(); await onChanged(); }}
+        />
+      )}
 
       {locked && (
         <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -374,11 +534,12 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
           saveLabel="บันทึกและเพิ่มข้อถัดไป"
           onSave={handleAddOne}
           onClose={() => setMode(null)}
+          categoryOptions={categoryOptions}
         />
       )}
 
       {mode === "excel" && (
-        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} />
+        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} categoryOptions={categoryOptions} />
       )}
 
       {editingId && (
@@ -389,6 +550,7 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
           saveLabel="บันทึกการแก้ไข"
           onSave={handleEditSave}
           onClose={() => { setEditingId(null); setFormError(""); }}
+          categoryOptions={categoryOptions}
         />
       )}
 
@@ -1043,7 +1205,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   return (
     <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard
           icon={Users}
           label="เข้าสอบ"
@@ -1342,7 +1504,14 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab examId={exam.id} questions={exam.questions || []} status={status} onChanged={reload} />
+          <QuestionsTab
+            examId={exam.id}
+            subjectId={subjectId}
+            adminId={JSON.parse(localStorage.getItem("user") || "null")?.id}
+            questions={exam.questions || []}
+            status={status}
+            onChanged={reload}
+          />
         )}
         {tab === "settings" && (
           <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />

@@ -212,6 +212,29 @@ function buildRealCrossExamData(examResults, topicResults) {
   }));
 }
 
+
+// สรุปว่านักเรียนกี่คนดีขึ้น/แย่ลง/เท่าเดิม เทียบ Pre-test (index 0) กับ Post-test (index 2)
+// ใช้เฉพาะคนที่สอบครบทั้ง 2 รอบนี้เท่านั้น — คนที่ขาดสอบรอบใดรอบหนึ่งไม่เทียบได้ จึงไม่นับ
+function computeImprovementSummary(crossExamData) {
+  const comparable = crossExamData.filter((d) => d.exams[0]?.submitted && d.exams[2]?.submitted);
+  let improved = 0, declined = 0, same = 0;
+  comparable.forEach((d) => {
+    const prePct = Math.round(d.exams[0].pct * 1000) / 10;
+    const postPct = Math.round(d.exams[2].pct * 1000) / 10;
+    if (postPct > prePct) improved++;
+    else if (postPct < prePct) declined++;
+    else same++;
+  });
+  const total = comparable.length;
+  return {
+    total,
+    improved, declined, same,
+    improvedPct: total ? Math.round((improved / total) * 100) : 0,
+    declinedPct: total ? Math.round((declined / total) * 100) : 0,
+    samePct: total ? Math.round((same / total) * 100) : 0,
+  };
+}
+
 // ─── UI Primitives ──────────────────────────────────────────────────────────
 
 const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
@@ -380,7 +403,21 @@ function StudentModal({ student, examLabel, onClose }) {
 }
 
 // ─── Tab 1: ภาพรวม (ข้อมูลจริงจาก fetchExamResults) ────────────────────────
-function OverviewTab({ results, topicBreakdown }) {
+function OverviewTab({ results, topicBreakdown, loading }) {
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-2xl" />)}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-64 bg-slate-100 rounded-2xl" />
+          <div className="h-64 bg-slate-100 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   const submitted = (results?.students || []).filter(s => s.submittedAt && s.maxScore);
 
   if (!results || submitted.length === 0) {
@@ -826,9 +863,18 @@ function StudentTab({ data, examLabel }) {
 
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
-function StudentProgressTab({ examResults, topicResults }) {
+function StudentProgressTab({ examResults, topicResults, loading }) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-14 bg-slate-100 rounded-xl" />
+        <div className="h-72 bg-slate-100 rounded-2xl" />
+      </div>
+    );
+  }
 
   const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
 
@@ -848,7 +894,27 @@ function StudentProgressTab({ examResults, topicResults }) {
       };
     }), [crossExamData]);
 
-  const filtered = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
+  const [sortKey, setSortKey] = useState("rankChange");
+  const [sortDir, setSortDir] = useState(-1); // เริ่มด้วย "ดีขึ้นมากสุดก่อน"
+
+  const filteredBase = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
+
+  const filtered = useMemo(() => {
+    const arr = [...filteredBase];
+    return arr.sort((a, b) => {
+      let res;
+      if (sortKey === "name") res = a.name.localeCompare(b.name, "th");
+      else res = (a[sortKey] ?? -Infinity) - (b[sortKey] ?? -Infinity);
+      if (res !== 0) return sortDir * res;
+      return a.name.localeCompare(b.name, "th");
+    });
+  }, [filteredBase, sortKey, sortDir]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => d * -1);
+    else { setSortKey(key); setSortDir(-1); }
+  };
+  const SortIcon = ({ k }) => sortKey === k ? <span className="ml-0.5 text-orange-500">{sortDir === -1 ? "▼" : "▲"}</span> : null;
 
   if (crossExamData.length === 0) {
     return (
@@ -879,8 +945,11 @@ function StudentProgressTab({ examResults, topicResults }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {["ชื่อ", "สอบครบ", "คะแนน/อันดับล่าสุด", "แนวโน้ม", ""].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                {[["name", "ชื่อ"], [null, "สอบครบ"], ["latestPct", "คะแนน/อันดับล่าสุด"], ["rankChange", "แนวโน้ม"], [null, ""]].map(([k, label]) => (
+                  <th key={label} onClick={k ? () => handleSort(k) : undefined}
+                    className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${k ? "cursor-pointer hover:text-slate-700 select-none" : ""}`}>
+                    {label}{k && <SortIcon k={k} />}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -1153,7 +1222,18 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 }
 
 // ─── Tab 4: เปรียบเทียบ (ข้อมูลจริงจาก fetchExamResults) ────────────────────
-function ComparisonTab({ examResults, topicResults }) {
+function ComparisonTab({ examResults, topicResults, loading }) {
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl" />)}
+        </div>
+        <div className="h-72 bg-slate-100 rounded-2xl" />
+      </div>
+    );
+  }
+
   const validResults = examResults.filter(r => r && r.submittedCount > 0);
 
   if (validResults.length < 2) {
@@ -1165,6 +1245,9 @@ function ComparisonTab({ examResults, topicResults }) {
       </div>
     );
   }
+
+  const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
+  const summary = useMemo(() => computeImprovementSummary(crossExamData), [crossExamData]);
 
   // รวมรายชื่อหมวดจากทั้ง 3 รอบ (category เป็น free text ตามที่ติวเตอร์ตั้ง อาจไม่เหมือนกันทุกรอบ)
   const topicTrendData = useMemo(() => {
@@ -1185,6 +1268,42 @@ function ComparisonTab({ examResults, topicResults }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {summary.total === 0 ? (
+          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test — ต้องมีอย่างน้อย 1 คนที่สอบทั้ง 2 รอบ ถึงจะสรุปภาพรวมพัฒนาการได้</p>
+          </div>
+        ) : (
+          <SectionCard title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)" icon={TrendingUp}>
+            <p className="text-xs text-slate-400 mb-4">เทียบจากนักเรียน {summary.total} คนที่สอบครบทั้ง 2 รอบ (คนที่ขาดสอบรอบใดรอบหนึ่งไม่นับรวม)</p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
+                <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center mx-auto mb-2">
+                  <ArrowUpRight className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-2xl font-black text-emerald-700">{summary.improved}</p>
+                <p className="text-xs text-emerald-600 font-semibold mt-0.5">คน ดีขึ้น</p>
+                <p className="text-[11px] text-emerald-500 mt-0.5">{summary.improvedPct}%</p>
+              </div>
+              <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
+                <div className="h-9 w-9 rounded-xl bg-red-400 flex items-center justify-center mx-auto mb-2">
+                  <ArrowDownRight className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-2xl font-black text-red-600">{summary.declined}</p>
+                <p className="text-xs text-red-500 font-semibold mt-0.5">คน แย่ลง</p>
+                <p className="text-[11px] text-red-400 mt-0.5">{summary.declinedPct}%</p>
+              </div>
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-center">
+                <div className="h-9 w-9 rounded-xl bg-slate-400 flex items-center justify-center mx-auto mb-2">
+                  <span className="text-white text-sm font-bold">=</span>
+                </div>
+                <p className="text-2xl font-black text-slate-700">{summary.same}</p>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">คน เท่าเดิม</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{summary.samePct}%</p>
+              </div>
+            </div>
+          </SectionCard>
+        )}
         {EXAMS_META.map((e, i) => {
           const r = examResults[i];
           const passCount = r?.students?.filter(s => s.submittedAt && s.maxScore && (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length || 0;
@@ -1231,28 +1350,32 @@ function ComparisonTab({ examResults, topicResults }) {
   );
 }
 
-// ─── Export (mock — ยังไม่ต่อข้อมูลจริง จนกว่าจะมี item-level endpoint) ──────
+// ─── Export (ข้อมูลจริงจาก fetchExamResults — sheet "วิเคราะห์ข้อสอบ" ตัดออก
+// ชั่วคราวเพราะยังไม่มี item-level endpoint ที่สรุป P-value/D-index จากข้อมูลจริง) ──
 
-const exportToExcel = (data, examLabel) => {
+const exportToExcel = (results, examLabel) => {
+  if (!results || !results.students?.length) return;
+
+  const ranked = [...results.students]
+    .filter(s => s.submittedAt && s.maxScore)
+    .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
+  const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
+
   const wb = XLSX.utils.book_new();
-  const s1 = data.map((s, i) => ({
-    "อันดับ": i + 1, "ชื่อนักเรียน": s.name,
-    "คะแนนรวม": s.totalScore, "คะแนนเต็ม": MAX_SCORE,
-    "เปอร์เซ็นต์": `${(s.pct * 100).toFixed(1)}%`,
-    "ผล": s.passed ? "ผ่าน" : "ไม่ผ่าน",
-    "เวลาที่ใช้ (นาที)": Math.round(s.timeSec / 60),
-  }));
+  const s1 = results.students.map((s) => {
+    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
+    return {
+      "อันดับ": rankByJoinId.get(s.examJoinId) ?? "—",
+      "ชื่อนักเรียน": s.name,
+      "สถานะ": s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"),
+      "คะแนนรวม": s.totalScore ?? "—",
+      "คะแนนเต็ม": s.maxScore ?? "—",
+      "เปอร์เซ็นต์": pct != null ? `${pct}%` : "—",
+      "ผล": pct != null ? (pct >= PASS_PCT ? "ผ่าน" : "ไม่ผ่าน") : "—",
+      "เวลาที่ใช้ (นาที)": s.secondsUsed != null ? Math.round(s.secondsUsed / 60) : "—",
+    };
+  });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(s1), "ผลนักเรียน");
-  const ia = computeItemAnalysis(data);
-  const s2 = ia.map(q => ({
-    "ข้อที่": q.id, "หัวข้อ": q.topic, "ระดับ": q.level, "คะแนน": q.score,
-    "P-value": (q.pValue * 100).toFixed(1) + "%",
-    "D-index": (q.dIndex * 100).toFixed(1) + "%",
-    "ตอบถูก (คน)": Math.round(q.pValue * data.length),
-    "เวลาเฉลี่ย (วิ)": Math.round(q.avgTimeSec),
-    "มีปัญหา": q.flag ? "ใช่" : "ไม่",
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(s2), "วิเคราะห์ข้อสอบ");
   XLSX.writeFile(wb, `exam_analytics_${examLabel.replace(/\s/g, "_")}.xlsx`);
 };
 
@@ -1302,9 +1425,12 @@ export default function TutorExamAnalytics() {
 
   // ── Step 2: ผลสอบจริงต่อรอบ ──────────────────────────────────────────────
   const [examResults, setExamResults] = useState([null, null, null]); // ผลจริงของ pre/mid/post
+  const [loadingResults, setLoadingResults] = useState(true);
 
   useEffect(() => {
-    if (loadingExams || examList.length === 0) return;
+    if (loadingExams) return; // ยังรอรายชื่อ exam อยู่
+    if (examList.length === 0) { setLoadingResults(false); return; } // โหลด exam list เสร็จแต่ไม่มี exam เลย
+    setLoadingResults(true);
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
@@ -1314,7 +1440,7 @@ export default function TutorExamAnalytics() {
           return null;
         });
       })
-    ).then(setExamResults);
+    ).then(setExamResults).finally(() => setLoadingResults(false));
   }, [loadingExams, examList]);
 
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
@@ -1334,9 +1460,8 @@ export default function TutorExamAnalytics() {
     ).then(setTopicResults);
   }, [loadingExams, examList]);
 
-  // mock — ยังใช้กับ Export Excel เท่านั้น จนกว่าจะมี item-level endpoint จริง
-  const data = ALL_DATA[examId];
   const examLabel = EXAMS_META[examId].label;
+  const dataLoading = loadingExams || loadingResults;
 
   return (
     <div className="space-y-6 mt-[90px]">
@@ -1367,7 +1492,10 @@ export default function TutorExamAnalytics() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
           <p className="text-sm text-slate-500 mt-1">
-            คณิตศาสตร์ ม.3 เทอม 1/2567 · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน · {QUESTIONS.length} ข้อ · {MAX_SCORE} คะแนน
+            {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
+            {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
+            {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
+              ` · ${examResults[examId].students.find(s => s.maxScore != null).maxScore} คะแนน`}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -1381,8 +1509,9 @@ export default function TutorExamAnalytics() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => exportToExcel(data, examLabel)}
-                className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+              <button onClick={() => exportToExcel(examResults[examId], examLabel)}
+                disabled={!examResults[examId]?.students?.length}
+                className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
                 <Download className="h-4 w-4" /> Export Excel
               </button>
             </>
@@ -1407,9 +1536,9 @@ export default function TutorExamAnalytics() {
       </div>
 
       {/* Content */}
-      {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} />}
-      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} />}
-      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} />}
+      {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
+      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
+      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
     </div>
   );
 }
