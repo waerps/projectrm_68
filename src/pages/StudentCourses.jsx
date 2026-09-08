@@ -9,6 +9,8 @@ import {
   getStudentVideos,
 } from "../callapi/callusers_student";
 import { fetchExamEntry, getCurrentUserId } from "../utils/studentExamShared";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 function unwrapList(payload, keys = []) {
   if (Array.isArray(payload)) return payload;
@@ -22,14 +24,13 @@ export default function StudentCourses() {
   const token = localStorage.getItem("student_token");
   const navigate = useNavigate();
   const [examLoadingId, setExamLoadingId] = useState(null);
-  const [examError, setExamError] = useState(null); // { courseId, message }
   const [examChoices, setExamChoices] = useState(null); // [{ subjectId, subjectName, examName, token }]
+  const { toasts, showToast, removeToast } = useToast();
 
   const handleEnterExam = async (courseId) => {
     const userId = getCurrentUserId();
     if (!userId) return navigate("/login");
     setExamLoadingId(courseId);
-    setExamError(null);
     try {
       const data = await fetchExamEntry(courseId, userId);
       if (data.token) {
@@ -38,7 +39,7 @@ export default function StudentCourses() {
         setExamChoices(data.choices);
       }
     } catch (err) {
-      setExamError({ courseId, message: err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้" });
+      showToast("error", "เข้าสอบไม่ได้", err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
     } finally {
       setExamLoadingId(null);
     }
@@ -344,9 +345,6 @@ export default function StudentCourses() {
                     >
                       <ClipboardList className="h-4 w-4" /> {examLoadingId === course.id ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
                     </button>
-                    {examError?.courseId === course.id && (
-                      <p className="absolute top-full left-0 right-0 mt-1 text-[11px] text-red-500 text-center">{examError.message}</p>
-                    )}
                   </div>
 
                   <Link
@@ -383,6 +381,8 @@ export default function StudentCourses() {
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

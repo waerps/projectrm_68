@@ -1364,16 +1364,16 @@ function ComparisonTab({ examResults, topicResults, loading }) {
 // ─── Export (ข้อมูลจริงจาก fetchExamResults — sheet "วิเคราะห์ข้อสอบ" ตัดออก
 // ชั่วคราวเพราะยังไม่มี item-level endpoint ที่สรุป P-value/D-index จากข้อมูลจริง) ──
 
-const exportToExcel = (results, examLabel) => {
-  if (!results || !results.students?.length) return;
+// แยก logic การสร้างแถวข้อมูลออกจากการเขียนไฟล์ เพื่อให้เอาแถวเดียวกันไปโชว์เป็นพรีวิวก่อน export ได้
+const buildExcelRows = (results) => {
+  if (!results || !results.students?.length) return [];
 
   const ranked = [...results.students]
     .filter(s => s.submittedAt && s.maxScore)
     .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
   const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
 
-  const wb = XLSX.utils.book_new();
-  const s1 = results.students.map((s) => {
+  return results.students.map((s) => {
     const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
     return {
       "อันดับ": rankByJoinId.get(s.examJoinId) ?? "—",
@@ -1386,8 +1386,62 @@ const exportToExcel = (results, examLabel) => {
       "เวลาที่ใช้ (นาที)": s.secondsUsed != null ? Math.round(s.secondsUsed / 60) : "—",
     };
   });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(s1), "ผลนักเรียน");
+};
+
+const exportToExcel = (rows, examLabel) => {
+  if (!rows?.length) return;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "ผลนักเรียน");
   XLSX.writeFile(wb, `exam_analytics_${examLabel.replace(/\s/g, "_")}.xlsx`);
+};
+
+// พรีวิวข้อมูลก่อน export เป็น Excel จริง — โชว์เป็นตารางให้ดูก่อนกดยืนยัน
+const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
+  const columns = rows.length ? Object.keys(rows[0]) : [];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800">พรีวิวก่อน Export Excel · {examLabel}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="overflow-auto px-6 py-4 flex-1">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-slate-50">
+                {columns.map((col) => (
+                  <th key={col} className="text-left px-3 py-2 font-bold text-slate-600 border-b border-slate-200 whitespace-nowrap">
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={i} className="border-b border-slate-100 hover:bg-slate-50">
+                  {columns.map((col) => (
+                    <td key={col} className="px-3 py-2 text-slate-700 whitespace-nowrap">{row[col]}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose}
+            className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
+            ยกเลิก
+          </button>
+          <button onClick={onConfirm}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition">
+            <Download className="h-4 w-4" /> Export Excel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // เปิดหน้าต่างใหม่พร้อม HTML ที่จัดหน้าไว้แล้ว แล้วเรียก window.print() — ผู้ใช้จะเห็น
@@ -1486,6 +1540,7 @@ export default function TutorExamAnalytics() {
 
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
+  const [excelPreviewRows, setExcelPreviewRows] = useState(null);
 
   // ── Step 1: รายชื่อ exam จริงจาก backend ─────────────────────────────────
   const adminId = JSON.parse(localStorage.getItem("user") || "null")?.id;
@@ -1593,7 +1648,7 @@ export default function TutorExamAnalytics() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => exportToExcel(examResults[examId], examLabel)}
+              <button onClick={() => setExcelPreviewRows(buildExcelRows(examResults[examId]))}
                 disabled={!examResults[examId]?.students?.length}
                 className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
                 <Download className="h-4 w-4" /> Export Excel
@@ -1628,6 +1683,15 @@ export default function TutorExamAnalytics() {
       {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
       {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
+
+      {excelPreviewRows && (
+        <ExcelPreviewModal
+          rows={excelPreviewRows}
+          examLabel={examLabel}
+          onClose={() => setExcelPreviewRows(null)}
+          onConfirm={() => { exportToExcel(excelPreviewRows, examLabel); setExcelPreviewRows(null); }}
+        />
+      )}
     </div>
   );
 }
