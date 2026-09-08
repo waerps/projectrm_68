@@ -1041,9 +1041,9 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
                     {s.scoreChange == null ? (
                       <span className="text-xs text-slate-300">ยังเทียบไม่ได้</span>
                     ) : s.scoreChange > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> ดีขึ้น {s.scoreChange} จุด</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> พัฒนาขึ้น {s.scoreChange}%</span>
                     ) : s.scoreChange < 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.scoreChange)} จุด</span>
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.scoreChange)}%</span>
                     ) : (
                       <span className="text-xs text-slate-400">เท่าเดิม</span>
                     )}
@@ -1160,8 +1160,8 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
               <div>
                 <p className={`text-sm font-bold ${scoreChange > 0 ? "text-emerald-700" : scoreChange < 0 ? "text-red-600" : "text-slate-600"}`}>
                   คะแนนรวม {fmtPct(first.pct)} → {fmtPct(last.pct)}
-                  {scoreChange > 0 && ` (ดีขึ้น ${scoreChange} จุด)`}
-                  {scoreChange < 0 && ` (ลดลง ${Math.abs(scoreChange)} จุด)`}
+                  {scoreChange > 0 && ` (พัฒนาขึ้น ${scoreChange}%)`}
+                  {scoreChange < 0 && ` (ลดลง ${Math.abs(scoreChange)}%)`}
                   {scoreChange === 0 && ` (เท่าเดิม)`}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -1638,8 +1638,8 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
   const rows = students.map((s) => {
     const trend = s.scoreChange == null
       ? "ยังเทียบไม่ได้"
-      : s.scoreChange > 0 ? `ดีขึ้น ${s.scoreChange} จุด`
-        : s.scoreChange < 0 ? `ลดลง ${Math.abs(s.scoreChange)} จุด`
+      : s.scoreChange > 0 ? `พัฒนาขึ้น ${s.scoreChange}%`
+        : s.scoreChange < 0 ? `ลดลง ${Math.abs(s.scoreChange)}%`
           : "เท่าเดิม";
     const trendColor = s.scoreChange == null ? "#94a3b8" : s.scoreChange > 0 ? "#16a34a" : s.scoreChange < 0 ? "#dc2626" : "#64748b";
     return `<tr>
