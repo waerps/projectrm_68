@@ -304,13 +304,15 @@ function SectionCard({ title, icon: Icon, children, action, className = "" }) {
   );
 }
 
-const ChartTooltip = ({ active, payload, label }) => {
+// formatValue เป็น optional — ใส่มาก็ใช้ตรงๆ (เช่นกราฟจำนวนคน ไม่อยากให้เดาว่าเป็น %)
+// ถ้าไม่ใส่ ใช้ heuristic เดิม (ค่า < 1.5 = สัดส่วน 0–1 ต้องแปลงเป็น %) ไว้เหมือนที่อื่นที่ยังใช้อยู่
+const ChartTooltip = ({ active, payload, label, formatValue }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
       <p className="font-semibold text-slate-700 mb-1">{label}</p>
       {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }}>{p.name}: <strong>{typeof p.value === "number" && p.value < 1.5 ? fmtPct(p.value) : p.value}</strong></p>
+        <p key={i} style={{ color: p.color }}>{p.name}: <strong>{formatValue ? formatValue(p.value) : (typeof p.value === "number" && p.value < 1.5 ? fmtPct(p.value) : p.value)}</strong></p>
       ))}
     </div>
   );
@@ -467,7 +469,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f8fafc" }} />
+              <Tooltip content={<ChartTooltip formatValue={(v) => `${v} คน`} />} cursor={{ fill: "#f8fafc" }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
                 {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
               </Bar>
@@ -1388,6 +1390,79 @@ const exportToExcel = (results, examLabel) => {
   XLSX.writeFile(wb, `exam_analytics_${examLabel.replace(/\s/g, "_")}.xlsx`);
 };
 
+// เปิดหน้าต่างใหม่พร้อม HTML ที่จัดหน้าไว้แล้ว แล้วเรียก window.print() — ผู้ใช้จะเห็น
+// พรีวิวของเบราว์เซอร์ก่อนเสมอ (เลือก "บันทึกเป็น PDF" ในหน้าต่างพรีวิวนั้นได้เลย)
+// รูปแบบเดียวกับ downloadPDF ใน TutorStudents.jsx / TutorIncome.jsx และ exportResultsPdf ใน TutorExamDetail.jsx
+const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown) => {
+  if (!results || !results.students?.length) return;
+
+  const submitted = results.students.filter((s) => s.submittedAt && s.maxScore);
+  const pcts = submitted.map((s) => s.totalScore / s.maxScore);
+  const avgPct = pcts.length ? avg(pcts) : 0;
+  const sdPct = pcts.length ? sdev(pcts) : 0;
+  const passRate = pcts.length ? submitted.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length / submitted.length : 0;
+  const maxPct = pcts.length ? Math.max(...pcts) : 0;
+  const minPct = pcts.length ? Math.min(...pcts) : 0;
+
+  const hist = buildHistogram(submitted.map((s) => ({ pct: s.totalScore / s.maxScore })));
+  const topicStats = computeTopicStatsReal(topicBreakdown);
+
+  const ranked = [...results.students]
+    .filter((s) => s.submittedAt && s.maxScore)
+    .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
+  const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
+
+  const studentRows = results.students.map((s) => {
+    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
+    const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+    return `<tr>
+      <td>${rankByJoinId.get(s.examJoinId) ?? "—"}</td>
+      <td>${s.name}</td>
+      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td style="text-align:right">${s.totalScore ?? "—"} / ${s.maxScore ?? "—"}</td>
+      <td style="text-align:right">${pct != null ? `${pct}%` : "—"}</td>
+      <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
+    </tr>`;
+  }).join("");
+
+  const distRows = hist.map((b) => `<tr><td>${b.range}</td><td style="text-align:right">${b.count} คน</td></tr>`).join("");
+  const topicRows = topicStats.map((t) => `<tr><td>${t.topic}</td><td style="text-align:right">${fmtPct(t.avgPct)}</td></tr>`).join("");
+
+  const printWindow = window.open("", "_blank");
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>วิเคราะห์ข้อสอบ - ${examLabel}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
+    .header h1{font-size:22px;font-weight:700;color:#f97316;} .header p{font-size:12px;color:#6b7280;margin-top:4px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px;}
+    .summary-card{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;}
+    .summary-card .label{font-size:11px;color:#9a3412;margin-bottom:4px;} .summary-card .value{font-size:16px;font-weight:700;color:#ea580c;}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    h2{font-size:15px;font-weight:700;color:#1f2937;margin-bottom:10px;margin-top:24px;padding-left:10px;border-left:3px solid #f97316;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;} th{background:#f97316;color:white;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
+    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
+    @media print{body{padding:16px;}}</style></head><body>
+    <div class="header"><div><h1>วิเคราะห์ข้อสอบ: ${examLabel}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${fmtPct(avgPct)}</div></div>
+      <div class="summary-card"><div class="label">อัตราผ่าน</div><div class="value">${fmtPct(passRate)}</div></div>
+      <div class="summary-card"><div class="label">สูงสุด / ต่ำสุด</div><div class="value">${fmtPct(maxPct)} / ${fmtPct(minPct)}</div></div>
+      <div class="summary-card"><div class="label">ส่วนเบี่ยงเบนมาตรฐาน</div><div class="value">${fmtPct(sdPct)}</div></div>
+    </div>
+    <div class="two-col">
+      <div><h2>การกระจายตัวของคะแนน</h2><table><thead><tr><th>ช่วงคะแนน</th><th style="text-align:right">จำนวนนักเรียน</th></tr></thead><tbody>${distRows}</tbody></table></div>
+      <div><h2>คะแนนเฉลี่ยรายหัวข้อ</h2><table><thead><tr><th>หัวข้อ</th><th style="text-align:right">คะแนนเฉลี่ย</th></tr></thead><tbody>${topicRows || '<tr><td colspan="2">ไม่มีข้อมูลหมวดหมู่</td></tr>'}</tbody></table></div>
+    </div>
+    <h2>รายชื่อนักเรียน</h2>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนน</th><th style="text-align:right">เปอร์เซ็นต์</th><th style="text-align:center">ผล</th></tr></thead>
+    <tbody>${studentRows}</tbody></table>
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
+    <script>window.onload = () => window.print();</script></body></html>`);
+  printWindow.document.close();
+};
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -1522,6 +1597,11 @@ export default function TutorExamAnalytics() {
                 disabled={!examResults[examId]?.students?.length}
                 className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
                 <Download className="h-4 w-4" /> Export Excel
+              </button>
+              <button onClick={() => exportToPdf(examResults[examId], examLabel, courseName, subjectName, topicResults[examId])}
+                disabled={!examResults[examId]?.students?.length}
+                className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+                <Download className="h-4 w-4" /> Export PDF
               </button>
             </>
           )}

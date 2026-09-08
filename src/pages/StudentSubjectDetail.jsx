@@ -12,6 +12,8 @@ import {
   updateVideoWatchSegments,
 } from "../callapi/callusers_student";
 import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -253,8 +255,8 @@ export default function StudentSubjectDetail() {
   const [selectedVideo, setSelectedVideo] = useState(null);
 
   const [examLoading, setExamLoading] = useState(false);
-  const [examError, setExamError] = useState("");
   const [examSchedule, setExamSchedule] = useState([]);
+  const { toasts, showToast, removeToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -317,12 +319,11 @@ export default function StudentSubjectDetail() {
   const handleEnterExam = async () => {
     if (!userId) return navigate("/login");
     setExamLoading(true);
-    setExamError("");
     try {
       const data = await fetchExamEntry(courseId, userId, subjectId);
       if (data.token) navigate(`/exam/${data.token}`);
     } catch (err) {
-      setExamError(err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
+      showToast("error", "เข้าสอบไม่ได้", err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
     } finally {
       setExamLoading(false);
     }
@@ -443,7 +444,6 @@ export default function StudentSubjectDetail() {
           >
             <ClipboardList className="h-4 w-4" /> {examLoading ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
           </button>
-          {examError && <p className="mt-3 text-sm text-red-500">{examError}</p>}
 
           {examSchedule.length > 0 && (
             <div className="mt-6 space-y-2 text-left">
@@ -484,6 +484,8 @@ export default function StudentSubjectDetail() {
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

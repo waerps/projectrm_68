@@ -17,6 +17,8 @@ import {
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchSubjectCategories, renameSubjectCategory,
 } from "../utils/examShared";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -607,7 +609,7 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
 
 // ─── Settings Tab ────────────────────────────────────────────────────────────
 
-function SettingsTab({ examId, settings, onSaved }) {
+function SettingsTab({ examId, settings, onSaved, showToast }) {
   const [form, setForm] = useState(settings);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -624,10 +626,20 @@ function SettingsTab({ examId, settings, onSaved }) {
     }
     try {
       const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
-      await updateExamSettings(examId, payload);
+      const result = await updateExamSettings(examId, payload);
       await onSaved();
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+
+      // โหมด auto — เตือนให้ชัดว่าบันทึกไว้แล้ว แต่จะยังไม่เปิดสอบจริงจนกว่าจะมีข้อสอบ
+      // อย่างน้อย 1 ข้อ (ตรงกับเงื่อนไขที่ sweepScheduledOpens ฝั่ง backend ใช้เช็ค)
+      if (mode === "auto" && showToast) {
+        if ((result?.questionCount ?? 0) === 0) {
+          showToast("warning", "บันทึกแล้ว แต่ยังไม่เปิดสอบ", "ระบบจะยังไม่เปิดสอบอัตโนมัติจนกว่าจะใส่ข้อสอบให้ครบอย่างน้อย 1 ข้อ ถึงเวลาที่ตั้งไว้แล้วจะรอจนกว่าจะพร้อม");
+        } else {
+          showToast("success", "บันทึกแล้ว", "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้");
+        }
+      }
     } catch (err) {
       console.error("Save settings failed:", err);
       setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -1122,35 +1134,78 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
   );
 }
 
-// รายชื่อคนที่ลงคอร์สนี้แต่ไม่ได้เข้าสอบเลย — เปิดจากการ์ด "ขาดสอบ" ในแท็บผลสอบ
-function AbsentStudentsModal({ students, onClose }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-neutral-800">นักเรียนที่ขาดสอบ ({students.length} คน)</p>
-            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          </div>
-          {students.length === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-6">ไม่มีนักเรียนที่ขาดสอบ</p>
-          ) : (
-            <ul className="divide-y divide-neutral-100">
-              {students.map((s) => (
-                <li key={s.userId} className="py-2.5 flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
-                    <UserX className="h-4 w-4 text-red-400" />
-                  </div>
-                  <p className="text-sm font-medium text-neutral-700">{s.name}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
+// เปิดหน้าต่างใหม่พร้อม HTML ที่จัดหน้าไว้แล้ว แล้วเรียก window.print() — ผู้ใช้จะเห็น
+// พรีวิวของเบราว์เซอร์ก่อนเสมอ (เลือก "บันทึกเป็น PDF" ในหน้าต่างพรีวิวนั้นได้เลย)
+// รูปแบบเดียวกับ downloadPDF ใน TutorStudents.jsx / TutorIncome.jsx
+const exportResultsPdf = (exam, results, courseName, subjectName) => {
+  if (!results) return;
+
+  const submitted = results.students.filter((s) => s.submittedAt && s.maxScore);
+  const avgTimeList = results.students.filter((s) => s.submittedAt && s.secondsUsed != null);
+  const avgTimeSec = avgTimeList.length
+    ? Math.round(avgTimeList.reduce((sum, s) => sum + s.secondsUsed, 0) / avgTimeList.length)
+    : null;
+  const passedCount = submitted.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
+  const passRatePct = submitted.length ? Math.round((passedCount / submitted.length) * 1000) / 10 : null;
+  const joinedPct = results.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
+  const submittedPct = results.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
+
+  const ranked = [...results.students].sort((a, b) => {
+    const pa = a.maxScore ? a.totalScore / a.maxScore : -1;
+    const pb = b.maxScore ? b.totalScore / b.maxScore : -1;
+    if (pb !== pa) return pb - pa;
+    return (a.name || "").localeCompare(b.name || "", "th");
+  });
+
+  const studentRows = ranked.map((s, i) => {
+    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+    const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${s.name}</td>
+      <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+      <td style="text-align:right">${pct != null ? `${s.totalScore}/${s.maxScore} (${pct}%)` : "—"}</td>
+      <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
+      <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
+      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
+    </tr>`;
+  }).join("");
+
+  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${s.name}</td></tr>`).join("");
+
+  const printWindow = window.open("", "_blank");
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${exam.name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
+    .header h1{font-size:22px;font-weight:700;color:#f97316;} .header p{font-size:12px;color:#6b7280;margin-top:4px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+    .summary-card{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;}
+    .summary-card .label{font-size:11px;color:#9a3412;margin-bottom:4px;} .summary-card .value{font-size:16px;font-weight:700;color:#ea580c;}
+    .summary-card .sub{font-size:10px;color:#9a3412;margin-top:2px;}
+    h2{font-size:15px;font-weight:700;color:#1f2937;margin-bottom:10px;margin-top:24px;padding-left:10px;border-left:3px solid #f97316;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;} th{background:#f97316;color:white;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
+    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
+    @media print{body{padding:16px;}}</style></head><body>
+    <div class="header"><div><h1>ผลสอบ: ${exam.name}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
+      <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${results.averageScorePct}%</div></div>
+      <div class="summary-card"><div class="label">ผ่านเกณฑ์</div><div class="value">${passRatePct != null ? `${passRatePct}%` : "—"}</div></div>
+      <div class="summary-card"><div class="label">เวลาเฉลี่ย</div><div class="value">${avgTimeSec != null ? formatTime(avgTimeSec) : "—"}</div></div>
     </div>
-  );
-}
+    <h2>รายชื่อนักเรียน</h2>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนน</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
+    <tbody>${studentRows}</tbody></table>
+    ${absentRows ? `<h2>นักเรียนที่ขาดสอบ (${results.absentStudents.length} คน)</h2><table><tbody>${absentRows}</tbody></table>` : ""}
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
+    <script>window.onload = () => window.print();</script></body></html>`);
+  printWindow.document.close();
+};
 
 // ─── Results Tab ─────────────────────────────────────────────────────────────
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
@@ -1159,21 +1214,23 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showAbsentModal, setShowAbsentModal] = useState(false);
   const [remainingSec, setRemainingSec] = useState(null);
   const [search, setSearch] = useState("");
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
   const [sortKey, setSortKey] = useState("rank");
   const [sortDir, setSortDir] = useState(1);
 
-  useEffect(() => {
-    if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
-    const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
-    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
-  }, [results?.examStartedAt, results?.durationMinutes]);
+  // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
+  // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
+  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ก็แค่เอาคอมเมนต์ block นี้ออก
+  // useEffect(() => {
+  //   if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
+  //   const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
+  //   const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+  //   tick();
+  //   const iv = setInterval(tick, 1000);
+  //   return () => clearInterval(iv);
+  // }, [results?.examStartedAt, results?.durationMinutes]);
 
   useEffect(() => {
     if (status !== "closed" && status !== "active") return;
@@ -1246,6 +1303,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     return arr.sort(cmp);
   }, [rankedStudents, sortKey, sortDir]);
 
+  // รายชื่อคนขาดสอบ (กรองด้วยช่องค้นหาเดียวกัน) — ใช้ตอนกดแท็บ "ขาดสอบ" ในแถบ ทั้งหมด/ผ่าน/ไม่ผ่าน
+  const filteredAbsent = useMemo(() => {
+    const list = results?.absentStudents || [];
+    if (!search.trim()) return list;
+    const q = search.trim().toLowerCase();
+    return list.filter((s) => s.name?.toLowerCase().includes(q));
+  }, [results, search]);
+
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d * -1);
     else { setSortKey(key); setSortDir(key === "name" ? 1 : -1); }
@@ -1284,7 +1349,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard
           icon={Users}
           label="เข้าสอบ"
@@ -1320,14 +1385,6 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           sub="ต่อคน"
           color="bg-amber-500"
         />
-        <StatCard
-          icon={UserX}
-          label="ขาดสอบ"
-          value={`${results.absentStudents?.length ?? 0} คน`}
-          sub={results.enrolledCount ? `จาก ${results.enrolledCount} คนในคอร์ส · กดดูรายชื่อ` : undefined}
-          color="bg-red-400"
-          onClick={results.absentStudents?.length ? () => setShowAbsentModal(true) : undefined}
-        />
       </div>
 
       {/* Search & Filter */}
@@ -1343,22 +1400,51 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             />
           </div>
           <div className="flex rounded-xl overflow-hidden border border-neutral-200 flex-shrink-0">
-            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map((f) => (
+            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน", "ขาดสอบ"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPass(f)}
                 className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
               >
-                {f}
+                {f}{f === "ขาดสอบ" && results.absentStudents?.length ? ` (${results.absentStudents.length})` : ""}
               </button>
             ))}
           </div>
+          <button
+            onClick={() => exportResultsPdf(exam, results, courseName, subjectName)}
+            disabled={!results.students?.length}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" /> Export PDF
+          </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-2 pl-1">แสดง {displayedStudents.length} จาก {results.students.length} คน</p>
+        <p className="text-xs text-neutral-400 mt-2 pl-1">
+          {filterPass === "ขาดสอบ"
+            ? <>แสดง {filteredAbsent.length} จาก {results.absentStudents?.length ?? 0} คน</>
+            : <>แสดง {displayedStudents.length} จาก {results.students.length} คน</>}
+        </p>
       </div>
 
       {/* Table */}
-      {displayedStudents.length === 0 ? (
+      {filterPass === "ขาดสอบ" ? (
+        filteredAbsent.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
+            <p className="text-sm text-neutral-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
+          </div>
+        ) : (
+          <div className="border border-neutral-100 rounded-xl overflow-hidden bg-white divide-y divide-neutral-50">
+            {filteredAbsent.map((s) => (
+              <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
+                <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-4 w-4 text-red-400" />
+                </div>
+                <p className="text-sm font-medium text-neutral-700 flex-1">{s.name}</p>
+                <span className="text-xs font-medium text-red-500">ขาดสอบ</span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : displayedStudents.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
           <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
@@ -1480,13 +1566,6 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           onClose={() => setSelectedStudent(null)}
         />
       )}
-
-      {showAbsentModal && (
-        <AbsentStudentsModal
-          students={results.absentStudents || []}
-          onClose={() => setShowAbsentModal(false)}
-        />
-      )}
     </div>
   );
 }
@@ -1507,6 +1586,7 @@ export default function TutorExamDetail() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState("questions");
+  const { toasts, showToast, removeToast } = useToast();
 
   const reload = useCallback(async () => {
     if (!examId) return;
@@ -1608,7 +1688,7 @@ export default function TutorExamDetail() {
           />
         )}
         {tab === "settings" && (
-          <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />
+          <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} showToast={showToast} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
@@ -1625,6 +1705,8 @@ export default function TutorExamDetail() {
           <ResultsTab exam={exam} courseId={courseId} subjectId={subjectId} courseName={courseName} subjectName={subjectName} />
         )}
       </div>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
