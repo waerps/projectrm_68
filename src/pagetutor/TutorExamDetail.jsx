@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge,
+  Tags, Merge, UserX,
 } from "lucide-react";
 
 import {
@@ -32,9 +32,14 @@ function Badge({ className, children }) {
 }
 
 // StatCard สไตล์เดียวกับ TutorExamAnalytics.jsx (ไอคอนสี่เหลี่ยมทึบ + label/value/sub)
-function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500" }) {
+// onClick เป็น optional — ใส่มาแล้วการ์ดจะกดได้ (เช่น การ์ด "ขาดสอบ" ที่กดดูรายชื่อได้)
+function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onClick }) {
+  const Wrapper = onClick ? "button" : "div";
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full">
+    <Wrapper
+      onClick={onClick}
+      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
+    >
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
@@ -43,7 +48,7 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500" }) {
         <p className="text-xl font-black text-neutral-900">{value}</p>
         {sub && <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{sub}</p>}
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
@@ -1083,6 +1088,36 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
   );
 }
 
+// รายชื่อคนที่ลงคอร์สนี้แต่ไม่ได้เข้าสอบเลย — เปิดจากการ์ด "ขาดสอบ" ในแท็บผลสอบ
+function AbsentStudentsModal({ students, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-semibold text-neutral-800">นักเรียนที่ขาดสอบ ({students.length} คน)</p>
+            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+          </div>
+          {students.length === 0 ? (
+            <p className="text-sm text-neutral-400 text-center py-6">ไม่มีนักเรียนที่ขาดสอบ</p>
+          ) : (
+            <ul className="divide-y divide-neutral-100">
+              {students.map((s) => (
+                <li key={s.userId} className="py-2.5 flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                    <UserX className="h-4 w-4 text-red-400" />
+                  </div>
+                  <p className="text-sm font-medium text-neutral-700">{s.name}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Results Tab ─────────────────────────────────────────────────────────────
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
@@ -1090,6 +1125,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showAbsentModal, setShowAbsentModal] = useState(false);
   const [remainingSec, setRemainingSec] = useState(null);
   const [search, setSearch] = useState("");
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
@@ -1214,7 +1250,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           icon={Users}
           label="เข้าสอบ"
@@ -1249,6 +1285,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           value={avgTimeSec != null ? `${formatTime(avgTimeSec)} น.` : "—"}
           sub="ต่อคน"
           color="bg-amber-500"
+        />
+        <StatCard
+          icon={UserX}
+          label="ขาดสอบ"
+          value={`${results.absentStudents?.length ?? 0} คน`}
+          sub={results.enrolledCount ? `จาก ${results.enrolledCount} คนในคอร์ส · กดดูรายชื่อ` : undefined}
+          color="bg-red-400"
+          onClick={results.absentStudents?.length ? () => setShowAbsentModal(true) : undefined}
         />
       </div>
 
@@ -1400,6 +1444,13 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           examName={exam.name}
           examQuestions={exam.questions}
           onClose={() => setSelectedStudent(null)}
+        />
+      )}
+
+      {showAbsentModal && (
+        <AbsentStudentsModal
+          students={results.absentStudents || []}
+          onClose={() => setShowAbsentModal(false)}
         />
       )}
     </div>
