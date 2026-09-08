@@ -1108,12 +1108,21 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   useEffect(() => {
     if (status !== "closed" && status !== "active") return;
     let cancelled = false;
-    setLoading(true);
-    fetchExamResults(exam.id)
-      .then((data) => { if (!cancelled) setResults(data); })
-      .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+
+    const load = (showSpinner) => {
+      if (showSpinner) setLoading(true);
+      fetchExamResults(exam.id)
+        .then((data) => { if (!cancelled) setResults(data); })
+        .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
+        .finally(() => { if (!cancelled && showSpinner) setLoading(false); });
+    };
+
+    load(true); // ครั้งแรกโชว์ spinner
+
+    // active = สอบยังไม่จบ ต้อง poll สด, closed = ข้อมูลนิ่งแล้ว fetch ครั้งเดียวพอ
+    if (status !== "active") return () => { cancelled = true; };
+    const iv = setInterval(() => load(false), 5000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [exam.id, status]);
 
   // อันดับต้องยึดคะแนนเป็นหลักเสมอ (มาก → น้อย, เท่ากันใช้ชื่อ) และคำนวณจาก

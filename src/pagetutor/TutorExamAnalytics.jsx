@@ -404,6 +404,21 @@ function StudentModal({ student, examLabel, onClose }) {
 
 // ─── Tab 1: ภาพรวม (ข้อมูลจริงจาก fetchExamResults) ────────────────────────
 function OverviewTab({ results, topicBreakdown, loading }) {
+  // ── Hooks ต้องถูกเรียกแบบไม่มีเงื่อนไขทุก render (Rules of Hooks) ──
+  // เดิม useMemo ทั้งสองตัวอยู่หลัง `if (loading) return` และ `if (!results...) return`
+  // พอ loading เปลี่ยนจาก true → false ระหว่างที่ component ยัง mount อยู่ (ไม่ได้ unmount)
+  // จำนวน hook ที่ถูกเรียกในแต่ละ render จะไม่เท่ากัน → React throw "Rendered fewer/more
+  // hooks than expected" หน้าแครช จึงย้าย submitted + useMemo ทั้งหมดมาไว้บนสุดแทน
+  const submitted = (results?.students || []).filter(s => s.submittedAt && s.maxScore);
+
+  const hist = useMemo(() => {
+    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
+    submitted.forEach(s => { bins[Math.min(9, Math.floor((s.totalScore / s.maxScore) * 10))].count++; });
+    return bins;
+  }, [submitted]);
+
+  const topicStats = useMemo(() => computeTopicStatsReal(topicBreakdown), [topicBreakdown]);
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -417,8 +432,6 @@ function OverviewTab({ results, topicBreakdown, loading }) {
       </div>
     );
   }
-
-  const submitted = (results?.students || []).filter(s => s.submittedAt && s.maxScore);
 
   if (!results || submitted.length === 0) {
     return (
@@ -437,14 +450,6 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   const maxPct = Math.max(...pcts);
   const minPct = Math.min(...pcts);
   const maxScore = submitted[0].maxScore;
-
-  const hist = useMemo(() => {
-    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
-    submitted.forEach(s => { bins[Math.min(9, Math.floor((s.totalScore / s.maxScore) * 10))].count++; });
-    return bins;
-  }, [submitted]);
-
-  const topicStats = useMemo(() => computeTopicStatsReal(topicBreakdown), [topicBreakdown]);
 
   return (
     <div className="space-y-6">
@@ -864,17 +869,14 @@ function StudentTab({ data, examLabel }) {
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
 function StudentProgressTab({ examResults, topicResults, loading }) {
+  // ── Hooks ทั้งหมด (useState + useMemo) ต้องอยู่บนสุด ก่อน early return ทุกอัน ──
+  // เดิม sortKey/sortDir (useState) และ useMemo อีก 2 ตัวถูกประกาศ "หลัง" `if (loading) return`
+  // ทำให้ตอน loading=true เรียกแค่ 2 hooks (search, selected) แต่พอ loading=false เรียก 8 hooks
+  // จำนวน hook ไม่เท่ากันข้าม render เดียวกัน → React แครช จึงย้ายทุก hook มาไว้บนสุด
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-14 bg-slate-100 rounded-xl" />
-        <div className="h-72 bg-slate-100 rounded-2xl" />
-      </div>
-    );
-  }
+  const [sortKey, setSortKey] = useState("rankChange");
+  const [sortDir, setSortDir] = useState(-1); // เริ่มด้วย "ดีขึ้นมากสุดก่อน"
 
   const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
 
@@ -894,9 +896,6 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
       };
     }), [crossExamData]);
 
-  const [sortKey, setSortKey] = useState("rankChange");
-  const [sortDir, setSortDir] = useState(-1); // เริ่มด้วย "ดีขึ้นมากสุดก่อน"
-
   const filteredBase = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
 
   const filtered = useMemo(() => {
@@ -915,6 +914,15 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
     else { setSortKey(key); setSortDir(-1); }
   };
   const SortIcon = ({ k }) => sortKey === k ? <span className="ml-0.5 text-orange-500">{sortDir === -1 ? "▼" : "▲"}</span> : null;
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-14 bg-slate-100 rounded-xl" />
+        <div className="h-72 bg-slate-100 rounded-2xl" />
+      </div>
+    );
+  }
 
   if (crossExamData.length === 0) {
     return (
@@ -1223,28 +1231,8 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 
 // ─── Tab 4: เปรียบเทียบ (ข้อมูลจริงจาก fetchExamResults) ────────────────────
 function ComparisonTab({ examResults, topicResults, loading }) {
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl" />)}
-        </div>
-        <div className="h-72 bg-slate-100 rounded-2xl" />
-      </div>
-    );
-  }
-
+  // ── Hooks ก่อน early return ทั้งหมด (เหตุผลเดียวกับ OverviewTab ด้านบน) ──
   const validResults = examResults.filter(r => r && r.submittedCount > 0);
-
-  if (validResults.length < 2) {
-    return (
-      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
-        <TrendingUp className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-semibold text-slate-600">ยังมีข้อมูลไม่พอเปรียบเทียบ</p>
-        <p className="text-xs text-slate-400 max-w-sm">ต้องมีอย่างน้อย 2 รอบสอบที่มีคนส่งข้อสอบแล้ว ถึงจะเทียบพัฒนาการได้</p>
-      </div>
-    );
-  }
 
   const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
   const summary = useMemo(() => computeImprovementSummary(crossExamData), [crossExamData]);
@@ -1264,6 +1252,27 @@ function ComparisonTab({ examResults, topicResults, loading }) {
       return row;
     });
   }, [topicResults]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-100 rounded-2xl" />)}
+        </div>
+        <div className="h-72 bg-slate-100 rounded-2xl" />
+      </div>
+    );
+  }
+
+  if (validResults.length < 2) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
+        <TrendingUp className="h-10 w-10 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">ยังมีข้อมูลไม่พอเปรียบเทียบ</p>
+        <p className="text-xs text-slate-400 max-w-sm">ต้องมีอย่างน้อย 2 รอบสอบที่มีคนส่งข้อสอบแล้ว ถึงจะเทียบพัฒนาการได้</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

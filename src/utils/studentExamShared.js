@@ -7,6 +7,12 @@ export function getCurrentUserId() {
     return JSON.parse(localStorage.getItem("user") || "null")?.id || null;
 }
 
+// แนบ Bearer token ของนักเรียนไปกับทุก request — คู่กับ authRequired ที่เพิ่มฝั่ง backend
+function authHeaders() {
+    const token = localStorage.getItem("student_token");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const formatTime = (totalSeconds) => {
     const s = Math.max(0, Math.floor(totalSeconds));
     const h = Math.floor(s / 3600);
@@ -20,42 +26,42 @@ export const formatTime = (totalSeconds) => {
 export async function fetchExamEntry(courseId, userId, subjectId = null) {
     const params = { userId };
     if (subjectId) params.subjectId = subjectId;
-    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}`, { params });
+    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}`, { params, headers: authHeaders() });
     return data;
 }
 
 // GET /api/student/exam/:token?userId= → landing status (not-started / in-progress / submitted)
 export async function fetchExamByToken(token, userId) {
-    const { data } = await axios.get(`${API_BASE}/${token}`, { params: { userId } });
+    const { data } = await axios.get(`${API_BASE}/${token}`, { params: { userId }, headers: authHeaders() });
     return data;
 }
 
 // POST /api/student/exam/:token/start → { examJoinId, joinedAt, durationMinutes, questions }
 export async function startExam(token, userId) {
-    const { data } = await axios.post(`${API_BASE}/${token}/start`, { userId });
+    const { data } = await axios.post(`${API_BASE}/${token}/start`, { userId }, { headers: authHeaders() });
     return data;
 }
 
 // PUT /api/student/exam/answer — autosave a single answer
 export async function saveAnswer({ examJoinId, userId, questionId, selected }) {
-    const { data } = await axios.put(`${API_BASE}/answer`, { examJoinId, userId, questionId, selected });
+    const { data } = await axios.put(`${API_BASE}/answer`, { examJoinId, userId, questionId, selected }, { headers: authHeaders() });
     return data;
 }
 
 // POST /api/student/exam/:examJoinId/submit → final grading
 export async function submitExam(examJoinId, userId) {
-    const { data } = await axios.post(`${API_BASE}/${examJoinId}/submit`, { userId });
+    const { data } = await axios.post(`${API_BASE}/${examJoinId}/submit`, { userId }, { headers: authHeaders() });
     return data;
 }
 
 // GET /api/student/exam/:examJoinId/result?userId= → full per-question review
 export async function fetchExamResult(examJoinId, userId) {
-    const { data } = await axios.get(`${API_BASE}/${examJoinId}/result`, { params: { userId } });
+    const { data } = await axios.get(`${API_BASE}/${examJoinId}/result`, { params: { userId }, headers: authHeaders() });
     return data;
 }
 
 // POST /api/student/exam/question/enter — log ว่านักเรียนเริ่มดูข้อนี้เมื่อไหร่
 export async function logQuestionEnter({ examJoinId, userId, questionId }) {
-    const { data } = await axios.post(`${API_BASE}/question/enter`, { examJoinId, userId, questionId });
+    const { data } = await axios.post(`${API_BASE}/question/enter`, { examJoinId, userId, questionId }, { headers: authHeaders() });
     return data;
 }

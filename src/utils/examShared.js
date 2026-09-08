@@ -4,6 +4,13 @@ import * as XLSX from "xlsx";
 
 const API_BASE = `${API_URL}/api/exam`;
 
+// แนบ Bearer token ของติวเตอร์/แอดมิน — ใช้ key เดียวกับฝั่งนักเรียนเพราะ Login.jsx
+// เก็บ token ของทั้งสองฝั่งไว้ที่ "student_token" เหมือนกัน
+function authHeaders() {
+  const token = localStorage.getItem("student_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const EXAM_TYPES = [
   { value: "pre-test", label: "Pre-test", sub: "สอบก่อนเรียน", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-400" },
   { value: "mid-test", label: "Mid-test", sub: "สอบกลางเทอม", color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-400" },
@@ -37,12 +44,12 @@ export const LEVEL_COLOR = {
 };
 
 export const formatTime = (seconds) => {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
-  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return [h, m, sec].map((v) => String(v).padStart(2, "0")).join(":");
 };
-
 
 export function deriveStatus(exam) {
   if (exam.status === "active" || exam.status === "closed") return exam.status;
@@ -133,80 +140,80 @@ export const parseXlsx = (file) =>
 
 // GET /api/exam?courseId=&subjectId=&adminId= → the 3 Exams (Pre/Mid/Post) for this Subject.
 export async function fetchExams({ courseId, subjectId, adminId }) {
-  const { data } = await axios.get(API_BASE, { params: { courseId, subjectId, adminId } });
+  const { data } = await axios.get(API_BASE, { params: { courseId, subjectId, adminId }, headers: authHeaders() });
   return data;
 }
 
 // GET /api/exam/:examId → full exam detail incl. settings + questions.
 export async function fetchExamDetail(examId) {
-  const { data } = await axios.get(`${API_BASE}/${examId}`);
+  const { data } = await axios.get(`${API_BASE}/${examId}`, { headers: authHeaders() });
   return data;
 }
 
 // PUT /api/exam/:examId/settings → { totalQuestions, duration, date }
 export async function updateExamSettings(examId, settings) {
-  const { data } = await axios.put(`${API_BASE}/${examId}/settings`, settings);
+  const { data } = await axios.put(`${API_BASE}/${examId}/settings`, settings, { headers: authHeaders() });
   return data;
 }
 
 // POST /api/exam/:examId/questions → adds question(s) to the EXISTING exam.
 // `questions` is always an array (manual add sends length-1 arrays too).
 export async function addQuestions(examId, questions) {
-  const { data } = await axios.post(`${API_BASE}/${examId}/questions`, { questions });
+  const { data } = await axios.post(`${API_BASE}/${examId}/questions`, { questions }, { headers: authHeaders() });
   return data;
 }
 
 // PUT /api/exam/questions/:questionId
 export async function updateQuestion(questionId, patch) {
-  const { data } = await axios.put(`${API_BASE}/questions/${questionId}`, patch);
+  const { data } = await axios.put(`${API_BASE}/questions/${questionId}`, patch, { headers: authHeaders() });
   return data;
 }
 
 // DELETE /api/exam/questions/:questionId
 export async function deleteQuestion(questionId) {
-  const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`);
+  const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`, { headers: authHeaders() });
   return data;
 }
 
 // POST /api/exam/:examId/session/open → { status, sessionId, examLink }
 export async function openExamSession(examId) {
-  const { data } = await axios.post(`${API_BASE}/${examId}/session/open`);
+  const { data } = await axios.post(`${API_BASE}/${examId}/session/open`, {}, { headers: authHeaders() });
   return data;
 }
 
 // POST /api/exam/:examId/session/close
 export async function closeExamSession(examId) {
-  const { data } = await axios.post(`${API_BASE}/${examId}/session/close`);
+  const { data } = await axios.post(`${API_BASE}/${examId}/session/close`, {}, { headers: authHeaders() });
   return data;
 }
 
 // GET /api/exam/:examId/results → real results from exam_join / exam_student_answers
 export async function fetchExamResults(examId) {
-  const { data } = await axios.get(`${API_BASE}/${examId}/results`);
+  const { data } = await axios.get(`${API_BASE}/${examId}/results`, { headers: authHeaders() });
   return data;
 }
 
 // GET /api/exam/join/:examJoinId/detail → รายละเอียดรายข้อของนักเรียน 1 คน (คำตอบ/ผล/เวลาที่ใช้)
 export async function fetchExamJoinDetail(examJoinId) {
-  const { data } = await axios.get(`${API_BASE}/join/${examJoinId}/detail`);
+  const { data } = await axios.get(`${API_BASE}/join/${examJoinId}/detail`, { headers: authHeaders() });
   return data;
 }
 
 export async function fetchTopicBreakdown(examId) {
-  const { data } = await axios.get(`${API_BASE}/${examId}/topic-breakdown`);
+  const { data } = await axios.get(`${API_BASE}/${examId}/topic-breakdown`, { headers: authHeaders() });
   return data;
 }
 
 
 // GET /api/exam/subject/:subjectId/categories?adminId= → หมวดทั้งหมดที่เคยใช้ในวิชานี้ (ข้าม 3 รอบ)
 export async function fetchSubjectCategories({ subjectId, adminId }) {
-  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/categories`, { params: { adminId } });
+  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/categories`, { params: { adminId }, headers: authHeaders() });
   return data;
 }
 
 
 // PUT /api/exam/subject/:subjectId/categories/rename → รวม/เปลี่ยนชื่อหมวด (cascade ทุก exam ของวิชานี้)
 export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
-  const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to });
+  const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to }, { headers: authHeaders() });
   return data;
 }
