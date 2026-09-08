@@ -1,10 +1,12 @@
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+
 import {
   ChevronRight, ChevronLeft, FileQuestion, Clock, Calendar, Users,
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
+  Tags, Merge, UserX,
 } from "lucide-react";
 
 import {
@@ -13,7 +15,10 @@ import {
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
   fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
+  fetchSubjectCategories, renameSubjectCategory,
 } from "../utils/examShared";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -29,9 +34,14 @@ function Badge({ className, children }) {
 }
 
 // StatCard สไตล์เดียวกับ TutorExamAnalytics.jsx (ไอคอนสี่เหลี่ยมทึบ + label/value/sub)
-function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500" }) {
+// onClick เป็น optional — ใส่มาแล้วการ์ดจะกดได้ (เช่น การ์ด "ขาดสอบ" ที่กดดูรายชื่อได้)
+function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onClick }) {
+  const Wrapper = onClick ? "button" : "div";
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full">
+    <Wrapper
+      onClick={onClick}
+      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
+    >
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
@@ -40,15 +50,14 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500" }) {
         <p className="text-xl font-black text-neutral-900">{value}</p>
         {sub && <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{sub}</p>}
       </div>
-    </div>
+    </Wrapper>
   );
 }
 
 const TABS = [
   { key: "questions", label: "ข้อสอบ", icon: FileQuestion },
-  { key: "settings", label: "ตั้งค่าข้อสอบ", icon: SettingsIcon },
   { key: "preview", label: "ดูตัวอย่างข้อสอบ", icon: Eye },
-  { key: "session", label: "เปิด/ปิดสอบ", icon: Play },
+  { key: "manage", label: "ตั้งค่า / เปิดสอบ", icon: SettingsIcon },
   { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
 
@@ -81,9 +90,120 @@ function AddMethodPicker({ onPick }) {
   );
 }
 
+// ─── Manage Categories Modal ─────────────────────────────────────────────────
+// รวม/เปลี่ยนชื่อหมวดย้อนหลัง — สำหรับซ่อมกรณีพิมพ์ผิด/พิมพ์ไม่ตรงกันระหว่างรอบสอบ
+// cascade อัปเดตทุก exam (Pre/Mid/Post) ของวิชานี้ในครั้งเดียว
+function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [renamingFrom, setRenamingFrom] = useState(null);
+  const [renameTo, setRenameTo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const load = () => {
+    setLoading(true);
+    fetchSubjectCategories({ subjectId, adminId })
+      .then(setCategories)
+      .catch((err) => { console.error("Fetch categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, [subjectId, adminId]);
+
+  const startRename = (cat) => { setRenamingFrom(cat); setRenameTo(cat); setSaveError(""); };
+
+  const confirmRename = async () => {
+    if (!renameTo.trim() || renameTo.trim() === renamingFrom) { setRenamingFrom(null); return; }
+    setSaving(true);
+    setSaveError("");
+    try {
+      await renameSubjectCategory({ subjectId, adminId, from: renamingFrom, to: renameTo.trim() });
+      setRenamingFrom(null);
+      load();
+      await onChanged(); // reload exam detail ที่หน้าหลัก เพื่อให้ตาราง Questions อัปเดตชื่อหมวดใหม่ด้วย
+    } catch (err) {
+      console.error("Rename category failed:", err);
+      setSaveError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
+          <p className="text-sm font-semibold text-neutral-800 flex items-center gap-2"><Tags className="h-4 w-4 text-orange-500" /> จัดการหมวดหมู่ (Category)</p>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-700 leading-relaxed">
+              รวม 2 หมวดที่จริงๆ เป็นเรื่องเดียวกันแต่พิมพ์ไม่ตรงกัน (เช่น "พีชคณิต" กับ "พีชคณิค") — การกด "เปลี่ยนชื่อ" จะอัปเดตทุกข้อในวิชานี้ ทุกรอบสอบ (Pre/Mid/Post) ทันที
+            </p>
+          </div>
+
+          {loading && <p className="text-sm text-neutral-400 text-center py-6">กำลังโหลด...</p>}
+          {error && <p className="text-sm text-red-500 text-center py-6">{error}</p>}
+
+          {!loading && !error && categories.length === 0 && (
+            <p className="text-sm text-neutral-400 text-center py-6">ยังไม่มีหมวดหมู่ในวิชานี้</p>
+          )}
+
+          {!loading && !error && categories.length > 0 && (
+            <div className="border border-neutral-100 rounded-xl divide-y divide-neutral-50 overflow-hidden">
+              {categories.map((c) => (
+                <div key={c.category} className="px-4 py-3">
+                  {renamingFrom === c.category ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        value={renameTo}
+                        onChange={(e) => setRenameTo(e.target.value)}
+                        list="category-options-manage"
+                        className="flex-1 border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                      <datalist id="category-options-manage">
+                        {categories.filter((x) => x.category !== c.category).map((x) => (
+                          <option key={x.category} value={x.category} />
+                        ))}
+                      </datalist>
+                      <button onClick={confirmRename} disabled={saving} className="text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-lg px-3 py-1.5">
+                        {saving ? "กำลังบันทึก…" : "ยืนยัน"}
+                      </button>
+                      <button onClick={() => setRenamingFrom(null)} className="text-xs font-medium text-neutral-500 hover:text-neutral-700 px-2">ยกเลิก</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-neutral-800 truncate">{c.category}</p>
+                        <p className="text-xs text-neutral-400">{c.questionCount} ข้อ</p>
+                      </div>
+                      <button onClick={() => startRename(c.category)} className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5 hover:bg-orange-100 transition flex-shrink-0">
+                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวมหมวด
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
-function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel }) {
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions }) {
   const [q, setQ] = useState(initial || emptyQuestion());
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
@@ -148,7 +268,22 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel 
         </div>
         <div>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-          <input type="text" value={q.category} onChange={(e) => patch({ category: e.target.value })} placeholder="เช่น พีชคณิต" className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+          <input
+            type="text"
+            list="category-options"
+            value={q.category}
+            onChange={(e) => patch({ category: e.target.value })}
+            placeholder="เช่น พีชคณิต"
+            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+          />
+          <datalist id="category-options">
+            {(categoryOptions || []).map((c) => (
+              <option key={c.category} value={c.category} />
+            ))}
+          </datalist>
+          {categoryOptions?.length > 0 && (
+            <p className="text-[10px] text-neutral-400 mt-1">หมวดที่เคยใช้ในวิชานี้: {categoryOptions.map((c) => c.category).join(", ")}</p>
+          )}
         </div>
       </div>
 
@@ -173,8 +308,9 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel 
   );
 }
 
-function ExcelImportFlow({ examId, onCancel, onImported }) {
+function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
+  const knownCategories = new Set((categoryOptions || []).map((c) => c.category.trim().toLowerCase()));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -264,6 +400,9 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
                         <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
                       )}
                     </p>
+                    {q.category?.trim() && knownCategories.size > 0 && !knownCategories.has(q.category.trim().toLowerCase()) && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">⚠️ หมวด "{q.category}" ยังไม่เคยใช้ในวิชานี้ — พิมพ์ผิดหรือหมวดใหม่จริง?</p>
+                    )}
                   </div>
                 </div>
               );
@@ -287,13 +426,24 @@ function ExcelImportFlow({ examId, onCancel, onImported }) {
   );
 }
 
-function QuestionsTab({ examId, questions, status, onChanged }) {
+function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged }) {
   const locked = status === "active";
   const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [showManageCategories, setShowManageCategories] = useState(false);
+
+  const loadCategories = () => {
+    if (!subjectId || !adminId) return;
+    fetchSubjectCategories({ subjectId, adminId })
+      .then(setCategoryOptions)
+      .catch((err) => console.error("Fetch subject categories failed:", err));
+  };
+
+  useEffect(() => { loadCategories(); }, [subjectId, adminId]);
 
   const editingQuestion = questions.find((q) => q.id === editingId) || null;
 
@@ -343,14 +493,30 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        {!editingId && !locked && (
-          <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-            <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {categoryOptions.length > 0 && (
+            <button onClick={() => setShowManageCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-600 hover:text-orange-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+              <Tags className="h-4 w-4" /> จัดการหมวดหมู่
+            </button>
+          )}
+          {!editingId && !locked && (
+            <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+              <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
+            </button>
+          )}
+        </div>
       </div>
+
+      {showManageCategories && (
+        <ManageCategoriesModal
+          subjectId={subjectId}
+          adminId={adminId}
+          onClose={() => setShowManageCategories(false)}
+          onChanged={async () => { loadCategories(); await onChanged(); }}
+        />
+      )}
 
       {locked && (
         <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -374,11 +540,12 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
           saveLabel="บันทึกและเพิ่มข้อถัดไป"
           onSave={handleAddOne}
           onClose={() => setMode(null)}
+          categoryOptions={categoryOptions}
         />
       )}
 
       {mode === "excel" && (
-        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} />
+        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} categoryOptions={categoryOptions} />
       )}
 
       {editingId && (
@@ -389,6 +556,7 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
           saveLabel="บันทึกการแก้ไข"
           onSave={handleEditSave}
           onClose={() => { setEditingId(null); setFormError(""); }}
+          categoryOptions={categoryOptions}
         />
       )}
 
@@ -434,62 +602,6 @@ function QuestionsTab({ examId, questions, status, onChanged }) {
           </table>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-// ─── Settings Tab ────────────────────────────────────────────────────────────
-
-function SettingsTab({ examId, settings, onSaved }) {
-  const [form, setForm] = useState(settings);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    try {
-      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null };
-      await updateExamSettings(examId, payload);
-      await onSaved();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error("Save settings failed:", err);
-      setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="max-w-xl space-y-5">
-      <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
-        <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนโจทย์แต่ละข้อแก้ไขได้ที่แท็บ Questions</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">จำนวนข้อ (เป้าหมาย)</label>
-          <input type="number" min={0} value={form.totalQuestions} onChange={(e) => setForm({ ...form, totalQuestions: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
-          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-        </div>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
-        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-      </div>
-
-      {error && <p className="text-xs text-red-500">{error}</p>}
-
-      <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
-        {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
-      </button>
     </div>
   );
 }
@@ -580,16 +692,96 @@ function PreviewTab({ exam, goToQuestions }) {
   );
 }
 
-function SessionTab({ exam, onOpen, onReopen, onClose }) {
+// ─── Manage Tab (ตั้งค่าข้อสอบ + เปิด/ปิดสอบ รวมกันแท็บเดียว) ──────────────────
+// เดิมเป็น 2 แท็บแยกกัน (SettingsTab / SessionTab) ทำให้ต้องสลับไปมาเวลาตั้งเป็น
+// auto — พอกลับไปแท็บเปิด/ปิดสอบก็ยังมีปุ่ม "เปิดสอบ" ให้กดเองซ้ำซ้อน งงว่าจะเปิดยังไงกันแน่
+// รวมเป็นแท็บเดียว: ถ้าตั้ง auto ไว้ ครึ่งล่างจะไม่โชว์ปุ่ม "เปิดสอบ" หลักอีกต่อไป แต่โชว์
+// สถานะ + นับถอยหลังแทน มีแค่ปุ่มเล็กๆ "เปิดเลยตอนนี้" ไว้ข้ามกำหนดเวลาได้ถ้าจำเป็นจริงๆ
+
+function formatThaiDate(dateStr) {
+  if (!dateStr) return "";
+  return new Date(`${dateStr}T00:00:00+07:00`).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Bangkok" });
+}
+
+// นับถอยหลังจนถึงเวลาเปิดอัตโนมัติ — โชว์แบบ "อีก X วัน Y ชม. Z นาที"
+function formatCountdown(sec) {
+  if (sec == null) return "";
+  if (sec <= 0) return "ถึงเวลาที่ตั้งไว้แล้ว — ระบบกำลังจะเปิดให้ในไม่ช้า (ไม่เกิน 1 นาที)";
+  const days = Math.floor(sec / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  const parts = [];
+  if (days > 0) parts.push(`${days} วัน`);
+  if (days > 0 || hours > 0) parts.push(`${hours} ชม.`);
+  parts.push(`${minutes} นาที`);
+  if (days === 0 && hours === 0) parts.push(`${seconds} วิ`);
+  return `เหลืออีก ${parts.join(" ")}`;
+}
+
+function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) {
+  const examId = exam.id;
+  const settings = exam.settings;
+  const status = deriveStatus(exam);
+  // ข้อสอบที่เคยปิดไปแล้วห้ามตั้งเปิดอัตโนมัติได้อีก — เพราะ "เปิดสอบใหม่" เปิดเป็น active
+  // ทันทีเสมอ ไม่มีทางเข้าสถานะรอเปิดแบบที่ auto sweep ยอมรับได้อีก (ดู examAutoOpen.js)
+  // ตั้งไว้ก็จะไม่มีผลอะไรเลย เลยบล็อกไว้ตั้งแต่ต้นทางกันงง
+  const isClosed = status === "closed";
+
+  // ── ส่วนตั้งค่า ──────────────────────────────────────────────────────────
+  const [form, setForm] = useState(settings);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    const mode = isClosed ? "manual" : (form.openMode === "auto" ? "auto" : "manual");
+    if (mode === "auto" && (!form.date || !form.time)) {
+      setError("โหมดเปิดสอบอัตโนมัติต้องระบุวันที่และเวลาให้ครบ");
+      setSaving(false);
+      return;
+    }
+    try {
+      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
+      const result = await updateExamSettings(examId, payload);
+      await onSaved();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+
+      // โหมด auto — เตือนให้ชัดว่าบันทึกไว้แล้ว แต่จะยังไม่เปิดสอบจริงจนกว่าจะมีข้อสอบ
+      // อย่างน้อย 1 ข้อ (ตรงกับเงื่อนไขที่ sweepScheduledOpens ฝั่ง backend ใช้เช็ค)
+      if (mode === "auto" && showToast) {
+        if ((result?.questionCount ?? 0) === 0) {
+          showToast("warning", "บันทึกแล้ว แต่ยังไม่เปิดสอบ", "ระบบจะยังไม่เปิดสอบอัตโนมัติจนกว่าจะใส่ข้อสอบให้ครบอย่างน้อย 1 ข้อ ถึงเวลาที่ตั้งไว้แล้วจะรอจนกว่าจะพร้อม");
+        } else {
+          showToast("success", "บันทึกแล้ว", "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้");
+        }
+      }
+    } catch (err) {
+      console.error("Save settings failed:", err);
+      setError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── ส่วนเปิด/ปิดสอบ ──────────────────────────────────────────────────────
   const [opening, setOpening] = useState(false);
   const [reopening, setReopening] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [overriding, setOverriding] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const [confirmReopen, setConfirmReopen] = useState(false);
+  const [confirmOverride, setConfirmOverride] = useState(false);
   const [live, setLive] = useState(null);
   const [remainingSec, setRemainingSec] = useState(null);
-  const status = deriveStatus(exam);
+  const [scheduleRemainingSec, setScheduleRemainingSec] = useState(null);
   const ready = isExamReady(exam);
+  // ตั้งเปิดอัตโนมัติไว้จริง (มีทั้งวันและเวลา) และยังไม่เคยเปิด/ปิด — เงื่อนไขเดียวกับที่
+  // ใช้ซ่อนปุ่ม "เปิดสอบ" หลัก แล้วโชว์การ์ดนับถอยหลังแทน
+  const isScheduledAuto = status !== "active" && !isClosed && settings.openMode === "auto" && !!settings.date && !!settings.time;
 
   // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
   // Backend เสมอ (examStartedAt + durationMinutes) เพื่อให้ตรงกับฝั่งนักเรียน
@@ -601,6 +793,26 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
     const iv = setInterval(tick, 1000);
     return () => clearInterval(iv);
   }, [live?.examStartedAt, live?.durationMinutes]);
+
+  // นับถอยหลังจนถึงเวลาเปิดอัตโนมัติที่ตั้งไว้ (settings.date/time เป็นเวลาไทยตรงๆ
+  // ที่ backend ส่งมา — ใส่ offset +07:00 ชัดเจน กันเบราว์เซอร์ตีความผิด)
+  useEffect(() => {
+    if (!isScheduledAuto) { setScheduleRemainingSec(null); return; }
+    const target = new Date(`${settings.date}T${settings.time}:00+07:00`).getTime();
+    const tick = () => setScheduleRemainingSec(Math.max(0, Math.round((target - Date.now()) / 1000)));
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [isScheduledAuto, settings.date, settings.time]);
+
+  // ระหว่างรอเปิดอัตโนมัติ เช็คสถานะซ้ำเป็นระยะ เผื่อ backend เปิดให้แล้วจริง
+  // (sweep ฝั่ง backend รันทุก 1 นาที) จะได้สลับมาโชว์สถานะ "กำลังเปิดอยู่" เอง
+  // โดยไม่ต้องให้ติวเตอร์กด refresh หน้าเว็บเอง
+  useEffect(() => {
+    if (!isScheduledAuto) return;
+    const iv = setInterval(() => { onSaved(); }, 10_000);
+    return () => clearInterval(iv);
+  }, [isScheduledAuto, onSaved]);
 
   const pollResults = useCallback(async () => {
     try {
@@ -618,144 +830,282 @@ function SessionTab({ exam, onOpen, onReopen, onClose }) {
     return () => clearInterval(iv);
   }, [status, pollResults]);
 
-  // ── closed: offer "เปิดสอบใหม่" (reset + reopen), with a clear warning ──
-  if (status === "closed") {
-    return (
-      <div className="max-w-md mx-auto text-center py-10 space-y-4">
-        <div className="h-14 w-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto">
-          <StopCircle className="h-6 w-6 text-neutral-400" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
-          <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
-        </div>
-
-        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">
-            การกด "เปิดสอบใหม่" จะ<strong>ลบข้อมูลผลสอบของนักเรียนจากรอบนี้ทั้งหมด</strong>
-            (คำถามและการตั้งค่าจะยังอยู่เหมือนเดิม)
-          </p>
-        </div>
-
-        <button
-          onClick={() => setConfirmReopen(true)}
-          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
-        >
-          <Play className="h-4 w-4" /> เปิดสอบใหม่
-        </button>
-
-        {confirmReopen && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmReopen(false)}>
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
-              <div className="text-center mb-5">
-                <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
-                <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
-                <p className="text-sm text-neutral-500">
-                  ข้อมูลผลสอบของนักเรียนทั้งหมดจากรอบก่อนจะถูกลบ และนักเรียนทุกคนจะต้องเริ่มสอบใหม่
-                </p>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
-                <button
-                  onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
-                  disabled={reopening}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
-                >
-                  {reopening ? "กำลังเปิด…" : "เปิดสอบใหม่"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── inactive: first-time open, nothing to reset ──
-  if (status !== "active") {
-    return (
-      <div className="max-w-md mx-auto text-center py-10 space-y-4">
-        <div className="h-14 w-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
-          <Play className="h-6 w-6 text-orange-600" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-neutral-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
-          <p className="text-xs text-neutral-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
-        </div>
-        {!ready && (
-          <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
-            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">ข้อสอบยังไม่พร้อม — ตรวจสอบที่แท็บ Preview ก่อนเปิดสอบ</p>
-          </div>
-        )}
-        <button
-          onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
-          disabled={!ready || opening}
-          className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
-        >
-          <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิดสอบ"}
-        </button>
-      </div>
-    );
-  }
-
-  // ── active ──
   const joined = live?.joinedCount ?? 0;
   const enrolled = live?.enrolledCount ?? 0;
   const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
   return (
-    <div className="max-w-lg mx-auto space-y-5">
-      <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-        <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-        <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── ตั้งค่าข้อสอบ ── */}
+      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
+        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
+          <SettingsIcon className="h-4 w-4 text-neutral-400" /> ตั้งค่าข้อสอบ
+        </h3>
 
-      <div className="border border-neutral-200 rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-neutral-700">ความคืบหน้าการเข้าสอบ</p>
-          <p className="text-sm font-bold text-orange-600">{joined}/{enrolled} คน</p>
+        <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนโจทย์แต่ละข้อแก้ไขได้ที่แท็บ ข้อสอบ</p>
         </div>
-        <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
 
-      {remainingSec != null && (
-        <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
-          <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
-          <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
-            <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">จำนวนข้อ (เป้าหมาย)</label>
+            <input type="number" min={0} value={form.totalQuestions} onChange={(e) => setForm({ ...form, totalQuestions: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
+            <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
           </div>
         </div>
-      )}
-
-      <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
-        <StopCircle className="h-4 w-4" /> ปิดสอบ
-      </button>
-
-      {confirmClose && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmClose(false)}>
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="text-center mb-5">
-              <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
-              <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
-              <button
-                onClick={async () => { setClosing(true); try { await onClose(); } finally { setClosing(false); setConfirmClose(false); } }}
-                disabled={closing}
-                className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
-              >
-                {closing ? "กำลังปิด…" : "ปิดสอบ"}
-              </button>
-            </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
+          <div className="grid grid-cols-2 gap-3">
+            <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+            <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
           </div>
         </div>
-      )}
+
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วิธีเปิดสอบ</label>
+          <div className={`flex rounded-xl overflow-hidden border border-neutral-200 ${isClosed ? "opacity-50" : ""}`}>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, openMode: "manual" })}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+            >
+              เปิดเอง
+            </button>
+            <button
+              type="button"
+              disabled={isClosed}
+              onClick={() => setForm({ ...form, openMode: "auto" })}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-neutral-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+            >
+              เปิดอัตโนมัติตามวันเวลา
+            </button>
+          </div>
+          {isClosed ? (
+            <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-left">
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลใดๆ จนกว่าจะกดปุ่ม "เปิดสอบใหม่" ด้วยตัวเองก่อน (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+              {form.openMode === "auto"
+                ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
+                : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
+            </p>
+          )}
+          {isScheduledAuto && (
+            <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3 mt-2 text-left">
+              <Clock className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                กำลังนับถอยหลังเพื่อเปิดอัตโนมัติอยู่ด้านล่าง — ถ้าแก้วันที่/เวลาแล้วกดบันทึก จะเปลี่ยนเวลาที่ตั้งไว้ทันที
+              </p>
+            </div>
+          )}
+        </div>
+
+        {error && <p className="text-xs text-red-500">{error}</p>}
+
+        <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+          {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
+        </button>
+      </div>
+
+      {/* ── เปิด/ปิดสอบ ── */}
+      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2 mb-5">
+          <Play className="h-4 w-4 text-neutral-400" /> เปิด/ปิดสอบ
+        </h3>
+
+        {/* ── closed: offer "เปิดสอบใหม่" (reset + reopen), with a clear warning ── */}
+        {status === "closed" && (
+          <div className="text-center py-6 space-y-4">
+            <div className="h-14 w-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto">
+              <StopCircle className="h-6 w-6 text-neutral-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
+              <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
+            </div>
+
+            <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                การกด "เปิดสอบใหม่" จะ<strong>ลบข้อมูลผลสอบของนักเรียนจากรอบนี้ทั้งหมด</strong>
+                (คำถามและการตั้งค่าจะยังอยู่เหมือนเดิม)
+              </p>
+            </div>
+
+            <button
+              onClick={() => setConfirmReopen(true)}
+              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+            >
+              <Play className="h-4 w-4" /> เปิดสอบใหม่
+            </button>
+
+            {confirmReopen && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmReopen(false)}>
+                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-center mb-5">
+                    <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
+                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
+                    <p className="text-sm text-neutral-500">
+                      ข้อมูลผลสอบของนักเรียนทั้งหมดจากรอบก่อนจะถูกลบ และนักเรียนทุกคนจะต้องเริ่มสอบใหม่
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button
+                      onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
+                      disabled={reopening}
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                    >
+                      {reopening ? "กำลังเปิด…" : "เปิดสอบใหม่"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── inactive + ตั้งเปิดอัตโนมัติไว้: โชว์นับถอยหลังแทนปุ่ม "เปิดสอบ" หลัก ── */}
+        {status !== "active" && status !== "closed" && isScheduledAuto && (
+          <div className="text-center py-6 space-y-4">
+            <div className="h-14 w-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-800">
+                ตั้งเปิดอัตโนมัติวันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น.
+              </p>
+              <p className="text-xs text-neutral-500 mt-1">{formatCountdown(scheduleRemainingSec)}</p>
+            </div>
+            {!ready && (
+              <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
+                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">ข้อสอบยังไม่พร้อม (ยังไม่มีข้อสอบ) — ถึงเวลาที่ตั้งไว้แล้ว ระบบจะรอจนกว่าจะใส่ข้อสอบครบก่อนค่อยเปิดให้</p>
+              </div>
+            )}
+            <button
+              onClick={() => setConfirmOverride(true)}
+              disabled={!ready}
+              className="inline-flex items-center gap-1.5 border border-orange-200 hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed text-orange-600 rounded-xl px-4 py-2 text-xs font-semibold transition"
+            >
+              <Play className="h-3.5 w-3.5" /> เปิดเลยตอนนี้ (ข้ามกำหนดเวลา)
+            </button>
+
+            {confirmOverride && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmOverride(false)}>
+                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-center mb-5">
+                    <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
+                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
+                    <p className="text-sm text-neutral-500">
+                      ตั้งเปิดอัตโนมัติไว้วันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น. — ถ้ากดเปิดตอนนี้ นักเรียนจะเข้าสอบได้ทันที ก่อนถึงเวลาที่ตั้งไว้
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setConfirmOverride(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button
+                      onClick={async () => { setOverriding(true); try { await onOpen(); setConfirmOverride(false); } finally { setOverriding(false); } }}
+                      disabled={overriding}
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                    >
+                      {overriding ? "กำลังเปิด…" : "เปิดเลยตอนนี้"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── inactive + เปิดเอง (หรือยังไม่ได้ตั้งวันเวลาให้ auto ครบ): ปุ่ม "เปิดสอบ" ปกติ ── */}
+        {status !== "active" && status !== "closed" && !isScheduledAuto && (
+          <div className="text-center py-6 space-y-4">
+            <div className="h-14 w-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+              <Play className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-neutral-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
+              <p className="text-xs text-neutral-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
+            </div>
+            {!ready && (
+              <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
+                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">ข้อสอบยังไม่พร้อม — ตรวจสอบที่แท็บ ดูตัวอย่างข้อสอบ ก่อนเปิดสอบ</p>
+              </div>
+            )}
+            <button
+              onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
+              disabled={!ready || opening}
+              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+            >
+              <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิดสอบ"}
+            </button>
+          </div>
+        )}
+
+        {/* ── active ── */}
+        {status === "active" && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+              <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
+            </div>
+
+            <div className="border border-neutral-200 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-neutral-700">ความคืบหน้าการเข้าสอบ</p>
+                <p className="text-sm font-bold text-orange-600">{joined}/{enrolled} คน</p>
+              </div>
+              <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+
+            {remainingSec != null && (
+              <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
+                <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
+                <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
+                  <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
+                </div>
+              </div>
+            )}
+
+            <button onClick={() => setConfirmClose(true)} className="w-full flex items-center justify-center gap-2 border border-red-200 hover:bg-red-50 text-red-600 rounded-xl py-2.5 text-sm font-semibold transition">
+              <StopCircle className="h-4 w-4" /> ปิดสอบ
+            </button>
+
+            {confirmClose && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmClose(false)}>
+                <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-center mb-5">
+                    <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
+                    <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
+                    <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button
+                      onClick={async () => { setClosing(true); try { await onClose(); } finally { setClosing(false); setConfirmClose(false); } }}
+                      disabled={closing}
+                      className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                    >
+                      {closing ? "กำลังปิด…" : "ปิดสอบ"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -921,6 +1271,79 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
   );
 }
 
+// เปิดหน้าต่างใหม่พร้อม HTML ที่จัดหน้าไว้แล้ว แล้วเรียก window.print() — ผู้ใช้จะเห็น
+// พรีวิวของเบราว์เซอร์ก่อนเสมอ (เลือก "บันทึกเป็น PDF" ในหน้าต่างพรีวิวนั้นได้เลย)
+// รูปแบบเดียวกับ downloadPDF ใน TutorStudents.jsx / TutorIncome.jsx
+const exportResultsPdf = (exam, results, courseName, subjectName) => {
+  if (!results) return;
+
+  const submitted = results.students.filter((s) => s.submittedAt && s.maxScore);
+  const avgTimeList = results.students.filter((s) => s.submittedAt && s.secondsUsed != null);
+  const avgTimeSec = avgTimeList.length
+    ? Math.round(avgTimeList.reduce((sum, s) => sum + s.secondsUsed, 0) / avgTimeList.length)
+    : null;
+  const passedCount = submitted.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
+  const passRatePct = submitted.length ? Math.round((passedCount / submitted.length) * 1000) / 10 : null;
+  const joinedPct = results.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
+  const submittedPct = results.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
+
+  const ranked = [...results.students].sort((a, b) => {
+    const pa = a.maxScore ? a.totalScore / a.maxScore : -1;
+    const pb = b.maxScore ? b.totalScore / b.maxScore : -1;
+    if (pb !== pa) return pb - pa;
+    return (a.name || "").localeCompare(b.name || "", "th");
+  });
+
+  const studentRows = ranked.map((s, i) => {
+    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+    const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${s.name}</td>
+      <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+      <td style="text-align:right">${pct != null ? `${s.totalScore}/${s.maxScore} (${pct}%)` : "—"}</td>
+      <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
+      <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
+      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
+    </tr>`;
+  }).join("");
+
+  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${s.name}</td></tr>`).join("");
+
+  const printWindow = window.open("", "_blank");
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${exam.name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
+    .header h1{font-size:22px;font-weight:700;color:#f97316;} .header p{font-size:12px;color:#6b7280;margin-top:4px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:28px;}
+    .summary-card{background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:12px 14px;}
+    .summary-card .label{font-size:11px;color:#9a3412;margin-bottom:4px;} .summary-card .value{font-size:16px;font-weight:700;color:#ea580c;}
+    .summary-card .sub{font-size:10px;color:#9a3412;margin-top:2px;}
+    h2{font-size:15px;font-weight:700;color:#1f2937;margin-bottom:10px;margin-top:24px;padding-left:10px;border-left:3px solid #f97316;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;} th{background:#f97316;color:white;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
+    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
+    @media print{body{padding:16px;}}</style></head><body>
+    <div class="header"><div><h1>ผลสอบ: ${exam.name}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="summary-grid">
+      <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
+      <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${results.averageScorePct}%</div></div>
+      <div class="summary-card"><div class="label">ผ่านเกณฑ์</div><div class="value">${passRatePct != null ? `${passRatePct}%` : "—"}</div></div>
+      <div class="summary-card"><div class="label">เวลาเฉลี่ย</div><div class="value">${avgTimeSec != null ? formatTime(avgTimeSec) : "—"}</div></div>
+    </div>
+    <h2>รายชื่อนักเรียน</h2>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนน</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
+    <tbody>${studentRows}</tbody></table>
+    ${absentRows ? `<h2>นักเรียนที่ขาดสอบ (${results.absentStudents.length} คน)</h2><table><tbody>${absentRows}</tbody></table>` : ""}
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
+    <script>window.onload = () => window.print();</script></body></html>`);
+  printWindow.document.close();
+};
+
 // ─── Results Tab ─────────────────────────────────────────────────────────────
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
@@ -934,24 +1357,36 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [sortKey, setSortKey] = useState("rank");
   const [sortDir, setSortDir] = useState(1);
 
-  useEffect(() => {
-    if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
-    const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
-    const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
-  }, [results?.examStartedAt, results?.durationMinutes]);
+  // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
+  // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
+  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ก็แค่เอาคอมเมนต์ block นี้ออก
+  // useEffect(() => {
+  //   if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
+  //   const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
+  //   const tick = () => setRemainingSec(Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+  //   tick();
+  //   const iv = setInterval(tick, 1000);
+  //   return () => clearInterval(iv);
+  // }, [results?.examStartedAt, results?.durationMinutes]);
 
   useEffect(() => {
     if (status !== "closed" && status !== "active") return;
     let cancelled = false;
-    setLoading(true);
-    fetchExamResults(exam.id)
-      .then((data) => { if (!cancelled) setResults(data); })
-      .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+
+    const load = (showSpinner) => {
+      if (showSpinner) setLoading(true);
+      fetchExamResults(exam.id)
+        .then((data) => { if (!cancelled) setResults(data); })
+        .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
+        .finally(() => { if (!cancelled && showSpinner) setLoading(false); });
+    };
+
+    load(true); // ครั้งแรกโชว์ spinner
+
+    // active = สอบยังไม่จบ ต้อง poll สด, closed = ข้อมูลนิ่งแล้ว fetch ครั้งเดียวพอ
+    if (status !== "active") return () => { cancelled = true; };
+    const iv = setInterval(() => load(false), 5000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [exam.id, status]);
 
   // อันดับต้องยึดคะแนนเป็นหลักเสมอ (มาก → น้อย, เท่ากันใช้ชื่อ) และคำนวณจาก
@@ -1005,6 +1440,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     return arr.sort(cmp);
   }, [rankedStudents, sortKey, sortDir]);
 
+  // รายชื่อคนขาดสอบ (กรองด้วยช่องค้นหาเดียวกัน) — ใช้ตอนกดแท็บ "ขาดสอบ" ในแถบ ทั้งหมด/ผ่าน/ไม่ผ่าน
+  const filteredAbsent = useMemo(() => {
+    const list = results?.absentStudents || [];
+    if (!search.trim()) return list;
+    const q = search.trim().toLowerCase();
+    return list.filter((s) => s.name?.toLowerCase().includes(q));
+  }, [results, search]);
+
   const handleSort = (key) => {
     if (sortKey === key) setSortDir((d) => d * -1);
     else { setSortKey(key); setSortDir(key === "name" ? 1 : -1); }
@@ -1043,7 +1486,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   return (
     <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <StatCard
           icon={Users}
           label="เข้าสอบ"
@@ -1094,22 +1537,51 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             />
           </div>
           <div className="flex rounded-xl overflow-hidden border border-neutral-200 flex-shrink-0">
-            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map((f) => (
+            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน", "ขาดสอบ"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPass(f)}
                 className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
               >
-                {f}
+                {f}{f === "ขาดสอบ" && results.absentStudents?.length ? ` (${results.absentStudents.length})` : ""}
               </button>
             ))}
           </div>
+          <button
+            onClick={() => exportResultsPdf(exam, results, courseName, subjectName)}
+            disabled={!results.students?.length}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed transition flex-shrink-0"
+          >
+            <Download className="h-3.5 w-3.5" /> Export PDF
+          </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-2 pl-1">แสดง {displayedStudents.length} จาก {results.students.length} คน</p>
+        <p className="text-xs text-neutral-400 mt-2 pl-1">
+          {filterPass === "ขาดสอบ"
+            ? <>แสดง {filteredAbsent.length} จาก {results.absentStudents?.length ?? 0} คน</>
+            : <>แสดง {displayedStudents.length} จาก {results.students.length} คน</>}
+        </p>
       </div>
 
       {/* Table */}
-      {displayedStudents.length === 0 ? (
+      {filterPass === "ขาดสอบ" ? (
+        filteredAbsent.length === 0 ? (
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
+            <p className="text-sm text-neutral-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
+          </div>
+        ) : (
+          <div className="border border-neutral-100 rounded-xl overflow-hidden bg-white divide-y divide-neutral-50">
+            {filteredAbsent.map((s) => (
+              <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
+                <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
+                  <UserX className="h-4 w-4 text-red-400" />
+                </div>
+                <p className="text-sm font-medium text-neutral-700 flex-1">{s.name}</p>
+                <span className="text-xs font-medium text-red-500">ขาดสอบ</span>
+              </div>
+            ))}
+          </div>
+        )
+      ) : displayedStudents.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
           <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
@@ -1251,6 +1723,7 @@ export default function TutorExamDetail() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState("questions");
+  const { toasts, showToast, removeToast } = useToast();
 
   const reload = useCallback(async () => {
     if (!examId) return;
@@ -1342,17 +1815,23 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab examId={exam.id} questions={exam.questions || []} status={status} onChanged={reload} />
-        )}
-        {tab === "settings" && (
-          <SettingsTab examId={exam.id} settings={exam.settings} onSaved={reload} />
+          <QuestionsTab
+            examId={exam.id}
+            subjectId={subjectId}
+            adminId={JSON.parse(localStorage.getItem("user") || "null")?.id}
+            questions={exam.questions || []}
+            status={status}
+            onChanged={reload}
+          />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
         )}
-        {tab === "session" && (
-          <SessionTab
+        {tab === "manage" && (
+          <ManageExamTab
             exam={exam}
+            onSaved={reload}
+            showToast={showToast}
             onOpen={async () => { await openExamSession(exam.id); await reload(); }}
             onReopen={async () => { await openExamSession(exam.id); await reload(); }}
             onClose={async () => { await closeExamSession(exam.id); await reload(); }}
@@ -1362,6 +1841,8 @@ export default function TutorExamDetail() {
           <ResultsTab exam={exam} courseId={courseId} subjectId={subjectId} courseName={courseName} subjectName={subjectName} />
         )}
       </div>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
