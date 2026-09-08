@@ -722,6 +722,11 @@ function formatCountdown(sec) {
 function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) {
   const examId = exam.id;
   const settings = exam.settings;
+  const status = deriveStatus(exam);
+  // ข้อสอบที่เคยปิดไปแล้วห้ามตั้งเปิดอัตโนมัติได้อีก — เพราะ "เปิดสอบใหม่" เปิดเป็น active
+  // ทันทีเสมอ ไม่มีทางเข้าสถานะรอเปิดแบบที่ auto sweep ยอมรับได้อีก (ดู examAutoOpen.js)
+  // ตั้งไว้ก็จะไม่มีผลอะไรเลย เลยบล็อกไว้ตั้งแต่ต้นทางกันงง
+  const isClosed = status === "closed";
 
   // ── ส่วนตั้งค่า ──────────────────────────────────────────────────────────
   const [form, setForm] = useState(settings);
@@ -732,7 +737,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
   const handleSave = async () => {
     setSaving(true);
     setError("");
-    const mode = form.openMode === "auto" ? "auto" : "manual";
+    const mode = isClosed ? "manual" : (form.openMode === "auto" ? "auto" : "manual");
     if (mode === "auto" && (!form.date || !form.time)) {
       setError("โหมดเปิดสอบอัตโนมัติต้องระบุวันที่และเวลาให้ครบ");
       setSaving(false);
@@ -773,11 +778,10 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
   const [live, setLive] = useState(null);
   const [remainingSec, setRemainingSec] = useState(null);
   const [scheduleRemainingSec, setScheduleRemainingSec] = useState(null);
-  const status = deriveStatus(exam);
   const ready = isExamReady(exam);
   // ตั้งเปิดอัตโนมัติไว้จริง (มีทั้งวันและเวลา) และยังไม่เคยเปิด/ปิด — เงื่อนไขเดียวกับที่
   // ใช้ซ่อนปุ่ม "เปิดสอบ" หลัก แล้วโชว์การ์ดนับถอยหลังแทน
-  const isScheduledAuto = status !== "active" && status !== "closed" && settings.openMode === "auto" && !!settings.date && !!settings.time;
+  const isScheduledAuto = status !== "active" && !isClosed && settings.openMode === "auto" && !!settings.date && !!settings.time;
 
   // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
   // Backend เสมอ (examStartedAt + durationMinutes) เพื่อให้ตรงกับฝั่งนักเรียน
@@ -801,6 +805,15 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
     return () => clearInterval(iv);
   }, [isScheduledAuto, settings.date, settings.time]);
 
+  // ระหว่างรอเปิดอัตโนมัติ เช็คสถานะซ้ำเป็นระยะ เผื่อ backend เปิดให้แล้วจริง
+  // (sweep ฝั่ง backend รันทุก 1 นาที) จะได้สลับมาโชว์สถานะ "กำลังเปิดอยู่" เอง
+  // โดยไม่ต้องให้ติวเตอร์กด refresh หน้าเว็บเอง
+  useEffect(() => {
+    if (!isScheduledAuto) return;
+    const iv = setInterval(() => { onSaved(); }, 10_000);
+    return () => clearInterval(iv);
+  }, [isScheduledAuto, onSaved]);
+
   const pollResults = useCallback(async () => {
     try {
       const data = await fetchExamResults(exam.id);
@@ -822,7 +835,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
   const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* ── ตั้งค่าข้อสอบ ── */}
       <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
         <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
@@ -854,27 +867,45 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">วิธีเปิดสอบ</label>
-          <div className="flex rounded-xl overflow-hidden border border-neutral-200">
+          <div className={`flex rounded-xl overflow-hidden border border-neutral-200 ${isClosed ? "opacity-50" : ""}`}>
             <button
               type="button"
               onClick={() => setForm({ ...form, openMode: "manual" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${(form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
             >
               เปิดเอง
             </button>
             <button
               type="button"
+              disabled={isClosed}
               onClick={() => setForm({ ...form, openMode: "auto" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-neutral-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
             >
               เปิดอัตโนมัติตามวันเวลา
             </button>
           </div>
-          <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
-            {form.openMode === "auto"
-              ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
-              : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
-          </p>
+          {isClosed ? (
+            <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-left">
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 leading-relaxed">
+                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลใดๆ จนกว่าจะกดปุ่ม "เปิดสอบใหม่" ด้วยตัวเองก่อน (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+              {form.openMode === "auto"
+                ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
+                : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
+            </p>
+          )}
+          {isScheduledAuto && (
+            <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3 mt-2 text-left">
+              <Clock className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700 leading-relaxed">
+                กำลังนับถอยหลังเพื่อเปิดอัตโนมัติอยู่ด้านล่าง — ถ้าแก้วันที่/เวลาแล้วกดบันทึก จะเปลี่ยนเวลาที่ตั้งไว้ทันที
+              </p>
+            </div>
+          )}
         </div>
 
         {error && <p className="text-xs text-red-500">{error}</p>}

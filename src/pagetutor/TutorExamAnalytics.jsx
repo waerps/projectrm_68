@@ -452,13 +452,15 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   const maxPct = Math.max(...pcts);
   const minPct = Math.min(...pcts);
   const maxScore = submitted[0].maxScore;
+  const maxRawScore = Math.max(...submitted.map(s => s.totalScore));
+  const minRawScore = Math.min(...submitted.map(s => s.totalScore));
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * maxScore).toFixed(1)} / ${maxScore} คะแนน`} color="bg-orange-500" />
         <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length} จาก ${submitted.length} คน`} color="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub="ช่วงคะแนน" color="bg-blue-500" />
+        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${maxRawScore}/${maxScore} - ${minRawScore}/${maxScore} คะแนน`} color="bg-blue-500" />
         <StatCard icon={BarChart2} label="ส่วนเบี่ยงเบนมาตรฐาน" value={fmtPct(sdPct)} sub="σ (sigma)" color="bg-amber-500" />
       </div>
 
@@ -1278,43 +1280,43 @@ function ComparisonTab({ examResults, topicResults, loading }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {summary.total === 0 ? (
-          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test — ต้องมีอย่างน้อย 1 คนที่สอบทั้ง 2 รอบ ถึงจะสรุปภาพรวมพัฒนาการได้</p>
-          </div>
-        ) : (
-          <SectionCard title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)" icon={TrendingUp}>
-            <p className="text-xs text-slate-400 mb-4">เทียบจากนักเรียน {summary.total} คนที่สอบครบทั้ง 2 รอบ (คนที่ขาดสอบรอบใดรอบหนึ่งไม่นับรวม)</p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-center">
-                <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center mx-auto mb-2">
-                  <ArrowUpRight className="h-4 w-4 text-white" />
-                </div>
-                <p className="text-2xl font-black text-emerald-700">{summary.improved}</p>
-                <p className="text-xs text-emerald-600 font-semibold mt-0.5">คน ดีขึ้น</p>
-                <p className="text-[11px] text-emerald-500 mt-0.5">{summary.improvedPct}%</p>
+      {summary.total === 0 ? (
+        <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-blue-700">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test — ต้องมีอย่างน้อย 1 คนที่สอบทั้ง 2 รอบ ถึงจะสรุปภาพรวมพัฒนาการได้</p>
+        </div>
+      ) : (
+        <SectionCard title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)" icon={TrendingUp}>
+          <p className="text-xs text-slate-400 mb-4">เทียบจากนักเรียน {summary.total} คนที่สอบครบทั้ง 2 รอบ (คนที่ขาดสอบรอบใดรอบหนึ่งไม่นับรวม)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-center">
+              <div className="h-9 w-9 rounded-xl bg-emerald-500 flex items-center justify-center mx-auto mb-2">
+                <ArrowUpRight className="h-4 w-4 text-white" />
               </div>
-              <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-center">
-                <div className="h-9 w-9 rounded-xl bg-red-400 flex items-center justify-center mx-auto mb-2">
-                  <ArrowDownRight className="h-4 w-4 text-white" />
-                </div>
-                <p className="text-2xl font-black text-red-600">{summary.declined}</p>
-                <p className="text-xs text-red-500 font-semibold mt-0.5">คน แย่ลง</p>
-                <p className="text-[11px] text-red-400 mt-0.5">{summary.declinedPct}%</p>
-              </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 text-center">
-                <div className="h-9 w-9 rounded-xl bg-slate-400 flex items-center justify-center mx-auto mb-2">
-                  <span className="text-white text-sm font-bold">=</span>
-                </div>
-                <p className="text-2xl font-black text-slate-700">{summary.same}</p>
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">คน เท่าเดิม</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{summary.samePct}%</p>
-              </div>
+              <p className="text-2xl font-black text-emerald-700">{summary.improved}</p>
+              <p className="text-xs text-emerald-600 font-semibold mt-0.5">คน ดีขึ้น</p>
+              <p className="text-[11px] text-emerald-500 mt-0.5">{summary.improvedPct}%</p>
             </div>
-          </SectionCard>
-        )}
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-5 text-center">
+              <div className="h-9 w-9 rounded-xl bg-red-400 flex items-center justify-center mx-auto mb-2">
+                <ArrowDownRight className="h-4 w-4 text-white" />
+              </div>
+              <p className="text-2xl font-black text-red-600">{summary.declined}</p>
+              <p className="text-xs text-red-500 font-semibold mt-0.5">คน แย่ลง</p>
+              <p className="text-[11px] text-red-400 mt-0.5">{summary.declinedPct}%</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 text-center">
+              <div className="h-9 w-9 rounded-xl bg-slate-400 flex items-center justify-center mx-auto mb-2">
+                <span className="text-white text-sm font-bold">=</span>
+              </div>
+              <p className="text-2xl font-black text-slate-700">{summary.same}</p>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">คน เท่าเดิม</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{summary.samePct}%</p>
+            </div>
+          </div>
+        </SectionCard>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {EXAMS_META.map((e, i) => {
           const r = examResults[i];
           const passCount = r?.students?.filter(s => s.submittedAt && s.maxScore && (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length || 0;
