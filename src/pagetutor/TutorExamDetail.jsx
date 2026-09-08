@@ -616,8 +616,14 @@ function SettingsTab({ examId, settings, onSaved }) {
   const handleSave = async () => {
     setSaving(true);
     setError("");
+    const mode = form.openMode === "auto" ? "auto" : "manual";
+    if (mode === "auto" && (!form.date || !form.time)) {
+      setError("โหมดเปิดสอบอัตโนมัติต้องระบุวันที่และเวลาให้ครบ");
+      setSaving(false);
+      return;
+    }
     try {
-      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null };
+      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
       await updateExamSettings(examId, payload);
       await onSaved();
       setSaved(true);
@@ -649,7 +655,35 @@ function SettingsTab({ examId, settings, onSaved }) {
       </div>
       <div>
         <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
-        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        <div className="grid grid-cols-2 gap-3">
+          <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+          <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 mb-1.5">วิธีเปิดสอบ</label>
+        <div className="flex rounded-xl overflow-hidden border border-neutral-200">
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, openMode: "manual" })}
+            className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${(form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+          >
+            เปิดเอง
+          </button>
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, openMode: "auto" })}
+            className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+          >
+            เปิดอัตโนมัติตามวันเวลา
+          </button>
+        </div>
+        <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+          {form.openMode === "auto"
+            ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
+            : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองที่แท็บ \"เปิด/ปิดสอบ\" — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
+        </p>
       </div>
 
       {error && <p className="text-xs text-red-500">{error}</p>}

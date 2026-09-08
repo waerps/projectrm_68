@@ -30,6 +30,12 @@ export async function fetchExamEntry(courseId, userId, subjectId = null) {
     return data;
 }
 
+// GET /api/student/exam/by-course/:courseId/schedule?subjectId= → กำหนดสอบล่วงหน้า (ยังไม่เปิด) ของวิชานี้
+export async function fetchExamSchedule(courseId, subjectId) {
+    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}/schedule`, { params: { subjectId }, headers: authHeaders() });
+    return data;
+}
+
 // GET /api/student/exam/:token?userId= → landing status (not-started / in-progress / submitted)
 export async function fetchExamByToken(token, userId) {
     const { data } = await axios.get(`${API_BASE}/${token}`, { params: { userId }, headers: authHeaders() });

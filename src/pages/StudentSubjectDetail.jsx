@@ -11,7 +11,7 @@ import {
   getStudentSubjectsProgress,
   updateVideoWatchSegments,
 } from "../callapi/callusers_student";
-import { fetchExamEntry, getCurrentUserId } from "../utils/studentExamShared";
+import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -254,6 +254,7 @@ export default function StudentSubjectDetail() {
 
   const [examLoading, setExamLoading] = useState(false);
   const [examError, setExamError] = useState("");
+  const [examSchedule, setExamSchedule] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -299,6 +300,17 @@ export default function StudentSubjectDetail() {
         if (!cancelled) setError(typeof e === "string" ? e : e?.message || "โหลดเนื้อหาวิชาไม่สำเร็จ");
       } finally { if (!cancelled) setLoading(false); }
     })();
+    return () => { cancelled = true; };
+  }, [courseId, subjectId, token]);
+
+  // กำหนดสอบล่วงหน้า (Pre/Mid/Post ที่ยังไม่เปิด แต่ติวเตอร์ตั้งวันที่ไว้แล้ว) — โชว้ให้เห็นเฉยๆ
+  // ไม่เกี่ยวกับปุ่ม "เข้าสอบ" ด้านล่าง ถ้าไม่มีอันไหนตั้งวันที่ไว้เลยก็ไม่ต้องโชว์อะไร
+  useEffect(() => {
+    if (!courseId || !subjectId || !token) return;
+    let cancelled = false;
+    fetchExamSchedule(courseId, subjectId)
+      .then((data) => { if (!cancelled) setExamSchedule(Array.isArray(data?.schedule) ? data.schedule : []); })
+      .catch((err) => console.error("Fetch exam schedule failed:", err));
     return () => { cancelled = true; };
   }, [courseId, subjectId, token]);
 
@@ -432,6 +444,26 @@ export default function StudentSubjectDetail() {
             <ClipboardList className="h-4 w-4" /> {examLoading ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
           </button>
           {examError && <p className="mt-3 text-sm text-red-500">{examError}</p>}
+
+          {examSchedule.length > 0 && (
+            <div className="mt-6 space-y-2 text-left">
+              {examSchedule.map((s) => {
+                const d = new Date(s.examDate);
+                const dateLabel = d.toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+                const timeLabel = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                return (
+                  <div key={s.examId} className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-800">{s.examName}: กำหนดสอบ {dateLabel} เวลา {timeLabel} น.</p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      {s.openMode === "auto"
+                        ? "ระบบจะเปิดสอบให้อัตโนมัติเมื่อถึงเวลานี้"
+                        : "เป็นกำหนดการที่ติวเตอร์ตั้งไว้ ติวเตอร์จะเป็นคนกดเปิดสอบเอง เวลานี้อาจเปลี่ยนแปลงได้"}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
