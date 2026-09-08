@@ -115,14 +115,6 @@ const ALL_DATA = [
 const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
 const sdev = arr => { const m = avg(arr); return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length); };
 const fmtPct = v => `${(v * 100).toFixed(1)}%`;
-
-// "อันดับ" เทียบกันตรงๆ ข้ามรอบไม่ได้ถ้าจำนวนคนสอบแต่ละรอบไม่เท่ากัน (เช่น Post-test
-// มีคนขาดสอบเยอะกว่า Pre-test) — อันดับ 5 จาก 8 คน ไม่ได้แปลว่าเก่งเท่าอันดับ 5 จาก 100 คน
-// เลยแปลงเป็น "ชนะไปกี่ % ของคนที่สอบรอบนั้น" (percentile) แทน — normalize ด้วยจำนวนคน
-// สอบของรอบนั้นให้แล้ว เทียบข้ามรอบที่มีคนสอบไม่เท่ากันได้ตรงกว่าเลขอันดับดิบ
-const percentileOf = (exam) => (exam?.rank != null && exam?.totalStudents)
-  ? Math.round(((exam.totalStudents - exam.rank) / exam.totalStudents) * 1000) / 10
-  : null;
 const fmtMin = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} น.`;
 
 const computeItemAnalysis = (data) => {
@@ -227,6 +219,47 @@ function buildRealCrossExamData(examResults, topicResults) {
   }));
 }
 
+// รวมคะแนนเฉลี่ยรายหัวข้อของทั้งห้อง ข้าม 3 รอบสอบ — ใช้ทั้งในแท็บ "เปรียบเทียบ" และปุ่ม Export PDF
+// ที่ย้ายไปอยู่แถวเดียวกับแท็บ (แยกเป็นฟังก์ชันกลางกันลอจิกซ้ำกัน 2 ที่)
+function buildTopicTrendData(topicResults) {
+  const catSet = new Set();
+  topicResults.forEach((r) => (r || []).forEach((u) => u.topics.forEach((t) => catSet.add(t.category))));
+  return Array.from(catSet).map((cat) => {
+    const row = { topic: cat };
+    EXAMS_META.forEach((meta, i) => {
+      const r = topicResults[i];
+      if (!r) { row[meta.label] = null; return; }
+      const rows = r.map((u) => u.topics.find((t) => t.category === cat)).filter(Boolean);
+      row[meta.label] = rows.length ? parseFloat((avg(rows.map((x) => x.pct)) * 100).toFixed(1)) : null;
+    });
+    return row;
+  });
+}
+
+// สรุปแถวข้อมูลต่อนักเรียนสำหรับแท็บ "รายคน" — ใช้ทั้งในตารางของแท็บเองและปุ่ม Export PDF
+// ที่ย้ายไปอยู่แถวเดียวกับแท็บ (แยกเป็นฟังก์ชันกลางกันลอจิกซ้ำกัน 2 ที่)
+function buildProgressRows(crossExamData) {
+  return crossExamData.map((d) => {
+    const submittedList = d.exams.filter(e => e.submitted);
+    const latest = submittedList[submittedList.length - 1] ?? null;
+    const first = submittedList[0] ?? null;
+    // ใช้คะแนนดิบ (%) เทียบ ไม่ใช่อันดับ/เปอร์เซ็นไทล์ — ที่นี่วัดว่านักเรียนเก่งขึ้นจากตัวเองไหม
+    // ไม่ได้วัดว่าเก่งกว่าเพื่อนไหม (เคยลองใช้เปอร์เซ็นไทล์เทียบเพื่อนร่วมห้องแล้ว แต่ไม่ตรงกับ
+    // เป้าหมายตรงนี้ จึงย้อนกลับมาใช้คะแนนดิบเหมือนเดิม)
+    const scoreChange = (first && latest && first !== latest)
+      ? Math.round((latest.pct - first.pct) * 1000) / 10
+      : null;
+    return {
+      studentId: d.studentId, name: d.name,
+      submittedCount: submittedList.length, totalExams: d.exams.length,
+      latestPct: latest?.pct ?? null,
+      latestRank: latest?.rank ?? null,
+      totalStudents: latest?.totalStudents ?? null,
+      scoreChange,
+    };
+  });
+}
+
 
 // สรุปว่านักเรียนกี่คนดีขึ้น/แย่ลง/เท่าเดิม เทียบ Pre-test (index 0) กับ Post-test (index 2)
 // ใช้เฉพาะคนที่สอบครบทั้ง 2 รอบนี้เท่านั้น — คนที่ขาดสอบรอบใดรอบหนึ่งไม่เทียบได้ จึงไม่นับ
@@ -234,15 +267,13 @@ function computeImprovementSummary(crossExamData) {
   const comparable = crossExamData.filter((d) => d.exams[0]?.submitted && d.exams[2]?.submitted);
   let improved = 0, declined = 0, same = 0;
   comparable.forEach((d) => {
-    // ใช้ "เปอร์เซ็นไทล์" (ชนะไปกี่ % ของคนที่สอบรอบนั้น) เทียบ ไม่ใช่คะแนนดิบหรือเลขอันดับตรงๆ
-    // — Pre-test กับ Post-test มักยากง่ายไม่เท่ากัน แถมจำนวนคนมาสอบก็มักไม่เท่ากันด้วย (เช่น
-    // Post-test มีคนขาดสอบเยอะกว่า) เลขอันดับดิบเทียบข้ามรอบตรงๆ จึงเข้าใจผิดได้ง่าย (อันดับ 5
-    // จาก 8 คน ไม่เท่ากับอันดับ 5 จาก 100 คน) เปอร์เซ็นไทล์ normalize ด้วยจำนวนคนสอบให้แล้ว
-    // เทียบข้ามรอบได้ตรงเสมอไม่ว่าจำนวนคนสอบจะต่างกันแค่ไหน
-    const prePctile = percentileOf(d.exams[0]);
-    const postPctile = percentileOf(d.exams[2]);
-    if (postPctile > prePctile) improved++;
-    else if (postPctile < prePctile) declined++;
+    // ใช้คะแนนดิบ (%) เทียบตรงๆ — ที่นี่วัดว่านักเรียนเก่งขึ้นจากตัวเองไหม ไม่ได้วัดว่าเก่งกว่า
+    // เพื่อนไหม (เคยลองเปลี่ยนไปใช้อันดับ/เปอร์เซ็นไทล์เทียบเพื่อนร่วมห้องแล้ว แต่ไม่ตรงกับ
+    // เป้าหมายของที่นี่ จึงย้อนกลับมาใช้คะแนนดิบเหมือนเดิม)
+    const prePct = Math.round(d.exams[0].pct * 1000) / 10;
+    const postPct = Math.round(d.exams[2].pct * 1000) / 10;
+    if (postPct > prePct) improved++;
+    else if (postPct < prePct) declined++;
     else same++;
   });
   const total = comparable.length;
@@ -296,7 +327,7 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tool
               <span className="h-3.5 w-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[9px] text-slate-400 cursor-default shrink-0">
                 ?
               </span>
-              <div className="absolute bottom-full left-0 mb-2 w-60 bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
+              <div className="absolute bottom-full right-0 mb-2 w-60 max-w-[80vw] bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
                 {tooltip}
               </div>
             </div>
@@ -909,35 +940,19 @@ function StudentTab({ data, examLabel }) {
 
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
-function StudentProgressTab({ examResults, topicResults, loading, courseName, subjectName }) {
+function StudentProgressTab({ examResults, topicResults, loading }) {
   // ── Hooks ทั้งหมด (useState + useMemo) ต้องอยู่บนสุด ก่อน early return ทุกอัน ──
   // เดิม sortKey/sortDir (useState) และ useMemo อีก 2 ตัวถูกประกาศ "หลัง" `if (loading) return`
   // ทำให้ตอน loading=true เรียกแค่ 2 hooks (search, selected) แต่พอ loading=false เรียก 8 hooks
   // จำนวน hook ไม่เท่ากันข้าม render เดียวกัน → React แครช จึงย้ายทุก hook มาไว้บนสุด
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-  const [sortKey, setSortKey] = useState("percentileChange");
+  const [sortKey, setSortKey] = useState("scoreChange");
   const [sortDir, setSortDir] = useState(-1); // เริ่มด้วย "ดีขึ้นมากสุดก่อน"
 
   const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
 
-  const students = useMemo(() =>
-    crossExamData.map((d) => {
-      const submittedList = d.exams.filter(e => e.submitted);
-      const latest = submittedList[submittedList.length - 1] ?? null;
-      const first = submittedList[0] ?? null;
-      const percentileChange = (first && latest && first !== latest)
-        ? Math.round((percentileOf(latest) - percentileOf(first)) * 10) / 10
-        : null;
-      return {
-        studentId: d.studentId, name: d.name,
-        submittedCount: submittedList.length, totalExams: d.exams.length,
-        latestPct: latest?.pct ?? null,
-        latestRank: latest?.rank ?? null,
-        totalStudents: latest?.totalStudents ?? null,
-        percentileChange,
-      };
-    }), [crossExamData]);
+  const students = useMemo(() => buildProgressRows(crossExamData), [crossExamData]);
 
   const filteredBase = useMemo(() => students.filter(s => s.name.includes(search)), [students, search]);
 
@@ -980,23 +995,15 @@ function StudentProgressTab({ examResults, topicResults, loading, courseName, su
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="ค้นหานักเรียน..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
-            />
-          </div>
-          <button
-            onClick={() => exportProgressToPdf(filtered, courseName, subjectName)}
-            disabled={!filtered.length}
-            className="flex items-center justify-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition shrink-0">
-            <Download className="h-4 w-4" /> Export PDF
-          </button>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="ค้นหานักเรียน..."
+            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+          />
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน · "แนวโน้ม" เทียบจาก % ที่ชนะเพื่อนร่วมห้อง (percentile) ไม่ใช่คะแนนดิบ ("จุด" = จุดเปอร์เซ็นต์ที่เปลี่ยนไป)</p>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน · "แนวโน้ม" เทียบจากคะแนนรวม (%) ของรอบแรกที่สอบกับรอบล่าสุดที่สอบ ("จุด" = จุดเปอร์เซ็นต์ที่เปลี่ยนไป)</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -1004,7 +1011,7 @@ function StudentProgressTab({ examResults, topicResults, loading, courseName, su
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {[["name", "ชื่อ"], [null, "สอบครบ"], ["latestPct", "คะแนน/อันดับล่าสุด"], ["percentileChange", "แนวโน้ม"], [null, ""]].map(([k, label]) => (
+                {[["name", "ชื่อ"], [null, "สอบครบ"], ["latestPct", "คะแนน/อันดับล่าสุด"], ["scoreChange", "แนวโน้ม"], [null, ""]].map(([k, label]) => (
                   <th key={label} onClick={k ? () => handleSort(k) : undefined}
                     className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${k ? "cursor-pointer hover:text-slate-700 select-none" : ""}`}>
                     {label}{k && <SortIcon k={k} />}
@@ -1031,12 +1038,12 @@ function StudentProgressTab({ examResults, topicResults, loading, courseName, su
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {s.percentileChange == null ? (
+                    {s.scoreChange == null ? (
                       <span className="text-xs text-slate-300">ยังเทียบไม่ได้</span>
-                    ) : s.percentileChange > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> ดีขึ้น {s.percentileChange} จุด</span>
-                    ) : s.percentileChange < 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.percentileChange)} จุด</span>
+                    ) : s.scoreChange > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> ดีขึ้น {s.scoreChange} จุด</span>
+                    ) : s.scoreChange < 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.scoreChange)} จุด</span>
                     ) : (
                       <span className="text-xs text-slate-400">เท่าเดิม</span>
                     )}
@@ -1068,11 +1075,8 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 
   const first = submittedExams[0];
   const last = submittedExams[submittedExams.length - 1];
-  // ใช้ % ที่ชนะเพื่อนร่วมห้อง (percentile) แทนอันดับดิบ — จำนวนคนสอบแต่ละรอบมักไม่เท่ากัน
-  // (เช่นรอบหลังมีคนขาดสอบเยอะกว่า) เทียบเลขอันดับตรงๆ ข้ามรอบจึงเข้าใจผิดได้ง่าย
-  const firstPctile = hasEnoughData ? percentileOf(first) : null;
-  const lastPctile = hasEnoughData ? percentileOf(last) : null;
-  const percentileChange = hasEnoughData ? Math.round((lastPctile - firstPctile) * 10) / 10 : null; // + = ดีขึ้น
+  // ใช้คะแนนดิบ (%) เทียบ ไม่ใช่อันดับ/เปอร์เซ็นไทล์ — วัดว่านักเรียนคนนี้เก่งขึ้นจากตัวเองไหม
+  const scoreChange = hasEnoughData ? Math.round((last.pct - first.pct) * 1000) / 10 : null; // + = ดีขึ้น
 
   const lineData = data.exams.map(e => ({ label: e.label, pct: e.submitted ? Math.round(e.pct * 1000) / 10 : null }));
 
@@ -1146,22 +1150,22 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
         </div>
       ) : (
         <>
-          {percentileChange != null && (
-            <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${percentileChange > 0 ? "bg-emerald-50 border-emerald-100" : percentileChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${percentileChange > 0 ? "bg-emerald-500" : percentileChange < 0 ? "bg-red-400" : "bg-slate-400"}`}>
-                {percentileChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
-                  : percentileChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
+          {scoreChange != null && (
+            <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${scoreChange > 0 ? "bg-emerald-50 border-emerald-100" : scoreChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${scoreChange > 0 ? "bg-emerald-500" : scoreChange < 0 ? "bg-red-400" : "bg-slate-400"}`}>
+                {scoreChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
+                  : scoreChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
                     : <span className="text-white text-xs font-bold">=</span>}
               </div>
               <div>
-                <p className={`text-sm font-bold ${percentileChange > 0 ? "text-emerald-700" : percentileChange < 0 ? "text-red-600" : "text-slate-600"}`}>
-                  ชนะเพื่อนได้ {firstPctile}% → {lastPctile}%
-                  {percentileChange > 0 && ` (ดีขึ้น ${percentileChange} จุด)`}
-                  {percentileChange < 0 && ` (ลดลง ${Math.abs(percentileChange)} จุด)`}
-                  {percentileChange === 0 && ` (เท่าเดิม)`}
+                <p className={`text-sm font-bold ${scoreChange > 0 ? "text-emerald-700" : scoreChange < 0 ? "text-red-600" : "text-slate-600"}`}>
+                  คะแนนรวม {fmtPct(first.pct)} → {fmtPct(last.pct)}
+                  {scoreChange > 0 && ` (ดีขึ้น ${scoreChange} จุด)`}
+                  {scoreChange < 0 && ` (ลดลง ${Math.abs(scoreChange)} จุด)`}
+                  {scoreChange === 0 && ` (เท่าเดิม)`}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  เทียบจาก {first.label} ถึง {last.label} — ใช้ % ที่ชนะเพื่อนร่วมห้อง (percentile) แทนอันดับดิบ/คะแนนดิบ เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน แถมจำนวนคนมาสอบก็มักไม่เท่ากันด้วย (เช่นรอบหลังมีคนขาดสอบเยอะกว่า) เทียบแบบนี้ตรงกว่าไม่ว่าจำนวนคนสอบจะต่างกันแค่ไหน
+                  เทียบจาก {first.label} ถึง {last.label}
                 </p>
               </div>
             </div>
@@ -1288,7 +1292,7 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 }
 
 // ─── Tab 4: เปรียบเทียบ (ข้อมูลจริงจาก fetchExamResults) ────────────────────
-function ComparisonTab({ examResults, topicResults, loading, courseName, subjectName }) {
+function ComparisonTab({ examResults, topicResults, loading }) {
   // ── Hooks ก่อน early return ทั้งหมด (เหตุผลเดียวกับ OverviewTab ด้านบน) ──
   const validResults = examResults.filter(r => r && r.submittedCount > 0);
 
@@ -1296,20 +1300,7 @@ function ComparisonTab({ examResults, topicResults, loading, courseName, subject
   const summary = useMemo(() => computeImprovementSummary(crossExamData), [crossExamData]);
 
   // รวมรายชื่อหมวดจากทั้ง 3 รอบ (category เป็น free text ตามที่ติวเตอร์ตั้ง อาจไม่เหมือนกันทุกรอบ)
-  const topicTrendData = useMemo(() => {
-    const catSet = new Set();
-    topicResults.forEach((r) => (r || []).forEach((u) => u.topics.forEach((t) => catSet.add(t.category))));
-    return Array.from(catSet).map((cat) => {
-      const row = { topic: cat };
-      EXAMS_META.forEach((meta, i) => {
-        const r = topicResults[i];
-        if (!r) { row[meta.label] = null; return; }
-        const rows = r.map((u) => u.topics.find((t) => t.category === cat)).filter(Boolean);
-        row[meta.label] = rows.length ? parseFloat((avg(rows.map((x) => x.pct)) * 100).toFixed(1)) : null;
-      });
-      return row;
-    });
-  }, [topicResults]);
+  const topicTrendData = useMemo(() => buildTopicTrendData(topicResults), [topicResults]);
 
   if (loading) {
     return (
@@ -1334,24 +1325,13 @@ function ComparisonTab({ examResults, topicResults, loading, courseName, subject
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <button
-          onClick={() => exportComparisonToPdf(examResults, summary, topicTrendData, courseName, subjectName)}
-          className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-          <Download className="h-4 w-4" /> Export PDF
-        </button>
-      </div>
       {summary.total === 0 ? (
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-blue-700">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test — ต้องมีอย่างน้อย 1 คนที่สอบทั้ง 2 รอบ ถึงจะสรุปภาพรวมพัฒนาการได้</p>
         </div>
       ) : (
-        <SectionCard
-          title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)"
-          icon={TrendingUp}
-          tooltip='เทียบจาก "อันดับในห้อง" ของแต่ละคน ไม่ใช่คะแนนดิบ เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน คะแนนดิบเทียบตรงๆ ไม่ยุติธรรม — เช่น ถ้าข้อสอบรอบหลังง่ายลง ทั้งห้องอาจได้คะแนน% สูงขึ้นตามกันหมด แต่ตำแหน่งของนักเรียนคนหนึ่งในห้องกลับแย่ลงเทียบกับเพื่อน ซึ่งอันดับจะจับความจริงข้อนี้ได้ถูกต้องกว่า แม้ตัวเลข % จะดูเหมือนดีขึ้นก็ตาม'
-        >
+        <SectionCard title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)" icon={TrendingUp}>
           <p className="text-xs text-slate-400 mb-4">เทียบจากนักเรียน {summary.total} คนที่สอบครบทั้ง 2 รอบ (คนที่ขาดสอบรอบใดรอบหนึ่งไม่นับรวม)</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-center">
@@ -1656,12 +1636,12 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
   if (!students || !students.length) return;
 
   const rows = students.map((s) => {
-    const trend = s.percentileChange == null
+    const trend = s.scoreChange == null
       ? "ยังเทียบไม่ได้"
-      : s.percentileChange > 0 ? `ดีขึ้น ${s.percentileChange} จุด`
-        : s.percentileChange < 0 ? `ลดลง ${Math.abs(s.percentileChange)} จุด`
+      : s.scoreChange > 0 ? `ดีขึ้น ${s.scoreChange} จุด`
+        : s.scoreChange < 0 ? `ลดลง ${Math.abs(s.scoreChange)} จุด`
           : "เท่าเดิม";
-    const trendColor = s.percentileChange == null ? "#94a3b8" : s.percentileChange > 0 ? "#16a34a" : s.percentileChange < 0 ? "#dc2626" : "#64748b";
+    const trendColor = s.scoreChange == null ? "#94a3b8" : s.scoreChange > 0 ? "#16a34a" : s.scoreChange < 0 ? "#dc2626" : "#64748b";
     return `<tr>
       <td>${s.name}</td>
       <td style="text-align:center">${s.submittedCount}/${s.totalExams} รอบ</td>
@@ -1774,6 +1754,16 @@ export default function TutorExamAnalytics() {
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
 
+  // ข้อมูลสำหรับปุ่ม Export PDF ของแท็บ "เปรียบเทียบ"/"รายคน" — ย้ายปุ่มมาอยู่แถวเดียวกับ
+  // แท็บนำทางแล้ว (เดิมปุ่มอยู่ในตัว ComparisonTab/StudentProgressTab เอง) เลยต้องคำนวณ
+  // ข้อมูลชุดเดียวกันตรงนี้แทน โดยใช้ฟังก์ชันกลางตัวเดียวกับที่ตัวแท็บใช้เอง (ไม่ซ้ำ logic)
+  const crossExamDataForExport = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
+  const comparisonSummaryForExport = useMemo(() => computeImprovementSummary(crossExamDataForExport), [crossExamDataForExport]);
+  const topicTrendDataForExport = useMemo(() => buildTopicTrendData(topicResults), [topicResults]);
+  // หมายเหตุ: export ฝั่ง "รายคน" นี้เป็นรายชื่อทั้งหมดเสมอ ไม่ได้กรองตามช่องค้นหาที่พิมพ์ไว้ในแท็บ
+  // (ช่องค้นหาเป็น state ภายใน StudentProgressTab เอง ปุ่มที่ย้ายออกมาแล้วเข้าไม่ถึง)
+  const progressRowsForExport = useMemo(() => buildProgressRows(crossExamDataForExport), [crossExamDataForExport]);
+
   return (
     <div className="space-y-6 mt-[90px]">
       {/* ปุ่มย้อนกลับ — กลับไปหน้าที่ผู้ใช้กดเข้ามาจริงๆ ผ่าน browser history */}
@@ -1835,26 +1825,45 @@ export default function TutorExamAnalytics() {
         </div>
       </div>
 
-      {/* Tab Nav */}
-      <div className="flex gap-2 flex-wrap">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition
-                ${isActive ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Tab Nav — Export PDF ของแท็บ "เปรียบเทียบ"/"รายคน" อยู่แถวเดียวกันนี้เลย (ไม่ใช่แถวแยก
+          ด้านล่างเหมือนเดิม จะได้ไม่มีช่องว่างเว้นเยอะระหว่างแท็บกับปุ่ม export) */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition
+                  ${isActive ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+        {activeTab === "compare" && (
+          <button
+            onClick={() => exportComparisonToPdf(examResults, comparisonSummaryForExport, topicTrendDataForExport, courseName, subjectName)}
+            disabled={dataLoading}
+            className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+            <Download className="h-4 w-4" /> Export PDF
+          </button>
+        )}
+        {activeTab === "progress" && (
+          <button
+            onClick={() => exportProgressToPdf(progressRowsForExport, courseName, subjectName)}
+            disabled={dataLoading || !progressRowsForExport.length}
+            className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+            <Download className="h-4 w-4" /> Export PDF
+          </button>
+        )}
       </div>
 
       {/* Content */}
       {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
-      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} courseName={courseName} subjectName={subjectName} />}
-      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} courseName={courseName} subjectName={subjectName} />}
+      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
+      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
 
       {excelPreviewRows && (
         <ExcelPreviewModal
