@@ -115,6 +115,14 @@ const ALL_DATA = [
 const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
 const sdev = arr => { const m = avg(arr); return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length); };
 const fmtPct = v => `${(v * 100).toFixed(1)}%`;
+
+// "อันดับ" เทียบกันตรงๆ ข้ามรอบไม่ได้ถ้าจำนวนคนสอบแต่ละรอบไม่เท่ากัน (เช่น Post-test
+// มีคนขาดสอบเยอะกว่า Pre-test) — อันดับ 5 จาก 8 คน ไม่ได้แปลว่าเก่งเท่าอันดับ 5 จาก 100 คน
+// เลยแปลงเป็น "ชนะไปกี่ % ของคนที่สอบรอบนั้น" (percentile) แทน — normalize ด้วยจำนวนคน
+// สอบของรอบนั้นให้แล้ว เทียบข้ามรอบที่มีคนสอบไม่เท่ากันได้ตรงกว่าเลขอันดับดิบ
+const percentileOf = (exam) => (exam?.rank != null && exam?.totalStudents)
+  ? Math.round(((exam.totalStudents - exam.rank) / exam.totalStudents) * 1000) / 10
+  : null;
 const fmtMin = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} น.`;
 
 const computeItemAnalysis = (data) => {
@@ -179,8 +187,15 @@ function buildRealCrossExamData(examResults, topicResults) {
 
   examResults.forEach((r, examId) => {
     if (!r) return;
+    // อันดับต้องเรียงเหมือนกันทุกที่ในระบบ: คะแนน% มาก→น้อย เท่ากันใช้ชื่อไทย (ก-ฮ) ตัดสิน
+    // (เดิมไม่มี tie-break ตรงนี้ ทำให้คนคะแนนเท่ากันได้อันดับสลับกันไปมาแล้วแต่ลำดับที่ backend ส่งมา)
     const sorted = [...r.students].filter(s => s.submittedAt && s.maxScore)
-      .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
+      .sort((a, b) => {
+        const pa = a.totalScore / a.maxScore;
+        const pb = b.totalScore / b.maxScore;
+        if (pb !== pa) return pb - pa;
+        return (a.name || "").localeCompare(b.name || "", "th");
+      });
     const rankByUser = new Map(sorted.map((s, i) => [s.userId, i + 1]));
 
     r.students.forEach((s) => {
@@ -219,10 +234,15 @@ function computeImprovementSummary(crossExamData) {
   const comparable = crossExamData.filter((d) => d.exams[0]?.submitted && d.exams[2]?.submitted);
   let improved = 0, declined = 0, same = 0;
   comparable.forEach((d) => {
-    const prePct = Math.round(d.exams[0].pct * 1000) / 10;
-    const postPct = Math.round(d.exams[2].pct * 1000) / 10;
-    if (postPct > prePct) improved++;
-    else if (postPct < prePct) declined++;
+    // ใช้ "เปอร์เซ็นไทล์" (ชนะไปกี่ % ของคนที่สอบรอบนั้น) เทียบ ไม่ใช่คะแนนดิบหรือเลขอันดับตรงๆ
+    // — Pre-test กับ Post-test มักยากง่ายไม่เท่ากัน แถมจำนวนคนมาสอบก็มักไม่เท่ากันด้วย (เช่น
+    // Post-test มีคนขาดสอบเยอะกว่า) เลขอันดับดิบเทียบข้ามรอบตรงๆ จึงเข้าใจผิดได้ง่าย (อันดับ 5
+    // จาก 8 คน ไม่เท่ากับอันดับ 5 จาก 100 คน) เปอร์เซ็นไทล์ normalize ด้วยจำนวนคนสอบให้แล้ว
+    // เทียบข้ามรอบได้ตรงเสมอไม่ว่าจำนวนคนสอบจะต่างกันแค่ไหน
+    const prePctile = percentileOf(d.exams[0]);
+    const postPctile = percentileOf(d.exams[2]);
+    if (postPctile > prePctile) improved++;
+    else if (postPctile < prePctile) declined++;
     else same++;
   });
   const total = comparable.length;
@@ -289,13 +309,23 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tool
   );
 }
 
-function SectionCard({ title, icon: Icon, children, action, className = "" }) {
+function SectionCard({ title, icon: Icon, children, action, tooltip, className = "" }) {
   return (
     <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-5 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           {Icon && <Icon className="h-4 w-4 text-orange-500" />}
           {title}
+          {tooltip && (
+            <div className="relative group">
+              <span className="h-4 w-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-normal text-slate-400 cursor-default shrink-0">
+                ?
+              </span>
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl p-3 text-xs font-normal text-slate-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
+                {tooltip}
+              </div>
+            </div>
+          )}
         </h3>
         {action}
       </div>
@@ -461,7 +491,14 @@ function OverviewTab({ results, topicBreakdown, loading }) {
         <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * maxScore).toFixed(1)} / ${maxScore} คะแนน`} color="bg-orange-500" />
         <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length} จาก ${submitted.length} คน`} color="bg-emerald-500" />
         <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${maxRawScore}/${maxScore} - ${minRawScore}/${maxScore} คะแนน`} color="bg-blue-500" />
-        <StatCard icon={BarChart2} label="ส่วนเบี่ยงเบนมาตรฐาน" value={fmtPct(sdPct)} sub="σ (sigma)" color="bg-amber-500" />
+        <StatCard
+          icon={BarChart2}
+          label="ส่วนเบี่ยงเบนมาตรฐาน"
+          value={fmtPct(sdPct)}
+          sub="σ (sigma)"
+          color="bg-amber-500"
+          tooltip="วัดว่าคะแนนของนักเรียนในห้องกระจายกันมากแค่ไหน ค่าน้อย = คะแนนใกล้เคียงกันทั้งห้อง (เก่ง-อ่อนไม่ต่างกันมาก) ค่ามาก = คะแนนกระจายกว้าง มีทั้งกลุ่มที่ทำได้ดีมากและกลุ่มที่ทำได้น้อยมากปนกันอยู่ในห้องเดียวกัน"
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -872,14 +909,14 @@ function StudentTab({ data, examLabel }) {
 
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
-function StudentProgressTab({ examResults, topicResults, loading }) {
+function StudentProgressTab({ examResults, topicResults, loading, courseName, subjectName }) {
   // ── Hooks ทั้งหมด (useState + useMemo) ต้องอยู่บนสุด ก่อน early return ทุกอัน ──
   // เดิม sortKey/sortDir (useState) และ useMemo อีก 2 ตัวถูกประกาศ "หลัง" `if (loading) return`
   // ทำให้ตอน loading=true เรียกแค่ 2 hooks (search, selected) แต่พอ loading=false เรียก 8 hooks
   // จำนวน hook ไม่เท่ากันข้าม render เดียวกัน → React แครช จึงย้ายทุก hook มาไว้บนสุด
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
-  const [sortKey, setSortKey] = useState("rankChange");
+  const [sortKey, setSortKey] = useState("percentileChange");
   const [sortDir, setSortDir] = useState(-1); // เริ่มด้วย "ดีขึ้นมากสุดก่อน"
 
   const crossExamData = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
@@ -889,14 +926,16 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
       const submittedList = d.exams.filter(e => e.submitted);
       const latest = submittedList[submittedList.length - 1] ?? null;
       const first = submittedList[0] ?? null;
-      const rankChange = (first && latest && first !== latest) ? first.rank - latest.rank : null;
+      const percentileChange = (first && latest && first !== latest)
+        ? Math.round((percentileOf(latest) - percentileOf(first)) * 10) / 10
+        : null;
       return {
         studentId: d.studentId, name: d.name,
         submittedCount: submittedList.length, totalExams: d.exams.length,
         latestPct: latest?.pct ?? null,
         latestRank: latest?.rank ?? null,
         totalStudents: latest?.totalStudents ?? null,
-        rankChange,
+        percentileChange,
       };
     }), [crossExamData]);
 
@@ -941,15 +980,23 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
   return (
     <div className="space-y-6">
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="ค้นหานักเรียน..."
-            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
-          />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหานักเรียน..."
+              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            />
+          </div>
+          <button
+            onClick={() => exportProgressToPdf(filtered, courseName, subjectName)}
+            disabled={!filtered.length}
+            className="flex items-center justify-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition shrink-0">
+            <Download className="h-4 w-4" /> Export PDF
+          </button>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน · "แนวโน้ม" เทียบจาก % ที่ชนะเพื่อนร่วมห้อง (percentile) ไม่ใช่คะแนนดิบ ("จุด" = จุดเปอร์เซ็นต์ที่เปลี่ยนไป)</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -957,7 +1004,7 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                {[["name", "ชื่อ"], [null, "สอบครบ"], ["latestPct", "คะแนน/อันดับล่าสุด"], ["rankChange", "แนวโน้ม"], [null, ""]].map(([k, label]) => (
+                {[["name", "ชื่อ"], [null, "สอบครบ"], ["latestPct", "คะแนน/อันดับล่าสุด"], ["percentileChange", "แนวโน้ม"], [null, ""]].map(([k, label]) => (
                   <th key={label} onClick={k ? () => handleSort(k) : undefined}
                     className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${k ? "cursor-pointer hover:text-slate-700 select-none" : ""}`}>
                     {label}{k && <SortIcon k={k} />}
@@ -984,12 +1031,12 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    {s.rankChange == null ? (
+                    {s.percentileChange == null ? (
                       <span className="text-xs text-slate-300">ยังเทียบไม่ได้</span>
-                    ) : s.rankChange > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> ดีขึ้น {s.rankChange} อันดับ</span>
-                    ) : s.rankChange < 0 ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.rankChange)} อันดับ</span>
+                    ) : s.percentileChange > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600"><ArrowUpRight className="h-3.5 w-3.5" /> ดีขึ้น {s.percentileChange} จุด</span>
+                    ) : s.percentileChange < 0 ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-500"><ArrowDownRight className="h-3.5 w-3.5" /> ลดลง {Math.abs(s.percentileChange)} จุด</span>
                     ) : (
                       <span className="text-xs text-slate-400">เท่าเดิม</span>
                     )}
@@ -1021,7 +1068,11 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 
   const first = submittedExams[0];
   const last = submittedExams[submittedExams.length - 1];
-  const rankChange = hasEnoughData ? first.rank - last.rank : null; // + = อันดับดีขึ้น (เลขน้อยลง)
+  // ใช้ % ที่ชนะเพื่อนร่วมห้อง (percentile) แทนอันดับดิบ — จำนวนคนสอบแต่ละรอบมักไม่เท่ากัน
+  // (เช่นรอบหลังมีคนขาดสอบเยอะกว่า) เทียบเลขอันดับตรงๆ ข้ามรอบจึงเข้าใจผิดได้ง่าย
+  const firstPctile = hasEnoughData ? percentileOf(first) : null;
+  const lastPctile = hasEnoughData ? percentileOf(last) : null;
+  const percentileChange = hasEnoughData ? Math.round((lastPctile - firstPctile) * 10) / 10 : null; // + = ดีขึ้น
 
   const lineData = data.exams.map(e => ({ label: e.label, pct: e.submitted ? Math.round(e.pct * 1000) / 10 : null }));
 
@@ -1030,8 +1081,11 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
     ? Array.from(new Set(submittedExams.flatMap((e) => Object.keys(e.topicPcts || {}))))
     : [];
 
-  const persistentWeakTopics = hasEnoughData
-    ? allTopics.filter((topic) => submittedExams.every((e) => (e.topicPcts?.[topic] ?? 1) < 0.5))
+  // เดิมเช็คว่า "อ่อนทุกรอบที่เคยสอบมา" (ไม่เคยถึง 50% เลยสักรอบ) แต่คำว่า "จุดอ่อนตอนนี้"
+  // ควรดูแค่ผลรอบล่าสุดที่สอบเท่านั้น — ถ้าเคยอ่อนตอน Pre แต่รอบหลังสุด (เช่น Post) ทำได้
+  // เกิน 50% แล้ว ก็ไม่ควรถูกตราหน้าว่ายังมีจุดอ่อนอยู่ทั้งที่ปัจจุบันไม่ใช่แล้ว
+  const currentWeakTopics = hasEnoughData
+    ? allTopics.filter((topic) => (last.topicPcts?.[topic] ?? 1) < 0.5)
     : [];
 
   const mostImproved = hasEnoughData && allTopics.length
@@ -1092,22 +1146,22 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
         </div>
       ) : (
         <>
-          {rankChange != null && (
-            <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${rankChange > 0 ? "bg-emerald-50 border-emerald-100" : rankChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
-              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${rankChange > 0 ? "bg-emerald-500" : rankChange < 0 ? "bg-red-400" : "bg-slate-400"}`}>
-                {rankChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
-                  : rankChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
+          {percentileChange != null && (
+            <div className={`flex items-center gap-3 rounded-2xl p-4 mb-5 border ${percentileChange > 0 ? "bg-emerald-50 border-emerald-100" : percentileChange < 0 ? "bg-red-50 border-red-100" : "bg-slate-50 border-slate-100"}`}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${percentileChange > 0 ? "bg-emerald-500" : percentileChange < 0 ? "bg-red-400" : "bg-slate-400"}`}>
+                {percentileChange > 0 ? <ArrowUpRight className="h-5 w-5 text-white" />
+                  : percentileChange < 0 ? <ArrowDownRight className="h-5 w-5 text-white" />
                     : <span className="text-white text-xs font-bold">=</span>}
               </div>
               <div>
-                <p className={`text-sm font-bold ${rankChange > 0 ? "text-emerald-700" : rankChange < 0 ? "text-red-600" : "text-slate-600"}`}>
-                  อันดับ {first.rank}/{first.totalStudents} → {last.rank}/{last.totalStudents}
-                  {rankChange > 0 && ` (ดีขึ้น ${rankChange} อันดับ)`}
-                  {rankChange < 0 && ` (ลดลง ${Math.abs(rankChange)} อันดับ)`}
-                  {rankChange === 0 && ` (อันดับเท่าเดิม)`}
+                <p className={`text-sm font-bold ${percentileChange > 0 ? "text-emerald-700" : percentileChange < 0 ? "text-red-600" : "text-slate-600"}`}>
+                  ชนะเพื่อนได้ {firstPctile}% → {lastPctile}%
+                  {percentileChange > 0 && ` (ดีขึ้น ${percentileChange} จุด)`}
+                  {percentileChange < 0 && ` (ลดลง ${Math.abs(percentileChange)} จุด)`}
+                  {percentileChange === 0 && ` (เท่าเดิม)`}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  เทียบจาก {first.label} ถึง {last.label} — ใช้อันดับเพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน คะแนนดิบเทียบตรงๆ ไม่ยุติธรรม
+                  เทียบจาก {first.label} ถึง {last.label} — ใช้ % ที่ชนะเพื่อนร่วมห้อง (percentile) แทนอันดับดิบ/คะแนนดิบ เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน แถมจำนวนคนมาสอบก็มักไม่เท่ากันด้วย (เช่นรอบหลังมีคนขาดสอบเยอะกว่า) เทียบแบบนี้ตรงกว่าไม่ว่าจำนวนคนสอบจะต่างกันแค่ไหน
                 </p>
               </div>
             </div>
@@ -1120,22 +1174,22 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
-              <div className={`rounded-2xl p-4 border ${persistentWeakTopics.length > 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
-                <p className={`text-xs font-bold flex items-center gap-1.5 mb-2 ${persistentWeakTopics.length > 0 ? "text-red-700" : "text-emerald-700"}`}>
-                  {persistentWeakTopics.length > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                  {persistentWeakTopics.length > 0 ? "อ่อนซ้ำทุกรอบ — ควรแทรกแซงเป็นพิเศษ" : "ไม่มีหัวข้อที่อ่อนซ้ำทุกรอบ"}
+              <div className={`rounded-2xl p-4 border ${currentWeakTopics.length > 0 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100"}`}>
+                <p className={`text-xs font-bold flex items-center gap-1.5 mb-2 ${currentWeakTopics.length > 0 ? "text-red-700" : "text-emerald-700"}`}>
+                  {currentWeakTopics.length > 0 ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                  {currentWeakTopics.length > 0 ? "มีจุดอ่อนที่ยังค้างอยู่ — ควรแทรกแซงเป็นพิเศษ" : "ไม่มีจุดอ่อนที่ยังค้างอยู่ตอนนี้"}
                 </p>
-                {persistentWeakTopics.length > 0 ? (
+                {currentWeakTopics.length > 0 ? (
                   <>
                     <div className="flex flex-wrap gap-1.5">
-                      {persistentWeakTopics.map(t => (
+                      {currentWeakTopics.map(t => (
                         <span key={t} className="text-[11px] font-semibold px-2 py-1 rounded-lg" style={{ backgroundColor: TOPIC_LIGHT[t] || "#f1f5f9", color: TOPIC_COLORS[t] || "#475569" }}>{t}</span>
                       ))}
                     </div>
-                    <p className="text-[11px] text-red-500 mt-2">ต่ำกว่า 50% ทุกรอบที่สอบมา</p>
+                    <p className="text-[11px] text-red-500 mt-2">(เกณฑ์: หัวข้อนี้ในรอบล่าสุดที่สอบ ({last.label}) ยังทำได้ต่ำกว่า 50%)</p>
                   </>
                 ) : (
-                  <p className="text-[11px] text-emerald-600">ทุกหัวข้อผ่าน 50% ได้อย่างน้อย 1 รอบ</p>
+                  <p className="text-[11px] text-emerald-600">(เกณฑ์: ทุกหัวข้อในรอบล่าสุดที่สอบ ({last.label}) ทำได้ตั้งแต่ 50% ขึ้นไป)</p>
                 )}
               </div>
 
@@ -1234,7 +1288,7 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
 }
 
 // ─── Tab 4: เปรียบเทียบ (ข้อมูลจริงจาก fetchExamResults) ────────────────────
-function ComparisonTab({ examResults, topicResults, loading }) {
+function ComparisonTab({ examResults, topicResults, loading, courseName, subjectName }) {
   // ── Hooks ก่อน early return ทั้งหมด (เหตุผลเดียวกับ OverviewTab ด้านบน) ──
   const validResults = examResults.filter(r => r && r.submittedCount > 0);
 
@@ -1280,13 +1334,24 @@ function ComparisonTab({ examResults, topicResults, loading }) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <button
+          onClick={() => exportComparisonToPdf(examResults, summary, topicTrendData, courseName, subjectName)}
+          className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+          <Download className="h-4 w-4" /> Export PDF
+        </button>
+      </div>
       {summary.total === 0 ? (
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-blue-700">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test — ต้องมีอย่างน้อย 1 คนที่สอบทั้ง 2 รอบ ถึงจะสรุปภาพรวมพัฒนาการได้</p>
         </div>
       ) : (
-        <SectionCard title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)" icon={TrendingUp}>
+        <SectionCard
+          title="ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)"
+          icon={TrendingUp}
+          tooltip='เทียบจาก "อันดับในห้อง" ของแต่ละคน ไม่ใช่คะแนนดิบ เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน คะแนนดิบเทียบตรงๆ ไม่ยุติธรรม — เช่น ถ้าข้อสอบรอบหลังง่ายลง ทั้งห้องอาจได้คะแนน% สูงขึ้นตามกันหมด แต่ตำแหน่งของนักเรียนคนหนึ่งในห้องกลับแย่ลงเทียบกับเพื่อน ซึ่งอันดับจะจับความจริงข้อนี้ได้ถูกต้องกว่า แม้ตัวเลข % จะดูเหมือนดีขึ้นก็ตาม'
+        >
           <p className="text-xs text-slate-400 mb-4">เทียบจากนักเรียน {summary.total} คนที่สอบครบทั้ง 2 รอบ (คนที่ขาดสอบรอบใดรอบหนึ่งไม่นับรวม)</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 text-center">
@@ -1465,7 +1530,12 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
 
   const ranked = [...results.students]
     .filter((s) => s.submittedAt && s.maxScore)
-    .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
+    .sort((a, b) => {
+      const pa = a.totalScore / a.maxScore;
+      const pb = b.totalScore / b.maxScore;
+      if (pb !== pa) return pb - pa;
+      return (a.name || "").localeCompare(b.name || "", "th");
+    });
   const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
 
   const studentRows = results.students.map((s) => {
@@ -1514,6 +1584,106 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     <h2>รายชื่อนักเรียน</h2>
     <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนน</th><th style="text-align:right">เปอร์เซ็นต์</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
+    <script>window.onload = () => window.print();</script></body></html>`);
+  printWindow.document.close();
+};
+
+// Export PDF สำหรับแท็บ "เปรียบเทียบ" — รวมสรุปดีขึ้น/แย่ลง/เท่าเดิมทั้งห้อง,
+// คะแนนเฉลี่ย+อัตราผ่านแต่ละรอบ (Pre/Mid/Post) และพัฒนาการรายหัวข้อ ในรายงานเดียว
+const exportComparisonToPdf = (examResults, summary, topicTrendData, courseName, subjectName) => {
+  const roundRows = EXAMS_META.map((e, i) => {
+    const r = examResults[i];
+    if (!r) return `<tr><td>${e.label}</td><td colspan="3" style="text-align:center;color:#94a3b8">ยังไม่มีข้อมูล</td></tr>`;
+    const passCount = r.students?.filter(s => s.submittedAt && s.maxScore && (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length || 0;
+    const passEligible = r.students?.filter(s => s.submittedAt && s.maxScore).length || 0;
+    const passPct = passEligible ? Math.round((passCount / passEligible) * 100) : 0;
+    return `<tr>
+      <td>${e.label}</td>
+      <td style="text-align:right">${r.averageScorePct}%</td>
+      <td style="text-align:right">${r.submittedCount} คน</td>
+      <td style="text-align:right">${passPct}%</td>
+    </tr>`;
+  }).join("");
+
+  const summaryBlock = !summary || summary.total === 0
+    ? `<p style="color:#6b7280;font-size:12px;">ยังไม่มีนักเรียนที่สอบครบทั้ง Pre-test และ Post-test ให้สรุปภาพรวมพัฒนาการ</p>`
+    : `<table><thead><tr><th>ผล</th><th style="text-align:right">จำนวนคน</th><th style="text-align:right">สัดส่วน</th></tr></thead><tbody>
+        <tr><td>ดีขึ้น</td><td style="text-align:right">${summary.improved} คน</td><td style="text-align:right">${summary.improvedPct}%</td></tr>
+        <tr><td>แย่ลง</td><td style="text-align:right">${summary.declined} คน</td><td style="text-align:right">${summary.declinedPct}%</td></tr>
+        <tr><td>เท่าเดิม</td><td style="text-align:right">${summary.same} คน</td><td style="text-align:right">${summary.samePct}%</td></tr>
+      </tbody></table>
+      <p style="color:#9ca3af;font-size:11px;margin-top:6px;">เทียบจากนักเรียน ${summary.total} คนที่สอบครบทั้ง 2 รอบ โดยใช้อันดับในห้องเทียบ ไม่ใช่คะแนนดิบ (เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน)</p>`;
+
+  const topicRows = (topicTrendData || []).length
+    ? topicTrendData.map((row) => `<tr>
+        <td>${row.topic}</td>
+        <td style="text-align:right">${row["Pre-test"] != null ? `${row["Pre-test"]}%` : "—"}</td>
+        <td style="text-align:right">${row["Mid-test"] != null ? `${row["Mid-test"]}%` : "—"}</td>
+        <td style="text-align:right">${row["Post-test"] != null ? `${row["Post-test"]}%` : "—"}</td>
+      </tr>`).join("")
+    : `<tr><td colspan="4" style="text-align:center;color:#94a3b8">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</td></tr>`;
+
+  const printWindow = window.open("", "_blank");
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>เปรียบเทียบพัฒนาการทั้งห้อง</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
+    .header h1{font-size:22px;font-weight:700;color:#f97316;} .header p{font-size:12px;color:#6b7280;margin-top:4px;}
+    h2{font-size:15px;font-weight:700;color:#1f2937;margin-bottom:10px;margin-top:24px;padding-left:10px;border-left:3px solid #f97316;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;} th{background:#f97316;color:white;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
+    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
+    @media print{body{padding:16px;}}</style></head><body>
+    <div class="header"><div><h1>เปรียบเทียบพัฒนาการทั้งห้อง (Pre → Mid → Post)</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <h2>ภาพรวมพัฒนาการทั้งห้อง (Pre → Post)</h2>
+    ${summaryBlock}
+    <h2>คะแนนเฉลี่ยแต่ละรอบ</h2>
+    <table><thead><tr><th>รอบสอบ</th><th style="text-align:right">คะแนนเฉลี่ย</th><th style="text-align:right">ส่งแล้ว</th><th style="text-align:right">อัตราผ่าน</th></tr></thead>
+    <tbody>${roundRows}</tbody></table>
+    <h2>พัฒนาการรายหัวข้อ</h2>
+    <table><thead><tr><th>หัวข้อ</th><th style="text-align:right">Pre-test</th><th style="text-align:right">Mid-test</th><th style="text-align:right">Post-test</th></tr></thead>
+    <tbody>${topicRows}</tbody></table>
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
+    <script>window.onload = () => window.print();</script></body></html>`);
+  printWindow.document.close();
+};
+
+// Export PDF สำหรับแท็บ "รายคน" — สรุปพัฒนาการของทุกคนเป็นตารางเดียว (ไม่มี Export Excel
+// เพราะข้อมูลชุดนี้เป็นสรุปเปรียบเทียบข้ามรอบต่อคน ไม่ใช่รายละเอียดคำตอบทีละข้อแบบแท็บภาพรวม)
+const exportProgressToPdf = (students, courseName, subjectName) => {
+  if (!students || !students.length) return;
+
+  const rows = students.map((s) => {
+    const trend = s.percentileChange == null
+      ? "ยังเทียบไม่ได้"
+      : s.percentileChange > 0 ? `ดีขึ้น ${s.percentileChange} จุด`
+        : s.percentileChange < 0 ? `ลดลง ${Math.abs(s.percentileChange)} จุด`
+          : "เท่าเดิม";
+    const trendColor = s.percentileChange == null ? "#94a3b8" : s.percentileChange > 0 ? "#16a34a" : s.percentileChange < 0 ? "#dc2626" : "#64748b";
+    return `<tr>
+      <td>${s.name}</td>
+      <td style="text-align:center">${s.submittedCount}/${s.totalExams} รอบ</td>
+      <td style="text-align:right">${s.latestPct != null ? `${fmtPct(s.latestPct)}${s.latestRank != null ? ` (อันดับ ${s.latestRank}/${s.totalStudents})` : ""}` : "—"}</td>
+      <td style="text-align:center;color:${trendColor}">${trend}</td>
+    </tr>`;
+  }).join("");
+
+  const printWindow = window.open("", "_blank");
+  const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>เปรียบเทียบพัฒนาการรายคน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
+    .header h1{font-size:22px;font-weight:700;color:#f97316;} .header p{font-size:12px;color:#6b7280;margin-top:4px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;} th{background:#f97316;color:white;padding:8px 10px;text-align:left;font-size:11px;font-weight:600;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
+    .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
+    @media print{body{padding:16px;}}</style></head><body>
+    <div class="header"><div><h1>เปรียบเทียบพัฒนาการรายคน (Pre → Mid → Post)</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <table><thead><tr><th>ชื่อ</th><th style="text-align:center">สอบครบ</th><th style="text-align:right">คะแนน/อันดับล่าสุด</th><th style="text-align:center">แนวโน้ม</th></tr></thead>
+    <tbody>${rows}</tbody></table>
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
     <script>window.onload = () => window.print();</script></body></html>`);
   printWindow.document.close();
@@ -1683,8 +1853,8 @@ export default function TutorExamAnalytics() {
 
       {/* Content */}
       {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
-      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
-      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
+      {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} courseName={courseName} subjectName={subjectName} />}
+      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} courseName={courseName} subjectName={subjectName} />}
 
       {excelPreviewRows && (
         <ExcelPreviewModal
