@@ -30,9 +30,11 @@ export async function fetchExamEntry(courseId, userId, subjectId = null) {
     return data;
 }
 
-// GET /api/student/exam/by-course/:courseId/schedule?subjectId= → กำหนดสอบล่วงหน้า (ยังไม่เปิด) ของวิชานี้
-export async function fetchExamSchedule(courseId, subjectId) {
-    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}/schedule`, { params: { subjectId }, headers: authHeaders() });
+// GET /api/student/exam/by-course/:courseId/schedule?subjectId= → กำหนดสอบล่วงหน้า (ยังไม่เปิด)
+// ไม่ส่ง subjectId มา = เอาทุกวิชาในคอร์สนี้ (หน้าคอร์สลิสต์) ส่ง subjectId มา = กรองเฉพาะวิชานั้น (หน้ารายละเอียดวิชา)
+export async function fetchExamSchedule(courseId, subjectId = null) {
+    const params = subjectId ? { subjectId } : {};
+    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}/schedule`, { params, headers: authHeaders() });
     return data;
 }
 

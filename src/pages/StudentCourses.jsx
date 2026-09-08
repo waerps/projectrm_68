@@ -8,7 +8,7 @@ import {
   getStudentSchedule,
   getStudentVideos,
 } from "../callapi/callusers_student";
-import { fetchExamEntry, getCurrentUserId } from "../utils/studentExamShared";
+import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 
@@ -87,14 +87,16 @@ export default function StudentCourses() {
 
         const contentByCourse = await Promise.all(courseList.map(async (course) => {
           const id = course.courseId ?? course.CourseId ?? course.CourseID ?? course.id;
-          const [videoResult, fileResult] = await Promise.allSettled([
+          const [videoResult, fileResult, scheduleResult2] = await Promise.allSettled([
             getStudentVideos(token, id),
             getStudentFiles(token, id),
+            fetchExamSchedule(id), // ไม่ส่ง subjectId = เอากำหนดสอบทุกวิชาในคอร์สนี้
           ]);
           return {
             id: String(id),
             videos: videoResult.status === "fulfilled" ? unwrapList(videoResult.value, ["videos"]) : [],
             files: fileResult.status === "fulfilled" ? unwrapList(fileResult.value, ["files", "documents"]) : [],
+            examSchedule: scheduleResult2.status === "fulfilled" ? (scheduleResult2.value?.schedule || []) : [],
           };
         }));
         const contentMap = new Map(contentByCourse.map((item) => [item.id, item]));
@@ -166,6 +168,8 @@ export default function StudentCourses() {
             statusText: statusInfo.text,
             statusColor: statusInfo.colorClass,
             progress,
+
+            examSchedule: courseContent.examSchedule,
           };
         });
 
@@ -327,6 +331,27 @@ export default function StudentCourses() {
                     </div>
                   </div>
                 </div>
+
+                {/* กำหนดสอบล่วงหน้า (ยังไม่เปิด) — โชว์ให้เห็นเฉยๆ ไม่เกี่ยวกับปุ่ม "เข้าสอบ" ด้านล่าง */}
+                {course.examSchedule?.length > 0 && (
+                  <div className="px-4 pt-3 space-y-1.5">
+                    {course.examSchedule.map((s) => {
+                      const d = new Date(s.examDate);
+                      const dateLabel = d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+                      const timeLabel = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+                      return (
+                        <div key={s.examId} className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                          <p className="text-xs font-semibold text-amber-800">
+                            {s.subjectName ? `${s.subjectName} · ` : ""}{s.examName}: กำหนดสอบ {dateLabel} เวลา {timeLabel} น.
+                          </p>
+                          <p className="text-[10px] text-amber-700 mt-0.5">
+                            {s.openMode === "auto" ? "ระบบจะเปิดสอบให้อัตโนมัติเมื่อถึงเวลานี้" : "ติวเตอร์จะเป็นคนกดเปิดสอบเอง เวลานี้อาจเปลี่ยนแปลงได้"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
                 {/* ปุ่ม 3 ปุ่ม: เนื้อหา / เข้าสอบ / รายละเอียด */}
                 <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
