@@ -822,7 +822,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
   const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
       {/* ── ตั้งค่าข้อสอบ ── */}
       <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
         <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
