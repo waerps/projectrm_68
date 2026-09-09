@@ -33,10 +33,10 @@ export default function TutorStudents() {
         เข้าเรียน: getAttendanceRate(student) !== null
             ? `${student.totalAttended}/${student.totalClassHeld} (${getAttendanceRate(student)}%)`
             : "ไม่มีข้อมูล",
-        ดูคลิป: `${Math.round((student.videoViews / student.totalVideos) * 100)}%`,
+        ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
         GPA: student.gpa ?? "-",
         พัฒนาการ: student.exam?.improvement
-            ? `${student.exam.improvement.from} → ${student.exam.improvement.to} จาก ${student.exam.improvement.max} (${getAverageImprovement(student)})`
+            ? `ก่อนเรียน ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
             : "ยังไม่มีข้อมูลสอบ",
     }));
 
@@ -58,7 +58,7 @@ export default function TutorStudents() {
                 <td style="${rate !== null && rate < 60 ? 'color:red' : ''}">
                     ${rate !== null ? `${student.totalAttended}/${student.totalClassHeld} (${rate}%)` : "ไม่มีข้อมูล"}
                 </td>
-                <td>${Math.round((student.videoViews / student.totalVideos) * 100)}%</td>
+                <td>${student.totalVideos ? Math.round((student.videoViews / student.totalVideos) * 100) + '%' : '-'}</td>
                 <td>${student.gpa ?? "-"}</td>
                 <td>${getAverageImprovement(student)}</td>
             </tr>`;
@@ -108,8 +108,8 @@ export default function TutorStudents() {
                         totalAttended: std.totalAttended ?? 0,
                         totalClassHeld: std.totalClassHeld ?? 0,
                         exam: examByUserId.get(studentId) || null,   // คะแนนสอบจริงข้ามทุกวิชา
-                        videoViews: 50 + (studentId * 10 % 50),      // TODO(รอบ C): ยังเป็นค่าปลอม
-                        totalVideos: 100,                             // TODO(รอบ C): ยังเป็นค่าปลอม
+                        videoViews: std.watchedVideos ?? 0,          // จำนวนคลิปที่ดูจบแล้ว (>=80%)
+                        totalVideos: std.totalVideos ?? 0,
                     };
                 });
                 setStudents(mappedStudents);
@@ -139,7 +139,9 @@ export default function TutorStudents() {
 
     // ตัวเลขพัฒนาการรวมทั้งแพ็กเกจ — คิดจากคะแนนสอบจริง ปรับฐานทุกวิชาเป็น 20 คะแนนแล้วรวมกัน
     // นับเฉพาะวิชาที่สอบครบทั้งรอบแรกและรอบเทียบ (ฝั่ง backend คัดมาให้แล้ว)
-    const fmtDelta = (d) => (d > 0 ? `+${Math.round(d * 10) / 10}` : `${Math.round(d * 10) / 10}`);
+    // ใช้ fmtScore เป็นฐานเดียวกับที่โชว์คะแนน (ปัด 2 ตำแหน่ง ตัดศูนย์ท้าย)
+    // ถ้าปัดคนละจำนวนตำแหน่ง เลขในหน้าเดียวกันจะบวกลบไม่ลงตัว เช่น 16.84 − 2 ควรได้ 14.84 ไม่ใช่ 14.8
+    const fmtDelta = (d) => (d > 0 ? `+${fmtScoreNum(d)}` : fmtScoreNum(d));
 
     const getAverageImprovement = (student) => {
         const imp = student.exam?.improvement;
@@ -331,7 +333,7 @@ export default function TutorStudents() {
                                                 {/* GPA เป็นเกรดจากโรงเรียนของนักเรียน ไม่ใช่ผลจากระบบเรา จึงย้ายมาอยู่กับข้อมูลโปรไฟล์
                                                     ไม่ให้ปนกับตัวชี้วัดผลการเรียนของสถาบัน (เข้าเรียน/ดูคลิป/พัฒนาการ) */}
                                                 {student.gpa && student.gpa !== '-' && (
-                                                    <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA (ร.ร.) {student.gpa}</div>
+                                                    <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</div>
                                                 )}
                                             </div>
                                         </div>
@@ -376,10 +378,10 @@ export default function TutorStudents() {
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between text-xs">
                                             <span className="text-neutral-600">{student.videoViews}/{student.totalVideos}</span>
-                                            <span className="font-bold text-orange-600">{Math.round((student.videoViews / student.totalVideos) * 100)}%</span>
+                                            <span className="font-bold text-orange-600">{student.totalVideos ? `${Math.round((student.videoViews / student.totalVideos) * 100)}%` : "—"}</span>
                                         </div>
                                         <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600" style={{ width: `${(student.videoViews / student.totalVideos) * 100}%` }} />
+                                            <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600" style={{ width: `${student.totalVideos ? (student.videoViews / student.totalVideos) * 100 : 0}%` }} />
                                         </div>
                                     </div>
                                 </div>
@@ -387,26 +389,23 @@ export default function TutorStudents() {
                                     <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">พัฒนาการรวม</span></div>
                                     {student.exam?.improvement ? (
                                         <>
-                                            <p className="text-lg font-bold text-neutral-800">
-                                                {fmtScoreNum(student.exam.improvement.from)} → {fmtScoreNum(student.exam.improvement.to)}
-                                                <span className="text-sm font-semibold text-neutral-400"> จาก {student.exam.improvement.max}</span>
+                                            <p className="text-sm font-bold text-neutral-800 leading-relaxed">
+                                                ก่อนเรียน {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} {fmtScoreNum(student.exam.improvement.to)}
                                             </p>
-                                            <p className={`text-xs font-bold mt-0.5 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
+                                            <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
                                                 {getAverageImprovement(student)} คะแนน
                                                 <span className="font-medium text-neutral-400">
-                                                    {" "}({student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา
-                                                    {student.exam.improvement.basis === 'pre-mid' ? " · เทียบ Pre→Mid" : ""})
+                                                    {" "}· เต็ม {student.exam.improvement.max} (นับ {student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา)
                                                 </span>
                                             </p>
                                         </>
                                     ) : student.exam?.latest ? (
                                         <>
-                                            <p className="text-lg font-bold text-neutral-800">
-                                                {fmtScoreNum(student.exam.latest.score)}
-                                                <span className="text-sm font-semibold text-neutral-400"> จาก {student.exam.latest.max}</span>
+                                            <p className="text-sm font-bold text-neutral-800 leading-relaxed">
+                                                ได้ {fmtScoreNum(student.exam.latest.score)} จากเต็ม {student.exam.latest.max} คะแนน
                                             </p>
-                                            <p className="text-xs text-neutral-400 mt-0.5">
-                                                สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้
+                                            <p className="text-xs text-neutral-400 mt-1">
+                                                สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้ เพราะมีแค่รอบเดียว
                                             </p>
                                         </>
                                     ) : (

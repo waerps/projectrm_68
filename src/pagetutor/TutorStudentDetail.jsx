@@ -13,45 +13,6 @@ import {
     Award, TrendingUp, TrendingDown, Minus, ArrowLeft,   // ★ เพิ่ม
   } from "lucide-react";
 
-// ── Mock helpers (เหมือนเดิม) ────────────────────────────────────────
-const mockAttendance = (studentId, totalClassHeld) => {
-    const records = [];
-    const base = new Date("2025-01-06");
-    for (let i = 0; i < totalClassHeld; i++) {
-        const d = new Date(base);
-        d.setDate(base.getDate() + i * 7);
-        records.push({
-            date: d.toISOString().slice(0, 10),
-            subject: ["คณิต", "ไทย", "วิทย์", "สังคม", "อังกฤษ"][i % 5],
-            status: (studentId + i) % 5 === 0 ? "absent" : "present",
-            startTime: "09:00",
-            endTime: "11:00",
-        });
-    }
-    return records;
-};
-
-const mockVideos = (studentId) => {
-    const titles = [
-        "บทที่ 1 – เลขยกกำลัง", "บทที่ 2 – สมการเชิงเส้น", "บทที่ 3 – ระบบสมการ",
-        "บทที่ 4 – ฟังก์ชัน", "บทที่ 5 – อสมการ", "บทที่ 6 – เรขาคณิต",
-        "บทที่ 7 – สถิติเบื้องต้น", "บทที่ 8 – ความน่าจะเป็น",
-        "บทที่ 9 – ตรีโกณมิติ", "บทที่ 10 – แคลคูลัส",
-    ];
-    return titles.map((title, i) => {
-        const watched = (studentId + i) % 3 !== 0;
-        const watchedDate = new Date("2025-01-10");
-        watchedDate.setDate(watchedDate.getDate() + i * 5);
-        return {
-            id: i + 1, title,
-            duration: `${30 + (i * 7 % 30)} นาที`,
-            watched,
-            watchedAt: watched ? watchedDate.toISOString().slice(0, 10) : null,
-            progress: watched ? 100 : (studentId * i) % 80,
-        };
-    });
-};
-
 // สีประจำวิชา — วนตามลำดับวิชาที่มีจริงในคอร์ส (เดิมผูกกับชื่อวิชา 5 วิชาที่ hardcode ไว้)
 const SUBJECT_DOT_COLORS = [
     "bg-orange-500", "bg-pink-500", "bg-blue-500",
@@ -202,7 +163,7 @@ export default function TutorStudentDetail() {
                     );
                     setVideos(vidRes.data);
                 } catch {
-                    setVideos(mockVideos(Number(studentId)));
+                    setVideos([]);   // ดึงไม่ได้ = ไม่มีข้อมูล ไม่ใช้ค่าจำลองมาหลอกตา
                 }
             } catch (err) {
                 console.error(err);
@@ -243,7 +204,9 @@ export default function TutorStudentDetail() {
     // พัฒนาการรวมทั้งแพ็กเกจ — คิดจากคะแนนจริง ปรับฐานทุกวิชาเป็น 20 คะแนนแล้วรวม
     // และนับเฉพาะวิชาที่สอบครบทั้งรอบแรกกับรอบเทียบ (backend คัดมาให้แล้ว)
     const improvement = examData?.improvement || null;
-    const fmtDelta = (d) => (d > 0 ? `+${Math.round(d * 10) / 10}` : `${Math.round(d * 10) / 10}`);
+    // ใช้ fmtScore เป็นฐานเดียวกับที่โชว์คะแนน (ปัด 2 ตำแหน่ง ตัดศูนย์ท้าย)
+    // ถ้าปัดคนละจำนวนตำแหน่ง เลขในหน้าเดียวกันจะบวกลบไม่ลงตัว เช่น 16.84 − 2 ควรได้ 14.84 ไม่ใช่ 14.8
+    const fmtDelta = (d) => (d > 0 ? `+${fmtScoreNum(d)}` : fmtScoreNum(d));
 
     const getAverageImprovement = () => (improvement ? fmtDelta(improvement.delta) : "—");
 
@@ -306,7 +269,7 @@ export default function TutorStudentDetail() {
                             <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{student.gradeLevel}</span>
                             {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
                             {student.gpa && student.gpa !== '-' && (
-                                <span className="bg-white border rounded px-2 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA (ร.ร.) {student.gpa}</span>
+                                <span className="bg-white border rounded px-2 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</span>
                             )}
                         </div>
                     </div>
@@ -328,7 +291,9 @@ export default function TutorStudentDetail() {
                                 <p className="text-lg font-bold">{getAverageImprovement()}</p>
                             </div>
                             <div className="text-xs text-neutral-400">
-                                {improvement ? `${fmtScoreNum(improvement.from)} → ${fmtScoreNum(improvement.to)} / ${improvement.max}` : "ยังไม่มีข้อมูลสอบ"}
+                                {improvement
+                                    ? `ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
+                                    : "ยังไม่มีข้อมูลสอบ"}
                             </div>
                         </div>
                     </div>
@@ -512,13 +477,17 @@ export default function TutorStudentDetail() {
                         {improvement ? (
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div>
-                                    <p className="text-sm font-bold text-neutral-800">
-                                        พัฒนาการรวม {fmtScoreNum(improvement.from)} → {fmtScoreNum(improvement.to)}
-                                        <span className="text-neutral-400 font-semibold"> จาก {improvement.max}</span>
+                                    <p className="text-sm font-bold text-neutral-800 leading-relaxed">
+                                        คะแนนรวมทุกวิชา: ก่อนเรียนได้ <span className="text-neutral-900">{fmtScoreNum(improvement.from)}</span> คะแนน
+                                        {" → "}{improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"}ได้ <span className="text-orange-600">{fmtScoreNum(improvement.to)}</span> คะแนน
+                                        <span className="text-neutral-400 font-semibold"> (จากเต็ม {improvement.max})</span>
                                     </p>
-                                    <p className="text-xs text-neutral-500 mt-0.5">
-                                        นับ {improvement.subjectsCounted} วิชาที่สอบครบทั้งสองรอบ
-                                        {improvement.basis === "pre-mid" ? " · เทียบ ก่อนเรียน → กลางภาค (ยังไม่มีหลังเรียน)" : " · เทียบ ก่อนเรียน → หลังเรียน"}
+                                    <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                                        คะแนนเต็ม {improvement.max} มาจาก {improvement.subjectsCounted} วิชาที่สอบครบทั้งสองรอบ × วิชาละ {examSummary?.cap ?? 20} คะแนน
+                                        {(examData?.untestedSubjects || []).length > 0
+                                            ? ` (ยังไม่นับ ${examData.untestedSubjects.join(", ")} เพราะยังไม่ได้สอบ)`
+                                            : ""}
+                                        {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบหลังเรียน จึงเทียบกับกลางภาคก่อน" : ""}
                                     </p>
                                 </div>
                                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-bold ${getTrendColor(getOverallTrend())}`}>
@@ -527,9 +496,9 @@ export default function TutorStudentDetail() {
                                 </div>
                             </div>
                         ) : examData?.latest ? (
-                            <p className="text-sm text-neutral-600">
-                                สอบแล้ว {examData.latest.subjectsCounted} วิชา ได้ {fmtScoreNum(examData.latest.score)} จาก {examData.latest.max} คะแนน
-                                <span className="text-neutral-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังมีแค่รอบเดียว</span>
+                            <p className="text-sm text-neutral-600 leading-relaxed">
+                                สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
+                                <span className="text-neutral-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังสอบแค่รอบเดียว ต้องมีทั้งก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
                             </p>
                         ) : (
                             <p className="text-sm text-neutral-400">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
