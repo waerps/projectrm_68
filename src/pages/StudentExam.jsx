@@ -4,7 +4,7 @@ import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X }
 import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
-  logQuestionEnter,
+  logQuestionEnter, logIntegrityEvent,
 } from "../utils/studentExamShared";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
@@ -52,6 +52,20 @@ function LandingCard({ status, exam, onStart, starting }) {
           <p className="text-xs text-amber-700">คุณเข้าสอบชุดนี้ไปแล้ว กดปุ่มด้านล่างเพื่อทำต่อจากเดิม</p>
         </div>
       )}
+      {/* ข้อความก่อนเริ่มสอบ — พูดความจริงตรงๆ ว่าคะแนนนี้ถูกใช้ทำอะไร และทำไมการตอบตามความเข้าใจจริง
+          เป็นผลดีกับตัวนักเรียนเอง เจตนาคือลดแรงกดดันและแรงจูงใจในการลอก ไม่ใช่ข่มขู่ */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2">
+        <p className="text-sm font-bold text-slate-700">ก่อนเริ่มทำ อ่านสักครู่นะ</p>
+        <ul className="space-y-1.5 text-xs text-slate-600 leading-relaxed">
+          <li>• ข้อสอบชุดนี้<span className="font-semibold text-slate-700">ไม่ใช่การตัดสินว่าเก่งหรือไม่เก่ง</span> มีไว้ให้เห็นว่าตอนนี้เข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม</li>
+          <li>• ทำได้น้อยในรอบแรกไม่ใช่เรื่องผิด — มันคือจุดตั้งต้นที่จะทำให้เห็นพัฒนาการของตัวเองได้ชัดในรอบถัดไป</li>
+          <li>• ถ้ารอบแรกตอบเกินความเข้าใจจริง (เช่น เปิดหาคำตอบ) คะแนนตั้งต้นจะสูงเกินจริง แล้ว<span className="font-semibold text-slate-700">พัฒนาการที่เห็นตอนจบจะดูน้อยกว่าที่เก่งขึ้นจริง</span> ทั้งที่ตั้งใจเรียนมาเต็มที่</li>
+          <li>• ผลสอบอาจถูกนำไปคุยกับผู้ปกครอง ในรูปของพัฒนาการและจุดที่ควรช่วย ไม่ใช่คำตัดสินว่าผ่านหรือไม่ผ่าน</li>
+          <li>• ระบบบันทึกเวลาที่ใช้และการออกจากหน้าสอบไว้ เพื่อให้ติวเตอร์รู้ว่าคะแนนสะท้อนความเข้าใจจริงแค่ไหน</li>
+        </ul>
+        <p className="text-xs font-semibold text-orange-600 pt-0.5">ทำเท่าที่เข้าใจจริง แล้วติวเตอร์จะช่วยได้ตรงจุดที่สุด</p>
+      </div>
+
       <button
         onClick={onStart}
         disabled={starting}
@@ -131,6 +145,39 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       console.error('log enter failed:', err);
     });
   }, [activeIdx, current, examJoinId, userId]);
+
+  // ── ธงคุณภาพข้อมูล: บันทึกการออกจากหน้าสอบ และการคัดลอกข้อความ ──────────────
+  // ไม่บล็อกอะไรทั้งสิ้น แค่บันทึกไว้ให้ติวเตอร์ประกอบการอ่านคะแนน (เบราว์เซอร์ไม่มีทางรู้ว่า
+  // ออกไปเปิดอะไร รู้แค่ว่าออกไปนานเท่าไหร่) และทุก call ต้องเงียบเสมอ ห้ามทำให้การสอบสะดุด
+  const hiddenAtRef = useRef(null);
+  const currentQuestionIdRef = useRef(null);
+  useEffect(() => { currentQuestionIdRef.current = current?.id ?? null; }, [current]);
+
+  useEffect(() => {
+    const report = (eventType, extra = {}) => {
+      if (submittedRef.current) return; // ส่งข้อสอบแล้วไม่ต้องเก็บอีก
+      logIntegrityEvent({ examJoinId, eventType, questionId: currentQuestionIdRef.current, ...extra })
+        .catch(() => { /* บันทึกไม่ได้ก็ปล่อยไป ห้ามรบกวนคนทำข้อสอบ */ });
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) { hiddenAtRef.current = Date.now(); return; }
+      if (hiddenAtRef.current == null) return;
+      const sec = Math.round((Date.now() - hiddenAtRef.current) / 1000);
+      hiddenAtRef.current = null;
+      // ต่ำกว่า 2 วินาทีถือเป็นสัญญาณรบกวน (เผลอคลิกออกแล้วคลิกกลับ) ไม่บันทึก
+      if (sec >= 2) report("leave", { durationSec: sec });
+    };
+
+    const onCopy = () => report("copy");
+
+    document.addEventListener("visibilitychange", onVisibility);
+    document.addEventListener("copy", onCopy);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("copy", onCopy);
+    };
+  }, [examJoinId]);
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));

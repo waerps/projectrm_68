@@ -29,11 +29,14 @@ export default function AppShell() {
   // ปุ่มแจ้งปัญหา: เฉพาะ student และ tutor
   const canReportIncident = currentRole === "student" || currentRole === "tutor"
 
-  // แชตบอต: เฉพาะ guest (ยังไม่ล็อกอิน) และ student
+  // หน้าทำข้อสอบ (/exam/:token) — ซ่อนแชตบอตทั้งหมด ไม่ให้มีผู้ช่วยลอยอยู่ขณะสอบ
+  const isExamPage = location.pathname.startsWith("/exam/")
+
+  // แชตบอต: เฉพาะ guest (ยังไม่ล็อกอิน) และ student — และต้องไม่ใช่หน้าทำข้อสอบ
   // เผื่ออนาคตอยากเปิดให้ tutor/admin ด้วย ปรับตรงนี้:
-  //   const canUseChat = true                          // เปิดทั้ง 4 บทบาท
-  //   const canUseChat = currentRole !== "admin"        // เปิดทุกคนยกเว้นแอดมิน
-  const canUseChat = currentRole === null || currentRole === "student"
+  //   const canUseChat = !isExamPage                                     // เปิดทั้ง 4 บทบาท
+  //   const canUseChat = currentRole !== "admin" && !isExamPage           // เปิดทุกคนยกเว้นแอดมิน
+  const canUseChat = (currentRole === null || currentRole === "student") && !isExamPage
 
   return (
     <>
