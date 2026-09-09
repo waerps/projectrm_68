@@ -1686,6 +1686,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
               courseName,
               subjectName,
               examType: exam.type,
+              // บอกหน้า analytics ว่าเข้ามาจากหน้ารอบสอบ เพื่อให้ breadcrumb แทรกชั้นรอบสอบ
+              // ไว้ให้กดกลับมาหน้านี้ได้ (แทนปุ่ม "ย้อนกลับ" ที่เอาออกไปแล้ว)
+              from: "exam-detail",
             }).toString()}`}
             className="text-sm text-orange-500 hover:text-orange-700 font-semibold"
           >

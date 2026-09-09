@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend, Cell, ReferenceLine,
@@ -7,7 +7,7 @@ import {
 import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
   CheckCircle, Search, Award, Clock, BookOpen, Info,
-  X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown, ChevronLeft,
+  X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fetchExams, fetchExamResults, fetchTopicBreakdown } from "../utils/examShared";
@@ -1679,11 +1679,13 @@ const TABS = [
 
 export default function TutorExamAnalytics() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const courseId = searchParams.get("courseId");
   const subjectId = searchParams.get("subjectId");
   const courseName = searchParams.get("courseName") || "";
   const subjectName = searchParams.get("subjectName") || "";
+  // เข้ามาจากหน้ารายละเอียดรอบสอบ (exam-detail) หรือไม่ — ใช้ตัดสินว่า breadcrumb
+  // ต้องแทรกชั้น "รอบสอบ" คั่นไว้ให้กดกลับไปหน้านั้นได้ไหม (ถ้าเข้าจากหน้ารายการสอบตรงๆ ไม่ต้องมี)
+  const fromExamDetail = searchParams.get("from") === "exam-detail";
 
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
   const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
@@ -1766,16 +1768,10 @@ export default function TutorExamAnalytics() {
 
   return (
     <div className="space-y-6 mt-[90px]">
-      {/* ปุ่มย้อนกลับ — กลับไปหน้าที่ผู้ใช้กดเข้ามาจริงๆ ผ่าน browser history */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-orange-600 transition font-medium"
-      >
-        <ChevronLeft className="h-4 w-4" /> ย้อนกลับ
-      </button>
-
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm text-slate-400">
+      {/* Breadcrumb — ไม่มีปุ่ม "ย้อนกลับ" แล้ว เพราะซ้ำซ้อนกับ breadcrumb เส้นนี้
+          ถ้าเข้ามาจากหน้ารอบสอบ (from=exam-detail) จะแทรกชั้นรอบสอบให้ด้วย และชั้นนั้น
+          จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย) */}
+      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
         <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
         <ChevronRight className="h-4 w-4" />
         <Link
@@ -1784,6 +1780,29 @@ export default function TutorExamAnalytics() {
         >
           {subjectName || "จัดการการสอบ"}
         </Link>
+        {fromExamDetail && (
+          <>
+            <ChevronRight className="h-4 w-4" />
+            {realExamId(examId) ? (
+              <Link
+                to={`/tutor/exam-detail?${new URLSearchParams({
+                  courseId: courseId || "",
+                  subjectId: subjectId || "",
+                  courseName,
+                  subjectName,
+                  examId: String(realExamId(examId)),
+                }).toString()}`}
+                className="hover:text-orange-600 transition font-medium"
+              >
+                {examLabel}
+              </Link>
+            ) : (
+              // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
+              // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
+              <span className="font-medium">{examLabel}</span>
+            )}
+          </>
+        )}
         <ChevronRight className="h-4 w-4" />
         <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
       </div>
