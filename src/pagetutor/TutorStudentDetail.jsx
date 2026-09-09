@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { getFileUrl } from "../utils/fileUrl";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import { Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -18,6 +19,26 @@ const SUBJECT_DOT_COLORS = [
     "bg-orange-500", "bg-pink-500", "bg-blue-500",
     "bg-yellow-600", "bg-purple-500", "bg-emerald-500", "bg-cyan-500",
 ];
+
+// ── รูปโปรไฟล์นักเรียน ────────────────────────────────────────────────
+// ใช้รูปที่อัปโหลดไว้จริง (users.Photo) ถ้ามี — ถ้ายังไม่มีรูป หรือไฟล์โหลดไม่ขึ้น
+// ค่อย fallback เป็น avatar ที่ generate จากชื่อ (ข้อมูลเก่าหลายคนยังไม่ได้อัปรูป)
+function StudentAvatar({ student, className = "h-full w-full object-cover" }) {
+    const [imgErr, setImgErr] = useState(false);
+    const uploaded = student?.Photo || student?.photo || "";
+    const src = uploaded && !imgErr
+        ? getFileUrl(uploaded)
+        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student?.name || "student")}&backgroundColor=fef3c7`;
+    return (
+        <img
+            src={src}
+            alt={student?.name || "นักเรียน"}
+            className={className}
+            onError={() => { if (uploaded) setImgErr(true); }}
+        />
+    );
+}
+
 
 // ── ✨ Pagination Component ────────────────────────────────────────
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -259,7 +280,7 @@ export default function TutorStudentDetail() {
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-5">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <div className="h-20 w-20 rounded-xl border-2 border-orange-200 overflow-hidden shrink-0 bg-white">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${student.name}&backgroundColor=fef3c7`} alt={student.name} className="h-full w-full object-cover" />
+                        <StudentAvatar student={student} />
                     </div>
                     <div className="flex-1">
                         <h1 className="text-xl font-bold text-neutral-900">{student.name}</h1>

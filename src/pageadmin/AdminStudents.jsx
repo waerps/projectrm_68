@@ -22,6 +22,10 @@ const ITEMS_PER_PAGE = 12;
 const avatarUrl = (userId) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=student_${userId}&backgroundColor=dbeafe`;
 
+// เกณฑ์ "ดูคลิปจบ" — ต้องใช้ค่าเดียวกับฝั่งนักเรียนและติวเตอร์ (80%)
+// ไม่งั้นตัวเลขที่แอดมินเห็นจะไม่ตรงกับที่ติวเตอร์เห็น
+const VIDEO_WATCHED_PERCENT = 80;
+
 // ─── FIX #8: handle format วันที่ที่หลากหลาย
 const formatDate = (d) => {
   if (!d) return "—";
@@ -771,7 +775,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   const attColor = attRate >= 80 ? "text-emerald-600" : attRate >= 60 ? "text-amber-500" : "text-red-500";
   const attBarColor = attRate >= 80 ? "bg-emerald-500" : attRate >= 60 ? "bg-amber-400" : "bg-red-500";
 
-  const watchedVideos = videoProgress.filter(v => v.WatchPercent >= 100).length;
+  const watchedVideos = videoProgress.filter(v => v.WatchPercent >= VIDEO_WATCHED_PERCENT).length;
   const totalVideos = videoProgress.length;
 
   // ── ข้อมูลกรองตามคอร์สที่เลือก (ใช้ในทุก tab ยกเว้น "courses") ──────────
@@ -782,19 +786,19 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   const cAttended = cAttendance.filter(a => a.Status === "1").length;
   const cAttRate = cAttendance.length ? Math.round((cAttended / cAttendance.length) * 100) : 0;
-  const cWatched = cVideos.filter(v => v.WatchPercent >= 100).length;
+  const cWatched = cVideos.filter(v => v.WatchPercent >= VIDEO_WATCHED_PERCENT).length;
 
-  // ── รวมคะแนนสอบเป็นรายวิชา (pre/mid/post = ExamTypeId 1/2/3) ────────────
+  // ── รวมคะแนนสอบเป็นรายวิชา ───────────────────────────────────────────────
+  // ใช้ TypeSlug ที่หลังบ้านแปลงมาจากชื่อรอบสอบ ไม่ hardcode ExamTypeId = 1/2/3
+  // (ถ้ามีคนสลับลำดับในตาราง examtype ตัวเลขจะเพี้ยนโดยไม่มีใครรู้)
   const scoresBySubject = {};
   cScores.forEach(e => {
-    if (!e.MaxScore || e.MaxScore <= 0) return;
+    if (!e.MaxScore || Number(e.MaxScore) <= 0) return;
     const key = e.SubjectName || "ไม่ระบุวิชา";
     if (!scoresBySubject[key]) scoresBySubject[key] = { pre: [], mid: [], post: [] };
-    const pct = Math.round((e.Score / e.MaxScore) * 100);
-    const typeId = String(e.ExamTypeId);
-    if (typeId === "1") scoresBySubject[key].pre.push(pct);
-    else if (typeId === "2") scoresBySubject[key].mid.push(pct);
-    else if (typeId === "3") scoresBySubject[key].post.push(pct);
+    const pct = Math.round((Number(e.Score) / Number(e.MaxScore)) * 100);
+    const bucket = { "pre-test": "pre", "mid-test": "mid", "post-test": "post" }[e.TypeSlug];
+    if (bucket) scoresBySubject[key][bucket].push(pct);
   });
   const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
   const subjectSummaries = Object.entries(scoresBySubject).map(([subject, v]) => {
@@ -1031,7 +1035,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             ) : (
               <div className="space-y-2">
                 {cVideos.map(v => {
-                  const done = v.WatchPercent >= 100;
+                  const done = v.WatchPercent >= VIDEO_WATCHED_PERCENT;
                   return (
                     <div key={v.StudentVideoProgressId} className={`flex items-center gap-3 p-3 rounded-xl border ${done ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-200"}`}>
                       <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-orange-600" : "bg-slate-300"}`}>
@@ -1231,44 +1235,103 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
   );
 }
 
-// ─── helper: badge ตามคะแนน ──────────────────────────────────────────────────
-function calcStudentBadge(score) {
-  // ยังประเมินไม่ได้ — ห้ามตกไปเข้าเกณฑ์ "ต้องพัฒนา" เพราะยังไม่มีข้อมูลจะตัดสิน
-  if (score == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
-  if (score >= 90) return { label: 'ดีเยี่ยม', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
-  if (score >= 80) return { label: 'ดีมาก', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
-  if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
-  if (score >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
-  return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
-}
+// ─── 2 โพเดียม = 2 มิติของความสำเร็จ ────────────────────────────────────────
+// เดิมมีคะแนนเดียว ซึ่งไม่เป็นธรรมเชิงโครงสร้างเพราะ "เพดานคะแนน":
+// เด็ก Pre 90 เพิ่มได้สูงสุด 10 จุด จึงถูกล็อกออกจากคะแนนพัฒนาการตั้งแต่ยังไม่เริ่มเรียน
+// ตอนนี้แยกเป็น 2 กระดาน ทุกคนได้ทั้ง 2 คะแนน และขึ้นได้ทั้ง 2 โพเดียม
+// (ไม่แบ่งกลุ่มเด็กตาม Pre-test เพราะจะเกิดหน้าผาที่เส้นแบ่ง และเปิดช่องให้ทำ Pre ต่ำ ๆ)
+// สูตรจริงอยู่ที่ backend-project/services/studentPerformance.js
+const BOARDS = {
+  excellence: {
+    key: 'excellence',
+    tab: 'ความสามารถ',
+    icon: '⭐',
+    heading: 'ความสามารถโดดเด่น',
+    formula: 'Post-test 70% + คะแนนเฉลี่ยทุกรอบ 30%',
+    hint: 'วัดว่า "ตอนนี้เก่งแค่ไหน" — ค่าเฉลี่ยทุกรอบทำให้เด็กที่สูงมาตลอดชนะเด็กที่ฟลุกรอบเดียว',
+    score: (s) => s.ExcellenceScore,
+    eligible: (s) => s.ExcellenceEvaluable === true,
+    reason: (s) => s.ExcellenceReason,
+    ranges: [
+      { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
+      { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
+      { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
+      { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
+      { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
+    ],
+    badge: (v) => {
+      if (v == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
+      if (v >= 90) return { label: 'ดีเยี่ยม', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+      if (v >= 80) return { label: 'ดีมาก', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
+      if (v >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+      if (v >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+      return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+    },
+  },
+  improvement: {
+    key: 'improvement',
+    tab: 'พัฒนาการ',
+    icon: '📈',
+    heading: 'พัฒนาการโดดเด่น',
+    formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
+    hint: 'วัดว่า "ปิดช่องว่างที่มีอยู่ไปได้กี่ %" ไม่ใช่ "เพิ่มกี่จุด" — เด็กที่เริ่มต่ำจึงไม่ได้เปรียบฟรี ๆ และเด็กที่เริ่มสูงก็ไม่ถูกลงโทษ',
+    score: (s) => s.ImprovementScore,
+    eligible: (s) => s.ImprovementEligible === true,
+    reason: (s) => s.ImprovementReason,
+    ranges: [
+      { key: 'leap', label: 'ก้าวกระโดด (85-100)', test: (v) => v >= 85 },
+      { key: 'high', label: 'พัฒนาการสูง (70-84)', test: (v) => v >= 70 && v < 85 },
+      { key: 'good', label: 'พัฒนาการดี (55-69)', test: (v) => v >= 55 && v < 70 },
+      { key: 'slight', label: 'พัฒนาการเล็กน้อย (40-54)', test: (v) => v >= 40 && v < 55 },
+      { key: 'none', label: 'ยังไม่เห็นพัฒนาการ (ต่ำกว่า 40)', test: (v) => v < 40 },
+    ],
+    badge: (v) => {
+      if (v == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
+      if (v >= 85) return { label: 'ก้าวกระโดด', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+      if (v >= 70) return { label: 'พัฒนาการสูง', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
+      if (v >= 55) return { label: 'พัฒนาการดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+      if (v >= 40) return { label: 'พัฒนาการเล็กน้อย', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+      return { label: 'ยังไม่เห็นพัฒนาการ', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+    },
+  },
+};
 
-// ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
+// แปะคะแนนของกระดานที่กำลังดูอยู่ลงบนนักเรียนแต่ละคน (_score/_eligible/_reason)
+// ส่วนที่เหลือของหน้าจะได้ไม่ต้องรู้ว่ากำลังดูกระดานไหน
+const withBoardScore = (list, board) =>
+  list.map((s) => ({
+    ...s,
+    _score: board.score(s),
+    _eligible: board.eligible(s),
+    _reason: board.reason(s),
+  }));
+
+// จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
 function topScoreGroups(sortedList, groupCount = 3) {
   const groups = [];
-  // เอาเฉพาะคนที่ประเมินได้ (มี Post-test แล้ว) ขึ้นโพเดียม
-  // คนที่ยังไม่ได้สอบไม่ควรไปแข่งอันดับกับคนที่มีข้อมูลครบ
-  for (const item of sortedList.filter((s) => s.Evaluable !== false)) {
+  // เอาเฉพาะคนที่เข้าเกณฑ์ของกระดานนี้ขึ้นโพเดียม
+  for (const item of sortedList.filter((s) => s._eligible)) {
     const last = groups[groups.length - 1];
-    if (last && last.score === item.PerformanceScore) {
+    if (last && last.score === item._score) {
       last.members.push(item);
     } else {
       if (groups.length >= groupCount) break;
-      groups.push({ score: item.PerformanceScore, members: [item] });
+      groups.push({ score: item._score, members: [item] });
     }
   }
   return groups;
 }
 
-// ★ เพิ่ม: standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
+// standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
 function withCompetitionRank(sortedList) {
   let rank = 0;
   let prevScore = null;
   let idx = 0;
   return sortedList.map((item) => {
-    // คนที่ยังประเมินไม่ได้ ไม่มีอันดับ (_rank = null) และไม่กินเลขอันดับของคนอื่น
-    if (item.Evaluable === false) return { ...item, _rank: null };
-    if (item.PerformanceScore !== prevScore) rank = idx + 1;
-    prevScore = item.PerformanceScore;
+    // คนที่ยังไม่เข้าเกณฑ์ ไม่มีอันดับ และไม่กินเลขอันดับของคนอื่น
+    if (!item._eligible) return { ...item, _rank: null };
+    if (item._score !== prevScore) rank = idx + 1;
+    prevScore = item._score;
     idx += 1;
     return { ...item, _rank: rank };
   });
@@ -1300,87 +1363,114 @@ function StudentScoreRing({ score }) {
   );
 }
 
-// ─── Metric Breakdown (expandable detail) ────────────────────────────────────
-function StudentMetricBreakdown({ student }) {
-  const notEvaluable = student.Evaluable === false;
-
-  const metrics = notEvaluable ? [] : [
-    {
-      name: 'อัตราการเข้าเรียน',
-      raw: student.AttendanceRate,
-      weight: student.AttendanceWeight,
-      contrib: student.AttendanceContrib,
-      sub: `${student.TotalAttended ?? 0} / ${student.TotalClasses ?? 0} คาบ`,
-    },
-    {
-      name: 'Post-test',
-      raw: student.PostTestScore,
-      weight: student.PostWeight,
-      contrib: student.PostTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.PostTestScore}%  (${student.PostTestCount} ครั้ง)`,
-    },
-    ...(student.ImprovementWeight ? [{
-      name: 'พัฒนาการ',
-      raw: Math.max(0, student.ImprovementDelta ?? 0),
-      weight: student.ImprovementWeight,
-      contrib: student.ImprovementContrib,
-      sub: `Pre-test ${student.PreTestScore}% → Post-test ${student.PostTestScore}% (${student.ImprovementDelta > 0 ? '+' : ''}${student.ImprovementDelta} จุด)`,
-    }] : []),
-  ];
-
+// ─── Metric Breakdown ────────────────────────────────────────────────────────
+// กางแล้วโชว์ "ทั้งสองคะแนน" เสมอ ไม่ว่ากำลังดูกระดานไหนอยู่
+// จงใจให้เห็นคู่กัน เพราะเด็กคนหนึ่งเก่งและพัฒนาได้พร้อมกัน และบางคนเด่นคนละด้าน
+function ScoreBar({ label, value, sub, weight }) {
+  const v = value ?? 0;
+  const barColor = v >= 80 ? 'bg-emerald-500' : v >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  const textColor = v >= 80 ? 'text-emerald-700' : v >= 60 ? 'text-amber-700' : 'text-red-700';
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2.5">
-      {notEvaluable ? (
-        <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-slate-600">ยังประเมินไม่ได้</p>
-          <p className="text-[11px] text-slate-400 leading-relaxed">
-            {student.NotEvaluableReason || 'ยังไม่มีข้อมูลการสอบ'} — คะแนน Performance ต้องมีผล Post-test
-            จึงจะคำนวณได้ นักเรียนคนนี้จะยังไม่ถูกจัดอันดับเทียบกับคนอื่น
-          </p>
-          <p className="text-[11px] text-slate-400">
-            เข้าเรียน {student.AttendanceRate}% ({student.TotalAttended ?? 0} / {student.TotalClasses ?? 0} คาบ)
-            {student.PreTestScore !== null ? ` · Pre-test ${student.PreTestScore}%` : ''}
-            {student.MidTestScore !== null ? ` · Mid-test ${student.MidTestScore}%` : ''}
-          </p>
+    <div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-slate-500 w-40 shrink-0">
+          {label}
+          {weight != null && <span className="text-[10px] ml-1 text-slate-400">(×{weight}%)</span>}
+        </span>
+        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, v)}%` }} />
         </div>
-      ) : (
-        <p className="text-[11px] text-slate-400 italic">
-          สูตร: เข้าเรียน {student.AttendanceWeight}% + Post-test {student.PostWeight}%
-          {student.ImprovementWeight ? ` + พัฒนาการ ${student.ImprovementWeight}%` : ' (ยังไม่มี Pre-test จึงเทียบพัฒนาการไม่ได้ และเกลี่ยน้ำหนักไปสองส่วนที่มีข้อมูล)'}
-        </p>
-      )}
-      {metrics.map(m => {
-        const val = m.raw ?? 0;
-        const barColor = val >= 80 ? 'bg-emerald-500' : val >= 60 ? 'bg-amber-500' : 'bg-red-500';
-        const textColor = val >= 80 ? 'text-emerald-700' : val >= 60 ? 'text-amber-700' : 'text-red-700';
-        return (
-          <div key={m.name}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-36 shrink-0">
-                {m.name}
-                <span className="text-[10px] ml-1 text-slate-400">(×{m.weight}%)</span>
-              </span>
-              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${val}%` }} />
-              </div>
-              <span className={`text-xs font-semibold w-7 text-right ${textColor}`}>{m.contrib}</span>
-            </div>
-            <p className="text-[10px] text-slate-400 ml-[9.5rem] mt-0.5">{m.sub}</p>
-          </div>
-        );
-      })}
-      {!notEvaluable && (
-        <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-          <span className="text-xs text-slate-500">คะแนนรวม</span>
-          <span className="text-base font-semibold text-slate-800">{student.PerformanceScore} / 100</span>
-        </div>
-      )}
+        <span className={`text-xs font-semibold w-10 text-right ${textColor}`}>
+          {value == null ? '—' : Math.round(value)}
+        </span>
+      </div>
+      {sub && <p className="text-[10px] text-slate-400 ml-[10.5rem] mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
-  const badge = calcStudentBadge(student.PerformanceScore);
+function StudentMetricBreakdown({ student }) {
+  const s = student;
+  const hasExcellence = s.ExcellenceEvaluable === true;
+  const hasImprovement = s.ImprovementScore != null;
+
+  return (
+    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-4">
+
+      {/* ── ธงเตือน ─────────────────────────────────────────────── */}
+      {s.Flags?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {s.Flags.map((f) => (
+            <span key={f.key}
+              className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${
+                f.tone === 'red'
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+              {f.tone === 'red' ? '⚠️' : '🚩'} {f.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── ⭐ ความสามารถ ────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-bold text-slate-700">⭐ ความสามารถ</p>
+          <span className="text-sm font-semibold text-slate-800">
+            {hasExcellence ? `${s.ExcellenceScore} / 100` : '—'}
+          </span>
+        </div>
+        {hasExcellence ? (
+          <>
+            <ScoreBar label="Post-test" value={s.PostTestScore} weight={70}
+              sub={`คะแนนเฉลี่ยรอบหลังเรียน (${s.PostTestCount} ครั้ง)`} />
+            <ScoreBar label="ค่าเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
+              sub={`สูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-400">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
+        )}
+      </div>
+
+      {/* ── 📈 พัฒนาการ ─────────────────────────────────────────── */}
+      <div className="space-y-2 pt-3 border-t border-slate-200">
+        <div className="flex items-baseline justify-between">
+          <p className="text-xs font-bold text-slate-700">📈 พัฒนาการ</p>
+          <span className="text-sm font-semibold text-slate-800">
+            {hasImprovement ? `${s.ImprovementScore} / 100` : '—'}
+          </span>
+        </div>
+        {hasImprovement ? (
+          <>
+            <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
+              sub={`${s.PreTestScore}% → ${s.PostTestScore}% (${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta} จุด จากพื้นที่ที่เหลือ ${s.ImprovementRoom} จุด)`} />
+            <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
+              sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
+            {!s.ImprovementEligible && (
+              <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                ยังไม่ขึ้นโพเดียมพัฒนาการ — {s.ImprovementReason}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-400">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
+        )}
+      </div>
+
+      {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
+      <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-200">
+        เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
+        {s.PreTestScore != null ? ` · Pre ${s.PreTestScore}%` : ''}
+        {s.MidTestScore != null ? ` · Mid ${s.MidTestScore}%` : ''}
+        {s.PostTestScore != null ? ` · Post ${s.PostTestScore}%` : ''}
+      </p>
+    </div>
+  );
+}
+
+function StudentScoreCard({ student, rank, expanded, onToggle, onView, board }) {
+  const badge = board.badge(student._score);
   const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const name = student.Nickname || `${student.Firstname} ${student.Lastname}`;
 
@@ -1411,11 +1501,20 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
               <span className="text-[10px] text-slate-400">{student.GradeDetail}</span>
             )}
             <span className="text-[10px] text-slate-400">{student.TotalClasses} คาบ</span>
+            {student.Flags?.slice(0, 1).map((f) => (
+              <span key={f.key}
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                  f.tone === 'red'
+                    ? 'bg-red-50 text-red-600 border-red-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                {f.tone === 'red' ? '⚠️' : '🚩'} {f.label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Score Ring */}
-        <StudentScoreRing score={student.PerformanceScore} />
+        {/* Score Ring — คะแนนของกระดานที่กำลังดูอยู่ */}
+        <StudentScoreRing score={student._score} />
 
         {/* ปุ่มดูข้อมูลนักเรียน (ไม่ใช้ modal) */}
         <button
@@ -1451,17 +1550,12 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [filterGrade, setFilterGrade] = useState('all');
-  const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
+  const [filterScoreRange, setFilterScoreRange] = useState('all');
   const [showLimit, setShowLimit] = useState(DEFAULT_LIMIT);
+  const [boardKey, setBoardKey] = useState('excellence');   // กระดานที่กำลังดู
 
-  // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcStudentBadge เพื่อให้ label/สีตรงกับ badge ที่โชว์อยู่
-  const SCORE_RANGES = [
-    { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
-    { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
-    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
-    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
-    { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
-  ];
+  const board = BOARDS[boardKey];
+  const SCORE_RANGES = board.ranges;
 
   useEffect(() => {
     axios.get(`${API}/students/performance`)
@@ -1474,27 +1568,39 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   useEffect(() => {
     setShowLimit(DEFAULT_LIMIT);
     setExpandedId(null);
-  }, [filterGrade, filterScoreRange]);
+  }, [filterGrade, filterScoreRange, boardKey]);
+
+  // สลับกระดานแล้วต้องล้างตัวกรองช่วงคะแนน เพราะสองกระดานใช้ช่วงคนละชุดกัน
+  useEffect(() => { setFilterScoreRange('all'); }, [boardKey]);
+
+  // แปะคะแนนของกระดานที่เลือกลงทุกคนก่อน แล้วค่อยกรอง/เรียงจาก _score
+  const scoped = withBoardScore(perfData, board);
 
   // กรองตามชั้นปี
   const matchGradeFn = (s) => filterGrade === 'all' || String(s.GradeLevelId) === filterGrade;
-  // ★ กรองตามช่วงคะแนน
+  // กรองตามช่วงคะแนนของกระดานนี้
   const matchScoreFn = (s) => {
     if (filterScoreRange === 'all') return true;
-    if (s.Evaluable === false) return false;   // ไม่มีคะแนน จึงไม่เข้าช่วงคะแนนใดเลย
+    if (!s._eligible) return false;   // ยังไม่เข้าเกณฑ์ จึงไม่เข้าช่วงคะแนนใดเลย
     const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
-    return range ? range.test(s.PerformanceScore) : true;
+    return range ? range.test(s._score) : true;
   };
 
-  const filtered = perfData.filter(s => matchGradeFn(s) && matchScoreFn(s));
+  const filtered = scoped
+    .filter(s => matchGradeFn(s) && matchScoreFn(s))
+    .sort((a, b) => {
+      if (a._eligible !== b._eligible) return a._eligible ? -1 : 1;
+      if (!a._eligible) return (b.AttendanceRate || 0) - (a.AttendanceRate || 0);
+      return b._score - a._score;
+    });
 
-  const rankedFiltered = withCompetitionRank(filtered); // ★ เพิ่ม
-  const podiumGroups = topScoreGroups(rankedFiltered, 3); // ★ เพิ่ม
+  const rankedFiltered = withCompetitionRank(filtered);
+  const podiumGroups = topScoreGroups(rankedFiltered, 3);
 
-  // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
-  const baseForScoreCount = perfData.filter(matchGradeFn);
+  // นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
+  const baseForScoreCount = scoped.filter(matchGradeFn);
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
-    acc[r.key] = baseForScoreCount.filter(s => s.Evaluable !== false && r.test(s.PerformanceScore)).length;
+    acc[r.key] = baseForScoreCount.filter(s => s._eligible && r.test(s._score)).length;
     return acc;
   }, {});
 
@@ -1509,10 +1615,30 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                       bg-gradient-to-r from-orange-500 to-amber-500">
         <div className="flex items-center gap-2.5">
           <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-sm">Performance Score นักเรียน</h2>
+          <h2 className="font-bold text-white text-sm">คะแนนนักเรียน · {board.heading}</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Post-test 40% + พัฒนาการ 20%</span>
+        <span className="text-[11px] text-orange-100">{board.formula}</span>
       </div>
+
+      {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
+          เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
+          เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
+      <div className="flex gap-1 px-5 pt-3 border-b border-slate-100">
+        {Object.values(BOARDS).map((b) => (
+          <button
+            key={b.key}
+            onClick={() => setBoardKey(b.key)}
+            className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 -mb-px ${
+              b.key === boardKey
+                ? 'text-orange-600 border-orange-500 bg-orange-50/60'
+                : 'text-slate-400 border-transparent hover:text-slate-600'
+            }`}
+          >
+            {b.icon} {b.tab}
+          </button>
+        ))}
+      </div>
+      <p className="px-5 pt-2.5 text-[11px] text-slate-400 leading-relaxed">{board.hint}</p>
 
       <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
         <div className="relative ml-auto">
@@ -1657,6 +1783,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                   expanded={expandedId === s.UserId}
                   onToggle={() => setExpandedId(expandedId === s.UserId ? null : s.UserId)}
                   onView={onViewStudent}
+                  board={board}
                 />
               ))}
             </div>

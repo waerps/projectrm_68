@@ -109,6 +109,7 @@ function MiniPersonRow({ photo, name, sub, tone = "slate" }) {
     slate: "bg-slate-50 text-slate-600 border-slate-200",
     red: "bg-red-50 text-red-600 border-red-100",
     amber: "bg-amber-50 text-amber-600 border-amber-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
   }[tone];
   return (
     <div className="flex items-center gap-2.5 py-1.5">
@@ -406,8 +407,8 @@ export default function AdminDashboard() {
     },
     students.needsAttention?.length > 0 && {
       id: "students-attention",
-      title: "นักเรียนเข้าเรียนต่ำ",
-      message: "เข้าเรียนต่ำกว่า 50% เดือนนี้",
+      title: "นักเรียนที่ต้องดูแล",
+      message: "คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ",
       count: students.needsAttention.length,
       link: "/admin/students",
     },
@@ -539,16 +540,35 @@ export default function AdminDashboard() {
             <InlineStat label="ลงทะเบียน" value={students.enrolled ?? 0} tone="emerald" />
             <InlineStat label="เข้าเรียนเฉลี่ย" value={students.avgAttendanceRate !== null ? `${students.avgAttendanceRate}%` : "—"} tone="amber" />
           </div>
+          {/* ทำได้ดี — หัวตารางของทั้ง 2 โพเดียม ติดป้ายแยกว่ามาคนละทาง */}
+          {students.topPerformers?.length > 0 && (
+            <div className="mb-3">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                ทำได้ดี <span className="normal-case font-medium text-slate-300">· ⭐ ความสามารถ · 📈 พัฒนาการ</span>
+              </p>
+              {students.topPerformers.map((s) => (
+                <MiniPersonRow
+                  key={`${s.TopKind}-${s.UserId}`}
+                  photo={s.Photo}
+                  name={`${s.TopKind === "improvement" ? "📈" : "⭐"} ${s.Nickname || `${s.Firstname} ${s.Lastname}`}`}
+                  sub={`${s.TopScore}/100`}
+                  tone="emerald"
+                />
+              ))}
+            </div>
+          )}
           {students.needsAttention && students.needsAttention.length > 0 ? (
             <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เข้าเรียนต่ำ)</p>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                ควรติดตาม <span className="normal-case font-medium text-slate-300">· คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ</span>
+              </p>
               {students.needsAttention.slice(0, 4).map((s) => (
                 <MiniPersonRow
                   key={s.UserId}
                   photo={s.Photo}
                   name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                  sub={`${s.PerformanceScore} คะแนน`}
-                  tone="red"
+                  sub={s.Flags?.[0]?.label || `เข้าเรียน ${s.AttendanceRate ?? 0}%`}
+                  tone={s.Flags?.[0]?.tone === "amber" ? "amber" : "red"}
                 />
               ))}
             </div>
@@ -565,15 +585,33 @@ export default function AdminDashboard() {
             <InlineStat label="กำลังสอน" value={tutors.active ?? 0} tone="emerald" />
             <InlineStat label="เช็กอินเฉลี่ย" value={tutors.avgCheckinRate !== null ? `${tutors.avgCheckinRate}%` : "—"} tone="amber" />
           </div>
+          {tutors.topPerformers?.length > 0 && (
+            <div className="mb-3">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                ทำได้ดี <span className="normal-case font-medium text-slate-300">· เช็กอิน ≥ 90%</span>
+              </p>
+              {tutors.topPerformers.map((t) => (
+                <MiniPersonRow
+                  key={`top-${t.AdminId}`}
+                  photo={t.Photo}
+                  name={t.Nickname || `${t.Firstname} ${t.Lastname}`}
+                  sub={`${t.CheckinRate}%`}
+                  tone="emerald"
+                />
+              ))}
+            </div>
+          )}
           {tutors.needsAttention && tutors.needsAttention.length > 0 ? (
             <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">ควรติดตาม (เช็กอินต่ำ)</p>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
+                ควรติดตาม <span className="normal-case font-medium text-slate-300">· เช็กอิน &lt; 50% (จาก ≥ 3 คาบ)</span>
+              </p>
               {tutors.needsAttention.slice(0, 4).map((t) => (
                 <MiniPersonRow
                   key={t.AdminId}
                   photo={t.Photo}
                   name={t.Nickname || `${t.Firstname} ${t.Lastname}`}
-                  sub={`${Math.round((t.TotalCheckin / t.TotalScheduled) * 100)}%`}
+                  sub={`${t.CheckinRate}%`}
                   tone="amber"
                 />
               ))}
