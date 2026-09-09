@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import { Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -51,29 +52,11 @@ const mockVideos = (studentId) => {
     });
 };
 
-// ── Mock scores (เหมือนเดิม) ──────────────
-const subjects = ["คณิต", "ไทย", "วิทย์", "สังคม", "อังกฤษ"];
-const subjectColors = {
-    คณิต: "bg-orange-500", ไทย: "bg-pink-500", วิทย์: "bg-blue-500",
-    สังคม: "bg-yellow-600", อังกฤษ: "bg-purple-500",
-};
-
-const generateMockScores = (seedId) => {
-    const mockScores = {};
-    subjects.forEach(sub => {
-        const safeSeed = seedId || 1;
-        const preTest  = 40 + (safeSeed * 5 % 30);
-        const midTerm  = preTest + 10;
-        const postTest = midTerm + (safeSeed % 2 === 0 ? 15 : -5);
-        const improvement = postTest - preTest;
-        mockScores[sub] = {
-            preTest, midTerm, postTest,
-            trend: improvement > 0 ? "up" : improvement < 0 ? "down" : "stable",
-            improvement: improvement > 0 ? `+${improvement}` : `${improvement}`,
-        };
-    });
-    return mockScores;
-};
+// สีประจำวิชา — วนตามลำดับวิชาที่มีจริงในคอร์ส (เดิมผูกกับชื่อวิชา 5 วิชาที่ hardcode ไว้)
+const SUBJECT_DOT_COLORS = [
+    "bg-orange-500", "bg-pink-500", "bg-blue-500",
+    "bg-yellow-600", "bg-purple-500", "bg-emerald-500", "bg-cyan-500",
+];
 
 // ── ✨ Pagination Component ────────────────────────────────────────
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
@@ -164,10 +147,11 @@ export default function TutorStudentDetail() {
     const [student, setStudent] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [videos, setVideos] = useState([]);
-    const [scores, setScores] = useState({});
     const [activeTab, setActiveTab] = useState("attendance");
     
     // ✨ Pagination States
+    const [examSummary, setExamSummary] = useState(null);
+    const [examData, setExamData] = useState(null);
     const [attendancePage, setAttendancePage] = useState(1);
     const [videosPage, setVideosPage] = useState(1);
     const itemsPerPage = 10; // จำนวนรายการต่อหน้า
@@ -191,7 +175,16 @@ export default function TutorStudentDetail() {
                     totalClassHeld: found.totalClassHeld ?? 0,
                 });
 
-                setScores(generateMockScores(sid));
+                // คะแนนสอบจริงข้ามทุกวิชาในคอร์ส (endpoint เดียวกับหน้ารายชื่อ)
+                try {
+                    const sumRes = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`);
+                    setExamSummary(sumRes.data);
+                    setExamData((sumRes.data.students || []).find((s) => String(s.userId) === String(sid)) || null);
+                } catch (err) {
+                    console.error("Fetch exam summary failed:", err);
+                    setExamSummary(null);
+                    setExamData(null);
+                }
 
                 try {
                     const attRes = await axios.get(
@@ -247,19 +240,23 @@ export default function TutorStudentDetail() {
         videosPage * itemsPerPage
     );
 
-    const getAverageImprovement = () => {
-        if (!scores || !Object.keys(scores).length) return "+0";
-        const vals = Object.values(scores).map(s => parseFloat(s.improvement.replace('+', '')));
-        const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
-        return avg > 0 ? `+${avg.toFixed(0)}` : avg.toFixed(0);
-    };
-    
+    // พัฒนาการรวมทั้งแพ็กเกจ — คิดจากคะแนนจริง ปรับฐานทุกวิชาเป็น 20 คะแนนแล้วรวม
+    // และนับเฉพาะวิชาที่สอบครบทั้งรอบแรกกับรอบเทียบ (backend คัดมาให้แล้ว)
+    const improvement = examData?.improvement || null;
+    const fmtDelta = (d) => (d > 0 ? `+${Math.round(d * 10) / 10}` : `${Math.round(d * 10) / 10}`);
+
+    const getAverageImprovement = () => (improvement ? fmtDelta(improvement.delta) : "—");
+
     const getOverallTrend = () => {
-        if (!scores || !Object.keys(scores).length) return "stable";
-        const trends = Object.values(scores).map(s => s.trend);
-        const up = trends.filter(t => t === "up").length;
-        const dn = trends.filter(t => t === "down").length;
-        return up > dn ? "up" : dn > up ? "down" : "stable";
+        if (!improvement) return "stable";
+        return improvement.delta > 0 ? "up" : improvement.delta < 0 ? "down" : "stable";
+    };
+
+    // พัฒนาการรายวิชา: เทียบรอบแรก → รอบล่าสุดที่มีของวิชานั้น
+    const subjectDelta = (s) => {
+        const to = s.post != null ? s.post : s.mid;
+        if (s.pre == null || to == null) return null;
+        return Math.round((to - s.pre) * 100) / 100;
     };
 
     const getTrendIcon = (trend) => {
@@ -307,6 +304,10 @@ export default function TutorStudentDetail() {
                             <span className="bg-white border rounded px-2 py-0.5">🏫 {student.school}</span>
                             <span className="bg-white border rounded px-2 py-0.5">📞 {student.phone}</span>
                             <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{student.gradeLevel}</span>
+                            {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
+                            {student.gpa && student.gpa !== '-' && (
+                                <span className="bg-white border rounded px-2 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA (ร.ร.) {student.gpa}</span>
+                            )}
                         </div>
                     </div>
                     <div className="flex gap-3 flex-wrap">
@@ -321,10 +322,13 @@ export default function TutorStudentDetail() {
                             <p className="text-xs text-neutral-400">{watchedCount}/{videos.length} คลิป</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-4 py-2 text-center ${getTrendColor(getOverallTrend())}`}>
-                            <p className="text-xs mb-0.5 opacity-70">พัฒนาการ</p>
+                            <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
                             <div className="flex items-center justify-center gap-1">
                                 {getTrendIcon(getOverallTrend())}
                                 <p className="text-lg font-bold">{getAverageImprovement()}</p>
+                            </div>
+                            <div className="text-xs text-neutral-400">
+                                {improvement ? `${fmtScoreNum(improvement.from)} → ${fmtScoreNum(improvement.to)} / ${improvement.max}` : "ยังไม่มีข้อมูลสอบ"}
                             </div>
                         </div>
                     </div>
@@ -486,64 +490,118 @@ export default function TutorStudentDetail() {
             )}
 
 
-            {/* ── Tab: Scores (ย้ายมาจาก TutorStudents) ── */}
+            {/* ── Tab: Scores — คะแนนจริงข้ามทุกวิชาในแพ็กเกจ ── */}
             {activeTab === "scores" && (
                 <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                             <Award className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">คะแนนสอบทั้ง 5 วิชาหลัก</h2>
+                            <h2 className="font-bold text-neutral-900">
+                                คะแนนสอบ{examSummary?.subjectCount ? ` ${examSummary.subjectCount} วิชาในแพ็กเกจ` : ""}
+                            </h2>
                         </div>
-                        <span className="text-xs text-neutral-400 bg-neutral-100 px-2 py-1 rounded-full">ข้อมูลจำลอง</span>
+                        {examSummary?.packageMax ? (
+                            <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-full">
+                                เต็ม {examSummary.packageMax} คะแนน (วิชาละ {examSummary.cap})
+                            </span>
+                        ) : null}
                     </div>
-                    <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50 flex items-center justify-between">
-                        <span className="text-xs text-neutral-500">พัฒนาการรวมเฉลี่ย</span>
-                        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-sm font-bold ${getTrendColor(getOverallTrend())}`}>
-                            {getTrendIcon(getOverallTrend())}
-                            {getAverageImprovement()} คะแนน
-                        </div>
+
+                    {/* สรุปพัฒนาการรวมทั้งแพ็กเกจ */}
+                    <div className="px-5 py-3.5 border-b border-neutral-100 bg-neutral-50">
+                        {improvement ? (
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                    <p className="text-sm font-bold text-neutral-800">
+                                        พัฒนาการรวม {fmtScoreNum(improvement.from)} → {fmtScoreNum(improvement.to)}
+                                        <span className="text-neutral-400 font-semibold"> จาก {improvement.max}</span>
+                                    </p>
+                                    <p className="text-xs text-neutral-500 mt-0.5">
+                                        นับ {improvement.subjectsCounted} วิชาที่สอบครบทั้งสองรอบ
+                                        {improvement.basis === "pre-mid" ? " · เทียบ ก่อนเรียน → กลางภาค (ยังไม่มีหลังเรียน)" : " · เทียบ ก่อนเรียน → หลังเรียน"}
+                                    </p>
+                                </div>
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-bold ${getTrendColor(getOverallTrend())}`}>
+                                    {getTrendIcon(getOverallTrend())}
+                                    {getAverageImprovement()} คะแนน
+                                </div>
+                            </div>
+                        ) : examData?.latest ? (
+                            <p className="text-sm text-neutral-600">
+                                สอบแล้ว {examData.latest.subjectsCounted} วิชา ได้ {fmtScoreNum(examData.latest.score)} จาก {examData.latest.max} คะแนน
+                                <span className="text-neutral-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังมีแค่รอบเดียว</span>
+                            </p>
+                        ) : (
+                            <p className="text-sm text-neutral-400">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
+                        )}
+
+                        {examSummary?.hasNonStandardMax && (
+                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-2.5">
+                                มีข้อสอบบางรอบที่ตั้งคะแนนเต็มไม่ตรง {examSummary.cap} คะแนน — ระบบปรับฐานให้เป็น {examSummary.cap} ก่อนรวมแล้ว
+                                ตัวเลขที่เห็นจึงเทียบกันได้ แต่ควรกลับไปแก้ให้ตรงเพดานที่หน้าจัดการข้อสอบ
+                            </p>
+                        )}
                     </div>
+
+                    {/* รายวิชา */}
                     <div className="p-5 space-y-3">
-                        {subjects.map((subject) => {
-                            const s = scores[subject];
-                            if (!s) return null;
+                        {(examData?.bySubject || []).map((s, idx) => {
+                            const delta = subjectDelta(s);
+                            const trend = delta == null ? "stable" : delta > 0 ? "up" : delta < 0 ? "down" : "stable";
+                            const untested = s.pre == null && s.mid == null && s.post == null;
                             return (
-                                <div key={subject} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-                                    <div className="flex items-center justify-between mb-3">
+                                <div key={s.subjectId} className={`rounded-xl p-4 border ${untested ? "bg-neutral-50/60 border-neutral-200 border-dashed" : "bg-neutral-50 border-neutral-200"}`}>
+                                    <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-3 h-3 rounded-full ${subjectColors[subject]}`} />
-                                            <span className="font-semibold text-neutral-900">{subject}</span>
+                                            <div className={`w-3 h-3 rounded-full ${untested ? "bg-neutral-300" : SUBJECT_DOT_COLORS[idx % SUBJECT_DOT_COLORS.length]}`} />
+                                            <span className="font-semibold text-neutral-900">{s.subjectName}</span>
+                                            {s.nonStandardMax && (
+                                                <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">ปรับฐานเป็น {s.cap}</span>
+                                            )}
                                         </div>
-                                        <div className={`px-2 py-1 rounded-full flex items-center gap-1 text-xs border ${getTrendColor(s.trend)}`}>
-                                            {getTrendIcon(s.trend)}
-                                            <span className="font-bold">{s.improvement}</span>
-                                        </div>
+                                        {untested ? (
+                                            <span className="text-xs text-neutral-400 font-medium">ยังไม่ได้สอบวิชานี้</span>
+                                        ) : delta == null ? (
+                                            <span className="text-xs text-neutral-400 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
+                                        ) : (
+                                            <div className={`px-2 py-1 rounded-full flex items-center gap-1 text-xs border ${getTrendColor(trend)}`}>
+                                                {getTrendIcon(trend)}
+                                                <span className="font-bold">{fmtDelta(delta)}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <div className="bg-white p-2 rounded-lg text-center border border-neutral-200">
-                                            <p className="text-xs text-neutral-500 mb-1">ก่อนเรียน</p>
-                                            <p className="text-lg font-bold text-neutral-900">{s.preTest}</p>
-                                        </div>
-                                        <div className="bg-white p-2 rounded-lg text-center border border-neutral-200">
-                                            <p className="text-xs text-neutral-500 mb-1">กลางภาค</p>
-                                            <p className="text-lg font-bold text-neutral-900">{s.midTerm}</p>
-                                        </div>
-                                        <div className="bg-orange-50 p-2 rounded-lg text-center border border-orange-200">
-                                            <p className="text-xs text-orange-600 mb-1">หลังเรียน</p>
-                                            <p className="text-lg font-bold text-orange-600">{s.postTest}</p>
-                                        </div>
-                                        <div className="flex items-end justify-center gap-1 bg-white p-2 rounded-lg border border-neutral-200">
-                                            {["preTest", "midTerm", "postTest"].map((test, idx) => (
-                                                <div key={idx}
-                                                    className={`w-2 rounded-t ${idx === 2 ? "bg-orange-500" : "bg-neutral-300"}`}
-                                                    style={{ height: `${Math.max((s[test] / 100) * 30, 2)}px` }}
-                                                />
-                                            ))}
-                                        </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[
+                                            { label: "ก่อนเรียน", val: s.pre, hi: false },
+                                            { label: "กลางภาค", val: s.mid, hi: false },
+                                            { label: "หลังเรียน", val: s.post, hi: true },
+                                        ].map((cell) => (
+                                            <div key={cell.label} className={`p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-neutral-200"}`}>
+                                                <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-neutral-500"}`}>{cell.label}</p>
+                                                <p className={`text-lg font-bold ${cell.val == null ? "text-neutral-300" : cell.hi ? "text-orange-600" : "text-neutral-900"}`}>
+                                                    {cell.val == null ? "—" : fmtScoreNum(cell.val)}
+                                                    {cell.val != null && <span className="text-xs font-semibold text-neutral-400">/{s.cap}</span>}
+                                                </p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             );
                         })}
+
+                        {examData && (examData.untestedSubjects || []).length > 0 && (
+                            <p className="text-xs text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
+                                วิชาที่ยังไม่ได้สอบเลย: {examData.untestedSubjects.join(", ")} — คะแนนรวมด้านบนจึงไม่ได้นับวิชาเหล่านี้
+                            </p>
+                        )}
+
+                        {!examData && (
+                            <div className="text-center py-10">
+                                <Award className="h-10 w-10 text-neutral-200 mx-auto mb-2" />
+                                <p className="text-sm text-neutral-400">ยังไม่มีข้อมูลการสอบ</p>
+                                <p className="text-xs text-neutral-400 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

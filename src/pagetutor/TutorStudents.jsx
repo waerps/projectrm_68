@@ -328,6 +328,11 @@ export default function TutorStudents() {
                                                 <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border">🏫 {student.school}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">{student.gradeLevel}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">อายุ {calculateAge(student.birthDate)} ปี</div>
+                                                {/* GPA เป็นเกรดจากโรงเรียนของนักเรียน ไม่ใช่ผลจากระบบเรา จึงย้ายมาอยู่กับข้อมูลโปรไฟล์
+                                                    ไม่ให้ปนกับตัวชี้วัดผลการเรียนของสถาบัน (เข้าเรียน/ดูคลิป/พัฒนาการ) */}
+                                                {student.gpa && student.gpa !== '-' && (
+                                                    <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA (ร.ร.) {student.gpa}</div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -351,7 +356,7 @@ export default function TutorStudents() {
                             </div>
 
                             {/* Quick Overview (stats cards ยังคงอยู่) */}
-                            <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4 bg-neutral-50">
+                            <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-50">
                                 <div className="bg-white rounded-xl p-3 border border-neutral-200">
                                     <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">การเข้าเรียน</span></div>
                                     {getAttendanceRate(student) === null ? <p className="text-xs text-neutral-400">ยังไม่มีข้อมูล</p> : (
@@ -407,12 +412,6 @@ export default function TutorStudents() {
                                     ) : (
                                         <p className="text-lg font-bold text-neutral-300">ยังไม่มีข้อมูลสอบ</p>
                                     )}
-                                </div>
-                                <div className="bg-white rounded-xl p-3 border border-neutral-200">
-                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-purple-600" /><span className="text-xs font-semibold text-neutral-700">เกรดเฉลี่ย (GPA)</span></div>
-                                    <p className={`text-lg font-bold ${student.gpa >= 3.5 ? 'text-green-600' : student.gpa >= 2.5 ? 'text-orange-500' : student.gpa === '-' ? 'text-neutral-400' : 'text-red-500'}`}>
-                                        {student.gpa}
-                                    </p>
                                 </div>
                             </div>
 
