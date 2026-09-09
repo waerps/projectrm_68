@@ -8,6 +8,7 @@ import {
     ChevronLeft, Users
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { fmtScore as fmtScoreNum } from "../utils/examScore";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -21,9 +22,9 @@ export default function TutorStudents() {
     const [courseInfo, setCourseInfo] = useState({ name: "กำลังโหลด...", studentCount: 0 });
     const [students, setStudents] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [examSummary, setExamSummary] = useState(null);
     const navigate = useNavigate();
 
-    const subjects = ["คณิต", "ไทย", "วิทย์", "สังคม", "อังกฤษ"];
 
     const getReportData = () => filteredStudents.map(student => ({
         ชื่อ: student.name,
@@ -34,7 +35,9 @@ export default function TutorStudents() {
             : "ไม่มีข้อมูล",
         ดูคลิป: `${Math.round((student.videoViews / student.totalVideos) * 100)}%`,
         GPA: student.gpa ?? "-",
-        พัฒนาการ: getAverageImprovement(student),
+        พัฒนาการ: student.exam?.improvement
+            ? `${student.exam.improvement.from} → ${student.exam.improvement.to} จาก ${student.exam.improvement.max} (${getAverageImprovement(student)})`
+            : "ยังไม่มีข้อมูลสอบ",
     }));
 
     const downloadExcel = () => {
@@ -73,30 +76,24 @@ export default function TutorStudents() {
         printWindow.document.close();
     };
 
-    const generateMockScores = (seedId) => {
-        const mockScores = {};
-        subjects.forEach(sub => {
-            const safeSeed = seedId || 1;
-            const preTest = 40 + (safeSeed * 5 % 30);
-            const midTerm = preTest + 10;
-            const postTest = midTerm + (safeSeed % 2 === 0 ? 15 : -5);
-            const improvement = postTest - preTest;
-            mockScores[sub] = {
-                preTest, midTerm, postTest,
-                trend: improvement > 0 ? "up" : improvement < 0 ? "down" : "stable",
-                improvement: improvement > 0 ? `+${improvement}` : `${improvement}`
-            };
-        });
-        return mockScores;
-    };
-
     useEffect(() => {
         const fetchData = async () => {
             if (!courseId || courseId === "undefined") { setLoading(false); return; }
             try {
-                const response = await axios.get(`${API_URL}/coursestutor/${courseId}/students`);
+                // ดึงรายชื่อนักเรียน + สรุปคะแนนสอบข้ามวิชาพร้อมกัน (สรุปคะแนนพลาดได้ ไม่ทำให้หน้าพัง)
+                const [response, summaryRes] = await Promise.all([
+                    axios.get(`${API_URL}/coursestutor/${courseId}/students`),
+                    axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`).catch((err) => {
+                        console.error("Fetch exam summary failed:", err);
+                        return null;
+                    }),
+                ]);
                 const dataFromApi = response.data;
                 setCourseInfo(dataFromApi.courseInfo);
+
+                const summary = summaryRes?.data || null;
+                setExamSummary(summary);
+                const examByUserId = new Map((summary?.students || []).map((s) => [s.userId, s]));
                 const mappedStudents = dataFromApi.students.map((std, index) => {
                     const studentId = std.UserId || std.id || (index + 1);
                     return {
@@ -110,9 +107,9 @@ export default function TutorStudents() {
                         birthDate: std.BirthOfDate ?? null,
                         totalAttended: std.totalAttended ?? 0,
                         totalClassHeld: std.totalClassHeld ?? 0,
-                        scores: generateMockScores(studentId),
-                        videoViews: 50 + (studentId * 10 % 50),
-                        totalVideos: 100,
+                        exam: examByUserId.get(studentId) || null,   // คะแนนสอบจริงข้ามทุกวิชา
+                        videoViews: 50 + (studentId * 10 % 50),      // TODO(รอบ C): ยังเป็นค่าปลอม
+                        totalVideos: 100,                             // TODO(รอบ C): ยังเป็นค่าปลอม
                     };
                 });
                 setStudents(mappedStudents);
@@ -140,21 +137,20 @@ export default function TutorStudents() {
         return "text-yellow-600 bg-yellow-50 border-yellow-200";
     };
 
+    // ตัวเลขพัฒนาการรวมทั้งแพ็กเกจ — คิดจากคะแนนสอบจริง ปรับฐานทุกวิชาเป็น 20 คะแนนแล้วรวมกัน
+    // นับเฉพาะวิชาที่สอบครบทั้งรอบแรกและรอบเทียบ (ฝั่ง backend คัดมาให้แล้ว)
+    const fmtDelta = (d) => (d > 0 ? `+${Math.round(d * 10) / 10}` : `${Math.round(d * 10) / 10}`);
+
     const getAverageImprovement = (student) => {
-        if (!student.scores) return "+0";
-        const improvements = Object.values(student.scores).map(s => parseFloat(s.improvement.replace('+', '')));
-        const avg = improvements.reduce((a, b) => a + b, 0) / improvements.length;
-        return avg > 0 ? `+${avg.toFixed(0)}` : avg.toFixed(0);
+        const imp = student.exam?.improvement;
+        if (!imp) return "—";
+        return fmtDelta(imp.delta);
     };
 
     const getOverallTrend = (student) => {
-        if (!student.scores) return "stable";
-        const trends = Object.values(student.scores).map(s => s.trend);
-        const upCount = trends.filter(t => t === "up").length;
-        const downCount = trends.filter(t => t === "down").length;
-        if (upCount > downCount) return "up";
-        if (downCount > upCount) return "down";
-        return "stable";
+        const imp = student.exam?.improvement;
+        if (!imp) return "stable";
+        return imp.delta > 0 ? "up" : imp.delta < 0 ? "down" : "stable";
     };
 
     const calculateAge = (birthDate) => {
@@ -338,10 +334,12 @@ export default function TutorStudents() {
 
                                     {/* ── ลบ expandedStudent button ออก เหลือแค่ trend + ปุ่มดูรายละเอียด ── */}
                                     <div className="flex items-center gap-2 md:gap-3">
-                                        <div className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}>
-                                            {getTrendIcon(getOverallTrend(student))}
-                                            <span className="font-bold text-sm">{getAverageImprovement(student)}</span>
-                                        </div>
+                                        {student.exam?.improvement && (
+                                            <div className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}>
+                                                {getTrendIcon(getOverallTrend(student))}
+                                                <span className="font-bold text-sm">{getAverageImprovement(student)}</span>
+                                            </div>
+                                        )}
                                         <button
                                             onClick={() => navigate(`/tutor/students/detail?courseId=${courseId}&studentId=${student.id}`)}
                                             className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition"
@@ -382,9 +380,33 @@ export default function TutorStudents() {
                                 </div>
                                 <div className="bg-white rounded-xl p-3 border border-neutral-200">
                                     <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">พัฒนาการรวม</span></div>
-                                    <p className={`text-lg font-bold ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
-                                        {getAverageImprovement(student)}
-                                    </p>
+                                    {student.exam?.improvement ? (
+                                        <>
+                                            <p className="text-lg font-bold text-neutral-800">
+                                                {fmtScoreNum(student.exam.improvement.from)} → {fmtScoreNum(student.exam.improvement.to)}
+                                                <span className="text-sm font-semibold text-neutral-400"> จาก {student.exam.improvement.max}</span>
+                                            </p>
+                                            <p className={`text-xs font-bold mt-0.5 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
+                                                {getAverageImprovement(student)} คะแนน
+                                                <span className="font-medium text-neutral-400">
+                                                    {" "}({student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา
+                                                    {student.exam.improvement.basis === 'pre-mid' ? " · เทียบ Pre→Mid" : ""})
+                                                </span>
+                                            </p>
+                                        </>
+                                    ) : student.exam?.latest ? (
+                                        <>
+                                            <p className="text-lg font-bold text-neutral-800">
+                                                {fmtScoreNum(student.exam.latest.score)}
+                                                <span className="text-sm font-semibold text-neutral-400"> จาก {student.exam.latest.max}</span>
+                                            </p>
+                                            <p className="text-xs text-neutral-400 mt-0.5">
+                                                สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <p className="text-lg font-bold text-neutral-300">ยังไม่มีข้อมูลสอบ</p>
+                                    )}
                                 </div>
                                 <div className="bg-white rounded-xl p-3 border border-neutral-200">
                                     <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-purple-600" /><span className="text-xs font-semibold text-neutral-700">เกรดเฉลี่ย (GPA)</span></div>

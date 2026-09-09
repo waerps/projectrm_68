@@ -1613,14 +1613,14 @@ function QuestionFlagsCard({ flags, submittedCount }) {
       <div className="flex items-start gap-2.5">
         <Flag className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-bold text-neutral-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
-          <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+          <p className="text-base font-bold text-neutral-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
+          <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
             รวมพฤติกรรมระหว่างสอบตามข้อ เพื่อดูว่าปัญหาอยู่ที่โจทย์หรือที่การหาคำตอบ — ไม่ใช่ข้อสรุปว่าใครทุจริต
           </p>
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         {notable.map((f) => {
           const pct = f.answeredCount ? Math.round((f.correctCount / f.answeredCount) * 100) : null;
           // อ่านความหมายให้ติวเตอร์เลย ไม่ต้องตีความเอง
@@ -1639,25 +1639,25 @@ function QuestionFlagsCard({ flags, submittedCount }) {
             tone = "text-neutral-500";
           }
           return (
-            <div key={f.questionId} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3.5 py-2.5">
+            <div key={f.questionId} className="border border-neutral-100 bg-neutral-50/60 rounded-xl p-4">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-xs font-semibold text-neutral-800 min-w-0">
+                <p className="text-sm font-semibold text-neutral-800 min-w-0">
                   <span className="text-amber-600">ข้อ {f.no}</span>
                   {f.category ? <span className="text-neutral-400 font-medium"> · {f.category}</span> : null}
-                  <span className="block text-neutral-500 font-normal mt-0.5 line-clamp-2">{f.text}</span>
+                  <span className="block text-neutral-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
                 </p>
-                <p className="text-[11px] text-neutral-500 whitespace-nowrap flex-shrink-0 text-right">
+                <p className="text-sm font-semibold text-neutral-600 whitespace-nowrap flex-shrink-0 text-right">
                   {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีคนส่ง"}
                 </p>
               </div>
-              <p className="text-[11px] text-neutral-600 mt-1.5">
+              <p className="text-sm text-neutral-600 mt-2">
                 {f.leaveStudents > 0 && (
                   <>ออกจากหน้าสอบ {f.leaveStudents} คน{submittedCount ? ` จาก ${submittedCount}` : ""} (รวม {formatTime(f.leaveSeconds)})</>
                 )}
                 {f.leaveStudents > 0 && f.copyStudents > 0 && " · "}
                 {f.copyStudents > 0 && <>คัดลอกข้อความ {f.copyStudents} คน</>}
               </p>
-              <p className={`text-[11px] mt-1 leading-relaxed ${tone}`}>{verdict}</p>
+              <p className={`text-sm mt-1.5 leading-relaxed ${tone}`}>{verdict}</p>
             </div>
           );
         })}
