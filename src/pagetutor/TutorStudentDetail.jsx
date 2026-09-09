@@ -231,6 +231,10 @@ export default function TutorStudentDetail() {
 
     const getAverageImprovement = () => (improvement ? fmtDelta(improvement.delta) : "—");
 
+    // "พัฒนาการ" ที่เทียบข้ามคนได้ — backend คำนวณด้วยสูตรกลางตัวเดียวกับหน้าแอดมิน
+    // (ปิดช่องว่างที่ตัวเองมีไปได้กี่ %) ผลต่างคะแนนดิบใช้ดูของคนเดียวได้ แต่เอาไปเทียบข้ามคนไม่ได้
+    const getGrowthText = () => (improvement?.growth == null ? "—" : `${improvement.growth}%`);
+
     const getOverallTrend = () => {
         if (!improvement) return "stable";
         return improvement.delta > 0 ? "up" : improvement.delta < 0 ? "down" : "stable";
@@ -309,11 +313,11 @@ export default function TutorStudentDetail() {
                             <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
                             <div className="flex items-center justify-center gap-1">
                                 {getTrendIcon(getOverallTrend())}
-                                <p className="text-lg font-bold">{getAverageImprovement()}</p>
+                                <p className="text-lg font-bold">{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
                             </div>
                             <div className="text-xs text-neutral-400">
                                 {improvement
-                                    ? `ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
+                                    ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
                                     : "ยังไม่มีข้อมูลสอบ"}
                             </div>
                         </div>
@@ -510,10 +514,25 @@ export default function TutorStudentDetail() {
                                             : ""}
                                         {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบหลังเรียน จึงเทียบกับกลางภาคก่อน" : ""}
                                     </p>
+                                    {improvement.growth != null && (
+                                        <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
+                                            คิดเป็นพัฒนาการ <span className="font-bold text-neutral-700">{getGrowthText()}</span>
+                                            {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังเหลือช่องว่างให้พัฒนาอีก {improvement.room} จุด
+                                            {" "}และปิดช่องว่างนั้นไปได้ {getGrowthText()}
+                                            {improvement.growthCapped
+                                                ? " · นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
+                                                : ""}
+                                        </p>
+                                    )}
                                 </div>
-                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-bold ${getTrendColor(getOverallTrend())}`}>
-                                    {getTrendIcon(getOverallTrend())}
-                                    {getAverageImprovement()} คะแนน
+                                <div className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-full border ${getTrendColor(getOverallTrend())}`}>
+                                    <span className="flex items-center gap-1.5 text-sm font-bold">
+                                        {getTrendIcon(getOverallTrend())}
+                                        {improvement.growth != null ? getGrowthText() : `${getAverageImprovement()} คะแนน`}
+                                    </span>
+                                    {improvement.growth != null && (
+                                        <span className="text-[10px] font-medium opacity-70">{getAverageImprovement()} คะแนน</span>
+                                    )}
                                 </div>
                             </div>
                         ) : examData?.latest ? (

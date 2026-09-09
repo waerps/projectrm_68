@@ -56,9 +56,11 @@ export default function TutorStudents() {
             : "ไม่มีข้อมูล",
         ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
         GPA: student.gpa ?? "-",
-        พัฒนาการ: student.exam?.improvement
+        คะแนนสอบ: student.exam?.improvement
             ? `ก่อนเรียน ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
             : "ยังไม่มีข้อมูลสอบ",
+        // แยกคอลัมน์: คะแนนดิบใช้ดูรายคน ส่วน "พัฒนาการ" คือตัวที่เอาไปเรียง/เทียบข้ามคนได้
+        พัฒนาการ: getGrowthText(student),
     }));
 
     const downloadExcel = () => {
@@ -170,6 +172,18 @@ export default function TutorStudents() {
         return fmtDelta(imp.delta);
     };
 
+    // ตัวเลข "พัฒนาการ" ที่ใช้เทียบข้ามคนได้จริง — backend คำนวณด้วยสูตรกลางตัวเดียว
+    // กับหน้าแอดมิน (ปิดช่องว่างที่ตัวเองมีไปได้กี่ %) ห้ามเอาผลต่างคะแนนดิบมาเทียบข้ามคน
+    // เพราะเด็กที่ทำรอบแรกได้สูงอยู่แล้วมีเพดานให้เพิ่มน้อยกว่าโดยธรรมชาติ
+    const getGrowth = (student) => {
+        const g = student.exam?.improvement?.growth;
+        return g == null ? null : g;
+    };
+    const getGrowthText = (student) => {
+        const g = getGrowth(student);
+        return g == null ? "—" : `${g}%`;
+    };
+
     const getOverallTrend = (student) => {
         const imp = student.exam?.improvement;
         if (!imp) return "stable";
@@ -213,7 +227,9 @@ export default function TutorStudents() {
         )
         .sort((a, b) => {
             if (sortBy === "name") return a.name.localeCompare(b.name, 'th');
-            if (sortBy === "improvement") return parseFloat(getAverageImprovement(b).replace('+', '')) - parseFloat(getAverageImprovement(a).replace('+', ''));
+            // เรียงด้วย growth (ปรับเพดานแล้ว) ไม่ใช่ผลต่างคะแนนดิบ — ถ้าเรียงด้วยผลต่างดิบ
+            // เด็กที่ทำรอบแรกได้สูงจะร่วงท้ายตารางเสมอทั้งที่พัฒนาขึ้นจริง
+            if (sortBy === "improvement") return (getGrowth(b) ?? -1) - (getGrowth(a) ?? -1);
             if (sortBy === "videoProgress") return (b.videoViews / b.totalVideos) - (a.videoViews / a.totalVideos);
             if (sortBy === "attendance") return (getAttendanceRate(b) ?? -1) - (getAttendanceRate(a) ?? -1);
             if (sortBy === "gpa") return (parseFloat(b.gpa) || 0) - (parseFloat(a.gpa) || 0);
@@ -363,9 +379,12 @@ export default function TutorStudents() {
                                     {/* ── ลบ expandedStudent button ออก เหลือแค่ trend + ปุ่มดูรายละเอียด ── */}
                                     <div className="flex items-center gap-2 md:gap-3">
                                         {student.exam?.improvement && (
-                                            <div className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}>
+                                            <div
+                                                className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}
+                                                title={`พัฒนาการ ${getGrowthText(student)} — ปิดช่องว่างที่เหลือจากรอบแรกไปได้เท่านี้ (คะแนนดิบ ${getAverageImprovement(student)} คะแนน)`}
+                                            >
                                                 {getTrendIcon(getOverallTrend(student))}
-                                                <span className="font-bold text-sm">{getAverageImprovement(student)}</span>
+                                                <span className="font-bold text-sm">{getGrowthText(student)}</span>
                                             </div>
                                         )}
                                         <button
@@ -419,6 +438,14 @@ export default function TutorStudents() {
                                                     {" "}· เต็ม {student.exam.improvement.max} (นับ {student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา)
                                                 </span>
                                             </p>
+                                            {student.exam.improvement.growth != null && (
+                                                <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                                                    พัฒนาการ <span className="font-bold text-neutral-700">{getGrowthText(student)}</span> ของช่องว่างที่เหลือ
+                                                    {student.exam.improvement.growthCapped
+                                                        ? " · พื้นฐานสูงอยู่แล้ว ตัวเลขนี้เทียบกับเด็กพื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
+                                                        : ""}
+                                                </p>
+                                            )}
                                         </>
                                     ) : student.exam?.latest ? (
                                         <>
