@@ -1518,7 +1518,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
           s.ImprovementScore != null ? (
             <>
               <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
-                sub={`${s.PreTestScore}% → ${s.PostTestScore}% (${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta} จุด จากพื้นที่ที่เหลือให้พัฒนา ${s.ImprovementRoom} จุด)`} />
+                sub={`${s.PreTestScore}% → ${s.PostTestScore}% (เพิ่มขึ้น ${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta}% จากช่องว่างที่มีอยู่ ${s.ImprovementRoom}%)`} />
               <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
                 sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
               {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}

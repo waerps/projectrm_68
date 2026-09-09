@@ -148,14 +148,14 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
         <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
           <div className="flex items-center justify-between mb-2">
             <p className="font-semibold text-slate-900">
-              {i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`}
+              {i.IsAnonymous ? "ไม่เปิดเผยตัวตน" : (i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`)}
               <span className="ml-2 text-xs font-normal text-slate-400">
                 ({i.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"})
               </span>
             </p>
             {i.IsAnonymous ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full text-[11px] font-semibold">
-                <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน (คู่กรณีไม่เห็น)
+                <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน — ไม่มีใครเห็น รวมถึงแอดมิน
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-semibold">
@@ -485,7 +485,9 @@ export default function AdminIncidents() {
                   const typeMeta = getIncidentTypeById(inc.IncidentTypeId);
                   const statusMeta = STATUS_META[inc.Status] || STATUS_META.new;
                   const needsUrgentReview = inc.Severity === SEVERITY.CRITICAL && inc.Status === "new";
-                  const reporterName = inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`;
+                  const reporterName = inc.IsAnonymous
+                    ? "ไม่เปิดเผยตัวตน"
+                    : (inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`);
 
                   return (
                     <tr key={inc.IncidentId}

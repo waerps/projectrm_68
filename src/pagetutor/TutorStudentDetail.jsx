@@ -517,8 +517,7 @@ export default function TutorStudentDetail() {
                                     {improvement.growth != null && (
                                         <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
                                             คิดเป็นพัฒนาการ <span className="font-bold text-neutral-700">{getGrowthText()}</span>
-                                            {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังเหลือช่องว่างให้พัฒนาอีก {improvement.room} จุด
-                                            {" "}และปิดช่องว่างนั้นไปได้ {getGrowthText()}
+                                            {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังมีช่องว่างให้พัฒนาอีก {improvement.room}% และปิดช่องว่างนั้นไปได้แล้ว {getGrowthText()}
                                             {improvement.growthCapped
                                                 ? " · นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
                                                 : ""}
