@@ -13,7 +13,7 @@ import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
   deriveStatus, isExamReady, formatTime,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
-  fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
+  fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion, deleteAllQuestions,
   bulkUpdateQuestionScores,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchSubjectCategories, renameSubjectCategory,
@@ -449,6 +449,8 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [showManageCategories, setShowManageCategories] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   // ── ตัวช่วยแบ่งคะแนนให้ครบเพดาน 20 ต่อรอบ ────────────────────────────────
   // ติวเตอร์ใส่ข้อสอบกี่ข้อก็ได้ ระบบหารให้เอง และกระจายเศษให้ผลรวมเท่ากับ 20.00 พอดี
@@ -517,6 +519,22 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
     }
   };
 
+  // ล้างข้อสอบทั้งชุด — ใช้ตอนอยากเริ่มใหม่/import ชุดใหม่ทับ
+  const handleClearAll = async () => {
+    setClearing(true);
+    setFormError("");
+    try {
+      await deleteAllQuestions(examId);
+      await onChanged();
+      setConfirmClearAll(false);
+    } catch (err) {
+      console.error("Clear all questions failed:", err);
+      setFormError(err.response?.data?.message || "ลบข้อสอบทั้งชุดไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const handleDelete = async (questionId) => {
     setDeletingId(questionId);
     try {
@@ -534,6 +552,14 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
             <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
         <div className="flex items-center gap-2">
+          {questions.length > 0 && !editingId && !locked && (
+            <button
+              onClick={() => setConfirmClearAll(true)}
+              className="flex items-center gap-1.5 border border-neutral-200 hover:border-red-300 hover:bg-red-50 text-neutral-500 hover:text-red-600 rounded-xl px-3 py-2 text-sm font-semibold transition"
+            >
+              <Trash2 className="h-4 w-4" /> ลบทั้งชุด
+            </button>
+          )}
           {categoryOptions.length > 0 && (
             <button onClick={() => setShowManageCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-600 hover:text-orange-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
               <Tags className="h-4 w-4" /> จัดการหมวดหมู่
@@ -546,6 +572,37 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
           )}
         </div>
       </div>
+
+      {/* ยืนยันก่อนล้างทั้งชุด — เป็นการกระทำที่ย้อนกลับไม่ได้จากหน้าจอ จึงต้องกดยืนยันอีกชั้น */}
+      {confirmClearAll && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !clearing && setConfirmClearAll(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-neutral-900">ลบข้อสอบทั้งชุด {questions.length} ข้อ?</p>
+                <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
+                  ใช้ตอนอยากล้างชุดเดิมเพื่อนำเข้าข้อสอบใหม่ทับ — กดแล้วข้อสอบทั้งหมดในรอบนี้จะหายไปจากหน้าจัดการ
+                </p>
+                <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+                  ผลสอบของนักเรียนที่ส่งไปแล้วไม่ได้รับผลกระทบ เพราะคะแนนถูกแช่แข็งไว้ตั้งแต่ตอนตัดเกรด
+                </p>
+              </div>
+            </div>
+            {formError && <p className="text-xs text-red-500">{formError}</p>}
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setConfirmClearAll(false)} disabled={clearing} className="px-4 py-2 text-sm font-semibold text-neutral-500 hover:text-neutral-700 disabled:opacity-40">
+                ยกเลิก
+              </button>
+              <button onClick={handleClearAll} disabled={clearing} className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl px-4 py-2 text-sm font-bold transition">
+                {clearing ? "กำลังลบ…" : `ลบทั้งหมด ${questions.length} ข้อ`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showManageCategories && (
         <ManageCategoriesModal
@@ -1198,18 +1255,22 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 // เดิมกางทั้งหมดตลอดเวลา พอข้อสอบเยอะ ๆ หน้าจะยาวและอ่านยาก
 function QuestionPeriods({ periods }) {
   const [open, setOpen] = useState(false);
-  if (!periods || periods.length <= 1) return null;
+  // นับเฉพาะช่วงที่ยาวตั้งแต่ 1 วินาทีขึ้นไป — ช่วง 0 วินาทีไม่มีความหมายให้อ่าน
+  // และเป็นร่องรอยจากข้อมูลเก่าที่ระบบเคยบันทึกซ้ำตอนนักเรียนกดเลือกคำตอบ
+  // (ต้นตอนั้นแก้ที่ StudentExam.jsx แล้ว ข้อมูลใหม่จะไม่มีช่วงลักษณะนี้อีก)
+  const shown = (periods || []).filter((p) => (Number(p?.seconds) || 0) >= 1);
+  if (shown.length <= 1) return null;
   return (
     <div className="pl-5 mt-1">
       <button
         onClick={() => setOpen((v) => !v)}
         className="text-[11px] text-neutral-400 hover:text-neutral-600 transition font-medium"
       >
-        {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({periods.length} ครั้ง) {open ? "▲" : "▼"}
+        {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({shown.length} ครั้ง) {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="mt-1 space-y-0.5">
-          {periods.map((p, pi) => (
+          {shown.map((p, pi) => (
             <p key={pi} className="text-[11px] text-neutral-400">
               ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
             </p>

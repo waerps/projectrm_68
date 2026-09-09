@@ -176,6 +176,12 @@ export async function bulkUpdateQuestionScores(examId, scores) {
     return data;
 }
 
+// DELETE /api/exam/:examId/questions — ลบข้อสอบทั้งชุดในครั้งเดียว
+export async function deleteAllQuestions(examId) {
+    const { data } = await axios.delete(`${API_BASE}/${examId}/questions`, { headers: authHeaders() });
+    return data;
+}
+
 export async function deleteQuestion(questionId) {
   const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`, { headers: authHeaders() });
   return data;

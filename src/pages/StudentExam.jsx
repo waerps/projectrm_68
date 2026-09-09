@@ -17,7 +17,7 @@ function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
   // การ์ดที่เนื้อหายาวจะถูกจัดกึ่งกลางจนลอยขึ้นไปชิด/ทับ navbar
   // โหมดกึ่งกลาง (หน้าเริ่มสอบ) เว้นมากกว่า เพราะการ์ดสั้นกว่าจึงลอยขึ้นไปชิดง่ายกว่า
   return (
-    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start pt-[110px]" : "items-center pt-[150px]"} justify-center px-4 pb-12`}>
+    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start pt-[110px]" : "items-center pt-[128px]"} justify-center px-4 pb-12`}>
       <div className={`w-full ${maxWidth} ${align === "start" ? "mt-8" : ""}`}>
         {children}
       </div>
@@ -187,7 +187,10 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     logQuestionEnter({ examJoinId, userId, questionId: current.id }).catch((err) => {
       console.error('log enter failed:', err);
     });
-  }, [activeIdx, current, examJoinId, userId]);
+    // ผูกกับ current?.id (ตัวเลข) ไม่ใช่ current (object) — เพราะ pickAnswer สร้าง object ใหม่
+    // ทุกครั้งที่นักเรียนเลือกคำตอบ ถ้าผูกกับ object effect จะยิง log ซ้ำสำหรับข้อเดิม
+    // ทำให้ backend ปิดช่วงเวลาเดิมแล้วเปิดใหม่ กลายเป็น "กลับมาทำซ้ำ 2 ครั้ง" ทั้งที่ไม่ได้ย้อนกลับ
+  }, [activeIdx, current?.id, examJoinId, userId]);
 
   // ── ธงคุณภาพข้อมูล: บันทึกการออกจากหน้าสอบ และการคัดลอกข้อความ ──────────────
   // ไม่บล็อกอะไรทั้งสิ้น แค่บันทึกไว้ให้ติวเตอร์ประกอบการอ่านคะแนน (เบราว์เซอร์ไม่มีทางรู้ว่า
