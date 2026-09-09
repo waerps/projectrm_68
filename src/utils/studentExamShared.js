@@ -73,3 +73,15 @@ export async function logQuestionEnter({ examJoinId, userId, questionId }) {
     const { data } = await axios.post(`${API_BASE}/question/enter`, { examJoinId, userId, questionId }, { headers: authHeaders() });
     return data;
 }
+
+// POST /api/student/exam/integrity-log — บันทึก "ธงคุณภาพข้อมูล" ระหว่างสอบ
+// eventType: 'leave' = ออกจากหน้าสอบแล้วกลับมา (ส่ง durationSec มาด้วย) | 'copy' = คัดลอกข้อความในหน้าสอบ
+// ผู้เรียกต้อง .catch() เองเสมอ — การบันทึกล้มเหลวต้องไม่กระทบการทำข้อสอบ
+export async function logIntegrityEvent({ examJoinId, eventType, durationSec = null, questionId = null }) {
+    const { data } = await axios.post(
+        `${API_BASE}/integrity-log`,
+        { examJoinId, eventType, durationSec, questionId },
+        { headers: authHeaders() }
+    );
+    return data;
+}

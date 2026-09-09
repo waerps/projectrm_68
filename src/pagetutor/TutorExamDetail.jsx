@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge, UserX,
+  Tags, Merge, UserX, Flag,
 } from "lucide-react";
 
 import {
@@ -1215,6 +1215,38 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
             </div>
           </div>
 
+          {/* ── ธงคุณภาพข้อมูล ──────────────────────────────────────────────
+              บอกว่า "คะแนนชุดนี้เชื่อถือได้แค่ไหน" ก่อนนำไปวางแผนสอนหรือคุยกับผู้ปกครอง
+              ไม่ใช่ข้อสรุปว่าทุจริต — การสลับแอปอาจมาจากแจ้งเตือนเด้งหรือจอล็อกก็ได้ */}
+          {student?.integrity && (student.integrity.leaveCount > 0 || student.integrity.copyCount > 0) ? (
+            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-bold text-amber-800 mb-1.5 flex items-center gap-1.5">
+                <Flag className="h-4 w-4" /> ธงคุณภาพข้อมูล — ควรตรวจสอบก่อนใช้คะแนนนี้
+              </p>
+              <ul className="text-xs text-amber-700 leading-relaxed space-y-1">
+                {student.integrity.leaveCount > 0 && (
+                  <li>
+                    • ออกจากหน้าสอบ {student.integrity.leaveCount} ครั้ง
+                    {" "}(รวม {formatTime(student.integrity.leaveSeconds)} · นานสุด {formatTime(student.integrity.maxLeaveSeconds)})
+                  </li>
+                )}
+                {student.integrity.copyCount > 0 && (
+                  <li>• คัดลอกข้อความในหน้าสอบ {student.integrity.copyCount} ครั้ง (ข้อสอบเป็นปรนัย ปกติไม่มีเหตุต้องคัดลอก)</li>
+                )}
+              </ul>
+              <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
+                นี่ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือนเด้ง สายเข้า หรือจอล็อกก็ได้
+                แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
+              </p>
+            </div>
+          ) : student?.submittedAt ? (
+            <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+              <p className="text-xs text-emerald-700">
+                ไม่พบพฤติกรรมที่ต้องตรวจสอบระหว่างสอบ — ไม่มีการออกจากหน้าสอบหรือคัดลอกข้อความ คะแนนชุดนี้ใช้อ้างอิงได้ตามปกติ
+              </p>
+            </div>
+          ) : null}
+
           {topicBreakdown && (
             <div className="mb-6">
               <p className="text-sm font-bold text-neutral-800 mb-3">คะแนนรายหัวข้อ</p>
@@ -1648,6 +1680,15 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                        {/* ธงคุณภาพข้อมูล — เตือนให้ตรวจสอบก่อนเชื่อตัวเลข ไม่ใช่การกล่าวหา (ดูรายละเอียดในหน้า "ดูผล") */}
+                        {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
+                          <span
+                            title="มีพฤติกรรมที่ควรตรวจสอบก่อนใช้คะแนนนี้ — กด 'ดูผล' เพื่อดูรายละเอียด"
+                            className="ml-1.5 inline-flex items-center gap-1 align-middle text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"
+                          >
+                            <Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {passed == null ? (
