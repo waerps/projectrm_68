@@ -1233,6 +1233,8 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
 
 // ─── helper: badge ตามคะแนน ──────────────────────────────────────────────────
 function calcStudentBadge(score) {
+  // ยังประเมินไม่ได้ — ห้ามตกไปเข้าเกณฑ์ "ต้องพัฒนา" เพราะยังไม่มีข้อมูลจะตัดสิน
+  if (score == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
   if (score >= 90) return { label: 'ดีเยี่ยม', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
   if (score >= 80) return { label: 'ดีมาก', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
   if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
@@ -1243,7 +1245,9 @@ function calcStudentBadge(score) {
 // ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
 function topScoreGroups(sortedList, groupCount = 3) {
   const groups = [];
-  for (const item of sortedList) {
+  // เอาเฉพาะคนที่ประเมินได้ (มี Post-test แล้ว) ขึ้นโพเดียม
+  // คนที่ยังไม่ได้สอบไม่ควรไปแข่งอันดับกับคนที่มีข้อมูลครบ
+  for (const item of sortedList.filter((s) => s.Evaluable !== false)) {
     const last = groups[groups.length - 1];
     if (last && last.score === item.PerformanceScore) {
       last.members.push(item);
@@ -1259,9 +1263,13 @@ function topScoreGroups(sortedList, groupCount = 3) {
 function withCompetitionRank(sortedList) {
   let rank = 0;
   let prevScore = null;
-  return sortedList.map((item, idx) => {
+  let idx = 0;
+  return sortedList.map((item) => {
+    // คนที่ยังประเมินไม่ได้ ไม่มีอันดับ (_rank = null) และไม่กินเลขอันดับของคนอื่น
+    if (item.Evaluable === false) return { ...item, _rank: null };
     if (item.PerformanceScore !== prevScore) rank = idx + 1;
     prevScore = item.PerformanceScore;
+    idx += 1;
     return { ...item, _rank: rank };
   });
 }
@@ -1269,6 +1277,15 @@ function withCompetitionRank(sortedList) {
 // ─── Score Ring SVG ───────────────────────────────────────────────────────────
 function StudentScoreRing({ score }) {
   const r = 20, circ = 2 * Math.PI * r;
+  // ยังประเมินไม่ได้ (ไม่มี Post-test) — โชว์วงว่างกับขีดกลาง ไม่โชว์เลข 0 หรือ NaN
+  if (score == null) {
+    return (
+      <svg width="56" height="56" className="shrink-0" role="img" aria-label="ยังประเมินไม่ได้">
+        <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" strokeDasharray="3 4" />
+        <text x="28" y="33" textAnchor="middle" fontSize="15" fontWeight="600" fill="#94a3b8">—</text>
+      </svg>
+    );
+  }
   const dash = (score / 100) * circ;
   const color = score >= 80 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626';
   return (
@@ -1285,10 +1302,9 @@ function StudentScoreRing({ score }) {
 
 // ─── Metric Breakdown (expandable detail) ────────────────────────────────────
 function StudentMetricBreakdown({ student }) {
-  const hasAny = [student.PreTestScore, student.MidTestScore, student.PostTestScore]
-    .some(v => v !== null);
+  const notEvaluable = student.Evaluable === false;
 
-  const metrics = [
+  const metrics = notEvaluable ? [] : [
     {
       name: 'อัตราการเข้าเรียน',
       raw: student.AttendanceRate,
@@ -1296,34 +1312,41 @@ function StudentMetricBreakdown({ student }) {
       contrib: student.AttendanceContrib,
       sub: `${student.TotalAttended ?? 0} / ${student.TotalClasses ?? 0} คาบ`,
     },
-    ...(student.PreTestScore !== null ? [{
-      name: 'Pre-test',
-      raw: student.PreTestScore,
-      weight: student.TestWeight,
-      contrib: student.PreTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.PreTestScore}%  (${student.PreTestCount} ครั้ง)`,
-    }] : []),
-    ...(student.MidTestScore !== null ? [{
-      name: 'Mid-test',
-      raw: student.MidTestScore,
-      weight: student.TestWeight,
-      contrib: student.MidTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.MidTestScore}%  (${student.MidTestCount} ครั้ง)`,
-    }] : []),
-    ...(student.PostTestScore !== null ? [{
+    {
       name: 'Post-test',
       raw: student.PostTestScore,
-      weight: student.TestWeight,
+      weight: student.PostWeight,
       contrib: student.PostTestContrib,
       sub: `คะแนนเฉลี่ย ${student.PostTestScore}%  (${student.PostTestCount} ครั้ง)`,
+    },
+    ...(student.ImprovementWeight ? [{
+      name: 'พัฒนาการ',
+      raw: Math.max(0, student.ImprovementDelta ?? 0),
+      weight: student.ImprovementWeight,
+      contrib: student.ImprovementContrib,
+      sub: `Pre-test ${student.PreTestScore}% → Post-test ${student.PostTestScore}% (${student.ImprovementDelta > 0 ? '+' : ''}${student.ImprovementDelta} จุด)`,
     }] : []),
   ];
 
   return (
     <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2.5">
-      {!hasAny && (
+      {notEvaluable ? (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-slate-600">ยังประเมินไม่ได้</p>
+          <p className="text-[11px] text-slate-400 leading-relaxed">
+            {student.NotEvaluableReason || 'ยังไม่มีข้อมูลการสอบ'} — คะแนน Performance ต้องมีผล Post-test
+            จึงจะคำนวณได้ นักเรียนคนนี้จะยังไม่ถูกจัดอันดับเทียบกับคนอื่น
+          </p>
+          <p className="text-[11px] text-slate-400">
+            เข้าเรียน {student.AttendanceRate}% ({student.TotalAttended ?? 0} / {student.TotalClasses ?? 0} คาบ)
+            {student.PreTestScore !== null ? ` · Pre-test ${student.PreTestScore}%` : ''}
+            {student.MidTestScore !== null ? ` · Mid-test ${student.MidTestScore}%` : ''}
+          </p>
+        </div>
+      ) : (
         <p className="text-[11px] text-slate-400 italic">
-          ยังไม่มีข้อมูลผลสอบ — คำนวณจากการเข้าเรียนเพียงอย่างเดียว
+          สูตร: เข้าเรียน {student.AttendanceWeight}% + Post-test {student.PostWeight}%
+          {student.ImprovementWeight ? ` + พัฒนาการ ${student.ImprovementWeight}%` : ' (ยังไม่มี Pre-test จึงเทียบพัฒนาการไม่ได้ และเกลี่ยน้ำหนักไปสองส่วนที่มีข้อมูล)'}
         </p>
       )}
       {metrics.map(m => {
@@ -1346,10 +1369,12 @@ function StudentMetricBreakdown({ student }) {
           </div>
         );
       })}
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-        <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold text-slate-800">{student.PerformanceScore} / 100</span>
-      </div>
+      {!notEvaluable && (
+        <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+          <span className="text-xs text-slate-500">คะแนนรวม</span>
+          <span className="text-base font-semibold text-slate-800">{student.PerformanceScore} / 100</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1456,6 +1481,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   // ★ กรองตามช่วงคะแนน
   const matchScoreFn = (s) => {
     if (filterScoreRange === 'all') return true;
+    if (s.Evaluable === false) return false;   // ไม่มีคะแนน จึงไม่เข้าช่วงคะแนนใดเลย
     const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
     return range ? range.test(s.PerformanceScore) : true;
   };
@@ -1468,7 +1494,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
   const baseForScoreCount = perfData.filter(matchGradeFn);
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
-    acc[r.key] = baseForScoreCount.filter(s => r.test(s.PerformanceScore)).length;
+    acc[r.key] = baseForScoreCount.filter(s => s.Evaluable !== false && r.test(s.PerformanceScore)).length;
     return acc;
   }, {});
 
@@ -1485,7 +1511,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <BarChart2 className="h-5 w-5 text-white" />
           <h2 className="font-bold text-white text-sm">Performance Score นักเรียน</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Pre/Mid/Post-test 60%</span>
+        <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Post-test 40% + พัฒนาการ 20%</span>
       </div>
 
       <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
