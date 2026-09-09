@@ -10,6 +10,7 @@ import {
   X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { fmtScore } from "../utils/examScore";
 import { fetchExams, fetchExamResults, fetchTopicBreakdown } from "../utils/examShared";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -407,7 +408,7 @@ function StudentModal({ student, examLabel, onClose }) {
             <p className="text-[10px] text-orange-100">เกรด</p>
           </div>
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-black">{student.totalScore}/{MAX_SCORE}</p>
+            <p className="text-xl font-black">{fmtScore(student.totalScore)}/{fmtScore(MAX_SCORE)}</p>
             <p className="text-[10px] text-orange-100">{fmtPct(student.pct)}</p>
           </div>
         </div>
@@ -519,9 +520,9 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${(avgPct * maxScore).toFixed(1)} / ${maxScore} คะแนน`} color="bg-orange-500" />
+        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${fmtScore(avgPct * maxScore)} / ${fmtScore(maxScore)} คะแนน`} color="bg-orange-500" />
         <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length} จาก ${submitted.length} คน`} color="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${maxRawScore}/${maxScore} - ${minRawScore}/${maxScore} คะแนน`} color="bg-blue-500" />
+        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
         <StatCard
           icon={BarChart2}
           label="ส่วนเบี่ยงเบนมาตรฐาน"
@@ -906,7 +907,7 @@ function StudentTab({ data, examLabel }) {
                           </div>
                           <span className="font-semibold text-slate-700">{Math.round(s.pct * 100)}%</span>
                         </div>
-                        <p className="text-slate-400 mt-0.5 text-xs">{s.totalScore}/{MAX_SCORE}</p>
+                        <p className="text-slate-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(MAX_SCORE)}</p>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -1124,7 +1125,7 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
             {e.submitted ? (
               <>
                 <p className="text-2xl font-black text-slate-900">{fmtPct(e.pct)}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{e.totalScore}/{e.maxScore} คะแนน</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{fmtScore(e.totalScore)}/{fmtScore(e.maxScore)} คะแนน</p>
                 {e.rank != null && (
                   <p className="text-[11px] font-semibold text-orange-600 mt-1.5 inline-flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full">
                     อันดับ {e.rank}/{e.totalStudents}
@@ -1815,7 +1816,7 @@ export default function TutorExamAnalytics() {
             {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
             {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
             {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
-              ` · ${examResults[examId].students.find(s => s.maxScore != null).maxScore} คะแนน`}
+              ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

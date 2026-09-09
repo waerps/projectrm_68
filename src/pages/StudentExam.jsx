@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
+import { fmtScore } from "../utils/examScore";
 import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
@@ -249,7 +250,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
               <p className="text-lg font-medium text-neutral-900 leading-relaxed">{current.text}</p>
             </div>
             <span className="flex-shrink-0 text-sm font-semibold text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
-              {current.score} คะแนน
+              {fmtScore(current.score)} คะแนน
             </span>
           </div>
           <div className="space-y-3">
@@ -376,7 +377,7 @@ function QuestionReviewRow({ q, index }) {
         </div>
         <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
           {q.isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-          {q.scoreAwarded}/{q.score} คะแนน
+          {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)} คะแนน
         </span>
       </div>
 
@@ -430,7 +431,7 @@ function ResultCard({ result }) {
         <div className="bg-neutral-50 rounded-xl p-5">
           <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
           <p className="text-3xl font-bold text-orange-600">
-            {result.totalScore}/{result.maxScore}
+            {fmtScore(result.totalScore)}/{fmtScore(result.maxScore)}
           </p>
           <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
         </div>

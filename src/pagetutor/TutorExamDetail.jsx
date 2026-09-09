@@ -14,9 +14,11 @@ import {
   deriveStatus, isExamReady, formatTime,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
   fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
+  bulkUpdateQuestionScores,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchSubjectCategories, renameSubjectCategory,
 } from "../utils/examShared";
+import { EXAM_SCORE_CAP, splitScoreEvenly, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 
@@ -252,10 +254,21 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
+          {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
+              ปุ่ม −/+ เดินทีละ 0.5 ส่วนช่องกลางพิมพ์ตัวเลขเองได้ทุกค่า */}
           <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden">
-            <button onClick={() => patch({ score: Math.max(1, q.score - 1) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
-            <span className="flex-1 text-center text-sm font-semibold text-neutral-800">{q.score}</span>
-            <button onClick={() => patch({ score: q.score + 1 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
+            <button onClick={() => patch({ score: Math.max(0.5, Math.round((q.score - 0.5) * 100) / 100) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
+            <input
+              type="number" step="0.25" min="0"
+              value={q.score}
+              onChange={(e) => {
+                const v = e.target.value;
+                patch({ score: v === "" ? "" : Math.max(0, Math.round(Number(v) * 100) / 100) });
+              }}
+              onBlur={(e) => { if (e.target.value === "" || Number(e.target.value) <= 0) patch({ score: 1 }); }}
+              className="flex-1 w-full text-center text-sm font-semibold text-neutral-800 outline-none py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button onClick={() => patch({ score: Math.round((Number(q.score) + 0.5) * 100) / 100 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
           </div>
         </div>
         <div>
@@ -435,6 +448,31 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
   const [deletingId, setDeletingId] = useState(null);
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [showManageCategories, setShowManageCategories] = useState(false);
+  const [splitting, setSplitting] = useState(false);
+
+  // ── ตัวช่วยแบ่งคะแนนให้ครบเพดาน 20 ต่อรอบ ────────────────────────────────
+  // ติวเตอร์ใส่ข้อสอบกี่ข้อก็ได้ ระบบหารให้เอง และกระจายเศษให้ผลรวมเท่ากับ 20.00 พอดี
+  const currentTotal = sumScores(questions);
+  const isBalanced = Math.abs(currentTotal - EXAM_SCORE_CAP) < 0.005;
+
+  const handleAutoSplit = async () => {
+    if (!questions.length) return;
+    setSplitting(true);
+    setFormError("");
+    try {
+      const values = splitScoreEvenly(questions.length, EXAM_SCORE_CAP);
+      await bulkUpdateQuestionScores(
+        examId,
+        questions.map((q, i) => ({ questionId: q.id, score: values[i] }))
+      );
+      await onChanged();
+    } catch (err) {
+      console.error("Auto split scores failed:", err);
+      setFormError(err.response?.data?.message || "แบ่งคะแนนไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setSplitting(false);
+    }
+  };
 
   const loadCategories = () => {
     if (!subjectId || !adminId) return;
@@ -525,6 +563,42 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
         </div>
       )}
 
+      {/* แถบสถานะคะแนนรวม — ทุกวิชาต้องเต็ม 20 เท่ากันหมด เพื่อให้รวมทั้งแพ็กเกจได้ 100 (5 วิชา) หรือ 80 (4 วิชา) */}
+      {questions.length > 0 && (
+        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3.5 ${
+          isBalanced ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
+        }`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            {isBalanced
+              ? <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+              : <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />}
+            <div className="min-w-0">
+              <p className={`text-sm font-bold ${isBalanced ? "text-emerald-800" : "text-amber-800"}`}>
+                รวมตอนนี้ {fmtScore(currentTotal)} / {EXAM_SCORE_CAP} คะแนน
+                <span className="font-medium"> · {questions.length} ข้อ</span>
+              </p>
+              <p className={`text-xs mt-0.5 ${isBalanced ? "text-emerald-600" : "text-amber-700"}`}>
+                {isBalanced
+                  ? "ครบเพดานพอดีแล้ว พร้อมเปิดสอบ"
+                  : currentTotal < EXAM_SCORE_CAP
+                    ? `ยังขาดอีก ${fmtScore(EXAM_SCORE_CAP - currentTotal)} คะแนน — กดแบ่งอัตโนมัติให้ครบได้เลย`
+                    : `เกินเพดานอยู่ ${fmtScore(currentTotal - EXAM_SCORE_CAP)} คะแนน — กดแบ่งอัตโนมัติเพื่อปรับให้พอดี`}
+              </p>
+            </div>
+          </div>
+          {!locked && !editingId && (
+            <button
+              onClick={handleAutoSplit}
+              disabled={splitting}
+              title={`หาร ${EXAM_SCORE_CAP} คะแนนให้ข้อสอบ ${questions.length} ข้อเท่า ๆ กัน`}
+              className="flex-shrink-0 flex items-center gap-1.5 border border-neutral-200 bg-white hover:border-orange-300 hover:bg-orange-50 text-neutral-700 hover:text-orange-600 disabled:opacity-40 rounded-xl px-3.5 py-2 text-sm font-semibold transition"
+            >
+              <Zap className="h-4 w-4" /> {splitting ? "กำลังแบ่ง…" : "แบ่งคะแนนอัตโนมัติ"}
+            </button>
+          )}
+        </div>
+      )}
+
       {mode === "picker" && (
         <div className="border border-neutral-200 rounded-2xl p-5 relative">
           <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
@@ -583,7 +657,7 @@ function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged
                   <td className="px-4 py-3 text-neutral-800 max-w-[320px] truncate">{q.text}</td>
                   <td className="px-4 py-3"><span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{q.category || "—"}</span></td>
                   <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
-                  <td className="px-4 py-3 text-neutral-500">{q.score}</td>
+                  <td className="px-4 py-3 text-neutral-500">{fmtScore(q.score)}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
                     {locked ? (
                       <span className="text-xs text-neutral-300">ล็อกอยู่</span>
@@ -1342,7 +1416,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                     <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-orange-400" style={{ width: `${t.pct * 100}%` }} />
                     </div>
-                    <p className="text-xs font-semibold text-neutral-700 w-24 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+                    <p className="text-xs font-semibold text-neutral-700 w-24 text-right">{fmtScore(t.sc)}/{fmtScore(t.maxSc)} ({Math.round(t.pct * 100)}%)</p>
                   </div>
                 ))}
               </div>
@@ -1369,7 +1443,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                          {q.scoreAwarded}/{q.score}
+                          {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
                         <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
                       </div>
@@ -1747,7 +1821,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                               </div>
                               <span className="font-semibold text-neutral-700">{pct}%</span>
                             </div>
-                            <p className="text-neutral-400 mt-0.5 text-xs">{s.totalScore}/{s.maxScore}</p>
+                            <p className="text-neutral-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
                           </>
                         ) : "—"}
                       </td>

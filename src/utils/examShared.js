@@ -170,6 +170,12 @@ export async function updateQuestion(questionId, patch) {
 }
 
 // DELETE /api/exam/questions/:questionId
+// PUT /api/exam/:examId/questions/scores — อัปเดตคะแนนหลายข้อพร้อมกัน (ปุ่มแบ่งคะแนนอัตโนมัติ)
+export async function bulkUpdateQuestionScores(examId, scores) {
+    const { data } = await axios.put(`${API_BASE}/${examId}/questions/scores`, { scores }, { headers: authHeaders() });
+    return data;
+}
+
 export async function deleteQuestion(questionId) {
   const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`, { headers: authHeaders() });
   return data;
