@@ -12,10 +12,11 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Shared page shell ───────────────────────────────────────────────────────
 function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
-  // pt-[110px] = เผื่อความสูง navbar ที่ fixed อยู่ (~90px) + ระยะหายใจ
-  // ถ้าไม่เว้นไว้ การ์ดที่เนื้อหายาวจะถูกจัดกึ่งกลางจนลอยขึ้นไปทับ navbar
+  // เผื่อความสูง navbar ที่ fixed อยู่ (~90px) + ระยะหายใจ ถ้าไม่เว้นไว้
+  // การ์ดที่เนื้อหายาวจะถูกจัดกึ่งกลางจนลอยขึ้นไปชิด/ทับ navbar
+  // โหมดกึ่งกลาง (หน้าเริ่มสอบ) เว้นมากกว่า เพราะการ์ดสั้นกว่าจึงลอยขึ้นไปชิดง่ายกว่า
   return (
-    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 pt-[110px] pb-12`}>
+    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start pt-[110px]" : "items-center pt-[150px]"} justify-center px-4 pb-12`}>
       <div className={`w-full ${maxWidth} ${align === "start" ? "mt-8" : ""}`}>
         {children}
       </div>
@@ -96,15 +97,15 @@ function LandingCard({ status, exam, onStart, starting }) {
 
       {/* ข้อความก่อนเริ่มสอบ — ลดแรงกดดัน และอธิบายว่าทำไมการตอบตามความเข้าใจจริง
           เป็นผลดีกับตัวนักเรียนเอง ตั้งใจไม่ใช้ bullet เพราะอ่านเหมือนระเบียบข้อบังคับ */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3">
-        <p className="text-base font-bold text-slate-700">อ่านสักครู่ก่อนเริ่มนะ</p>
-        <p className="text-sm text-slate-600 leading-relaxed">
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-left space-y-3.5">
+        <p className="text-lg font-bold text-slate-700 text-center">อ่านสักครู่ก่อนเริ่มนะ</p>
+        <p className="text-base text-slate-600 leading-relaxed">
           ข้อสอบชุดนี้ไม่ได้เอาไปตัดเกรด จัดอันดับ หรือตัดสินอะไรทั้งนั้น หน้าที่เดียวของมันคือบอกว่าตอนนี้เธอเข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม
         </p>
-        <p className="text-sm text-slate-600 leading-relaxed">
+        <p className="text-base text-slate-600 leading-relaxed">
           ตอบไปตามที่เข้าใจจริงเลย ยิ่งตรงกับความเข้าใจของเธอมากเท่าไหร่ ติวเตอร์ก็ยิ่งช่วยได้ตรงจุดเท่านั้น และรอบหน้าเธอจะเห็นพัฒนาการของตัวเองชัดขึ้นด้วย
         </p>
-        <p className="text-sm font-semibold text-orange-600">ทำเท่าที่ทำได้ เต็มที่ของวันนี้ก็พอแล้ว</p>
+        <p className="text-lg font-bold text-orange-600 text-center pt-0.5">“ทำเท่าที่ทำได้ เต็มที่ของวันนี้ก็พอแล้ว”</p>
       </div>
 
       <button
