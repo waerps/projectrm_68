@@ -536,30 +536,60 @@ export default function AdminDashboard() {
           <div className="flex items-center py-1 mb-3 border-b border-slate-50">
             <InlineStat label="ทั้งหมด" value={students.total ?? 0} />
             <InlineStat label="ลงทะเบียน" value={students.enrolled ?? 0} tone="emerald" />
-            <InlineStat label="เข้าเรียนเฉลี่ย" value={students.avgAttendanceRate !== null ? `${students.avgAttendanceRate}%` : "—"} tone="amber" />
           </div>
-          {/* ทำได้ดี — หัวตารางของทั้ง 2 โพเดียม ติดป้ายแยกว่ามาคนละทาง */}
-          {students.topPerformers?.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
-                ทำได้ดี <span className="normal-case font-medium text-slate-400">· ความสามารถ และ พัฒนาการ</span>
-              </p>
-              {students.topPerformers.map((s) => (
-                <MiniPersonRow
-                  key={`${s.TopKind}-${s.UserId}`}
-                  photo={s.Photo}
-                  LeadIcon={s.TopKind === "improvement" ? TrendingUp : Award}
-                  name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
-                  sub={`${s.TopScore}/100`}
-                  tone="emerald"
-                />
-              ))}
-            </div>
-          )}
+          {/* ── ทำได้ดี — แยกเป็น 2 บล็อกชัดเจนตามโพเดียม ─────────────────
+              คำหัวข้อใช้เหมือนหน้า Performance เป๊ะ ("ความสามารถโดดเด่น" /
+              "พัฒนาการโดดเด่น") ของเดิมรวมเป็น list เดียวปนกัน นักเรียนที่ติด
+              ทั้งสองโพเดียม (เช่นคนเดียวกัน) จะขึ้นชื่อซ้ำโดยไม่มีคำอธิบาย
+              ดูเหมือนบั๊ก ตอนนี้แยกกล่องให้เห็นชัดว่าติดโพเดียมไหนเพราะอะไร */}
+          {(() => {
+            const topExcellence = (students.topPerformers || []).filter(s => s.TopKind !== "improvement");
+            const topImprovement = (students.topPerformers || []).filter(s => s.TopKind === "improvement");
+            if (!topExcellence.length && !topImprovement.length) return null;
+            return (
+              <div className="mb-3 space-y-2.5">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">ทำได้ดี</p>
+                {topExcellence.length > 0 && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+                      <Award className="h-3.5 w-3.5 text-orange-500" /> ความสามารถโดดเด่น
+                    </p>
+                    {topExcellence.map((s) => (
+                      <MiniPersonRow
+                        key={`excellence-${s.UserId}`}
+                        photo={s.Photo}
+                        name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                        sub={`${s.TopScore}/100`}
+                        tone="emerald"
+                      />
+                    ))}
+                  </div>
+                )}
+                {topImprovement.length > 0 && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
+                      <TrendingUp className="h-3.5 w-3.5 text-orange-500" /> พัฒนาการโดดเด่น
+                    </p>
+                    {topImprovement.map((s) => (
+                      <MiniPersonRow
+                        key={`improvement-${s.UserId}`}
+                        photo={s.Photo}
+                        name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
+                        sub={`${s.TopScore}/100`}
+                        tone="emerald"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── ควรติดตามเป็นพิเศษ — กล่องแยกออกจาก "ทำได้ดี" ชัดเจน ──────── */}
           {students.needsAttention && students.needsAttention.length > 0 ? (
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
-                ควรติดตาม <span className="normal-case font-medium text-slate-400">· คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ</span>
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-red-400" /> ควรติดตามเป็นพิเศษ
               </p>
               {students.needsAttention.slice(0, 4).map((s) => (
                 <MiniPersonRow

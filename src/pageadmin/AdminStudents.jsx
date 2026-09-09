@@ -1296,27 +1296,54 @@ const BOARDS = {
   },
 };
 
-// ── เกณฑ์อ้างอิงงานวิจัย: Normalized Gain (Hake 1998) ──────────────────────
-// Hake, R. R. (1998). Interactive-engagement versus traditional methods:
-// A six-thousand-student survey of mechanics test data for introductory
-// physics courses. American Journal of Physics, 66(1), 64-74.
+// ── คำเตือนตัวกันเพดาน (อ้างอิงงานวิจัย Normalized Gain, Hake 1998) ────────
+// ป้ายระดับสูง/กลาง/ต่ำแบบเดิมถูกตัดออก เพราะซ้ำกับป้าย "ก้าวกระโดด / พัฒนาการ
+// สูง / ..." ที่หัวการ์ดอยู่แล้ว (คนละเกณฑ์ตัด คนละที่มา แต่พูดเรื่องเดียวกัน
+// จนแอดมินงงว่าทำไมมีสองป้าย)
 //
-// เกณฑ์ตัดระดับของ Hake: g > 0.7 สูง / 0.3-0.7 ปานกลาง / < 0.3 ต่ำ
-// (ค่า g ของเราเก็บเป็น % จึงเทียบที่ 70 และ 30)
-//
-// ข้อจำกัดที่ต้องซื่อสัตย์: ระบบเราใส่ "ขั้นต่ำพื้นที่ที่เหลือ 30 จุด" เพื่อกัน
-// เพดานระเบิด (ไม่งั้น 95→100 จะได้ 100% เท่ากับ 10→100) พอตัวกันนี้ทำงาน
-// ตัวเลขจะไม่ใช่ค่า g บริสุทธิ์ตามงานวิจัยอีกแล้ว เอาไปเทียบเกณฑ์เขาตรง ๆ ไม่ได้
-// จึงติดป้ายนี้เฉพาะคนที่ Pre-test ไม่เกิน 70% (คือตัวกันยังไม่ทำงาน) เท่านั้น
+// สิ่งเดียวที่ยังต้องเตือนคือกรณีพิเศษ: ระบบใส่ "ขั้นต่ำพื้นที่ที่เหลือ 30 จุด"
+// กันเพดานระเบิด (ไม่งั้น 95→100 จะได้คะแนนพัฒนาการเท่ากับ 10→100) พอตัวกันนี้
+// ทำงาน (Pre-test เกิน 70%) ตัวเลขจะเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้
+// แล้ว — อันนี้มีประโยชน์จริงและไม่มีป้ายไหนบอกอยู่ก่อน จึงเก็บไว้เฉพาะเคสนี้
+// เขียนเป็นภาษาที่แอดมินอ่านเข้าใจโดยไม่ต้องรู้จักงานวิจัย ส่วนที่มาเชิงเทคนิค
+// (สูตร + อ้างอิง Hake 1998) ซ่อนไว้หลังไอคอน (i) ให้กดดูเฉพาะเวลาต้องการ
 const HAKE_ROOM_UNCLAMPED = 70;
-function hakeBand(growthPct, preScore) {
+function ceilingGuardNote(growthPct, preScore) {
   if (growthPct == null || preScore == null) return null;
-  if (preScore > HAKE_ROOM_UNCLAMPED) {
-    return { label: 'คะแนนตั้งต้นสูง — ไม่เทียบเกณฑ์ Hake', tone: 'slate' };
-  }
-  if (growthPct > 70) return { label: 'ระดับสูง (High gain, เกณฑ์ Hake 1998)', tone: 'emerald' };
-  if (growthPct >= 30) return { label: 'ระดับปานกลาง (Medium gain, เกณฑ์ Hake 1998)', tone: 'amber' };
-  return { label: 'ระดับต่ำ (Low gain, เกณฑ์ Hake 1998)', tone: 'red' };
+  if (preScore <= HAKE_ROOM_UNCLAMPED) return null;
+  return {
+    label: 'นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขพัฒนาการนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้',
+    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนนก่อนเรียนสูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดขั้นต่ำของตัวหารไว้ที่ 30 จุด',
+  };
+}
+
+// ป้ายคำอธิบายพร้อมไอคอน (i) — กดหรือชี้เพื่อดูรายละเอียดเชิงเทคนิคเพิ่มเติม
+// ใช้เมื่อข้อความหลักสั้นพอจะอ่านตรง ๆ ได้ แต่มีรายละเอียดเสริมที่ไม่จำเป็น
+// ต้องเห็นทุกคน (เช่น อ้างอิงงานวิจัย) จะได้ไม่ทำให้การ์ดหลักรกเกินไป
+function InfoNote({ label, detail }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <div className="flex items-start gap-1.5 text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-2">
+        <span className="flex-1">{label}</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          className="shrink-0 h-4 w-4 rounded-full border border-slate-300 text-slate-400 text-[10px] font-bold flex items-center justify-center hover:border-orange-400 hover:text-orange-500 transition"
+          aria-label="ดูรายละเอียดเพิ่มเติม"
+        >
+          i
+        </button>
+      </div>
+      {open && (
+        <div className="absolute right-0 z-10 mt-1 w-72 text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2.5">
+          {detail}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // แปะคะแนนของกระดานที่กำลังดูอยู่ลงบนนักเรียนแต่ละคน (_score/_eligible/_reason)
@@ -1428,13 +1455,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
   const otherEligible = other.eligible(s);
   const otherRank = isExcellence ? s.ImprovementRank : s.ExcellenceRank;
 
-  const band = !isExcellence ? hakeBand(s.ImprovementGrowth, s.PreTestScore) : null;
-  const bandCls = {
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    red: 'bg-red-50 text-red-600 border-red-200',
-    slate: 'bg-slate-100 text-slate-500 border-slate-200',
-  };
+  const guardNote = !isExcellence ? ceilingGuardNote(s.ImprovementGrowth, s.PreTestScore) : null;
 
   return (
     <div className="mt-3 bg-slate-50 rounded-xl px-4 py-4 space-y-4">
@@ -1500,11 +1521,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
                 sub={`${s.PreTestScore}% → ${s.PostTestScore}% (${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta} จุด จากพื้นที่ที่เหลือให้พัฒนา ${s.ImprovementRoom} จุด)`} />
               <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
                 sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
-              {band && (
-                <p className={`inline-block text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${bandCls[band.tone]}`}>
-                  {band.label}
-                </p>
-              )}
+              {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}
               {!s.ImprovementEligible && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   ยังไม่ขึ้นโพเดียมพัฒนาการ — {s.ImprovementReason}
@@ -1517,24 +1534,25 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
         )}
       </div>
 
-      {/* ── อีกกระดาน (รอง) — ยุบเป็นแถบเดียว กดข้ามไปดูได้ ────── */}
-      <button
-        onClick={(e) => { e.stopPropagation(); onSwitchBoard(other.key); }}
-        className="w-full flex items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
-      >
-        <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
-        <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
-        <span className="text-sm font-bold text-slate-700 ml-auto">
-          {otherEligible ? `${otherScore}/100` : '—'}
-        </span>
-        {otherEligible && otherRank && (
-          <span className="text-xs text-slate-400">อันดับ {otherRank}</span>
-        )}
-        <span className="text-xs font-semibold text-orange-600 group-hover:underline shrink-0">
-          ดูรายละเอียด
-        </span>
-        <ChevronRight className="h-3.5 w-3.5 text-orange-600 shrink-0" />
-      </button>
+      {/* ── อีกกระดาน (รอง) — โชว์เฉพาะตอนที่เข้าเกณฑ์ฝั่งนั้นจริง ───────
+          ของเดิมโชว์เสมอ ถึงไม่มีข้อมูล (ขึ้น "—" พร้อมปุ่มกดที่ไม่มีอะไรให้ดู)
+          ตอนนี้ซ่อนทั้งบล็อกถ้ายังไม่เข้าเกณฑ์ฝั่งนั้น การ์ดของคนที่มีข้อมูล
+          ด้านเดียวจะกระชับขึ้น ไม่มีลิงก์หลอกให้กด ───────────────────── */}
+      {otherEligible && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSwitchBoard(other.key); }}
+          className="w-full flex items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
+        >
+          <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
+          <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
+          <span className="text-sm font-bold text-slate-700 ml-auto">{otherScore}/100</span>
+          {otherRank && <span className="text-xs text-slate-400">อันดับ {otherRank}</span>}
+          <span className="text-xs font-semibold text-orange-600 group-hover:underline shrink-0">
+            ดูรายละเอียด
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 text-orange-600 shrink-0" />
+        </button>
+      )}
 
       {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
       <p className="text-xs text-slate-400 pt-3 border-t border-slate-200">
