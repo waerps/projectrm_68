@@ -41,38 +41,76 @@ function LoadingSkeleton() {
 
 // ─── Landing screen (before starting / resuming) ────────────────────────────
 
+// ─── น้องหมาโกลเด้นประจำหน้าเริ่มสอบ ────────────────────────────────────────
+// วาดเป็น SVG ในตัว ไม่ต้องโหลดรูปจากที่ไหน ไม่เพิ่ม dependency และไม่ถ่วงเวลาโหลดหน้า
+function GoldenRetriever({ className = "" }) {
+  return (
+    <svg viewBox="0 0 120 116" className={className} role="img" aria-label="น้องหมาโกลเด้นยิ้มทักทาย">
+      {/* หูตกสองข้าง */}
+      <ellipse cx="26" cy="62" rx="15" ry="26" fill="#C9873A" />
+      <ellipse cx="94" cy="62" rx="15" ry="26" fill="#C9873A" />
+      {/* หัว */}
+      <ellipse cx="60" cy="54" rx="37" ry="34" fill="#EFB05C" />
+      {/* ขนกระหม่อมสีอ่อน */}
+      <ellipse cx="60" cy="38" rx="27" ry="17" fill="#F6C57E" />
+      {/* ปากกระบอก */}
+      <ellipse cx="60" cy="74" rx="22" ry="17" fill="#FCEBD0" />
+      {/* ตา */}
+      <ellipse cx="46" cy="50" rx="5" ry="5.8" fill="#4A3418" />
+      <ellipse cx="74" cy="50" rx="5" ry="5.8" fill="#4A3418" />
+      <circle cx="47.8" cy="47.8" r="1.8" fill="#ffffff" />
+      <circle cx="75.8" cy="47.8" r="1.8" fill="#ffffff" />
+      {/* แก้มแดงจาง */}
+      <ellipse cx="33" cy="63" rx="6" ry="4" fill="#F2A98F" opacity="0.5" />
+      <ellipse cx="87" cy="63" rx="6" ry="4" fill="#F2A98F" opacity="0.5" />
+      {/* ลิ้น (วาดก่อนเส้นปาก เพื่อให้เส้นปากทับด้านบน) */}
+      <path d="M52 79 q8 12 16 0 z" fill="#F28B8B" />
+      {/* จมูกและปากยิ้ม */}
+      <ellipse cx="60" cy="67" rx="7" ry="5.2" fill="#4A3418" />
+      <path d="M60 72 v4" stroke="#4A3418" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M60 76 q-7 6 -13 1" stroke="#4A3418" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <path d="M60 76 q7 6 13 1" stroke="#4A3418" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function LandingCard({ status, exam, onStart, starting }) {
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-5 text-center space-y-3.5">
-      <h1 className="text-lg font-bold text-neutral-900">{exam.name}</h1>
-      <div className="flex justify-center gap-6 text-sm text-neutral-600">
-        <div className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-neutral-400" />{exam.duration} นาที</div>
-        <div>{exam.totalQuestions} ข้อ</div>
+    <div className="bg-white border border-neutral-200 rounded-3xl p-8 text-center space-y-5">
+      <GoldenRetriever className="h-24 w-24 mx-auto" />
+
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold text-neutral-900">{exam.name}</h1>
+        <div className="flex justify-center gap-7 text-base text-neutral-600">
+          <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-neutral-400" />{exam.duration} นาที</div>
+          <div>{exam.totalQuestions} ข้อ</div>
+        </div>
       </div>
+
       {status === "in-progress" && (
-        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">คุณเข้าสอบชุดนี้ไปแล้ว กดปุ่มด้านล่างเพื่อทำต่อจากเดิม</p>
+        <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left">
+          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">คุณเข้าสอบชุดนี้ไปแล้ว กดปุ่มด้านล่างเพื่อทำต่อจากเดิม</p>
         </div>
       )}
-      {/* ข้อความก่อนเริ่มสอบ — พูดความจริงตรงๆ ว่าคะแนนนี้ถูกใช้ทำอะไร และทำไมการตอบตามความเข้าใจจริง
-          เป็นผลดีกับตัวนักเรียนเอง เจตนาคือลดแรงกดดันและแรงจูงใจในการลอก ไม่ใช่ข่มขู่ */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left space-y-1.5">
-        <p className="text-xs font-bold text-slate-700">ก่อนเริ่มทำ อ่านสักครู่นะ</p>
-        <ul className="space-y-1 text-[11px] text-slate-600 leading-relaxed">
-          <li>• ข้อสอบชุดนี้<span className="font-semibold text-slate-700">ไม่ใช่การตัดสินว่าเก่งหรือไม่เก่ง</span> มีไว้ให้เห็นว่าตอนนี้เข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม</li>
-          <li>• ทำได้น้อยในรอบแรกไม่ใช่เรื่องผิด — มันคือจุดตั้งต้นที่จะทำให้เห็นพัฒนาการของตัวเองได้ชัดในรอบถัดไป</li>
-          <li>• ถ้ารอบแรกตอบเกินความเข้าใจจริง (เช่น เปิดหาคำตอบ) คะแนนตั้งต้นจะสูงเกินจริง แล้ว<span className="font-semibold text-slate-700">พัฒนาการที่เห็นตอนจบจะดูน้อยกว่าที่เก่งขึ้นจริง</span> ทั้งที่ตั้งใจเรียนมาเต็มที่</li>
-          <li>• ผลสอบอาจถูกนำไปคุยกับผู้ปกครอง ในรูปของพัฒนาการและจุดที่ควรช่วย ไม่ใช่คำตัดสินว่าผ่านหรือไม่ผ่าน</li>
-          <li>• ระบบบันทึกเวลาที่ใช้และการออกจากหน้าสอบไว้ เพื่อให้ติวเตอร์รู้ว่าคะแนนสะท้อนความเข้าใจจริงแค่ไหน</li>
-        </ul>
-        <p className="text-[11px] font-semibold text-orange-600 pt-0.5">ทำเท่าที่เข้าใจจริง แล้วติวเตอร์จะช่วยได้ตรงจุดที่สุด</p>
+
+      {/* ข้อความก่อนเริ่มสอบ — ลดแรงกดดัน และอธิบายว่าทำไมการตอบตามความเข้าใจจริง
+          เป็นผลดีกับตัวนักเรียนเอง ตั้งใจไม่ใช้ bullet เพราะอ่านเหมือนระเบียบข้อบังคับ */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left space-y-3">
+        <p className="text-base font-bold text-slate-700">อ่านสักครู่ก่อนเริ่มนะ</p>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          ข้อสอบชุดนี้ไม่ได้เอาไปตัดเกรด จัดอันดับ หรือตัดสินอะไรทั้งนั้น หน้าที่เดียวของมันคือบอกว่าตอนนี้เธอเข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม
+        </p>
+        <p className="text-sm text-slate-600 leading-relaxed">
+          ตอบไปตามที่เข้าใจจริงเลย ยิ่งตรงกับความเข้าใจของเธอมากเท่าไหร่ ติวเตอร์ก็ยิ่งช่วยได้ตรงจุดเท่านั้น และรอบหน้าเธอจะเห็นพัฒนาการของตัวเองชัดขึ้นด้วย
+        </p>
+        <p className="text-sm font-semibold text-orange-600">ทำเท่าที่ทำได้ เต็มที่ของวันนี้ก็พอแล้ว</p>
       </div>
 
       <button
         onClick={onStart}
         disabled={starting}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-3 text-sm font-semibold transition"
+        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-2xl py-4 text-base font-semibold transition"
       >
         {starting ? "กำลังเข้าสู่ห้องสอบ…" : status === "in-progress" ? "ทำข้อสอบต่อ" : "เริ่มทำข้อสอบ"}
       </button>
@@ -198,33 +236,33 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const lowTime = remainingSec <= 60;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
       {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col">
+      <div className="bg-white border border-neutral-200 rounded-3xl p-8 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
-        <div className="min-h-[280px]">
+        <div className="min-h-[320px]">
           <div className="flex items-baseline justify-between gap-3 mb-5">
             <div className="flex items-baseline gap-3">
-              <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+              <span className="text-2xl font-black text-orange-500">{activeIdx + 1}.</span>
+              <p className="text-lg font-medium text-neutral-900 leading-relaxed">{current.text}</p>
             </div>
-            <span className="flex-shrink-0 text-xs font-semibold text-neutral-400 bg-neutral-100 px-2.5 py-1 rounded-full">
+            <span className="flex-shrink-0 text-sm font-semibold text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
               {current.score} คะแนน
             </span>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {OPTION_LABELS.map((label, optIdx) => {
               const isSelected = current.selected === optIdx;
               return (
                 <button
                   key={label}
                   onClick={() => pickAnswer(optIdx)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
+                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
                 >
-                  <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                  <span className="text-sm text-neutral-800">{current.options?.[optIdx]}</span>
-                  {isSelected && <Check className="h-4 w-4 text-orange-600 ml-auto" />}
+                  <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
+                  <span className="text-base text-neutral-800">{current.options?.[optIdx]}</span>
+                  {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto" />}
                 </button>
               );
             })}
@@ -232,15 +270,15 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
         </div>
 
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
-          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1 text-sm text-neutral-500 disabled:opacity-30">
+          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-base text-neutral-500 disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" /> ข้อก่อนหน้า
           </button>
           {activeIdx < questions.length - 1 ? (
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1 text-sm text-orange-600 font-semibold">
+            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1.5 text-base text-orange-600 font-semibold">
               ข้อถัดไป <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
-            <button onClick={() => setConfirmSubmit(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2 text-sm font-semibold">
+            <button onClick={() => setConfirmSubmit(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 py-2.5 text-base font-semibold">
               ส่งข้อสอบ
             </button>
           )}
@@ -250,9 +288,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       </div>
 
       {/* ── ฝั่งขวา: ผังข้อสอบ (Question Map) ── */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-4 space-y-4 lg:sticky lg:top-4">
+      <div className="bg-white border border-neutral-200 rounded-3xl p-5 space-y-4 lg:sticky lg:top-6">
         <div>
-          <p className="text-xs font-semibold text-neutral-500 mb-2">ข้อสอบ</p>
+          <p className="text-sm font-semibold text-neutral-500 mb-2.5">ข้อสอบ</p>
           <div className="grid grid-cols-4 gap-1.5">
             {questions.map((q, i) => {
               const answered = q.selected !== null && q.selected !== undefined;
@@ -262,7 +300,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                   key={q.id}
                   onClick={() => setActiveIdx(i)}
                   title={`ข้อ ${i + 1}${answered ? " (ตอบแล้ว)" : " (ยังไม่ตอบ)"}`}
-                  className={`h-9 w-full rounded-lg text-xs font-semibold border-2 transition ${isActive
+                  className={`h-11 w-full rounded-lg text-sm font-semibold border-2 transition ${isActive
                       ? "border-orange-500 bg-orange-500 text-white"
                       : answered
                         ? "border-green-300 bg-green-50 text-green-700"
@@ -292,9 +330,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
         </div>
 
         <div className={`border-t border-neutral-100 pt-3 ${lowTime ? "text-red-600" : "text-neutral-700"}`}>
-          <p className="text-xs font-semibold text-neutral-500 mb-1">เวลาที่เหลือ</p>
-          <div className="flex items-center gap-1.5 font-mono font-bold text-lg">
-            <Clock className="h-4 w-4" /> {formatTime(remainingSec)}
+          <p className="text-sm font-semibold text-neutral-500 mb-1">เวลาที่เหลือ</p>
+          <div className="flex items-center gap-2 font-mono font-bold text-xl">
+            <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
           </div>
         </div>
       </div>
@@ -502,14 +540,14 @@ export default function StudentExam() {
   }
   if (phase === "landing") {
     return (
-      <PageShell maxWidth="max-w-md">
+      <PageShell maxWidth="max-w-2xl">
         <LandingCard status={landing.status} exam={landing.exam} onStart={handleStart} starting={starting} />
       </PageShell>
     );
   }
   if (phase === "running") {
     return (
-      <PageShell maxWidth="max-w-2xl" align="start">
+      <PageShell maxWidth="max-w-4xl" align="start">
         <ExamRunner
           examJoinId={runData.examJoinId}
           userId={userId}
@@ -523,7 +561,7 @@ export default function StudentExam() {
   }
   if (phase === "result") {
     return (
-      <PageShell maxWidth="max-w-2xl" align="start">
+      <PageShell maxWidth="max-w-4xl" align="start">
         <ResultCard result={result} />
       </PageShell>
     );
