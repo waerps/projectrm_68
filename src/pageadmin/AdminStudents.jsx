@@ -11,7 +11,7 @@ import {
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
-  Award, TrendingUp, TrendingDown, Minus, ImagePlus,   // ★ เพิ่ม
+  Award, TrendingUp, TrendingDown, Minus, ImagePlus, Flag,   // ★ เพิ่ม
 } from "lucide-react";
 import { getFileUrl } from "../utils/fileUrl";
 
@@ -1245,7 +1245,7 @@ const BOARDS = {
   excellence: {
     key: 'excellence',
     tab: 'ความสามารถ',
-    icon: '⭐',
+    Icon: Award,
     heading: 'ความสามารถโดดเด่น',
     formula: 'Post-test 70% + คะแนนเฉลี่ยทุกรอบ 30%',
     hint: 'วัดว่า "ตอนนี้เก่งแค่ไหน" — ค่าเฉลี่ยทุกรอบทำให้เด็กที่สูงมาตลอดชนะเด็กที่ฟลุกรอบเดียว',
@@ -1271,7 +1271,7 @@ const BOARDS = {
   improvement: {
     key: 'improvement',
     tab: 'พัฒนาการ',
-    icon: '📈',
+    Icon: TrendingUp,
     heading: 'พัฒนาการโดดเด่น',
     formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
     hint: 'วัดว่า "ปิดช่องว่างที่มีอยู่ไปได้กี่ %" ไม่ใช่ "เพิ่มกี่จุด" — เด็กที่เริ่มต่ำจึงไม่ได้เปรียบฟรี ๆ และเด็กที่เริ่มสูงก็ไม่ถูกลงโทษ',
@@ -1295,6 +1295,29 @@ const BOARDS = {
     },
   },
 };
+
+// ── เกณฑ์อ้างอิงงานวิจัย: Normalized Gain (Hake 1998) ──────────────────────
+// Hake, R. R. (1998). Interactive-engagement versus traditional methods:
+// A six-thousand-student survey of mechanics test data for introductory
+// physics courses. American Journal of Physics, 66(1), 64-74.
+//
+// เกณฑ์ตัดระดับของ Hake: g > 0.7 สูง / 0.3-0.7 ปานกลาง / < 0.3 ต่ำ
+// (ค่า g ของเราเก็บเป็น % จึงเทียบที่ 70 และ 30)
+//
+// ข้อจำกัดที่ต้องซื่อสัตย์: ระบบเราใส่ "ขั้นต่ำพื้นที่ที่เหลือ 30 จุด" เพื่อกัน
+// เพดานระเบิด (ไม่งั้น 95→100 จะได้ 100% เท่ากับ 10→100) พอตัวกันนี้ทำงาน
+// ตัวเลขจะไม่ใช่ค่า g บริสุทธิ์ตามงานวิจัยอีกแล้ว เอาไปเทียบเกณฑ์เขาตรง ๆ ไม่ได้
+// จึงติดป้ายนี้เฉพาะคนที่ Pre-test ไม่เกิน 70% (คือตัวกันยังไม่ทำงาน) เท่านั้น
+const HAKE_ROOM_UNCLAMPED = 70;
+function hakeBand(growthPct, preScore) {
+  if (growthPct == null || preScore == null) return null;
+  if (preScore > HAKE_ROOM_UNCLAMPED) {
+    return { label: 'คะแนนตั้งต้นสูง — ไม่เทียบเกณฑ์ Hake', tone: 'slate' };
+  }
+  if (growthPct > 70) return { label: 'ระดับสูง (High gain, เกณฑ์ Hake 1998)', tone: 'emerald' };
+  if (growthPct >= 30) return { label: 'ระดับปานกลาง (Medium gain, เกณฑ์ Hake 1998)', tone: 'amber' };
+  return { label: 'ระดับต่ำ (Low gain, เกณฑ์ Hake 1998)', tone: 'red' };
+}
 
 // แปะคะแนนของกระดานที่กำลังดูอยู่ลงบนนักเรียนแต่ละคน (_score/_eligible/_reason)
 // ส่วนที่เหลือของหน้าจะได้ไม่ต้องรู้ว่ากำลังดูกระดานไหน
@@ -1339,26 +1362,26 @@ function withCompetitionRank(sortedList) {
 
 // ─── Score Ring SVG ───────────────────────────────────────────────────────────
 function StudentScoreRing({ score }) {
-  const r = 20, circ = 2 * Math.PI * r;
+  const r = 23, circ = 2 * Math.PI * r;
   // ยังประเมินไม่ได้ (ไม่มี Post-test) — โชว์วงว่างกับขีดกลาง ไม่โชว์เลข 0 หรือ NaN
   if (score == null) {
     return (
-      <svg width="56" height="56" className="shrink-0" role="img" aria-label="ยังประเมินไม่ได้">
-        <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" strokeDasharray="3 4" />
-        <text x="28" y="33" textAnchor="middle" fontSize="15" fontWeight="600" fill="#94a3b8">—</text>
+      <svg width="64" height="64" className="shrink-0" role="img" aria-label="ยังประเมินไม่ได้">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" strokeDasharray="3 4" />
+        <text x="32" y="38" textAnchor="middle" fontSize="17" fontWeight="600" fill="#94a3b8">—</text>
       </svg>
     );
   }
   const dash = (score / 100) * circ;
   const color = score >= 80 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626';
   return (
-    <svg width="56" height="56" className="shrink-0">
-      <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
-      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="5"
+    <svg width="64" height="64" className="shrink-0">
+      <circle cx="32" cy="32" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+      <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="5"
         strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`}
         strokeDashoffset={`${(circ / 4).toFixed(1)}`}
         strokeLinecap="round" />
-      <text x="28" y="33" textAnchor="middle" fontSize="13" fontWeight="600" fill={color}>{score}</text>
+      <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>{score}</text>
     </svg>
   );
 }
@@ -1372,94 +1395,149 @@ function ScoreBar({ label, value, sub, weight }) {
   const textColor = v >= 80 ? 'text-emerald-700' : v >= 60 ? 'text-amber-700' : 'text-red-700';
   return (
     <div>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-slate-500 w-40 shrink-0">
+      <div className="flex items-center gap-2.5">
+        <span className="text-sm text-slate-600 w-44 shrink-0">
           {label}
-          {weight != null && <span className="text-[10px] ml-1 text-slate-400">(×{weight}%)</span>}
+          {weight != null && <span className="text-xs ml-1 text-slate-400">(×{weight}%)</span>}
         </span>
-        <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
+        <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, v)}%` }} />
         </div>
-        <span className={`text-xs font-semibold w-10 text-right ${textColor}`}>
+        <span className={`text-sm font-bold w-11 text-right ${textColor}`}>
           {value == null ? '—' : Math.round(value)}
         </span>
       </div>
-      {sub && <p className="text-[10px] text-slate-400 ml-[10.5rem] mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 ml-[11.75rem] mt-1">{sub}</p>}
     </div>
   );
 }
 
-function StudentMetricBreakdown({ student }) {
+// ─── Metric Breakdown ────────────────────────────────────────────────────────
+// กางแล้วต้อง "เน้นกระดานที่กดมา" ไม่ใช่โชว์เหมือนกันทั้งสองแท็บ
+// ของเดิมโชว์สองคะแนนเท่ากันหมด ทำให้แท็บเสียความหมาย กดสลับแล้วเนื้อหาเหมือนเดิม
+// ตอนนี้เป็นหลัก-รอง: กระดานที่กดมากางเต็มพร้อมอันดับ อีกกระดานยุบเป็นแถบเดียว
+// แล้วมีปุ่มกดข้ามไปดูอีกด้านได้ (สลับแท็บให้เลย)
+function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }) {
   const s = student;
-  const hasExcellence = s.ExcellenceEvaluable === true;
-  const hasImprovement = s.ImprovementScore != null;
+  const isExcellence = board.key === 'excellence';
+  const other = isExcellence ? BOARDS.improvement : BOARDS.excellence;
+  const OtherIcon = other.Icon;
+  const BoardIcon = board.Icon;
+
+  const otherScore = other.score(s);
+  const otherEligible = other.eligible(s);
+  const otherRank = isExcellence ? s.ImprovementRank : s.ExcellenceRank;
+
+  const band = !isExcellence ? hakeBand(s.ImprovementGrowth, s.PreTestScore) : null;
+  const bandCls = {
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    red: 'bg-red-50 text-red-600 border-red-200',
+    slate: 'bg-slate-100 text-slate-500 border-slate-200',
+  };
 
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-4">
+    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-4 space-y-4">
 
-      {/* ── ธงเตือน ─────────────────────────────────────────────── */}
+      {/* ── ธงเตือน — ข้อมูลกลาง โชว์ทั้งสองกระดาน ─────────────── */}
       {s.Flags?.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {s.Flags.map((f) => (
             <span key={f.key}
-              className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
                 f.tone === 'red'
                   ? 'bg-red-50 text-red-700 border-red-200'
                   : 'bg-amber-50 text-amber-700 border-amber-200'
               }`}>
-              {f.tone === 'red' ? '⚠️' : '🚩'} {f.label}
+              {f.tone === 'red'
+                ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                : <Flag className="h-3.5 w-3.5 shrink-0" />}
+              {f.label}
             </span>
           ))}
         </div>
       )}
 
-      {/* ── ⭐ ความสามารถ ────────────────────────────────────────── */}
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <p className="text-xs font-bold text-slate-700">⭐ ความสามารถ</p>
-          <span className="text-sm font-semibold text-slate-800">
-            {hasExcellence ? `${s.ExcellenceScore} / 100` : '—'}
-          </span>
+      {/* ── กระดานหลัก (ที่กดมา) — กางเต็ม ─────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-bold text-slate-800 flex items-center gap-1.5">
+              <BoardIcon className="h-4 w-4 text-orange-500" />
+              {board.heading}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">{board.formula}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-2xl font-black text-slate-900 leading-none">
+              {board.score(s) ?? '—'}
+              {board.score(s) != null && <span className="text-sm font-semibold text-slate-400"> / 100</span>}
+            </p>
+            {/* อันดับบนกระดานนี้ — ตอบตรง ๆ ว่าเขาขึ้นโพเดียมเรื่องอะไร */}
+            {student._rank
+              ? <p className="text-xs font-semibold text-orange-600 mt-1">
+                  อันดับที่ {student._rank} จาก {totalEligible} คน
+                </p>
+              : <p className="text-xs text-slate-400 mt-1">ยังไม่ติดอันดับ</p>}
+          </div>
         </div>
-        {hasExcellence ? (
-          <>
-            <ScoreBar label="Post-test" value={s.PostTestScore} weight={70}
-              sub={`คะแนนเฉลี่ยรอบหลังเรียน (${s.PostTestCount} ครั้ง)`} />
-            <ScoreBar label="ค่าเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
-              sub={`สูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
-          </>
+
+        {isExcellence ? (
+          board.eligible(s) ? (
+            <>
+              <ScoreBar label="Post-test" value={s.PostTestScore} weight={70}
+                sub={`คะแนนเฉลี่ยรอบหลังเรียน (สอบแล้ว ${s.PostTestCount} ครั้ง)`} />
+              <ScoreBar label="ค่าเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
+                sub={`ตัวชี้ว่าสูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
+            </>
+          ) : (
+            <p className="text-sm text-slate-400">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
+          )
         ) : (
-          <p className="text-[11px] text-slate-400">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
+          s.ImprovementScore != null ? (
+            <>
+              <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
+                sub={`${s.PreTestScore}% → ${s.PostTestScore}% (${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta} จุด จากพื้นที่ที่เหลือให้พัฒนา ${s.ImprovementRoom} จุด)`} />
+              <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
+                sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
+              {band && (
+                <p className={`inline-block text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${bandCls[band.tone]}`}>
+                  {band.label}
+                </p>
+              )}
+              {!s.ImprovementEligible && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  ยังไม่ขึ้นโพเดียมพัฒนาการ — {s.ImprovementReason}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-slate-400">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
+          )
         )}
       </div>
 
-      {/* ── 📈 พัฒนาการ ─────────────────────────────────────────── */}
-      <div className="space-y-2 pt-3 border-t border-slate-200">
-        <div className="flex items-baseline justify-between">
-          <p className="text-xs font-bold text-slate-700">📈 พัฒนาการ</p>
-          <span className="text-sm font-semibold text-slate-800">
-            {hasImprovement ? `${s.ImprovementScore} / 100` : '—'}
-          </span>
-        </div>
-        {hasImprovement ? (
-          <>
-            <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
-              sub={`${s.PreTestScore}% → ${s.PostTestScore}% (${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta} จุด จากพื้นที่ที่เหลือ ${s.ImprovementRoom} จุด)`} />
-            <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
-              sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
-            {!s.ImprovementEligible && (
-              <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                ยังไม่ขึ้นโพเดียมพัฒนาการ — {s.ImprovementReason}
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="text-[11px] text-slate-400">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
+      {/* ── อีกกระดาน (รอง) — ยุบเป็นแถบเดียว กดข้ามไปดูได้ ────── */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onSwitchBoard(other.key); }}
+        className="w-full flex items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
+      >
+        <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
+        <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
+        <span className="text-sm font-bold text-slate-700 ml-auto">
+          {otherEligible ? `${otherScore}/100` : '—'}
+        </span>
+        {otherEligible && otherRank && (
+          <span className="text-xs text-slate-400">อันดับ {otherRank}</span>
         )}
-      </div>
+        <span className="text-xs font-semibold text-orange-600 group-hover:underline shrink-0">
+          ดูรายละเอียด
+        </span>
+        <ChevronRight className="h-3.5 w-3.5 text-orange-600 shrink-0" />
+      </button>
 
       {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
-      <p className="text-[10px] text-slate-400 pt-2 border-t border-slate-200">
+      <p className="text-xs text-slate-400 pt-3 border-t border-slate-200">
         เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
         {s.PreTestScore != null ? ` · Pre ${s.PreTestScore}%` : ''}
         {s.MidTestScore != null ? ` · Mid ${s.MidTestScore}%` : ''}
@@ -1469,7 +1547,7 @@ function StudentMetricBreakdown({ student }) {
   );
 }
 
-function StudentScoreCard({ student, rank, expanded, onToggle, onView, board }) {
+function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, totalEligible, onSwitchBoard }) {
   const badge = board.badge(student._score);
   const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const name = student.Nickname || `${student.Firstname} ${student.Lastname}`;
@@ -1483,7 +1561,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board }) 
         <span className="text-lg w-6 text-center shrink-0">
           {MEDAL[rank]
             ? MEDAL[rank]
-            : <span className="text-xs text-slate-400">{rank}</span>}
+            : <span className="text-sm font-semibold text-slate-400">{rank}</span>}
         </span>
 
         {/* Avatar — ★ เปลี่ยนมาใช้ StudentAvatar */}
@@ -1491,23 +1569,26 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board }) 
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{name}</p>
+          <p className="text-base font-semibold text-slate-900">{name}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border
               ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
             {student.GradeDetail && (
-              <span className="text-[10px] text-slate-400">{student.GradeDetail}</span>
+              <span className="text-xs text-slate-400">{student.GradeDetail}</span>
             )}
-            <span className="text-[10px] text-slate-400">{student.TotalClasses} คาบ</span>
+            <span className="text-xs text-slate-400">{student.TotalClasses} คาบ</span>
             {student.Flags?.slice(0, 1).map((f) => (
               <span key={f.key}
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border ${
                   f.tone === 'red'
                     ? 'bg-red-50 text-red-600 border-red-200'
                     : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                {f.tone === 'red' ? '⚠️' : '🚩'} {f.label}
+                {f.tone === 'red'
+                  ? <AlertTriangle className="h-3 w-3 shrink-0" />
+                  : <Flag className="h-3 w-3 shrink-0" />}
+                {f.label}
               </span>
             ))}
           </div>
@@ -1535,7 +1616,12 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board }) 
       {/* Breakdown (ขยาย inline ไม่ใช้ modal) */}
       {expanded && (
         <div className="px-4 pb-4">
-          <StudentMetricBreakdown student={student} />
+          <StudentMetricBreakdown
+            student={student}
+            board={board}
+            totalEligible={totalEligible}
+            onSwitchBoard={onSwitchBoard}
+          />
         </div>
       )}
     </div>
@@ -1596,6 +1682,8 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
   const rankedFiltered = withCompetitionRank(filtered);
   const podiumGroups = topScoreGroups(rankedFiltered, 3);
+  // จำนวนคนที่เข้าเกณฑ์ของกระดานนี้ — ใช้เขียน "อันดับที่ 3 จาก 41 คน"
+  const totalEligible = filtered.filter((s) => s._eligible).length;
 
   // นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
   const baseForScoreCount = scoped.filter(matchGradeFn);
@@ -1615,30 +1703,34 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                       bg-gradient-to-r from-orange-500 to-amber-500">
         <div className="flex items-center gap-2.5">
           <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-sm">คะแนนนักเรียน · {board.heading}</h2>
+          <h2 className="font-bold text-white text-base">คะแนนนักเรียน · {board.heading}</h2>
         </div>
-        <span className="text-[11px] text-orange-100">{board.formula}</span>
+        <span className="text-xs text-orange-100">{board.formula}</span>
       </div>
 
       {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
           เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
           เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
       <div className="flex gap-1 px-5 pt-3 border-b border-slate-100">
-        {Object.values(BOARDS).map((b) => (
-          <button
-            key={b.key}
-            onClick={() => setBoardKey(b.key)}
-            className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 -mb-px ${
-              b.key === boardKey
-                ? 'text-orange-600 border-orange-500 bg-orange-50/60'
-                : 'text-slate-400 border-transparent hover:text-slate-600'
-            }`}
-          >
-            {b.icon} {b.tab}
-          </button>
-        ))}
+        {Object.values(BOARDS).map((b) => {
+          const TabIcon = b.Icon;
+          return (
+            <button
+              key={b.key}
+              onClick={() => setBoardKey(b.key)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-t-lg transition border-b-2 -mb-px ${
+                b.key === boardKey
+                  ? 'text-orange-600 border-orange-500 bg-orange-50/60'
+                  : 'text-slate-400 border-transparent hover:text-slate-600'
+              }`}
+            >
+              <TabIcon className="h-4 w-4" />
+              {b.tab}
+            </button>
+          );
+        })}
       </div>
-      <p className="px-5 pt-2.5 text-[11px] text-slate-400 leading-relaxed">{board.hint}</p>
+      <p className="px-5 pt-3 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
 
       <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
         <div className="relative ml-auto">
@@ -1730,9 +1822,9 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                               <Users className="h-4 w-4 text-slate-400" />
                             </span>
                           </div>
-                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                          <p className="text-sm font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                          <p className="text-2xl font-black text-slate-300 mt-1">—</p>
+                          <p className="text-xs text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
@@ -1758,13 +1850,13 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        <p className="text-sm font-semibold text-slate-800 mt-1.5 truncate">
                           {group.members.length === 1
                             ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-[10px] text-slate-400">คะแนน</p>
+                        <p className="text-2xl font-black text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-xs text-slate-400">คะแนน</p>
                       </div>
                     );
                   })}
@@ -1784,13 +1876,15 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                   onToggle={() => setExpandedId(expandedId === s.UserId ? null : s.UserId)}
                   onView={onViewStudent}
                   board={board}
+                  totalEligible={totalEligible}
+                  onSwitchBoard={setBoardKey}
                 />
               ))}
             </div>
 
             {/* ── Show More / Show Less ───────────────────────────── */}
             <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-slate-400">
+              <p className="text-sm text-slate-400">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
               </p>

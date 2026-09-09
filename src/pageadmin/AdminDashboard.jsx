@@ -3,10 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  AlertCircle, Info, ChevronRight,
-  BookOpen, GraduationCap, Wallet, Clock,
-  Calendar, DoorOpen, Boxes, CheckCircle, AlertTriangle,
-  UserCheck, Bell, Sparkles, PieChart as PieChartIcon, Users,
+  AlertCircle, Info, ChevronRight, BookOpen, GraduationCap, Wallet, Clock, Calendar, DoorOpen, Boxes, CheckCircle, AlertTriangle, UserCheck, Bell, Sparkles, PieChart as PieChartIcon, Users, Award, TrendingUp,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -104,7 +101,7 @@ function EmptyMini({ text, hint }) {
   );
 }
 
-function MiniPersonRow({ photo, name, sub, tone = "slate" }) {
+function MiniPersonRow({ photo, name, sub, tone = "slate", LeadIcon }) {
   const toneCls = {
     slate: "bg-slate-50 text-slate-600 border-slate-200",
     red: "bg-red-50 text-red-600 border-red-100",
@@ -120,10 +117,11 @@ function MiniPersonRow({ photo, name, sub, tone = "slate" }) {
           (name || "?").charAt(0)
         )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-slate-800 truncate">{name}</p>
+      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+        {LeadIcon && <LeadIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
+        <p className="text-sm font-semibold text-slate-800 truncate">{name}</p>
       </div>
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${toneCls}`}>{sub}</span>
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${toneCls}`}>{sub}</span>
     </div>
   );
 }
@@ -543,14 +541,15 @@ export default function AdminDashboard() {
           {/* ทำได้ดี — หัวตารางของทั้ง 2 โพเดียม ติดป้ายแยกว่ามาคนละทาง */}
           {students.topPerformers?.length > 0 && (
             <div className="mb-3">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                ทำได้ดี <span className="normal-case font-medium text-slate-300">· ⭐ ความสามารถ · 📈 พัฒนาการ</span>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+                ทำได้ดี <span className="normal-case font-medium text-slate-400">· ความสามารถ และ พัฒนาการ</span>
               </p>
               {students.topPerformers.map((s) => (
                 <MiniPersonRow
                   key={`${s.TopKind}-${s.UserId}`}
                   photo={s.Photo}
-                  name={`${s.TopKind === "improvement" ? "📈" : "⭐"} ${s.Nickname || `${s.Firstname} ${s.Lastname}`}`}
+                  LeadIcon={s.TopKind === "improvement" ? TrendingUp : Award}
+                  name={s.Nickname || `${s.Firstname} ${s.Lastname}`}
                   sub={`${s.TopScore}/100`}
                   tone="emerald"
                 />
@@ -559,8 +558,8 @@ export default function AdminDashboard() {
           )}
           {students.needsAttention && students.needsAttention.length > 0 ? (
             <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                ควรติดตาม <span className="normal-case font-medium text-slate-300">· คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ</span>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+                ควรติดตาม <span className="normal-case font-medium text-slate-400">· คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ</span>
               </p>
               {students.needsAttention.slice(0, 4).map((s) => (
                 <MiniPersonRow
@@ -587,8 +586,8 @@ export default function AdminDashboard() {
           </div>
           {tutors.topPerformers?.length > 0 && (
             <div className="mb-3">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                ทำได้ดี <span className="normal-case font-medium text-slate-300">· เช็กอิน ≥ 90%</span>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+                ทำได้ดี <span className="normal-case font-medium text-slate-400">· เช็กอิน ≥ 90%</span>
               </p>
               {tutors.topPerformers.map((t) => (
                 <MiniPersonRow
@@ -603,8 +602,8 @@ export default function AdminDashboard() {
           )}
           {tutors.needsAttention && tutors.needsAttention.length > 0 ? (
             <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1">
-                ควรติดตาม <span className="normal-case font-medium text-slate-300">· เช็กอิน &lt; 50% (จาก ≥ 3 คาบ)</span>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+                ควรติดตาม <span className="normal-case font-medium text-slate-400">· เช็กอิน &lt; 50% (จาก ≥ 3 คาบ)</span>
               </p>
               {tutors.needsAttention.slice(0, 4).map((t) => (
                 <MiniPersonRow
