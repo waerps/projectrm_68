@@ -5,15 +5,18 @@ import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
   logQuestionEnter, logIntegrityEvent,
+  markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Shared page shell ───────────────────────────────────────────────────────
 function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
+  // pt-[110px] = เผื่อความสูง navbar ที่ fixed อยู่ (~90px) + ระยะหายใจ
+  // ถ้าไม่เว้นไว้ การ์ดที่เนื้อหายาวจะถูกจัดกึ่งกลางจนลอยขึ้นไปทับ navbar
   return (
-    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 py-12`}>
-      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-36" : ""}`}>
+    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 pt-[110px] pb-12`}>
+      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-8" : ""}`}>
         {children}
       </div>
     </div>
@@ -40,7 +43,7 @@ function LoadingSkeleton() {
 
 function LandingCard({ status, exam, onStart, starting }) {
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
+    <div className="bg-white border border-neutral-200 rounded-2xl p-5 text-center space-y-3.5">
       <h1 className="text-lg font-bold text-neutral-900">{exam.name}</h1>
       <div className="flex justify-center gap-6 text-sm text-neutral-600">
         <div className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-neutral-400" />{exam.duration} นาที</div>
@@ -54,16 +57,16 @@ function LandingCard({ status, exam, onStart, starting }) {
       )}
       {/* ข้อความก่อนเริ่มสอบ — พูดความจริงตรงๆ ว่าคะแนนนี้ถูกใช้ทำอะไร และทำไมการตอบตามความเข้าใจจริง
           เป็นผลดีกับตัวนักเรียนเอง เจตนาคือลดแรงกดดันและแรงจูงใจในการลอก ไม่ใช่ข่มขู่ */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2">
-        <p className="text-sm font-bold text-slate-700">ก่อนเริ่มทำ อ่านสักครู่นะ</p>
-        <ul className="space-y-1.5 text-xs text-slate-600 leading-relaxed">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-left space-y-1.5">
+        <p className="text-xs font-bold text-slate-700">ก่อนเริ่มทำ อ่านสักครู่นะ</p>
+        <ul className="space-y-1 text-[11px] text-slate-600 leading-relaxed">
           <li>• ข้อสอบชุดนี้<span className="font-semibold text-slate-700">ไม่ใช่การตัดสินว่าเก่งหรือไม่เก่ง</span> มีไว้ให้เห็นว่าตอนนี้เข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม</li>
           <li>• ทำได้น้อยในรอบแรกไม่ใช่เรื่องผิด — มันคือจุดตั้งต้นที่จะทำให้เห็นพัฒนาการของตัวเองได้ชัดในรอบถัดไป</li>
           <li>• ถ้ารอบแรกตอบเกินความเข้าใจจริง (เช่น เปิดหาคำตอบ) คะแนนตั้งต้นจะสูงเกินจริง แล้ว<span className="font-semibold text-slate-700">พัฒนาการที่เห็นตอนจบจะดูน้อยกว่าที่เก่งขึ้นจริง</span> ทั้งที่ตั้งใจเรียนมาเต็มที่</li>
           <li>• ผลสอบอาจถูกนำไปคุยกับผู้ปกครอง ในรูปของพัฒนาการและจุดที่ควรช่วย ไม่ใช่คำตัดสินว่าผ่านหรือไม่ผ่าน</li>
           <li>• ระบบบันทึกเวลาที่ใช้และการออกจากหน้าสอบไว้ เพื่อให้ติวเตอร์รู้ว่าคะแนนสะท้อนความเข้าใจจริงแค่ไหน</li>
         </ul>
-        <p className="text-xs font-semibold text-orange-600 pt-0.5">ทำเท่าที่เข้าใจจริง แล้วติวเตอร์จะช่วยได้ตรงจุดที่สุด</p>
+        <p className="text-[11px] font-semibold text-orange-600 pt-0.5">ทำเท่าที่เข้าใจจริง แล้วติวเตอร์จะช่วยได้ตรงจุดที่สุด</p>
       </div>
 
       <button
@@ -433,6 +436,7 @@ export default function StudentExam() {
       .then((data) => {
         if (cancelled) return;
         if (data.status === "submitted") {
+          clearExamActive(); // เผื่อธงค้างจากรอบก่อน (เช่น backend บังคับส่งตอนหมดเวลา)
           setResult(data.result);
           setPhase("result");
         } else {
@@ -452,6 +456,13 @@ export default function StudentExam() {
     setStarting(true);
     try {
       const data = await startExam(token, userId);
+      // ปักธงว่า "ยังสอบค้างอยู่" — ใช้ซ่อนแชตบอตทั่วทั้งเว็บจนกว่าจะกดส่ง
+      markExamActive({
+        examJoinId: data.examJoinId,
+        deadlineAt: data.examStartedAt && data.durationMinutes != null
+          ? new Date(new Date(data.examStartedAt).getTime() + data.durationMinutes * 60 * 1000).toISOString()
+          : null,
+      });
       setRunData(data);
       setPhase("running");
     } catch (err) {
@@ -463,6 +474,7 @@ export default function StudentExam() {
   };
 
   const handleSubmitted = async (submitResult) => {
+    clearExamActive(); // ส่งข้อสอบแล้ว — ปลดล็อกแชตบอตทั้งเว็บ
     setResult(submitResult);
     setPhase("result");
     // Best-effort refresh with the full breakdown. Merge instead of overwrite:

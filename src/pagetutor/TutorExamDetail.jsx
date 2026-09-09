@@ -1120,7 +1120,35 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 // เดียวกัน ไม่ใช่ mock) โดยจับคู่ด้วย question id แทนที่จะเรียก API เพิ่ม
 // ถ้าในอนาคต fetchExamJoinDetail() ส่ง category ต่อข้อมาด้วยโดยตรง ให้ใช้ค่า
 // จาก response นั้นแทนการ join นี้ได้เลย
+// รายการ "ครั้งที่ 1, 2, 3..." ของข้อหนึ่ง — พับเก็บไว้ก่อน กดค่อยกาง
+// เดิมกางทั้งหมดตลอดเวลา พอข้อสอบเยอะ ๆ หน้าจะยาวและอ่านยาก
+function QuestionPeriods({ periods }) {
+  const [open, setOpen] = useState(false);
+  if (!periods || periods.length <= 1) return null;
+  return (
+    <div className="pl-5 mt-1">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition font-medium"
+      >
+        {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({periods.length} ครั้ง) {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-0.5">
+          {periods.map((p, pi) => (
+            <p key={pi} className="text-[11px] text-neutral-400">
+              ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StudentDetailModal({ student, examJoinId, examName, examQuestions, onClose }) {
+  // แบ่งเนื้อหาเป็น 2 แท็บ — เดิมต่อกันยาวทั้งหมดในหน้าเดียว พอข้อสอบเยอะจะตาลาย
+  const [modalTab, setModalTab] = useState("overview");
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -1223,10 +1251,30 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
             </div>
           </div>
 
+          {/* แท็บในโมดัล: ภาพรวม (สถิติ/ธง/รายหัวข้อ) กับ รายข้อ (คำตอบทีละข้อ) */}
+          <div className="flex gap-1.5 mb-5 border-b border-neutral-200">
+            {[
+              ["overview", "ภาพรวม"],
+              ["items", `รายข้อ${enrichedQuestions.length ? ` (${enrichedQuestions.length})` : ""}`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setModalTab(key)}
+                className={`px-3.5 py-2 text-xs font-bold transition border-b-2 -mb-px ${
+                  modalTab === key
+                    ? "border-orange-500 text-orange-600"
+                    : "border-transparent text-neutral-400 hover:text-neutral-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {/* ── ธงคุณภาพข้อมูล ──────────────────────────────────────────────
               บอกว่า "คะแนนชุดนี้เชื่อถือได้แค่ไหน" ก่อนนำไปวางแผนสอนหรือคุยกับผู้ปกครอง
               ไม่ใช่ข้อสรุปว่าทุจริต — การสลับแอปอาจมาจากแจ้งเตือนเด้งหรือจอล็อกก็ได้ */}
-          {student?.integrity && (student.integrity.leaveCount > 0 || student.integrity.copyCount > 0) ? (
+          {modalTab === "overview" && student?.integrity && (student.integrity.leaveCount > 0 || student.integrity.copyCount > 0) ? (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-bold text-amber-800 mb-1.5 flex items-center gap-1.5">
                 <Flag className="h-4 w-4" /> ธงคุณภาพข้อมูล — ควรตรวจสอบก่อนใช้คะแนนนี้
@@ -1276,7 +1324,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                 แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
               </p>
             </div>
-          ) : student?.submittedAt ? (
+          ) : modalTab === "overview" && student?.submittedAt ? (
             <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
               <p className="text-xs text-emerald-700">
                 ไม่พบพฤติกรรมที่ต้องตรวจสอบระหว่างสอบ — ไม่มีการออกจากหน้าสอบหรือคัดลอกข้อความ คะแนนชุดนี้ใช้อ้างอิงได้ตามปกติ
@@ -1284,7 +1332,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
             </div>
           ) : null}
 
-          {topicBreakdown && (
+          {modalTab === "overview" && topicBreakdown && (
             <div className="mb-6">
               <p className="text-sm font-bold text-neutral-800 mb-3">คะแนนรายหัวข้อ</p>
               <div className="space-y-2.5">
@@ -1304,14 +1352,20 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
           {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
           {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
 
-          {detail && !loading && (
+          {modalTab === "items" && detail && !loading && (
             <div>
-              <p className="text-sm font-bold text-neutral-800 mb-3">รายข้อ</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-neutral-800">รายข้อ</p>
+                <p className="text-[11px] text-neutral-400">เขียว = ตอบถูก · แดง = ตอบผิด</p>
+              </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
                     <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <p className="text-sm font-medium text-neutral-900 flex-1"><span className="text-neutral-400 font-bold mr-1.5">{i + 1}.</span>{q.text}</p>
+                      <p className="text-sm font-medium text-neutral-900 flex-1 leading-relaxed">
+                        <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
+                        {q.text}
+                      </p>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
@@ -1320,15 +1374,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                         <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
-                    {q.periods?.length > 1 && (
-                      <div className="pl-5 mt-1 space-y-0.5">
-                        {q.periods.map((p, pi) => (
-                          <p key={pi} className="text-[11px] text-neutral-400">
-                            ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <QuestionPeriods periods={q.periods} />
                   </div>
                 ))}
               </div>
