@@ -1140,6 +1140,14 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
     return detail.questions.map((q) => ({ ...q, category: byId.get(q.id)?.category || null }));
   }, [detail, examQuestions]);
 
+  // questionId → ลำดับข้อที่โชว์ (1, 2, 3...) ใช้กับไทม์ไลน์ธงคุณภาพข้อมูล
+  // ยึดลำดับเดียวกับส่วน "รายข้อ" ด้านล่าง เพื่อให้ติวเตอร์อ้างอิงตรงกัน
+  const questionNoById = useMemo(() => {
+    const m = new Map();
+    (detail?.questions || []).forEach((q, i) => m.set(q.id, i + 1));
+    return m;
+  }, [detail]);
+
   const topicBreakdown = useMemo(() => {
     const cats = [...new Set(enrichedQuestions.map((q) => q.category).filter(Boolean))];
     if (cats.length === 0) return null; // ไม่มีข้อมูลหมวดหมู่ให้ join ได้ — ข้ามส่วนนี้ไป
@@ -1234,6 +1242,35 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                   <li>• คัดลอกข้อความในหน้าสอบ {student.integrity.copyCount} ครั้ง (ข้อสอบเป็นปรนัย ปกติไม่มีเหตุต้องคัดลอก)</li>
                 )}
               </ul>
+              {/* ไทม์ไลน์รายเหตุการณ์ — เกิดอะไรขึ้นตอนไหน ระหว่างทำข้อไหน */}
+              {detail?.integrityEvents?.length > 0 && (
+                <div className="mt-3 border-t border-amber-200 pt-2.5">
+                  <p className="text-[11px] font-bold text-amber-800 mb-1.5">
+                    ไทม์ไลน์เหตุการณ์ ({detail.integrityEvents.length} ครั้ง)
+                  </p>
+                  <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                    {detail.integrityEvents.map((ev, i) => {
+                      const no = ev.questionId != null ? questionNoById.get(ev.questionId) : null;
+                      return (
+                        <div key={i} className="flex items-baseline gap-2 text-[11px] text-amber-700">
+                          <span className="font-mono text-amber-500 flex-shrink-0">
+                            {ev.occurredAt ? new Date(ev.occurredAt).toLocaleTimeString("th-TH") : "—"}
+                          </span>
+                          <span className="flex-1">
+                            {ev.eventType === "leave" ? (
+                              <>ออกจากหน้าสอบ {ev.durationSec != null ? formatTime(ev.durationSec) : "ไม่ทราบระยะเวลา"}</>
+                            ) : (
+                              <>คัดลอกข้อความ</>
+                            )}
+                            {no ? <span className="text-amber-500"> · ระหว่างทำข้อ {no}</span> : null}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
                 นี่ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือนเด้ง สายเข้า หรือจอล็อกก็ได้
                 แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
