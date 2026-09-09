@@ -1594,6 +1594,78 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
   printWindow.document.close();
 };
 
+// ─── "ข้อที่ควรตรวจสอบ" — มองพฤติกรรมระหว่างสอบตามข้อ ไม่ใช่ตามคน ──────────────
+// จุดประสงค์: แยกให้ออกว่า "โจทย์มีปัญหา" หรือ "น่าสงสัยว่าไปหาคำตอบ" ซึ่งเป็นการตัดสินใจ
+// คนละเรื่องกันคนละทาง — และช่วยกันไม่ให้ติวเตอร์เข้าใจผิดว่ามีเด็กน่าสงสัยหลายคน
+// ทั้งที่จริง ๆ ทุกคนไปสะดุดที่ข้อเดียวกันเพราะโจทย์เอง
+function QuestionFlagsCard({ flags, submittedCount }) {
+  // เกณฑ์ขึ้นเตือน: การออกจากหน้าเป็นสัญญาณอ่อน (แจ้งเตือนเด้งก็นับ) ต้องเห็นเป็นรูปแบบร่วม
+  // จึงขอตั้งแต่ 2 คนขึ้นไป หรือเกิน 30% ของคนที่ส่ง — ส่วนการคัดลอกเป็นสัญญาณแรง ขึ้นตั้งแต่ 1 คน
+  const notable = (flags || []).filter((f) => {
+    if (f.copyStudents >= 1) return true;
+    if (f.leaveStudents >= 2) return true;
+    return submittedCount > 0 && f.leaveStudents / submittedCount >= 0.3;
+  });
+  if (notable.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm space-y-3">
+      <div className="flex items-start gap-2.5">
+        <Flag className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-neutral-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
+          <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+            รวมพฤติกรรมระหว่างสอบตามข้อ เพื่อดูว่าปัญหาอยู่ที่โจทย์หรือที่การหาคำตอบ — ไม่ใช่ข้อสรุปว่าใครทุจริต
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {notable.map((f) => {
+          const pct = f.answeredCount ? Math.round((f.correctCount / f.answeredCount) * 100) : null;
+          // อ่านความหมายให้ติวเตอร์เลย ไม่ต้องตีความเอง
+          let verdict, tone;
+          if (f.copyStudents >= 1) {
+            verdict = "มีการคัดลอกข้อความ ซึ่งข้อสอบปรนัยปกติไม่มีเหตุต้องคัดลอก — ควรดูเป็นรายคนต่อ";
+            tone = "text-red-600";
+          } else if (pct != null && pct <= 50) {
+            verdict = "ตอบผิดกันเกือบทั้งห้องด้วย — น่าจะเป็นที่โจทย์มากกว่าที่นักเรียน (กำกวม ยากเกินระดับ หรือรูปไม่ขึ้น)";
+            tone = "text-amber-700";
+          } else if (pct != null && pct >= 80) {
+            verdict = "แต่ตอบถูกกันเกือบทั้งห้อง — น่าสงสัยว่าไปหาคำตอบ ควรเปลี่ยนข้อนี้ในรอบถัดไป";
+            tone = "text-orange-600";
+          } else {
+            verdict = "อัตราตอบถูกอยู่กลาง ๆ ยังสรุปสาเหตุไม่ได้ชัด ลองถามความเข้าใจในคาบ";
+            tone = "text-neutral-500";
+          }
+          return (
+            <div key={f.questionId} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3.5 py-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs font-semibold text-neutral-800 min-w-0">
+                  <span className="text-amber-600">ข้อ {f.no}</span>
+                  {f.category ? <span className="text-neutral-400 font-medium"> · {f.category}</span> : null}
+                  <span className="block text-neutral-500 font-normal mt-0.5 line-clamp-2">{f.text}</span>
+                </p>
+                <p className="text-[11px] text-neutral-500 whitespace-nowrap flex-shrink-0 text-right">
+                  {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีคนส่ง"}
+                </p>
+              </div>
+              <p className="text-[11px] text-neutral-600 mt-1.5">
+                {f.leaveStudents > 0 && (
+                  <>ออกจากหน้าสอบ {f.leaveStudents} คน{submittedCount ? ` จาก ${submittedCount}` : ""} (รวม {formatTime(f.leaveSeconds)})</>
+                )}
+                {f.leaveStudents > 0 && f.copyStudents > 0 && " · "}
+                {f.copyStudents > 0 && <>คัดลอกข้อความ {f.copyStudents} คน</>}
+              </p>
+              <p className={`text-[11px] mt-1 leading-relaxed ${tone}`}>{verdict}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Results Tab ─────────────────────────────────────────────────────────────
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
@@ -1773,6 +1845,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           color="bg-amber-500"
         />
       </div>
+
+      <QuestionFlagsCard flags={results.questionFlags} submittedCount={results.submittedCount} />
 
       {/* Search & Filter */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
