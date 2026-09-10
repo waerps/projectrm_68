@@ -1194,6 +1194,12 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 </div>
               )}
             </div>
+            <ParentPrivacyNoticeBlock
+              studentId={studentId}
+              parent={parent}
+              onSaved={loadDetail}
+              showToast={showToast}
+            />
           </div>
         )
       )}
@@ -1203,6 +1209,77 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         <ConsentTab studentId={studentId} showToast={showToast} />
       )}
     </Modal>
+  );
+}
+
+// ─── ParentPrivacyNoticeBlock ────────────────────────────────────────────────
+// แจ้งผู้ปกครองว่าสถาบันเก็บข้อมูลส่วนตัวของ "ตัวผู้ปกครองเอง" อะไรบ้าง (ชื่อ/ชื่อเล่น/
+// เบอร์โทร/LINE/วันเกิด/ความสัมพันธ์) และให้เซ็นรับทราบ — ★ นี่ไม่ใช่ "ความยินยอม" แบบของ
+// นักเรียนที่ปฏิเสธได้ (ดู ConsentTab ด้านล่าง) เพราะข้อมูลนี้จำเป็นต่อการลงทะเบียนผู้เยาว์
+// อยู่แล้ว จึงเป็นแค่การแจ้งให้ทราบตาม ม.23 มีแค่สถานะ "รับทราบแล้วเมื่อไหร่" ไม่มี
+// ยินยอม/ไม่ยินยอม แต่ยังคงบังคับแนบหลักฐานเหมือนความยินยอมกระดาษของนักเรียน
+function ParentPrivacyNoticeBlock({ studentId, parent, onSaved, showToast }) {
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const acknowledgedAt = parent.PrivacyNoticeAcknowledgedAt;
+
+  const handleSave = async () => {
+    if (!evidenceFile) return showToast("error", "กรุณาแนบไฟล์สแกนหรือภาพถ่ายใบรับทราบที่เซ็นแล้วก่อนบันทึก");
+    const fd = new FormData();
+    fd.append("evidence", evidenceFile);
+    setSaving(true);
+    try {
+      await axios.post(`${API}/students/${studentId}/parent-privacy-notice`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      showToast("success", "บันทึกการรับทราบสำเร็จ");
+      setEvidenceFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      onSaved?.();
+    } catch (e) {
+      showToast("error", "บันทึกไม่สำเร็จ", e.response?.data?.message || e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+      <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> การแจ้งข้อมูลส่วนบุคคลของผู้ปกครอง</p>
+      <p className="mt-1 text-xs text-orange-700 leading-relaxed">
+        สถาบันเก็บชื่อ ชื่อเล่น เบอร์โทร LINE ID วันเกิด และความสัมพันธ์ของผู้ปกครองไว้เพื่อระบุตัวผู้ใช้อำนาจปกครอง
+        และใช้ติดต่อเรื่องการเรียน/การชำระเงินของนักเรียน — เป็นข้อมูลที่จำเป็นต่อการลงทะเบียนผู้เยาว์อยู่แล้ว
+        จึงเป็นการแจ้งให้ทราบ ไม่ใช่การขอความยินยอมที่ปฏิเสธได้แบบรายการของนักเรียนด้านล่าง
+      </p>
+
+      {acknowledgedAt ? (
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-emerald-200 px-3 py-2">
+          <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold">รับทราบแล้ว</span>
+          <span className="text-xs text-slate-500">เมื่อ {new Date(acknowledgedAt).toLocaleString("th-TH")}</span>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-1 text-[11px] font-bold">ยังไม่ได้แจ้ง</span>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
+            className="block text-xs text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-100 file:px-2.5 file:py-1 file:text-xs file:font-bold file:text-orange-700"
+          />
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
+          >
+            {saving ? "กำลังบันทึก..." : "บันทึกว่าแจ้งแล้ว"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
