@@ -2,11 +2,12 @@ import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   ChevronRight, Video, FileText, Trash2, Calendar, Plus, Download,
-  UploadCloud, Loader2, Pencil, X, Check, PlayCircle
+  UploadCloud, Loader2, Pencil, X, Check, PlayCircle, CircleHelp
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import axios from "axios";
+import TutorVideoQuestionEditor from "../components/TutorVideoQuestionEditor";
 
 export default function TutorCourseManagePage() {
   const [searchParams] = useSearchParams();
@@ -37,6 +38,7 @@ export default function TutorCourseManagePage() {
 
   const [videos, setVideos] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [questionVideo, setQuestionVideo] = useState(null);
 
   const editFileInputRef = useRef(null);
 
@@ -283,6 +285,10 @@ export default function TutorCourseManagePage() {
                             <Calendar className="h-3 w-3" />{video.date}
                           </span>
                           <div className="flex items-center gap-0.5">
+                            <button onClick={() => setQuestionVideo(video)} title="จัดการคำถามในวิดีโอ"
+                              className="p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50">
+                              <CircleHelp className="h-3.5 w-3.5" />
+                            </button>
                             <button onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, type: video.VideoType || getVideoType(video.VideoUrl), duration: video.Duration || "" }); }}
                               className="p-1.5 text-neutral-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
                               <Pencil className="h-3.5 w-3.5" />
@@ -368,6 +374,8 @@ export default function TutorCourseManagePage() {
       </div>
 
       {/* ===== MODAL: ADD VIDEO ===== */}
+      {questionVideo && <TutorVideoQuestionEditor video={questionVideo} token={token} onClose={() => setQuestionVideo(null)} />}
+
       {isAddVideoOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
