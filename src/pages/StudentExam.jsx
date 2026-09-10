@@ -134,7 +134,7 @@ function NoQuestionsNotice() {
 
 // ─── Taking the exam ─────────────────────────────────────────────────────────
 
-function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, onSubmitted }) {
+function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, examBehaviorConsent, onSubmitted }) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [activeIdx, setActiveIdx] = useState(0);
   const [remainingSec, setRemainingSec] = useState(() => {
@@ -200,6 +200,10 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   useEffect(() => { currentQuestionIdRef.current = current?.id ?? null; }, [current]);
 
   useEffect(() => {
+    // PDPA: ไม่ยินยอม (สแนปช็อตตอนกดเข้าสอบรอบนี้) — ไม่แนบ listener เลย เท่ากับไม่มีการ
+    // ยิง network call ใด ๆ ทั้งสิ้นฝั่งนี้ ไม่ใช่แค่ backend ปฏิเสธเงียบ ๆ
+    if (examBehaviorConsent === false) return;
+
     const report = (eventType, extra = {}) => {
       if (submittedRef.current) return; // ส่งข้อสอบแล้วไม่ต้องเก็บอีก
       logIntegrityEvent({ examJoinId, eventType, questionId: currentQuestionIdRef.current, ...extra })
@@ -223,7 +227,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
     };
-  }, [examJoinId]);
+  }, [examJoinId, examBehaviorConsent]);
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
@@ -469,6 +473,31 @@ export default function StudentExam() {
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  // PDPA: สถานะความยินยอม exam_behavior — เช็คก่อนถึงจะรู้ว่าต้องโชว์ prompt ไหม
+  const [examBehaviorStatus, setExamBehaviorStatus] = useState(null); // null = ยังไม่รู้ (ไม่บล็อกเริ่มสอบระหว่างรอ)
+  const [savingConsent, setSavingConsent] = useState(false);
+
+  useEffect(() => {
+    const authToken = localStorage.getItem("student_token");
+    if (!authToken) return;
+    getMyConsents(authToken)
+      .then((res) => setExamBehaviorStatus(res?.consents?.exam_behavior ?? null))
+      .catch((err) => console.error("โหลดสถานะความยินยอมไม่สำเร็จ:", err));
+  }, []);
+
+  const handleAnswerExamBehavior = async (isGranted) => {
+    const authToken = localStorage.getItem("student_token");
+    setSavingConsent(true);
+    try {
+      const res = await saveConsents(authToken, [{ consentKey: "exam_behavior", isGranted }]);
+      setExamBehaviorStatus(res?.consents?.exam_behavior ?? (isGranted ? "granted" : "denied"));
+    } catch (err) {
+      alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSavingConsent(false);
+    }
+  };
+
   useEffect(() => {
     if (!userId) {
       navigate(`/login?returnTo=/exam/${token}`);
@@ -546,7 +575,15 @@ export default function StudentExam() {
   if (phase === "landing") {
     return (
       <PageShell maxWidth="max-w-2xl">
-        <LandingCard status={landing.status} exam={landing.exam} onStart={handleStart} starting={starting} />
+        <LandingCard
+          status={landing.status}
+          exam={landing.exam}
+          onStart={handleStart}
+          starting={starting}
+          examBehaviorStatus={examBehaviorStatus}
+          onAnswerExamBehavior={handleAnswerExamBehavior}
+          savingConsent={savingConsent}
+        />
       </PageShell>
     );
   }
@@ -559,6 +596,7 @@ export default function StudentExam() {
           examStartedAt={runData.examStartedAt}
           durationMinutes={runData.durationMinutes}
           questions={runData.questions}
+          examBehaviorConsent={runData.examBehaviorConsent}
           onSubmitted={handleSubmitted}
         />
       </PageShell>

@@ -12,8 +12,16 @@ import {
   Users,
   Clock,
   BookOpen,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
-import { getStudentProfile, updateStudentProfile } from "../callapi/callusers_student";
+import {
+  getStudentProfile,
+  updateStudentProfile,
+  getConsentCatalog,
+  getMyConsents,
+  saveConsents,
+} from "../callapi/callusers_student";
 
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
@@ -45,9 +53,45 @@ export default function StudentProfile() {
   });
   const [originalData, setOriginalData] = useState({});
 
+  const [consentItems, setConsentItems] = useState([]);
+  const [consentStatus, setConsentStatus] = useState({});
+  const [consentLoading, setConsentLoading] = useState(true);
+  const [savingConsentKey, setSavingConsentKey] = useState(null);
+
   useEffect(() => {
     fetchProfile();
+    fetchConsents();
   }, []);
+
+  async function fetchConsents() {
+    try {
+      setConsentLoading(true);
+      const [catalog, mine] = await Promise.all([
+        getConsentCatalog(),
+        getMyConsents(token),
+      ]);
+      setConsentItems(catalog?.items ?? []);
+      setConsentStatus(mine?.consents ?? {});
+    } catch (error) {
+      console.error("โหลดข้อมูลความยินยอมไม่สำเร็จ:", error);
+    } finally {
+      setConsentLoading(false);
+    }
+  }
+
+  // ★ บันทึกทันทีทีละรายการ ไม่ผูกกับปุ่ม "บันทึก" ของฟอร์มหลัก — ตาม ม.19 การถอน
+  //   ความยินยอมต้องทำได้ง่ายเท่ากับการให้ จึงจงใจไม่ให้ต้องกดเข้าโหมดแก้ไขก่อน
+  const handleSetConsent = async (consentKey, isGranted) => {
+    setSavingConsentKey(consentKey);
+    try {
+      const res = await saveConsents(token, [{ consentKey, isGranted }]);
+      setConsentStatus(res?.consents ?? consentStatus);
+    } catch (error) {
+      alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSavingConsentKey(null);
+    }
+  };
 
   async function fetchProfile() {
     try {
@@ -429,6 +473,34 @@ export default function StudentProfile() {
             </p>
           </SectionCard>
         </div>
+
+        {/* ── ความเป็นส่วนตัวและความยินยอม (PDPA) ── */}
+        <div className="mt-5">
+          <SectionCard
+            title="ความเป็นส่วนตัวและความยินยอม (PDPA)"
+            icon={<ShieldCheck className="h-4.5 w-4.5 text-orange-500" />}
+            isEditing={false}
+          >
+            {consentLoading ? (
+              <p className="py-4 text-center text-xs text-neutral-400">กำลังโหลด...</p>
+            ) : (
+              <div className="divide-y divide-neutral-50">
+                {consentItems.map((item) => (
+                  <ConsentRow
+                    key={item.key}
+                    item={item}
+                    status={consentStatus[item.key] || "not_answered"}
+                    saving={savingConsentKey === item.key}
+                    onChoose={(granted) => handleSetConsent(item.key, granted)}
+                  />
+                ))}
+              </div>
+            )}
+            <p className="mt-4 text-xs text-neutral-400 text-center">
+              เปลี่ยนใจภายหลังได้ตลอดเวลา — กดเลือกใหม่ได้ทันที ไม่ต้องรอเจ้าหน้าที่
+            </p>
+          </SectionCard>
+        </div>
       </div>
 
       {alertModal.show && (
@@ -480,6 +552,70 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
             {displayValue || value || <span className="text-neutral-300 font-normal">-</span>}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ── Consent Row (PDPA) ──────────────────────────────────────────
+function ConsentStatusBadge({ status }) {
+  const map = {
+    granted: { text: "ยินยอมแล้ว", cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+    denied: { text: "ไม่ยินยอม", cls: "bg-neutral-100 text-neutral-500 border-neutral-200" },
+    not_answered: { text: "ยังไม่ได้ตอบ", cls: "bg-amber-50 text-amber-600 border-amber-100" },
+  };
+  const s = map[status] || map.not_answered;
+  return (
+    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>
+      {s.text}
+    </span>
+  );
+}
+
+function ConsentRow({ item, status, saving, onChoose }) {
+  return (
+    <div className="py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          <p className="text-sm font-bold text-neutral-800">{item.label}</p>
+          <p className="mt-1 text-xs text-neutral-500 leading-relaxed">{item.summary}</p>
+          {item.reassurance && (
+            <p className="mt-1.5 text-xs text-emerald-600 leading-relaxed">{item.reassurance}</p>
+          )}
+          {status === "denied" && item.ifDenied && (
+            <p className="mt-1.5 text-xs text-neutral-400 leading-relaxed">ถ้าไม่ยินยอม: {item.ifDenied}</p>
+          )}
+        </div>
+        <ConsentStatusBadge status={status} />
+      </div>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onChoose(true)}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait ${
+            status === "granted"
+              ? "bg-emerald-500 text-white shadow-sm"
+              : "bg-neutral-50 text-neutral-500 border border-neutral-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
+          }`}
+        >
+          {status === "granted" && <Check className="h-3.5 w-3.5" />}
+          ยินยอม
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => onChoose(false)}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait ${
+            status === "denied"
+              ? "bg-neutral-600 text-white shadow-sm"
+              : "bg-neutral-50 text-neutral-500 border border-neutral-200 hover:bg-neutral-100"
+          }`}
+        >
+          {status === "denied" && <Check className="h-3.5 w-3.5" />}
+          ไม่ยินยอม
+        </button>
+        {saving && <span className="self-center text-[11px] text-neutral-400">กำลังบันทึก...</span>}
       </div>
     </div>
   );

@@ -1459,6 +1459,15 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                 แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
               </p>
             </div>
+          ) : modalTab === "overview" && student?.examBehaviorConsent === false ? (
+            // PDPA: นักเรียนไม่ยินยอมให้เก็บพฤติกรรมสอบรอบนี้ — ต้องแยกให้ชัดจาก "เก็บแล้วไม่พบอะไร"
+            // ไม่งั้นติวเตอร์จะเข้าใจผิดว่านักเรียนคนนี้ "สะอาด" ทั้งที่จริง ๆ คือไม่มีการเก็บข้อมูลเลย
+            <div className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+              <p className="text-xs text-neutral-500">
+                ไม่มีข้อมูลส่วนนี้ — นักเรียนไม่ได้ยินยอมให้บันทึกพฤติกรรมระหว่างสอบรอบนี้ (ไม่ใช่ "ตรวจแล้วไม่พบความผิดปกติ")
+                คะแนนสอบยังใช้อ้างอิงได้ตามปกติ
+              </p>
+            </div>
           ) : modalTab === "overview" && student?.submittedAt ? (
             <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
               <p className="text-xs text-emerald-700">

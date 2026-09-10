@@ -5,6 +5,7 @@ import Footer from "../components/footer.jsx"
 import ChatWidget from "../components/Chat/ChatWidget"
 import ChatFullscreen from "../components/Chat/ChatFullscreen"
 import IncidentReportButton from "../components/IncidentReportButton.jsx"
+import PdpaConsentBanner from "../components/PdpaConsentBanner.jsx"
 import {
   readExamActive, markExamActive, clearExamActive,
   fetchActiveExam, EXAM_ACTIVE_CHANGED_EVENT,
@@ -83,6 +84,7 @@ export default function AppShell() {
     <>
       <div className="min-h-screen ">
         <Navbar />
+        {currentRole === "student" && !isExamPage && <PdpaConsentBanner />}
         <main className=" ">
           <div className="max-w-6xl mx-auto">
             <Outlet />

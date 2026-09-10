@@ -319,3 +319,33 @@ export async function cancelIncident(token, incidentId) {
     throwNiceError(error);
   }
 }
+
+// ─── ความยินยอม PDPA ─────────────────────────────────────────────────────────
+
+export async function getConsentCatalog() {
+  try {
+    const res = await apiClient.get("/api/consents/catalog");
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function getMyConsents(token) {
+  try {
+    const res = await apiClient.get("/api/consents/me", withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+// items: [{ consentKey, isGranted }]
+export async function saveConsents(token, items) {
+  try {
+    const res = await apiClient.post("/api/consents", { items }, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}

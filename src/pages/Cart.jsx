@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
 import { getCourseById, getCourseSchedule, getCourseSubjects } from "../callapi/callusers";
+import { getConsentCatalog, getMyConsents, saveConsents } from "../callapi/callusers_student";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   AlertTriangle,
@@ -417,6 +418,57 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [lineLinked, setLineLinked] = useState(false);
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
   const fileRef = useRef(null);
+
+  // ── PDPA: ยินยอมเรื่องรูป/exam log/ประชาสัมพันธ์ — ถามตอนซื้อคอร์ส เพราะเป็นจังหวะ
+  // ที่ผู้ปกครองอยู่หน้าจอพอดี (ดูเหตุผลเต็มใน config/consentTypes.js CONSENT_AT_ENROLL)
+  const [enrollConsentItems, setEnrollConsentItems] = useState([]);
+  const [enrollConsentStatus, setEnrollConsentStatus] = useState({});
+  const [enrollConsentLoading, setEnrollConsentLoading] = useState(true);
+  const [enrollConsentFetchFailed, setEnrollConsentFetchFailed] = useState(false);
+  const [savingConsentKey, setSavingConsentKey] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = localStorage.getItem("student_token");
+        const [catalog, mine] = await Promise.all([
+          getConsentCatalog(),
+          token ? getMyConsents(token) : Promise.resolve(null),
+        ]);
+        if (cancelled) return;
+        const askKeys = new Set(catalog?.askAtEnroll || []);
+        setEnrollConsentItems((catalog?.items || []).filter((it) => askKeys.has(it.key)));
+        setEnrollConsentStatus(mine?.consents || {});
+      } catch (err) {
+        console.error("โหลดข้อมูลความยินยอมไม่สำเร็จ:", err);
+        // ไม่บล็อกการซื้อคอร์สเพราะ API ความยินยอมล่ม — ปล่อยให้ซื้อต่อได้ตามปกติ
+        if (!cancelled) setEnrollConsentFetchFailed(true);
+      } finally {
+        if (!cancelled) setEnrollConsentLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSetEnrollConsent = async (consentKey, isGranted) => {
+    const token = localStorage.getItem("student_token");
+    setSavingConsentKey(consentKey);
+    try {
+      const res = await saveConsents(token, [{ consentKey, isGranted }]);
+      setEnrollConsentStatus(res?.consents || enrollConsentStatus);
+    } catch (err) {
+      alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSavingConsentKey(null);
+    }
+  };
+
+  const allEnrollConsentsAnswered =
+    enrollConsentFetchFailed ||
+    enrollConsentItems.every(
+      (it) => enrollConsentStatus[it.key] === "granted" || enrollConsentStatus[it.key] === "denied"
+    );
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -679,6 +731,68 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   </div>
                 </div>
               )}
+
+              {/* ── PDPA: ยินยอมเรื่องรูป / บันทึกพฤติกรรมสอบ / ภาพประชาสัมพันธ์ ── */}
+              <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
+                <strong className="text-sm text-[#14213D]">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
+                <p className="mt-1 text-xs text-slate-500">
+                  กรุณาเลือกให้ครบทุกข้อก่อนดำเนินการต่อ — เลือก "ไม่ยินยอม" ได้ตามใจ ไม่กระทบสิทธิ์การเรียน
+                </p>
+                {enrollConsentLoading ? (
+                  <p className="mt-3 text-xs text-slate-400">กำลังโหลด...</p>
+                ) : (
+                  <div className="mt-3 divide-y divide-slate-100">
+                    {enrollConsentItems.map((item) => {
+                      const status = enrollConsentStatus[item.key] || "not_answered";
+                      const saving = savingConsentKey === item.key;
+                      return (
+                        <div key={item.key} className="py-3.5">
+                          <p className="text-sm font-bold text-[#14213D]">{item.label}</p>
+                          <p className="mt-1 text-xs text-slate-500 leading-relaxed">{item.summary}</p>
+                          {item.reassurance && (
+                            <p className="mt-1.5 text-xs text-emerald-600 leading-relaxed">{item.reassurance}</p>
+                          )}
+                          {status === "denied" && item.ifDenied && (
+                            <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">ถ้าไม่ยินยอม: {item.ifDenied}</p>
+                          )}
+                          <div className="mt-2.5 flex gap-2">
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => handleSetEnrollConsent(item.key, true)}
+                              className={cn(
+                                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait",
+                                status === "granted"
+                                  ? "bg-emerald-500 text-white shadow-sm"
+                                  : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
+                              )}
+                            >
+                              {status === "granted" && <Check className="h-3.5 w-3.5" />}
+                              ยินยอม
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => handleSetEnrollConsent(item.key, false)}
+                              className={cn(
+                                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait",
+                                status === "denied"
+                                  ? "bg-slate-600 text-white shadow-sm"
+                                  : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
+                              )}
+                            >
+                              {status === "denied" && <Check className="h-3.5 w-3.5" />}
+                              ไม่ยินยอม
+                            </button>
+                            {saving && <span className="self-center text-[11px] text-slate-400">กำลังบันทึก...</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="mt-3 text-[11px] text-slate-400">เปลี่ยนใจภายหลังได้ตลอดเวลาที่หน้าโปรไฟล์</p>
+              </div>
             </div>
           )}
 
@@ -743,7 +857,15 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
         <div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 sm:px-8">
           {step > 0 && step < 3 ? <button onClick={() => setStep((value) => value - 1)} className="flex items-center gap-2 px-2 py-3 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />ย้อนกลับ</button> : <span />}
-          {step < 2 && <button onClick={() => setStep((value) => value + 1)} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600">ดำเนินการต่อ <ChevronRight className="h-4 w-4" /></button>}
+          {step < 2 && (
+            <button
+              onClick={() => setStep((value) => value + 1)}
+              disabled={step === 1 && !allEnrollConsentsAnswered}
+              className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ดำเนินการต่อ <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
           {step === 2 && (
             <button
               disabled={!slipFile || !activeInstallment || checkingSlip || qrLoading}

@@ -17,13 +17,15 @@ export function Register() {
     gpa: '',
     parentId: '',
     gradeLevelId: '',
-    genderId: ''
+    genderId: '',
+    marketingConsent: false
   });
 
   const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: type === 'checkbox' ? checked : value
     });
   };
 
@@ -343,6 +345,30 @@ const handleSubmit = async (e) => {
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* PDPA — แจ้งการเก็บ/ใช้ข้อมูล + ขอความยินยอมเรื่องข่าวสารการตลาด (ไม่บังคับ) */}
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <div className="rounded-xl bg-orange-50 border border-orange-100 p-4">
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  สถาบันจะเก็บและใช้ข้อมูลที่ท่านกรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอนเท่านั้น
+                  ส่วนข้อมูลอื่น ๆ เช่น ภาพถ่าย หรือการบันทึกพฤติกรรมระหว่างสอบ ระบบจะขอความยินยอมแยกต่างหาก
+                  อีกครั้งตอนลงทะเบียนเรียน ซึ่งท่านหรือผู้ปกครองสามารถเลือกอนุญาตหรือไม่อนุญาตได้ตามใจ
+                  และเปลี่ยนใจภายหลังได้ตลอดเวลาที่หน้าโปรไฟล์
+                </p>
+                <label className="mt-3 flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="marketingConsent"
+                    checked={formData.marketingConsent}
+                    onChange={handleChange}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                  />
+                  <span className="text-xs text-gray-700">
+                    ยินยอมให้ติดต่อแจ้งข่าวสาร โปรโมชัน และคอร์สใหม่ทางเบอร์โทร/LINE (ไม่บังคับ — ไม่ติ๊กก็สมัครได้ตามปกติ)
+                  </span>
+                </label>
               </div>
             </div>
 
