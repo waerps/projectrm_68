@@ -1194,12 +1194,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 </div>
               )}
             </div>
-            <ParentPrivacyNoticeBlock
-              studentId={studentId}
-              parent={parent}
-              onSaved={loadDetail}
-              showToast={showToast}
-            />
+            <ParentPrivacyNoticeBlock parent={parent} />
           </div>
         )
       )}
@@ -1214,36 +1209,12 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
 // ─── ParentPrivacyNoticeBlock ────────────────────────────────────────────────
 // แจ้งผู้ปกครองว่าสถาบันเก็บข้อมูลส่วนตัวของ "ตัวผู้ปกครองเอง" อะไรบ้าง (ชื่อ/ชื่อเล่น/
-// เบอร์โทร/LINE/วันเกิด/ความสัมพันธ์) และให้เซ็นรับทราบ — ★ นี่ไม่ใช่ "ความยินยอม" แบบของ
-// นักเรียนที่ปฏิเสธได้ (ดู ConsentTab ด้านล่าง) เพราะข้อมูลนี้จำเป็นต่อการลงทะเบียนผู้เยาว์
-// อยู่แล้ว จึงเป็นแค่การแจ้งให้ทราบตาม ม.23 มีแค่สถานะ "รับทราบแล้วเมื่อไหร่" ไม่มี
-// ยินยอม/ไม่ยินยอม แต่ยังคงบังคับแนบหลักฐานเหมือนความยินยอมกระดาษของนักเรียน
-function ParentPrivacyNoticeBlock({ studentId, parent, onSaved, showToast }) {
-  const [evidenceFile, setEvidenceFile] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
-
+// เบอร์โทร/LINE/วันเกิด/ความสัมพันธ์) — ★ นี่ไม่ใช่ "ความยินยอม" แบบของนักเรียนที่ปฏิเสธได้
+// (ดู ConsentTab ด้านล่าง) เพราะข้อมูลนี้จำเป็นต่อการลงทะเบียนผู้เยาว์อยู่แล้ว จึงเป็นแค่การ
+// แจ้งให้ทราบตาม ม.23 — นักเรียนกรอกข้อมูลผู้ปกครองและรับทราบเรื่องนี้เองตอนซื้อคอร์สแรก
+// (ดู POST /api/student/profile/parent) บล็อกนี้จึงเป็นแค่การแสดงสถานะ ไม่มีปุ่มบันทึกในหน้านี้แล้ว
+function ParentPrivacyNoticeBlock({ parent }) {
   const acknowledgedAt = parent.PrivacyNoticeAcknowledgedAt;
-
-  const handleSave = async () => {
-    if (!evidenceFile) return showToast("error", "กรุณาแนบไฟล์สแกนหรือภาพถ่ายใบรับทราบที่เซ็นแล้วก่อนบันทึก");
-    const fd = new FormData();
-    fd.append("evidence", evidenceFile);
-    setSaving(true);
-    try {
-      await axios.post(`${API}/students/${studentId}/parent-privacy-notice`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      showToast("success", "บันทึกการรับทราบสำเร็จ");
-      setEvidenceFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      onSaved?.();
-    } catch (e) {
-      showToast("error", "บันทึกไม่สำเร็จ", e.response?.data?.message || e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
@@ -1260,23 +1231,9 @@ function ParentPrivacyNoticeBlock({ studentId, parent, onSaved, showToast }) {
           <span className="text-xs text-slate-500">เมื่อ {new Date(acknowledgedAt).toLocaleString("th-TH")}</span>
         </div>
       ) : (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-amber-200 px-3 py-2">
           <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-1 text-[11px] font-bold">ยังไม่ได้แจ้ง</span>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
-            className="block text-xs text-slate-600 file:mr-2 file:rounded-lg file:border-0 file:bg-orange-100 file:px-2.5 file:py-1 file:text-xs file:font-bold file:text-orange-700"
-          />
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60"
-          >
-            {saving ? "กำลังบันทึก..." : "บันทึกว่าแจ้งแล้ว"}
-          </button>
+          <span className="text-xs text-slate-500">ระบบจะให้นักเรียนกรอกข้อมูลนี้และรับทราบเองตอนซื้อคอร์สแรก</span>
         </div>
       )}
     </div>
@@ -1289,10 +1246,9 @@ function ParentPrivacyNoticeBlock({ studentId, parent, onSaved, showToast }) {
 function ConsentTab({ studentId, showToast }) {
   const [catalog, setCatalog] = useState([]);
   const [status, setStatus] = useState({});
-  const [history, setHistory] = useState([]);      // ★ เพิ่ม: ใช้หา method/เวลาล่าสุดของแต่ละรายการ
+  const [history, setHistory] = useState([]);      // ใช้หา method/เวลาล่าสุดของแต่ละรายการ
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState({});          // { [consentKey]: true|false } — ยังไม่ได้บันทึก
-  const [grantedByRole, setGrantedByRole] = useState("parent");
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -1314,7 +1270,6 @@ function ConsentTab({ studentId, showToast }) {
 
   useEffect(() => { load(); }, [studentId]);
 
-  // ★ เพิ่ม: หา record ล่าสุดของ key นี้ (ไม่ว่าจะตอบด้วยวิธีไหน) เอาไว้โชว์ badge + ข้อความล็อก
   const latestRecordFor = (key) => history.find((r) => r.ConsentKey === key) || null;
   const METHOD_LABEL = { online: "ออนไลน์", paper: "กระดาษ" };
 
@@ -1324,19 +1279,17 @@ function ConsentTab({ studentId, showToast }) {
     not_answered: { text: "ยังไม่ได้ตอบ", cls: "bg-amber-50 text-amber-600 border-amber-200" },
   };
 
+  // มีเฉพาะรายการที่ "ยังไม่ได้ตอบ" เท่านั้นที่แอดมินเพิ่มคำตอบแทนได้ — ตอบแล้วไม่ว่าจะยินยอมหรือไม่
+  // ยินยอม (ไม่ว่านักเรียนตอบเองหรือแอดมินเคยบันทึกไว้ก่อน) แก้ทับไม่ได้อีก (ฝั่ง backend บล็อกไว้แล้วเช่นกัน)
+  const pendingItems = catalog.filter((item) => (status[item.key] || "not_answered") === "not_answered");
   const answeredCount = Object.keys(draft).length;
 
   const handleSavePaper = async () => {
     if (!answeredCount) return showToast("error", "กรุณาเลือกอย่างน้อย 1 รายการก่อนบันทึก");
 
     const items = Object.entries(draft).map(([consentKey, isGranted]) => ({ consentKey, isGranted }));
-    // ★ เพิ่ม: เช็คว่ามีรายการไหนที่ "ตอบไปแล้ว" อยู่ก่อนบ้าง (ทับของเดิม) เอาไว้ปรับข้อความ toast
-    const overriddenLabels = items
-      .filter((it) => (status[it.consentKey] || "not_answered") !== "not_answered")
-      .map((it) => catalog.find((c) => c.key === it.consentKey)?.label || it.consentKey);
     const fd = new FormData();
     fd.append("items", JSON.stringify(items));
-    fd.append("grantedByRole", grantedByRole);
     if (evidenceFile) fd.append("evidence", evidenceFile);
 
     setSaving(true);
@@ -1344,11 +1297,7 @@ function ConsentTab({ studentId, showToast }) {
       await axios.post(`${API}/students/${studentId}/consents/paper`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      if (overriddenLabels.length) {
-        showToast("success", "บันทึกทับความยินยอมเดิมสำเร็จ", `รายการที่ทับ: ${overriddenLabels.join(", ")}`);
-      } else {
-        showToast("success", "บันทึกความยินยอมจากเอกสารสำเร็จ");
-      }
+      showToast("success", "บันทึกความยินยอมสำเร็จ");
       setDraft({});
       setEvidenceFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1366,21 +1315,18 @@ function ConsentTab({ studentId, showToast }) {
 
   return (
     <div className="space-y-5">
-      {/* ★ รวมเหลือกล่องเดียว (ตามที่ผู้ปกครอง/แอดมินขอ): เดิมมีกล่อง "สถานะปัจจุบัน" (อ่านอย่างเดียว)
-          แยกจากกล่อง "บันทึกจากเอกสารกระดาษ" (กรอก/แก้ไข) ซึ่งหน้าตาซ้ำกันมากจนดูเหมือนข้อมูลซ้ำซ้อน
-          ตอนนี้รวมเป็นกล่องเดียว: แต่ละแถวโชว์ทั้งสถานะปัจจุบัน+วิธี/เวลาที่ตอบ และปุ่มกรอก/แก้ไขในตัว */}
-      {/* บันทึกจากเอกสารกระดาษ */}
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-        <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> บันทึกความยินยอมจากเอกสาร (กระดาษ)</p>
+        <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> ความยินยอม (PDPA)</p>
         <p className="mt-1 text-xs text-orange-700 leading-relaxed">
-          ใช้บันทึกแทนกรณีที่แอดมินรับทราบความยินยอมด้วยวิธีอื่นนอกจากนักเรียนกดตอบเองในระบบ
-          เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์ — แนบไฟล์สแกน/ภาพถ่ายใบเซ็นได้ถ้ามี แต่ไม่บังคับ
+          แสดงว่านักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ แอดมินเพิ่มคำตอบแทนได้
+          (เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์) แต่ถ้ามีคำตอบแล้ว จะแก้ไขทับไม่ได้อีก
         </p>
 
         <div className="mt-3 space-y-2.5">
           {catalog.map((item) => {
             const s = STATUS_LABEL[status[item.key] || "not_answered"];
             const latest = latestRecordFor(item.key);
+            const answered = (status[item.key] || "not_answered") !== "not_answered";
             return (
               <div key={item.key} className="rounded-lg border border-orange-100 bg-white px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
@@ -1397,64 +1343,53 @@ function ConsentTab({ studentId, showToast }) {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex justify-end gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
-                  >
-                    ยินยอม
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
-                  >
-                    ไม่ยินยอม
-                  </button>
-                </div>
+                {!answered && (
+                  <div className="mt-2 flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
+                    >
+                      ยินยอม
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      ไม่ยินยอม
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <label className="text-xs font-semibold text-orange-800">ผู้ให้ความยินยอม:</label>
-          <select
-            value={grantedByRole}
-            onChange={(e) => setGrantedByRole(e.target.value)}
-            className="rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700"
-          >
-            <option value="parent">ผู้ปกครอง</option>
-            <option value="student">นักเรียน</option>
-          </select>
-        </div>
-        <p className="mt-2 text-[11px] text-orange-600 leading-relaxed">
-          ตาม ม.20 ถ้านักเรียนยังเป็นผู้เยาว์ ผู้ใช้อำนาจปกครองต้องเป็นผู้ลงนามให้ความยินยอมด้วย —
-          เลือก "ผู้ปกครอง" เมื่อผู้ปกครองเป็นคนเซ็นเอกสารจริง และเลือก "นักเรียน" เฉพาะกรณีที่นักเรียน
-          บรรลุนิติภาวะแล้วหรือกฎหมายไม่กำหนดให้ต้องมีผู้ปกครองร่วมด้วยสำหรับรายการนั้น ๆ
-        </p>
+        {pendingItems.length > 0 && (
+          <>
+            <div className="mt-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-orange-700"
+              />
+              <p className="mt-1 text-[11px] text-orange-600">ไม่บังคับแนบ — รองรับ JPG, PNG, WEBP หรือ PDF ถ้าต้องการแนบ · ไม่เกิน 10 MB</p>
+            </div>
 
-        <div className="mt-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
-            className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-orange-700"
-          />
-          <p className="mt-1 text-[11px] text-orange-600">ไม่บังคับแนบ — รองรับ JPG, PNG, WEBP หรือ PDF ถ้าต้องการแนบ · ไม่เกิน 10 MB</p>
-        </div>
-
-        <button
-          type="button"
-          disabled={saving}
-          onClick={handleSavePaper}
-          className="mt-4 flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50"
-        >
-          {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          {saving ? "กำลังบันทึก..." : "บันทึกความยินยอมจากเอกสาร"}
-        </button>
+            <button
+              type="button"
+              disabled={saving || !answeredCount}
+              onClick={handleSavePaper}
+              className="mt-4 flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50"
+            >
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {saving ? "กำลังบันทึก..." : "บันทึกคำตอบแทนนักเรียน"}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

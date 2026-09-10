@@ -56,6 +56,24 @@ export async function updateStudentProfile(token, payload) {
   }
 }
 
+export async function getParentProfileTypes() {
+  try {
+    const res = await apiClient.get("/api/student/profile/parent-profile-types");
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function submitParentProfile(token, payload) {
+  try {
+    const res = await apiClient.post("/api/student/profile/parent", payload, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Courses (enrolled) ───────────────────────────────────────────────────────
 
 export async function getStudentCourses(token) {

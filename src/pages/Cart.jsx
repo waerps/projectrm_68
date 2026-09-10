@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
 import { getCourseById, getCourseSchedule, getCourseSubjects } from "../callapi/callusers";
-import { getConsentCatalog, saveConsents } from "../callapi/callusers_student";
+import { getConsentCatalog, saveConsents, getMyConsents, getStudentProfile, getParentProfileTypes, submitParentProfile } from "../callapi/callusers_student";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   AlertTriangle,
@@ -419,52 +419,99 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
   const fileRef = useRef(null);
 
-  // ── PDPA: ยินยอมบันทึกพฤติกรรมระหว่างสอบ — ถามใหม่ทุกครั้งที่ซื้อคอร์ส ไม่ใช้ค่าที่เคยตอบไว้ก่อนหน้า
-  // (ดูเหตุผลเต็มใน config/consentTypes.js CONSENT_AT_ENROLL) นักเรียนแก้ใจภายหลังเองไม่ได้ที่หน้านี้
-  // มีแอดมินเท่านั้นที่แก้ไขให้ทีหลังได้ (ดู admin.students.routes.js)
+  // ── PDPA: ข้อมูลผู้ปกครอง + ความยินยอมบันทึกพฤติกรรมระหว่างสอบ — ทั้งสองอย่างเก็บ "ครั้งเดียวต่อนักเรียน"
+  // ไม่ถามซ้ำทุกครั้งที่ซื้อคอร์ส: ข้อมูลผู้ปกครองถามเฉพาะตอนยังไม่มีผู้ปกครองผูกไว้ (ParentId ว่าง)
+  // ส่วนความยินยอมสอบถามเฉพาะตอนยังไม่เคยตอบ (not_answered) — เคยตอบแล้วไม่ว่ายินยอมหรือไม่ยินยอม
+  // ก็ไม่ถามซ้ำอีก มีแอดมินเท่านั้นที่แก้ไขให้ทีหลังได้ (ดู admin.students.routes.js)
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [studentParentId, setStudentParentId] = useState(undefined);
+  const [parentSubmitted, setParentSubmitted] = useState(false);
+  const [parentTypes, setParentTypes] = useState([]);
+  const [parentForm, setParentForm] = useState({
+    firstname: "", lastname: "", nickname: "", phoneNo: "", lineId: "",
+    birthOfDate: "", parentProfilesTypeId: "",
+  });
+  const [parentAcknowledged, setParentAcknowledged] = useState(false);
+
   const [enrollConsentItems, setEnrollConsentItems] = useState([]);
   const [enrollConsentLoading, setEnrollConsentLoading] = useState(true);
+  const [examConsentStatus, setExamConsentStatus] = useState("not_answered");
   const [examConsentGranted, setExamConsentGranted] = useState(false);
-  const [savingExamConsent, setSavingExamConsent] = useState(false);
-  const [consentSaveError, setConsentSaveError] = useState("");
+
+  const [savingStep1, setSavingStep1] = useState(false);
+  const [step1Error, setStep1Error] = useState("");
 
   useEffect(() => {
     let cancelled = false;
+    const token = localStorage.getItem("student_token");
     (async () => {
       try {
-        const catalog = await getConsentCatalog();
+        const [catalog, profile, myConsents, types] = await Promise.all([
+          getConsentCatalog(),
+          token ? getStudentProfile(token) : Promise.resolve(null),
+          token ? getMyConsents(token) : Promise.resolve(null),
+          getParentProfileTypes().catch(() => []),
+        ]);
         if (cancelled) return;
+
         const askKeys = new Set(catalog?.askAtEnroll || []);
-        setEnrollConsentItems((catalog?.items || []).filter((it) => askKeys.has(it.key)));
+        const items = (catalog?.items || []).filter((it) => askKeys.has(it.key));
+        setEnrollConsentItems(items);
+        setExamConsentStatus(items[0] ? (myConsents?.consents?.[items[0].key] || "not_answered") : "not_answered");
+
+        setStudentParentId(profile ? (profile.parentId ?? null) : null);
+        setParentTypes(Array.isArray(types) ? types : []);
       } catch (err) {
-        console.error("โหลดข้อมูลความยินยอมไม่สำเร็จ:", err);
-        // ไม่บล็อกการซื้อคอร์สเพราะ API ความยินยอมล่ม — ปล่อยให้ซื้อต่อได้ตามปกติ
+        console.error("โหลดข้อมูลก่อนชำระเงินไม่สำเร็จ:", err);
+        // ไม่บล็อกการซื้อคอร์สเพราะ API เหล่านี้ล่ม — ปล่อยให้ซื้อต่อได้ตามปกติ (ถือว่ายังไม่มีผู้ปกครองผูก)
+        setStudentParentId(null);
       } finally {
-        if (!cancelled) setEnrollConsentLoading(false);
+        if (!cancelled) {
+          setEnrollConsentLoading(false);
+          setProfileLoading(false);
+        }
       }
     })();
     return () => { cancelled = true; };
   }, []);
 
   const examConsentItem = enrollConsentItems[0] || null;
+  const needsParentForm = !profileLoading && studentParentId === null && !parentSubmitted;
+  const needsExamConsent = examConsentStatus === "not_answered";
 
-  const handleContinueFromConsent = async () => {
+  const handleContinueFromStep1 = async () => {
+    if (needsParentForm) {
+      if (!parentForm.firstname.trim() || !parentForm.lastname.trim()) {
+        setStep1Error("กรุณากรอกชื่อและนามสกุลผู้ปกครองก่อน");
+        return;
+      }
+      if (!parentAcknowledged) {
+        setStep1Error("กรุณายืนยันว่ารับทราบเรื่องการเก็บข้อมูลผู้ปกครองก่อน");
+        return;
+      }
+    }
+
     const token = localStorage.getItem("student_token");
-    setSavingExamConsent(true);
-    setConsentSaveError("");
+    setSavingStep1(true);
+    setStep1Error("");
     try {
-      if (token && examConsentItem) {
+      if (token && needsParentForm) {
+        await submitParentProfile(token, { ...parentForm, acknowledged: true });
+        setParentSubmitted(true);
+      }
+      if (token && needsExamConsent && examConsentItem) {
         await saveConsents(
           token,
           [{ consentKey: examConsentItem.key, isGranted: examConsentGranted }],
           { grantedByRole: "student" }
         );
+        setExamConsentStatus(examConsentGranted ? "granted" : "denied");
       }
       setStep((value) => value + 1);
     } catch (err) {
-      setConsentSaveError("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      setStep1Error(typeof err === "string" ? err : (err?.message || "บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"));
     } finally {
-      setSavingExamConsent(false);
+      setSavingStep1(false);
     }
   };
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
@@ -730,12 +777,81 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                 </div>
               )}
 
-              {/* ── PDPA: ยินยอมบันทึกพฤติกรรมระหว่างสอบ — ถามใหม่ทุกครั้งที่ซื้อคอร์ส ── */}
+              {!profileLoading && needsParentForm && (
+                <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
+                  <strong className="text-sm text-[#14213D]">ข้อมูลผู้ปกครอง</strong>
+                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                    สถาบันเก็บชื่อ ชื่อเล่น เบอร์โทร LINE ID วันเกิด และความสัมพันธ์ของผู้ปกครองไว้เพื่อระบุตัวผู้ใช้อำนาจปกครอง
+                    และใช้ติดต่อเรื่องการเรียน/การชำระเงินของนักเรียนเท่านั้น เก็บครั้งเดียว ใช้ได้กับทุกคอร์สที่ซื้อในภายหลัง ไม่ต้องกรอกซ้ำอีก
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <input
+                      value={parentForm.firstname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, firstname: e.target.value }))}
+                      placeholder="ชื่อผู้ปกครอง *"
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                    <input
+                      value={parentForm.lastname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, lastname: e.target.value }))}
+                      placeholder="นามสกุลผู้ปกครอง *"
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                    <input
+                      value={parentForm.nickname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, nickname: e.target.value }))}
+                      placeholder="ชื่อเล่น"
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                    <input
+                      value={parentForm.phoneNo}
+                      onChange={(e) => setParentForm((f) => ({ ...f, phoneNo: e.target.value }))}
+                      placeholder="เบอร์โทร"
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                    <input
+                      value={parentForm.lineId}
+                      onChange={(e) => setParentForm((f) => ({ ...f, lineId: e.target.value }))}
+                      placeholder="LINE ID"
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    />
+                    <input
+                      type="date"
+                      value={parentForm.birthOfDate}
+                      onChange={(e) => setParentForm((f) => ({ ...f, birthOfDate: e.target.value }))}
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none"
+                    />
+                    <select
+                      value={parentForm.parentProfilesTypeId}
+                      onChange={(e) => setParentForm((f) => ({ ...f, parentProfilesTypeId: e.target.value }))}
+                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none sm:col-span-2"
+                    >
+                      <option value="">ความสัมพันธ์กับนักเรียน</option>
+                      {parentTypes.map((t) => (
+                        <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>{t.ParentProfilesType_Name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl bg-slate-50 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={parentAcknowledged}
+                      onChange={(e) => setParentAcknowledged(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">
+                      รับทราบเรื่องการเก็บข้อมูลผู้ปกครองตามที่แจ้งไว้ข้างต้น
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {/* ── PDPA: ยินยอมบันทึกพฤติกรรมระหว่างสอบ — เก็บครั้งเดียวต่อนักเรียน ไม่ถามซ้ำทุกครั้งที่ซื้อคอร์ส ── */}
               <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
                 <strong className="text-sm text-[#14213D]">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
                 {enrollConsentLoading ? (
                   <p className="mt-3 text-xs text-slate-400">กำลังโหลด...</p>
-                ) : (
+                ) : needsExamConsent ? (
                   <>
                     <p className="mt-1 text-xs text-slate-500 leading-relaxed">{examConsentItem?.summary}</p>
                     {examConsentItem?.reassurance && (
@@ -749,7 +865,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                         className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
                       />
                       <span className="text-xs font-semibold text-slate-700">
-                        ยินยอมให้บันทึกพฤติกรรมระหว่างทำข้อสอบ สำหรับคอร์สที่กำลังจะซื้อนี้
+                        ยินยอมให้บันทึกพฤติกรรมระหว่างทำข้อสอบ
                       </span>
                     </label>
                     {!examConsentGranted && (
@@ -757,10 +873,17 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                         {examConsentItem?.ifDenied || "ถ้าไม่ยินยอม ระบบจะไม่บันทึกส่วนนี้ให้ การติดตามพัฒนาการของนักเรียนในระยะยาวอาจไม่แม่นยำ 100%"}
                       </p>
                     )}
-                    {consentSaveError && (
-                      <p className="mt-2 text-[11px] font-semibold text-red-600">{consentSaveError}</p>
-                    )}
+                    <p className="mt-2 text-[11px] text-slate-400 leading-relaxed">
+                      บันทึกครั้งเดียว ใช้ได้กับทุกคอร์สที่ซื้อในภายหลัง ระบบจะไม่ถามซ้ำอีก — เปลี่ยนใจภายหลังติดต่อเจ้าหน้าที่ได้
+                    </p>
                   </>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                    เคยตอบเรื่องนี้ไว้แล้ว ({examConsentStatus === "granted" ? "ยินยอม" : "ไม่ยินยอม"}) ใช้คำตอบเดิมกับทุกคอร์ส ไม่ต้องตอบซ้ำ
+                  </p>
+                )}
+                {step1Error && (
+                  <p className="mt-2 text-[11px] font-semibold text-red-600">{step1Error}</p>
                 )}
               </div>
             </div>
@@ -829,11 +952,11 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           {step > 0 && step < 3 ? <button onClick={() => setStep((value) => value - 1)} className="flex items-center gap-2 px-2 py-3 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />ย้อนกลับ</button> : <span />}
           {step < 2 && (
             <button
-              onClick={step === 1 ? handleContinueFromConsent : () => setStep((value) => value + 1)}
-              disabled={savingExamConsent}
+              onClick={step === 1 ? handleContinueFromStep1 : () => setStep((value) => value + 1)}
+              disabled={savingStep1 || (step === 1 && profileLoading)}
               className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {step === 1 && savingExamConsent ? "กำลังบันทึก..." : "ดำเนินการต่อ"} <ChevronRight className="h-4 w-4" />
+              {step === 1 && savingStep1 ? "กำลังบันทึก..." : "ดำเนินการต่อ"} <ChevronRight className="h-4 w-4" />
             </button>
           )}
           {step === 2 && (
