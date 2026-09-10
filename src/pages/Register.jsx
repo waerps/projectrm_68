@@ -20,8 +20,7 @@ export function Register() {
     gpa: '',
     parentId: '',
     gradeLevelId: '',
-    genderId: '',
-    marketingConsent: false
+    genderId: ''
   });
 
   const { toasts, showToast, removeToast } = useToast();
@@ -369,29 +368,14 @@ const handleSubmit = async (e) => {
               </div>
             </div>
 
-            {/* PDPA — แจ้งการเก็บ/ใช้ข้อมูล + ขอความยินยอมเรื่องข่าวสารการตลาด (ไม่บังคับ) */}
+            {/* PDPA — ข้อความแจ้งการเก็บ/ใช้ข้อมูล (ประกาศเฉย ๆ ไม่มีการขอความยินยอมที่หน้านี้) */}
             <div className="border-t border-gray-200 pt-6 mt-6">
               <div className="rounded-xl bg-orange-50 border border-orange-100 p-4">
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  สถาบันจะเก็บและใช้ข้อมูลที่ท่านกรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอนเท่านั้น
-                  ส่วนข้อมูลอื่น ๆ เช่น ภาพถ่าย หรือการบันทึกพฤติกรรมระหว่างสอบ ระบบจะขอความยินยอมแยกต่างหาก
-                  อีกครั้งตอนลงทะเบียนเรียน ซึ่งท่านหรือผู้ปกครองสามารถเลือกอนุญาตหรือไม่อนุญาตได้ตามใจ
-                  และเปลี่ยนใจภายหลังได้ตลอดเวลาที่หน้าโปรไฟล์
+                  สถาบันจะเก็บและใช้ข้อมูลที่ท่านกรอกในหน้านี้ เพื่อจัดการบัญชีผู้เรียนและการเรียนการสอนเท่านั้น
+                  ส่วนข้อมูลอื่นที่อาจกระทบความเป็นส่วนตัวมากกว่านี้ เช่น การบันทึกพฤติกรรมระหว่างทำข้อสอบ
+                  ระบบจะขอความยินยอมจากท่านแยกต่างหากอีกครั้ง ก่อนชำระเงินซื้อคอร์สเรียนในแต่ละครั้ง
                 </p>
-                <label className="mt-3 flex items-start gap-2.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="marketingConsent"
-                    checked={formData.marketingConsent}
-                    onChange={handleChange}
-                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
-                  />
-                  <span className="text-xs text-gray-700">
-                    ยินยอมให้ติดต่อแจ้งข่าวสารหรือโปรโมชันทางเบอร์โทร/LINE หากในอนาคตสถาบันเปิดใช้ช่องทางนี้
-                    (ไม่บังคับ — ไม่ติ๊กก็สมัครได้ตามปกติ ปัจจุบันยังไม่มีการส่งข่าวสารลักษณะนี้
-                    และไม่กระทบการแจ้งเตือนกำหนดชำระเงินของคอร์สที่ลงทะเบียนไว้)
-                  </span>
-                </label>
               </div>
             </div>
 

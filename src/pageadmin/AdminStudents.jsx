@@ -1295,7 +1295,6 @@ function ConsentTab({ studentId, showToast }) {
   const [grantedByRole, setGrantedByRole] = useState("parent");
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [overrideKeys, setOverrideKeys] = useState({}); // ★ เพิ่ม: รายการที่แอดมินกด "แก้ไข/บันทึกทับ" แล้ว
   const fileInputRef = useRef(null);
 
   const load = () => {
@@ -1308,7 +1307,6 @@ function ConsentTab({ studentId, showToast }) {
         setCatalog(cat?.items ?? []);
         setStatus(res.data?.consents ?? {});
         setHistory(res.data?.history ?? []);
-        setOverrideKeys({}); // โหลดใหม่ทุกครั้ง = ล็อกกลับเป็นค่าเริ่มต้น (ต้องกด "แก้ไข" ใหม่ถ้าจะทับอีก)
       })
       .catch((e) => showToast("error", "โหลดข้อมูลความยินยอมไม่สำเร็จ", e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
@@ -1330,7 +1328,6 @@ function ConsentTab({ studentId, showToast }) {
 
   const handleSavePaper = async () => {
     if (!answeredCount) return showToast("error", "กรุณาเลือกอย่างน้อย 1 รายการก่อนบันทึก");
-    if (!evidenceFile) return showToast("error", "กรุณาแนบไฟล์สแกนหรือภาพถ่ายใบเซ็นยินยอมก่อนบันทึก");
 
     const items = Object.entries(draft).map(([consentKey, isGranted]) => ({ consentKey, isGranted }));
     // ★ เพิ่ม: เช็คว่ามีรายการไหนที่ "ตอบไปแล้ว" อยู่ก่อนบ้าง (ทับของเดิม) เอาไว้ปรับข้อความ toast
@@ -1340,7 +1337,7 @@ function ConsentTab({ studentId, showToast }) {
     const fd = new FormData();
     fd.append("items", JSON.stringify(items));
     fd.append("grantedByRole", grantedByRole);
-    fd.append("evidence", evidenceFile);
+    if (evidenceFile) fd.append("evidence", evidenceFile);
 
     setSaving(true);
     try {
@@ -1376,16 +1373,14 @@ function ConsentTab({ studentId, showToast }) {
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
         <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> บันทึกความยินยอมจากเอกสาร (กระดาษ)</p>
         <p className="mt-1 text-xs text-orange-700 leading-relaxed">
-          ใช้เมื่อผู้ปกครอง/นักเรียนเซ็นใบยินยอมกระดาษที่เคาน์เตอร์ — ต้องแนบไฟล์สแกนหรือภาพถ่ายใบที่เซ็นแล้วทุกครั้ง
-          ข้อความในใบกระดาษต้องตรงกับข้อความในระบบและระบุเลขเวอร์ชันประกาศให้ตรงกัน
+          ใช้บันทึกแทนกรณีที่แอดมินรับทราบความยินยอมด้วยวิธีอื่นนอกจากนักเรียนกดตอบเองในระบบ
+          เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์ — แนบไฟล์สแกน/ภาพถ่ายใบเซ็นได้ถ้ามี แต่ไม่บังคับ
         </p>
 
         <div className="mt-3 space-y-2.5">
           {catalog.map((item) => {
             const s = STATUS_LABEL[status[item.key] || "not_answered"];
             const latest = latestRecordFor(item.key);
-            const alreadyAnswered = (status[item.key] || "not_answered") !== "not_answered";
-            const locked = alreadyAnswered && !overrideKeys[item.key];
             return (
               <div key={item.key} className="rounded-lg border border-orange-100 bg-white px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
@@ -1402,33 +1397,21 @@ function ConsentTab({ studentId, showToast }) {
                     )}
                   </div>
                 </div>
-                <div className="mt-2 flex justify-end">
-                  {locked ? (
-                    <button
-                      type="button"
-                      onClick={() => setOverrideKeys((o) => ({ ...o, [item.key]: true }))}
-                      className="rounded-lg px-2.5 py-1 text-[11px] font-bold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
-                    >
-                      แก้ไข/บันทึกทับ
-                    </button>
-                  ) : (
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
-                      >
-                        ยินยอม
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
-                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
-                      >
-                        ไม่ยินยอม
-                      </button>
-                    </div>
-                  )}
+                <div className="mt-2 flex justify-end gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
+                  >
+                    ยินยอม
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
+                  >
+                    ไม่ยินยอม
+                  </button>
                 </div>
               </div>
             );
@@ -1460,7 +1443,7 @@ function ConsentTab({ studentId, showToast }) {
             onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
             className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-orange-700"
           />
-          <p className="mt-1 text-[11px] text-orange-600">รองรับ JPG, PNG, WEBP หรือ PDF · ไม่เกิน 10 MB</p>
+          <p className="mt-1 text-[11px] text-orange-600">ไม่บังคับแนบ — รองรับ JPG, PNG, WEBP หรือ PDF ถ้าต้องการแนบ · ไม่เกิน 10 MB</p>
         </div>
 
         <button

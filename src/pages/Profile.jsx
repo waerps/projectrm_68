@@ -18,9 +18,6 @@ import {
 import {
   getStudentProfile,
   updateStudentProfile,
-  getConsentCatalog,
-  getMyConsents,
-  saveConsents,
 } from "../callapi/callusers_student";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
@@ -56,48 +53,10 @@ export default function StudentProfile() {
   });
   const [originalData, setOriginalData] = useState({});
 
-  const [consentItems, setConsentItems] = useState([]);
-  const [consentStatus, setConsentStatus] = useState({});
-  const [consentLoading, setConsentLoading] = useState(true);
-  const [savingConsentKey, setSavingConsentKey] = useState(null);
-  // PDPA ม.20: ถ้าผู้เยาว์ ผู้ใช้อำนาจปกครองต้องเป็นผู้ให้ความยินยอมด้วย — ให้เลือกได้ว่า
-  // ใครเป็นคนกดตอบจริง ๆ ตอนนี้ (ดีฟอลต์ "นักเรียนตอบเอง" เพราะเป็นบัญชีของนักเรียนเอง)
-  const [consentGrantedByRole, setConsentGrantedByRole] = useState("student");
 
   useEffect(() => {
     fetchProfile();
-    fetchConsents();
   }, []);
-
-  async function fetchConsents() {
-    try {
-      setConsentLoading(true);
-      const [catalog, mine] = await Promise.all([
-        getConsentCatalog(),
-        getMyConsents(token),
-      ]);
-      setConsentItems(catalog?.items ?? []);
-      setConsentStatus(mine?.consents ?? {});
-    } catch (error) {
-      console.error("โหลดข้อมูลความยินยอมไม่สำเร็จ:", error);
-    } finally {
-      setConsentLoading(false);
-    }
-  }
-
-  // ★ บันทึกทันทีทีละรายการ ไม่ผูกกับปุ่ม "บันทึก" ของฟอร์มหลัก — ตาม ม.19 การถอน
-  //   ความยินยอมต้องทำได้ง่ายเท่ากับการให้ จึงจงใจไม่ให้ต้องกดเข้าโหมดแก้ไขก่อน
-  const handleSetConsent = async (consentKey, isGranted) => {
-    setSavingConsentKey(consentKey);
-    try {
-      const res = await saveConsents(token, [{ consentKey, isGranted }], { grantedByRole: consentGrantedByRole });
-      setConsentStatus(res?.consents ?? consentStatus);
-    } catch (error) {
-      showToast("error", "บันทึกความยินยอมไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง");
-    } finally {
-      setSavingConsentKey(null);
-    }
-  };
 
   async function fetchProfile() {
     try {
@@ -159,15 +118,6 @@ export default function StudentProfile() {
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (consentStatus.photo === "denied") {
-      showToast(
-        "error",
-        "ปิดความยินยอมเรื่องภาพถ่ายอยู่",
-        "ระบบจะไม่บันทึกรูปที่อัปโหลดใหม่ให้ — กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
-      );
-      e.target.value = "";
-      return;
-    }
     if (!file.type.startsWith("image/")) {
       showToast("error", "ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
       return;
@@ -209,7 +159,7 @@ export default function StudentProfile() {
         showToast(
           "error",
           "อัปโหลดรูปไม่สำเร็จ",
-          "เพราะตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่ — กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
+          "มีการปฏิเสธความยินยอมเรื่องภาพถ่ายไว้ก่อนหน้านี้ ระบบจึงไม่บันทึกรูปใหม่ให้ — กรุณาติดต่อเจ้าหน้าที่หากต้องการเปลี่ยนแปลง"
         );
         return;
       }
@@ -502,64 +452,6 @@ export default function StudentProfile() {
           </SectionCard>
         </div>
 
-        {/* ── ความเป็นส่วนตัวและความยินยอม (PDPA) ── */}
-        <div className="mt-5">
-          <SectionCard
-            title="ความเป็นส่วนตัวและความยินยอม (PDPA)"
-            icon={<ShieldCheck className="h-4.5 w-4.5 text-orange-500" />}
-            isEditing={false}
-          >
-            <div className="mb-1 flex flex-wrap items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2.5">
-              <span className="text-xs font-semibold text-neutral-500">ตอนนี้ใครเป็นคนตอบ:</span>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setConsentGrantedByRole("student")}
-                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                    consentGrantedByRole === "student"
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : "bg-white text-neutral-500 border border-neutral-200 hover:bg-orange-50"
-                  }`}
-                >
-                  นักเรียนตอบเอง
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConsentGrantedByRole("parent")}
-                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
-                    consentGrantedByRole === "parent"
-                      ? "bg-orange-500 text-white shadow-sm"
-                      : "bg-white text-neutral-500 border border-neutral-200 hover:bg-orange-50"
-                  }`}
-                >
-                  ผู้ปกครองตอบแทน
-                </button>
-              </div>
-            </div>
-            <p className="mb-3 text-[11px] text-neutral-400 leading-relaxed">
-              ถ้าผู้เรียนยังเป็นผู้เยาว์ กฎหมายกำหนดให้ผู้ใช้อำนาจปกครองเป็นผู้ให้ความยินยอมด้วย —
-              เลือกให้ตรงกับคนที่กำลังกดปุ่มด้านล่างจริง ๆ ในตอนนี้
-            </p>
-            {consentLoading ? (
-              <p className="py-4 text-center text-xs text-neutral-400">กำลังโหลด...</p>
-            ) : (
-              <div className="divide-y divide-neutral-50">
-                {consentItems.map((item) => (
-                  <ConsentRow
-                    key={item.key}
-                    item={item}
-                    status={consentStatus[item.key] || "not_answered"}
-                    saving={savingConsentKey === item.key}
-                    onChoose={(granted) => handleSetConsent(item.key, granted)}
-                  />
-                ))}
-              </div>
-            )}
-            <p className="mt-4 text-xs text-neutral-400 text-center">
-              เปลี่ยนใจภายหลังได้ตลอดเวลา — กดเลือกใหม่ได้ทันที ไม่ต้องรอเจ้าหน้าที่
-            </p>
-          </SectionCard>
-        </div>
       </div>
 
       {alertModal.show && (
@@ -616,69 +508,6 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
   );
 }
 
-// ── Consent Row (PDPA) ──────────────────────────────────────────
-function ConsentStatusBadge({ status }) {
-  const map = {
-    granted: { text: "ยินยอมแล้ว", cls: "bg-emerald-50 text-emerald-600 border-emerald-100" },
-    denied: { text: "ไม่ยินยอม", cls: "bg-neutral-100 text-neutral-500 border-neutral-200" },
-    not_answered: { text: "ยังไม่ได้ตอบ", cls: "bg-amber-50 text-amber-600 border-amber-100" },
-  };
-  const s = map[status] || map.not_answered;
-  return (
-    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>
-      {s.text}
-    </span>
-  );
-}
-
-function ConsentRow({ item, status, saving, onChoose }) {
-  return (
-    <div className="py-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <p className="text-sm font-bold text-neutral-800">{item.label}</p>
-          <p className="mt-1 text-xs text-neutral-500 leading-relaxed">{item.summary}</p>
-          {item.reassurance && (
-            <p className="mt-1.5 text-xs text-emerald-600 leading-relaxed">{item.reassurance}</p>
-          )}
-          {status === "denied" && item.ifDenied && (
-            <p className="mt-1.5 text-xs text-neutral-400 leading-relaxed">ถ้าไม่ยินยอม: {item.ifDenied}</p>
-          )}
-        </div>
-        <ConsentStatusBadge status={status} />
-      </div>
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => onChoose(true)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait ${
-            status === "granted"
-              ? "bg-emerald-500 text-white shadow-sm"
-              : "bg-neutral-50 text-neutral-500 border border-neutral-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200"
-          }`}
-        >
-          {status === "granted" && <Check className="h-3.5 w-3.5" />}
-          ยินยอม
-        </button>
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => onChoose(false)}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition disabled:opacity-60 disabled:cursor-wait ${
-            status === "denied"
-              ? "bg-neutral-600 text-white shadow-sm"
-              : "bg-neutral-50 text-neutral-500 border border-neutral-200 hover:bg-neutral-100"
-          }`}
-        >
-          {status === "denied" && <Check className="h-3.5 w-3.5" />}
-          ไม่ยินยอม
-        </button>
-        {saving && <span className="self-center text-[11px] text-neutral-400">กำลังบันทึก...</span>}
-      </div>
-    </div>
-  );
-}
 
 function ValidationModal({ fields, onClose }) {
   return (

@@ -8,7 +8,6 @@ import {
   logQuestionEnter, logIntegrityEvent,
   markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
-import { getConsentCatalog, getMyConsents, saveConsents } from "../callapi/callusers_student";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
@@ -77,10 +76,8 @@ function GoldenRetriever({ className = "" }) {
   );
 }
 
-function LandingCard({ status, exam, onStart, starting, examBehaviorStatus, examBehaviorItem, onAnswerExamBehavior, savingConsent, consentCheckFailed, examBehaviorGrantedByRole, onChangeExamBehaviorGrantedByRole }) {
-  const consentStillLoading = examBehaviorStatus === null && !consentCheckFailed;
-  const needsExamBehaviorAnswer = examBehaviorStatus === "not_answered";
-  const startDisabled = starting || consentStillLoading || needsExamBehaviorAnswer;
+function LandingCard({ status, exam, onStart, starting }) {
+  const startDisabled = starting;
 
   return (
     <div className="bg-white border border-neutral-200 rounded-3xl p-8 text-center space-y-5">
@@ -114,63 +111,6 @@ function LandingCard({ status, exam, onStart, starting, examBehaviorStatus, exam
         <p className="text-lg font-bold text-orange-600 text-center pt-0.5">“ทำเท่าที่ทำได้ เต็มที่ของวันนี้ก็พอแล้ว”</p>
       </div>
 
-      {needsExamBehaviorAnswer && examBehaviorItem && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-left space-y-3">
-          <p className="text-sm font-bold text-amber-800">{examBehaviorItem.label}</p>
-          <p className="text-sm text-amber-700 leading-relaxed">{examBehaviorItem.summary}</p>
-          {examBehaviorItem.reassurance && (
-            <p className="text-sm text-emerald-700 leading-relaxed">{examBehaviorItem.reassurance}</p>
-          )}
-          <p className="text-xs text-amber-600">ต้องเลือกก่อนถึงจะเริ่มทำข้อสอบได้ — เปลี่ยนใจภายหลังได้เสมอที่หน้าโปรไฟล์</p>
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <span className="text-xs font-semibold text-amber-700">ตอนนี้ใครเป็นคนตอบ:</span>
-            <div className="flex gap-1.5">
-              <button
-                type="button"
-                onClick={() => onChangeExamBehaviorGrantedByRole("student")}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition ${
-                  examBehaviorGrantedByRole === "student"
-                    ? "bg-amber-500 text-white shadow-sm"
-                    : "bg-white text-amber-600 border border-amber-200 hover:bg-amber-100"
-                }`}
-              >
-                นักเรียนตอบเอง
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangeExamBehaviorGrantedByRole("parent")}
-                className={`rounded-full px-2.5 py-0.5 text-xs font-bold transition ${
-                  examBehaviorGrantedByRole === "parent"
-                    ? "bg-amber-500 text-white shadow-sm"
-                    : "bg-white text-amber-600 border border-amber-200 hover:bg-amber-100"
-                }`}
-              >
-                ผู้ปกครองตอบแทน
-              </button>
-            </div>
-          </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              disabled={savingConsent}
-              onClick={() => onAnswerExamBehavior(true)}
-              className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white rounded-xl py-2.5 text-sm font-semibold transition"
-            >
-              ยินยอม
-            </button>
-            <button
-              type="button"
-              disabled={savingConsent}
-              onClick={() => onAnswerExamBehavior(false)}
-              className="flex-1 bg-neutral-100 hover:bg-neutral-200 disabled:opacity-60 text-neutral-700 rounded-xl py-2.5 text-sm font-semibold transition"
-            >
-              ไม่ยินยอม
-            </button>
-          </div>
-          {savingConsent && <p className="text-xs text-neutral-400 text-center">กำลังบันทึก...</p>}
-        </div>
-      )}
-
       <button
         onClick={onStart}
         disabled={startDisabled}
@@ -178,10 +118,6 @@ function LandingCard({ status, exam, onStart, starting, examBehaviorStatus, exam
       >
         {starting
           ? "กำลังเข้าสู่ห้องสอบ…"
-          : consentStillLoading
-          ? "กำลังตรวจสอบสิทธิ์…"
-          : needsExamBehaviorAnswer
-          ? "กรุณาเลือกด้านบนก่อนเริ่มสอบ"
           : status === "in-progress"
           ? "ทำข้อสอบต่อ"
           : "เริ่มทำข้อสอบ"}
@@ -543,41 +479,6 @@ export default function StudentExam() {
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // PDPA: สถานะความยินยอม exam_behavior — เช็คก่อนถึงจะรู้ว่าต้องโชว์ prompt ไหม
-  const [examBehaviorStatus, setExamBehaviorStatus] = useState(null); // null = ยังไม่รู้ (กำลังโหลด) — บล็อกปุ่มเริ่มสอบไว้ก่อนจนกว่าจะรู้ผล
-  const [examBehaviorItem, setExamBehaviorItem] = useState(null); // meta จาก catalog (label/summary/reassurance) ไว้เรนเดอร์ prompt
-  const [consentCheckFailed, setConsentCheckFailed] = useState(false); // โหลดสถานะไม่สำเร็จ (เช่น เน็ตรลุด) — fail-open ไม่บล็อกปุ่ม เพราะฝั่ง backend snapshot ตามค่า default ให้เองตอนกดเริ่มจริง
-  const [savingConsent, setSavingConsent] = useState(false);
-  // PDPA ม.20: ถ้าผู้เยาว์ ผู้ใช้อำนาจปกครองต้องเป็นผู้ให้ความยินยอมด้วย
-  const [examBehaviorGrantedByRole, setExamBehaviorGrantedByRole] = useState("student");
-
-  useEffect(() => {
-    const authToken = localStorage.getItem("student_token");
-    if (!authToken) return;
-    Promise.all([getConsentCatalog(), getMyConsents(authToken)])
-      .then(([catalog, mine]) => {
-        setExamBehaviorItem(catalog?.items?.find((it) => it.key === "exam_behavior") || null);
-        setExamBehaviorStatus(mine?.consents?.exam_behavior ?? "not_answered");
-      })
-      .catch((err) => {
-        console.error("โหลดสถานะความยินยอมไม่สำเร็จ:", err);
-        setConsentCheckFailed(true);
-      });
-  }, []);
-
-  const handleAnswerExamBehavior = async (isGranted) => {
-    const authToken = localStorage.getItem("student_token");
-    setSavingConsent(true);
-    try {
-      const res = await saveConsents(authToken, [{ consentKey: "exam_behavior", isGranted }], { grantedByRole: examBehaviorGrantedByRole });
-      setExamBehaviorStatus(res?.consents?.exam_behavior ?? (isGranted ? "granted" : "denied"));
-    } catch (err) {
-      alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
-    } finally {
-      setSavingConsent(false);
-    }
-  };
-
   useEffect(() => {
     if (!userId) {
       navigate(`/login?returnTo=/exam/${token}`);
@@ -660,13 +561,6 @@ export default function StudentExam() {
           exam={landing.exam}
           onStart={handleStart}
           starting={starting}
-          examBehaviorStatus={examBehaviorStatus}
-          examBehaviorItem={examBehaviorItem}
-          onAnswerExamBehavior={handleAnswerExamBehavior}
-          savingConsent={savingConsent}
-          consentCheckFailed={consentCheckFailed}
-          examBehaviorGrantedByRole={examBehaviorGrantedByRole}
-          onChangeExamBehaviorGrantedByRole={setExamBehaviorGrantedByRole}
         />
       </PageShell>
     );
