@@ -341,9 +341,13 @@ export async function getMyConsents(token) {
 }
 
 // items: [{ consentKey, isGranted }]
-export async function saveConsents(token, items) {
+// opts.grantedByRole: "student" | "parent" — ใครเป็นคนกดตอบจริง ๆ ตอนนี้ (ดีฟอลต์ "student"
+// ที่ backend) ใช้ตอนผู้ปกครองเป็นคนตอบแทนผู้เยาว์ผ่านหน้าเว็บ (เช่น ตอนซื้อคอร์ส/ดูโปรไฟล์)
+export async function saveConsents(token, items, opts = {}) {
   try {
-    const res = await apiClient.post("/api/consents", { items }, withAuth(token));
+    const body = { items };
+    if (opts.grantedByRole) body.grantedByRole = opts.grantedByRole;
+    const res = await apiClient.post("/api/consents", body, withAuth(token));
     return res.data;
   } catch (error) {
     throwNiceError(error);

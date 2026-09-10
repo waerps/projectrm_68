@@ -57,6 +57,9 @@ export default function StudentProfile() {
   const [consentStatus, setConsentStatus] = useState({});
   const [consentLoading, setConsentLoading] = useState(true);
   const [savingConsentKey, setSavingConsentKey] = useState(null);
+  // PDPA ม.20: ถ้าผู้เยาว์ ผู้ใช้อำนาจปกครองต้องเป็นผู้ให้ความยินยอมด้วย — ให้เลือกได้ว่า
+  // ใครเป็นคนกดตอบจริง ๆ ตอนนี้ (ดีฟอลต์ "นักเรียนตอบเอง" เพราะเป็นบัญชีของนักเรียนเอง)
+  const [consentGrantedByRole, setConsentGrantedByRole] = useState("student");
 
   useEffect(() => {
     fetchProfile();
@@ -84,7 +87,7 @@ export default function StudentProfile() {
   const handleSetConsent = async (consentKey, isGranted) => {
     setSavingConsentKey(consentKey);
     try {
-      const res = await saveConsents(token, [{ consentKey, isGranted }]);
+      const res = await saveConsents(token, [{ consentKey, isGranted }], { grantedByRole: consentGrantedByRole });
       setConsentStatus(res?.consents ?? consentStatus);
     } catch (error) {
       alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
@@ -153,6 +156,14 @@ export default function StudentProfile() {
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (consentStatus.photo === "denied") {
+      alert(
+        "ตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่ ระบบจะไม่บันทึกรูปที่อัปโหลดใหม่ให้\n\n" +
+        "กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
+      );
+      e.target.value = "";
+      return;
+    }
     if (!file.type.startsWith("image/")) {
       alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
       return;
@@ -174,7 +185,7 @@ export default function StudentProfile() {
       const uploadedPhoto = res.data?.path ?? res.data?.imageUrl ?? res.data?.data?.path;
       if (!uploadedPhoto) throw new Error("เซิร์ฟเวอร์ไม่ส่ง path ของรูปกลับมา");
       if (!studentId) throw new Error("ไม่พบรหัสนักเรียน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
-      await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
+      const putRes = await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
         firstname: formData.firstname,
         lastname: formData.lastname,
         nickname: formData.nickname,
@@ -186,6 +197,17 @@ export default function StudentProfile() {
         gpa: formData.gpa,
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
+      if (putRes.data?.photoBlocked) {
+        // ไม่ยินยอมเรื่องรูป (เช่น เพิ่งถอนความยินยอมไปในแท็บอื่น) — เซิร์ฟเวอร์ไม่ได้บันทึกรูปใหม่จริง
+        // แม้ request จะสำเร็จก็ตาม ต้องคืนค่ารูปเดิมแทนที่จะโชว์เหมือนบันทึกสำเร็จ
+        URL.revokeObjectURL(previewUrl);
+        setFormData((prev) => ({ ...prev, photo: previousPhoto }));
+        alert(
+          "อัปโหลดรูปไม่สำเร็จ เพราะตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่\n\n" +
+          "กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
+        );
+        return;
+      }
       setFormData((prev) => ({ ...prev, photo: uploadedPhoto }));
       setOriginalData((prev) => ({ ...prev, photo: uploadedPhoto }));
       const savedUser = JSON.parse(localStorage.getItem("user") || "null");
@@ -481,6 +503,37 @@ export default function StudentProfile() {
             icon={<ShieldCheck className="h-4.5 w-4.5 text-orange-500" />}
             isEditing={false}
           >
+            <div className="mb-1 flex flex-wrap items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2.5">
+              <span className="text-xs font-semibold text-neutral-500">ตอนนี้ใครเป็นคนตอบ:</span>
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setConsentGrantedByRole("student")}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                    consentGrantedByRole === "student"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "bg-white text-neutral-500 border border-neutral-200 hover:bg-orange-50"
+                  }`}
+                >
+                  นักเรียนตอบเอง
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConsentGrantedByRole("parent")}
+                  className={`rounded-full px-3 py-1 text-xs font-bold transition ${
+                    consentGrantedByRole === "parent"
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "bg-white text-neutral-500 border border-neutral-200 hover:bg-orange-50"
+                  }`}
+                >
+                  ผู้ปกครองตอบแทน
+                </button>
+              </div>
+            </div>
+            <p className="mb-3 text-[11px] text-neutral-400 leading-relaxed">
+              ถ้าผู้เรียนยังเป็นผู้เยาว์ กฎหมายกำหนดให้ผู้ใช้อำนาจปกครองเป็นผู้ให้ความยินยอมด้วย —
+              เลือกให้ตรงกับคนที่กำลังกดปุ่มด้านล่างจริง ๆ ในตอนนี้
+            </p>
             {consentLoading ? (
               <p className="py-4 text-center text-xs text-neutral-400">กำลังโหลด...</p>
             ) : (

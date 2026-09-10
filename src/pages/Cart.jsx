@@ -426,6 +426,9 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [enrollConsentLoading, setEnrollConsentLoading] = useState(true);
   const [enrollConsentFetchFailed, setEnrollConsentFetchFailed] = useState(false);
   const [savingConsentKey, setSavingConsentKey] = useState(null);
+  // PDPA ม.20: ถ้าผู้เยาว์ ผู้ใช้อำนาจปกครองต้องเป็นผู้ให้ความยินยอมด้วย — จังหวะซื้อคอร์สมักเป็น
+  // ตอนที่ผู้ปกครองอยู่หน้าจอพอดี จึงเดาไม่ได้ล่วงหน้าว่าใครตอบ ให้เลือกเองว่าใครกดตอนนี้
+  const [enrollConsentGrantedByRole, setEnrollConsentGrantedByRole] = useState("student");
 
   useEffect(() => {
     let cancelled = false;
@@ -455,7 +458,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     const token = localStorage.getItem("student_token");
     setSavingConsentKey(consentKey);
     try {
-      const res = await saveConsents(token, [{ consentKey, isGranted }]);
+      const res = await saveConsents(token, [{ consentKey, isGranted }], { grantedByRole: enrollConsentGrantedByRole });
       setEnrollConsentStatus(res?.consents || enrollConsentStatus);
     } catch (err) {
       alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
@@ -466,9 +469,10 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   const allEnrollConsentsAnswered =
     enrollConsentFetchFailed ||
-    enrollConsentItems.every(
-      (it) => enrollConsentStatus[it.key] === "granted" || enrollConsentStatus[it.key] === "denied"
-    );
+    (!enrollConsentLoading &&
+      enrollConsentItems.every(
+        (it) => enrollConsentStatus[it.key] === "granted" || enrollConsentStatus[it.key] === "denied"
+      ));
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -737,6 +741,39 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                 <strong className="text-sm text-[#14213D]">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
                 <p className="mt-1 text-xs text-slate-500">
                   กรุณาเลือกให้ครบทุกข้อก่อนดำเนินการต่อ — เลือก "ไม่ยินยอม" ได้ตามใจ ไม่กระทบสิทธิ์การเรียน
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
+                  <span className="text-xs font-semibold text-slate-500">ตอนนี้ใครเป็นคนตอบ:</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEnrollConsentGrantedByRole("student")}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-bold transition",
+                        enrollConsentGrantedByRole === "student"
+                          ? "bg-orange-500 text-white shadow-sm"
+                          : "bg-white text-slate-500 border border-slate-200 hover:bg-orange-50"
+                      )}
+                    >
+                      นักเรียนตอบเอง
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEnrollConsentGrantedByRole("parent")}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-xs font-bold transition",
+                        enrollConsentGrantedByRole === "parent"
+                          ? "bg-orange-500 text-white shadow-sm"
+                          : "bg-white text-slate-500 border border-slate-200 hover:bg-orange-50"
+                      )}
+                    >
+                      ผู้ปกครองตอบแทน
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400 leading-relaxed">
+                  ถ้าผู้เรียนยังเป็นผู้เยาว์ กฎหมายกำหนดให้ผู้ใช้อำนาจปกครองเป็นผู้ให้ความยินยอมด้วย —
+                  เลือกให้ตรงกับคนที่กำลังกดปุ่มด้านล่างจริง ๆ ในตอนนี้
                 </p>
                 {enrollConsentLoading ? (
                   <p className="mt-3 text-xs text-slate-400">กำลังโหลด...</p>
