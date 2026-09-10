@@ -88,7 +88,7 @@ export default function AppShell() {
           // ★ navbar เป็น fixed ลอยอยู่นอก flow ปกติ (ดู Navbar.jsx) — ถ้าไม่เผื่อระยะ
           //   ด้านบนให้แบนเนอร์ มันจะไปโผล่ทับใต้ navbar พอดี (ใช้ 100px เท่ากับที่หน้าอื่น
           //   เช่น Profile.jsx ใช้ชดเชยความสูง navbar เหมือนกัน)
-          <div className="pt-[100px]">
+          <div className="pt-[100px] -mb-[100px]">
             <PdpaConsentBanner />
           </div>
         )}

@@ -72,14 +72,15 @@ export default function Navbar() {
                             />
                         </div>
 
-                        <div
-                            className={`flex items-center gap-1 cursor-pointer font-medium text-sm transition-colors pb-1 ${isActive("/profile")
+                        <Link
+                            to="profile"
+                            className={`flex items-center gap-1 cursor-pointer font-medium text-sm transition-colors pb-1 ${isActive("/tutor/profile")
                                 ? "text-orange-500"
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >
                             <span>{user?.firstname}</span>
-                        </div>
+                        </Link>
 
                         <div
                             className="

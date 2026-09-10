@@ -624,7 +624,7 @@ const cartTotal = cart.reduce((sum, item) => {
           {/* ── User / Login (โชว์รูป + ชื่อเล่นเท่านั้น) ── */}
           {userData ? (
             <div className="relative group flex items-center gap-2">
-              <div className={`flex items-center gap-2 cursor-pointer pb-1`}>
+              <Link to="/profile" className="flex items-center gap-2 cursor-pointer pb-1">
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-orange-200 bg-orange-50 flex-shrink-0">
                   <img
                     src={
@@ -642,7 +642,7 @@ const cartTotal = cart.reduce((sum, item) => {
                 <span className={`font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
                   {userData.nickname || userData.username || "นักเรียน"}
                 </span>
-              </div>
+              </Link>
               <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-100">
                 <ul className="py-2 text-sm text-gray-700">
                   <li><Link to="/profile" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ข้อมูลส่วนตัว</Link></li>
