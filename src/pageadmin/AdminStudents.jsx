@@ -1289,11 +1289,13 @@ function ParentPrivacyNoticeBlock({ studentId, parent, onSaved, showToast }) {
 function ConsentTab({ studentId, showToast }) {
   const [catalog, setCatalog] = useState([]);
   const [status, setStatus] = useState({});
+  const [history, setHistory] = useState([]);      // ★ เพิ่ม: ใช้หา method/เวลาล่าสุดของแต่ละรายการ
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState({});          // { [consentKey]: true|false } — ยังไม่ได้บันทึก
   const [grantedByRole, setGrantedByRole] = useState("parent");
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [overrideKeys, setOverrideKeys] = useState({}); // ★ เพิ่ม: รายการที่แอดมินกด "แก้ไข/บันทึกทับ" แล้ว
   const fileInputRef = useRef(null);
 
   const load = () => {
@@ -1305,12 +1307,18 @@ function ConsentTab({ studentId, showToast }) {
       .then(([cat, res]) => {
         setCatalog(cat?.items ?? []);
         setStatus(res.data?.consents ?? {});
+        setHistory(res.data?.history ?? []);
+        setOverrideKeys({}); // โหลดใหม่ทุกครั้ง = ล็อกกลับเป็นค่าเริ่มต้น (ต้องกด "แก้ไข" ใหม่ถ้าจะทับอีก)
       })
       .catch((e) => showToast("error", "โหลดข้อมูลความยินยอมไม่สำเร็จ", e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [studentId]);
+
+  // ★ เพิ่ม: หา record ล่าสุดของ key นี้ (ไม่ว่าจะตอบด้วยวิธีไหน) เอาไว้โชว์ badge + ข้อความล็อก
+  const latestRecordFor = (key) => history.find((r) => r.ConsentKey === key) || null;
+  const METHOD_LABEL = { online: "ออนไลน์", paper: "กระดาษ" };
 
   const STATUS_LABEL = {
     granted: { text: "ยินยอมแล้ว", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -1325,6 +1333,10 @@ function ConsentTab({ studentId, showToast }) {
     if (!evidenceFile) return showToast("error", "กรุณาแนบไฟล์สแกนหรือภาพถ่ายใบเซ็นยินยอมก่อนบันทึก");
 
     const items = Object.entries(draft).map(([consentKey, isGranted]) => ({ consentKey, isGranted }));
+    // ★ เพิ่ม: เช็คว่ามีรายการไหนที่ "ตอบไปแล้ว" อยู่ก่อนบ้าง (ทับของเดิม) เอาไว้ปรับข้อความ toast
+    const overriddenLabels = items
+      .filter((it) => (status[it.consentKey] || "not_answered") !== "not_answered")
+      .map((it) => catalog.find((c) => c.key === it.consentKey)?.label || it.consentKey);
     const fd = new FormData();
     fd.append("items", JSON.stringify(items));
     fd.append("grantedByRole", grantedByRole);
@@ -1335,7 +1347,11 @@ function ConsentTab({ studentId, showToast }) {
       await axios.post(`${API}/students/${studentId}/consents/paper`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      showToast("success", "บันทึกความยินยอมจากเอกสารสำเร็จ");
+      if (overriddenLabels.length) {
+        showToast("success", "บันทึกทับความยินยอมเดิมสำเร็จ", `รายการที่ทับ: ${overriddenLabels.join(", ")}`);
+      } else {
+        showToast("success", "บันทึกความยินยอมจากเอกสารสำเร็จ");
+      }
       setDraft({});
       setEvidenceFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -1357,13 +1373,21 @@ function ConsentTab({ studentId, showToast }) {
       <div className="bg-slate-50 rounded-xl border border-slate-200 divide-y divide-slate-100">
         {catalog.map((item) => {
           const s = STATUS_LABEL[status[item.key] || "not_answered"];
+          const latest = latestRecordFor(item.key);
           return (
             <div key={item.key} className="p-4 flex items-start justify-between gap-3">
               <div className="flex-1">
                 <p className="text-sm font-semibold text-slate-800">{item.label}</p>
                 <p className="mt-0.5 text-xs text-slate-500">{item.summary}</p>
               </div>
-              <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>{s.text}</span>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>{s.text}</span>
+                {latest && (
+                  <span className="text-[10px] text-slate-400">
+                    {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
@@ -1378,27 +1402,52 @@ function ConsentTab({ studentId, showToast }) {
         </p>
 
         <div className="mt-3 space-y-2.5">
-          {catalog.map((item) => (
-            <div key={item.key} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-orange-100 px-3 py-2">
-              <span className="text-xs font-semibold text-slate-700">{item.label}</span>
-              <div className="flex gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
-                >
-                  ยินยอม
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
-                >
-                  ไม่ยินยอม
-                </button>
+          {catalog.map((item) => {
+            const alreadyAnswered = (status[item.key] || "not_answered") !== "not_answered";
+            const latest = latestRecordFor(item.key);
+            const locked = alreadyAnswered && !overrideKeys[item.key];
+            if (locked) {
+              return (
+                <div key={item.key} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-orange-100 px-3 py-2">
+                  <div className="flex-1">
+                    <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+                    <p className="mt-0.5 text-[11px] text-slate-400">
+                      ตอบไปแล้ว: {STATUS_LABEL[status[item.key]]?.text}
+                      {latest && ` (${METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · ${new Date(latest.ActionAt).toLocaleString("th-TH")})`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOverrideKeys((o) => ({ ...o, [item.key]: true }))}
+                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
+                  >
+                    แก้ไข/บันทึกทับ
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <div key={item.key} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-orange-100 px-3 py-2">
+                <span className="text-xs font-semibold text-slate-700">{item.label}</span>
+                <div className="flex gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
+                  >
+                    ยินยอม
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
+                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
+                  >
+                    ไม่ยินยอม
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">

@@ -22,9 +22,12 @@ import {
   getMyConsents,
   saveConsents,
 } from "../callapi/callusers_student";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
+  const { toasts, showToast, removeToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -90,7 +93,7 @@ export default function StudentProfile() {
       const res = await saveConsents(token, [{ consentKey, isGranted }], { grantedByRole: consentGrantedByRole });
       setConsentStatus(res?.consents ?? consentStatus);
     } catch (error) {
-      alert("บันทึกความยินยอมไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      showToast("error", "บันทึกความยินยอมไม่สำเร็จ", "กรุณาลองใหม่อีกครั้ง");
     } finally {
       setSavingConsentKey(null);
     }
@@ -157,19 +160,20 @@ export default function StudentProfile() {
     const file = e.target.files[0];
     if (!file) return;
     if (consentStatus.photo === "denied") {
-      alert(
-        "ตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่ ระบบจะไม่บันทึกรูปที่อัปโหลดใหม่ให้\n\n" +
-        "กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
+      showToast(
+        "error",
+        "ปิดความยินยอมเรื่องภาพถ่ายอยู่",
+        "ระบบจะไม่บันทึกรูปที่อัปโหลดใหม่ให้ — กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
       );
       e.target.value = "";
       return;
     }
     if (!file.type.startsWith("image/")) {
-      alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+      showToast("error", "ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("รูปภาพต้องมีขนาดไม่เกิน 5 MB");
+      showToast("error", "ไฟล์ใหญ่เกินไป", "รูปภาพต้องมีขนาดไม่เกิน 5 MB");
       return;
     }
     const previewUrl = URL.createObjectURL(file);
@@ -202,9 +206,10 @@ export default function StudentProfile() {
         // แม้ request จะสำเร็จก็ตาม ต้องคืนค่ารูปเดิมแทนที่จะโชว์เหมือนบันทึกสำเร็จ
         URL.revokeObjectURL(previewUrl);
         setFormData((prev) => ({ ...prev, photo: previousPhoto }));
-        alert(
-          "อัปโหลดรูปไม่สำเร็จ เพราะตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่\n\n" +
-          "กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
+        showToast(
+          "error",
+          "อัปโหลดรูปไม่สำเร็จ",
+          "เพราะตอนนี้ปิดความยินยอมเรื่องภาพถ่ายอยู่ — กดยินยอมได้ที่หัวข้อ \"ความยินยอม (PDPA)\" ด้านล่างของหน้านี้ก่อน แล้วค่อยอัปโหลดรูปอีกครั้ง"
         );
         return;
       }
@@ -217,7 +222,7 @@ export default function StudentProfile() {
       console.error(error);
       URL.revokeObjectURL(previewUrl);
       setFormData((prev) => ({ ...prev, photo: previousPhoto }));
-      alert("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || error.message || "กรุณาลองใหม่"));
+      showToast("error", "อัปโหลดไม่สำเร็จ", error.response?.data?.message || error.message || "กรุณาลองใหม่");
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -261,7 +266,7 @@ export default function StudentProfile() {
       await fetchProfile();
       setIsEditing(false);
     } catch (error) {
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      showToast("error", "บันทึกไม่สำเร็จ", "เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
     } finally {
       setIsSaving(false);
     }
@@ -284,6 +289,7 @@ export default function StudentProfile() {
 
   return (
     <div className="space-y-6 mt-[100px]">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="">
         {/* ── Edit Mode Banner ── */}
         {isEditing && (

@@ -41,7 +41,7 @@ export default function Navbar() {
                             end
                             className={({ isActive }) =>
                                 `font-medium text-xs transition-colors pb-1 ${isActive
-                                    ? "text-orange-500 border-b-2 border-orange-500"
+                                    ? "text-orange-500"
                                     : "text-neutral-700 hover:text-orange-500"
                                 }`
                             }
@@ -74,7 +74,7 @@ export default function Navbar() {
 
                         <div
                             className={`flex items-center gap-1 cursor-pointer font-medium text-sm transition-colors pb-1 ${isActive("/profile")
-                                ? "text-orange-500 border-b-2 border-orange-500"
+                                ? "text-orange-500"
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >

@@ -229,7 +229,7 @@ const cartTotal = cart.reduce((sum, item) => {
               to="/"
               className={`font-medium transition-colors text-xs ${
                 isActive("/")
-                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  ? "text-orange-500 pb-1"
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
@@ -239,7 +239,7 @@ const cartTotal = cart.reduce((sum, item) => {
               to="/apply-tutor"
               className={`font-medium transition-colors text-xs ${
                 isActive("/apply-tutor")
-                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  ? "text-orange-500 pb-1"
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
@@ -249,7 +249,7 @@ const cartTotal = cart.reduce((sum, item) => {
               to="/news"
               className={`font-medium transition-colors text-xs ${
                 isActive("/news")
-                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  ? "text-orange-500 pb-1"
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
@@ -259,7 +259,7 @@ const cartTotal = cart.reduce((sum, item) => {
               to="/promotion"
               className={`font-medium transition-colors text-xs ${
                 isActive("/promotion")
-                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  ? "text-orange-500 pb-1"
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
@@ -269,7 +269,7 @@ const cartTotal = cart.reduce((sum, item) => {
               to="/about"
               className={`font-medium transition-colors text-xs ${
                 isActive("/about")
-                  ? "text-orange-500 border-b-2 border-orange-500 pb-1"
+                  ? "text-orange-500 pb-1"
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
@@ -639,7 +639,7 @@ const cartTotal = cart.reduce((sum, item) => {
                     }}
                   />
                 </div>
-                <span className={`font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500 border-b-2 border-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
+                <span className={`font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
                   {userData.nickname || userData.username || "นักเรียน"}
                 </span>
               </div>

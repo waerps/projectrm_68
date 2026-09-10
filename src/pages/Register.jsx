@@ -1,5 +1,8 @@
 import { API_URL } from "../config";
 import React, { useState } from 'react';
+import { formatPhone, formatGPA } from "../utils/format";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 
 export function Register() {
   const [formData, setFormData] = useState({
@@ -21,11 +24,16 @@ export function Register() {
     marketingConsent: false
   });
 
+  const { toasts, showToast, removeToast } = useToast();
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    let nextValue = type === 'checkbox' ? checked : value;
+    if (name === 'phoneNo') nextValue = formatPhone(nextValue);
+    if (name === 'gpa') nextValue = formatGPA(nextValue);
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: nextValue
     });
   };
 
@@ -35,12 +43,17 @@ const handleSubmit = async (e) => {
 
     // 1. Validation เบื้องต้น
     if (!formData.firstname || !formData.lastname || !formData.username || !formData.password) {
-      alert('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ที่มีเครื่องหมาย *)');
+      showToast('error', 'กรอกข้อมูลไม่ครบ', 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (ที่มีเครื่องหมาย *)');
+      return;
+    }
+
+    if (!formData.gradeLevelId) {
+      showToast('error', 'ยังไม่ได้เลือกระดับชั้น', 'กรุณาเลือกระดับชั้นก่อนสมัครสมาชิก');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      alert('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง');
+      showToast('error', 'รหัสผ่านไม่ตรงกัน', 'กรุณาตรวจสอบรหัสผ่านและยืนยันรหัสผ่านอีกครั้ง');
       return;
     }
 
@@ -58,22 +71,23 @@ const handleSubmit = async (e) => {
 
       if (response.ok) {
         // 3. กรณีสำเร็จ
-        alert('ลงทะเบียนสำเร็จ! กำลังพาท่านไปหน้าเข้าสู่ระบบ...');
-        // ถ้าใช้ react-router-dom ให้ใช้ navigate('/login') แทน
-        window.location.href = '/login'; 
+        showToast('success', 'ลงทะเบียนสำเร็จ', 'กำลังพาท่านไปหน้าเข้าสู่ระบบ...');
+        // หน่วงสักครู่ให้เห็น toast ก่อนค่อยเด้งไปหน้า login (เดิมใช้ alert ซึ่งบล็อกจน user กดปิดเอง)
+        setTimeout(() => { window.location.href = '/login'; }, 1200);
       } else {
         // 4. กรณี Error (เช่น Username ซ้ำ)
-        alert(data.message || 'เกิดข้อผิดพลาดในการลงทะเบียน');
+        showToast('error', 'ลงทะเบียนไม่สำเร็จ', data.message || 'เกิดข้อผิดพลาดในการลงทะเบียน');
       }
 
     } catch (error) {
       console.error('Error:', error);
-      alert('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      showToast('error', 'เชื่อมต่อไม่สำเร็จ', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
   };
 
   return (
     <div className="min-h-screen  via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* Background */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full blur-3xl opacity-20 animate-pulse"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-300 rounded-full blur-3xl opacity-15 animate-pulse" style={{animationDelay: '1s'}}></div>
@@ -177,6 +191,7 @@ const handleSubmit = async (e) => {
                     value={formData.phoneNo}
                     onChange={handleChange}
                     placeholder="0xx-xxx-xxxx"
+                    maxLength={12}
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                   />
                 </div>
@@ -205,7 +220,7 @@ const handleSubmit = async (e) => {
 
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    ระดับชั้น
+                    ระดับชั้น <span className="text-red-500">*</span>
                   </label>
                   <select
                     name="gradeLevelId"
@@ -234,14 +249,20 @@ const handleSubmit = async (e) => {
                     เกรดเฉลี่ย (GPA)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="gpa"
                     value={formData.gpa}
                     onChange={handleChange}
+                    onBlur={(e) => {
+                      if (!e.target.value) return;
+                      let n = parseFloat(e.target.value);
+                      if (isNaN(n)) return setFormData((f) => ({ ...f, gpa: '' }));
+                      n = Math.min(4, Math.max(0, n));
+                      setFormData((f) => ({ ...f, gpa: n.toFixed(2) }));
+                    }}
                     placeholder="0.00 - 4.00"
-                    step="0.01"
-                    min="0"
-                    max="4"
+                    maxLength={4}
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                   />
                 </div>

@@ -60,7 +60,7 @@ export default function Navbar() {
                         <Link
                             to="profile"
                             className={`flex items-center gap-1 font-medium text-sm transition-colors pb-1 ${isActive("/admin/profile")
-                                ? "text-orange-500 border-b-2 border-orange-500"
+                                ? "text-orange-500"
                                 : "text-gray-700 hover:text-orange-500"
                                 }`}
                         >
