@@ -1369,30 +1369,9 @@ function ConsentTab({ studentId, showToast }) {
 
   return (
     <div className="space-y-5">
-      {/* สถานะปัจจุบัน */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 divide-y divide-slate-100">
-        {catalog.map((item) => {
-          const s = STATUS_LABEL[status[item.key] || "not_answered"];
-          const latest = latestRecordFor(item.key);
-          return (
-            <div key={item.key} className="p-4 flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-800">{item.label}</p>
-                <p className="mt-0.5 text-xs text-slate-500">{item.summary}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>{s.text}</span>
-                {latest && (
-                  <span className="text-[10px] text-slate-400">
-                    {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
+      {/* ★ รวมเหลือกล่องเดียว (ตามที่ผู้ปกครอง/แอดมินขอ): เดิมมีกล่อง "สถานะปัจจุบัน" (อ่านอย่างเดียว)
+          แยกจากกล่อง "บันทึกจากเอกสารกระดาษ" (กรอก/แก้ไข) ซึ่งหน้าตาซ้ำกันมากจนดูเหมือนข้อมูลซ้ำซ้อน
+          ตอนนี้รวมเป็นกล่องเดียว: แต่ละแถวโชว์ทั้งสถานะปัจจุบัน+วิธี/เวลาที่ตอบ และปุ่มกรอก/แก้ไขในตัว */}
       {/* บันทึกจากเอกสารกระดาษ */}
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
         <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> บันทึกความยินยอมจากเอกสาร (กระดาษ)</p>
@@ -1403,47 +1382,53 @@ function ConsentTab({ studentId, showToast }) {
 
         <div className="mt-3 space-y-2.5">
           {catalog.map((item) => {
-            const alreadyAnswered = (status[item.key] || "not_answered") !== "not_answered";
+            const s = STATUS_LABEL[status[item.key] || "not_answered"];
             const latest = latestRecordFor(item.key);
+            const alreadyAnswered = (status[item.key] || "not_answered") !== "not_answered";
             const locked = alreadyAnswered && !overrideKeys[item.key];
-            if (locked) {
-              return (
-                <div key={item.key} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-orange-100 px-3 py-2">
-                  <div className="flex-1">
-                    <span className="text-xs font-semibold text-slate-700">{item.label}</span>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
-                      ตอบไปแล้ว: {STATUS_LABEL[status[item.key]]?.text}
-                      {latest && ` (${METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · ${new Date(latest.ActionAt).toLocaleString("th-TH")})`}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setOverrideKeys((o) => ({ ...o, [item.key]: true }))}
-                    className="shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
-                  >
-                    แก้ไข/บันทึกทับ
-                  </button>
-                </div>
-              );
-            }
             return (
-              <div key={item.key} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-orange-100 px-3 py-2">
-                <span className="text-xs font-semibold text-slate-700">{item.label}</span>
-                <div className="flex gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
-                  >
-                    ยินยอม
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
-                    className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
-                  >
-                    ไม่ยินยอม
-                  </button>
+              <div key={item.key} className="rounded-lg border border-orange-100 bg-white px-3 py-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-700">{item.label}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-400">{item.summary}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>{s.text}</span>
+                    {latest && (
+                      <span className="text-[10px] text-slate-400">
+                        {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-2 flex justify-end">
+                  {locked ? (
+                    <button
+                      type="button"
+                      onClick={() => setOverrideKeys((o) => ({ ...o, [item.key]: true }))}
+                      className="rounded-lg px-2.5 py-1 text-[11px] font-bold bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
+                    >
+                      แก้ไข/บันทึกทับ
+                    </button>
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
+                      >
+                        ยินยอม
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
+                        className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
+                      >
+                        ไม่ยินยอม
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
