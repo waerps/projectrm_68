@@ -9,10 +9,12 @@ import {
   getStudentSubjectVideos,
   getStudentSubjectFiles,
   getStudentSubjectsProgress,
+  getVideoLearningState,
   updateVideoWatchSegments,
 } from "../callapi/callusers_student";
 import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
 import { useToast } from "../components/useToast";
+import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
 import { ToastContainer } from "../components/Toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -279,7 +281,7 @@ export default function StudentSubjectDetail() {
         );
         setSubjectName(selectedSubject?.subjectName || "ไม่ระบุชื่อวิชา");
 
-        setVideos((Array.isArray(videoList) ? videoList : []).map((v) => ({
+        const normalizedVideos = (Array.isArray(videoList) ? videoList : []).map((v) => ({
           VideoId: v.id,
           VideoTitle: v.title || "วิดีโอไม่มีชื่อ",
           VideoUrl: v.url || "",
@@ -288,7 +290,15 @@ export default function StudentSubjectDetail() {
           Duration: v.duration,
           LastWatchTime: Number(v.lastWatchTime || 0),
           WatchPercent: Number(v.progress || 0),
-        })));
+        }));
+        const videosWithLearning = await Promise.all(normalizedVideos.map(async video => {
+          if (getVideoType(video.VideoUrl, video.VideoType) !== "upload") return video;
+          try {
+            const state = await getVideoLearningState(token, video.VideoId);
+            return { ...video, CorrectCount: state.questions.filter(question => question.isCorrect).length, TotalQuestions: state.questions.length };
+          } catch { return { ...video, CorrectCount: 0, TotalQuestions: 0 }; }
+        }));
+        if (!cancelled) setVideos(videosWithLearning);
 
         const fList = Array.isArray(fileList) ? fileList : [];
         setFiles(fList.map((f) => ({
@@ -327,6 +337,15 @@ export default function StudentSubjectDetail() {
     } finally {
       setExamLoading(false);
     }
+  };
+
+  const handleProgress = (videoId, watchPercent, lastWatchTime) => {
+    setVideos(current => current.map(video => String(video.VideoId) === String(videoId) ? { ...video, WatchPercent: watchPercent, LastWatchTime: lastWatchTime } : video));
+    setSelectedVideo(current => current && String(current.VideoId) === String(videoId) ? { ...current, WatchPercent: watchPercent, LastWatchTime: lastWatchTime } : current);
+  };
+  const handleLearningChange = (videoId, result) => {
+    setVideos(current => current.map(video => String(video.VideoId) === String(videoId) ? { ...video, CorrectCount: result.correctCount, TotalQuestions: result.totalQuestions } : video));
+    setSelectedVideo(current => current && String(current.VideoId) === String(videoId) ? { ...current, CorrectCount: result.correctCount, TotalQuestions: result.totalQuestions } : current);
   };
 
   if (loading) {
@@ -377,7 +396,7 @@ export default function StudentSubjectDetail() {
         <div className="min-h-[380px] bg-white rounded-2xl border border-neutral-200 shadow-sm">
           <div className="p-6 space-y-3">
             {videos.length > 0 ? videos.map((video) => (
-              <div key={video.VideoId} className="rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0">
+              <div key={video.VideoId} className="relative rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0 pb-2">
                 <button onClick={() => setSelectedVideo(video)} className="relative flex-shrink-0 w-28 bg-neutral-100 group">
                   {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
                     <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="w-28 h-full object-cover" />
@@ -400,7 +419,7 @@ export default function StudentSubjectDetail() {
                   </div>
                   <div className="flex items-center justify-end gap-3 mt-2">
                     {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? (
-                      <WatchProgressRing percent={video.WatchPercent} />
+                      <div className="mr-auto flex items-center gap-3"><span className="text-[11px] font-semibold text-orange-600">ดูแล้ว {Math.round(video.WatchPercent || 0)}%</span>{video.TotalQuestions > 0 && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">ตอบถูก {video.CorrectCount || 0}/{video.TotalQuestions} ข้อ</span>}</div>
                     ) : <span className="mr-auto text-[10px] text-neutral-300">คลิปนี้ไม่บันทึกความคืบหน้า</span>}
                     <button onClick={() => setSelectedVideo(video)}
                       className="flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700">
@@ -408,6 +427,7 @@ export default function StudentSubjectDetail() {
                     </button>
                   </div>
                 </div>
+                {getVideoType(video.VideoUrl, video.VideoType) === "upload" && <div className="absolute inset-x-0 bottom-0 h-2 bg-neutral-100"><div className="h-full rounded-r-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all" style={{ width: `${Math.min(100, Math.max(0, video.WatchPercent || 0))}%` }} /></div>}
               </div>
             )) : (
               <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
@@ -477,7 +497,7 @@ export default function StudentSubjectDetail() {
               </button>
             </div>
             {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
-              <UploadedVideoPlayer video={selectedVideo} token={token} />
+              <InteractiveVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} onLearningChange={handleLearningChange} />
             ) : (
               <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} />
             )}

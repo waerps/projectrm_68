@@ -353,3 +353,25 @@ export async function saveConsents(token, items, opts = {}) {
     throwNiceError(error);
   }
 }
+
+export async function getVideoLearningState(token, videoId) {
+  try {
+    const res = await apiClient.get(`/api/student/videos/${videoId}/learning-state`, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
+export async function submitVideoQuestionAnswer(token, videoId, questionId, optionId, requestId) {
+  try {
+    const res = await apiClient.post(
+      `/api/student/videos/${videoId}/questions/${questionId}/attempt`,
+      { optionId, requestId },
+      withAuth(token)
+    );
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}

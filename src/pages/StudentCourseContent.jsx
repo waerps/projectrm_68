@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useParams, Link } from "react-router-dom";
 import { ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
-import { getStudentCourses, getStudentVideos, getStudentFiles, updateVideoWatchSegments } from "../callapi/callusers_student";
+import { getStudentCourses, getStudentVideos, getStudentFiles, getVideoLearningState, updateVideoWatchSegments } from "../callapi/callusers_student";
+import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
 
 let ytApiPromise = null;
 function loadYoutubeApi() {
@@ -222,6 +223,15 @@ export default function StudentCourseContent() {
       : current);
   }, []);
 
+  const handleLearningChange = useCallback((videoId, result) => {
+    setVideos(current => current.map(video => String(video.VideoId) === String(videoId)
+      ? { ...video, CorrectCount: result.correctCount, TotalQuestions: result.totalQuestions }
+      : video));
+    setSelectedVideo(current => current && String(current.VideoId) === String(videoId)
+      ? { ...current, CorrectCount: result.correctCount, TotalQuestions: result.totalQuestions }
+      : current);
+  }, []);
+
   const getVideoThumbnail = (url, type) => {
     if (type === "upload" && /res\.cloudinary\.com/.test(url || "")) {
       return url.replace("/video/upload/", "/video/upload/so_1/").replace(/\.(mp4|mov|webm)$/i, ".jpg");
@@ -255,7 +265,7 @@ export default function StudentCourseContent() {
         const videoList = Array.isArray(videoPayload) ? videoPayload : videoPayload?.videos ?? videoPayload?.data ?? [];
         const fileList = Array.isArray(filePayload) ? filePayload : filePayload?.files ?? filePayload?.documents ?? filePayload?.data ?? [];
 
-        setVideos(videoList.map((video) => ({
+        const normalizedVideos = videoList.map((video) => ({
           ...video,
           VideoId: video.VideoId ?? video.videoId ?? video.id,
           VideoTitle: video.VideoTitle ?? video.videoTitle ?? video.title ?? "วิดีโอไม่มีชื่อ",
@@ -265,7 +275,15 @@ export default function StudentCourseContent() {
           Duration: video.Duration ?? video.duration,
           LastWatchTime: Number(video.LastWatchTime ?? video.lastWatchTime ?? 0),
           WatchPercent: Number(video.WatchPercent ?? video.watchPercent ?? 0),
-        })));
+        }));
+        const videosWithLearning = await Promise.all(normalizedVideos.map(async video => {
+          if (getVideoType(video.VideoUrl, video.VideoType) !== "upload") return video;
+          try {
+            const state = await getVideoLearningState(token, video.VideoId);
+            return { ...video, CorrectCount: state.questions.filter(question => question.isCorrect).length, TotalQuestions: state.questions.length };
+          } catch { return { ...video, CorrectCount: 0, TotalQuestions: 0 }; }
+        }));
+        if (!cancelled) setVideos(videosWithLearning);
         setDocuments(fileList.map((file) => ({
           ...file,
           FileId: file.FileId ?? file.fileId ?? file.id,
@@ -327,7 +345,7 @@ export default function StudentCourseContent() {
 
             <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {videos.length > 0 ? videos.map((video) => (
-                <div key={video.VideoId} className="rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0">
+                <div key={video.VideoId} className="relative rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0 pb-1.5">
                   <button onClick={() => setSelectedVideo(video)} className="relative flex-shrink-0 w-28 bg-neutral-100 group">
                     {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
                       <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="w-28 h-full object-cover" />
@@ -349,18 +367,20 @@ export default function StudentCourseContent() {
                       </div>
                       <p className="text-sm font-semibold text-neutral-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
                     </div>
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between gap-2 mt-2">
                       {getVideoType(video.VideoUrl, video.VideoType) === "upload" && video.WatchPercent != null ? (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${video.WatchPercent >= 80 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
                           ดูแล้ว {Math.round(video.WatchPercent)}%
                         </span>
                       ) : <span className="text-[10px] text-neutral-300">ยังไม่ได้ดู</span>}
+                      {getVideoType(video.VideoUrl, video.VideoType) === "upload" && video.TotalQuestions > 0 && <span className="ml-auto rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">ตอบถูก {video.CorrectCount || 0}/{video.TotalQuestions} ข้อ</span>}
                       <button onClick={() => setSelectedVideo(video)}
                         className="flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700">
                         <PlayCircle className="h-3.5 w-3.5" /> ดู
                       </button>
                     </div>
                   </div>
+                  {getVideoType(video.VideoUrl, video.VideoType) === "upload" && <div className="absolute inset-x-0 bottom-0 h-1.5 bg-neutral-100"><div className="h-full rounded-r-full bg-gradient-to-r from-orange-400 to-orange-500 transition-all" style={{ width: `${Math.min(100, Math.max(0, video.WatchPercent || 0))}%` }} /></div>}
                 </div>
               )) : (
                 <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
@@ -403,7 +423,7 @@ export default function StudentCourseContent() {
               </button>
             </div>
             {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
-              <UploadedVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} />
+              <InteractiveVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} onLearningChange={handleLearningChange} />
             ) : (
               <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} />
             )}
