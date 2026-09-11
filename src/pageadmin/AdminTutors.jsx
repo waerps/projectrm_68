@@ -302,8 +302,15 @@ function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting
 function ApplicationDetailModal({ application, onClose, onApprove, onReject, showToast }) {
   const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
   const status = appStatusOf(application.Status);
-  const [downloading, setDownloading] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+  const [resumeBlobUrl, setResumeBlobUrl] = useState(null);
+  const [resumeMime, setResumeMime] = useState("");
+  const resumeObjectUrlRef = useRef(null);
+
+  // เคลียร์ object URL ที่สร้างไว้ตอน unmount กันหน่วยความจำรั่ว
+  useEffect(() => () => {
+    if (resumeObjectUrlRef.current) window.URL.revokeObjectURL(resumeObjectUrlRef.current);
+  }, []);
 
   // ★ แก้บั๊ก: ก่อนหน้านี้ไม่ได้แนบ token เลย (ไม่ได้ใช้ getAdminAuthConfig()) เลย
   // โดนปฏิเสธ 401 เงียบ ๆ ทุกครั้ง กดแล้วไม่มีอะไรเกิดขึ้นเหมือนปุ่มพัง
@@ -316,46 +323,34 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
   const resumeExt = (application.ResumePath || "").split(".").pop()?.toLowerCase();
   const canPreviewInline = resumeExt === "pdf" || ["png", "jpg", "jpeg", "webp"].includes(resumeExt);
 
-  const handleDownload = async () => {
+  // ★ แก้ตามที่ขอ: รวมปุ่มดูตัวอย่าง+ดาวน์โหลดเป็นจุดเดียว — กดดูตัวอย่างก่อน แล้วปุ่มดาวน์โหลด
+  // จะอยู่ในแผงพรีวิวนั้นเลย ไม่แยกปุ่มเหมือนเดิม (โหลดไฟล์แค่ครั้งเดียว ใช้ blob ก้อนเดียวกันทั้งดูและโหลด)
+  const handleOpenPreview = async () => {
     if (!application.ApplicationId) return;
-    setDownloading(true);
-    try {
-      const res = await fetchResumeBlob();
-      const blobUrl = window.URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `resume-${application.Nickname || application.Firstname}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err) {
-      console.error("[handleDownload]", err);
-      showToast?.("error", "ดาวน์โหลดไม่สำเร็จ", err.response?.data?.message || err.message);
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const handlePreview = async () => {
-    if (!application.ApplicationId) return;
-    if (!canPreviewInline) {
-      showToast?.("error", "ดูตัวอย่างไม่ได้", "ไฟล์ประเภทนี้เปิดดูตัวอย่างในเบราว์เซอร์ไม่ได้ กรุณาดาวน์โหลดเพื่อเปิดด้วยโปรแกรมที่รองรับ");
-      return;
-    }
+    if (resumeObjectUrlRef.current) return; // โหลดไปแล้ว ไม่ต้องยิงซ้ำ
     setPreviewing(true);
     try {
       const res = await fetchResumeBlob();
       const blobUrl = window.URL.createObjectURL(res.data);
-      window.open(blobUrl, "_blank", "noopener,noreferrer");
-      // เผื่อเวลาให้แท็บใหม่โหลดไฟล์เข้าไปก่อนค่อยคืนหน่วยความจำ
-      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+      resumeObjectUrlRef.current = blobUrl;
+      setResumeMime(res.data.type || "");
+      setResumeBlobUrl(blobUrl);
     } catch (err) {
-      console.error("[handlePreview]", err);
+      console.error("[handleOpenPreview]", err);
       showToast?.("error", "เปิดดูตัวอย่างไม่สำเร็จ", err.response?.data?.message || err.message);
     } finally {
       setPreviewing(false);
     }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!resumeBlobUrl) return;
+    const a = document.createElement("a");
+    a.href = resumeBlobUrl;
+    a.download = `resume-${application.Nickname || application.Firstname}${resumeExt ? "." + resumeExt : ""}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -401,19 +396,35 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
       <div className="mb-5">
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">ไฟล์ Resume</p>
         {application.ResumePath ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button onClick={handlePreview} disabled={previewing || !canPreviewInline}
-              title={!canPreviewInline ? "ไฟล์ประเภทนี้เปิดดูตัวอย่างในเบราว์เซอร์ไม่ได้" : undefined}
+          resumeBlobUrl ? (
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <span className="text-xs font-semibold text-slate-500">ตัวอย่างไฟล์ Resume</span>
+                <button onClick={handleDownloadFromPreview}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition">
+                  <Download className="h-3.5 w-3.5" />
+                  ดาวน์โหลด
+                </button>
+              </div>
+              {canPreviewInline ? (
+                resumeExt === "pdf" ? (
+                  <iframe src={resumeBlobUrl} title="ตัวอย่าง Resume" className="w-full h-[420px] bg-white" />
+                ) : (
+                  <img src={resumeBlobUrl} alt="ตัวอย่าง Resume" className="max-h-[420px] w-full object-contain bg-white" />
+                )
+              ) : (
+                <p className="text-xs text-slate-400 p-4">
+                  ไฟล์ประเภทนี้แสดงตัวอย่างในเบราว์เซอร์ไม่ได้ กรุณากด "ดาวน์โหลด" เพื่อเปิดด้วยโปรแกรมที่รองรับ
+                </p>
+              )}
+            </div>
+          ) : (
+            <button onClick={handleOpenPreview} disabled={previewing}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 disabled:opacity-50 transition">
               {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-              {previewing ? "กำลังเปิด..." : "ดูตัวอย่าง"}
+              {previewing ? "กำลังเปิด..." : "ดูตัวอย่าง Resume"}
             </button>
-            <button onClick={handleDownload} disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 disabled:opacity-50 transition">
-              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-              {downloading ? "กำลังดาวน์โหลด..." : "ดาวน์โหลด Resume"}
-            </button>
-          </div>
+          )
         ) : (
           <p className="text-xs text-slate-400">ไม่มีไฟล์แนบ</p>
         )}
