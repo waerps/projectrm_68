@@ -320,8 +320,11 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
       ...getAdminAuthConfig(),
     });
 
-  const resumeExt = (application.ResumePath || "").split(".").pop()?.toLowerCase();
-  const canPreviewInline = resumeExt === "pdf" || ["png", "jpg", "jpeg", "webp"].includes(resumeExt);
+  // ★ แก้: หานามสกุล/ประเภทไฟล์จาก Content-Type จริงหลังโหลดไฟล์มาแล้ว (resumeMime) แทนการเดา
+  // จาก URL — ไฟล์บน Cloudinary มักไม่มีนามสกุลต่อท้าย URL เลย เดาแล้วผิดเกือบตลอด
+  const MIME_TO_EXT = { "application/pdf": "pdf", "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+  const resumeExt = MIME_TO_EXT[resumeMime] || "";
+  const canPreviewInline = !!resumeMime && (resumeMime === "application/pdf" || resumeMime.startsWith("image/"));
 
   // ★ แก้ตามที่ขอ: รวมปุ่มดูตัวอย่าง+ดาวน์โหลดเป็นจุดเดียว — กดดูตัวอย่างก่อน แล้วปุ่มดาวน์โหลด
   // จะอยู่ในแผงพรีวิวนั้นเลย ไม่แยกปุ่มเหมือนเดิม (โหลดไฟล์แค่ครั้งเดียว ใช้ blob ก้อนเดียวกันทั้งดูและโหลด)
@@ -407,7 +410,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
                 </button>
               </div>
               {canPreviewInline ? (
-                resumeExt === "pdf" ? (
+                resumeMime === "application/pdf" ? (
                   <iframe src={resumeBlobUrl} title="ตัวอย่าง Resume" className="w-full h-[420px] bg-white" />
                 ) : (
                   <img src={resumeBlobUrl} alt="ตัวอย่าง Resume" className="max-h-[420px] w-full object-contain bg-white" />

@@ -1,6 +1,8 @@
 // src/pages/TutorApply.jsx
 import { useState } from "react"
 import { applyTutor } from "../callapi/callusers"
+import { useToast } from "../components/useToast"
+import { ToastContainer } from "../components/Toast"
 
 function formatPhone(value) {
   const digits = (value || "").replace(/\D/g, "").slice(0, 10)
@@ -25,6 +27,7 @@ export default function TutorApply() {
     consent: false,
   })
   const [submitting, setSubmitting] = useState(false)
+  const { toasts, showToast, removeToast } = useToast()
 
   const onChange = (e) => {
     const { name, value, files, type, checked } = e.target
@@ -42,15 +45,15 @@ export default function TutorApply() {
   const onSubmit = async (e) => {
     e.preventDefault()
     if (!form.firstname || !form.lastname || !form.phone) {
-      alert("กรุณากรอก ชื่อจริง, นามสกุล และ เบอร์โทรศัพท์")
+      showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอก ชื่อจริง, นามสกุล และ เบอร์โทรศัพท์")
       return
     }
     if (!isValidPhone(form.phone)) {
-      alert("รูปแบบเบอร์โทรไม่ถูกต้อง (ตัวอย่าง 098-888-8888)")
+      showToast("error", "เบอร์โทรไม่ถูกต้อง", "รูปแบบเบอร์โทรไม่ถูกต้อง (ตัวอย่าง 098-888-8888)")
       return
     }
     if (!form.consent) {
-      alert("กรุณายินยอมให้เก็บข้อมูลส่วนบุคคล (PDPA) ก่อนส่งใบสมัคร")
+      showToast("error", "ต้องยินยอม PDPA ก่อน", "กรุณายินยอมให้เก็บข้อมูลส่วนบุคคล (PDPA) ก่อนส่งใบสมัคร")
       return
     }
 
@@ -67,11 +70,21 @@ export default function TutorApply() {
       if (form.resume) fd.append("resume", form.resume)
 
       await applyTutor(fd)
-      alert("ส่งใบสมัครเรียบร้อย! ✅")
+      showToast("success", "ส่งใบสมัครเรียบร้อย!", "ทีมงานจะติดต่อกลับหากผ่านการพิจารณาเบื้องต้น")
+      setForm({
+        firstname: "",
+        lastname: "",
+        nickname: "",
+        phone: "",
+        line: "",
+        occupation: "",
+        resume: null,
+        consent: false,
+      })
     } catch (err) {
       console.error(err)
       const msg = err?.response?.data?.message || "เกิดข้อผิดพลาดในการส่งใบสมัคร กรุณาลองใหม่อีกครั้ง"
-      alert(msg)
+      showToast("error", "ส่งใบสมัครไม่สำเร็จ", msg)
     } finally {
       setSubmitting(false)
     }
@@ -79,6 +92,7 @@ export default function TutorApply() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 pb-16 pt-28">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <h1 className="mb-10 text-center text-4xl font-extrabold text-neutral-900 mt-15">
         สมัครเป็นติวเตอร์
       </h1>
