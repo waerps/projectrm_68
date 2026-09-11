@@ -9,7 +9,7 @@ import {
   Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
-  UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2,
+  UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2, Download,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 
@@ -299,19 +299,28 @@ function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting
 }
 
 // ─── ★ ใหม่: ดูรายละเอียดใบสมัคร ก่อนอนุมัติ/ปฏิเสธ/ดาวน์โหลด Resume (สไตล์เดียวกับ TutorDetailModal) ──
-function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
+function ApplicationDetailModal({ application, onClose, onApprove, onReject, showToast }) {
   const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
   const status = appStatusOf(application.Status);
   const [downloading, setDownloading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
-  // ★ แก้: ใช้ axios (มี auth token แนบอยู่แล้ว) + responseType blob แทน fetch ธรรมดา
+  // ★ แก้บั๊ก: ก่อนหน้านี้ไม่ได้แนบ token เลย (ไม่ได้ใช้ getAdminAuthConfig()) เลย
+  // โดนปฏิเสธ 401 เงียบ ๆ ทุกครั้ง กดแล้วไม่มีอะไรเกิดขึ้นเหมือนปุ่มพัง
+  const fetchResumeBlob = () =>
+    axios.get(`${API}/tutor-applications/${application.ApplicationId}/resume`, {
+      responseType: "blob",
+      ...getAdminAuthConfig(),
+    });
+
+  const resumeExt = (application.ResumePath || "").split(".").pop()?.toLowerCase();
+  const canPreviewInline = resumeExt === "pdf" || ["png", "jpg", "jpeg", "webp"].includes(resumeExt);
+
   const handleDownload = async () => {
     if (!application.ApplicationId) return;
     setDownloading(true);
     try {
-      const res = await axios.get(`${API}/tutor-applications/${application.ApplicationId}/resume`, {
-        responseType: "blob",
-      });
+      const res = await fetchResumeBlob();
       const blobUrl = window.URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = blobUrl;
@@ -322,8 +331,30 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("[handleDownload]", err);
+      showToast?.("error", "ดาวน์โหลดไม่สำเร็จ", err.response?.data?.message || err.message);
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!application.ApplicationId) return;
+    if (!canPreviewInline) {
+      showToast?.("error", "ดูตัวอย่างไม่ได้", "ไฟล์ประเภทนี้เปิดดูตัวอย่างในเบราว์เซอร์ไม่ได้ กรุณาดาวน์โหลดเพื่อเปิดด้วยโปรแกรมที่รองรับ");
+      return;
+    }
+    setPreviewing(true);
+    try {
+      const res = await fetchResumeBlob();
+      const blobUrl = window.URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank", "noopener,noreferrer");
+      // เผื่อเวลาให้แท็บใหม่โหลดไฟล์เข้าไปก่อนค่อยคืนหน่วยความจำ
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err) {
+      console.error("[handlePreview]", err);
+      showToast?.("error", "เปิดดูตัวอย่างไม่สำเร็จ", err.response?.data?.message || err.message);
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -370,11 +401,19 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
       <div className="mb-5">
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">ไฟล์ Resume</p>
         {application.ResumePath ? (
-          <button onClick={handleDownload} disabled={downloading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 disabled:opacity-50 transition">
-            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-            {downloading ? "กำลังดาวน์โหลด..." : "ดาวน์โหลด Resume"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={handlePreview} disabled={previewing || !canPreviewInline}
+              title={!canPreviewInline ? "ไฟล์ประเภทนี้เปิดดูตัวอย่างในเบราว์เซอร์ไม่ได้" : undefined}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 disabled:opacity-50 transition">
+              {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+              {previewing ? "กำลังเปิด..." : "ดูตัวอย่าง"}
+            </button>
+            <button onClick={handleDownload} disabled={downloading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 disabled:opacity-50 transition">
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {downloading ? "กำลังดาวน์โหลด..." : "ดาวน์โหลด Resume"}
+            </button>
+          </div>
         ) : (
           <p className="text-xs text-slate-400">ไม่มีไฟล์แนบ</p>
         )}
@@ -586,6 +625,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
           onClose={() => setViewingApp(null)}
           onApprove={(app) => { setViewingApp(null); setApprovingApp(app); }}
           onReject={(app) => { setViewingApp(null); setRejectingApp(app); }}
+          showToast={showToast}
         />
       )}
       {approvingApp && (

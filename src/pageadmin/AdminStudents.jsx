@@ -1318,7 +1318,7 @@ function ConsentTab({ studentId, showToast }) {
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
         <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> ความยินยอม (PDPA)</p>
         <p className="mt-1 text-xs text-orange-700 leading-relaxed">
-          แสดงว่านักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ แอดมินเพิ่มคำตอบแทนได้
+          นักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ แอดมินเพิ่มคำตอบแทนได้
           (เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์) แต่ถ้ามีคำตอบแล้ว จะแก้ไขทับไม่ได้อีก
         </p>
 
@@ -1470,7 +1470,7 @@ const BOARDS = {
     Icon: TrendingUp,
     heading: 'พัฒนาการโดดเด่น',
     formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
-    hint: 'วัดว่า "ปิดช่องว่างที่มีอยู่ไปได้กี่ %" ไม่ใช่ "เพิ่มกี่จุด" — เด็กที่เริ่มต่ำจึงไม่ได้เปรียบฟรี ๆ และเด็กที่เริ่มสูงก็ไม่ถูกลงโทษ',
+    hint: 'วัดว่า "ปิดช่องว่างที่ยังเหลืออยู่ไปได้กี่ %" ไม่ใช่วัดจากตัวเลขที่เพิ่มขึ้นตรง ๆ — เด็กที่เริ่มต่ำจึงไม่ได้เปรียบฟรี ๆ และเด็กที่เริ่มสูงก็ไม่ถูกลงโทษ',
     score: (s) => s.ImprovementScore,
     eligible: (s) => s.ImprovementEligible === true,
     reason: (s) => s.ImprovementReason,
@@ -1509,7 +1509,7 @@ function ceilingGuardNote(growthPct, preScore) {
   if (preScore <= HAKE_ROOM_UNCLAMPED) return null;
   return {
     label: 'นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขพัฒนาการนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้',
-    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนนก่อนเรียนสูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดขั้นต่ำของตัวหารไว้ที่ 30 จุด',
+    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนนก่อนเรียนสูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
   };
 }
 

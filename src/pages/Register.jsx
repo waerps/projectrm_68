@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { formatPhone, formatGPA } from "../utils/format";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export function Register() {
   const [formData, setFormData] = useState({
@@ -23,7 +24,22 @@ export function Register() {
     genderId: ''
   });
 
+  const [pdpaAcknowledged, setPdpaAcknowledged] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+
   const { toasts, showToast, removeToast } = useToast();
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setPhotoFile(file);
+    setPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -56,14 +72,22 @@ const handleSubmit = async (e) => {
       return;
     }
 
+    if (!pdpaAcknowledged) {
+      showToast('error', 'กรุณารับทราบข้อมูลก่อน', 'กรุณาติ๊กรับทราบเรื่องการเก็บและใช้ข้อมูลก่อนลงทะเบียน');
+      return;
+    }
+
     try {
-      // 2. ส่งข้อมูลไปที่ Backend (เปลี่ยน port ให้ตรงกับของคุณ เช่น 3000 หรือ 5000)
+      // 2. ส่งข้อมูลไปที่ Backend — ใช้ FormData แทน JSON เพราะรองรับแนบรูปโปรไฟล์ (ไม่บังคับ) ด้วย
+      const fd = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        fd.append(key, value ?? '');
+      });
+      if (photoFile) fd.append('photo', photoFile);
+
       const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+        body: fd,
       });
 
       const data = await response.json();
@@ -193,6 +217,27 @@ const handleSubmit = async (e) => {
                     maxLength={12}
                     className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                   />
+                </div>
+
+                <div className="group md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    รูปโปรไฟล์ (ถ้าอยากใส่ตอนนี้ ไม่บังคับ)
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {photoPreview && (
+                      <img
+                        src={photoPreview}
+                        alt="ตัวอย่างรูปโปรไฟล์"
+                        className="h-16 w-16 rounded-full object-cover border-2 border-orange-200"
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handlePhotoChange}
+                      className="block text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-orange-700"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -342,28 +387,50 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     รหัสผ่าน <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="กรอกรหัสผ่าน"
-                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      placeholder="กรอกรหัสผ่าน"
+                      className="w-full px-4 py-3 pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     ยืนยันรหัสผ่าน <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="กรอกรหัสผ่านอีกครั้ง"
-                    className="w-full px-4 py-3 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      placeholder="กรอกรหัสผ่านอีกครั้ง"
+                      className="w-full px-4 py-3 pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -376,6 +443,17 @@ const handleSubmit = async (e) => {
                   ส่วนข้อมูลอื่นที่อาจกระทบความเป็นส่วนตัวมากกว่านี้ เช่น การบันทึกพฤติกรรมระหว่างทำข้อสอบ
                   ระบบจะขอความยินยอมจากท่านแยกต่างหากอีกครั้งก่อนชำระเงินซื้อคอร์สเรียน โดยจะถามเพียงครั้งเดียวเท่านั้น
                 </p>
+                <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={pdpaAcknowledged}
+                    onChange={(e) => setPdpaAcknowledged(e.target.checked)}
+                    className="mt-0.5 accent-orange-500 w-4 h-4 shrink-0"
+                  />
+                  <span className="text-xs font-semibold text-gray-700">
+                    ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว <span className="text-red-500">*</span>
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -383,7 +461,8 @@ const handleSubmit = async (e) => {
             <div className="border-t border-gray-200 pt-8 flex flex-col sm:flex-row gap-4">
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                disabled={!pdpaAcknowledged}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-lg"
               >
                 ลงทะเบียน
               </button>
@@ -398,7 +477,11 @@ const handleSubmit = async (e) => {
             {/* Login Link */}
             <div className="text-center text-gray-600">
               มีบัญชีผู้ใช้อยู่แล้วใช่ไหม?{' '}
-              <button className="text-orange-500 hover:text-orange-600 font-bold hover:underline transition-all">
+              <button
+                type="button"
+                onClick={() => { window.location.href = '/login'; }}
+                className="text-orange-500 hover:text-orange-600 font-bold hover:underline transition-all"
+              >
                 เข้าสู่ระบบ
               </button>
             </div>

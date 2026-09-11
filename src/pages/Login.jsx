@@ -1,7 +1,7 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { X, Eye, EyeOff } from "lucide-react";
 
 // รายการรูปภาพสำหรับสไลด์
 const images = [
@@ -13,6 +13,11 @@ const images = [
 export function Login() {
   const [role, setRole] = useState("user"); // user | admin
   const [currentImage, setCurrentImage] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotForm, setForgotForm] = useState({ username: '', phoneNo: '' });
+  const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
   // 2. สร้าง State สำหรับเก็บค่าที่พิมพ์ในฟอร์ม
   const [formData, setFormData] = useState({
@@ -64,6 +69,13 @@ export function Login() {
 
         localStorage.setItem("user", JSON.stringify(data.user));
 
+        // ★ "จำฉันไว้ในระบบ" — ถ้าไม่ติ๊ก ให้ session หมดอายุเมื่อปิดเบราว์เซอร์/แท็บไปจริง ๆ
+        //   (เดิมติ๊กหรือไม่ก็ไม่มีผลอะไรเลย เพราะ token เก็บใน localStorage ซึ่งไม่มีวันหมดอายุเอง)
+        //   วิธีเช็ค: sessionStorage จะหายไปเองเมื่อปิดแท็บ/เบราว์เซอร์ (ต่างจาก localStorage)
+        //   จึงใช้เป็นตัวบอกว่า "แท็บนี้ยังเป็น session เดิมอยู่ไหม" — ดูจุดตรวจสอบจริงที่ main.jsx
+        localStorage.setItem("remember_me", rememberMe ? "true" : "false");
+        sessionStorage.setItem("session_active", "1");
+
         if (role === "user") {
           const returnTo = location.state?.returnTo || "/";
           navigate(returnTo, { replace: true, state: { openCheckout: Boolean(location.state?.openCheckout) } });
@@ -82,6 +94,37 @@ export function Login() {
     } catch (error) {
       console.error("Login Error:", error);
       alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    }
+  };
+
+  // ฟังก์ชันขอรีเซ็ตรหัสผ่าน — ยืนยันตัวตนด้วยเบอร์โทรที่มีอยู่ในระบบ แล้วส่งคำขอไปหาแอดมิน
+  // (ระบบนี้ไม่มี email/SMS ให้รีเซ็ตเอง ดู routes/auth.routes.js POST /forgot-password)
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!forgotForm.username || !forgotForm.phoneNo) {
+      alert("กรุณากรอกชื่อผู้ใช้และเบอร์โทรศัพท์");
+      return;
+    }
+    setForgotSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...forgotForm, role }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || "ส่งคำขอไปหาแอดมินแล้ว กรุณารอแอดมินติดต่อกลับ");
+        setShowForgotModal(false);
+        setForgotForm({ username: '', phoneNo: '' });
+      } else {
+        alert(data.message || "ส่งคำขอไม่สำเร็จ");
+      }
+    } catch (error) {
+      console.error("Forgot Password Error:", error);
+      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setForgotSubmitting(false);
     }
   };
 
@@ -191,24 +234,44 @@ export function Login() {
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700 ml-1">รหัสผ่าน</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}     // Bind ค่า
-                onChange={handleChange}       // รับค่าเมื่อพิมพ์
-                placeholder="กรอกรหัสผ่าน"
-                className="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}     // Bind ค่า
+                  onChange={handleChange}       // รับค่าเมื่อพิมพ์
+                  placeholder="กรอกรหัสผ่าน"
+                  className="w-full px-5 py-3 pr-11 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center gap-2 text-gray-600 cursor-pointer">
-                <input type="checkbox" className="accent-orange-500 w-4 h-4" />
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="accent-orange-500 w-4 h-4"
+                />
                 จำฉันไว้ในระบบ
               </label>
-              <a href="#" className="text-orange-500 hover:underline">
+              <button
+                type="button"
+                onClick={() => { setForgotForm({ username: formData.username, phoneNo: '' }); setShowForgotModal(true); }}
+                className="text-orange-500 hover:underline"
+              >
                 ลืมรหัสผ่าน?
-              </a>
+              </button>
             </div>
 
             <button
@@ -232,6 +295,51 @@ export function Login() {
           )}
         </div>
       </div>
+
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-800">ลืมรหัสผ่าน</h3>
+              <button type="button" onClick={() => setShowForgotModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              กรอกชื่อผู้ใช้และเบอร์โทรศัพท์ที่ลงทะเบียนไว้ในระบบ เพื่อยืนยันตัวตน — ระบบจะแจ้งไปหาแอดมินให้ตั้งรหัสผ่านใหม่ให้ แล้วแจ้งกลับมาหาคุณอีกครั้ง
+            </p>
+            <form onSubmit={handleForgotSubmit} className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 ml-1">ชื่อผู้ใช้</label>
+                <input
+                  type="text"
+                  value={forgotForm.username}
+                  onChange={(e) => setForgotForm((f) => ({ ...f, username: e.target.value }))}
+                  placeholder="กรอกชื่อผู้ใช้"
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 ml-1">เบอร์โทรศัพท์ที่ลงทะเบียนไว้</label>
+                <input
+                  type="tel"
+                  value={forgotForm.phoneNo}
+                  onChange={(e) => setForgotForm((f) => ({ ...f, phoneNo: e.target.value }))}
+                  placeholder="0xx-xxx-xxxx"
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={forgotSubmitting}
+                className="w-full py-3 rounded-xl text-white font-bold bg-gradient-to-r from-orange-500 to-orange-600 hover:shadow-orange-200 shadow-lg transition-all disabled:opacity-50"
+              >
+                {forgotSubmitting ? "กำลังส่งคำขอ..." : "ส่งคำขอไปหาแอดมิน"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

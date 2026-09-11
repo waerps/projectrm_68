@@ -548,7 +548,6 @@ export default function AdminDashboard() {
             if (!topExcellence.length && !topImprovement.length) return null;
             return (
               <div className="mb-3 space-y-2.5">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">ทำได้ดี</p>
                 {topExcellence.length > 0 && (
                   <div>
                     <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">

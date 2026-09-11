@@ -122,6 +122,10 @@ export default function TutorStudents() {
                     return {
                         id: studentId,
                         name: std.name ?? 'ไม่ระบุชื่อ',
+                        // ★ แก้: ของเดิมไม่ได้ copy field รูปโปรไฟล์มาเลย ทำให้ StudentAvatar
+                        //   เห็น student.Photo เป็น undefined เสมอ แม้ backend จะส่งรูปมาถูกต้องแล้ว
+                        //   จึง fallback ไปใช้ avatar การ์ตูนตลอด ทั้งที่นักเรียนมีรูปจริงอยู่แล้ว
+                        Photo: std.Photo || std.photo || null,
                         lineId: std.lineId || std.LineID || "ไม่มีไอดีไลน์",
                         phone: std.PhoneNo || std.phoneNo || "ไม่มีเบอร์โทร",
                         school: std.SchoolName || std.schoolName || "ไม่ระบุโรงเรียน",

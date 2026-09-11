@@ -65,12 +65,16 @@ export default function StudentProfile() {
       const basicData = response?.profile ?? response?.student ?? response?.data ?? response ?? {};
       const resolvedStudentId = basicData.userId ?? basicData.UserId ?? basicData.studentId ?? basicData.StudentId ?? null;
       let detailData = {};
+      let parentDetailData = null;
       if (resolvedStudentId) {
         try {
           const detailResponse = await axios.get(`${API_URL}/api/admin/students/${resolvedStudentId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           detailData = detailResponse.data?.student ?? detailResponse.data?.data?.student ?? detailResponse.data?.data ?? {};
+          // ★ แก้: /api/admin/students/:id ส่งข้อมูลผู้ปกครองแยกไว้ที่ key "parent" ต่างหาก
+          //   (ไม่ได้ฝังอยู่ใน "student") เดิมโค้ดนี้อ่านแต่ .student จึงไม่เคยเห็นข้อมูลผู้ปกครองเลย
+          parentDetailData = detailResponse.data?.parent ?? detailResponse.data?.data?.parent ?? null;
         } catch (detailError) {
           console.warn("โหลดรูปโปรไฟล์จากข้อมูลนักเรียนไม่สำเร็จ:", detailError);
         }
@@ -95,9 +99,15 @@ export default function StudentProfile() {
         username: dbData.username ?? dbData.Username ?? "",
         remark: dbData.remark ?? dbData.Remark ?? "",
 
-        parentName: dbData.parentName ?? dbData.ParentName ?? "",
-        parentRelationship: dbData.parentRelationship ?? dbData.ParentRelationship ?? dbData.ParentProfileTypeName ?? "",
-        parentPhone: dbData.parentPhone ?? dbData.ParentPhone ?? dbData.ParentPhoneNo ?? "",
+        parentName: parentDetailData
+          ? `${parentDetailData.Firstname ?? ""} ${parentDetailData.Lastname ?? ""}`.trim() || (parentDetailData.Nickname ?? "")
+          : (dbData.parentName ?? dbData.ParentName ?? ""),
+        parentRelationship: parentDetailData
+          ? (parentDetailData.ParentProfilesType_Name ?? parentDetailData.Relationship ?? "")
+          : (dbData.parentRelationship ?? dbData.ParentRelationship ?? dbData.ParentProfileTypeName ?? ""),
+        parentPhone: parentDetailData
+          ? (parentDetailData.PhoneNo ?? "")
+          : (dbData.parentPhone ?? dbData.ParentPhone ?? dbData.ParentPhoneNo ?? ""),
         photo: dbData.photo ?? dbData.Photo ?? dbData.profileImage ?? dbData.ProfileImage ?? dbData.imageUrl ?? null,
       };
       setStudentId(resolvedStudentId);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon } from 'lucide-react';
+import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound } from 'lucide-react';
 
 const API = `${API_URL}/api/admin/notifications`;
 const auth = () => {
@@ -19,6 +19,7 @@ const typeMeta = {
   facility: { label: 'อุปกรณ์', Icon: Boxes, accentBar: 'bg-blue-400', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-100' },
   room: { label: 'ห้องเรียน', Icon: DoorOpen, accentBar: 'bg-cyan-400', bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-100' },
   incident: { label: 'แจ้งเหตุการณ์', Icon: AlertOctagon, accentBar: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100' }, // ★ เพิ่ม
+  'password-reset': { label: 'ลืมรหัสผ่าน', Icon: KeyRound, accentBar: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' }, // ★ เพิ่ม
 };
 const fallbackTypeMeta = { label: '', Icon: Bell, accentBar: 'bg-slate-300', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
 
