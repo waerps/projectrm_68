@@ -541,9 +541,9 @@ export default function TutorAttendanceDashboard() {
   // ดึงรายวิชาทั้งหมดในระบบ ครั้งเดียวตอน mount — ใช้ endpoint เดียวกับหน้าจัดการติวเตอร์
   useEffect(() => {
     fetch(`${API_BASE}/subjects`)
-      .then(r => r.json())
-      .then(d => setAllSubjects(d || []))
-      .catch(() => { });
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(d => setAllSubjects(Array.isArray(d) ? d : []))
+      .catch(() => setAllSubjects([]));
   }, []);
 
   // reset หน้าเมื่อฟิลเตอร์หรือเดือน/ปีเปลี่ยน
@@ -553,7 +553,7 @@ export default function TutorAttendanceDashboard() {
 
   // วิชาทั้งหมดในระบบ — ดึงจาก endpoint /subjects ไม่ใช่แค่วิชาที่ติวเตอร์ในเดือนนี้สอน
   const allSubjectNames = useMemo(
-    () => [...allSubjects.map(s => s.SubjectName)].sort(),
+    () => (Array.isArray(allSubjects) ? [...allSubjects.map(s => s.SubjectName)].sort() : []),
     [allSubjects]
   );
 

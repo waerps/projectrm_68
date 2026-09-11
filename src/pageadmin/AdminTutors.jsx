@@ -1820,7 +1820,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
     { key: 'fair', label: 'พอใช้', test: (v) => v >= 55 && v < 70 },
     { key: 'needs_work', label: 'ต้องปรับปรุง', test: (v) => v < 55 },
   ];
-  const allSubjectNames = [...new Set(allSubjects.map(s => s.SubjectName))].sort();
+  const allSubjectNames = [...new Set((Array.isArray(allSubjects) ? allSubjects : []).map(s => s.SubjectName))].sort();
 
   useEffect(() => {
     axios.get(`${API}/tutors/performance`)
@@ -2309,7 +2309,7 @@ export default function AdminTutorsPage() {
     } finally { setIsDeleting(false); }
   };
 
-  const allSubjectNames = [...allSubjects.map(s => s.SubjectName)].sort();
+  const allSubjectNames = [...(Array.isArray(allSubjects) ? allSubjects : []).map(s => s.SubjectName)].sort();
 
   const matchSearchFn = (t) => {
     const displayName = (t.Nickname || `${t.Firstname} ${t.Lastname}`).toLowerCase();
