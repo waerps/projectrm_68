@@ -57,10 +57,11 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onCl
   );
 }
 
+// เรียงตามลำดับการทำงานจริง: เตรียมวัตถุดิบ → จัดชุดและเปิดสอบ → ตรวจทานสิ่งที่จะใช้ → ดูผล
 const TABS = [
   { key: "questions", label: "คลังข้อสอบ", icon: FileQuestion },
-  { key: "preview", label: "ชุดข้อสอบรอบนี้", icon: Eye },
   { key: "manage", label: "ตั้งค่า / เปิดสอบ", icon: SettingsIcon },
+  { key: "preview", label: "ชุดข้อสอบรอบนี้", icon: Eye },
   { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
 
@@ -1123,7 +1124,7 @@ function formatCountdown(sec) {
   return `เหลืออีก ${parts.join(" ")}`;
 }
 
-function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, onReopen, onClose }) {
+function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, onReopen, onClose, goToPreview }) {
   const examId = exam.id;
   const settings = exam.settings;
   const status = deriveStatus(exam);
@@ -1260,6 +1261,11 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             <p className="text-xs text-neutral-400 mt-0.5">
               หยิบข้อจากคลังของวิชานี้ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
             </p>
+            {setQuestions.length > 0 && (
+              <button onClick={goToPreview} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
+                ดูชุดข้อสอบทั้ง {setQuestions.length} ข้อ <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           <button
             onClick={() => setShowAssemble(true)}
@@ -2487,6 +2493,7 @@ export default function TutorExamDetail() {
             exam={exam}
             courseId={courseId}
             subjectId={subjectId}
+            goToPreview={() => setTab("preview")}
             onSaved={reload}
             showToast={showToast}
             onOpen={async () => { await openExamSession(exam.id); await reload(); }}
