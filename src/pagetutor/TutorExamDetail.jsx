@@ -13,13 +13,13 @@ import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
   deriveStatus, isExamReady, formatTime,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
-  fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion, deleteAllQuestions,
-  bulkUpdateQuestionScores,
+  fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchSubjectCategories, renameSubjectCategory,
-  fetchBankSummary, assembleExamSet,
+  fetchBank, fetchBankSummary, addBankQuestions, updateBankQuestion, deleteBankQuestion,
+  assembleExamSet, applyExamSet,
 } from "../utils/examShared";
-import { EXAM_SCORE_CAP, splitScoreEvenly, sumScores, fmtScore } from "../utils/examScore";
+import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 
@@ -58,8 +58,8 @@ function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onCl
 }
 
 const TABS = [
-  { key: "questions", label: "ข้อสอบ", icon: FileQuestion },
-  { key: "preview", label: "ดูตัวอย่างข้อสอบ", icon: Eye },
+  { key: "questions", label: "คลังข้อสอบ", icon: FileQuestion },
+  { key: "preview", label: "ชุดข้อสอบรอบนี้", icon: Eye },
   { key: "manage", label: "ตั้งค่า / เปิดสอบ", icon: SettingsIcon },
   { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
@@ -70,23 +70,17 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 
 function AddMethodPicker({ onPick }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <button onClick={() => onPick("bank")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
-        <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center mb-2"><Zap className="h-4 w-4 text-amber-600" /></div>
-        <p className="text-sm font-semibold text-neutral-800">สุ่มจากคลังข้อสอบกลาง</p>
-        <p className="text-xs text-neutral-500 mt-0.5">บอกเงื่อนไข แล้วระบบจัดชุดให้ทั้ง Pre / Mid / Post</p>
-      </button>
-
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <button onClick={() => onPick("manual")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></div>
         <p className="text-sm font-semibold text-neutral-800">พิมพ์ข้อสอบเอง</p>
-        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มทีละข้อผ่าน editor</p>
+        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
       </button>
 
       <button onClick={() => onPick("excel")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></div>
         <p className="text-sm font-semibold text-neutral-800">Import จาก Excel</p>
-        <p className="text-xs text-neutral-500 mt-0.5">นำเข้าได้ครั้งละหลายข้อ</p>
+        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
       </button>
     </div>
   );
@@ -205,7 +199,7 @@ function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
 
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
-function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions }) {
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, hideScore }) {
   const [q, setQ] = useState(initial || emptyQuestion());
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
@@ -252,7 +246,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div>
+        <div className={hideScore ? "hidden" : ""}>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
           {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
               ปุ่ม −/+ เดินทีละ 0.5 ส่วนช่องกลางพิมพ์ตัวเลขเองได้ทุกค่า */}
@@ -321,7 +315,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
-function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
+function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
   const knownCategories = new Set((categoryOptions || []).map((c) => c.category.trim().toLowerCase()));
   const [rows, setRows] = useState([]);
@@ -348,7 +342,7 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
     setConfirming(true);
     setError("");
     try {
-      const inserted = await addQuestions(examId, rows);
+      const inserted = await onConfirmRows(rows);
       onImported(inserted);
     } catch (err) {
       console.error("Excel import save failed:", err);
@@ -439,238 +433,540 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
   );
 }
 
-// ─── Assemble From Bank Modal ────────────────────────────────────────────────
-// ครูบอกเงื่อนไข (หมวดไหน ระดับไหน กี่ข้อ) แล้วระบบสุ่มจากคลังของวิชานี้ให้
-// ชุดที่ได้จะถูกใส่ลงทั้ง Pre / Mid / Post เพราะต้องเป็นชุดเดียวกันจึงจะวัดพัฒนาการได้
-// เบื้องหลังเรียก POST /api/exam/assemble ซึ่งหลังบ้านเช็คสิทธิ์แล้วส่งต่อให้ n8n อีกที
+// ─── ตัวช่วยคิดคะแนน ─────────────────────────────────────────────────────────
+// ต้องตรงกับสูตรฝั่งหลังบ้านเป๊ะ ๆ เพราะหน้าจอใช้แสดงผลตอนพรีวิว
+// ส่วนค่าที่บันทึกจริงหลังบ้านคำนวณเองอีกรอบ เพื่อไม่ให้ค่าจากเบราว์เซอร์เป็นตัวตัดสิน
+const LEVEL_WEIGHT = { "ง่าย": 1, "ปานกลาง": 1.5, "ยาก": 2 };
 const BANK_LEVELS = ["ง่าย", "ปานกลาง", "ยาก"];
-const MIN_PER_CATEGORY = 5;   // ต่ำกว่านี้ กราฟพัฒนาการรายหมวดยังตีความไม่ได้
+const MIN_PER_CATEGORY = 5;   // หมวดที่มีน้อยกว่านี้ กราฟพัฒนาการรายหมวดยังตีความไม่ได้
 
-function AssembleFromBankModal({ courseId, subjectId, onClose, onDone }) {
-  const [bank, setBank] = useState([]);
+function scaleScoresLocal(items, totalScore) {
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const weights = items.map((it) => LEVEL_WEIGHT[it.level] || 1);
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const factor = totalScore / sum;
+  const scores = weights.map((w) => r2(w * factor));
+  const diff = r2(totalScore - scores.reduce((a, b) => r2(a + b), 0));
+  if (diff !== 0 && scores.length) {
+    let h = 0;
+    for (let i = 1; i < weights.length; i++) if (weights[i] > weights[h]) h = i;
+    scores[h] = r2(scores[h] + diff);
+  }
+  return items.map((it, i) => ({ ...it, score: scores[i] }));
+}
+
+// ─── Bank Tab — คลังข้อสอบของวิชา ────────────────────────────────────────────
+// คลังเป็นของวิชา ไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน
+// แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
+function BankTab({ subjectId }) {
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [counts, setCounts] = useState({});           // "หมวด||ระดับ" -> จำนวนข้อที่ขอ
-  const [totalScore, setTotalScore] = useState(20);
-  const [preview, setPreview] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [mode, setMode] = useState(null);        // null | picker | manual | excel
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [fCat, setFCat] = useState("");
+  const [fLevel, setFLevel] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!subjectId) return;
     setLoading(true);
-    fetchBankSummary(subjectId)
-      .then((rows) => setBank(Array.isArray(rows) ? rows : []))
-      .catch((err) => {
-        console.error("Fetch bank summary failed:", err);
-        setLoadError("โหลดคลังข้อสอบไม่สำเร็จ");
-      })
+    fetchBank(subjectId)
+      .then((rows) => setItems(Array.isArray(rows) ? rows : []))
+      .catch((err) => { console.error("Fetch bank failed:", err); setLoadError("โหลดคลังข้อสอบไม่สำเร็จ"); })
       .finally(() => setLoading(false));
   }, [subjectId]);
 
-  const categories = useMemo(() => [...new Set(bank.map((r) => r.category))].sort(), [bank]);
-  const availableOf = (category, level) =>
-    bank.find((r) => r.category === category && r.level === level)?.count || 0;
-  const key = (category, level) => `${category}||${level}`;
-  const countOf = (category, level) => Number(counts[key(category, level)] || 0);
+  useEffect(() => { load(); }, [load]);
 
-  const setCount = (category, level, value) => {
-    const max = availableOf(category, level);
-    const n = Math.max(0, Math.min(max, Number(value) || 0));
-    setCounts((prev) => ({ ...prev, [key(category, level)]: n }));
-    setPreview(null);    // แก้เงื่อนไขแล้วพรีวิวเดิมใช้ไม่ได้
-  };
+  const categoryOptions = useMemo(() => {
+    const m = {};
+    for (const it of items) if (it.category) m[it.category] = (m[it.category] || 0) + 1;
+    return Object.entries(m).map(([category, questionCount]) => ({ category, questionCount }));
+  }, [items]);
 
-  const blueprint = useMemo(
-    () =>
-      Object.entries(counts)
-        .filter(([, n]) => Number(n) > 0)
-        .map(([k, n]) => {
-          const [category, level] = k.split("||");
-          return { category, level, count: Number(n) };
-        }),
-    [counts]
-  );
-  const totalQuestions = blueprint.reduce((sum, c) => sum + c.count, 0);
+  const filtered = useMemo(() => {
+    const kw = search.trim().toLowerCase();
+    return items.filter((it) =>
+      (!fCat || it.category === fCat) &&
+      (!fLevel || it.level === fLevel) &&
+      (!kw || it.text.toLowerCase().includes(kw))
+    );
+  }, [items, search, fCat, fLevel]);
 
-  // หมวดที่ขอไว้น้อยกว่าเกณฑ์ — เตือนตั้งแต่ตอนกรอก ไม่ต้องรอให้ระบบตอบกลับ
-  const thinCategories = useMemo(() => {
-    const byCat = {};
-    for (const c of blueprint) byCat[c.category] = (byCat[c.category] || 0) + c.count;
-    return Object.entries(byCat).filter(([, n]) => n < MIN_PER_CATEGORY).map(([cat]) => cat);
-  }, [blueprint]);
-
-  const readMessage = (err, fallback) => {
-    const d = err?.response?.data;
-    if (d?.blockers?.length) return d.blockers.join(" / ");
-    if (d?.shortages?.length) {
-      return d.shortages
-        .map((x) => `${x.category} (${x.level}) ขาด ${x.need - x.have} ข้อ`)
-        .join(" / ");
-    }
-    return d?.message || fallback;
-  };
-
-  const run = async (dryRun) => {
-    setBusy(true);
-    setError("");
+  const handleAddOne = async (q) => {
+    setSaving(true); setFormError("");
     try {
-      const data = await assembleExamSet({ courseId, subjectId, blueprint, totalScore, dryRun });
-      if (dryRun) {
-        setPreview(data);
-      } else {
-        await onDone();
-      }
+      await addBankQuestions(subjectId, [q]);
+      load();
+      setMode("manual-added");
+      setTimeout(() => setMode("manual"), 0);
     } catch (err) {
-      console.error("Assemble failed:", err);
-      setError(readMessage(err, "จัดชุดข้อสอบไม่สำเร็จ ลองใหม่อีกครั้ง"));
-      if (!dryRun) setPreview(null);
-    } finally {
-      setBusy(false);
+      console.error("Add to bank failed:", err);
+      setFormError(err.response?.data?.message || "เพิ่มเข้าคลังไม่สำเร็จ");
+    } finally { setSaving(false); }
+  };
+
+  const handleEditSave = async (q) => {
+    setSaving(true); setFormError("");
+    try {
+      await updateBankQuestion(editing.id, q);
+      setEditing(null);
+      load();
+    } catch (err) {
+      console.error("Update bank item failed:", err);
+      setFormError(err.response?.data?.message || "บันทึกไม่สำเร็จ");
+    } finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteBankQuestion(id);
+      setDeletingId(null);
+      load();
+    } catch (err) {
+      console.error("Delete bank item failed:", err);
     }
   };
 
   return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของวิชานี้</p>
+          <p className="text-xs text-neutral-500 mt-0.5">
+            {loading ? "กำลังโหลด…" : `มี ${items.length} ข้อ`} · ใช้ร่วมกันทุกคอร์สและทุกรอบสอบของวิชานี้
+            {" "}· ตอนจะเปิดสอบค่อยไปจัดชุดที่แท็บตั้งค่า
+          </p>
+        </div>
+        {!mode && !editing && (
+          <button onClick={() => setMode("picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+            <Plus className="h-4 w-4" /> เพิ่มข้อสอบเข้าคลัง
+          </button>
+        )}
+      </div>
+
+      {mode === "picker" && (
+        <div className="border border-neutral-200 rounded-2xl p-5 relative">
+          <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+          <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
+          <AddMethodPicker onPick={setMode} />
+        </div>
+      )}
+
+      {mode === "manual" && (
+        <QuestionFormPanel
+          saving={saving}
+          error={formError}
+          saveLabel="บันทึกเข้าคลังและเพิ่มข้อถัดไป"
+          onSave={handleAddOne}
+          onClose={() => setMode(null)}
+          categoryOptions={categoryOptions}
+          hideScore
+        />
+      )}
+
+      {mode === "excel" && (
+        <ExcelImportFlow
+          onCancel={() => setMode(null)}
+          onConfirmRows={(rows) => addBankQuestions(subjectId, rows)}
+          onImported={() => { load(); setMode(null); }}
+          categoryOptions={categoryOptions}
+        />
+      )}
+
+      {editing && (
+        <QuestionFormPanel
+          initial={{ ...editing, score: 1 }}
+          saving={saving}
+          error={formError}
+          saveLabel="บันทึกการแก้ไข"
+          onSave={handleEditSave}
+          onClose={() => { setEditing(null); setFormError(""); }}
+          categoryOptions={categoryOptions}
+          hideScore
+        />
+      )}
+
+      {items.length > 0 && !editing && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาจากโจทย์"
+              className="w-full border border-neutral-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+            />
+          </div>
+          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-sm">
+            <option value="">ทุกหมวด</option>
+            {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
+          </select>
+          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-sm">
+            <option value="">ทุกระดับ</option>
+            {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+          </select>
+        </div>
+      )}
+
+      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+
+      {!loading && items.length === 0 && !mode ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
+          <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
+          <p className="text-sm font-semibold text-neutral-500">คลังของวิชานี้ยังว่างอยู่</p>
+          <p className="text-xs text-neutral-400 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
+        </div>
+      ) : (
+        <div className="border border-neutral-200 rounded-2xl divide-y divide-neutral-100">
+          {filtered.map((it) => (
+            <div key={it.id} className="px-4 py-3 flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category || "ไม่ระบุหมวด"}</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
+                  <span className="text-[11px] text-neutral-400">
+                    {it.usedCount > 0
+                      ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
+                      : "ยังไม่เคยใช้"}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-neutral-700">
+                  <Pencil className="h-4 w-4" />
+                </button>
+                {deletingId === it.id ? (
+                  <>
+                    <button onClick={() => handleDelete(it.id)} className="text-xs font-semibold text-red-600 px-2">ยืนยันลบ</button>
+                    <button onClick={() => setDeletingId(null)} className="text-xs text-neutral-500 px-1">ยกเลิก</button>
+                  </>
+                ) : (
+                  <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-neutral-400">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Assemble Dialog — จัดชุดข้อสอบก่อนเปิดสอบ ───────────────────────────────
+// สองโหมด: ให้ระบบสุ่มมาหลายชุดให้เลือก หรือครูติ๊กเลือกเองจากคลัง
+// ชุดที่เลือกได้จะถูกคัดลอกลงรอบสอบ ต้นฉบับยังอยู่ในคลังเสมอ
+function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
+  const [tab, setTab] = useState("auto");
+  const [summary, setSummary] = useState([]);
+  const [bank, setBank] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState({});
+  const [totalScore, setTotalScore] = useState(20);
+  const [applyTo, setApplyTo] = useState("all");
+  const [sets, setSets] = useState(null);
+  const [activeSet, setActiveSet] = useState(0);
+  const [working, setWorking] = useState(null);      // ชุดที่กำลังปรับ (array ของข้อ)
+  const [swapIndex, setSwapIndex] = useState(null);  // กำลังหาข้อมาแทนข้อที่เท่าไร
+  const [picked, setPicked] = useState([]);          // โหมดเลือกเอง
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notes, setNotes] = useState([]);
+
+  useEffect(() => {
+    if (!subjectId) return;
+    setLoading(true);
+    Promise.all([fetchBankSummary(subjectId), fetchBank(subjectId)])
+      .then(([sum, list]) => { setSummary(sum || []); setBank(list || []); })
+      .catch((err) => { console.error("Load bank failed:", err); setError("โหลดคลังข้อสอบไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  }, [subjectId]);
+
+  const categories = useMemo(() => [...new Set(summary.map((r) => r.category))].sort(), [summary]);
+  const availableOf = (c, l) => summary.find((r) => r.category === c && r.level === l)?.count || 0;
+  const key = (c, l) => `${c}||${l}`;
+  const countOf = (c, l) => Number(counts[key(c, l)] || 0);
+
+  const setCount = (c, l, v) => {
+    const max = availableOf(c, l);
+    const n = Math.max(0, Math.min(max, Number(v) || 0));
+    setCounts((prev) => ({ ...prev, [key(c, l)]: n }));
+    setSets(null); setWorking(null);
+  };
+
+  const blueprint = useMemo(
+    () => Object.entries(counts).filter(([, n]) => Number(n) > 0).map(([k, n]) => {
+      const [category, level] = k.split("||");
+      return { category, level, count: Number(n) };
+    }),
+    [counts]
+  );
+  const totalQuestions = blueprint.reduce((s, c) => s + c.count, 0);
+
+  const thinCategories = useMemo(() => {
+    const byCat = {};
+    for (const c of blueprint) byCat[c.category] = (byCat[c.category] || 0) + c.count;
+    return Object.entries(byCat).filter(([, n]) => n < MIN_PER_CATEGORY).map(([c]) => c);
+  }, [blueprint]);
+
+  const readError = (err, fallback) => {
+    const d = err?.response?.data;
+    if (d?.blockers?.length) return d.blockers.join(" / ");
+    if (d?.shortages?.length) {
+      return "คลังมีข้อไม่พอ: " + d.shortages.map((x) => `${x.category} (${x.level}) ขาด ${x.need - x.have} ข้อ`).join(" / ");
+    }
+    return d?.message || fallback;
+  };
+
+  const runAssemble = async () => {
+    setBusy(true); setError(""); setNotes([]);
+    try {
+      const data = await assembleExamSet({ courseId, subjectId, blueprint, totalScore, setCount: 3 });
+      setSets(data.sets || []);
+      setNotes(data.notes || []);
+      setActiveSet(0);
+      setWorking((data.sets?.[0]?.items || []).map((x) => ({ ...x })));
+    } catch (err) {
+      console.error("Assemble failed:", err);
+      setError(readError(err, "จัดชุดข้อสอบไม่สำเร็จ ลองใหม่อีกครั้ง"));
+    } finally { setBusy(false); }
+  };
+
+  const chooseSet = (idx) => {
+    setActiveSet(idx);
+    setWorking((sets[idx]?.items || []).map((x) => ({ ...x })));
+    setSwapIndex(null);
+  };
+
+  const replaceAt = (idx, bankItem) => {
+    setWorking((prev) => prev.map((it, i) => (i === idx ? {
+      bankQuestionId: bankItem.id, text: bankItem.text, options: bankItem.options,
+      correct: bankItem.correct, level: bankItem.level, category: bankItem.category,
+      explanation: bankItem.explanation, reused: false,
+    } : it)));
+    setSwapIndex(null);
+  };
+
+  const removeAt = (idx) => setWorking((prev) => prev.filter((_, i) => i !== idx));
+
+  const apply = async (ids) => {
+    setBusy(true); setError("");
+    try {
+      await applyExamSet({ examId: exam.id, bankQuestionIds: ids, applyTo, totalScore });
+      await onDone();
+    } catch (err) {
+      console.error("Apply set failed:", err);
+      setError(readError(err, "บันทึกชุดข้อสอบไม่สำเร็จ"));
+    } finally { setBusy(false); }
+  };
+
+  const scored = working ? scaleScoresLocal(working, totalScore) : [];
+  const pickedItems = bank.filter((b) => picked.includes(b.id));
+  const pickedScored = scaleScoresLocal(
+    pickedItems.map((b) => ({ ...b, bankQuestionId: b.id })), totalScore
+  );
+
+  return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[88vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-neutral-100">
           <div>
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" /> สุ่มชุดข้อสอบจากคลัง
+              <Zap className="h-4 w-4 text-amber-500" /> จัดชุดข้อสอบ
             </h3>
-            <p className="text-xs text-neutral-500 mt-1">
-              ระบบจะใส่ชุดที่ได้ลงทั้ง Pre / Mid / Post ของคอร์สนี้ เพราะต้องเป็นข้อสอบชุดเดียวกันจึงจะวัดพัฒนาการได้
-            </p>
+            <p className="text-xs text-neutral-500 mt-1">หยิบข้อจากคลังของวิชานี้มาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
           </div>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0">
-            <X className="h-4 w-4" />
-          </button>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
+        </div>
+
+        <div className="flex gap-1 px-6 pt-3 border-b border-neutral-100">
+          {[["auto", "ให้ระบบสุ่มให้"], ["manual", "เลือกเอง"]].map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => { setTab(k); setError(""); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${tab === k ? "border-orange-500 text-orange-600" : "border-transparent text-neutral-500 hover:text-neutral-700"}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {loading ? (
             <p className="text-sm text-neutral-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
-          ) : loadError ? (
-            <p className="text-sm text-red-600 py-8 text-center">{loadError}</p>
-          ) : !categories.length ? (
+          ) : !bank.length ? (
             <div className="border border-dashed border-neutral-200 rounded-xl py-10 text-center">
               <FileQuestion className="h-9 w-9 text-neutral-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-neutral-600">คลังของวิชานี้ยังไม่มีข้อสอบ</p>
-              <p className="text-xs text-neutral-400 mt-1">เพิ่มข้อสอบด้วยการพิมพ์เองหรือ import จาก Excel ก่อน</p>
+              <p className="text-xs text-neutral-400 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
             </div>
-          ) : !preview ? (
+          ) : tab === "auto" && !working ? (
             <>
               <div className="overflow-x-auto border border-neutral-200 rounded-xl">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-neutral-50 text-neutral-500 text-xs">
                       <th className="text-left font-semibold px-4 py-2.5">หมวดเนื้อหา</th>
-                      {BANK_LEVELS.map((lv) => (
-                        <th key={lv} className="text-center font-semibold px-3 py-2.5 w-28">{lv}</th>
-                      ))}
+                      {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2.5 w-28">{lv}</th>)}
                       <th className="text-center font-semibold px-3 py-2.5 w-16">รวม</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {categories.map((cat) => {
-                      const rowTotal = BANK_LEVELS.reduce((s, lv) => s + countOf(cat, lv), 0);
-                      return (
-                        <tr key={cat} className="border-t border-neutral-100">
-                          <td className="px-4 py-2.5 font-medium text-neutral-800">{cat}</td>
-                          {BANK_LEVELS.map((lv) => {
-                            const max = availableOf(cat, lv);
-                            return (
-                              <td key={lv} className="px-3 py-2 text-center">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={max}
-                                  disabled={max === 0}
-                                  value={counts[key(cat, lv)] ?? ""}
-                                  placeholder="0"
-                                  onChange={(e) => setCount(cat, lv, e.target.value)}
-                                  className="w-16 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center disabled:bg-neutral-50 disabled:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-orange-300"
-                                />
-                                <p className="text-[10px] text-neutral-400 mt-1">มี {max} ข้อ</p>
-                              </td>
-                            );
-                          })}
-                          <td className="px-3 py-2.5 text-center font-semibold text-neutral-700">{rowTotal || "-"}</td>
-                        </tr>
-                      );
-                    })}
+                    {categories.map((cat) => (
+                      <tr key={cat} className="border-t border-neutral-100">
+                        <td className="px-4 py-2.5 font-medium text-neutral-800">{cat}</td>
+                        {BANK_LEVELS.map((lv) => {
+                          const max = availableOf(cat, lv);
+                          return (
+                            <td key={lv} className="px-3 py-2 text-center">
+                              <input
+                                type="number" min={0} max={max} disabled={max === 0}
+                                value={counts[key(cat, lv)] ?? ""} placeholder="0"
+                                onChange={(e) => setCount(cat, lv, e.target.value)}
+                                className="w-16 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center disabled:bg-neutral-50 disabled:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                              />
+                              <p className="text-[10px] text-neutral-400 mt-1">มี {max} ข้อ</p>
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-2.5 text-center font-semibold text-neutral-700">
+                          {BANK_LEVELS.reduce((s, lv) => s + countOf(cat, lv), 0) || "-"}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-neutral-600">คะแนนเต็มของชุด</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={totalScore}
-                    onChange={(e) => { setTotalScore(Number(e.target.value) || 0); setPreview(null); }}
-                    className="w-20 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300"
-                  />
+                  <label className="text-sm text-neutral-600">คะแนนเต็ม</label>
+                  <input type="number" min={1} value={totalScore}
+                    onChange={(e) => { setTotalScore(Number(e.target.value) || 0); setSets(null); setWorking(null); }}
+                    className="w-20 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300" />
                 </div>
-                <p className="text-sm text-neutral-600">
-                  รวม <span className="font-bold text-neutral-900">{totalQuestions}</span> ข้อ
-                </p>
+                <p className="text-sm text-neutral-600">รวม <span className="font-bold text-neutral-900">{totalQuestions}</span> ข้อ</p>
+              </div>
+
+              <div className="border border-neutral-200 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-neutral-700">ใช้ชุดนี้กับ</p>
+                {[["all", "ทุกรอบ Pre / Mid / Post", "ต้องเป็นชุดเดียวกันจึงจะเทียบก่อนกับหลังเรียนได้"],
+                  ["this", "เฉพาะรอบนี้", "ใช้เมื่อต้องการให้รอบนี้ต่างจากรอบอื่น"]].map(([v, label, hint]) => (
+                  <label key={v} className="flex items-start gap-2 cursor-pointer">
+                    <input type="radio" name="applyTo" checked={applyTo === v} onChange={() => setApplyTo(v)} className="mt-1 accent-orange-500" />
+                    <span>
+                      <span className="text-sm text-neutral-800">{label}</span>
+                      <span className="block text-xs text-neutral-400">{hint}</span>
+                    </span>
+                  </label>
+                ))}
               </div>
 
               {thinCategories.length > 0 && (
                 <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
                   <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700">
-                    หมวด {thinCategories.join(", ")} มีน้อยกว่า {MIN_PER_CATEGORY} ข้อ
-                    กราฟพัฒนาการรายหมวดของหมวดนี้จะยังตีความไม่ได้ (จัดชุดได้ตามปกติ)
+                    หมวด {thinCategories.join(", ")} มีน้อยกว่า {MIN_PER_CATEGORY} ข้อ กราฟพัฒนาการรายหมวดของหมวดนี้จะยังตีความไม่ได้ (จัดชุดได้ตามปกติ)
                   </p>
                 </div>
               )}
             </>
-          ) : (
+          ) : tab === "auto" && working ? (
             <>
-              <div className="flex flex-wrap items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                <Check className="h-4 w-4 text-green-600" />
-                <p className="text-sm text-green-800 font-semibold">
-                  จัดชุดได้ {preview.summary?.totalQuestions} ข้อ รวม {preview.summary?.totalScore} คะแนน
-                </p>
-                <span className="text-xs text-green-700">
-                  (เลือกจากคลัง {preview.summary?.bankSize} ข้อ
-                  {preview.summary?.provenItems > 0 && ` · มีสถิติยืนยันแล้ว ${preview.summary.provenItems} ข้อ`}
-                  {preview.summary?.excludedByStats > 0 && ` · ตัดข้อที่ใช้วัดพัฒนาการไม่ได้ออก ${preview.summary.excludedByStats} ข้อ`})
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-neutral-600">เลือกชุด</span>
+                {(sets || []).map((s, i) => (
+                  <button key={s.label} onClick={() => chooseSet(i)}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${i === activeSet ? "bg-orange-500 text-white border-orange-500" : "border-neutral-200 text-neutral-600 hover:border-orange-300"}`}>
+                    ชุด {s.label}
+                  </button>
+                ))}
               </div>
 
-              {(preview.notes || []).length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 space-y-1">
-                  {preview.notes.map((n, i) => (
-                    <p key={i} className="text-xs text-amber-700 flex items-start gap-2">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" /> {n}
-                    </p>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm">
+                <span className="font-semibold text-neutral-800">{scored.length} ข้อ</span>
+                <span className="text-neutral-600">รวม {fmtScore(scored.reduce((s, it) => s + it.score, 0))} คะแนน</span>
+                <span className="text-neutral-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
+              </div>
+
+              {notes.map((n, i) => (
+                <p key={i} className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">{n}</p>
+              ))}
 
               <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
-                {(preview.questions || []).map((q) => (
-                  <div key={q.orderIndex} className="px-4 py-3 flex items-start gap-3">
-                    <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{q.orderIndex}.</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-neutral-800 line-clamp-2">{q.text}</p>
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{q.category}</span>
-                        <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[q.level]?.pill || "text-neutral-600"}`}>{q.level}</span>
-                        <span className="text-[11px] text-neutral-500">{fmtScore(q.score)} คะแนน</span>
-                        {q.recommendation === "keep" && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-green-50 text-green-700 border border-green-200">สถิติยืนยันว่าใช้ได้</span>
-                        )}
+                {scored.map((it, idx) => (
+                  <div key={`${it.bankQuestionId}-${idx}`} className="px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
+                          <span className="text-[11px] text-neutral-500">{fmtScore(it.score)} คะแนน</span>
+                          {it.reused && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">เคยใช้แล้ว</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setSwapIndex(swapIndex === idx ? null : idx)} className="text-xs font-semibold text-neutral-500 hover:text-orange-600 px-2 py-1">เปลี่ยนข้อ</button>
+                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
+
+                    {swapIndex === idx && (
+                      <div className="mt-3 ml-9 border border-orange-200 bg-orange-50/40 rounded-xl p-3 max-h-56 overflow-y-auto space-y-1">
+                        <p className="text-xs text-neutral-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
+                        {bank
+                          .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
+                          .map((b) => (
+                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-neutral-700 hover:bg-white rounded-lg px-2 py-1.5 line-clamp-2">
+                              {b.text}
+                            </button>
+                          ))}
+                        {bank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
+                          <p className="text-xs text-neutral-400 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-neutral-500">ติ๊กข้อที่ต้องการจากคลัง ระบบจะหารคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
+              <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-[46vh] overflow-y-auto">
+                {bank.map((b) => {
+                  const on = picked.includes(b.id);
+                  return (
+                    <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50">
+                      <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-neutral-800 line-clamp-2">{b.text}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{b.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-neutral-600"}`}>{b.level}</span>
+                          <span className="text-[11px] text-neutral-400">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-sm text-neutral-600">
+                เลือกแล้ว <span className="font-bold text-neutral-900">{picked.length}</span> ข้อ
+                {picked.length > 0 && ` · ข้อละประมาณ ${fmtScore(pickedScored[0]?.score || 0)} คะแนน`}
+              </p>
             </>
           )}
 
@@ -684,346 +980,32 @@ function AssembleFromBankModal({ courseId, subjectId, onClose, onDone }) {
 
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-neutral-100">
           <p className="text-xs text-neutral-400">
-            {preview ? "ยืนยันแล้วข้อสอบเดิมของทั้งสามรอบจะถูกแทนที่ด้วยชุดนี้" : "กดสุ่มเพื่อดูตัวอย่างก่อน ยังไม่บันทึกอะไร"}
+            {applyTo === "all" ? "จะใส่ลงทั้ง Pre / Mid / Post และแทนที่ข้อสอบเดิมของรอบเหล่านั้น" : "จะใส่ลงเฉพาะรอบนี้และแทนที่ข้อสอบเดิม"}
           </p>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button onClick={onClose} className="px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 rounded-xl">ยกเลิก</button>
-            {preview ? (
+            {tab === "auto" && working ? (
               <>
-                <button
-                  onClick={() => run(true)}
-                  disabled={busy}
-                  className="px-4 py-2 text-sm font-semibold border border-neutral-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40"
-                >
-                  สุ่มใหม่
-                </button>
-                <button
-                  onClick={() => run(false)}
-                  disabled={busy}
-                  className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40"
-                >
-                  {busy ? "กำลังบันทึก…" : "ยืนยันใช้ชุดนี้"}
+                <button onClick={runAssemble} disabled={busy} className="px-4 py-2 text-sm font-semibold border border-neutral-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40">สุ่มใหม่</button>
+                <button onClick={() => apply(scored.map((it) => it.bankQuestionId))} disabled={busy || !scored.length}
+                  className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
+                  {busy ? "กำลังบันทึก…" : `ใช้ชุด ${sets?.[activeSet]?.label || ""}`}
                 </button>
               </>
-            ) : (
-              <button
-                onClick={() => run(true)}
-                disabled={busy || totalQuestions === 0 || loading}
-                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40"
-              >
+            ) : tab === "auto" ? (
+              <button onClick={runAssemble} disabled={busy || totalQuestions === 0 || loading}
+                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
                 {busy ? "กำลังสุ่ม…" : "สุ่มชุดข้อสอบ"}
+              </button>
+            ) : (
+              <button onClick={() => apply(picked)} disabled={busy || !picked.length}
+                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
+                {busy ? "กำลังบันทึก…" : "ใช้ข้อที่เลือก"}
               </button>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function QuestionsTab({ examId, courseId, subjectId, adminId, questions, status, onChanged }) {
-  const locked = status === "active";
-  const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
-  const [editingId, setEditingId] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [deletingId, setDeletingId] = useState(null);
-  const [categoryOptions, setCategoryOptions] = useState([]);
-  const [showManageCategories, setShowManageCategories] = useState(false);
-  const [splitting, setSplitting] = useState(false);
-  const [confirmClearAll, setConfirmClearAll] = useState(false);
-  const [clearing, setClearing] = useState(false);
-
-  // ── ตัวช่วยแบ่งคะแนนให้ครบเพดาน 20 ต่อรอบ ────────────────────────────────
-  // ติวเตอร์ใส่ข้อสอบกี่ข้อก็ได้ ระบบหารให้เอง และกระจายเศษให้ผลรวมเท่ากับ 20.00 พอดี
-  const currentTotal = sumScores(questions);
-  const isBalanced = Math.abs(currentTotal - EXAM_SCORE_CAP) < 0.005;
-
-  const handleAutoSplit = async () => {
-    if (!questions.length) return;
-    setSplitting(true);
-    setFormError("");
-    try {
-      const values = splitScoreEvenly(questions.length, EXAM_SCORE_CAP);
-      await bulkUpdateQuestionScores(
-        examId,
-        questions.map((q, i) => ({ questionId: q.id, score: values[i] }))
-      );
-      await onChanged();
-    } catch (err) {
-      console.error("Auto split scores failed:", err);
-      setFormError(err.response?.data?.message || "แบ่งคะแนนไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSplitting(false);
-    }
-  };
-
-  const loadCategories = () => {
-    if (!subjectId || !adminId) return;
-    fetchSubjectCategories({ subjectId, adminId })
-      .then(setCategoryOptions)
-      .catch((err) => console.error("Fetch subject categories failed:", err));
-  };
-
-  useEffect(() => { loadCategories(); }, [subjectId, adminId]);
-
-  const editingQuestion = questions.find((q) => q.id === editingId) || null;
-
-  const handleAddOne = async (q) => {
-    setSaving(true);
-    setFormError("");
-    try {
-      await addQuestions(examId, [q]);
-      await onChanged();
-      // stay open so the tutor can add the next question right away
-      setMode("manual-added");
-      setTimeout(() => setMode("manual"), 0);
-    } catch (err) {
-      console.error("Add question failed:", err);
-      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleEditSave = async (q) => {
-    setSaving(true);
-    setFormError("");
-    try {
-      await updateQuestion(editingId, q);
-      await onChanged();
-      setEditingId(null);
-    } catch (err) {
-      console.error("Update question failed:", err);
-      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ล้างข้อสอบทั้งชุด — ใช้ตอนอยากเริ่มใหม่/import ชุดใหม่ทับ
-  const handleClearAll = async () => {
-    setClearing(true);
-    setFormError("");
-    try {
-      await deleteAllQuestions(examId);
-      await onChanged();
-      setConfirmClearAll(false);
-    } catch (err) {
-      console.error("Clear all questions failed:", err);
-      setFormError(err.response?.data?.message || "ลบข้อสอบทั้งชุดไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setClearing(false);
-    }
-  };
-
-  const handleDelete = async (questionId) => {
-    setDeletingId(questionId);
-    try {
-      await deleteQuestion(questionId);
-      await onChanged();
-    } catch (err) {
-      console.error("Delete question failed:", err);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  return (
-    <div className="space-y-5">
-            <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        <div className="flex items-center gap-2">
-          {questions.length > 0 && !editingId && !locked && (
-            <button
-              onClick={() => setConfirmClearAll(true)}
-              className="flex items-center gap-1.5 border border-neutral-200 hover:border-red-300 hover:bg-red-50 text-neutral-500 hover:text-red-600 rounded-xl px-3 py-2 text-sm font-semibold transition"
-            >
-              <Trash2 className="h-4 w-4" /> ลบทั้งชุด
-            </button>
-          )}
-          {categoryOptions.length > 0 && (
-            <button onClick={() => setShowManageCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-600 hover:text-orange-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
-              <Tags className="h-4 w-4" /> จัดการหมวดหมู่
-            </button>
-          )}
-          {!editingId && !locked && (
-            <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-              <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ยืนยันก่อนล้างทั้งชุด — เป็นการกระทำที่ย้อนกลับไม่ได้จากหน้าจอ จึงต้องกดยืนยันอีกชั้น */}
-      {confirmClearAll && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !clearing && setConfirmClearAll(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start gap-3">
-              <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
-                <Trash2 className="h-5 w-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-base font-bold text-neutral-900">ลบข้อสอบทั้งชุด {questions.length} ข้อ?</p>
-                <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
-                  ใช้ตอนอยากล้างชุดเดิมเพื่อนำเข้าข้อสอบใหม่ทับ — กดแล้วข้อสอบทั้งหมดในรอบนี้จะหายไปจากหน้าจัดการ
-                </p>
-                <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
-                  ผลสอบของนักเรียนที่ส่งไปแล้วไม่ได้รับผลกระทบ เพราะคะแนนถูกแช่แข็งไว้ตั้งแต่ตอนตัดเกรด
-                </p>
-              </div>
-            </div>
-            {formError && <p className="text-xs text-red-500">{formError}</p>}
-            <div className="flex justify-end gap-2 pt-1">
-              <button onClick={() => setConfirmClearAll(false)} disabled={clearing} className="px-4 py-2 text-sm font-semibold text-neutral-500 hover:text-neutral-700 disabled:opacity-40">
-                ยกเลิก
-              </button>
-              <button onClick={handleClearAll} disabled={clearing} className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded-xl px-4 py-2 text-sm font-bold transition">
-                {clearing ? "กำลังลบ…" : `ลบทั้งหมด ${questions.length} ข้อ`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showManageCategories && (
-        <ManageCategoriesModal
-          subjectId={subjectId}
-          adminId={adminId}
-          onClose={() => setShowManageCategories(false)}
-          onChanged={async () => { loadCategories(); await onChanged(); }}
-        />
-      )}
-
-      {locked && (
-        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">การสอบนี้กำลังเปิดอยู่ — เพิ่ม/ลบ/แก้ไขข้อสอบไม่ได้จนกว่าจะปิดสอบ (ไปที่แท็บ "เปิด/ปิดสอบ")</p>
-        </div>
-      )}
-
-      {/* แถบสถานะคะแนนรวม — ทุกวิชาต้องเต็ม 20 เท่ากันหมด เพื่อให้รวมทั้งแพ็กเกจได้ 100 (5 วิชา) หรือ 80 (4 วิชา) */}
-      {questions.length > 0 && (
-        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3.5 ${
-          isBalanced ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"
-        }`}>
-          <div className="flex items-center gap-2.5 min-w-0">
-            {isBalanced
-              ? <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-              : <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />}
-            <div className="min-w-0">
-              <p className={`text-sm font-bold ${isBalanced ? "text-emerald-800" : "text-amber-800"}`}>
-                รวมตอนนี้ {fmtScore(currentTotal)} / {EXAM_SCORE_CAP} คะแนน
-                <span className="font-medium"> · {questions.length} ข้อ</span>
-              </p>
-              <p className={`text-xs mt-0.5 ${isBalanced ? "text-emerald-600" : "text-amber-700"}`}>
-                {isBalanced
-                  ? "ครบเพดานพอดีแล้ว พร้อมเปิดสอบ"
-                  : currentTotal < EXAM_SCORE_CAP
-                    ? `ยังขาดอีก ${fmtScore(EXAM_SCORE_CAP - currentTotal)} คะแนน — กดแบ่งอัตโนมัติให้ครบได้เลย`
-                    : `เกินเพดานอยู่ ${fmtScore(currentTotal - EXAM_SCORE_CAP)} คะแนน — กดแบ่งอัตโนมัติเพื่อปรับให้พอดี`}
-              </p>
-            </div>
-          </div>
-          {!locked && !editingId && (
-            <button
-              onClick={handleAutoSplit}
-              disabled={splitting}
-              title={`หาร ${EXAM_SCORE_CAP} คะแนนให้ข้อสอบ ${questions.length} ข้อเท่า ๆ กัน`}
-              className="flex-shrink-0 flex items-center gap-1.5 border border-neutral-200 bg-white hover:border-orange-300 hover:bg-orange-50 text-neutral-700 hover:text-orange-600 disabled:opacity-40 rounded-xl px-3.5 py-2 text-sm font-semibold transition"
-            >
-              <Zap className="h-4 w-4" /> {splitting ? "กำลังแบ่ง…" : "แบ่งคะแนนอัตโนมัติ"}
-            </button>
-          )}
-        </div>
-      )}
-
-      {mode === "picker" && (
-        <div className="border border-neutral-200 rounded-2xl p-5 relative">
-          <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบ</p>
-          <AddMethodPicker onPick={setMode} />
-        </div>
-      )}
-
-      {mode === "manual" && (
-        <QuestionFormPanel
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกและเพิ่มข้อถัดไป"
-          onSave={handleAddOne}
-          onClose={() => setMode(null)}
-          categoryOptions={categoryOptions}
-        />
-      )}
-
-      {mode === "excel" && (
-        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} categoryOptions={categoryOptions} />
-      )}
-
-      {mode === "bank" && (
-        <AssembleFromBankModal
-          courseId={courseId}
-          subjectId={subjectId}
-          onClose={() => setMode(null)}
-          onDone={async () => { await onChanged(); loadCategories(); setMode(null); }}
-        />
-      )}
-
-      {editingId && (
-        <QuestionFormPanel
-          initial={editingQuestion}
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกการแก้ไข"
-          onSave={handleEditSave}
-          onClose={() => { setEditingId(null); setFormError(""); }}
-          categoryOptions={categoryOptions}
-        />
-      )}
-
-      {questions.length === 0 && !mode ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-          <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-          <p className="text-sm font-semibold text-neutral-500">ยังไม่มีข้อสอบในชุดนี้</p>
-          <p className="text-xs text-neutral-400 mt-1">กด “เพิ่มข้อสอบ” เพื่อเริ่มต้น</p>
-        </div>
-      ) : questions.length > 0 && !editingId ? (
-        <div className="border border-neutral-100 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-100">
-                {["#", "โจทย์", "หมวด", "ระดับ", "คะแนน", ""].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {questions.map((q, i) => (
-                <tr key={q.id} className="border-b border-neutral-50 hover:bg-neutral-50 transition">
-                  <td className="px-4 py-3 text-neutral-400">{i + 1}</td>
-                  <td className="px-4 py-3 text-neutral-800 max-w-[320px] truncate">{q.text}</td>
-                  <td className="px-4 py-3"><span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{q.category || "—"}</span></td>
-                  <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
-                  <td className="px-4 py-3 text-neutral-500">{fmtScore(q.score)}</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {locked ? (
-                      <span className="text-xs text-neutral-300">ล็อกอยู่</span>
-                    ) : (
-                      <>
-                        <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
-                        <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
-                          {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1141,7 +1123,7 @@ function formatCountdown(sec) {
   return `เหลืออีก ${parts.join(" ")}`;
 }
 
-function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) {
+function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, onReopen, onClose }) {
   const examId = exam.id;
   const settings = exam.settings;
   const status = deriveStatus(exam);
@@ -1252,12 +1234,59 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
     return () => clearInterval(iv);
   }, [status, pollResults]);
 
+  const [showAssemble, setShowAssemble] = useState(false);
   const joined = live?.joinedCount ?? 0;
   const enrolled = live?.enrolledCount ?? 0;
   const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
+  const setQuestions = exam.questions || [];
+  const setScoreSum = sumScores(setQuestions);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ── ข้อสอบของรอบนี้ — จุดเริ่มต้นก่อนเปิดสอบ ── */}
+      <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
+              <FileQuestion className="h-4 w-4 text-neutral-400" /> ข้อสอบของรอบนี้
+            </h3>
+            <p className="text-sm text-neutral-700 mt-1">
+              {setQuestions.length > 0
+                ? `${setQuestions.length} ข้อ · รวม ${fmtScore(setScoreSum)} คะแนน`
+                : "ยังไม่มีข้อสอบในรอบนี้"}
+            </p>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              หยิบข้อจากคลังของวิชานี้ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAssemble(true)}
+            disabled={status === "active"}
+            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+          >
+            <Zap className="h-4 w-4" /> {setQuestions.length > 0 ? "จัดชุดข้อสอบใหม่" : "จัดชุดข้อสอบ"}
+          </button>
+        </div>
+        {status === "active" && (
+          <p className="text-xs text-amber-600 mt-2">กำลังเปิดสอบอยู่ ต้องปิดสอบก่อนจึงจะจัดชุดใหม่ได้</p>
+        )}
+      </div>
+
+      {showAssemble && (
+        <AssembleDialog
+          exam={exam}
+          courseId={courseId}
+          subjectId={subjectId}
+          onClose={() => setShowAssemble(false)}
+          onDone={async () => {
+            setShowAssemble(false);
+            await onSaved();
+            showToast?.("success", "บันทึกชุดข้อสอบแล้ว", "ข้อสอบถูกใส่ลงรอบสอบเรียบร้อย");
+          }}
+        />
+      )}
+
       {/* ── ตั้งค่าข้อสอบ ── */}
       <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
         <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
@@ -1266,7 +1295,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนโจทย์แต่ละข้อแก้ไขได้ที่แท็บ ข้อสอบ</p>
+          <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนตัวข้อสอบจัดได้ที่กล่องด้านบน และแก้เนื้อข้อได้ที่แท็บ คลังข้อสอบ</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -2451,15 +2480,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab
-            examId={exam.id}
-            courseId={courseId}
-            subjectId={subjectId}
-            adminId={JSON.parse(localStorage.getItem("user") || "null")?.id}
-            questions={exam.questions || []}
-            status={status}
-            onChanged={reload}
-          />
+          <BankTab subjectId={subjectId} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
@@ -2467,6 +2488,8 @@ export default function TutorExamDetail() {
         {tab === "manage" && (
           <ManageExamTab
             exam={exam}
+            courseId={courseId}
+            subjectId={subjectId}
             onSaved={reload}
             showToast={showToast}
             onOpen={async () => { await openExamSession(exam.id); await reload(); }}

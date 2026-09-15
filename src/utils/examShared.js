@@ -224,20 +224,64 @@ export async function fetchSubjectCategories({ subjectId, adminId }) {
 }
 
 
-// GET /api/exam/subject/:subjectId/bank-summary → [{ category, level, count }]
-// คลังข้อสอบของ "วิชา" นับแยกตามหมวด x ระดับ ใช้บอกครูว่าแต่ละช่องมีให้หยิบกี่ข้อ
-export async function fetchBankSummary(subjectId) {
-  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/bank-summary`, { headers: authHeaders() });
+// ── คลังข้อสอบของวิชา (/api/bank) ─────────────────────────────────────────────
+// คลังแยกจากชุดที่ใช้สอบจริง แก้ข้อในคลังไม่กระทบข้อสอบที่เคยใช้ไปแล้ว
+const BANK_BASE = `${API_URL}/api/bank`;
+
+// GET /api/bank?subjectId= → [{ id, text, options, correct, level, category, explanation, usedCount, lastUsed }]
+export async function fetchBank(subjectId) {
+  const { data } = await axios.get(BANK_BASE, { params: { subjectId }, headers: authHeaders() });
   return data;
 }
 
-// POST /api/exam/assemble → สุ่มชุดข้อสอบจากคลัง (หลังบ้านส่งต่อให้ n8n อีกที)
-// dryRun = true คือขอดูก่อน ยังไม่เขียนลงฐานข้อมูล
-// dryRun = false คือยืนยัน จะเขียนลงทั้ง Pre / Mid / Post ของคอร์สนี้
-export async function assembleExamSet({ courseId, subjectId, blueprint, totalScore = 20, dryRun = true }) {
+// GET /api/bank/summary?subjectId= → [{ category, level, count }] ใช้เติมตารางตอนกรอกเงื่อนไข
+export async function fetchBankSummary(subjectId) {
+  const { data } = await axios.get(`${BANK_BASE}/summary`, { params: { subjectId }, headers: authHeaders() });
+  return data;
+}
+
+// GET /api/bank/usage-history?subjectId= → ชุดข้อสอบที่เคยใช้ไปแล้วในวิชานี้
+export async function fetchBankUsageHistory(subjectId) {
+  const { data } = await axios.get(`${BANK_BASE}/usage-history`, { params: { subjectId }, headers: authHeaders() });
+  return data;
+}
+
+// POST /api/bank → เพิ่มเข้าคลัง ใช้ได้ทั้งพิมพ์เองทีละข้อและ import Excel หลายข้อ
+export async function addBankQuestions(subjectId, questions) {
+  const { data } = await axios.post(BANK_BASE, { subjectId, questions }, { headers: authHeaders() });
+  return data;
+}
+
+export async function updateBankQuestion(id, patch) {
+  const { data } = await axios.put(`${BANK_BASE}/${id}`, patch, { headers: authHeaders() });
+  return data;
+}
+
+export async function deleteBankQuestion(id) {
+  const { data } = await axios.delete(`${BANK_BASE}/${id}`, { headers: authHeaders() });
+  return data;
+}
+
+// ── จัดชุดข้อสอบ ─────────────────────────────────────────────────────────────
+
+// POST /api/exam/assemble → { ok, sets: [{ label, items, totalScore, reusedCount }] }
+// หลังบ้านส่งเงื่อนไขให้ n8n เลือกข้อ แล้วอ่านเนื้อข้อจากคลังกับคิดคะแนนให้เอง
+// ยังไม่มีอะไรถูกบันทึกในขั้นนี้ เป็นแค่ตัวเลือกให้ครูดู
+export async function assembleExamSet({ courseId, subjectId, blueprint, totalScore = 20, setCount = 3 }) {
   const { data } = await axios.post(
     `${API_BASE}/assemble`,
-    { courseId: Number(courseId), subjectId: Number(subjectId), blueprint, totalScore, dryRun },
+    { courseId: Number(courseId), subjectId: Number(subjectId), blueprint, totalScore, setCount },
+    { headers: authHeaders() }
+  );
+  return data;
+}
+
+// POST /api/exam/apply-set → บันทึกชุดที่ครูเลือกลงรอบสอบ
+// applyTo: "all" = ลงทั้ง Pre/Mid/Post ของคอร์สนี้ | "this" = เฉพาะรอบนี้
+export async function applyExamSet({ examId, bankQuestionIds, applyTo = "all", totalScore = 20 }) {
+  const { data } = await axios.post(
+    `${API_BASE}/apply-set`,
+    { examId, bankQuestionIds, applyTo, totalScore },
     { headers: authHeaders() }
   );
   return data;
