@@ -15,7 +15,7 @@ import {
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
   fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
-  fetchSubjectCategories, renameSubjectCategory,
+  fetchBankCategories, renameBankCategory,
   fetchBank, fetchBankSummary, addBankQuestions, updateBankQuestion, deleteBankQuestion,
   assembleExamSet, applyExamSet,
 } from "../utils/examShared";
@@ -87,102 +87,100 @@ function AddMethodPicker({ onPick }) {
   );
 }
 
-// ─── Manage Categories Modal ─────────────────────────────────────────────────
-// รวม/เปลี่ยนชื่อหมวดย้อนหลัง — สำหรับซ่อมกรณีพิมพ์ผิด/พิมพ์ไม่ตรงกันระหว่างรอบสอบ
-// cascade อัปเดตทุก exam (Pre/Mid/Post) ของวิชานี้ในครั้งเดียว
-function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
+// ─── Bank Categories Modal ───────────────────────────────────────────────────
+// รวมหรือเปลี่ยนชื่อหมวดในคลัง สำหรับซ่อมกรณีชื่อหมวดพิมพ์ไม่ตรงกัน
+// เช่น "กรดเบส" กับ "กรด เบส" ที่ความจริงคือหมวดเดียวกัน แต่ระบบมองเป็นคนละหมวด
+// ทำให้ตารางจัดชุดและกราฟรายหมวดแตกเป็นหลายก้อนโดยไม่จำเป็น
+function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [renamingFrom, setRenamingFrom] = useState(null);
   const [renameTo, setRenameTo] = useState("");
+  const [cascade, setCascade] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
-    fetchSubjectCategories({ subjectId, adminId })
-      .then(setCategories)
-      .catch((err) => { console.error("Fetch categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
+    fetchBankCategories(subjectId)
+      .then((rows) => setCategories(Array.isArray(rows) ? rows : []))
+      .catch((err) => { console.error("Fetch bank categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
       .finally(() => setLoading(false));
-  };
+  }, [subjectId]);
 
-  useEffect(() => { load(); }, [subjectId, adminId]);
-
-  const startRename = (cat) => { setRenamingFrom(cat); setRenameTo(cat); setSaveError(""); };
+  useEffect(() => { load(); }, [load]);
 
   const confirmRename = async () => {
-    if (!renameTo.trim() || renameTo.trim() === renamingFrom) { setRenamingFrom(null); return; }
-    setSaving(true);
-    setSaveError("");
+    const to = renameTo.trim();
+    if (!to || to === renamingFrom) { setRenamingFrom(null); return; }
+    setSaving(true); setSaveError("");
     try {
-      await renameSubjectCategory({ subjectId, adminId, from: renamingFrom, to: renameTo.trim() });
+      await renameBankCategory({ subjectId, from: renamingFrom, to, cascade });
       setRenamingFrom(null);
       load();
-      await onChanged(); // reload exam detail ที่หน้าหลัก เพื่อให้ตาราง Questions อัปเดตชื่อหมวดใหม่ด้วย
+      await onChanged();
     } catch (err) {
-      console.error("Rename category failed:", err);
-      setSaveError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
+      console.error("Rename bank category failed:", err);
+      setSaveError(err.response?.data?.message || "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <p className="text-sm font-semibold text-neutral-800 flex items-center gap-2"><Tags className="h-4 w-4 text-orange-500" /> จัดการหมวดหมู่ (Category)</p>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-neutral-100">
+          <div>
+            <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
+              <Tags className="h-4 w-4 text-neutral-400" /> จัดการหมวดหมู่
+            </h3>
+            <p className="text-xs text-neutral-500 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700 leading-relaxed">
-              รวม 2 หมวดที่จริงๆ เป็นเรื่องเดียวกันแต่พิมพ์ไม่ตรงกัน (เช่น "พีชคณิต" กับ "พีชคณิค") — การกด "เปลี่ยนชื่อ" จะอัปเดตทุกข้อในวิชานี้ ทุกรอบสอบ (Pre/Mid/Post) ทันที
-            </p>
-          </div>
-
-          {loading && <p className="text-sm text-neutral-400 text-center py-6">กำลังโหลด...</p>}
-          {error && <p className="text-sm text-red-500 text-center py-6">{error}</p>}
-
-          {!loading && !error && categories.length === 0 && (
-            <p className="text-sm text-neutral-400 text-center py-6">ยังไม่มีหมวดหมู่ในวิชานี้</p>
-          )}
-
-          {!loading && !error && categories.length > 0 && (
-            <div className="border border-neutral-100 rounded-xl divide-y divide-neutral-50 overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {loading ? (
+            <p className="text-sm text-neutral-500 py-6 text-center">กำลังโหลด…</p>
+          ) : error ? (
+            <p className="text-sm text-red-600 py-6 text-center">{error}</p>
+          ) : !categories.length ? (
+            <p className="text-sm text-neutral-400 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
+          ) : (
+            <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
               {categories.map((c) => (
-                <div key={c.category} className="px-4 py-3">
+                <div key={c.category} className="px-4 py-2.5">
                   {renamingFrom === c.category ? (
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-2">
                       <input
                         autoFocus
-                        type="text"
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
-                        list="category-options-manage"
-                        className="flex-1 border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="ชื่อใหม่ หรือพิมพ์ชื่อหมวดที่มีอยู่เพื่อรวมเข้าด้วยกัน"
+                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
                       />
-                      <datalist id="category-options-manage">
-                        {categories.filter((x) => x.category !== c.category).map((x) => (
-                          <option key={x.category} value={x.category} />
-                        ))}
-                      </datalist>
-                      <button onClick={confirmRename} disabled={saving} className="text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-lg px-3 py-1.5">
-                        {saving ? "กำลังบันทึก…" : "ยืนยัน"}
-                      </button>
-                      <button onClick={() => setRenamingFrom(null)} className="text-xs font-medium text-neutral-500 hover:text-neutral-700 px-2">ยกเลิก</button>
+                      {findSimilarCategory(renameTo, categories) && (
+                        <p className="text-[11px] text-amber-700">จะถูกรวมเข้ากับหมวด "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={confirmRename} disabled={saving} className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg px-3 py-1.5">
+                          {saving ? "กำลังบันทึก…" : "บันทึก"}
+                        </button>
+                        <button onClick={() => { setRenamingFrom(null); setSaveError(""); }} className="text-xs text-neutral-500 px-2">ยกเลิก</button>
+                      </div>
+                      {saveError && <p className="text-[11px] text-red-600">{saveError}</p>}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-neutral-800 truncate">{c.category}</p>
-                        <p className="text-xs text-neutral-400">{c.questionCount} ข้อ</p>
+                        <p className="text-sm text-neutral-800 truncate">{c.category}</p>
+                        <p className="text-[11px] text-neutral-400">{c.count} ข้อ</p>
                       </div>
-                      <button onClick={() => startRename(c.category)} className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5 hover:bg-orange-100 transition flex-shrink-0">
-                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวมหมวด
+                      <button
+                        onClick={() => { setRenamingFrom(c.category); setRenameTo(c.category); setSaveError(""); }}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-orange-600 px-2 py-1"
+                      >
+                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวม
                       </button>
                     </div>
                   )}
@@ -191,7 +189,19 @@ function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
             </div>
           )}
 
-          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+          <label className="flex items-start gap-2 cursor-pointer bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3">
+            <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} className="mt-0.5 accent-orange-500" />
+            <span>
+              <span className="text-sm text-neutral-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
+              <span className="block text-xs text-neutral-400 mt-0.5">
+                กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง ถ้าไม่ติ๊กจะแก้เฉพาะในคลัง
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="flex justify-end px-6 py-4 border-t border-neutral-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl">ปิด</button>
         </div>
       </div>
     </div>
@@ -200,7 +210,18 @@ function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
 
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
+// เทียบชื่อหมวดแบบไม่สนช่องว่างและขีด เพื่อจับกรณี "กรด-เบส" กับ "กรดเบส" ที่ความจริงคือหมวดเดียวกัน
+const normCategory = (v) => String(v || "").toLowerCase().replace(/[\s\-_.]/g, "");
+function findSimilarCategory(name, options) {
+  const n = normCategory(name);
+  if (!n) return null;
+  const hit = (options || []).find((c) => normCategory(c.category) === n && c.category.trim() !== String(name).trim());
+  return hit ? hit.category : null;
+}
+
 function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, hideScore }) {
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
   const [q, setQ] = useState(initial || emptyQuestion());
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
@@ -275,22 +296,71 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-          <input
-            type="text"
-            list="category-options"
-            value={q.category}
-            onChange={(e) => patch({ category: e.target.value })}
-            placeholder="เช่น พีชคณิต"
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-          />
-          <datalist id="category-options">
-            {(categoryOptions || []).map((c) => (
-              <option key={c.category} value={c.category} />
-            ))}
-          </datalist>
-          {categoryOptions?.length > 0 && (
-            <p className="text-[10px] text-neutral-400 mt-1">หมวดที่เคยใช้ในวิชานี้: {categoryOptions.map((c) => c.category).join(", ")}</p>
+          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">หมวดหมู่</label>
+          {/* เลือกจากรายการเป็นหลัก เพื่อไม่ให้เกิดหมวดชื่อเพี้ยนซ้ำซ้อน
+              จะสร้างหมวดใหม่ต้องกดปุ่ม และระบบจะเตือนถ้าชื่อคล้ายของเดิม */}
+          {addingCategory ? (
+            <div className="space-y-2">
+              <input
+                type="text"
+                autoFocus
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="ชื่อหมวดใหม่"
+                className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              />
+              {findSimilarCategory(newCategory, categoryOptions) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 space-y-1.5">
+                  <p className="text-[11px] text-amber-700">
+                    ชื่อนี้คล้ายกับ "{findSimilarCategory(newCategory, categoryOptions)}" ที่มีอยู่แล้ว
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patch({ category: findSimilarCategory(newCategory, categoryOptions) });
+                      setAddingCategory(false); setNewCategory("");
+                    }}
+                    className="text-[11px] font-semibold text-amber-800 underline"
+                  >
+                    ใช้หมวดเดิมแทน
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={!newCategory.trim()}
+                  onClick={() => { patch({ category: newCategory.trim() }); setAddingCategory(false); setNewCategory(""); }}
+                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg px-3 py-1.5"
+                >
+                  ใช้หมวดนี้
+                </button>
+                <button type="button" onClick={() => { setAddingCategory(false); setNewCategory(""); }} className="text-xs text-neutral-500 px-2">ยกเลิก</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <select
+                value={q.category || ""}
+                onChange={(e) => patch({ category: e.target.value })}
+                className="flex-1 border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+              >
+                <option value="">เลือกหมวด</option>
+                {(categoryOptions || []).map((c) => (
+                  <option key={c.category} value={c.category}>{c.category}</option>
+                ))}
+                {q.category && !(categoryOptions || []).some((c) => c.category === q.category) && (
+                  <option value={q.category}>{q.category}</option>
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={() => setAddingCategory(true)}
+                className="flex-shrink-0 border border-neutral-200 hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
+              >
+                + หมวดใหม่
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -318,7 +388,8 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
 
 function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
-  const knownCategories = new Set((categoryOptions || []).map((c) => c.category.trim().toLowerCase()));
+  const [catMap, setCatMap] = useState({});   // หมวดในไฟล์ -> หมวดในคลังที่จะแมปเข้า
+  const knownCategories = new Set((categoryOptions || []).map((c) => normCategory(c.category)));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -343,7 +414,8 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
     setConfirming(true);
     setError("");
     try {
-      const inserted = await onConfirmRows(rows);
+      const mapped = rows.map((r) => ({ ...r, category: catMap[r.category?.trim()] || r.category }));
+      const inserted = await onConfirmRows(mapped);
       onImported(inserted);
     } catch (err) {
       console.error("Excel import save failed:", err);
@@ -354,6 +426,13 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
   };
 
   const invalidCount = rows.filter((q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null).length;
+
+  // หมวดในไฟล์ที่ยังไม่มีในคลัง — ให้ครูเลือกก่อนว่าจะแมปเข้าหมวดเดิมหรือสร้างใหม่
+  // กันกรณีพิมพ์ชื่อหมวดคนละแบบใน Excel แล้วคลังแตกเป็นหลายหมวดที่ความจริงคืออันเดียวกัน
+  const unknownCats = [...new Set(
+    rows.map((r) => r.category?.trim()).filter((c) => c && !knownCategories.has(normCategory(c)))
+  )];
+  const countOfCat = (c) => rows.filter((r) => r.category?.trim() === c).length;
 
   return (
     <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
@@ -392,6 +471,42 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
             <Badge className="bg-green-100 text-green-700">พบ {rows.length} ข้อ</Badge>
             {invalidCount > 0 && <Badge className="bg-amber-100 text-amber-700">{invalidCount} ข้อมีปัญหา</Badge>}
           </div>
+
+          {unknownCats.length > 0 && (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-800">
+                มี {unknownCats.length} หมวดในไฟล์ที่ยังไม่มีในคลัง — เลือกว่าจะใช้หมวดเดิมหรือสร้างใหม่
+              </p>
+              {unknownCats.map((cat) => {
+                const similar = findSimilarCategory(cat, categoryOptions);
+                return (
+                  <div key={cat} className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-neutral-800">"{cat}"</span>
+                    <span className="text-[11px] text-neutral-500">{countOfCat(cat)} ข้อ</span>
+                    <select
+                      value={catMap[cat] ?? ""}
+                      onChange={(e) => setCatMap((m) => ({ ...m, [cat]: e.target.value }))}
+                      className="border border-neutral-200 rounded-lg px-2 py-1 text-xs bg-white"
+                    >
+                      <option value="">สร้างเป็นหมวดใหม่</option>
+                      {(categoryOptions || []).map((c) => (
+                        <option key={c.category} value={c.category}>ใช้ {c.category}</option>
+                      ))}
+                    </select>
+                    {similar && !catMap[cat] && (
+                      <button
+                        type="button"
+                        onClick={() => setCatMap((m) => ({ ...m, [cat]: similar }))}
+                        className="text-[11px] font-semibold text-amber-800 underline"
+                      >
+                        คล้ายกับ "{similar}" กดเพื่อใช้อันนั้น
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div className="border border-neutral-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-neutral-50">
             {rows.map((q, i) => {
               const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
@@ -408,8 +523,11 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
                         <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
                       )}
                     </p>
-                    {q.category?.trim() && knownCategories.size > 0 && !knownCategories.has(q.category.trim().toLowerCase()) && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">⚠️ หมวด "{q.category}" ยังไม่เคยใช้ในวิชานี้ — พิมพ์ผิดหรือหมวดใหม่จริง?</p>
+                    {q.category?.trim() && catMap[q.category.trim()] && (
+                      <p className="text-[10px] text-green-600 mt-0.5">จะบันทึกเป็นหมวด "{catMap[q.category.trim()]}"</p>
+                    )}
+                    {q.category?.trim() && !catMap[q.category.trim()] && knownCategories.size > 0 && !knownCategories.has(normCategory(q.category)) && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
                     )}
                   </div>
                 </div>
@@ -471,6 +589,7 @@ function BankTab({ subjectId }) {
   const [search, setSearch] = useState("");
   const [fCat, setFCat] = useState("");
   const [fLevel, setFLevel] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
 
   const load = useCallback(() => {
     if (!subjectId) return;
@@ -544,11 +663,26 @@ function BankTab({ subjectId }) {
           </p>
         </div>
         {!mode && !editing && (
-          <button onClick={() => setMode("picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-            <Plus className="h-4 w-4" /> เพิ่มข้อสอบเข้าคลัง
-          </button>
+          <div className="flex items-center gap-2">
+            {items.length > 0 && (
+              <button onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+                <Tags className="h-4 w-4" /> จัดการหมวดหมู่
+              </button>
+            )}
+            <button onClick={() => setMode("picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+              <Plus className="h-4 w-4" /> เพิ่มข้อสอบเข้าคลัง
+            </button>
+          </div>
         )}
       </div>
+
+      {showCategories && (
+        <BankCategoriesModal
+          subjectId={subjectId}
+          onClose={() => setShowCategories(false)}
+          onChanged={async () => { load(); }}
+        />
+      )}
 
       {mode === "picker" && (
         <div className="border border-neutral-200 rounded-2xl p-5 relative">

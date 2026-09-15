@@ -262,6 +262,19 @@ export async function deleteBankQuestion(id) {
   return data;
 }
 
+// GET /api/bank/categories?subjectId= → [{ category, count }]
+export async function fetchBankCategories(subjectId) {
+  const { data } = await axios.get(`${BANK_BASE}/categories`, { params: { subjectId }, headers: authHeaders() });
+  return data;
+}
+
+// PUT /api/bank/categories/rename → เปลี่ยนชื่อหรือรวมหมวด
+// cascade = true จะตามไปแก้ข้อสอบที่เคยใช้สอบไปแล้วด้วย (แก้ประวัติ) ค่าเริ่มต้นคือไม่แก้
+export async function renameBankCategory({ subjectId, from, to, cascade = false }) {
+  const { data } = await axios.put(`${BANK_BASE}/categories/rename`, { subjectId, from, to, cascade }, { headers: authHeaders() });
+  return data;
+}
+
 // ── จัดชุดข้อสอบ ─────────────────────────────────────────────────────────────
 
 // POST /api/exam/assemble → { ok, sets: [{ label, items, totalScore, reusedCount }] }
