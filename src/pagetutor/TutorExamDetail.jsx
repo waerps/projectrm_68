@@ -1148,7 +1148,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
       return;
     }
     try {
-      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
+      // ไม่ส่ง totalQuestions ไปด้วย เพราะจำนวนข้อมาจากชุดที่จัดไว้ ไม่ใช่ค่าที่ครูพิมพ์
+      const payload = { duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
       const result = await updateExamSettings(examId, payload);
       await onSaved();
       setSaved(true);
@@ -1295,18 +1296,14 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
 
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนตัวข้อสอบจัดได้ที่กล่องด้านบน และแก้เนื้อข้อได้ที่แท็บ คลังข้อสอบ</p>
+          <p className="text-xs text-blue-700 leading-relaxed">ส่วนนี้คุมเวลาและวันสอบเท่านั้น จำนวนข้อและคะแนนมาจากชุดที่จัดไว้ในกล่องด้านบน ส่วนเนื้อข้อสอบแก้ได้ที่แท็บคลังข้อสอบ</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">จำนวนข้อ (เป้าหมาย)</label>
-            <input type="number" min={0} value={form.totalQuestions} onChange={(e) => setForm({ ...form, totalQuestions: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
-            <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-          </div>
+        {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
+            ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
+        <div>
+          <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
+          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
         </div>
         <div>
           <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
