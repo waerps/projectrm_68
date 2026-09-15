@@ -305,3 +305,26 @@ export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
   const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to }, { headers: authHeaders() });
   return data;
 }
+
+// ── AI อ่านผลสอบรายคน (/api/ai) ──────────────────────────────────────────────
+// ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่แปลเป็นคำอธิบายและร่างข้อความถึงผู้ปกครอง
+// ทุกฉบับเป็นร่างเสมอ ติวเตอร์ต้องกดอนุมัติก่อนจึงจะถือว่าใช้ได้
+const AI_BASE = `${API_URL}/api/ai`;
+
+// POST /api/ai/analyze → สั่งวิเคราะห์ทั้งห้อง (ใช้เวลานาน ห้อง 30 คนอาจเป็นนาที)
+export async function analyzeExamWithAi(examId) {
+  const { data } = await axios.post(`${AI_BASE}/analyze`, { examId }, { headers: authHeaders(), timeout: 300000 });
+  return data;
+}
+
+// GET /api/ai/summaries?examId=
+export async function fetchAiSummaries(examId) {
+  const { data } = await axios.get(`${AI_BASE}/summaries`, { params: { examId }, headers: authHeaders() });
+  return data;
+}
+
+// PUT /api/ai/summaries/:id → แก้ข้อความ หรือกดอนุมัติ
+export async function updateAiSummary(id, patch) {
+  const { data } = await axios.put(`${AI_BASE}/summaries/${id}`, patch, { headers: authHeaders() });
+  return data;
+}

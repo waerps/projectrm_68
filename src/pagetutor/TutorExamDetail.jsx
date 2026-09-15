@@ -18,6 +18,7 @@ import {
   fetchBankCategories, renameBankCategory,
   fetchBank, fetchBankSummary, addBankQuestions, updateBankQuestion, deleteBankQuestion,
   assembleExamSet, applyExamSet,
+  analyzeExamWithAi, fetchAiSummaries, updateAiSummary,
 } from "../utils/examShared";
 import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
@@ -1147,7 +1148,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
 // ─── Preview Tab ─────────────────────────────────────────────────────────────
 
-function PreviewTab({ exam, goToQuestions }) {
+function PreviewTab({ exam, goToAssemble }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const questions = exam.questions || [];
   const current = questions[activeIdx];
@@ -1158,9 +1159,9 @@ function PreviewTab({ exam, goToQuestions }) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
         <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">ยังไม่มีข้อสอบให้ preview</p>
-        <button onClick={goToQuestions} className="mt-4 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-          <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
+        <p className="text-sm font-semibold text-neutral-500">รอบนี้ยังไม่มีชุดข้อสอบ</p>
+        <button onClick={goToAssemble} className="mt-4 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+          <Zap className="h-4 w-4" /> ไปจัดชุดข้อสอบ
         </button>
       </div>
     );
@@ -2133,6 +2134,248 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 }
 
 // ─── Results Tab ─────────────────────────────────────────────────────────────
+// ─── AI Summary Panel — บทวิเคราะห์รายคนหลังปิดสอบ ──────────────────────────
+// ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อ่านรูปแบบการตอบผิดแล้วอธิบายเป็นภาษาคน
+// ทุกฉบับเป็นร่างจนกว่าครูจะกดอนุมัติ ข้อความถึงผู้ปกครองจึงไม่หลุดออกไปเอง
+function AiSummaryPanel({ examId, submittedCount }) {
+  const [summaries, setSummaries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+  const [openId, setOpenId] = useState(null);
+  const [drafts, setDrafts] = useState({});       // แก้ข้อความค้างไว้ก่อนบันทึก
+  const [savingId, setSavingId] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchAiSummaries(examId)
+      .then((rows) => setSummaries(Array.isArray(rows) ? rows : []))
+      .catch((err) => { console.error("Fetch AI summaries failed:", err); setError("โหลดผลวิเคราะห์ไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  }, [examId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const runAnalyze = async () => {
+    setRunning(true); setError("");
+    try {
+      const res = await analyzeExamWithAi(examId);
+      load();
+      if (res?.failed > 0) setError(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
+    } catch (err) {
+      console.error("Analyze failed:", err);
+      setError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally { setRunning(false); }
+  };
+
+  const save = async (row, patch) => {
+    setSavingId(row.id);
+    try {
+      await updateAiSummary(row.id, patch);
+      load();
+    } catch (err) {
+      console.error("Update summary failed:", err);
+      setError(err.response?.data?.message || "บันทึกไม่สำเร็จ");
+    } finally { setSavingId(null); }
+  };
+
+  const copyMessage = async (row) => {
+    const text = drafts[row.id]?.parentMessage ?? row.parentMessage;
+    try {
+      await navigator.clipboard.writeText(`${row.nickname || row.studentName}\n\n${text}`);
+      setCopiedId(row.id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  const approvedCount = summaries.filter((s) => s.status === "approved").length;
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-2xl p-5 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-amber-500" /> บทวิเคราะห์รายคนด้วย AI
+          </h3>
+          <p className="text-xs text-neutral-500 mt-1">
+            {summaries.length > 0
+              ? `มีผลวิเคราะห์ ${summaries.length} คน · อนุมัติแล้ว ${approvedCount} คน`
+              : "ยังไม่เคยวิเคราะห์รอบสอบนี้"}
+          </p>
+          <p className="text-[11px] text-neutral-400 mt-0.5">
+            ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง ครูต้องอ่านและอนุมัติก่อนใช้
+          </p>
+        </div>
+        <button
+          onClick={runAnalyze}
+          disabled={running || !submittedCount}
+          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-semibold transition flex-shrink-0"
+        >
+          <Zap className="h-4 w-4" />
+          {running ? "กำลังวิเคราะห์…" : summaries.length > 0 ? "วิเคราะห์ใหม่" : "วิเคราะห์ด้วย AI"}
+        </button>
+      </div>
+
+      {running && (
+        <p className="text-xs text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5">
+          กำลังให้ AI อ่านผลทีละคน ห้องใหญ่อาจใช้เวลาหลายนาที อย่าเพิ่งปิดหน้านี้
+        </p>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-neutral-400">กำลังโหลด…</p>
+      ) : summaries.length === 0 ? (
+        !submittedCount ? (
+          <p className="text-xs text-neutral-400">ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้</p>
+        ) : null
+      ) : (
+        <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
+          {summaries.map((row) => {
+            const open = openId === row.id;
+            const draft = drafts[row.id] || {};
+            const parentMessage = draft.parentMessage ?? row.parentMessage;
+            const dirty = draft.parentMessage != null && draft.parentMessage !== row.parentMessage;
+            return (
+              <div key={row.id}>
+                <button
+                  onClick={() => setOpenId(open ? null : row.id)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-neutral-50"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-neutral-800 truncate">
+                      {row.studentName}{row.nickname ? ` (${row.nickname})` : ""}
+                    </p>
+                    <p className="text-xs text-neutral-500 line-clamp-1">{row.overview}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${row.status === "approved" ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-100 text-neutral-500 border-neutral-200"}`}>
+                      {row.status === "approved" ? "อนุมัติแล้ว" : "ฉบับร่าง"}
+                    </span>
+                    <ChevronRight className={`h-4 w-4 text-neutral-400 transition ${open ? "rotate-90" : ""}`} />
+                  </div>
+                </button>
+
+                {open && (
+                  <div className="px-4 pb-4 space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold text-neutral-500 mb-1">ภาพรวม</p>
+                      <p className="text-sm text-neutral-700 leading-relaxed">{row.overview}</p>
+                    </div>
+
+                    {row.byCategory?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-500 mb-1">รายหมวด</p>
+                        <ul className="space-y-1">
+                          {row.byCategory.map((c, i) => (
+                            <li key={i} className="text-sm text-neutral-700">
+                              <span className="font-medium">{c.topic}</span>
+                              {c.trend ? ` · ${c.trend}` : ""} — {c.comment}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {row.misconceptions?.length > 0 && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        <p className="text-xs font-semibold text-amber-800 mb-1">จุดที่น่าจะเข้าใจผิด</p>
+                        <ul className="space-y-1.5">
+                          {row.misconceptions.map((m, i) => (
+                            <li key={i} className="text-sm text-amber-900">
+                              <span className="font-medium">{m.topic}</span> — {m.pattern}
+                              {m.evidence && <span className="block text-[11px] text-amber-700 mt-0.5">หลักฐาน: {m.evidence}</span>}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {row.behavior && (
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-500 mb-1">ข้อสังเกตจากเวลาที่ใช้</p>
+                        <p className="text-sm text-neutral-700">{row.behavior}</p>
+                      </div>
+                    )}
+
+                    {row.focusNext?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-neutral-500 mb-1">ควรทำต่อ เรียงตามลำดับ</p>
+                        <ol className="list-decimal list-inside space-y-1">
+                          {row.focusNext.map((f, i) => (
+                            <li key={i} className="text-sm text-neutral-700">
+                              {typeof f === "string" ? f : f.action}
+                              {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-semibold text-neutral-500">ข้อความสำหรับผู้ปกครอง (แก้ได้)</p>
+                        <button onClick={() => copyMessage(row)} className="text-xs font-semibold text-orange-600 hover:text-orange-700">
+                          {copiedId === row.id ? "คัดลอกแล้ว" : "คัดลอก"}
+                        </button>
+                      </div>
+                      <textarea
+                        value={parentMessage}
+                        rows={5}
+                        onChange={(e) => setDrafts((d) => ({ ...d, [row.id]: { ...d[row.id], parentMessage: e.target.value } }))}
+                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {dirty && (
+                        <button
+                          onClick={() => save(row, { parentMessage })}
+                          disabled={savingId === row.id}
+                          className="text-xs font-semibold border border-neutral-200 hover:border-orange-300 hover:text-orange-600 rounded-lg px-3 py-1.5 disabled:opacity-40"
+                        >
+                          {savingId === row.id ? "กำลังบันทึก…" : "บันทึกข้อความ"}
+                        </button>
+                      )}
+                      {row.status === "approved" ? (
+                        <button
+                          onClick={() => save(row, { status: "draft" })}
+                          disabled={savingId === row.id}
+                          className="text-xs font-semibold text-neutral-500 hover:text-neutral-700 px-2 py-1.5"
+                        >
+                          ยกเลิกการอนุมัติ
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => save(row, { status: "approved", ...(dirty ? { parentMessage } : {}) })}
+                          disabled={savingId === row.id}
+                          className="flex items-center gap-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
+                        >
+                          <Check className="h-3.5 w-3.5" /> อนุมัติข้อความนี้
+                        </button>
+                      )}
+                      {row.model && <span className="text-[11px] text-neutral-400">วิเคราะห์โดย {row.model}</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
@@ -2313,6 +2556,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
       </div>
 
       <QuestionFlagsCard flags={results.questionFlags} submittedCount={results.submittedCount} />
+
+      <AiSummaryPanel examId={exam.id} submittedCount={results.submittedCount} />
 
       {/* Search & Filter */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
@@ -2620,7 +2865,7 @@ export default function TutorExamDetail() {
           <BankTab subjectId={subjectId} />
         )}
         {tab === "preview" && (
-          <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
+          <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />
         )}
         {tab === "manage" && (
           <ManageExamTab
