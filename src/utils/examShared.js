@@ -224,6 +224,25 @@ export async function fetchSubjectCategories({ subjectId, adminId }) {
 }
 
 
+// GET /api/exam/subject/:subjectId/bank-summary → [{ category, level, count }]
+// คลังข้อสอบของ "วิชา" นับแยกตามหมวด x ระดับ ใช้บอกครูว่าแต่ละช่องมีให้หยิบกี่ข้อ
+export async function fetchBankSummary(subjectId) {
+  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/bank-summary`, { headers: authHeaders() });
+  return data;
+}
+
+// POST /api/exam/assemble → สุ่มชุดข้อสอบจากคลัง (หลังบ้านส่งต่อให้ n8n อีกที)
+// dryRun = true คือขอดูก่อน ยังไม่เขียนลงฐานข้อมูล
+// dryRun = false คือยืนยัน จะเขียนลงทั้ง Pre / Mid / Post ของคอร์สนี้
+export async function assembleExamSet({ courseId, subjectId, blueprint, totalScore = 20, dryRun = true }) {
+  const { data } = await axios.post(
+    `${API_BASE}/assemble`,
+    { courseId: Number(courseId), subjectId: Number(subjectId), blueprint, totalScore, dryRun },
+    { headers: authHeaders() }
+  );
+  return data;
+}
+
 // PUT /api/exam/subject/:subjectId/categories/rename → รวม/เปลี่ยนชื่อหมวด (cascade ทุก exam ของวิชานี้)
 export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
   const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to }, { headers: authHeaders() });
