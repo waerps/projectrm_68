@@ -1760,7 +1760,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   );
 }
 
-function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], showToast }) {
+function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], gradeLevelOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
     StartDate: "",
@@ -1778,6 +1778,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Course_Availability_Id: "",
     CourseImage: "",
     YearId: "",
+    GradeLevelId: "",
     ...initial,
   });
 
@@ -1983,6 +1984,21 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               ))}
             </select>
           </div>
+        </div>
+
+        <div>
+          <label className={labelCls}>ระดับชั้นของเนื้อหา (ไม่บังคับ)</label>
+          <select
+            value={form.GradeLevelId ?? ""}
+            onChange={(e) => set("GradeLevelId", e.target.value === "" ? "" : Number(e.target.value))}
+            className={inputCls}
+          >
+            <option value="">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
+            {gradeLevelOptions.map((g) => (
+              <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>
+            ))}
+          </select>
+          <p className="text-[11px] text-neutral-400 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -2858,22 +2874,25 @@ export default function AdminCoursesPage() {
   const [editingCourse, setEditingCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
+  const [gradeLevelOptions, setGradeLevelOptions] = useState([]);
   const [duplicatingCourse, setDuplicatingCourse] = useState(null);
 
   const fetchAll = async () => {
     try {
-      const [cRes, sRes, tRes, yRes, aRes] = await Promise.all([
+      const [cRes, sRes, tRes, yRes, aRes, gRes] = await Promise.all([
         axios.get(`${API_BASE}/courses`),
         axios.get(`${API_BASE}/status-course`),
         axios.get(`${API_BASE}/term`),
         axios.get(`${API_BASE}/year`),
         axios.get(`${API_BASE}/course-availability`),
+        axios.get(`${API_BASE}/grade-levels`),
       ]);
       setCourses(cRes.data);
       setStatusOptions(sRes.data);
       setTermOptions(tRes.data);
       setYearOptions(yRes.data);
       setAvailabilityOptions(aRes.data);
+      setGradeLevelOptions(gRes.data);
     } catch (e) {
       console.error("Fetch error:", e);
     } finally {
@@ -3194,6 +3213,7 @@ export default function AdminCoursesPage() {
             termOptions={termOptions}
             yearOptions={yearOptions}
             availabilityOptions={availabilityOptions}
+            gradeLevelOptions={gradeLevelOptions}
             showToast={showToast}
           />
         </Modal>
@@ -3210,6 +3230,7 @@ export default function AdminCoursesPage() {
             termOptions={termOptions}
             yearOptions={yearOptions}
             availabilityOptions={availabilityOptions}
+            gradeLevelOptions={gradeLevelOptions}
             showToast={showToast}
           />
         </Modal>

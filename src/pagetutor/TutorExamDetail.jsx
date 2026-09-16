@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge, UserX, Flag,
+  Tags, Merge, UserX, Flag, Filter,
 } from "lucide-react";
 
 import {
@@ -16,7 +16,7 @@ import {
   fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
-  fetchBank, fetchBankSummary, addBankQuestions, updateBankQuestion, deleteBankQuestion,
+  fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
   assembleExamSet, applyExamSet,
   analyzeExamWithAi, fetchAiSummaries, updateAiSummary,
 } from "../utils/examShared";
@@ -262,7 +262,7 @@ function findSimilarCategory(name, options) {
   return best;
 }
 
-function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, hideScore }) {
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, gradeLevelOptions, hideScore }) {
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [q, setQ] = useState(initial || emptyQuestion());
@@ -310,7 +310,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className={hideScore ? "hidden" : ""}>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
           {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
@@ -425,6 +425,23 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
             </div>
           )}
         </div>
+        <div>
+          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
+            ระดับชั้น <span className="text-[10px] font-normal text-neutral-400">(ไม่บังคับ)</span>
+          </label>
+          {/* แท็กไว้ให้ตอนจัดชุดข้อสอบกรองตามระดับชั้นของคอร์สได้ ปล่อย "ไม่ระบุ" ได้ถ้ายังไม่แน่ใจ —
+              ข้อที่ไม่ระบุจะไม่ถูกกรองออกไม่ว่าจะเลือกระดับชั้นไหนตอนจัดชุด */}
+          <select
+            value={q.gradeLevelId ?? ""}
+            onChange={(e) => patch({ gradeLevelId: e.target.value === "" ? null : Number(e.target.value) })}
+            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+          >
+            <option value="">ไม่ระบุ</option>
+            {(gradeLevelOptions || []).map((g) => (
+              <option key={g.id} value={g.id}>{g.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -448,8 +465,10 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
-function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions }) {
+function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
+  const [bulkGrade, setBulkGrade] = useState(""); // ระดับชั้นเดียวใส่ให้ทั้งไฟล์ที่ import ครั้งนี้ ไม่บังคับเลือก
+  const [rowGradeOverrides, setRowGradeOverrides] = useState({}); // เผื่อบางข้อในไฟล์เดียวกันเป็นคนละระดับชั้น ปรับแยกรายข้อได้
   const [catMap, setCatMap] = useState({});   // หมวดในไฟล์ -> หมวดในคลังที่จะแมปเข้า
   const knownCategories = new Set((categoryOptions || []).map((c) => normCategory(c.category)));
   const [rows, setRows] = useState([]);
@@ -476,7 +495,15 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
     setConfirming(true);
     setError("");
     try {
-      const mapped = rows.map((r) => ({ ...r, category: catMap[r.category?.trim()] || r.category }));
+      const mapped = rows.map((r, i) => ({
+        ...r,
+        category: catMap[r.category?.trim()] || r.category,
+        gradeLevelId: (() => {
+          const ov = rowGradeOverrides[i];
+          const eff = ov !== undefined && ov !== "" ? ov : bulkGrade;
+          return eff === "" ? null : Number(eff);
+        })(),
+      }));
       await onConfirmRows(mapped);
       onImported(mapped.length);
     } catch (err) {
@@ -529,10 +556,24 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
 
       {step === 2 && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-green-100 text-green-700">พบ {rows.length} ข้อ</Badge>
             {invalidCount > 0 && <Badge className="bg-amber-100 text-amber-700">{invalidCount} ข้อมีปัญหา</Badge>}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-xs text-neutral-500">ระดับชั้นเริ่มต้นของไฟล์นี้:</span>
+              <select
+                value={bulkGrade}
+                onChange={(e) => setBulkGrade(e.target.value)}
+                className="border border-neutral-200 rounded-lg px-2 py-1 text-xs bg-white"
+              >
+                <option value="">ไม่ระบุ</option>
+                {(gradeLevelOptions || []).map((g) => (
+                  <option key={g.id} value={g.id}>{g.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          <p className="text-[10px] text-neutral-400 -mt-1">ตั้งเป็นค่าเริ่มต้นให้ทุกข้อในไฟล์นี้ — แต่ละข้อยังปรับระดับชั้นแยกเป็นรายข้อได้ที่ท้ายแถวรายการด้านล่าง</p>
 
           {unknownCats.length > 0 && (
             <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
@@ -591,7 +632,25 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
                     {q.category?.trim() && !catMap[q.category.trim()] && knownCategories.size > 0 && !knownCategories.has(normCategory(q.category)) && (
                       <p className="text-[10px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
                     )}
+                    {(() => {
+                      const ov = rowGradeOverrides[i];
+                      const eff = ov !== undefined && ov !== "" ? ov : bulkGrade;
+                      if (eff === "" || eff == null) return null;
+                      const g = (gradeLevelOptions || []).find((x) => String(x.id) === String(eff));
+                      return g ? <p className="text-[10px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}</p> : null;
+                    })()}
                   </div>
+                  <select
+                    value={rowGradeOverrides[i] ?? ""}
+                    onChange={(e) => setRowGradeOverrides((m) => ({ ...m, [i]: e.target.value }))}
+                    title="ระดับชั้นของข้อนี้ (ว่าง = ใช้ค่าเริ่มต้นของทั้งไฟล์ด้านบน)"
+                    className="flex-shrink-0 border border-neutral-200 rounded-lg px-1.5 py-1 text-[10px] bg-white w-20 self-start"
+                  >
+                    <option value="">ค่าเริ่มต้น</option>
+                    {(gradeLevelOptions || []).map((g) => (
+                      <option key={g.id} value={g.id}>{g.label}</option>
+                    ))}
+                  </select>
                 </div>
               );
             })}
@@ -654,6 +713,9 @@ function BankTab({ subjectId, showToast }) {
   const [showCategories, setShowCategories] = useState(false);
   const [formKey, setFormKey] = useState(0);      // เปลี่ยนค่านี้เพื่อบังคับให้ฟอร์มเพิ่มข้อ mount ใหม่ (เคลียร์ฟอร์มแน่นอน)
   const panelRef = useRef(null);                  // ใช้เลื่อนจอขึ้นมาหาฟอร์มตอนกด "แก้ไข" ข้อที่อยู่ล่าง ๆ ของรายการ
+  const [gradeLevels, setGradeLevels] = useState([]); // รายการระดับชั้นให้เลือกตอนเพิ่ม/แก้ข้อ (ไม่บังคับ)
+
+  useEffect(() => { fetchGradeLevels().then(setGradeLevels).catch(() => setGradeLevels([])); }, []);
 
   const load = useCallback(() => {
     if (!subjectId) return;
@@ -779,6 +841,7 @@ function BankTab({ subjectId, showToast }) {
             onSave={handleAddOne}
             onClose={() => setMode(null)}
             categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
             hideScore
           />
         )}
@@ -789,6 +852,7 @@ function BankTab({ subjectId, showToast }) {
             onConfirmRows={(rows) => addBankQuestions(subjectId, rows)}
             onImported={(count) => { load(); setMode(null); showToast?.("success", "นำเข้าเรียบร้อย", `เพิ่ม ${count} ข้อเข้าคลังแล้ว`); }}
             categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
           />
         )}
 
@@ -801,6 +865,7 @@ function BankTab({ subjectId, showToast }) {
             onSave={handleEditSave}
             onClose={() => { setEditing(null); setFormError(""); }}
             categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
             hideScore
           />
         )}
@@ -961,7 +1026,6 @@ function SetSummaryTable({ items }) {
 // ชุดที่เลือกได้จะถูกคัดลอกลงรอบสอบ ต้นฉบับยังอยู่ในคลังเสมอ
 function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   const [tab, setTab] = useState("auto");
-  const [summary, setSummary] = useState([]);
   const [bank, setBank] = useState([]);
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({});
@@ -980,11 +1044,44 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   useEffect(() => {
     if (!subjectId) return;
     setLoading(true);
-    Promise.all([fetchBankSummary(subjectId), fetchBank(subjectId)])
-      .then(([sum, list]) => { setSummary(sum || []); setBank(list || []); })
+    fetchBank(subjectId)
+      .then((list) => setBank(list || []))
       .catch((err) => { console.error("Load bank failed:", err); setError("โหลดคลังข้อสอบไม่สำเร็จ"); })
       .finally(() => setLoading(false));
   }, [subjectId]);
+
+  // ระดับชั้นที่คอร์สนี้ถูกแท็กไว้ (ถ้ามี) — ใช้เป็นตัวกรองคลังเริ่มต้นเท่านั้น เพื่อกันเนื้อหาข้ามระดับชั้น
+  // (เช่น เคมี ม.4 ปนกับเคมี ม.1) หลุดเข้ามาโดยไม่ตั้งใจ ไม่ใช่การบล็อกแบบตายตัว ติวเตอร์ปิดตัวกรองดูทุกระดับชั้นได้เสมอ
+  const courseGradeLevelId = exam?.courseGradeLevelId || null;
+  const courseGradeDetail = exam?.courseGradeDetail || null;
+  const [showAllGrades, setShowAllGrades] = useState(!courseGradeLevelId);
+
+  // คลังหลังกรองตามระดับชั้น — ข้อที่ไม่ได้ระบุระดับชั้น (gradeLevelId ว่าง) ถือว่าใช้ได้ทุกระดับชั้นเสมอ
+  const gradeFilteredBank = useMemo(() => {
+    if (showAllGrades || !courseGradeLevelId) return bank;
+    return bank.filter((b) => b.gradeLevelId == null || b.gradeLevelId === courseGradeLevelId);
+  }, [bank, showAllGrades, courseGradeLevelId]);
+
+  // สลับตัวกรองระดับชั้นแล้ว ค่าที่เคยตั้งไว้อาจเกินจำนวนที่มีจริง รีเซ็ตให้เริ่มจัดชุดใหม่สะอาด ๆ
+  useEffect(() => {
+    setCounts({});
+    setSets(null);
+    setWorking(null);
+    setPicked([]);
+  }, [showAllGrades]);
+
+  const summary = useMemo(() => {
+    const map = {};
+    for (const b of gradeFilteredBank) {
+      if (!b.category) continue;
+      const k = `${b.category}||${b.level || "ปานกลาง"}`;
+      map[k] = (map[k] || 0) + 1;
+    }
+    return Object.entries(map).map(([k, count]) => {
+      const [category, level] = k.split("||");
+      return { category, level, count };
+    });
+  }, [gradeFilteredBank]);
 
   const categories = useMemo(() => [...new Set(summary.map((r) => r.category))].sort(), [summary]);
   const availableOf = (c, l) => summary.find((r) => r.category === c && r.level === l)?.count || 0;
@@ -1125,6 +1222,26 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           ))}
         </div>
 
+        {courseGradeLevelId && !loading && bank.length > 0 && (
+          <div className="mx-6 mt-3 flex items-start sm:items-center justify-between gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex-col sm:flex-row">
+            <div className="flex items-start gap-2">
+              <Filter className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-700">
+                {showAllGrades
+                  ? `กำลังแสดงข้อจากคลังทุกระดับชั้น (คอร์สนี้แท็กไว้ว่า ${courseGradeDetail || "-"})`
+                  : `กรองคลังให้ตรงกับระดับชั้นของคอร์สนี้ (${courseGradeDetail || "-"}) เป็นค่าเริ่มต้น — ข้อที่ไม่ได้ระบุระดับชั้นจะแสดงด้วยเสมอ`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAllGrades((v) => !v)}
+              className="text-xs font-semibold text-blue-700 border border-blue-200 bg-white hover:bg-blue-100 rounded-lg px-3 py-1.5 flex-shrink-0 transition self-start sm:self-auto"
+            >
+              {showAllGrades ? `กรองเฉพาะ ${courseGradeDetail || "ระดับชั้นคอร์ส"}` : "แสดงทุกระดับชั้น"}
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {loading ? (
             <p className="text-sm text-neutral-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
@@ -1210,9 +1327,6 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <span className="text-neutral-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
               </div>
 
-              <SetSummaryTable items={scored} />
-              {applyToBox}
-
               {notes.map((n, i) => (
                 <p key={i} className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">{n}</p>
               ))}
@@ -1240,14 +1354,14 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     {swapIndex === idx && (
                       <div className="mt-3 ml-9 border border-orange-200 bg-orange-50/40 rounded-xl p-3 max-h-56 overflow-y-auto space-y-1">
                         <p className="text-xs text-neutral-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
-                        {bank
+                        {gradeFilteredBank
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
                             <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-neutral-700 hover:bg-white rounded-lg px-2 py-1.5 line-clamp-2">
                               {b.text}
                             </button>
                           ))}
-                        {bank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
+                        {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
                           <p className="text-xs text-neutral-400 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
                         )}
                       </div>
@@ -1255,6 +1369,9 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                   </div>
                 ))}
               </div>
+
+              <SetSummaryTable items={scored} />
+              {applyToBox}
             </>
           ) : (
             <>
@@ -1264,16 +1381,16 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <span className="text-xs font-semibold text-neutral-500">ทางลัด:</span>
                 <button
                   type="button"
-                  onClick={() => setPicked(bank.map((b) => b.id))}
+                  onClick={() => setPicked(gradeFilteredBank.map((b) => b.id))}
                   className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
                 >
-                  เอาทั้งหมด ({bank.length})
+                  เอาทั้งหมด ({gradeFilteredBank.length})
                 </button>
-                {[10, 20, 30].filter((n) => n < bank.length).map((n) => (
+                {[10, 20, 30].filter((n) => n < gradeFilteredBank.length).map((n) => (
                   <button
                     key={n}
                     type="button"
-                    onClick={() => setPicked(shuffleArr(bank.map((b) => b.id)).slice(0, n))}
+                    onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, n))}
                     className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
                   >
                     สุ่มเอา {n} ข้อ
@@ -1281,7 +1398,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 ))}
                 <div className="flex items-center gap-1.5">
                   <input
-                    type="number" min="1" max={bank.length}
+                    type="number" min="1" max={gradeFilteredBank.length}
                     value={quickCount}
                     onChange={(e) => setQuickCount(e.target.value)}
                     placeholder="จำนวน"
@@ -1290,7 +1407,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                   <button
                     type="button"
                     disabled={!Number(quickCount) || Number(quickCount) <= 0}
-                    onClick={() => setPicked(shuffleArr(bank.map((b) => b.id)).slice(0, Math.min(Number(quickCount), bank.length)))}
+                    onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, Math.min(Number(quickCount), gradeFilteredBank.length)))}
                     className="text-xs font-semibold bg-orange-50 hover:bg-orange-100 disabled:opacity-40 text-orange-700 rounded-lg px-2.5 py-1 transition"
                   >
                     สุ่มเอาตามจำนวน
@@ -1308,7 +1425,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
               </div>
 
               <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-[46vh] overflow-y-auto">
-                {bank.map((b) => {
+                {gradeFilteredBank.map((b) => {
                   const on = picked.includes(b.id);
                   return (
                     <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50">
@@ -1318,6 +1435,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{b.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-neutral-600"}`}>{b.level}</span>
+                          {b.gradeDetail && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{b.gradeDetail}</span>}
                           <span className="text-[11px] text-neutral-400">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
                         </div>
                       </div>

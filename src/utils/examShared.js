@@ -73,6 +73,7 @@ export const emptyQuestion = () => ({
   level: "ปานกลาง",
   category: "",
   explanation: "",
+  gradeLevelId: null, // ไม่ระบุ = แสดงในทุกตัวกรองระดับชั้นตอนจัดชุด
 });
 
 // ── xlsx template / import (parsing only — saving goes through addQuestions) ─
@@ -243,6 +244,12 @@ export async function fetchBankSummary(subjectId) {
 // GET /api/bank/usage-history?subjectId= → ชุดข้อสอบที่เคยใช้ไปแล้วในวิชานี้
 export async function fetchBankUsageHistory(subjectId) {
   const { data } = await axios.get(`${BANK_BASE}/usage-history`, { params: { subjectId }, headers: authHeaders() });
+  return data;
+}
+
+// GET /api/bank/grade-levels → [{ id, label }] รายการระดับชั้นให้เลือกตอนเพิ่มข้อในคลัง
+export async function fetchGradeLevels() {
+  const { data } = await axios.get(`${BANK_BASE}/grade-levels`, { headers: authHeaders() });
   return data;
 }
 
