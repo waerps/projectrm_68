@@ -212,12 +212,54 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
 // เทียบชื่อหมวดแบบไม่สนช่องว่างและขีด เพื่อจับกรณี "กรด-เบส" กับ "กรดเบส" ที่ความจริงคือหมวดเดียวกัน
-const normCategory = (v) => String(v || "").toLowerCase().replace(/[\s\-_.]/g, "");
+// ตัดช่องว่าง/สัญลักษณ์คั่น และคำเชื่อมที่คนพิมพ์ต่างกันได้ (และ/กับ/หรือ/ของ, "/", "-", "_", ".", ",")
+// เพื่อจับคู่ "อะตอมและตารางธาตุ" กับ "อะตอม/ตารางธาตุ" ว่าคือหมวดเดียวกัน
+const normCategory = (v) =>
+  String(v || "")
+    .toLowerCase()
+    .replace(/[\s\-_./,]/g, "")
+    .replace(/(และ|กับ|หรือ|ของ)/g, "");
+
+// ระยะแก้ไข (Levenshtein) ไว้จับกรณีพิมพ์ตกหล่น/พิมพ์ผิดเล็กน้อย เช่น "กรดเบส" กับ "กรคเบส"
+function levenshtein(a, b) {
+  const al = a.length, bl = b.length;
+  if (!al) return bl;
+  if (!bl) return al;
+  const dp = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+  for (let i = 0; i <= al; i++) dp[i][0] = i;
+  for (let j = 0; j <= bl; j++) dp[0][j] = j;
+  for (let i = 1; i <= al; i++) {
+    for (let j = 1; j <= bl; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[al][bl];
+}
+const similarityRatio = (a, b) => {
+  const maxLen = Math.max(a.length, b.length) || 1;
+  return 1 - levenshtein(a, b) / maxLen;
+};
+
+// หาหมวดเดิมที่ "น่าจะ" เป็นหมวดเดียวกับชื่อที่พิมพ์ ไม่ใช่แค่ตัวอักษรตรงกันเป๊ะ
+// ใช้ทั้ง (1) เท่ากันหลังตัดคำเชื่อม/สัญลักษณ์ (2) คำหนึ่งเป็นส่วนหนึ่งของอีกคำ (3) ระยะแก้ไขใกล้เคียงพอ (พิมพ์ผิด/ตกหล่น)
 function findSimilarCategory(name, options) {
-  const n = normCategory(name);
+  const raw = String(name || "").trim();
+  const n = normCategory(raw);
   if (!n) return null;
-  const hit = (options || []).find((c) => normCategory(c.category) === n && c.category.trim() !== String(name).trim());
-  return hit ? hit.category : null;
+  let best = null, bestScore = 0;
+  for (const c of options || []) {
+    const cRaw = String(c.category || "").trim();
+    if (!cRaw || cRaw === raw) continue;
+    const cn = normCategory(cRaw);
+    if (!cn) continue;
+    if (cn === n) return cRaw;
+    const shorter = Math.min(cn.length, n.length), longer = Math.max(cn.length, n.length) || 1;
+    const contains = (cn.includes(n) || n.includes(cn)) && shorter / longer >= 0.55;
+    const ratio = similarityRatio(n, cn);
+    const score = contains ? Math.max(ratio, 0.85) : ratio;
+    if (score >= 0.72 && score > bestScore) { bestScore = score; best = cRaw; }
+  }
+  return best;
 }
 
 function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, hideScore }) {
@@ -310,6 +352,25 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 placeholder="ชื่อหมวดใหม่"
                 className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
               />
+              {newCategory.trim() && (() => {
+                const kw = newCategory.trim().toLowerCase();
+                const matches = (categoryOptions || []).filter((c) => c.category?.toLowerCase().includes(kw)).slice(0, 6);
+                if (!matches.length) return null;
+                return (
+                  <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-32 overflow-y-auto">
+                    {matches.map((c) => (
+                      <button
+                        key={c.category}
+                        type="button"
+                        onClick={() => { patch({ category: c.category }); setAddingCategory(false); setNewCategory(""); }}
+                        className="w-full text-left px-3 py-1.5 text-xs text-neutral-700 hover:bg-orange-50 hover:text-orange-700"
+                      >
+                        {c.category} <span className="text-neutral-400">({c.questionCount} ข้อ)</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               {findSimilarCategory(newCategory, categoryOptions) && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 space-y-1.5">
                   <p className="text-[11px] text-amber-700">
@@ -416,8 +477,8 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions 
     setError("");
     try {
       const mapped = rows.map((r) => ({ ...r, category: catMap[r.category?.trim()] || r.category }));
-      const inserted = await onConfirmRows(mapped);
-      onImported(inserted);
+      await onConfirmRows(mapped);
+      onImported(mapped.length);
     } catch (err) {
       console.error("Excel import save failed:", err);
       setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -578,7 +639,7 @@ function scaleScoresLocal(items, totalScore) {
 // ─── Bank Tab — คลังข้อสอบของวิชา ────────────────────────────────────────────
 // คลังเป็นของวิชา ไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-function BankTab({ subjectId }) {
+function BankTab({ subjectId, showToast }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -591,6 +652,8 @@ function BankTab({ subjectId }) {
   const [fCat, setFCat] = useState("");
   const [fLevel, setFLevel] = useState("");
   const [showCategories, setShowCategories] = useState(false);
+  const [formKey, setFormKey] = useState(0);      // เปลี่ยนค่านี้เพื่อบังคับให้ฟอร์มเพิ่มข้อ mount ใหม่ (เคลียร์ฟอร์มแน่นอน)
+  const panelRef = useRef(null);                  // ใช้เลื่อนจอขึ้นมาหาฟอร์มตอนกด "แก้ไข" ข้อที่อยู่ล่าง ๆ ของรายการ
 
   const load = useCallback(() => {
     if (!subjectId) return;
@@ -602,6 +665,14 @@ function BankTab({ subjectId }) {
   }, [subjectId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // ฟอร์มเพิ่ม/แก้ไข/นำเข้า อยู่ตำแหน่งเดิมเสมอ (เหนือรายการ) แต่ถ้าเปิดจากการกด "แก้ไข"
+  // ข้อที่อยู่ไกลลงไปในลิสต์ จอจะยังค้างอยู่ตรงที่กด เลยต้องเลื่อนขึ้นมาให้เห็นฟอร์มเอง
+  useEffect(() => {
+    if ((mode === "manual" || mode === "excel" || editing) && panelRef.current) {
+      panelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [mode, editing]);
 
   const categoryOptions = useMemo(() => {
     const m = {};
@@ -623,11 +694,12 @@ function BankTab({ subjectId }) {
     try {
       await addBankQuestions(subjectId, [q]);
       load();
-      setMode("manual-added");
-      setTimeout(() => setMode("manual"), 0);
+      setFormKey((k) => k + 1); // mount ฟอร์มใหม่ทั้งก้อน -> เคลียร์ทุกช่องแน่นอน ไม่ต้องเดา timing
+      showToast?.("success", "เพิ่มเข้าคลังแล้ว", "พิมพ์ข้อถัดไปได้เลย");
     } catch (err) {
       console.error("Add to bank failed:", err);
       setFormError(err.response?.data?.message || "เพิ่มเข้าคลังไม่สำเร็จ");
+      showToast?.("error", "เพิ่มเข้าคลังไม่สำเร็จ", err.response?.data?.message);
     } finally { setSaving(false); }
   };
 
@@ -637,9 +709,11 @@ function BankTab({ subjectId }) {
       await updateBankQuestion(editing.id, q);
       setEditing(null);
       load();
+      showToast?.("success", "บันทึกการแก้ไขแล้ว");
     } catch (err) {
       console.error("Update bank item failed:", err);
       setFormError(err.response?.data?.message || "บันทึกไม่สำเร็จ");
+      showToast?.("error", "บันทึกไม่สำเร็จ", err.response?.data?.message);
     } finally { setSaving(false); }
   };
 
@@ -648,8 +722,10 @@ function BankTab({ subjectId }) {
       await deleteBankQuestion(id);
       setDeletingId(null);
       load();
+      showToast?.("success", "ลบออกจากคลังแล้ว");
     } catch (err) {
       console.error("Delete bank item failed:", err);
+      showToast?.("error", "ลบไม่สำเร็จ", "ลองใหม่อีกครั้ง");
     }
   };
 
@@ -685,47 +761,50 @@ function BankTab({ subjectId }) {
         />
       )}
 
-      {mode === "picker" && (
-        <div className="border border-neutral-200 rounded-2xl p-5 relative">
-          <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
-          <AddMethodPicker onPick={setMode} />
-        </div>
-      )}
+      <div ref={panelRef}>
+        {mode === "picker" && (
+          <div className="border border-neutral-200 rounded-2xl p-5 relative">
+            <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+            <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
+            <AddMethodPicker onPick={setMode} />
+          </div>
+        )}
 
-      {mode === "manual" && (
-        <QuestionFormPanel
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกเข้าคลังและเพิ่มข้อถัดไป"
-          onSave={handleAddOne}
-          onClose={() => setMode(null)}
-          categoryOptions={categoryOptions}
-          hideScore
-        />
-      )}
+        {mode === "manual" && (
+          <QuestionFormPanel
+            key={formKey}
+            saving={saving}
+            error={formError}
+            saveLabel="บันทึกเข้าคลังและเพิ่มข้อถัดไป"
+            onSave={handleAddOne}
+            onClose={() => setMode(null)}
+            categoryOptions={categoryOptions}
+            hideScore
+          />
+        )}
 
-      {mode === "excel" && (
-        <ExcelImportFlow
-          onCancel={() => setMode(null)}
-          onConfirmRows={(rows) => addBankQuestions(subjectId, rows)}
-          onImported={() => { load(); setMode(null); }}
-          categoryOptions={categoryOptions}
-        />
-      )}
+        {mode === "excel" && (
+          <ExcelImportFlow
+            onCancel={() => setMode(null)}
+            onConfirmRows={(rows) => addBankQuestions(subjectId, rows)}
+            onImported={(count) => { load(); setMode(null); showToast?.("success", "นำเข้าเรียบร้อย", `เพิ่ม ${count} ข้อเข้าคลังแล้ว`); }}
+            categoryOptions={categoryOptions}
+          />
+        )}
 
-      {editing && (
-        <QuestionFormPanel
-          initial={{ ...editing, score: 1 }}
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกการแก้ไข"
-          onSave={handleEditSave}
-          onClose={() => { setEditing(null); setFormError(""); }}
-          categoryOptions={categoryOptions}
-          hideScore
-        />
-      )}
+        {editing && (
+          <QuestionFormPanel
+            initial={{ ...editing, score: 1 }}
+            saving={saving}
+            error={formError}
+            saveLabel="บันทึกการแก้ไข"
+            onSave={handleEditSave}
+            onClose={() => { setEditing(null); setFormError(""); }}
+            categoryOptions={categoryOptions}
+            hideScore
+          />
+        )}
+      </div>
 
       {items.length > 0 && !editing && (
         <div className="flex flex-wrap items-center gap-2">
@@ -760,34 +839,39 @@ function BankTab({ subjectId }) {
       ) : (
         <div className="border border-neutral-200 rounded-2xl divide-y divide-neutral-100">
           {filtered.map((it) => (
-            <div key={it.id} className="px-4 py-3 flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                  <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category || "ไม่ระบุหมวด"}</span>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
-                  <span className="text-[11px] text-neutral-400">
-                    {it.usedCount > 0
-                      ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
-                      : "ยังไม่เคยใช้"}
-                  </span>
+            <div key={it.id} className={`px-4 py-3 flex items-start gap-3 ${deletingId === it.id ? "bg-red-50" : ""}`}>
+              {deletingId === it.id ? (
+                <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-red-700 font-medium">ลบข้อนี้ออกจากคลังถาวร? (ข้อที่เคยใช้สอบไปแล้วจะไม่กระทบผลสอบเดิม)</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition">ลบเลย</button>
+                    <button onClick={() => setDeletingId(null)} className="text-xs text-neutral-600 font-medium px-3 py-1.5 hover:bg-neutral-100 rounded-lg transition">ไม่ลบ</button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-neutral-700">
-                  <Pencil className="h-4 w-4" />
-                </button>
-                {deletingId === it.id ? (
-                  <>
-                    <button onClick={() => handleDelete(it.id)} className="text-xs font-semibold text-red-600 px-2">ยืนยันลบ</button>
-                    <button onClick={() => setDeletingId(null)} className="text-xs text-neutral-500 px-1">ยกเลิก</button>
-                  </>
-                ) : (
-                  <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
+              ) : (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category || "ไม่ระบุหมวด"}</span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
+                      <span className="text-[11px] text-neutral-400">
+                        {it.usedCount > 0
+                          ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
+                          : "ยังไม่เคยใช้"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-neutral-700">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
           {filtered.length === 0 && (
@@ -2862,7 +2946,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <BankTab subjectId={subjectId} />
+          <BankTab subjectId={subjectId} showToast={showToast} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />
