@@ -883,6 +883,16 @@ function BankTab({ subjectId, showToast }) {
   );
 }
 
+// สลับลำดับแบบสุ่ม (Fisher–Yates) ใช้กับปุ่มทางลัด "สุ่มเลือก N ข้อ" ในโหมดเลือกเอง
+function shuffleArr(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // ─── Assemble Dialog — จัดชุดข้อสอบก่อนเปิดสอบ ───────────────────────────────
 // สองโหมด: ให้ระบบสุ่มมาหลายชุดให้เลือก หรือครูติ๊กเลือกเองจากคลัง
 // ชุดที่เลือกได้จะถูกคัดลอกลงรอบสอบ ต้นฉบับยังอยู่ในคลังเสมอ
@@ -899,6 +909,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   const [working, setWorking] = useState(null);      // ชุดที่กำลังปรับ (array ของข้อ)
   const [swapIndex, setSwapIndex] = useState(null);  // กำลังหาข้อมาแทนข้อที่เท่าไร
   const [picked, setPicked] = useState([]);          // โหมดเลือกเอง
+  const [quickCount, setQuickCount] = useState("");  // ช่องกรอกจำนวนเองสำหรับปุ่มทางลัด
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notes, setNotes] = useState([]);
@@ -1165,6 +1176,50 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           ) : (
             <>
               <p className="text-xs text-neutral-500">ติ๊กข้อที่ต้องการจากคลัง ระบบจะหารคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
+
+              <div className="flex flex-wrap items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5">
+                <span className="text-xs font-semibold text-neutral-500">ทางลัด:</span>
+                <button
+                  type="button"
+                  onClick={() => setPicked(bank.map((b) => b.id))}
+                  className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
+                >
+                  เอาทั้งหมด ({bank.length})
+                </button>
+                {[10, 20, 30].filter((n) => n < bank.length).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPicked(shuffleArr(bank.map((b) => b.id)).slice(0, n))}
+                    className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
+                  >
+                    สุ่มเอา {n} ข้อ
+                  </button>
+                ))}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min="1" max={bank.length}
+                    value={quickCount}
+                    onChange={(e) => setQuickCount(e.target.value)}
+                    placeholder="จำนวน"
+                    className="w-16 border border-neutral-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  />
+                  <button
+                    type="button"
+                    disabled={!Number(quickCount) || Number(quickCount) <= 0}
+                    onClick={() => setPicked(shuffleArr(bank.map((b) => b.id)).slice(0, Math.min(Number(quickCount), bank.length)))}
+                    className="text-xs font-semibold bg-orange-50 hover:bg-orange-100 disabled:opacity-40 text-orange-700 rounded-lg px-2.5 py-1 transition"
+                  >
+                    สุ่มเอาตามจำนวน
+                  </button>
+                </div>
+                {picked.length > 0 && (
+                  <button type="button" onClick={() => setPicked([])} className="text-xs text-neutral-400 hover:text-red-600 px-2 py-1 ml-auto">
+                    ล้างที่เลือกไว้
+                  </button>
+                )}
+              </div>
+
               <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-[46vh] overflow-y-auto">
                 {bank.map((b) => {
                   const on = picked.includes(b.id);
