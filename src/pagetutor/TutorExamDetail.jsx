@@ -893,6 +893,69 @@ function shuffleArr(arr) {
   return a;
 }
 
+// นับจำนวนข้อแยกตามหมวด×ระดับ ใช้สรุปให้ครูดูก่อนกดยืนยัน ทั้งโหมดสุ่มและโหมดเลือกเอง
+function summarizeByCategory(items) {
+  const map = new Map();
+  for (const it of items || []) {
+    const cat = it.category || "ไม่ระบุหมวด";
+    if (!map.has(cat)) map.set(cat, { category: cat, "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0 });
+    const row = map.get(cat);
+    const lv = BANK_LEVELS.includes(it.level) ? it.level : "ปานกลาง";
+    row[lv] += 1;
+  }
+  return [...map.values()].map((r) => ({ ...r, total: r["ง่าย"] + r["ปานกลาง"] + r["ยาก"] }));
+}
+
+// ตารางสรุปชุดข้อสอบ (หมวด × ระดับความยาก) — โชว์ก่อนยืนยัน ให้ครูเช็คว่าสัดส่วนพอใจไหม
+// ก่อนที่จะกดใช้ชุดนี้จริง ไม่ต้องไล่นับเองทีละข้อ
+function SetSummaryTable({ items }) {
+  const rows = summarizeByCategory(items);
+  if (!rows.length) return null;
+  const totals = rows.reduce(
+    (acc, r) => ({
+      "ง่าย": acc["ง่าย"] + r["ง่าย"],
+      "ปานกลาง": acc["ปานกลาง"] + r["ปานกลาง"],
+      "ยาก": acc["ยาก"] + r["ยาก"],
+      total: acc.total + r.total,
+    }),
+    { "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0, total: 0 }
+  );
+  return (
+    <div className="border border-neutral-200 rounded-xl overflow-hidden">
+      <p className="text-xs font-semibold text-neutral-600 px-4 pt-3 pb-1.5">สรุปชุดนี้ — ก่อนกดใช้ ลองดูว่าสัดส่วนพอใจไหม</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-neutral-50 text-neutral-500 text-xs">
+              <th className="text-left font-semibold px-4 py-2">หมวดเนื้อหา</th>
+              {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2 w-20">{lv}</th>)}
+              <th className="text-center font-semibold px-3 py-2 w-16">รวม</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.category} className="border-t border-neutral-100">
+                <td className="px-4 py-1.5 text-neutral-800">{r.category}</td>
+                {BANK_LEVELS.map((lv) => (
+                  <td key={lv} className="text-center px-3 py-1.5 text-neutral-600">{r[lv] || "-"}</td>
+                ))}
+                <td className="text-center px-3 py-1.5 font-semibold text-neutral-700">{r.total}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-neutral-200 bg-neutral-50/70 font-semibold text-neutral-800">
+              <td className="px-4 py-2">รวมทั้งหมด</td>
+              {BANK_LEVELS.map((lv) => <td key={lv} className="text-center px-3 py-2">{totals[lv] || "-"}</td>)}
+              <td className="text-center px-3 py-2">{totals.total}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Assemble Dialog — จัดชุดข้อสอบก่อนเปิดสอบ ───────────────────────────────
 // สองโหมด: ให้ระบบสุ่มมาหลายชุดให้เลือก หรือครูติ๊กเลือกเองจากคลัง
 // ชุดที่เลือกได้จะถูกคัดลอกลงรอบสอบ ต้นฉบับยังอยู่ในคลังเสมอ
@@ -902,7 +965,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   const [bank, setBank] = useState([]);
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState({});
-  const [totalScore, setTotalScore] = useState(20);
+  const totalScore = 20; // คะแนนเต็มต่อรอบคงที่ไว้ที่ 20 เสมอ เพื่อเทียบคะแนนข้ามรอบ/ข้ามวิชาได้บนสเกลเดียวกัน
   const [applyTo, setApplyTo] = useState("all");
   const [sets, setSets] = useState(null);
   const [activeSet, setActiveSet] = useState(0);
@@ -1007,6 +1070,36 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
     pickedItems.map((b) => ({ ...b, bankQuestionId: b.id })), totalScore
   );
 
+  // เลือกว่าชุดนี้จะใช้กับรอบไหนบ้าง — อธิบายเหตุผลละเอียดหน่อยเพราะเป็นการตัดสินใจที่กระทบ
+  // การวัดพัฒนาการก่อน-หลังโดยตรง ใช้ร่วมกันทั้งโหมดสุ่มและโหมดเลือกเอง
+  const applyToBox = (
+    <div className="border border-neutral-200 rounded-xl p-4 space-y-2.5">
+      <p className="text-sm font-semibold text-neutral-700">ใช้ชุดนี้กับ</p>
+
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "all" ? "bg-orange-50" : "hover:bg-neutral-50"}`}>
+        <input type="radio" name="applyTo" checked={applyTo === "all"} onChange={() => setApplyTo("all")} className="mt-1 accent-orange-500" />
+        <span>
+          <span className="text-sm font-medium text-neutral-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
+          <span className="block text-xs text-neutral-500 mt-0.5">
+            ใช้ข้อสอบชุดเดียวกันทุกรอบ — เทียบคะแนนก่อนเรียนกับหลังเรียนได้ตรงตามจริง เพราะไม่มีตัวแปร
+            "ข้อสอบยากง่ายไม่เท่ากัน" มาปนกับพัฒนาการที่เกิดจากการเรียนจริง ๆ เห็นทั้งภาพรวมทั้งห้องและรายบุคคลชัดเจน
+          </span>
+        </span>
+      </label>
+
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "this" ? "bg-orange-50" : "hover:bg-neutral-50"}`}>
+        <input type="radio" name="applyTo" checked={applyTo === "this"} onChange={() => setApplyTo("this")} className="mt-1 accent-orange-500" />
+        <span>
+          <span className="text-sm font-medium text-neutral-800">เฉพาะรอบนี้</span>
+          <span className="block text-xs text-neutral-500 mt-0.5">
+            ใช้เมื่อต้องการให้รอบนี้ต่างจากรอบอื่นโดยตั้งใจ (เช่น เปลี่ยนเนื้อหาที่สอนระหว่างเทอม) —
+            แต่หลังจากนี้จะเทียบผลก่อน-หลังของรอบนี้กับรอบอื่นแบบตรงไปตรงมาไม่ได้อีก เพราะข้อสอบไม่ใช่ชุดเดียวกันแล้ว
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -1081,27 +1174,14 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm text-neutral-600">คะแนนเต็ม</label>
-                  <input type="number" min={1} value={totalScore}
-                    onChange={(e) => { setTotalScore(Number(e.target.value) || 0); setSets(null); setWorking(null); }}
-                    className="w-20 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                  <span className="text-sm text-neutral-600">คะแนนเต็ม</span>
+                  <span className="w-20 border border-neutral-200 bg-neutral-50 rounded-lg px-2 py-1.5 text-sm text-center font-semibold text-neutral-700">{totalScore}</span>
+                  <span className="text-[11px] text-neutral-400">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
                 </div>
                 <p className="text-sm text-neutral-600">รวม <span className="font-bold text-neutral-900">{totalQuestions}</span> ข้อ</p>
               </div>
 
-              <div className="border border-neutral-200 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-semibold text-neutral-700">ใช้ชุดนี้กับ</p>
-                {[["all", "ทุกรอบ Pre / Mid / Post", "ต้องเป็นชุดเดียวกันจึงจะเทียบก่อนกับหลังเรียนได้"],
-                  ["this", "เฉพาะรอบนี้", "ใช้เมื่อต้องการให้รอบนี้ต่างจากรอบอื่น"]].map(([v, label, hint]) => (
-                  <label key={v} className="flex items-start gap-2 cursor-pointer">
-                    <input type="radio" name="applyTo" checked={applyTo === v} onChange={() => setApplyTo(v)} className="mt-1 accent-orange-500" />
-                    <span>
-                      <span className="text-sm text-neutral-800">{label}</span>
-                      <span className="block text-xs text-neutral-400">{hint}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
+              {applyToBox}
 
               {thinCategories.length > 0 && (
                 <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
@@ -1129,6 +1209,9 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <span className="text-neutral-600">รวม {fmtScore(scored.reduce((s, it) => s + it.score, 0))} คะแนน</span>
                 <span className="text-neutral-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
               </div>
+
+              <SetSummaryTable items={scored} />
+              {applyToBox}
 
               {notes.map((n, i) => (
                 <p key={i} className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">{n}</p>
@@ -1214,7 +1297,11 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                   </button>
                 </div>
                 {picked.length > 0 && (
-                  <button type="button" onClick={() => setPicked([])} className="text-xs text-neutral-400 hover:text-red-600 px-2 py-1 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setPicked([])}
+                    className="text-xs font-semibold text-neutral-600 hover:text-red-600 border border-neutral-200 hover:border-red-300 bg-white rounded-lg px-2.5 py-1 ml-auto transition"
+                  >
                     ล้างที่เลือกไว้
                   </button>
                 )}
@@ -1242,6 +1329,9 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 เลือกแล้ว <span className="font-bold text-neutral-900">{picked.length}</span> ข้อ
                 {picked.length > 0 && ` · ข้อละประมาณ ${fmtScore(pickedScored[0]?.score || 0)} คะแนน`}
               </p>
+
+              {picked.length > 0 && <SetSummaryTable items={pickedScored} />}
+              {applyToBox}
             </>
           )}
 
