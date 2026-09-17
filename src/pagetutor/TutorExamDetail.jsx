@@ -465,7 +465,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
-function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions }) {
+function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions, subjectName }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
   const [bulkGrade, setBulkGrade] = useState(""); // ระดับชั้นเดียวใส่ให้ทั้งไฟล์ที่ import ครั้งนี้ ไม่บังคับเลือก
   const [rowGradeOverrides, setRowGradeOverrides] = useState({}); // เผื่อบางข้อในไฟล์เดียวกันเป็นคนละระดับชั้น ปรับแยกรายข้อได้
@@ -528,6 +528,10 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-neutral-800">นำเข้าข้อสอบจาก Excel</p>
         <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
+        <Info className="h-3.5 w-3.5 flex-shrink-0" />
+        <span>ข้อที่นำเข้าทั้งหมดจะถูกเพิ่มเข้าคลังของวิชา <span className="font-semibold">{subjectName || "-"}</span></span>
       </div>
 
       {step === 1 && (
@@ -698,7 +702,7 @@ function scaleScoresLocal(items, totalScore) {
 // ─── Bank Tab — คลังข้อสอบของวิชา ────────────────────────────────────────────
 // คลังเป็นของวิชา ไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-function BankTab({ subjectId, showToast }) {
+function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDetail }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -793,6 +797,14 @@ function BankTab({ subjectId, showToast }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
+        <Info className="h-3.5 w-3.5 flex-shrink-0" />
+        <span>
+          กำลังจัดการคลังข้อสอบของวิชา <span className="font-semibold">{subjectName || "-"}</span>
+          {courseName && <> · คอร์ส {courseName}</>}
+          {courseGradeDetail && <> · ระดับชั้น {courseGradeDetail}</>}
+        </span>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของวิชานี้</p>
@@ -853,6 +865,7 @@ function BankTab({ subjectId, showToast }) {
             onImported={(count) => { load(); setMode(null); showToast?.("success", "นำเข้าเรียบร้อย", `เพิ่ม ${count} ข้อเข้าคลังแล้ว`); }}
             categoryOptions={categoryOptions}
             gradeLevelOptions={gradeLevels}
+            subjectName={subjectName}
           />
         )}
 
@@ -3209,7 +3222,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <BankTab subjectId={subjectId} showToast={showToast} />
+          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} courseName={courseName} courseGradeDetail={exam?.courseGradeDetail} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />
