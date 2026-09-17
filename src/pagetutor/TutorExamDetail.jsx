@@ -842,7 +842,7 @@ function BankTab({ subjectId, showToast, subjectName }) {
   const [gradeLevels, setGradeLevels] = useState([]); // รายการระดับชั้นให้เลือกตอนเพิ่ม/แก้ข้อ (ไม่บังคับ)
   const [selectedIds, setSelectedIds] = useState([]);  // ข้อที่ติ๊กไว้ เพื่อลบ/เปลี่ยนแท็กทีเดียวหลายข้อ
   const [bulkBusy, setBulkBusy] = useState(false);
-  const [bulkConfirmDelete, setBulkConfirmDelete] = useState(false);
+  const [bulkPending, setBulkPending] = useState(null);  // งานหลายข้อที่รอยืนยัน { type: grade|category|delete, value, label }
 
   useEffect(() => { fetchGradeLevels().then(setGradeLevels).catch(() => setGradeLevels([])); }, []);
 
@@ -887,7 +887,7 @@ function BankTab({ subjectId, showToast, subjectName }) {
       const next = prev.filter((id) => filtered.some((it) => it.id === id));
       return next.length === prev.length ? prev : next;   // คืน array เดิมถ้าไม่มีอะไรหลุด กัน re-render ฟรี ๆ
     });
-    setBulkConfirmDelete(false);
+    setBulkPending(null);
   }, [filtered]);
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id));
@@ -901,13 +901,45 @@ function BankTab({ subjectId, showToast, subjectName }) {
       await fn();
       load();
       setSelectedIds([]);
-      setBulkConfirmDelete(false);
+      setBulkPending(null);
       showToast?.("success", okTitle, okDetail);
     } catch (err) {
       console.error("Bulk bank action failed:", err);
       showToast?.("error", "ทำรายการไม่สำเร็จ", "ลองใหม่อีกครั้ง");
     } finally {
       setBulkBusy(false);
+    }
+  };
+
+  // งานแบบหลายข้อทุกชนิดต้องผ่านการยืนยันก่อนเสมอ ไม่ใช่แค่การลบ
+  // เพราะเลือก dropdown พลาดทีเดียวก็เปลี่ยนแท็กของข้อสอบหลายสิบข้อพร้อมกันแล้ว
+  const bulkPendingText = () => {
+    const n = selectedIds.length;
+    if (!bulkPending) return "";
+    if (bulkPending.type === "delete") return `ลบ ${n} ข้อออกจากคลัง? (ผลสอบเก่าไม่กระทบ)`;
+    if (bulkPending.type === "category") return `ย้าย ${n} ข้อไปหมวด "${bulkPending.value}"?`;
+    return bulkPending.value === null
+      ? `ล้างระดับชั้นของ ${n} ข้อ ให้ใช้ได้ทุกระดับชั้น?`
+      : `เปลี่ยนระดับชั้นของ ${n} ข้อเป็น "${bulkPending.label}"?`;
+  };
+
+  const runBulkPending = () => {
+    if (!bulkPending) return;
+    const n = selectedIds.length;
+    if (bulkPending.type === "delete") {
+      runBulk(() => bulkDeleteBankQuestions(selectedIds), `ลบ ${n} ข้อออกจากคลังแล้ว`);
+    } else if (bulkPending.type === "category") {
+      runBulk(
+        () => bulkUpdateBankQuestions(selectedIds, { category: bulkPending.value }),
+        `ย้าย ${n} ข้อแล้ว`,
+        `ไปหมวด "${bulkPending.value}"`
+      );
+    } else {
+      runBulk(
+        () => bulkUpdateBankQuestions(selectedIds, { gradeLevelId: bulkPending.value }),
+        `เปลี่ยนระดับชั้น ${n} ข้อแล้ว`,
+        bulkPending.value === null ? "ไม่ระบุระดับชั้น" : bulkPending.label
+      );
     }
   };
 
@@ -1084,74 +1116,77 @@ function BankTab({ subjectId, showToast, subjectName }) {
       {selectedIds.length > 0 && !editing && (
         <div className="border border-orange-200 bg-orange-50 rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
           <p className="text-xs font-semibold text-orange-800">เลือกไว้ {selectedIds.length} ข้อ</p>
-          <button onClick={() => setSelectedIds([])} className="text-[11px] text-neutral-500 hover:text-neutral-700 underline">
+          <button
+            onClick={() => { setSelectedIds([]); setBulkPending(null); }}
+            className="text-[11px] text-neutral-500 hover:text-neutral-700 underline"
+          >
             ยกเลิกการเลือก
           </button>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <select
-              value=""
-              disabled={bulkBusy}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "") return;
-                const gid = v === "none" ? null : Number(v);
-                const label = v === "none" ? "ไม่ระบุระดับชั้น" : (gradeLevels.find((g) => String(g.id) === v)?.label || "");
-                runBulk(
-                  () => bulkUpdateBankQuestions(selectedIds, { gradeLevelId: gid }),
-                  `เปลี่ยนระดับชั้น ${selectedIds.length} ข้อแล้ว`,
-                  label
-                );
-              }}
-              className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
-            >
-              <option value="">เปลี่ยนระดับชั้น…</option>
-              <option value="none">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
-              {gradeLevels.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
-            </select>
-
-            <select
-              value=""
-              disabled={bulkBusy || categoryOptions.length === 0}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (!v) return;
-                runBulk(
-                  () => bulkUpdateBankQuestions(selectedIds, { category: v }),
-                  `ย้าย ${selectedIds.length} ข้อแล้ว`,
-                  `ไปหมวด "${v}"`
-                );
-              }}
-              className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
-            >
-              <option value="">เปลี่ยนหมวดหมู่…</option>
-              {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
-            </select>
-
-            {!bulkConfirmDelete ? (
+          {bulkPending ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className={`text-xs font-medium ${bulkPending.type === "delete" ? "text-red-700" : "text-neutral-700"}`}>
+                {bulkPendingText()}
+              </span>
               <button
-                onClick={() => setBulkConfirmDelete(true)}
+                onClick={runBulkPending}
                 disabled={bulkBusy}
-                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                className={`text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition disabled:opacity-40 ${
+                  bulkPending.type === "delete" ? "bg-red-600 hover:bg-red-700" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {bulkBusy ? "กำลังบันทึก…" : bulkPending.type === "delete" ? "ลบเลย" : "ยืนยัน"}
+              </button>
+              <button
+                onClick={() => setBulkPending(null)}
+                disabled={bulkBusy}
+                className="text-xs text-neutral-600 font-medium px-2 py-1.5 hover:bg-white rounded-lg transition disabled:opacity-40"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          ) : (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") return;
+                  setBulkPending({
+                    type: "grade",
+                    value: v === "none" ? null : Number(v),
+                    label: v === "none" ? "ไม่ระบุระดับชั้น" : (gradeLevels.find((g) => String(g.id) === v)?.label || ""),
+                  });
+                }}
+                className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs"
+              >
+                <option value="">เปลี่ยนระดับชั้น…</option>
+                <option value="none">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
+                {gradeLevels.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+              </select>
+
+              <select
+                value=""
+                disabled={categoryOptions.length === 0}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  setBulkPending({ type: "category", value: v });
+                }}
+                className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
+              >
+                <option value="">เปลี่ยนหมวดหมู่…</option>
+                {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
+              </select>
+
+              <button
+                onClick={() => setBulkPending({ type: "delete" })}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
               >
                 <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก
               </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-red-700 font-medium">ลบ {selectedIds.length} ข้อออกจากคลัง? (ผลสอบเก่าไม่กระทบ)</span>
-                <button
-                  onClick={() => runBulk(() => bulkDeleteBankQuestions(selectedIds), `ลบ ${selectedIds.length} ข้อออกจากคลังแล้ว`)}
-                  disabled={bulkBusy}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition"
-                >
-                  {bulkBusy ? "กำลังลบ…" : "ลบเลย"}
-                </button>
-                <button onClick={() => setBulkConfirmDelete(false)} className="text-xs text-neutral-600 font-medium px-2 py-1.5 hover:bg-white rounded-lg transition">
-                  ไม่ลบ
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
