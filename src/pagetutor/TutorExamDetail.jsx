@@ -17,6 +17,7 @@ import {
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
   fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
   assembleExamSet, applyExamSet,
   analyzeExamWithAi, fetchAiSummaries, updateAiSummary,
 } from "../utils/examShared";
@@ -219,6 +220,10 @@ const normCategory = (v) =>
     .toLowerCase()
     .replace(/[\s\-_./,]/g, "")
     .replace(/(และ|กับ|หรือ|ของ)/g, "");
+
+// เทียบ "โจทย์ซ้ำ" แบบหลวม ๆ — ตัดช่องว่างซ้ำและตัวพิมพ์เล็กใหญ่ออกก่อนเทียบ
+// จงใจไม่ใช้ normCategory เพราะอันนั้นตัดคำเชื่อมทิ้ง ซึ่งกับ "โจทย์" จะทำให้จับซ้ำผิดตัว
+const normQuestionText = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
 
 // ระยะแก้ไข (Levenshtein) ไว้จับกรณีพิมพ์ตกหล่น/พิมพ์ผิดเล็กน้อย เช่น "กรดเบส" กับ "กรคเบส"
 function levenshtein(a, b) {
@@ -465,10 +470,11 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
-function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions, subjectName }) {
+function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions, existingItems }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
   const [bulkGrade, setBulkGrade] = useState(""); // ระดับชั้นเดียวใส่ให้ทั้งไฟล์ที่ import ครั้งนี้ ไม่บังคับเลือก
   const [rowGradeOverrides, setRowGradeOverrides] = useState({}); // เผื่อบางข้อในไฟล์เดียวกันเป็นคนละระดับชั้น ปรับแยกรายข้อได้
+  const [skipDup, setSkipDup] = useState(false); // ข้ามข้อที่ซ้ำตอนกดยืนยัน (ค่าเริ่มต้นคือไม่ข้าม — แค่เตือน)
   const [catMap, setCatMap] = useState({});   // หมวดในไฟล์ -> หมวดในคลังที่จะแมปเข้า
   const knownCategories = new Set((categoryOptions || []).map((c) => normCategory(c.category)));
   const [rows, setRows] = useState([]);
@@ -495,17 +501,26 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     setConfirming(true);
     setError("");
     try {
-      const mapped = rows.map((r, i) => ({
-        ...r,
-        category: catMap[r.category?.trim()] || r.category,
-        gradeLevelId: (() => {
-          const ov = rowGradeOverrides[i];
-          const eff = ov !== undefined && ov !== "" ? ov : bulkGrade;
-          return eff === "" ? null : Number(eff);
-        })(),
-      }));
-      await onConfirmRows(mapped);
-      onImported(mapped.length);
+      const mapped = rows
+        .map((r, i) => ({
+          ...r,
+          category: catMap[r.category?.trim()] || r.category,
+          bankId: rowPlan[i]?.mode === "update" ? rowPlan[i].id : null,
+          gradeLevelId: (() => {
+            const eff = effGradeId(i);
+            return eff === "" ? null : Number(eff);
+          })(),
+        }))
+        .filter((_r, i) => !(skipDup && dupFlags[i]));
+
+      if (!mapped.length) {
+        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว");
+        setConfirming(false);
+        return;
+      }
+
+      const result = await onConfirmRows(mapped);
+      onImported(result || {});
     } catch (err) {
       console.error("Excel import save failed:", err);
       setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -523,15 +538,83 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
   )];
   const countOfCat = (c) => rows.filter((r) => r.category?.trim() === c).length;
 
+  // คอลัมน์ grade_level ในไฟล์เก็บเป็น "ชื่อ" ระดับชั้น (เช่น ม.3) ต้องแปลงกลับเป็น id
+  // ชื่อที่ไม่ตรงกับระดับชั้นในระบบถือว่าไม่ได้ระบุ แล้วตกไปใช้ค่าเริ่มต้นของไฟล์แทน
+  const gradeIdFromLabel = (label) => {
+    const t = String(label || "").trim().toLowerCase();
+    if (!t) return null;
+    const g = (gradeLevelOptions || []).find((x) => String(x.label).trim().toLowerCase() === t);
+    return g ? g.id : null;
+  };
+
+  // ระดับชั้นที่จะถูกบันทึกจริงของแถวนั้น เรียงความสำคัญ: เลือกเองรายข้อ > ค่าในไฟล์ > ค่าเริ่มต้นของไฟล์
+  const effGradeId = (i) => {
+    const ov = rowGradeOverrides[i];
+    if (ov !== undefined && ov !== "") return String(ov);
+    const fromFile = gradeIdFromLabel(rows[i]?.gradeLabel);
+    if (fromFile != null) return String(fromFile);
+    return bulkGrade === "" ? "" : String(bulkGrade);
+  };
+
+  // ── แถวไหน "ทับข้อเดิม" แถวไหน "เพิ่มใหม่" ─────────────────────────────────
+  // ทับได้เมื่อ bank_id ในไฟล์เป็นข้อที่ยังอยู่ในคลังของวิชานี้จริงเท่านั้น
+  // ที่เหลือกลายเป็นข้อใหม่ทั้งหมด พร้อมบอกเหตุผลให้ครูเห็น:
+  //   notfound = id ไม่ใช่ของวิชานี้ (เช่นหยิบไฟล์ของวิชาอื่นมา) หรือข้อนั้นถูกลบไปแล้ว
+  //   iddup    = bank_id เดียวกันโผล่หลายแถวในไฟล์ แถวแรกได้ทับ ที่เหลือเป็นข้อใหม่
+  // ฝั่งหลังบ้านตัดสินซ้ำอีกรอบด้วยกติกาเดียวกัน หน้าจอนี้แค่บอกล่วงหน้าว่าจะเกิดอะไรขึ้น
+  const ownIdSet = useMemo(
+    () => new Set((existingItems || []).map((it) => Number(it.id))),
+    [existingItems]
+  );
+  const rowPlan = useMemo(() => {
+    const used = new Set();
+    return rows.map((r) => {
+      const id = Number(r.bankId) || null;
+      if (!id) return { mode: "new" };
+      if (!ownIdSet.has(id)) return { mode: "new", note: "notfound" };
+      if (used.has(id)) return { mode: "new", note: "iddup" };
+      used.add(id);
+      return { mode: "update", id };
+    });
+  }, [rows, ownIdSet]);
+
+  // ── หาข้อที่ซ้ำ ────────────────────────────────────────────────────────────
+  // "bank" = ซ้ำกับข้ออื่นที่มีอยู่แล้วในคลัง / "file" = ซ้ำกันเองในไฟล์ที่เพิ่งอัปโหลด
+  // แถวที่กำลังจะทับ "ตัวเอง" ไม่นับว่าซ้ำ ไม่งั้นไฟล์ที่ export ออกไปแก้จะขึ้นเตือนทั้งไฟล์
+  // ตั้งใจให้เป็นแค่คำเตือน ไม่บล็อกการนำเข้า เพราะบางทีครูตั้งใจมีข้อคล้ายกันหลายเวอร์ชัน
+  const bankTextById = useMemo(() => {
+    const m = new Map();
+    for (const it of existingItems || []) {
+      const k = normQuestionText(it.text);
+      if (k && !m.has(k)) m.set(k, Number(it.id));
+    }
+    return m;
+  }, [existingItems]);
+  const dupFlags = useMemo(() => {
+    const seen = new Set();
+    return rows.map((r, i) => {
+      const key = normQuestionText(r.text);
+      if (!key) return null;
+      const hitId = bankTextById.get(key);
+      if (hitId != null && hitId !== rowPlan[i]?.id) return "bank";
+      if (seen.has(key)) return "file";
+      seen.add(key);
+      return null;
+    });
+  }, [rows, bankTextById, rowPlan]);
+  const dupCount = dupFlags.filter(Boolean).length;
+
+  // นับตามที่จะเกิดขึ้นจริงหลังหักข้อที่ถูกข้าม เพื่อให้ตัวเลขบนปุ่มยืนยันตรงกับผลลัพธ์
+  const keptRows = rows.map((_r, i) => !(skipDup && dupFlags[i]));
+  const importCount = keptRows.filter(Boolean).length;
+  const updateCount = rowPlan.filter((p, i) => p.mode === "update" && keptRows[i]).length;
+  const newCount = importCount - updateCount;
+
   return (
     <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-neutral-800">นำเข้าข้อสอบจาก Excel</p>
         <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-      </div>
-      <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
-        <Info className="h-3.5 w-3.5 flex-shrink-0" />
-        <span>ข้อที่นำเข้าทั้งหมดจะถูกเพิ่มเข้าคลังของวิชา <span className="font-semibold">{subjectName || "-"}</span></span>
       </div>
 
       {step === 1 && (
@@ -563,6 +646,9 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-green-100 text-green-700">พบ {rows.length} ข้อ</Badge>
             {invalidCount > 0 && <Badge className="bg-amber-100 text-amber-700">{invalidCount} ข้อมีปัญหา</Badge>}
+            {updateCount > 0 && <Badge className="bg-blue-100 text-blue-700">ทับของเดิม {updateCount} ข้อ</Badge>}
+            {newCount > 0 && <Badge className="bg-neutral-100 text-neutral-600">เพิ่มใหม่ {newCount} ข้อ</Badge>}
+            {dupCount > 0 && <Badge className="bg-red-100 text-red-700">{dupCount} ข้อซ้ำ</Badge>}
             <div className="flex items-center gap-1.5 ml-auto">
               <span className="text-xs text-neutral-500">ระดับชั้นเริ่มต้นของไฟล์นี้:</span>
               <select
@@ -577,7 +663,20 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               </select>
             </div>
           </div>
-          <p className="text-[10px] text-neutral-400 -mt-1">ตั้งเป็นค่าเริ่มต้นให้ทุกข้อในไฟล์นี้ — แต่ละข้อยังปรับระดับชั้นแยกเป็นรายข้อได้ที่ท้ายแถวรายการด้านล่าง</p>
+          <p className="text-[10px] text-neutral-400 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
+
+          {dupCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+              <p className="text-xs text-red-700 flex-1 min-w-[200px]">
+                พบ {dupCount} ข้อที่โจทย์ซ้ำ (กับข้อในคลังเดิม หรือซ้ำกันเองในไฟล์) — นำเข้าต่อได้ถ้าตั้งใจ
+              </p>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-red-700 cursor-pointer">
+                <input type="checkbox" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} className="accent-red-500" />
+                ข้ามข้อที่ซ้ำ ({rows.length - dupCount} ข้อจะถูกนำเข้า)
+              </label>
+            </div>
+          )}
 
           {unknownCats.length > 0 && (
             <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
@@ -617,11 +716,29 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           <div className="border border-neutral-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-neutral-50">
             {rows.map((q, i) => {
               const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+              const dup = dupFlags[i];
+              const skipped = skipDup && dup;
+              const plan = rowPlan[i] || { mode: "new" };
               return (
-                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${bad ? "bg-amber-50/50" : ""}`}>
+                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-neutral-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className="text-xs text-neutral-700 truncate">{q.text || "(ไม่มีโจทย์)"}</p>
+                    <p className={`text-xs truncate ${skipped ? "text-neutral-400 line-through" : "text-neutral-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
+                    {plan.mode === "update" && (
+                      <p className="text-[10px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
+                    )}
+                    {plan.note === "notfound" && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">ไม่พบ bank_id นี้ในคลังของวิชานี้ — จะเพิ่มเป็นข้อใหม่แทน</p>
+                    )}
+                    {plan.note === "iddup" && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">bank_id ซ้ำกับแถวก่อนหน้าในไฟล์เดียวกัน — จะเพิ่มเป็นข้อใหม่แทน</p>
+                    )}
+                    {dup && (
+                      <p className="text-[10px] text-red-600 mt-0.5">
+                        {dup === "bank" ? "โจทย์ซ้ำกับข้อที่มีอยู่แล้วในคลัง" : "โจทย์ซ้ำกับอีกข้อในไฟล์เดียวกัน"}
+                        {skipped ? " — จะไม่ถูกนำเข้า" : ""}
+                      </p>
+                    )}
                     <p className="text-[10px] text-neutral-400">
                       {q.level} {q.category && `· ${q.category}`}
                       {q.explanation?.trim() ? (
@@ -637,11 +754,12 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                       <p className="text-[10px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
                     )}
                     {(() => {
-                      const ov = rowGradeOverrides[i];
-                      const eff = ov !== undefined && ov !== "" ? ov : bulkGrade;
-                      if (eff === "" || eff == null) return null;
+                      const eff = effGradeId(i);
+                      if (eff === "") return null;
                       const g = (gradeLevelOptions || []).find((x) => String(x.id) === String(eff));
-                      return g ? <p className="text-[10px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}</p> : null;
+                      if (!g) return null;
+                      const fromFile = gradeIdFromLabel(q.gradeLabel) != null && (rowGradeOverrides[i] === undefined || rowGradeOverrides[i] === "");
+                      return <p className="text-[10px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}{fromFile ? " (จากไฟล์)" : ""}</p>;
                     })()}
                   </div>
                   <select
@@ -668,7 +786,11 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           <div className="flex justify-between">
             <button onClick={() => setStep(1)} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium">← อัปโหลดไฟล์อื่น</button>
             <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
-              {confirming ? "กำลังบันทึก…" : `ยืนยันนำเข้า ${rows.length} ข้อ`}
+              {confirming
+                ? "กำลังบันทึก…"
+                : updateCount > 0
+                  ? `ยืนยัน — ทับของเดิม ${updateCount} · เพิ่มใหม่ ${newCount}`
+                  : `ยืนยันนำเข้า ${importCount} ข้อ`}
             </button>
           </div>
         </div>
@@ -702,7 +824,7 @@ function scaleScoresLocal(items, totalScore) {
 // ─── Bank Tab — คลังข้อสอบของวิชา ────────────────────────────────────────────
 // คลังเป็นของวิชา ไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDetail }) {
+function BankTab({ subjectId, showToast, subjectName }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -718,6 +840,9 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
   const [formKey, setFormKey] = useState(0);      // เปลี่ยนค่านี้เพื่อบังคับให้ฟอร์มเพิ่มข้อ mount ใหม่ (เคลียร์ฟอร์มแน่นอน)
   const panelRef = useRef(null);                  // ใช้เลื่อนจอขึ้นมาหาฟอร์มตอนกด "แก้ไข" ข้อที่อยู่ล่าง ๆ ของรายการ
   const [gradeLevels, setGradeLevels] = useState([]); // รายการระดับชั้นให้เลือกตอนเพิ่ม/แก้ข้อ (ไม่บังคับ)
+  const [selectedIds, setSelectedIds] = useState([]);  // ข้อที่ติ๊กไว้ เพื่อลบ/เปลี่ยนแท็กทีเดียวหลายข้อ
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkConfirmDelete, setBulkConfirmDelete] = useState(false);
 
   useEffect(() => { fetchGradeLevels().then(setGradeLevels).catch(() => setGradeLevels([])); }, []);
 
@@ -754,6 +879,44 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
       (!kw || it.text.toLowerCase().includes(kw))
     );
   }, [items, search, fCat, fLevel]);
+
+  // ติ๊กได้เฉพาะข้อที่มองเห็นอยู่จริงบนจอ ถ้าเปลี่ยนตัวกรองจนข้อที่เลือกไว้หลุดจากรายการ
+  // ให้ถอดออกจากรายการที่เลือกด้วย — กันเผลอลบข้อที่ตัวเองมองไม่เห็นตอนกดยืนยัน
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => filtered.some((it) => it.id === id));
+      return next.length === prev.length ? prev : next;   // คืน array เดิมถ้าไม่มีอะไรหลุด กัน re-render ฟรี ๆ
+    });
+    setBulkConfirmDelete(false);
+  }, [filtered]);
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id));
+  const toggleSelect = (id) => setSelectedIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const toggleSelectAll = () => setSelectedIds(allVisibleSelected ? [] : filtered.map((it) => it.id));
+
+  // ทุกงานแบบหลายข้อวิ่งผ่านตัวนี้ตัวเดียว เพื่อให้ล้างสถานะ/โหลดใหม่/แจ้งเตือนเหมือนกันหมด
+  const runBulk = async (fn, okTitle, okDetail = "") => {
+    setBulkBusy(true);
+    try {
+      await fn();
+      load();
+      setSelectedIds([]);
+      setBulkConfirmDelete(false);
+      showToast?.("success", okTitle, okDetail);
+    } catch (err) {
+      console.error("Bulk bank action failed:", err);
+      showToast?.("error", "ทำรายการไม่สำเร็จ", "ลองใหม่อีกครั้ง");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  // ส่งออกทั้งคลัง (ไม่ใช่เฉพาะที่กรองอยู่) เพราะไฟล์นี้มีไว้แก้แบบออฟไลน์แล้วนำเข้ากลับ
+  const handleExport = () => {
+    if (!items.length) return;
+    exportBankXlsx(items, subjectName);
+    showToast?.("success", "ส่งออกไฟล์แล้ว", `คลัง ${items.length} ข้อ — แก้ใน Excel แล้วนำเข้ากลับได้เลย`);
+  };
 
   const handleAddOne = async (q) => {
     setSaving(true); setFormError("");
@@ -797,14 +960,6 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-xs text-blue-700">
-        <Info className="h-3.5 w-3.5 flex-shrink-0" />
-        <span>
-          กำลังจัดการคลังข้อสอบของวิชา <span className="font-semibold">{subjectName || "-"}</span>
-          {courseName && <> · คอร์ส {courseName}</>}
-          {courseGradeDetail && <> · ระดับชั้น {courseGradeDetail}</>}
-        </span>
-      </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของวิชานี้</p>
@@ -815,6 +970,11 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
         </div>
         {!mode && !editing && (
           <div className="flex items-center gap-2">
+            {items.length > 0 && (
+              <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-neutral-200 hover:border-green-300 hover:text-green-700 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+                <Download className="h-4 w-4" /> ส่งออก Excel
+              </button>
+            )}
             {items.length > 0 && (
               <button onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
                 <Tags className="h-4 w-4" /> จัดการหมวดหมู่
@@ -861,11 +1021,20 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
         {mode === "excel" && (
           <ExcelImportFlow
             onCancel={() => setMode(null)}
-            onConfirmRows={(rows) => addBankQuestions(subjectId, rows)}
-            onImported={(count) => { load(); setMode(null); showToast?.("success", "นำเข้าเรียบร้อย", `เพิ่ม ${count} ข้อเข้าคลังแล้ว`); }}
+            onConfirmRows={(rows) => upsertBankQuestions(subjectId, rows)}
+            onImported={(r) => {
+              load();
+              setMode(null);
+              const ins = Number(r?.inserted || 0);
+              const upd = Number(r?.updated || 0);
+              const parts = [];
+              if (ins) parts.push(`เพิ่มใหม่ ${ins} ข้อ`);
+              if (upd) parts.push(`อัปเดตทับ ${upd} ข้อ`);
+              showToast?.("success", "นำเข้าเรียบร้อย", parts.join(" · ") || "ไม่มีการเปลี่ยนแปลง");
+            }}
             categoryOptions={categoryOptions}
             gradeLevelOptions={gradeLevels}
-            subjectName={subjectName}
+            existingItems={items}
           />
         )}
 
@@ -903,6 +1072,86 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
             <option value="">ทุกระดับ</option>
             {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
           </select>
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-neutral-600 cursor-pointer select-none px-1">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="accent-orange-500" />
+              เลือกทั้งหมด ({filtered.length})
+            </label>
+          )}
+        </div>
+      )}
+
+      {selectedIds.length > 0 && !editing && (
+        <div className="border border-orange-200 bg-orange-50 rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
+          <p className="text-xs font-semibold text-orange-800">เลือกไว้ {selectedIds.length} ข้อ</p>
+          <button onClick={() => setSelectedIds([])} className="text-[11px] text-neutral-500 hover:text-neutral-700 underline">
+            ยกเลิกการเลือก
+          </button>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <select
+              value=""
+              disabled={bulkBusy}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "") return;
+                const gid = v === "none" ? null : Number(v);
+                const label = v === "none" ? "ไม่ระบุระดับชั้น" : (gradeLevels.find((g) => String(g.id) === v)?.label || "");
+                runBulk(
+                  () => bulkUpdateBankQuestions(selectedIds, { gradeLevelId: gid }),
+                  `เปลี่ยนระดับชั้น ${selectedIds.length} ข้อแล้ว`,
+                  label
+                );
+              }}
+              className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
+            >
+              <option value="">เปลี่ยนระดับชั้น…</option>
+              <option value="none">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
+              {gradeLevels.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+            </select>
+
+            <select
+              value=""
+              disabled={bulkBusy || categoryOptions.length === 0}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) return;
+                runBulk(
+                  () => bulkUpdateBankQuestions(selectedIds, { category: v }),
+                  `ย้าย ${selectedIds.length} ข้อแล้ว`,
+                  `ไปหมวด "${v}"`
+                );
+              }}
+              className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
+            >
+              <option value="">เปลี่ยนหมวดหมู่…</option>
+              {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
+            </select>
+
+            {!bulkConfirmDelete ? (
+              <button
+                onClick={() => setBulkConfirmDelete(true)}
+                disabled={bulkBusy}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-700 font-medium">ลบ {selectedIds.length} ข้อออกจากคลัง? (ผลสอบเก่าไม่กระทบ)</span>
+                <button
+                  onClick={() => runBulk(() => bulkDeleteBankQuestions(selectedIds), `ลบ ${selectedIds.length} ข้อออกจากคลังแล้ว`)}
+                  disabled={bulkBusy}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition"
+                >
+                  {bulkBusy ? "กำลังลบ…" : "ลบเลย"}
+                </button>
+                <button onClick={() => setBulkConfirmDelete(false)} className="text-xs text-neutral-600 font-medium px-2 py-1.5 hover:bg-white rounded-lg transition">
+                  ไม่ลบ
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -917,7 +1166,7 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
       ) : (
         <div className="border border-neutral-200 rounded-2xl divide-y divide-neutral-100">
           {filtered.map((it) => (
-            <div key={it.id} className={`px-4 py-3 flex items-start gap-3 ${deletingId === it.id ? "bg-red-50" : ""}`}>
+            <div key={it.id} className={`px-4 py-3 flex items-start gap-3 ${deletingId === it.id ? "bg-red-50" : selectedIds.includes(it.id) ? "bg-orange-50/60" : ""}`}>
               {deletingId === it.id ? (
                 <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-red-700 font-medium">ลบข้อนี้ออกจากคลังถาวร? (ข้อที่เคยใช้สอบไปแล้วจะไม่กระทบผลสอบเดิม)</p>
@@ -928,11 +1177,21 @@ function BankTab({ subjectId, showToast, subjectName, courseName, courseGradeDet
                 </div>
               ) : (
                 <>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(it.id)}
+                    onChange={() => toggleSelect(it.id)}
+                    title="เลือกไว้เพื่อลบหรือเปลี่ยนแท็กทีเดียวหลายข้อ"
+                    className="mt-1 accent-orange-500 flex-shrink-0"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category || "ไม่ระบุหมวด"}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
+                      {it.gradeDetail && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{it.gradeDetail}</span>
+                      )}
                       <span className="text-[11px] text-neutral-400">
                         {it.usedCount > 0
                           ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
@@ -3222,7 +3481,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} courseName={courseName} courseGradeDetail={exam?.courseGradeDetail} />
+          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />

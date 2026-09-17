@@ -78,18 +78,19 @@ export const emptyQuestion = () => ({
 
 // ── xlsx template / import (parsing only — saving goes through addQuestions) ─
 export const downloadXlsxTemplate = () => {
-  const headers = ["question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation"];
+  const headers = ["bank_id", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
   const sample = [
-    { question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต", explanation: "แยกตัวประกอบได้ (x−2)(x−3)=0 จึงได้ x=2 หรือ x=3" },
-    { question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ", explanation: "" },
+    { bank_id: "", question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต", explanation: "แยกตัวประกอบได้ (x−2)(x−3)=0 จึงได้ x=2 หรือ x=3", grade_level: "ม.3" },
+    { bank_id: "", question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ", explanation: "", grade_level: "" },
   ];
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...sample.map((r) => headers.map((h) => r[h]))];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws["!cols"] = [{ wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }];
+  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
   const instr = [
     ["📋 คำอธิบาย Template ข้อสอบ"], [],
     ["คอลัมน์", "คำอธิบาย", "ค่าที่รองรับ", "บังคับ?"],
+    ["bank_id", "รหัสข้อเดิมในคลัง — ใส่มาเมื่อต้องการแก้ข้อเดิม", "เว้นว่าง = เพิ่มเป็นข้อใหม่ / มีเลข = อัปเดตทับข้อนั้น", "ไม่บังคับ"],
     ["question", "โจทย์ข้อสอบ", "ข้อความ (รองรับ LaTeX เช่น $x^2$)", "✅ บังคับ"],
     ["option_a", "ตัวเลือก A", "ข้อความ", "✅ บังคับ"],
     ["option_b", "ตัวเลือก B", "ข้อความ", "✅ บังคับ"],
@@ -100,13 +101,47 @@ export const downloadXlsxTemplate = () => {
     ["level", "ระดับความยาก", "ง่าย / ปานกลาง / ยาก", "ไม่บังคับ (default = ปานกลาง)"],
     ["category", "หมวดหมู่", "ข้อความใดก็ได้ เช่น พีชคณิต", "ไม่บังคับ"],
     ["explanation", "คำอธิบายเฉลย", "ข้อความอธิบายว่าทำไมคำตอบถึงถูก — นักเรียนจะเห็นหลังส่งข้อสอบ", "ไม่บังคับ"],
+    ["grade_level", "ระดับชั้นของเนื้อหาข้อนี้", "ชื่อระดับชั้นตามระบบ เช่น ม.3 — เว้นว่าง = ใช้ได้ทุกระดับชั้น", "ไม่บังคับ"],
     [], [], ["• ห้ามลบแถวหัวตาราง"], ["• correct_answer ต้องเป็น A B C D เท่านั้น"],
+    ["• bank_id มาจากไฟล์ที่กดส่งออกจากคลัง — ถ้าอยากได้ข้อใหม่ที่ดัดแปลงจากข้อเดิม ให้ลบเลขในช่อง bank_id ทิ้ง"],
+    ["• bank_id ที่ไม่ใช่ของวิชานี้ หรือซ้ำกันหลายแถวในไฟล์เดียว ระบบจะถือว่าเป็นข้อใหม่แทน (ไม่เขียนทับข้ามวิชา)"],
+    ["• grade_level ถ้าพิมพ์ชื่อไม่ตรงกับระดับชั้นในระบบ ตอนนำเข้าจะถือว่าเว้นว่าง แล้วใช้ค่าเริ่มต้นที่เลือกบนหน้าจอแทน"],
   ];
   const ws2 = XLSX.utils.aoa_to_sheet(instr);
   ws2["!cols"] = [{ wch: 20 }, { wch: 40 }, { wch: 36 }, { wch: 14 }];
   XLSX.utils.book_append_sheet(wb, ws, "Template");
   XLSX.utils.book_append_sheet(wb, ws2, "คำอธิบาย");
   XLSX.writeFile(wb, "exam_template.xlsx");
+};
+
+// ── export คลังทั้งวิชาเป็น .xlsx ────────────────────────────────────────────
+// หัวตารางตรงกับ template เป๊ะ ๆ และอยู่ชีตแรก เพื่อให้แก้ใน Excel แล้วนำเข้ากลับได้ทันที
+// (parseXlsx อ่านเฉพาะชีตแรก) — คอลัมน์ bank_id มีไว้ให้คนอ่านอ้างอิงเฉย ๆ ระบบไม่ได้ใช้
+export const exportBankXlsx = (items, subjectName = "") => {
+  const headers = ["bank_id", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
+  const rows = (items || []).map((it) => [
+    it.id,
+    it.text || "",
+    it.options?.[0] || "",
+    it.options?.[1] || "",
+    it.options?.[2] || "",
+    it.options?.[3] || "",
+    it.correct || "",
+    1,
+    it.level || "ปานกลาง",
+    it.category || "",
+    it.explanation || "",
+    it.gradeDetail || "",
+  ]);
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, ws, "คลังข้อสอบ");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const safeSubject = String(subjectName || "").replace(/[\\/:*?"<>|]/g, "").trim();
+  XLSX.writeFile(wb, `คลังข้อสอบ${safeSubject ? `_${safeSubject}` : ""}_${today}.xlsx`);
 };
 
 export const parseXlsx = (file) =>
@@ -129,6 +164,8 @@ export const parseXlsx = (file) =>
             level: ["ง่าย", "ปานกลาง", "ยาก"].includes(r.level) ? r.level : "ปานกลาง",
             category: String(r.category || ""),
             explanation: String(r.explanation || ""),   // ← เพิ่ม
+            gradeLabel: String(r.grade_level || "").trim(),
+            bankId: Number(r.bank_id) || null,   // มีเลข = ตั้งใจแก้ข้อเดิม, ว่าง = ข้อใหม่
           }));
         resolve(parsed);
       } catch (err) { reject(err); }
@@ -266,6 +303,27 @@ export async function updateBankQuestion(id, patch) {
 
 export async function deleteBankQuestion(id) {
   const { data } = await axios.delete(`${BANK_BASE}/${id}`, { headers: authHeaders() });
+  return data;
+}
+
+// POST /api/bank/upsert → นำเข้าจาก Excel แบบรู้จักของเดิม
+// แถวที่มี bankId ของวิชานี้จะอัปเดตทับ ที่เหลือเพิ่มใหม่ → { updated, inserted }
+export async function upsertBankQuestions(subjectId, questions) {
+  const { data } = await axios.post(`${BANK_BASE}/upsert`, { subjectId, questions }, { headers: authHeaders() });
+  return data;
+}
+
+// POST /api/bank/bulk-delete → ลบหลายข้อพร้อมกัน (soft delete เหมือนลบทีละข้อ)
+export async function bulkDeleteBankQuestions(ids) {
+  const { data } = await axios.post(`${BANK_BASE}/bulk-delete`, { ids }, { headers: authHeaders() });
+  return data;
+}
+
+// PUT /api/bank/bulk-update → เปลี่ยนระดับชั้น/หมวดหมู่หลายข้อพร้อมกัน
+// patch ส่งเฉพาะที่จะเปลี่ยน เช่น { gradeLevelId: 3 } หรือ { category: "พีชคณิต" }
+// gradeLevelId: null = ล้างระดับชั้นออก (กลับไปเป็น "ใช้ได้ทุกระดับชั้น")
+export async function bulkUpdateBankQuestions(ids, patch) {
+  const { data } = await axios.put(`${BANK_BASE}/bulk-update`, { ids, ...patch }, { headers: authHeaders() });
   return data;
 }
 

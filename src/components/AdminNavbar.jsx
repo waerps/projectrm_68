@@ -108,6 +108,15 @@ export default function Navbar() {
 
                                 <li>
                                     <Link
+                                        to="exam-banks"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        คลังข้อสอบ
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
                                         to="schedule"
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >

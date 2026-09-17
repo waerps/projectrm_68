@@ -80,6 +80,7 @@ import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
 import AdminLayout from "./layouts/AdminLayout.jsx"
 import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
 import AdminCourses from "./pageadmin/AdminCourses.jsx"
+import AdminExamBanks from "./pageadmin/AdminExamBanks.jsx"
 import AdminSchedule from "./pageadmin/AdminSchedule.jsx"
 import AdminStudents from "./pageadmin/AdminStudents.jsx"
 import AdminTutors from "./pageadmin/AdminTutors.jsx"
@@ -177,6 +178,7 @@ const router = createBrowserRouter(
             { index: true, element: <AdminDashboard /> },
             { path: "dashboard", element: <AdminDashboard /> },
             { path: "courses", element: <AdminCourses /> },
+            { path: "exam-banks", element: <AdminExamBanks /> },   // ภาพรวมคลังข้อสอบทุกวิชา
             { path: "schedule", element: <AdminSchedule /> },
             { path: "students", element: <AdminStudents /> },
             { path: "tutors", element: <AdminTutors /> },
