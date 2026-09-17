@@ -314,7 +314,8 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", tooltip }) {
+function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip }) {
+  const Icon = icon;
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}>

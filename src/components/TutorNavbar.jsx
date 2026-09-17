@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import React, { useState } from "react"
+import React from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
@@ -8,7 +8,6 @@ import NotificationBell from "./NotificationBell"
 
 
 export default function Navbar() {
-    const [searchQuery, setSearchQuery] = useState("")
     const location = useLocation()
     const user = JSON.parse(localStorage.getItem("user"));
 
@@ -108,6 +107,28 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         รายรับของฉัน
+                                    </Link>
+                                </li>
+
+                                {/* คลังข้อสอบไม่ได้ผูกกับคอร์สหรือรอบสอบ เป็นของครูต่อวิชาล้วน ๆ
+                                    จึงเข้าตรงจากเมนูได้ ไม่ต้องไล่ผ่านคอร์ส → วิชา → รอบสอบ */}
+                                <li>
+                                    <Link
+                                        to="question-bank"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        คลังข้อสอบ
+                                    </Link>
+                                </li>
+
+                                {/* หน้าวิเคราะห์ผูกกับคอร์ส+วิชา เมนูนี้จึงพาไปหน้าเลือกก่อน
+                                    แล้วค่อยเข้าหน้าวิเคราะห์ ไม่ต้องอ้อมผ่านหน้าจัดการการสอบ */}
+                                <li>
+                                    <Link
+                                        to="progress"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        ภาพรวมพัฒนาการ
                                     </Link>
                                 </li>
 

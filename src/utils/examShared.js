@@ -284,6 +284,13 @@ export async function fetchBankUsageHistory(subjectId) {
   return data;
 }
 
+// GET /api/bank/my-subjects → [{ subjectId, subjectName, total, categories, lastUpdatedAt }]
+// วิชาที่ครูคนนี้สอน พร้อมจำนวนข้อในคลังของตัวเอง ใช้เปิดคลังตรงจากเมนู
+export async function fetchMySubjects() {
+  const { data } = await axios.get(`${BANK_BASE}/my-subjects`, { headers: authHeaders() });
+  return data;
+}
+
 // GET /api/bank/grade-levels → [{ id, label }] รายการระดับชั้นให้เลือกตอนเพิ่มข้อในคลัง
 export async function fetchGradeLevels() {
   const { data } = await axios.get(`${BANK_BASE}/grade-levels`, { headers: authHeaders() });

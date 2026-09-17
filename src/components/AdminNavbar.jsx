@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import React, { useState } from "react"
+import React from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
@@ -10,7 +10,6 @@ import { AlertOctagon } from "lucide-react";
 export default function Navbar() {
     const user = JSON.parse(localStorage.getItem("user"));
     console.log(user);
-    const [searchQuery, setSearchQuery] = useState("")
     const location = useLocation()
 
     const isActive = (path) => location.pathname === path
@@ -103,15 +102,6 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         ติวเตอร์
-                                    </Link>
-                                </li>
-
-                                <li>
-                                    <Link
-                                        to="exam-banks"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        คลังข้อสอบ
                                     </Link>
                                 </li>
 

@@ -40,7 +40,8 @@ function Badge({ className, children }) {
 
 // StatCard สไตล์เดียวกับ TutorExamAnalytics.jsx (ไอคอนสี่เหลี่ยมทึบ + label/value/sub)
 // onClick เป็น optional — ใส่มาแล้วการ์ดจะกดได้ (เช่น การ์ด "ขาดสอบ" ที่กดดูรายชื่อได้)
-function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onClick }) {
+function StatCard({ icon, label, value, sub, color = "bg-orange-500", onClick }) {
+  const Icon = icon;
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper
@@ -821,10 +822,13 @@ function scaleScoresLocal(items, totalScore) {
   return items.map((it, i) => ({ ...it, score: scores[i] }));
 }
 
-// ─── Bank Tab — คลังข้อสอบของวิชา ────────────────────────────────────────────
-// คลังเป็นของวิชา ไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน
+// ─── Bank Tab — คลังข้อสอบของติวเตอร์ ───────────────────────────────────────
+// คลังเป็น "ของใครของมัน" ข้อสอบทุกข้อเป็นของครูที่สร้างมัน ครูคนอื่นที่สอนวิชาเดียวกัน
+// มีคลังของตัวเองแยกต่างหาก มองไม่เห็นและแตะของกันไม่ได้ (backend กรองด้วยเจ้าของจาก token
+// ทุก endpoint หน้าจอนี้จึงไม่ต้องกรองเองและไม่ต้องส่ง id ของครูไปไหน)
+// คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-function BankTab({ subjectId, showToast, subjectName }) {
+export function BankTab({ subjectId, showToast, subjectName }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -994,9 +998,9 @@ function BankTab({ subjectId, showToast, subjectName }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของวิชานี้</p>
+          <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของฉัน</p>
           <p className="text-xs text-neutral-500 mt-0.5">
-            {loading ? "กำลังโหลด…" : `มี ${items.length} ข้อ`} · ใช้ร่วมกันทุกคอร์สและทุกรอบสอบของวิชานี้
+            {loading ? "กำลังโหลด…" : `มี ${items.length} ข้อ`} · เป็นข้อสอบของคุณเอง ใช้ซ้ำได้ทุกคอร์สและทุกรอบสอบของวิชานี้
             {" "}· ตอนจะเปิดสอบค่อยไปจัดชุดที่แท็บตั้งค่า
           </p>
         </div>
@@ -1195,7 +1199,7 @@ function BankTab({ subjectId, showToast, subjectName }) {
       {!loading && items.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-          <p className="text-sm font-semibold text-neutral-500">คลังของวิชานี้ยังว่างอยู่</p>
+          <p className="text-sm font-semibold text-neutral-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
           <p className="text-xs text-neutral-400 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
         </div>
       ) : (
@@ -1512,7 +1516,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" /> จัดชุดข้อสอบ
             </h3>
-            <p className="text-xs text-neutral-500 mt-1">หยิบข้อจากคลังของวิชานี้มาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
+            <p className="text-xs text-neutral-500 mt-1">หยิบข้อจากคลังของคุณมาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
           </div>
           <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
         </div>
@@ -1555,7 +1559,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           ) : !bank.length ? (
             <div className="border border-dashed border-neutral-200 rounded-xl py-10 text-center">
               <FileQuestion className="h-9 w-9 text-neutral-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-neutral-600">คลังของวิชานี้ยังไม่มีข้อสอบ</p>
+              <p className="text-sm font-semibold text-neutral-600">คลังของคุณยังไม่มีข้อสอบในวิชานี้</p>
               <p className="text-xs text-neutral-400 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
             </div>
           ) : tab === "auto" && !working ? (
@@ -2048,7 +2052,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                 : "ยังไม่มีข้อสอบในรอบนี้"}
             </p>
             <p className="text-xs text-neutral-400 mt-0.5">
-              หยิบข้อจากคลังของวิชานี้ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
+              หยิบข้อจากคลังของคุณ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
             </p>
             {setQuestions.length > 0 && (
               <button onClick={goToPreview} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
@@ -3036,7 +3040,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [remainingSec, setRemainingSec] = useState(null);
+  const [remainingSec] = useState(null);
   const [search, setSearch] = useState("");
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
   const [sortKey, setSortKey] = useState("rank");
@@ -3044,7 +3048,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
   // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
-  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ก็แค่เอาคอมเมนต์ block นี้ออก
+  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ ให้เอาคอมเมนต์ block ข้างล่างออก
+  // แล้วเปลี่ยนบรรทัดประกาศ state ข้างบนกลับเป็น [remainingSec, setRemainingSec]
   // useEffect(() => {
   //   if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
   //   const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;

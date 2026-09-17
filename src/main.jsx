@@ -16,7 +16,7 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
       localStorage.removeItem("remember_me");
     }
     sessionStorage.setItem("session_active", "1");
-  } catch (e) {
+  } catch {
     // localStorage/sessionStorage อาจใช้ไม่ได้ (เช่น private mode) — ไม่ทำให้แอปพัง
   }
 })();
@@ -74,13 +74,14 @@ import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
+import TutorQuestionBank from "./pagetutor/TutorQuestionBank.jsx"
+import TutorProgressOverview from "./pagetutor/TutorProgressOverview.jsx"
 import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
 
 // Admin Layouts
 import AdminLayout from "./layouts/AdminLayout.jsx"
 import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
 import AdminCourses from "./pageadmin/AdminCourses.jsx"
-import AdminExamBanks from "./pageadmin/AdminExamBanks.jsx"
 import AdminSchedule from "./pageadmin/AdminSchedule.jsx"
 import AdminStudents from "./pageadmin/AdminStudents.jsx"
 import AdminTutors from "./pageadmin/AdminTutors.jsx"
@@ -167,6 +168,8 @@ const router = createBrowserRouter(
             { path: "exam-analytics", element: <TutorExamAnalytics /> },
             { path: "manage", element: <TutorManage /> },
             { path: "exam-detail", element: <TutorExamDetail /> },
+            { path: "question-bank", element: <TutorQuestionBank /> },   // คลังข้อสอบของติวเตอร์ เข้าตรงจากเมนู
+            { path: "progress", element: <TutorProgressOverview /> },   // เลือกคอร์ส+วิชา แล้วเข้าหน้าวิเคราะห์พัฒนาการ
           ],
         },
 
@@ -178,7 +181,6 @@ const router = createBrowserRouter(
             { index: true, element: <AdminDashboard /> },
             { path: "dashboard", element: <AdminDashboard /> },
             { path: "courses", element: <AdminCourses /> },
-            { path: "exam-banks", element: <AdminExamBanks /> },   // ภาพรวมคลังข้อสอบทุกวิชา
             { path: "schedule", element: <AdminSchedule /> },
             { path: "students", element: <AdminStudents /> },
             { path: "tutors", element: <AdminTutors /> },

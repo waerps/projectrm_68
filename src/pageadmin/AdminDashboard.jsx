@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  AlertCircle, Info, ChevronRight, BookOpen, GraduationCap, Wallet, Clock, Calendar, DoorOpen, Boxes, CheckCircle, AlertTriangle, UserCheck, Bell, Sparkles, PieChart as PieChartIcon, Users, Award, TrendingUp,
+  AlertCircle, Info, ChevronRight, BookOpen, GraduationCap, Wallet, Clock, Calendar, DoorOpen, Boxes, CheckCircle, AlertTriangle, UserCheck, Bell, Sparkles, PieChart as PieChartIcon, Users, Award, TrendingUp, FileQuestion,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -144,7 +144,8 @@ function InlineStat({ label, value, tone = "slate" }) {
 /* ─── ★ ใหม่: StatCard — การ์ดสรุป 3 อันบนสุด สไตล์เดียวกับหน้านักเรียน
    (ไอคอนสี่เหลี่ยมสีทึบ + label/value ข้าง ๆ) แทน KPICard การเงินเดิม
    ข้อมูลที่เลือกมาแสดงตั้งใจให้ "ไม่ซ้ำ" กับหน้าการเงิน (ซึ่งมีรายรับ/กำไร/ยอดค้างอยู่แล้ว) ─── */
-function StatCard({ label, value, sub, icon: Icon, color }) {
+function StatCard({ label, value, sub, icon, color }) {
+  const Icon = icon;
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -383,6 +384,7 @@ export default function AdminDashboard() {
   const scheduleToday = data?.scheduleToday || {};
   const rooms = data?.rooms || {};
   const facilities = data?.facilities || {};
+  const questionBanks = data?.questionBanks || {};
 
   const financeTrend = finance.trend || [];
   const hasRealFinanceData = financeTrend.some((d) => Number(d.revenue) > 0 || Number(d.expense) > 0);
@@ -653,7 +655,7 @@ export default function AdminDashboard() {
       {/* ── ตารางเรียนวันนี้ / ห้องเรียน / คลังอุปกรณ์ ───────────────────
           ★ ปรับให้ทั้ง 3 การ์ดใช้หน้าตาเดียวกัน: MetricBox กล่องสรุปด้านบน
           ตามด้วย StatusRow แถวสถานะ/breakdown ด้านล่าง เหมือนกันทุกใบ ──── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <SectionCard title="ตารางเรียนวันนี้" icon={Calendar}
           action={<button onClick={() => navigate("/admin/schedule")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">ดูตารางเต็ม <ChevronRight className="h-3 w-3" /></button>}
         >
@@ -705,6 +707,48 @@ export default function AdminDashboard() {
             <StatusRow label="ใกล้หมด" value={facilitiesLow} />
             <StatusRow label="หมดสต๊อก" value={facilitiesOut} />
           </div>
+        </SectionCard>
+
+        {/* คลังข้อสอบ — ข้อสอบเป็นของติวเตอร์แต่ละคน หนึ่งคลัง = ติวเตอร์ 1 คน x วิชา 1 วิชา
+            การ์ดนี้แสดงเฉพาะจำนวนและสถานะ ไม่เปิดเนื้อหาข้อสอบให้แอดมินเห็น */}
+        <SectionCard title="คลังข้อสอบ" icon={FileQuestion}>
+          <div className="flex items-center gap-3 mb-3">
+            <MetricBox label="ข้อสอบทั้งหมด" value={Number(questionBanks.totalQuestions ?? 0).toLocaleString()} tone="slate" />
+            <MetricBox
+              label="ยังไม่มีข้อสอบ"
+              value={questionBanks.emptyBanksCount ?? 0}
+              tone={(questionBanks.emptyBanksCount ?? 0) > 0 ? "red" : "emerald"}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <StatusRow label="วิชาที่มีคลัง" value={questionBanks.subjects ?? 0} />
+            <StatusRow label="ติวเตอร์ที่มีคลัง" value={questionBanks.tutors ?? 0} />
+            {(questionBanks.orphanQuestions ?? 0) > 0 && (
+              <StatusRow label="ข้อสอบที่ไม่มีเจ้าของ" value={questionBanks.orphanQuestions} />
+            )}
+          </div>
+          {(questionBanks.emptyBanks?.length ?? 0) > 0 ? (
+            <div className="mt-3 pt-2 border-t border-slate-50 space-y-1.5">
+              <p className="text-[10px] text-slate-400">ต้องติดตาม</p>
+              {questionBanks.emptyBanks.map((b) => (
+                <div key={`${b.tutorId}-${b.subjectId}`} className="flex items-center gap-2 text-xs">
+                  <span className="flex-1 truncate text-slate-700">{b.subjectName}</span>
+                  <span className="text-slate-400 truncate max-w-[80px]">{b.tutorName}</span>
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                </div>
+              ))}
+              {questionBanks.emptyBanksCount > questionBanks.emptyBanks.length && (
+                <p className="text-[10px] text-slate-400">
+                  และอีก {questionBanks.emptyBanksCount - questionBanks.emptyBanks.length} คลัง
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="mt-3 pt-2 border-t border-slate-50 flex items-center gap-1.5">
+              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              <p className="text-xs text-slate-500">ไม่มีคลังที่ต้องติดตาม</p>
+            </div>
+          )}
         </SectionCard>
       </div>
     </div>
