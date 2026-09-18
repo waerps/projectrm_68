@@ -1,5 +1,6 @@
 //ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
+import { useNavigate } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -1544,6 +1545,7 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
 function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
+  const navigate = useNavigate();
   const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
   const fullName = `${t.Firstname} ${t.Lastname}`;
   const status = statusOf(t.Status_Tutor_Id);
@@ -1613,6 +1615,11 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
           <button onClick={() => setViewTutor(t)}
             className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูข้อมูลติวเตอร์">
             <Eye className="h-3.5 w-3.5" />
+          </button>
+          {/* ทางลัดดูพัฒนาการของวิชาที่ติวเตอร์คนนี้สอน — อ่านอย่างเดียว */}
+          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}`)}
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูภาพรวมพัฒนาการ">
+            <BarChart2 className="h-3.5 w-3.5" />
           </button>
           <button onClick={() => setEditingTutor(t)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">

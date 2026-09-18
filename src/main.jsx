@@ -97,6 +97,7 @@ import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 import AdminManagement from "./pageadmin/AdminManagement.jsx"
 import AdminProfile from "./pageadmin/AdminProfile.jsx"
 import AdminIncidents from "./pageadmin/AdminIncidents.jsx"
+import AdminProgressOverview from "./pageadmin/AdminProgressOverview.jsx"
 
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
@@ -196,6 +197,7 @@ const router = createBrowserRouter(
             { path: "management", element: <AdminManagement /> },
             { path: "profile", element: <AdminProfile /> }, // ← เพิ่ม → path เต็ม = /admin/profile
             { path: "incidents", element: <AdminIncidents /> },
+            { path: "progress", element: <AdminProgressOverview /> },   // ภาพรวมพัฒนาการ คอร์ส x วิชา (อ่านอย่างเดียว)
           ],
         },
       ],

@@ -567,9 +567,15 @@ export default function AdminDashboard() {
                 )}
                 {topImprovement.length > 0 && (
                   <div>
-                    <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-1">
-                      <TrendingUp className="h-3.5 w-3.5 text-orange-500" /> พัฒนาการโดดเด่น
-                    </p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                        <TrendingUp className="h-3.5 w-3.5 text-orange-500" /> พัฒนาการโดดเด่น
+                      </p>
+                      <button onClick={() => navigate("/admin/progress")}
+                        className="text-[11px] font-semibold text-orange-600 hover:underline flex items-center gap-0.5">
+                        ดูภาพรวม <ChevronRight className="h-3 w-3" />
+                      </button>
+                    </div>
                     {topImprovement.map((s) => (
                       <MiniPersonRow
                         key={`improvement-${s.UserId}`}

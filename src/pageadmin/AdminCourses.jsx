@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { useNavigate } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   BookOpen, Plus, Search, Edit2, Trash2, X, Check,
@@ -732,6 +733,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
 }
 
 function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
+  const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
@@ -935,10 +937,19 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                   <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
                 </div>
               </div>
-              <button onClick={() => handleDelete(s.TutorCourseDetailId)}
-                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
-                <X className="h-4 w-4" />
-              </button>
+              <div className="shrink-0 flex items-center gap-1">
+                {/* ทางลัดดูพัฒนาการของวิชานี้ในคอร์สนี้ — อ่านอย่างเดียว */}
+                <button type="button"
+                  onClick={() => navigate(`/admin/progress?courseId=${courseId}&subjectId=${s.SubjectId}`)}
+                  className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                  title="ดูภาพรวมพัฒนาการของวิชานี้">
+                  <TrendingUp className="h-4 w-4" />
+                </button>
+                <button onClick={() => handleDelete(s.TutorCourseDetailId)}
+                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">
