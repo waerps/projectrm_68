@@ -2797,7 +2797,10 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // ทุกฉบับเป็นร่างจนกว่าครูจะกดอนุมัติ ข้อความถึงผู้ปกครองจึงไม่หลุดออกไปเอง
 // export เพื่อให้หน้า analytics (ExamAnalyticsView) ใช้แผงเดียวกันนี้ได้
 // ทั้งฝั่งติวเตอร์และฝั่งแอดมิน จะได้ไม่มีสองชุดที่ค่อยๆ เพี้ยนจากกัน
-export function AiSummaryPanel({ examId, submittedCount }) {
+// canApprove = false สำหรับฝั่งแอดมิน: อ่านและคัดลอกไปใช้ได้ แต่ไม่มีปุ่มอนุมัติ
+// เพราะการอนุมัติคือด่านตรวจ "เนื้อหาถูกต้องตามที่เด็กเป็นจริงไหม" ซึ่งคนที่ตอบได้
+// คือติวเตอร์ที่สอนเด็กคนนั้น ไม่ใช่แอดมิน แอดมินเป็นคนเอาไปสื่อสารต่อ
+export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -2840,15 +2843,57 @@ export function AiSummaryPanel({ examId, submittedCount }) {
     } finally { setSavingId(null); }
   };
 
-  const copyMessage = async (row) => {
-    const text = drafts[row.id]?.parentMessage ?? row.parentMessage;
+  const copyText = async (row, text, mark) => {
     try {
-      await navigator.clipboard.writeText(`${row.nickname || row.studentName}\n\n${text}`);
-      setCopiedId(row.id);
+      await navigator.clipboard.writeText(text);
+      setCopiedId(mark);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (err) {
       console.error("Copy failed:", err);
     }
+  };
+
+  // คัดลอกเฉพาะข้อความถึงผู้ปกครอง (ท่อนล่าง) — ของเดิม
+  const copyMessage = (row) =>
+    copyText(
+      row,
+      `${row.nickname || row.studentName}\n\n${drafts[row.id]?.parentMessage ?? row.parentMessage}`,
+      row.id
+    );
+
+  // คัดลอกบทวิเคราะห์ทั้งฉบับ — ท่อนล่างมันสั้นเกินกว่าจะใช้สื่อสารจริงได้
+  // ประกอบเป็นข้อความอ่านง่ายเรียงตามที่แสดงบนหน้าจอ ส่วนไหนไม่มีข้อมูลก็ข้ามไป
+  const copyAll = (row) => {
+    const L = [];
+    L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
+    if (row.overview) L.push("", "ภาพรวม", row.overview);
+    if (row.byCategory?.length) {
+      L.push("", "รายหมวด");
+      row.byCategory.forEach((c) =>
+        L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`)
+      );
+    }
+    if (row.misconceptions?.length) {
+      L.push("", "จุดที่น่าจะเข้าใจผิด");
+      row.misconceptions.forEach((m) => {
+        L.push(`- ${m.topic} — ${m.pattern}`);
+        if (m.evidence) L.push(`  หลักฐาน: ${m.evidence}`);
+      });
+    }
+    if (row.behavior) L.push("", "ข้อสังเกตจากเวลาที่ใช้", row.behavior);
+    if (row.focusNext?.length) {
+      L.push("", "ควรทำต่อ เรียงตามลำดับ");
+      row.focusNext.forEach((f, i) =>
+        L.push(
+          typeof f === "string"
+            ? `${i + 1}. ${f}`
+            : `${i + 1}. ${f.action}${f.why ? ` — ${f.why}` : ""}`
+        )
+      );
+    }
+    const pm = drafts[row.id]?.parentMessage ?? row.parentMessage;
+    if (pm) L.push("", "ข้อความสำหรับผู้ปกครอง", pm);
+    return copyText(row, L.join("\n"), `all-${row.id}`);
   };
 
   const approvedCount = summaries.filter((s) => s.status === "approved").length;
@@ -2866,7 +2911,9 @@ export function AiSummaryPanel({ examId, submittedCount }) {
               : "ยังไม่เคยวิเคราะห์รอบสอบนี้"}
           </p>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง ครูต้องอ่านและอนุมัติก่อนใช้
+            {canApprove
+              ? "ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง ครูต้องอ่านและอนุมัติก่อนใช้"
+              : "ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง การอนุมัติเป็นหน้าที่ของติวเตอร์ผู้สอน"}
           </p>
         </div>
         <button
@@ -2984,9 +3031,14 @@ export function AiSummaryPanel({ examId, submittedCount }) {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-xs font-semibold text-neutral-500">ข้อความสำหรับผู้ปกครอง (แก้ได้)</p>
-                        <button onClick={() => copyMessage(row)} className="text-xs font-semibold text-orange-600 hover:text-orange-700">
-                          {copiedId === row.id ? "คัดลอกแล้ว" : "คัดลอก"}
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => copyAll(row)} className="text-xs font-semibold text-orange-600 hover:text-orange-700">
+                            {copiedId === `all-${row.id}` ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
+                          </button>
+                          <button onClick={() => copyMessage(row)} className="text-xs font-semibold text-neutral-500 hover:text-neutral-700">
+                            {copiedId === row.id ? "คัดลอกแล้ว" : "คัดลอกเฉพาะท่อนนี้"}
+                          </button>
+                        </div>
                       </div>
                       <textarea
                         value={parentMessage}
@@ -3006,7 +3058,7 @@ export function AiSummaryPanel({ examId, submittedCount }) {
                           {savingId === row.id ? "กำลังบันทึก…" : "บันทึกข้อความ"}
                         </button>
                       )}
-                      {row.status === "approved" ? (
+                      {!canApprove ? null : row.status === "approved" ? (
                         <button
                           onClick={() => save(row, { status: "draft" })}
                           disabled={savingId === row.id}

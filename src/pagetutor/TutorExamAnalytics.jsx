@@ -1704,6 +1704,8 @@ export function ExamAnalyticsView({
   roleNote = null,
   initialExamId = 1,
   initialTab = "overview",
+  // ฝั่งแอดมินส่ง false เข้ามา แผง AI จะไม่มีปุ่มอนุมัติให้กด
+  canApproveAi = true,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
@@ -1877,6 +1879,7 @@ export function ExamAnalyticsView({
             key={realExamId(examId)}
             examId={realExamId(examId)}
             submittedCount={examResults[examId]?.submittedCount ?? 0}
+            canApprove={canApproveAi}
           />
         ) : (
           <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">

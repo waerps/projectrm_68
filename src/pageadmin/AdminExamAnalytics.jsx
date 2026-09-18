@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { ChevronRight, Eye } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { ExamAnalyticsView } from "../pagetutor/TutorExamAnalytics.jsx";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
 import { adminExamAnalyticsApi } from "../utils/examShared";
@@ -25,7 +25,6 @@ export default function AdminExamAnalytics() {
   const tutorId = searchParams.get("tutorId");
   const courseName = searchParams.get("courseName") || "";
   const subjectName = searchParams.get("subjectName") || "";
-  const tutorName = searchParams.get("tutorName") || "";
   const cameFrom = searchParams.get("from");
 
   const api = useMemo(
@@ -78,13 +77,7 @@ export default function AdminExamAnalytics() {
           </span>
         </div>
       )}
-      roleNote={
-        <p className="flex items-center gap-1.5 text-xs text-slate-400 mt-1.5">
-          <Eye className="h-3.5 w-3.5 shrink-0" />
-          มุมมองแอดมิน · ดูได้อย่างเดียว แก้ไขอะไรไม่ได้
-          {tutorName && ` · ข้อสอบและผลสอบของ ${tutorName}`}
-        </p>
-      }
+      canApproveAi={false}
     />
   );
 }
