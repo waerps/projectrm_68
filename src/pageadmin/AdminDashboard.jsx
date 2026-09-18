@@ -571,7 +571,7 @@ export default function AdminDashboard() {
                       <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
                         <TrendingUp className="h-3.5 w-3.5 text-orange-500" /> พัฒนาการโดดเด่น
                       </p>
-                      <button onClick={() => navigate("/admin/progress")}
+                      <button onClick={() => navigate("/admin/progress?from=dashboard")}
                         className="text-[11px] font-semibold text-orange-600 hover:underline flex items-center gap-0.5">
                         ดูภาพรวม <ChevronRight className="h-3 w-3" />
                       </button>

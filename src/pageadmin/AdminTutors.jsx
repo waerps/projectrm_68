@@ -1617,7 +1617,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
             <Eye className="h-3.5 w-3.5" />
           </button>
           {/* ทางลัดดูพัฒนาการของวิชาที่ติวเตอร์คนนี้สอน — อ่านอย่างเดียว */}
-          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}`)}
+          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}&from=tutors`)}
             className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูภาพรวมพัฒนาการ">
             <BarChart2 className="h-3.5 w-3.5" />
           </button>

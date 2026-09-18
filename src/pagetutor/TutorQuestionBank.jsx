@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronRight, ChevronLeft, Settings2,
 } from "lucide-react";
@@ -75,6 +75,10 @@ export default function TutorQuestionBank() {
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="flex items-center text-sm flex-wrap gap-y-1">
+          <Link to="/tutor" className="font-medium text-slate-500 hover:text-orange-600 transition">
+            หน้าแรก
+          </Link>
+          <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
           <button onClick={backToList} className="font-medium text-slate-500 hover:text-orange-600 transition">
             คลังข้อสอบ
           </button>
@@ -117,6 +121,12 @@ export default function TutorQuestionBank() {
   return (
     <div className="space-y-6 mt-[90px]">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+        <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
+        <ChevronRight className="h-4 w-4" />
+        <span className="font-semibold text-slate-700">คลังข้อสอบของฉัน</span>
+      </div>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

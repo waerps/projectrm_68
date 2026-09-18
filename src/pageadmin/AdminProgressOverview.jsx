@@ -1,6 +1,7 @@
 import { API_URL } from "../config";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { PROGRESS_ORIGINS } from "./progressOrigins";
 import axios from "axios";
 import {
   TrendingUp, BookOpen, Search, Loader2, ChevronLeft, ChevronRight,
@@ -50,6 +51,8 @@ export default function AdminProgressOverview() {
   const presetCourseId = searchParams.get("courseId");
   const presetSubjectId = searchParams.get("subjectId");
   const presetTutorId = searchParams.get("tutorId");
+  // มาจากหน้าไหน ใช้พา breadcrumb กลับไปที่เดิม ไม่ใช่โยนกลับหน้าเดียวเสมอ
+  const cameFrom = searchParams.get("from");
 
   const [rows, setRows] = useState([]);
   const [totals, setTotals] = useState(null);
@@ -107,8 +110,10 @@ export default function AdminProgressOverview() {
       subjectName: row.subjectName || "",
       tutorName: row.tutorName || "",
     });
+    // ส่งต้นทางต่อไปด้วย breadcrumb หน้าถัดไปจะได้ลากกลับได้ถึงจุดเริ่ม
+    if (cameFrom) params.set("from", cameFrom);
     navigate(`/admin/exam-analytics?${params.toString()}`);
-  }, [navigate]);
+  }, [navigate, cameFrom]);
 
   if (loading) return (
     <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
@@ -128,6 +133,8 @@ export default function AdminProgressOverview() {
 
   return (
     <div className="space-y-6 mt-[90px]">
+      <Breadcrumb cameFrom={cameFrom} />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -320,6 +327,29 @@ export default function AdminProgressOverview() {
         )
       )}
 
+    </div>
+  );
+}
+
+// ── breadcrumb ตามต้นทางที่กดเข้ามา ─────────────────────────────────────────
+// หน้านี้เข้าได้จาก 3 ที่ ถ้า breadcrumb ชี้กลับที่เดียวเสมอ คนกดจากหน้าติวเตอร์
+// จะถูกโยนไปหน้าอื่นที่ไม่ได้ตั้งใจไป จึงอ่านจาก ?from= ที่ต้นทางติดมาให้
+function Breadcrumb({ cameFrom }) {
+  const origin = PROGRESS_ORIGINS[cameFrom];
+  return (
+    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+      {origin ? (
+        <>
+          <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
+          <ChevronRight className="h-4 w-4" />
+        </>
+      ) : (
+        <>
+          <Link to="/admin/dashboard" className="hover:text-orange-600 transition font-medium">แดชบอร์ด</Link>
+          <ChevronRight className="h-4 w-4" />
+        </>
+      )}
+      <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการ</span>
     </div>
   );
 }

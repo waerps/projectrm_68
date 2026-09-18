@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { ChevronRight, Eye } from "lucide-react";
 import { ExamAnalyticsView } from "../pagetutor/TutorExamAnalytics.jsx";
+import { PROGRESS_ORIGINS } from "./progressOrigins";
 import { adminExamAnalyticsApi } from "../utils/examShared";
 
 // ─── ภาพรวมพัฒนาการรายวิชา (มุมแอดมิน) ───────────────────────────────────────
@@ -25,6 +26,7 @@ export default function AdminExamAnalytics() {
   const courseName = searchParams.get("courseName") || "";
   const subjectName = searchParams.get("subjectName") || "";
   const tutorName = searchParams.get("tutorName") || "";
+  const cameFrom = searchParams.get("from");
 
   const api = useMemo(
     () => (courseId && subjectId && tutorId
@@ -34,7 +36,13 @@ export default function AdminExamAnalytics() {
   );
 
   // กลับไปหน้าภาพรวม โดยคงตัวกรองเดิมไว้ ถ้ามาจากการกรองของติวเตอร์คนหนึ่ง
-  const backToOverview = `/admin/progress${tutorId ? `?tutorId=${tutorId}` : ""}`;
+  // กลับไปหน้าภาพรวมโดยคงทั้งตัวกรองและต้นทางเดิมไว้
+  const overviewParams = new URLSearchParams();
+  if (tutorId) overviewParams.set("tutorId", tutorId);
+  if (cameFrom) overviewParams.set("from", cameFrom);
+  const qs = overviewParams.toString();
+  const backToOverview = `/admin/progress${qs ? `?${qs}` : ""}`;
+  const origin = PROGRESS_ORIGINS[cameFrom];
 
   if (!courseId || !subjectId || !tutorId) {
     return (
@@ -57,13 +65,17 @@ export default function AdminExamAnalytics() {
       api={api}
       breadcrumb={() => (
         <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
-          <Link to="/admin/progress" className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
+          {origin && (
+            <>
+              <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
+              <ChevronRight className="h-4 w-4" />
+            </>
+          )}
+          <Link to={backToOverview} className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
           <ChevronRight className="h-4 w-4" />
-          <Link to={backToOverview} className="hover:text-orange-600 transition font-medium">
-            {courseName || "คอร์ส"}
-          </Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="font-semibold text-slate-700">{subjectName || "วิชา"}</span>
+          <span className="font-semibold text-slate-700">
+            {courseName || "คอร์ส"}{subjectName ? ` · ${subjectName}` : ""}
+          </span>
         </div>
       )}
       roleNote={

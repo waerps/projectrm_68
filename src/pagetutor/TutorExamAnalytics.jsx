@@ -7,11 +7,13 @@ import {
 import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
   CheckCircle, Search, Award, Clock, BookOpen, Info,
-  X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown,
+  X, Eye, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore } from "../utils/examScore";
 import { tutorExamAnalyticsApi } from "../utils/examShared";
+// แผงผลวิเคราะห์ AI ตัวเดียวกับที่หน้ารายละเอียดรอบสอบใช้ ไม่ได้ทำขึ้นใหม่
+import { AiSummaryPanel } from "./TutorExamDetail.jsx";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1677,6 +1679,7 @@ const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
   { id: "progress", label: "รายคน", icon: Users },
+  { id: "ai", label: "ผล AI", icon: Sparkles },
 ];
 
 // ─── ตัวแสดงผลกลาง — ใช้ร่วมกันทั้งฝั่งติวเตอร์และฝั่งแอดมิน ─────────────────
@@ -1797,16 +1800,18 @@ export function ExamAnalyticsView({
           {roleNote}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {(activeTab === "overview" || activeTab === "ai") && (
+            <div className="flex rounded-xl overflow-hidden border border-slate-200">
+              {EXAMS_META.map(e => (
+                <button key={e.id} onClick={() => setExamId(e.id)}
+                  className={`px-3 py-2 text-xs font-bold transition ${examId === e.id ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                  {e.label}
+                </button>
+              ))}
+            </div>
+          )}
           {activeTab === "overview" && (
             <>
-              <div className="flex rounded-xl overflow-hidden border border-slate-200">
-                {EXAMS_META.map(e => (
-                  <button key={e.id} onClick={() => setExamId(e.id)}
-                    className={`px-3 py-2 text-xs font-bold transition ${examId === e.id ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
-                    {e.label}
-                  </button>
-                ))}
-              </div>
               <button onClick={() => setExcelPreviewRows(buildExcelRows(examResults[examId]))}
                 disabled={!examResults[examId]?.students?.length}
                 className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
@@ -1861,6 +1866,24 @@ export function ExamAnalyticsView({
       {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
       {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
+      {activeTab === "ai" && (
+        dataLoading ? (
+          <div className="flex flex-col items-center justify-center h-64 text-orange-600">
+            <Clock className="w-7 h-7 animate-spin mb-3" />
+            <p className="text-sm font-medium text-slate-500">กำลังโหลด...</p>
+          </div>
+        ) : realExamId(examId) ? (
+          <AiSummaryPanel
+            key={realExamId(examId)}
+            examId={realExamId(examId)}
+            submittedCount={examResults[examId]?.submittedCount ?? 0}
+          />
+        ) : (
+          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+            <p className="text-slate-500 font-medium">ยังไม่มีข้อมูลของรอบ {examLabel} นี้</p>
+          </div>
+        )
+      )}
 
       {excelPreviewRows && (
         <ExcelPreviewModal

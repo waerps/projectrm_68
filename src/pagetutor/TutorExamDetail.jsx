@@ -2795,7 +2795,9 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // ─── AI Summary Panel — บทวิเคราะห์รายคนหลังปิดสอบ ──────────────────────────
 // ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อ่านรูปแบบการตอบผิดแล้วอธิบายเป็นภาษาคน
 // ทุกฉบับเป็นร่างจนกว่าครูจะกดอนุมัติ ข้อความถึงผู้ปกครองจึงไม่หลุดออกไปเอง
-function AiSummaryPanel({ examId, submittedCount }) {
+// export เพื่อให้หน้า analytics (ExamAnalyticsView) ใช้แผงเดียวกันนี้ได้
+// ทั้งฝั่งติวเตอร์และฝั่งแอดมิน จะได้ไม่มีสองชุดที่ค่อยๆ เพี้ยนจากกัน
+export function AiSummaryPanel({ examId, submittedCount }) {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);

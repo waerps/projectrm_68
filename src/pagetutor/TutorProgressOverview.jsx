@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   BarChart2, BookOpen, Users, Search, Loader2, Calendar, ChevronRight, ChevronLeft,
@@ -149,6 +149,12 @@ export default function TutorProgressOverview() {
 
   return (
     <div className="space-y-6 mt-[90px]">
+      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+        <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
+        <ChevronRight className="h-4 w-4" />
+        <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการ</span>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
