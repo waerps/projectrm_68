@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore } from "../utils/examScore";
-import { fetchExams, fetchExamResults, fetchTopicBreakdown } from "../utils/examShared";
+import { tutorExamAnalyticsApi } from "../utils/examShared";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -1679,41 +1679,51 @@ const TABS = [
   { id: "progress", label: "รายคน", icon: Users },
 ];
 
-export default function TutorExamAnalytics() {
-  const [searchParams] = useSearchParams();
-  const courseId = searchParams.get("courseId");
-  const subjectId = searchParams.get("subjectId");
-  const courseName = searchParams.get("courseName") || "";
-  const subjectName = searchParams.get("subjectName") || "";
-  // เข้ามาจากหน้ารายละเอียดรอบสอบ (exam-detail) หรือไม่ — ใช้ตัดสินว่า breadcrumb
-  // ต้องแทรกชั้น "รอบสอบ" คั่นไว้ให้กดกลับไปหน้านั้นได้ไหม (ถ้าเข้าจากหน้ารายการสอบตรงๆ ไม่ต้องมี)
-  const fromExamDetail = searchParams.get("from") === "exam-detail";
-
-  const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
-  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
-  const requestedTab = searchParams.get("tab") ?? "overview";
-  const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
-
+// ─── ตัวแสดงผลกลาง — ใช้ร่วมกันทั้งฝั่งติวเตอร์และฝั่งแอดมิน ─────────────────
+// โจทย์คือ "ติวเตอร์เห็นแบบไหน แอดมินต้องเห็นแบบนั้น" ถ้าแยกเป็นสองไฟล์
+// สุดท้ายมันจะค่อยๆ เพี้ยนจากกันเวลาแก้ฝั่งเดียว จึงต้องเป็น component ตัวเดียวกัน
+// ต่างกันแค่สองจุดเท่านั้น:
+//   1) api      — แหล่งข้อมูล ฝั่งติวเตอร์ยิง /api/exam ฝั่งแอดมินยิง /api/admin/progress
+//   2) breadcrumb / roleNote — เส้นทางกลับกับป้ายบอกบทบาท ต่างกันตามผู้ใช้
+//
+// ⚠ api ต้องถูก memo ไว้แล้วจากฝั่งผู้เรียก ({ fetchExams, fetchExamResults, fetchTopicBreakdown })
+//   ถ้าสร้าง object ใหม่ทุกรอบ render effect ที่มี api เป็น dependency จะวนไม่จบ
+//
+// breadcrumb เป็น render prop เพราะ breadcrumb ฝั่งติวเตอร์ต้องรู้ว่าตอนนี้ดูรอบไหนอยู่
+// ซึ่งเป็น state ที่อยู่ข้างในตัวนี้ ไม่ใช่ข้างนอก
+export function ExamAnalyticsView({
+  courseId,
+  subjectId,
+  courseName = "",
+  subjectName = "",
+  api,
+  breadcrumb = null,
+  roleNote = null,
+  initialExamId = 1,
+  initialTab = "overview",
+}) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
   const [excelPreviewRows, setExcelPreviewRows] = useState(null);
 
   // ── Step 1: รายชื่อ exam จริงจาก backend ─────────────────────────────────
-  const adminId = JSON.parse(localStorage.getItem("user") || "null")?.id;
-
-  const [examList, setExamList] = useState([]); // [{id, type, ...}] จาก backend จริง
+  const [examList, setExamList] = useState([]);
   const [loadingExams, setLoadingExams] = useState(true);
 
   useEffect(() => {
-    if (!courseId || !subjectId || !adminId) {
+    if (!courseId || !subjectId || !api) {
       setLoadingExams(false);
       return;
     }
-    fetchExams({ courseId, subjectId, adminId })
-      .then((data) => setExamList(data))
+    let cancelled = false;
+    setLoadingExams(true);
+    api
+      .fetchExams()
+      .then((data) => { if (!cancelled) setExamList(Array.isArray(data) ? data : []); })
       .catch((err) => console.error("Fetch exam list failed:", err))
-      .finally(() => setLoadingExams(false));
-  }, [courseId, subjectId, adminId]);
+      .finally(() => { if (!cancelled) setLoadingExams(false); });
+    return () => { cancelled = true; };
+  }, [courseId, subjectId, api]);
 
   // จับคู่ EXAMS_META (pre/mid/post) กับ examId จริงจาก backend ตามลำดับ type
   const realExamId = (id) => examList.find((e) => e.type === ["pre-test", "mid-test", "post-test"][id])?.id ?? null;
@@ -1730,7 +1740,7 @@ export default function TutorExamAnalytics() {
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
-        return fetchExamResults(id).catch((err) => {
+        return api.fetchExamResults(id).catch((err) => {
           console.error(`Fetch results for exam ${id} failed:`, err);
           return null;
         });
@@ -1747,7 +1757,7 @@ export default function TutorExamAnalytics() {
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
-        return fetchTopicBreakdown(id).catch((err) => {
+        return api.fetchTopicBreakdown(id).catch((err) => {
           console.error(`Fetch topic breakdown for exam ${id} failed:`, err);
           return null;
         });
@@ -1770,44 +1780,9 @@ export default function TutorExamAnalytics() {
 
   return (
     <div className="space-y-6 mt-[90px]">
-      {/* Breadcrumb — ไม่มีปุ่ม "ย้อนกลับ" แล้ว เพราะซ้ำซ้อนกับ breadcrumb เส้นนี้
-          ถ้าเข้ามาจากหน้ารอบสอบ (from=exam-detail) จะแทรกชั้นรอบสอบให้ด้วย และชั้นนั้น
-          จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย) */}
-      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
-        <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
-        <ChevronRight className="h-4 w-4" />
-        <Link
-          to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
-          className="hover:text-orange-600 transition font-medium"
-        >
-          {subjectName || "จัดการการสอบ"}
-        </Link>
-        {fromExamDetail && (
-          <>
-            <ChevronRight className="h-4 w-4" />
-            {realExamId(examId) ? (
-              <Link
-                to={`/tutor/exam-detail?${new URLSearchParams({
-                  courseId: courseId || "",
-                  subjectId: subjectId || "",
-                  courseName,
-                  subjectName,
-                  examId: String(realExamId(examId)),
-                }).toString()}`}
-                className="hover:text-orange-600 transition font-medium"
-              >
-                {examLabel}
-              </Link>
-            ) : (
-              // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
-              // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
-              <span className="font-medium">{examLabel}</span>
-            )}
-          </>
-        )}
-        <ChevronRight className="h-4 w-4" />
-        <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
-      </div>
+      {typeof breadcrumb === "function"
+        ? breadcrumb({ examId, examLabel, realExamId })
+        : breadcrumb}
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -1819,6 +1794,7 @@ export default function TutorExamAnalytics() {
             {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
               ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
           </p>
+          {roleNote}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {activeTab === "overview" && (
@@ -1895,5 +1871,81 @@ export default function TutorExamAnalytics() {
         />
       )}
     </div>
+  );
+}
+
+// ─── หน้าของติวเตอร์ — ตัวห่อบางๆ อ่าน query param แล้วส่งต่อให้ตัวกลาง ──────
+export default function TutorExamAnalytics() {
+  const [searchParams] = useSearchParams();
+  const courseId = searchParams.get("courseId");
+  const subjectId = searchParams.get("subjectId");
+  const courseName = searchParams.get("courseName") || "";
+  const subjectName = searchParams.get("subjectName") || "";
+  // เข้ามาจากหน้ารายละเอียดรอบสอบ (exam-detail) หรือไม่ — ใช้ตัดสินว่า breadcrumb
+  // ต้องแทรกชั้น "รอบสอบ" คั่นไว้ให้กดกลับไปหน้านั้นได้ไหม (ถ้าเข้าจากหน้ารายการสอบตรงๆ ไม่ต้องมี)
+  const fromExamDetail = searchParams.get("from") === "exam-detail";
+
+  const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
+  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
+  const requestedTab = searchParams.get("tab") ?? "overview";
+  const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
+
+  const adminId = JSON.parse(localStorage.getItem("user") || "null")?.id;
+
+  const api = useMemo(
+    () => (courseId && subjectId && adminId ? tutorExamAnalyticsApi({ courseId, subjectId, adminId }) : null),
+    [courseId, subjectId, adminId]
+  );
+
+  return (
+    <ExamAnalyticsView
+      courseId={courseId}
+      subjectId={subjectId}
+      courseName={courseName}
+      subjectName={subjectName}
+      api={api}
+      initialExamId={initialExamId}
+      initialTab={initialTab}
+      breadcrumb={({ examId, examLabel, realExamId }) => (
+        // ไม่มีปุ่ม "ย้อนกลับ" แล้ว เพราะซ้ำซ้อนกับ breadcrumb เส้นนี้
+        // ถ้าเข้ามาจากหน้ารอบสอบ (from=exam-detail) จะแทรกชั้นรอบสอบให้ด้วย และชั้นนั้น
+        // จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย)
+        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+          <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
+          <ChevronRight className="h-4 w-4" />
+          <Link
+            to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
+            className="hover:text-orange-600 transition font-medium"
+          >
+            {subjectName || "จัดการการสอบ"}
+          </Link>
+          {fromExamDetail && (
+            <>
+              <ChevronRight className="h-4 w-4" />
+              {realExamId(examId) ? (
+                <Link
+                  to={`/tutor/exam-detail?${new URLSearchParams({
+                    courseId: courseId || "",
+                    subjectId: subjectId || "",
+                    courseName,
+                    subjectName,
+                    examId: String(realExamId(examId)),
+                  }).toString()}`}
+                  className="hover:text-orange-600 transition font-medium"
+                >
+                  {examLabel}
+                </Link>
+              ) : (
+                // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
+                // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
+                <span className="font-medium">{examLabel}</span>
+              )}
+            </>
+          )}
+          <ChevronRight className="h-4 w-4" />
+          <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
+        </div>
+      )}
+    />
   );
 }

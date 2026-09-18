@@ -1,10 +1,10 @@
 import { API_URL } from "../config";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
-  TrendingUp, BookOpen, Users, Search, Loader2, ChevronLeft, ChevronRight,
-  BarChart2, X, AlertTriangle, GraduationCap,
+  TrendingUp, BookOpen, Search, Loader2, ChevronLeft, ChevronRight,
+  BarChart2, AlertTriangle, GraduationCap,
 } from "lucide-react";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
@@ -44,6 +44,7 @@ function growthTone(growth) {
 }
 
 export default function AdminProgressOverview() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // เปิดจากปุ่มในหน้าคอร์สหรือหน้าติวเตอร์ จะกรองมาให้เลยตั้งแต่เข้าหน้า
   const presetCourseId = searchParams.get("courseId");
@@ -57,7 +58,6 @@ export default function AdminProgressOverview() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const [detail, setDetail] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +96,19 @@ export default function AdminProgressOverview() {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  const openDetail = useCallback((row) => setDetail({ row }), []);
+  // เปิดหน้าวิเคราะห์ตัวเต็ม (ตัวเดียวกับที่ติวเตอร์เห็น) ส่ง tutorId ไปด้วยเสมอ
+  // เพราะคอร์ส+วิชาเดียวกันแต่คนละติวเตอร์ = คนละชุดข้อสอบ คนละผลสอบ
+  const openDetail = useCallback((row) => {
+    const params = new URLSearchParams({
+      courseId: String(row.courseId),
+      subjectId: String(row.subjectId),
+      tutorId: String(row.tutorId),
+      courseName: row.courseName || "",
+      subjectName: row.subjectName || "",
+      tutorName: row.tutorName || "",
+    });
+    navigate(`/admin/exam-analytics?${params.toString()}`);
+  }, [navigate]);
 
   if (loading) return (
     <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
@@ -249,7 +261,7 @@ export default function AdminProgressOverview() {
                                 onClick={() => openDetail(r)}
                                 className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                               >
-                                <BarChart2 className="h-3.5 w-3.5" /> ดูรายคน
+                                <BarChart2 className="h-3.5 w-3.5" /> ดูพัฒนาการ
                               </button>
                             </div>
                           </td>
@@ -308,148 +320,6 @@ export default function AdminProgressOverview() {
         )
       )}
 
-      {detail && <DetailModal row={detail.row} onClose={() => setDetail(null)} />}
-    </div>
-  );
-}
-
-// ── โมดัลรายคน ──────────────────────────────────────────────────────────────
-// แสดงเฉพาะคะแนนกับพัฒนาการ ไม่มีเนื้อหาข้อสอบ ไม่มีปุ่มแก้ไขใดๆ
-function DetailModal({ row, onClose }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    const params = new URLSearchParams({
-      courseId: String(row.courseId),
-      subjectId: String(row.subjectId),
-      tutorId: String(row.tutorId),
-    });
-    axios
-      .get(`${API_BASE}/detail?${params.toString()}`, getAdminAuthConfig())
-      .then((res) => { if (!cancelled) setData(res.data); })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error("Fetch admin progress detail failed:", err);
-        setError("โหลดข้อมูลรายคนไม่สำเร็จ");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [row]);
-
-  const tested = data?.students?.filter((s) => s.tested) || [];
-  const notTested = data?.students?.filter((s) => !s.tested) || [];
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-900 truncate">{row.courseName}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {row.subjectName || `วิชา #${row.subjectId}`}
-              {row.tutorName && ` · ${row.tutorName}`}
-            </p>
-          </div>
-          <button onClick={onClose} className="shrink-0 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-orange-600">
-              <Loader2 className="w-7 h-7 animate-spin mb-3" />
-              <p className="text-sm text-slate-500">กำลังโหลด...</p>
-            </div>
-          ) : error ? (
-            <p className="text-sm text-red-500 py-8 text-center">{error}</p>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {[
-                  { label: "Pre-test", value: row.pre.avgPct, takers: row.pre.takers },
-                  { label: "Mid-test", value: row.mid.avgPct, takers: row.mid.takers },
-                  { label: "Post-test", value: row.post.avgPct, takers: row.post.takers },
-                ].map((b) => (
-                  <div key={b.label} className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                    <p className="text-[10px] text-slate-400 mb-1">{b.label}</p>
-                    <p className="text-lg font-black text-slate-800">{fmtPct(b.value)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{b.takers} คนสอบ</p>
-                  </div>
-                ))}
-              </div>
-
-              {row.growth?.capped && (
-                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-                  คะแนน Pre-test เฉลี่ยสูงอยู่แล้ว เหลือพื้นที่ให้พัฒนาน้อย ตัวเลขพัฒนาการของกลุ่มนี้
-                  จึงเทียบกับกลุ่มที่พื้นฐานต่ำกว่าตรงๆ ไม่ได้
-                </p>
-              )}
-
-              {tested.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className="text-sm text-slate-400">ยังไม่มีนักเรียนคนไหนสอบในวิชานี้</p>
-                </div>
-              ) : (
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="text-left px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">นักเรียน</th>
-                        <th className="text-center px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Pre</th>
-                        <th className="text-center px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Mid</th>
-                        <th className="text-center px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">Post</th>
-                        <th className="text-center px-3 py-2 text-[11px] font-semibold text-slate-500 uppercase">พัฒนาการ</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {tested.map((s) => {
-                        const tone = growthTone(s.growth);
-                        return (
-                          <tr key={s.userId} className="hover:bg-slate-50/60">
-                            <td className="px-3 py-2 text-slate-700 text-xs">{s.name}</td>
-                            <td className="px-3 py-2 text-center text-xs text-slate-600">{fmtPct(s.pre)}</td>
-                            <td className="px-3 py-2 text-center text-xs text-slate-600">{fmtPct(s.mid)}</td>
-                            <td className="px-3 py-2 text-center text-xs font-bold text-slate-800">{fmtPct(s.post)}</td>
-                            <td className="px-3 py-2 text-center">
-                              {s.growth ? (
-                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${tone.bg} ${tone.text} ${tone.border}`}>
-                                  {s.growth.delta > 0 ? "+" : ""}{s.growth.delta} จุด
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-300">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {notTested.length > 0 && (
-                <div className="mt-4">
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-2">
-                    <Users className="h-3.5 w-3.5 text-slate-400" />
-                    ลงทะเบียนแล้วแต่ยังไม่ได้สอบ ({notTested.length} คน)
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {notTested.map((s) => (
-                      <span key={s.userId} className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600">
-                        {s.name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

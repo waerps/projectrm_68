@@ -249,6 +249,50 @@ export async function fetchExamJoinDetail(examJoinId) {
   return data;
 }
 
+// ─── ชุด api ของหน้าวิเคราะห์ (ExamAnalyticsView) ────────────────────────────
+// หน้าวิเคราะห์ตัวเดียวถูกใช้ทั้งฝั่งติวเตอร์และฝั่งแอดมิน ต่างกันแค่ยิงไปคนละที่
+// จึงรวบ endpoint ของแต่ละบทบาทไว้เป็น object ชุดเดียว แล้วส่งเข้า component
+//
+// ⚠ ต้อง memo ผลลัพธ์ฝั่งผู้เรียกเสมอ (useMemo) ไม่งั้น effect ที่มี api เป็น
+//   dependency จะมองว่าเปลี่ยนทุกรอบ render แล้ววนยิง API ไม่จบ
+
+// ฝั่งติวเตอร์ — ใช้ /api/exam ตามเดิม (adminId = ตัวติวเตอร์เองที่ล็อกอินอยู่)
+export function tutorExamAnalyticsApi({ courseId, subjectId, adminId }) {
+  return {
+    fetchExams: () => fetchExams({ courseId, subjectId, adminId }),
+    fetchExamResults: (examId) => fetchExamResults(examId),
+    fetchTopicBreakdown: (examId) => fetchTopicBreakdown(examId),
+  };
+}
+
+// ฝั่งแอดมิน — ใช้ /api/admin/progress ซึ่งอ่านอย่างเดียวล้วน
+//
+// ทำไมต้องแยก endpoint ไม่ใช้ /api/exam ของติวเตอร์ซ้ำ:
+//   GET /api/exam เรียก ensureExamsForSubject() ซึ่ง "สร้าง" แถว Pre/Mid/Post
+//   ให้ผู้เรียกอัตโนมัติถ้ายังไม่มี ถ้าแอดมินไปเรียก จะเกิดแถวข้อสอบขยะที่มี
+//   แอดมินเป็นเจ้าของงอกทุกครั้งที่เปิดดูคอร์ส×วิชาใหม่
+//
+// ฝั่งแอดมินต้องส่ง tutorId ไปด้วยทุกครั้ง เพราะแถวข้อสอบผูกกับติวเตอร์เจ้าของ
+// และ backend จะเช็คว่า examId ที่ขอเป็นของ คอร์ส+วิชา+ติวเตอร์ ชุดนั้นจริง
+export function adminExamAnalyticsApi({ courseId, subjectId, tutorId }) {
+  const params = { courseId, subjectId, tutorId };
+  const base = `${API_URL}/api/admin/progress`;
+  return {
+    fetchExams: async () => {
+      const { data } = await axios.get(`${base}/exams`, { params, headers: authHeaders() });
+      return data;
+    },
+    fetchExamResults: async (examId) => {
+      const { data } = await axios.get(`${base}/exams/${examId}/results`, { params, headers: authHeaders() });
+      return data;
+    },
+    fetchTopicBreakdown: async (examId) => {
+      const { data } = await axios.get(`${base}/exams/${examId}/topic-breakdown`, { params, headers: authHeaders() });
+      return data;
+    },
+  };
+}
+
 export async function fetchTopicBreakdown(examId) {
   const { data } = await axios.get(`${API_BASE}/${examId}/topic-breakdown`, { headers: authHeaders() });
   return data;
