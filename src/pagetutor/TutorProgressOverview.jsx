@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
-  BarChart2, BookOpen, Users, Search, Loader2, ChevronLeft, ChevronRight,
+  BarChart2, BookOpen, Users, Search, Loader2, Calendar, ChevronRight, ChevronLeft,
 } from "lucide-react";
 
 // ─── ภาพรวมพัฒนาการ — ทางลัดจากเมนู ──────────────────────────────────────────
@@ -14,9 +14,10 @@ import {
 // ใช้ endpoint เดิมที่หน้า "คอร์สที่สอน" ใช้อยู่แล้ว (/coursestutor?adminId=)
 // ซึ่งคืนข้อมูลมาเป็นระดับคอร์ส x วิชาพอดี จึงไม่ต้องเพิ่ม API ใหม่
 //
-// หน้าตายึดตามหน้าฝั่งแอดมิน (AdminTutors / AdminStudents): โทน slate + ส้ม,
-// การ์ดสถิติไอคอนสี่เหลี่ยมทึบ, แถบค้นหาการ์ดขาว, ตาราง และ pagination ชุดเดียวกัน
-const ITEMS_PER_PAGE = 12;
+// โทนสี/การ์ดสถิติ/แถบค้นหา ยึดตามหน้าฝั่งแอดมิน (AdminTutors / AdminStudents)
+// ส่วน "เนื้อหา" ด้านล่างเป็นการ์ดต่อคอร์ส แต่ละใบมีรายชื่อวิชาซ้อนอยู่ข้างใน
+// (ตามที่ผู้ใช้ขอ) แทนตารางแถวแบนแบบเดิม — คลิกที่วิชาไหนก็เข้าไปดูพัฒนาการของวิชานั้น
+const ITEMS_PER_PAGE = 12; // จำนวน "คอร์ส" (การ์ด) ต่อหน้า ไม่ใช่จำนวนวิชา
 
 const fmtDate = (v) => {
   if (!v) return null;
@@ -29,7 +30,7 @@ export default function TutorProgressOverview() {
   const tutorId = JSON.parse(localStorage.getItem("user") || "{}")?.id;
   const navigate = useNavigate();
 
-  const [rows, setRows] = useState([]);   // แถวละ 1 คอร์ส x 1 วิชา
+  const [rows, setRows] = useState([]);   // แถวละ 1 คอร์ส x 1 วิชา (ดิบจาก API)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -84,23 +85,57 @@ export default function TutorProgressOverview() {
     };
   }, [rows]);
 
-  const filtered = useMemo(() => {
+  // จัดกลุ่มแถวดิบ (คอร์ส x วิชา) ให้เป็น "การ์ดคอร์ส" แต่ละใบมีรายวิชาซ้อนอยู่ข้างใน
+  // แล้วค่อยกรองด้วยคำค้นหา: ถ้าชื่อคอร์สตรงคำค้น ให้โชว์ทุกวิชาของคอร์สนั้น
+  // ถ้าชื่อคอร์สไม่ตรง ให้เหลือเฉพาะวิชาที่ชื่อตรงคำค้น แล้วค่อยตัดคอร์สที่ไม่เหลือวิชาออก
+  const courseCards = useMemo(() => {
+    const byId = new Map();
+    for (const r of rows) {
+      if (!byId.has(r.courseId)) {
+        byId.set(r.courseId, {
+          courseId: r.courseId,
+          courseName: r.courseName,
+          startDate: r.startDate,
+          studentCount: r.studentCount,
+          subjects: [],
+        });
+      }
+      byId.get(r.courseId).subjects.push({
+        key: r.key,
+        subjectId: r.subjectId,
+        subjectName: r.subjectName,
+      });
+    }
+    const all = [...byId.values()];
+
     const kw = search.trim().toLowerCase();
-    if (!kw) return rows;
-    return rows.filter(
-      (r) => r.courseName.toLowerCase().includes(kw) || r.subjectName.toLowerCase().includes(kw)
-    );
+    if (!kw) return all;
+
+    return all
+      .map((c) => {
+        const courseMatches = c.courseName.toLowerCase().includes(kw);
+        const subjects = courseMatches
+          ? c.subjects
+          : c.subjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
+        return { ...c, subjects };
+      })
+      .filter((c) => c.subjects.length > 0);
   }, [rows, search]);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
-  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const matchedSubjectCount = useMemo(
+    () => courseCards.reduce((sum, c) => sum + c.subjects.length, 0),
+    [courseCards]
+  );
 
-  const openAnalytics = (r) => {
+  const totalPages = Math.ceil(courseCards.length / ITEMS_PER_PAGE) || 1;
+  const paginatedCourses = courseCards.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const openAnalytics = (courseId, courseName, subjectId, subjectName) => {
     const params = new URLSearchParams({
-      courseId: String(r.courseId),
-      subjectId: String(r.subjectId),
-      courseName: r.courseName,
-      subjectName: r.subjectName,
+      courseId: String(courseId),
+      subjectId: String(subjectId),
+      courseName,
+      subjectName,
     });
     navigate(`/tutor/exam-analytics?${params.toString()}`);
   };
@@ -120,6 +155,7 @@ export default function TutorProgressOverview() {
           <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการ</h1>
           <p className="text-sm text-slate-500 mt-1">
             เลือกคอร์สและวิชาที่ต้องการดูพัฒนาการของนักเรียน
+            {stats.subjects > 0 && ` · คุณสอนอยู่ ${stats.subjects} วิชา ใน ${stats.courses} คอร์ส`}
           </p>
         </div>
       </div>
@@ -159,12 +195,14 @@ export default function TutorProgressOverview() {
             />
           </div>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {rows.length} วิชา</p>
+        <p className="text-xs text-slate-400 mt-2 pl-1">
+          แสดง {matchedSubjectCount} จาก {rows.length} วิชา ({courseCards.length} คอร์ส)
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
 
-      {!error && filtered.length === 0 ? (
+      {!error && courseCards.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
           <div className="text-6xl mb-3">📈</div>
           <p className="text-slate-500 font-medium">
@@ -177,64 +215,55 @@ export default function TutorProgressOverview() {
       ) : (
         !error && (
           <>
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วิชา</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
-                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เริ่มเรียน</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {paginated.map((r) => (
-                      <tr key={r.key} className="hover:bg-orange-50/40 transition-colors">
-                        <td className="px-4 py-3">
-                          <p className="font-semibold text-slate-900 text-sm">{r.courseName}</p>
-                          <p className="text-[10px] text-slate-400">#{r.courseId}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
-                            {r.subjectName || `วิชา #${r.subjectId}`}
+            {/* การ์ดคอร์ส — แต่ละใบมีรายชื่อวิชาซ้อนอยู่ข้างใน คลิกวิชาไหนก็เข้าดูพัฒนาการของวิชานั้น */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {paginatedCourses.map((c) => (
+                <div
+                  key={c.courseId}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="px-4 py-3 border-b border-slate-100">
+                    <p className="font-bold text-slate-900 text-sm">{c.courseName}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        {fmtDate(c.startDate) ? `เริ่ม ${fmtDate(c.startDate)}` : "ยังไม่ระบุวันเริ่ม"}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                        <Users className="h-3.5 w-3.5 text-slate-400" />
+                        {c.studentCount} คน
+                      </span>
+                    </div>
+                  </div>
+
+                  {c.subjects.length === 0 ? (
+                    <p className="px-4 py-4 text-xs text-slate-400">ไม่มีวิชาที่ตรงกับคำค้นหาในคอร์สนี้</p>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {c.subjects.map((s) => (
+                        <button
+                          key={s.key}
+                          onClick={() => openAnalytics(c.courseId, c.courseName, s.subjectId, s.subjectName)}
+                          className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-orange-50/40 transition-colors"
+                        >
+                          <BarChart2 className="h-4 w-4 text-slate-400 shrink-0" />
+                          <span className="flex-1 text-sm font-medium text-slate-700 truncate">
+                            {s.subjectName || `วิชา #${s.subjectId}`}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
-                            {r.studentCount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {fmtDate(r.startDate) ? (
-                            <span className="text-xs text-slate-600">{fmtDate(r.startDate)}</span>
-                          ) : (
-                            <span className="text-xs text-slate-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => openAnalytics(r)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
-                            >
-                              <BarChart2 className="h-3.5 w-3.5" /> ดูพัฒนาการ
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">
-                  แสดง <span className="font-semibold">{(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> วิชา
+                  แสดง <span className="font-semibold">{(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, courseCards.length)}</span> จาก <span className="font-semibold">{courseCards.length}</span> คอร์ส
                 </p>
                 <div className="flex items-center gap-1.5">
                   <button
