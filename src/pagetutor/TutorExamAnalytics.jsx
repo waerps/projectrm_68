@@ -1939,9 +1939,14 @@ export default function TutorExamAnalytics() {
         // จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย)
         <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
           {fromProgress ? (
+            // เข้ามาจากหน้า "ภาพรวมพัฒนาการ" (/tutor/progress) — เป็นเส้นทางของตัวเอง
+            // แยกจากกิ่งปกติเด็ดขาด ไม่ใช้ท้ายเส้นร่วมกัน กันไม่ให้ ChevronRight ซ้อนกันเป็นช่องว่าง
             <>
+              <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
+              <ChevronRight className="h-4 w-4" />
               <Link to="/tutor/progress" className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
               <ChevronRight className="h-4 w-4" />
+              <span className="font-semibold text-slate-700">{subjectName || "วิชา"}</span>
             </>
           ) : (
             <>
@@ -1953,33 +1958,33 @@ export default function TutorExamAnalytics() {
               >
                 {subjectName || "จัดการการสอบ"}
               </Link>
-            </>
-          )}
-          {fromExamDetail && (
-            <>
-              <ChevronRight className="h-4 w-4" />
-              {realExamId(examId) ? (
-                <Link
-                  to={`/tutor/exam-detail?${new URLSearchParams({
-                    courseId: courseId || "",
-                    subjectId: subjectId || "",
-                    courseName,
-                    subjectName,
-                    examId: String(realExamId(examId)),
-                  }).toString()}`}
-                  className="hover:text-orange-600 transition font-medium"
-                >
-                  {examLabel}
-                </Link>
-              ) : (
-                // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
-                // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
-                <span className="font-medium">{examLabel}</span>
+              {fromExamDetail && (
+                <>
+                  <ChevronRight className="h-4 w-4" />
+                  {realExamId(examId) ? (
+                    <Link
+                      to={`/tutor/exam-detail?${new URLSearchParams({
+                        courseId: courseId || "",
+                        subjectId: subjectId || "",
+                        courseName,
+                        subjectName,
+                        examId: String(realExamId(examId)),
+                      }).toString()}`}
+                      className="hover:text-orange-600 transition font-medium"
+                    >
+                      {examLabel}
+                    </Link>
+                  ) : (
+                    // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
+                    // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
+                    <span className="font-medium">{examLabel}</span>
+                  )}
+                </>
               )}
+              <ChevronRight className="h-4 w-4" />
+              <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
             </>
           )}
-          <ChevronRight className="h-4 w-4" />
-          <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
         </div>
       )}
     />
