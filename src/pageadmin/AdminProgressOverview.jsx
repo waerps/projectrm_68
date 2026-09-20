@@ -31,25 +31,12 @@ const getAdminAuthConfig = () => {
   return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
 
-const fmtPct = (v) => (v === null || v === undefined ? "—" : `${v}%`);
-
 const fmtDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
   return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
 };
-
-// ป้ายพัฒนาการ — ใช้เครื่องหมายของผลต่าง Post − Pre ตรง ๆ ไม่มีเกณฑ์ประดิษฐ์
-// growth.delta มาจาก backend แล้ว หน้านี้แค่เลือกสี
-function growthTone(growth) {
-  if (!growth || growth.delta === null || growth.delta === undefined) {
-    return { bg: "bg-slate-50", text: "text-slate-500", border: "border-slate-200" };
-  }
-  if (growth.delta > 0) return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" };
-  if (growth.delta < 0) return { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" };
-  return { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" };
-}
 
 export default function AdminProgressOverview() {
   const navigate = useNavigate();
@@ -260,53 +247,31 @@ export default function AdminProgressOverview() {
                         <Users className="h-3.5 w-3.5 text-slate-400" />
                         {c.studentsEnrolled} คน
                       </span>
-                      <span className="text-xs text-slate-400">· {c.items.length} วิชา/กลุ่ม</span>
+                      <span className="text-xs text-slate-400">· {c.items.length} วิชา/คอร์ส</span>
                     </div>
                   </div>
 
                   <div className="divide-y divide-slate-100">
-                    {c.items.map((r) => {
-                      const tone = growthTone(r.growth);
-                      return (
-                        <button
-                          key={r.key}
-                          onClick={() => openDetail(r)}
-                          className="w-full text-left px-4 py-3 hover:bg-orange-50/40 transition-colors"
-                        >
-                          <div className="flex items-start justify-between gap-3 flex-wrap">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-semibold text-slate-800">
-                                  {r.subjectName || `วิชา #${r.subjectId}`}
-                                </span>
-                                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                                  <GraduationCap className="h-3 w-3 text-slate-400" />
-                                  {r.tutorName || "—"}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2.5 mt-1.5 flex-wrap text-xs text-slate-500">
-                                <span>Pre {fmtPct(r.pre.avgPct)}</span>
-                                <span>Mid {fmtPct(r.mid.avgPct)}</span>
-                                <span className="font-bold text-slate-700">Post {fmtPct(r.post.avgPct)}</span>
-                                {r.growth ? (
-                                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${tone.bg} ${tone.text} ${tone.border}`}>
-                                    {r.growth.delta > 0 ? "+" : ""}{r.growth.delta} จุด
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-300">พัฒนาการ —</span>
-                                )}
-                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-[11px] font-bold">
-                                  สอบแล้ว {r.post.takers}/{r.studentsEnrolled}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-orange-600 shrink-0">
-                              <BarChart2 className="h-3.5 w-3.5" /> ดูพัฒนาการ <ChevronRight className="h-3.5 w-3.5" />
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                    {c.items.map((r) => (
+                      <button
+                        key={r.key}
+                        onClick={() => openDetail(r)}
+                        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-orange-50/40 transition-colors"
+                      >
+                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {r.subjectName || `วิชา #${r.subjectId}`}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+                            <GraduationCap className="h-3 w-3 text-slate-400" />
+                            {r.tutorName || "—"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-orange-600 shrink-0">
+                          <BarChart2 className="h-3.5 w-3.5" /> ดูพัฒนาการ <ChevronRight className="h-3.5 w-3.5" />
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               ))}

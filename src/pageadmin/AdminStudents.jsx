@@ -1245,10 +1245,12 @@ function ParentPrivacyNoticeBlock({ parent }) {
 // ความยินยอมโหลด/บันทึกแยกกันคนละจังหวะกับข้อมูลเรียน/คะแนน
 function ConsentTab({ studentId, showToast }) {
   const [catalog, setCatalog] = useState([]);
-  const [status, setStatus] = useState({});
-  const [history, setHistory] = useState([]);      // ใช้หา method/เวลาล่าสุดของแต่ละรายการ
+  const [courses, setCourses] = useState([]);                  // [{ courseId, courseName }] ที่ลงทะเบียนอยู่
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [consentsByCourse, setConsentsByCourse] = useState({}); // { [courseId]: { [consentKey]: status } }
+  const [history, setHistory] = useState([]);      // ทุกคอร์สรวมกัน มี CourseId กำกับทุกแถว — กรองตามคอร์สที่เลือกตอนใช้
   const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState({});          // { [consentKey]: true|false } — ยังไม่ได้บันทึก
+  const [draft, setDraft] = useState({});          // { [consentKey]: true|false } — ยังไม่ได้บันทึก (ของคอร์สที่เลือกอยู่)
   const [evidenceFile, setEvidenceFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
@@ -1261,16 +1263,30 @@ function ConsentTab({ studentId, showToast }) {
     ])
       .then(([cat, res]) => {
         setCatalog(cat?.items ?? []);
-        setStatus(res.data?.consents ?? {});
+        const loadedCourses = res.data?.courses ?? [];
+        setCourses(loadedCourses);
+        setConsentsByCourse(res.data?.consentsByCourse ?? {});
         setHistory(res.data?.history ?? []);
+        // คงคอร์สที่เลือกไว้เดิมถ้ายังอยู่ในรายชื่อ (เช่น refresh หลังบันทึก) ไม่งั้นเลือกคอร์สแรกให้
+        setSelectedCourseId((prev) =>
+          prev && loadedCourses.some((c) => c.courseId === prev) ? prev : (loadedCourses[0]?.courseId ?? null)
+        );
       })
       .catch((e) => showToast("error", "โหลดข้อมูลความยินยอมไม่สำเร็จ", e.response?.data?.message || e.message))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, [studentId]);
+  // สลับคอร์สแล้วต้องเคลียร์คำตอบร่าง/ไฟล์แนบ — กันเผลอเอาคำตอบของอีกคอร์สไปบันทึกผิดคอร์ส
+  useEffect(() => {
+    setDraft({});
+    setEvidenceFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [selectedCourseId]);
 
-  const latestRecordFor = (key) => history.find((r) => r.ConsentKey === key) || null;
+  const status = consentsByCourse[selectedCourseId] || {};
+  const historyForCourse = history.filter((r) => r.CourseId === selectedCourseId);
+  const latestRecordFor = (key) => historyForCourse.find((r) => r.ConsentKey === key) || null;
   const METHOD_LABEL = { online: "ออนไลน์", paper: "กระดาษ" };
 
   const STATUS_LABEL = {
@@ -1281,15 +1297,18 @@ function ConsentTab({ studentId, showToast }) {
 
   // มีเฉพาะรายการที่ "ยังไม่ได้ตอบ" เท่านั้นที่แอดมินเพิ่มคำตอบแทนได้ — ตอบแล้วไม่ว่าจะยินยอมหรือไม่
   // ยินยอม (ไม่ว่านักเรียนตอบเองหรือแอดมินเคยบันทึกไว้ก่อน) แก้ทับไม่ได้อีก (ฝั่ง backend บล็อกไว้แล้วเช่นกัน)
+  // เช็คเฉพาะของ "คอร์สที่เลือกอยู่" เท่านั้น — คอร์สอื่นมีสถานะของตัวเองแยกกัน
   const pendingItems = catalog.filter((item) => (status[item.key] || "not_answered") === "not_answered");
   const answeredCount = Object.keys(draft).length;
 
   const handleSavePaper = async () => {
+    if (!selectedCourseId) return showToast("error", "กรุณาเลือกคอร์สก่อนบันทึก");
     if (!answeredCount) return showToast("error", "กรุณาเลือกอย่างน้อย 1 รายการก่อนบันทึก");
 
     const items = Object.entries(draft).map(([consentKey, isGranted]) => ({ consentKey, isGranted }));
     const fd = new FormData();
     fd.append("items", JSON.stringify(items));
+    fd.append("courseId", String(selectedCourseId));
     if (evidenceFile) fd.append("evidence", evidenceFile);
 
     setSaving(true);
@@ -1313,14 +1332,42 @@ function ConsentTab({ studentId, showToast }) {
     return <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>;
   }
 
+  if (!courses.length) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+        นักเรียนคนนี้ยังไม่ได้ลงทะเบียนคอร์สใดเลย — ความยินยอมผูกกับคอร์ส จึงยังไม่มีคอร์สให้ดู/บันทึก
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
         <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> ความยินยอม (PDPA)</p>
         <p className="mt-1 text-xs text-orange-700 leading-relaxed">
-          นักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ แอดมินเพิ่มคำตอบแทนได้
-          (เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์) แต่ถ้ามีคำตอบแล้ว จะแก้ไขทับไม่ได้อีก
+          ความยินยอมผูกกับ "คอร์สที่ลงทะเบียน" แยกกันทีละคอร์ส นักเรียนอาจยินยอมคอร์สหนึ่งแต่ไม่ยินยอมอีกคอร์สหนึ่งก็ได้
+          เลือกคอร์สด้านล่างเพื่อดู/บันทึกของคอร์สนั้น — นักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ
+          แอดมินเพิ่มคำตอบแทนได้ (เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์) แต่ถ้ามีคำตอบแล้ว จะแก้ไขทับไม่ได้อีก
         </p>
+
+        {courses.length > 1 ? (
+          <label className="mt-3 flex items-center gap-2">
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-orange-700" />
+            <select
+              value={selectedCourseId ?? ""}
+              onChange={(e) => setSelectedCourseId(Number(e.target.value))}
+              className="flex-1 rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
+            >
+              {courses.map((c) => (
+                <option key={c.courseId} value={c.courseId}>{c.courseName}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-orange-800">
+            <BookOpen className="h-3.5 w-3.5 shrink-0" /> คอร์ส: {courses[0]?.courseName}
+          </p>
+        )}
 
         <div className="mt-3 space-y-2.5">
           {catalog.map((item) => {

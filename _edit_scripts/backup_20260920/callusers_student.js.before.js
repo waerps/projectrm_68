@@ -349,26 +349,21 @@ export async function getConsentCatalog() {
   }
 }
 
-// courseId ไม่ระบุ (undefined) → backend สรุปภาพรวม "ทุกคอร์สที่ลงทะเบียนอยู่" แทน
-// (ใช้กับ PdpaConsentBanner ที่ยังไม่รู้ว่ากำลังพูดถึงคอร์สไหน) — ระบุ courseId มา →
-// สถานะของคอร์สนั้นเท่านั้น (ใช้ตอน checkout คอร์สหนึ่ง ๆ ใน Cart.jsx)
-export async function getMyConsents(token, courseId) {
+export async function getMyConsents(token) {
   try {
-    const params = courseId ? { courseId } : {};
-    const res = await apiClient.get("/api/consents/me", { ...withAuth(token), params });
+    const res = await apiClient.get("/api/consents/me", withAuth(token));
     return res.data;
   } catch (error) {
     throwNiceError(error);
   }
 }
 
-// courseId: บังคับ — ความยินยอมผูกกับคอร์สเสมอ (backend ตอบ 400 ถ้าไม่ส่งมา)
 // items: [{ consentKey, isGranted }]
 // opts.grantedByRole: "student" | "parent" — ใครเป็นคนกดตอบจริง ๆ ตอนนี้ (ดีฟอลต์ "student"
 // ที่ backend) ใช้ตอนผู้ปกครองเป็นคนตอบแทนผู้เยาว์ผ่านหน้าเว็บ (เช่น ตอนซื้อคอร์ส/ดูโปรไฟล์)
-export async function saveConsents(token, courseId, items, opts = {}) {
+export async function saveConsents(token, items, opts = {}) {
   try {
-    const body = { items, courseId };
+    const body = { items };
     if (opts.grantedByRole) body.grantedByRole = opts.grantedByRole;
     const res = await apiClient.post("/api/consents", body, withAuth(token));
     return res.data;

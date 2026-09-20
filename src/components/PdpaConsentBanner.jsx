@@ -6,6 +6,12 @@ import { getMyConsents } from "../callapi/callusers_student";
 // แบนเนอร์เตือนนักเรียนเก่าที่ยังไม่เคยตอบความยินยอม PDPA บางรายการ (เฟส 4)
 // ไม่บล็อกการใช้งานอะไรทั้งสิ้น — ปิดได้ (จำไว้แค่ตลอดแท็บนี้) แต่จะโผล่ใหม่ทุกเซสชันจนกว่าจะไปตอบจริง
 // พฤติกรรมตอนนี้ (ช่วงผ่อนผัน) ถูกคุมด้วย TRANSITION_DEADLINE ใน config/consentTypes.js ฝั่ง backend
+//
+// หมายเหตุ: ตั้งแต่ความยินยอม exam_behavior เปลี่ยนเป็นผูกกับ "รายคอร์ส" (ไม่ใช่ทั้งคนแบบเดิม)
+// getMyConsents(token) ด้านล่างนี้ "ตั้งใจ" ไม่ส่ง courseId มา เพราะแบนเนอร์นี้ยังไม่รู้ว่ากำลัง
+// พูดถึงคอร์สไหน — backend (GET /api/consents/me ไม่ระบุ courseId) จะสรุป pendingCount จาก
+// ทุกคอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่ให้เอง (ดู getPendingConsentsAcrossEnrolledCourses
+// ใน services/consent.js) ไม่ใช่โค้ดเก่าที่ตกหล่นไม่ได้แก้
 const DISMISS_KEY = "pdpa_banner_dismissed_session";
 
 export default function PdpaConsentBanner() {
