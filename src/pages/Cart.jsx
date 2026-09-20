@@ -897,7 +897,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                           <p className="text-sm font-bold text-[#14213D]">{courseItem.title}</p>
                           {needsAnswer ? (
                             <>
-                              <p className="mt-2 text-sm text-slate-600 leading-relaxed">{examConsentItem.summary}</p>
+                              <p className="mt-2 text-sm text-slate-600 leading-relaxed whitespace-pre-line">{examConsentItem.summary}</p>
                               {examConsentItem.reassurance && (
                                 <p className="mt-2 text-sm text-emerald-600 leading-relaxed">{examConsentItem.reassurance}</p>
                               )}
@@ -918,7 +918,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                                 </span>
                               </label>
                               {!state.granted && (
-                                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                                <p className="mt-2 text-xs text-slate-500 leading-relaxed whitespace-pre-line">
                                   {examConsentItem.ifDenied}
                                 </p>
                               )}

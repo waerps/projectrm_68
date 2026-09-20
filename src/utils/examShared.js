@@ -427,9 +427,13 @@ export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
 // ทุกฉบับเป็นร่างเสมอ ติวเตอร์ต้องกดอนุมัติก่อนจึงจะถือว่าใช้ได้
 const AI_BASE = `${API_URL}/api/ai`;
 
-// POST /api/ai/analyze → สั่งวิเคราะห์ทั้งห้อง (ใช้เวลานาน ห้อง 30 คนอาจเป็นนาที)
+// POST /api/ai/analyze → ปุ่ม "วิเคราะห์ใหม่" สำรอง (flow หลักคือวิเคราะห์อัตโนมัติ
+// ตอนสอบปิดแล้ว — ดู backend services/aiAnalysis.js) ใช้เวลานาน ห้อง 30 คนอาจเป็นนาที
+// timeout ตั้งไว้สูงกว่า backend เล็กน้อย (backend abort ที่ 180000ms ค่า default)
+// เพื่อให้ error message จาก backend (504 พร้อมข้อความ) มาถึงก่อนเสมอ ไม่ใช่ axios
+// timeout เองไปตัดก่อนจนเห็นแต่ error ทั่วไปที่ไม่มีรายละเอียด
 export async function analyzeExamWithAi(examId) {
-  const { data } = await axios.post(`${AI_BASE}/analyze`, { examId }, { headers: authHeaders(), timeout: 300000 });
+  const { data } = await axios.post(`${AI_BASE}/analyze`, { examId }, { headers: authHeaders(), timeout: 200000 });
   return data;
 }
 

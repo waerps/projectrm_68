@@ -2397,12 +2397,34 @@ function QuestionPeriods({ periods }) {
   );
 }
 
-function StudentDetailModal({ student, examJoinId, examName, examQuestions, onClose }) {
+function StudentDetailModal({ student, examJoinId, examName, examQuestions, aiSummary, onClose }) {
   // แบ่งเนื้อหาเป็น 2 แท็บ — เดิมต่อกันยาวทั้งหมดในหน้าเดียว พอข้อสอบเยอะจะตาลาย
   const [modalTab, setModalTab] = useState("overview");
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // บทวิเคราะห์ AI ของนักเรียนคนนี้ (ถ้ามี) — ส่วน "ดูบทวิเคราะห์แบบละเอียด" ใช้ AiSummaryDetail
+  // ตัวเดียวกับที่ AiSummaryPanel ใช้ (ดูด้านบนไฟล์นี้) เพื่อไม่ต้องเขียน JSX ซ้ำสองที่
+  const [aiDetailOpen, setAiDetailOpen] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null); // ข้อความถึงผู้ปกครองที่แก้ค้างไว้ก่อนบันทึก (เฉพาะโมดัลนี้)
+  const [aiSavedMessage, setAiSavedMessage] = useState(null); // ค่าที่บันทึกสำเร็จล่าสุดในโมดัลนี้ (เผื่อ props ยังไม่รีเฟรชจาก AiStatusStrip)
+  const [aiSaving, setAiSaving] = useState(false);
+  const aiBaselineMessage = aiSavedMessage ?? aiSummary?.parentMessage ?? "";
+  const aiParentMessage = aiDraft ?? aiBaselineMessage;
+  const aiDirty = aiDraft != null && aiDraft !== aiBaselineMessage;
+
+  const saveAiSummary = async () => {
+    if (!aiSummary) return;
+    setAiSaving(true);
+    try {
+      await updateAiSummary(aiSummary.id, { parentMessage: aiParentMessage });
+      setAiSavedMessage(aiParentMessage);
+      setAiDraft(null);
+    } catch (err) {
+      console.error("Update AI summary failed:", err);
+    } finally { setAiSaving(false); }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -2521,6 +2543,57 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
               </button>
             ))}
           </div>
+
+          {/* ── Quick Insight จาก AI ─────────────────────────────────────────
+              สรุปสั้นๆ + แนวโน้มรายหมวดให้เห็นภาพเร็วๆ (โดยเฉพาะเวลาผู้ปกครองมาดู)
+              บทวิเคราะห์แบบละเอียด (สาเหตุ/จุดที่เข้าใจผิด/คำแนะนำ) กดขยายดูได้ที่ปุ่มด้านล่าง
+              ไม่บังคับเปิดให้เห็นตลอด กันหน้าจอรกเกินไปสำหรับคนที่แค่อยากดูสรุปเร็วๆ */}
+          {modalTab === "overview" && aiSummary && (
+            <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
+                    <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
+                  </p>
+                  <p className="text-sm text-neutral-700 leading-relaxed">{aiSummary.overview}</p>
+                  {(aiSummary.byCategory?.some((c) => c.trend) || aiSummary.misconceptions?.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {aiSummary.byCategory?.filter((c) => c.trend).map((c, i) => (
+                        <span key={i} className="text-[11px] font-medium bg-white border border-orange-200 text-orange-700 rounded-full px-2 py-0.5">
+                          {c.topic} · {c.trend}
+                        </span>
+                      ))}
+                      {aiSummary.misconceptions?.length > 0 && (
+                        <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
+                          จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {aiSummary.model && <span className="text-[10px] text-neutral-400 flex-shrink-0">โดย {aiSummary.model}</span>}
+              </div>
+              <button
+                onClick={() => setAiDetailOpen((v) => !v)}
+                className="mt-3 flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
+              >
+                <ChevronRight className={`h-3.5 w-3.5 transition ${aiDetailOpen ? "rotate-90" : ""}`} />
+                {aiDetailOpen ? "ซ่อนบทวิเคราะห์แบบละเอียด" : "ดูบทวิเคราะห์แบบละเอียด"}
+              </button>
+              {aiDetailOpen && (
+                <div className="mt-3 -mx-4 -mb-3.5 border-t border-orange-100">
+                  <AiSummaryDetail
+                    row={aiSummary}
+                    parentMessage={aiParentMessage}
+                    dirty={aiDirty}
+                    saving={aiSaving}
+                    onDraftChange={setAiDraft}
+                    onSave={saveAiSummary}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── ธงคุณภาพข้อมูล ──────────────────────────────────────────────
               บอกว่า "คะแนนชุดนี้เชื่อถือได้แค่ไหน" ก่อนนำไปวางแผนสอนหรือคุยกับผู้ปกครอง
@@ -2797,6 +2870,182 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // เป็นข้อความช่วยร่างให้เท่านั้น ไม่ใช่ข้อสรุปสุดท้าย — ครู/แอดมินอ่านทบทวนเองก่อนส่งให้ผู้ปกครองทุกครั้ง
 // (ตัดขั้นตอน "อนุมัติ" ออกตามที่ผู้ใช้ขอ ไม่มีสถานะฉบับร่าง/อนุมัติอีกต่อไป — ใครก็แก้ข้อความ
 // และคัดลอกไปส่งได้เลย ไม่ต้องรอใครกดอนุมัติก่อน)
+// ─── AI Summary Detail — เนื้อหาบทวิเคราะห์แบบละเอียดของนักเรียน 1 คน ────────────
+// แยกออกมาจาก AiSummaryPanel (ด้านล่าง) เพื่อให้ใช้ซ้ำได้ทั้งจากแผงรายชื่อทั้งห้อง
+// (แท็บ "ai" ที่หน้าวิเคราะห์เชิงลึก ผ่าน AiSummaryPanel เดิม) และจากในโมดัลรายบุคคล
+// (StudentDetailModal ด้านล่างในไฟล์นี้) โดยไม่ต้องเขียน JSX ชุดเดียวกันซ้ำสองที่
+// ผู้เรียกเป็นคนคุม state ของ "ข้อความสำหรับผู้ปกครองที่แก้ค้างไว้" เอง (parentMessage/
+// dirty/saving) เพราะ AiSummaryPanel ต้องเก็บ draft ของหลายแถวพร้อมกัน (สลับเปิด-ปิด
+// accordion ไปมาไม่อยากให้ข้อความที่พิมพ์ค้างหาย) ส่วน StudentDetailModal มีแค่แถวเดียว
+function AiSummaryDetail({ row, parentMessage, dirty, saving, onDraftChange, onSave }) {
+  const [copied, setCopied] = useState(null); // แค่ animation "คัดลอกแล้ว" ชั่วคราว ไม่กระทบข้อมูลจริง เก็บไว้ในนี้พอ
+
+  const copyText = async (text, mark) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(mark);
+      setTimeout(() => setCopied(null), 2000);
+    } catch (err) {
+      console.error("Copy failed:", err);
+    }
+  };
+
+  // คัดลอกเฉพาะข้อความถึงผู้ปกครอง (ท่อนล่าง) — ของเดิม
+  const copyMessage = () => copyText(`${row.nickname || row.studentName}\n\n${parentMessage}`, "message");
+
+  // คัดลอกบทวิเคราะห์ทั้งฉบับ — ท่อนล่างมันสั้นเกินกว่าจะใช้สื่อสารจริงได้
+  // ประกอบเป็นข้อความอ่านง่ายเรียงตามที่แสดงบนหน้าจอ ส่วนไหนไม่มีข้อมูลก็ข้ามไป
+  const copyAll = () => {
+    const L = [];
+    L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
+    if (row.overview) L.push("", "ภาพรวม", row.overview);
+    if (row.byCategory?.length) {
+      L.push("", "รายหมวด");
+      row.byCategory.forEach((c) =>
+        L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`)
+      );
+    }
+    if (row.misconceptions?.length) {
+      L.push("", "จุดที่น่าจะเข้าใจผิด");
+      row.misconceptions.forEach((m) => {
+        L.push(`- ${m.topic} — ${m.pattern}`);
+        if (m.evidence) L.push(`  หลักฐาน: ${m.evidence}`);
+      });
+    }
+    if (row.behavior) L.push("", "ข้อสังเกตจากเวลาที่ใช้", row.behavior);
+    if (row.focusNext?.length) {
+      L.push("", "ควรทำต่อ เรียงตามลำดับ");
+      row.focusNext.forEach((f, i) =>
+        L.push(
+          typeof f === "string"
+            ? `${i + 1}. ${f}`
+            : `${i + 1}. ${f.action}${f.why ? ` — ${f.why}` : ""}`
+        )
+      );
+    }
+    if (parentMessage) L.push("", "ข้อความสำหรับผู้ปกครอง", parentMessage);
+    return copyText(L.join("\n"), "all");
+  };
+
+  return (
+    <div className="px-4 pb-4 space-y-3">
+      <div className="bg-orange-50/70 border border-orange-100 rounded-xl px-4 py-3">
+        <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1.5">
+          <Info className="h-3.5 w-3.5" /> ภาพรวม
+        </p>
+        <p className="text-sm text-neutral-700 leading-relaxed">{row.overview}</p>
+      </div>
+
+      {row.byCategory?.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
+            <BarChart2 className="h-3.5 w-3.5" /> รายหมวด
+          </p>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {row.byCategory.map((c, i) => (
+              <div key={i} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3 py-2">
+                <p className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 flex-wrap">
+                  {c.topic}
+                  {c.trend && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-white border border-neutral-200 text-[10px] font-medium text-neutral-500">
+                      {c.trend}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">{c.comment}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {row.misconceptions?.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5">
+            <Lightbulb className="h-3.5 w-3.5" /> จุดที่น่าจะเข้าใจผิด
+          </p>
+          <ul className="space-y-1.5">
+            {row.misconceptions.map((m, i) => (
+              <li key={i} className="text-sm text-amber-900">
+                <span className="font-medium">{m.topic}</span> — {m.pattern}
+                {m.evidence && <span className="block text-[11px] text-amber-700 mt-0.5">หลักฐาน: {m.evidence}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {row.behavior && (
+        <div className="border border-neutral-100 bg-neutral-50/60 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-neutral-500 mb-1 flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5" /> ข้อสังเกตจากเวลาที่ใช้
+          </p>
+          <p className="text-sm text-neutral-700">{row.behavior}</p>
+        </div>
+      )}
+
+      {row.focusNext?.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
+            <CheckCircle className="h-3.5 w-3.5" /> ควรทำต่อ เรียงตามลำดับ
+          </p>
+          <div className="space-y-1.5">
+            {row.focusNext.map((f, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="flex-shrink-0 h-5 w-5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <p className="text-sm text-neutral-700 leading-relaxed">
+                  {typeof f === "string" ? f : f.action}
+                  {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="border border-neutral-200 rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
+            <MessageCircle className="h-3.5 w-3.5" /> ข้อความสำหรับผู้ปกครอง (แก้ได้)
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyAll}
+              className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-lg px-2.5 py-1 transition"
+            >
+              <Copy className="h-3.5 w-3.5" /> {copied === "all" ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
+            </button>
+            <button onClick={copyMessage} className="text-xs font-semibold text-neutral-500 hover:text-neutral-700">
+              {copied === "message" ? "คัดลอกแล้ว" : "คัดลอกเฉพาะท่อนนี้"}
+            </button>
+          </div>
+        </div>
+        <textarea
+          value={parentMessage}
+          rows={5}
+          onChange={(e) => onDraftChange(e.target.value)}
+          className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300"
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        {dirty && (
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="text-xs font-semibold border border-neutral-200 hover:border-orange-300 hover:text-orange-600 rounded-lg px-3 py-1.5 disabled:opacity-40"
+          >
+            {saving ? "กำลังบันทึก…" : "บันทึกข้อความ"}
+          </button>
+        )}
+        {row.model && <span className="text-[11px] text-neutral-400">วิเคราะห์โดย {row.model}</span>}
+      </div>
+    </div>
+  );
+}
+
 // export เพื่อให้หน้า analytics (ExamAnalyticsView) ใช้แผงเดียวกันนี้ได้
 // ทั้งฝั่งติวเตอร์และฝั่งแอดมิน จะได้ไม่มีสองชุดที่ค่อยๆ เพี้ยนจากกัน
 export function AiSummaryPanel({ examId, submittedCount }) {
@@ -2807,7 +3056,6 @@ export function AiSummaryPanel({ examId, submittedCount }) {
   const [openId, setOpenId] = useState(null);
   const [drafts, setDrafts] = useState({});       // แก้ข้อความค้างไว้ก่อนบันทึก
   const [savingId, setSavingId] = useState(null);
-  const [copiedId, setCopiedId] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -2842,58 +3090,7 @@ export function AiSummaryPanel({ examId, submittedCount }) {
     } finally { setSavingId(null); }
   };
 
-  const copyText = async (row, text, mark) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedId(mark);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Copy failed:", err);
-    }
-  };
 
-  // คัดลอกเฉพาะข้อความถึงผู้ปกครอง (ท่อนล่าง) — ของเดิม
-  const copyMessage = (row) =>
-    copyText(
-      row,
-      `${row.nickname || row.studentName}\n\n${drafts[row.id]?.parentMessage ?? row.parentMessage}`,
-      row.id
-    );
-
-  // คัดลอกบทวิเคราะห์ทั้งฉบับ — ท่อนล่างมันสั้นเกินกว่าจะใช้สื่อสารจริงได้
-  // ประกอบเป็นข้อความอ่านง่ายเรียงตามที่แสดงบนหน้าจอ ส่วนไหนไม่มีข้อมูลก็ข้ามไป
-  const copyAll = (row) => {
-    const L = [];
-    L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
-    if (row.overview) L.push("", "ภาพรวม", row.overview);
-    if (row.byCategory?.length) {
-      L.push("", "รายหมวด");
-      row.byCategory.forEach((c) =>
-        L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`)
-      );
-    }
-    if (row.misconceptions?.length) {
-      L.push("", "จุดที่น่าจะเข้าใจผิด");
-      row.misconceptions.forEach((m) => {
-        L.push(`- ${m.topic} — ${m.pattern}`);
-        if (m.evidence) L.push(`  หลักฐาน: ${m.evidence}`);
-      });
-    }
-    if (row.behavior) L.push("", "ข้อสังเกตจากเวลาที่ใช้", row.behavior);
-    if (row.focusNext?.length) {
-      L.push("", "ควรทำต่อ เรียงตามลำดับ");
-      row.focusNext.forEach((f, i) =>
-        L.push(
-          typeof f === "string"
-            ? `${i + 1}. ${f}`
-            : `${i + 1}. ${f.action}${f.why ? ` — ${f.why}` : ""}`
-        )
-      );
-    }
-    const pm = drafts[row.id]?.parentMessage ?? row.parentMessage;
-    if (pm) L.push("", "ข้อความสำหรับผู้ปกครอง", pm);
-    return copyText(row, L.join("\n"), `all-${row.id}`);
-  };
 
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl p-5 space-y-4">
@@ -2961,121 +3158,14 @@ export function AiSummaryPanel({ examId, submittedCount }) {
                 </button>
 
                 {open && (
-                  <div className="px-4 pb-4 space-y-3">
-                    <div className="bg-orange-50/70 border border-orange-100 rounded-xl px-4 py-3">
-                      <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1.5">
-                        <Info className="h-3.5 w-3.5" /> ภาพรวม
-                      </p>
-                      <p className="text-sm text-neutral-700 leading-relaxed">{row.overview}</p>
-                    </div>
-
-                    {row.byCategory?.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
-                          <BarChart2 className="h-3.5 w-3.5" /> รายหมวด
-                        </p>
-                        <div className="grid sm:grid-cols-2 gap-2">
-                          {row.byCategory.map((c, i) => (
-                            <div key={i} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3 py-2">
-                              <p className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 flex-wrap">
-                                {c.topic}
-                                {c.trend && (
-                                  <span className="px-1.5 py-0.5 rounded-full bg-white border border-neutral-200 text-[10px] font-medium text-neutral-500">
-                                    {c.trend}
-                                  </span>
-                                )}
-                              </p>
-                              <p className="text-xs text-neutral-600 mt-1 leading-relaxed">{c.comment}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {row.misconceptions?.length > 0 && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                        <p className="text-xs font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5">
-                          <Lightbulb className="h-3.5 w-3.5" /> จุดที่น่าจะเข้าใจผิด
-                        </p>
-                        <ul className="space-y-1.5">
-                          {row.misconceptions.map((m, i) => (
-                            <li key={i} className="text-sm text-amber-900">
-                              <span className="font-medium">{m.topic}</span> — {m.pattern}
-                              {m.evidence && <span className="block text-[11px] text-amber-700 mt-0.5">หลักฐาน: {m.evidence}</span>}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {row.behavior && (
-                      <div className="border border-neutral-100 bg-neutral-50/60 rounded-xl px-4 py-3">
-                        <p className="text-xs font-semibold text-neutral-500 mb-1 flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" /> ข้อสังเกตจากเวลาที่ใช้
-                        </p>
-                        <p className="text-sm text-neutral-700">{row.behavior}</p>
-                      </div>
-                    )}
-
-                    {row.focusNext?.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
-                          <CheckCircle className="h-3.5 w-3.5" /> ควรทำต่อ เรียงตามลำดับ
-                        </p>
-                        <div className="space-y-1.5">
-                          {row.focusNext.map((f, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                              <span className="flex-shrink-0 h-5 w-5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold flex items-center justify-center mt-0.5">
-                                {i + 1}
-                              </span>
-                              <p className="text-sm text-neutral-700 leading-relaxed">
-                                {typeof f === "string" ? f : f.action}
-                                {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="border border-neutral-200 rounded-xl px-4 py-3">
-                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
-                        <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
-                          <MessageCircle className="h-3.5 w-3.5" /> ข้อความสำหรับผู้ปกครอง (แก้ได้)
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => copyAll(row)}
-                            className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-lg px-2.5 py-1 transition"
-                          >
-                            <Copy className="h-3.5 w-3.5" /> {copiedId === `all-${row.id}` ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
-                          </button>
-                          <button onClick={() => copyMessage(row)} className="text-xs font-semibold text-neutral-500 hover:text-neutral-700">
-                            {copiedId === row.id ? "คัดลอกแล้ว" : "คัดลอกเฉพาะท่อนนี้"}
-                          </button>
-                        </div>
-                      </div>
-                      <textarea
-                        value={parentMessage}
-                        rows={5}
-                        onChange={(e) => setDrafts((d) => ({ ...d, [row.id]: { ...d[row.id], parentMessage: e.target.value } }))}
-                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300"
-                      />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      {dirty && (
-                        <button
-                          onClick={() => save(row, { parentMessage })}
-                          disabled={savingId === row.id}
-                          className="text-xs font-semibold border border-neutral-200 hover:border-orange-300 hover:text-orange-600 rounded-lg px-3 py-1.5 disabled:opacity-40"
-                        >
-                          {savingId === row.id ? "กำลังบันทึก…" : "บันทึกข้อความ"}
-                        </button>
-                      )}
-                      {row.model && <span className="text-[11px] text-neutral-400">วิเคราะห์โดย {row.model}</span>}
-                    </div>
-                  </div>
+                  <AiSummaryDetail
+                    row={row}
+                    parentMessage={parentMessage}
+                    dirty={dirty}
+                    saving={savingId === row.id}
+                    onDraftChange={(text) => setDrafts((d) => ({ ...d, [row.id]: { ...d[row.id], parentMessage: text } }))}
+                    onSave={() => save(row, { parentMessage })}
+                  />
                 )}
               </div>
             );
@@ -3086,12 +3176,84 @@ export function AiSummaryPanel({ examId, submittedCount }) {
   );
 }
 
+// ─── AI Status Strip — แถบสถานะสั้นๆ แทนที่ AiSummaryPanel แบบ accordion เดิมในหน้านี้ ──
+// ตั้งแต่เปลี่ยนมาให้ AI วิเคราะห์อัตโนมัติตอนสอบปิด (ดู backend services/aiAnalysis.js
+// + triggerAiAnalysisInBackground ที่ session/close และ examAutoClose.js) ไม่จำเป็นต้อง
+// มีปุ่ม "วิเคราะห์ด้วย AI" เป็นตัวเลือกหลักอีกต่อไป — บทวิเคราะห์รายคนย้ายไปอยู่ในโมดัล
+// "ดูผล" ของนักเรียนแต่ละคนแทน (ดู StudentDetailModal) ที่นี่เหลือแค่สรุปสถานะสั้นๆ
+// + ปุ่ม "วิเคราะห์ใหม่" เล็กๆ ไว้เป็นทางสำรอง เผื่อรอบอัตโนมัติพลาด/timeout ไป
+// แผงแบบเดิม (accordion ทุกคนพร้อมกัน) ยังอยู่ที่หน้า "วิเคราะห์เชิงลึก" แท็บ "ai"
+// ผ่าน AiSummaryPanel เดิมข้างบน ไม่ได้แตะส่วนนั้นเลยในเฟสนี้
+function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }) {
+  const [summaries, setSummaries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchAiSummaries(examId)
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        setSummaries(list);
+        onSummariesChange?.(list);
+      })
+      .catch((err) => { console.error("Fetch AI summaries failed:", err); setError("โหลดสถานะวิเคราะห์ AI ไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // สอบยังไม่ปิด ยังไม่มีอะไรให้วิเคราะห์ (auto-trigger ทำงานตอนปิดสอบเท่านั้น) — ไม่ต้องโชว์แถบนี้เลย
+  if (examStatus !== "closed") return null;
+
+  const runAnalyze = async () => {
+    setRunning(true); setError("");
+    try {
+      const res = await analyzeExamWithAi(examId);
+      load();
+      if (res?.failed > 0) setError(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
+    } catch (err) {
+      console.error("Analyze failed:", err);
+      setError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally { setRunning(false); }
+  };
+
+  return (
+    <div className="bg-white border border-neutral-200 rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2 min-w-0">
+        <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
+        <p className="text-xs text-neutral-500 truncate">
+          {loading
+            ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
+            : summaries.length > 0
+              ? `AI วิเคราะห์แล้ว ${summaries.length} จาก ${submittedCount || 0} คน — ดูบทวิเคราะห์ได้ที่ปุ่ม "ดูผล" ของนักเรียนแต่ละคน`
+              : submittedCount
+                ? "ยังไม่มีผลวิเคราะห์ AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ"
+                : "ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้"}
+        </p>
+      </div>
+      <button
+        onClick={runAnalyze}
+        disabled={running || !submittedCount}
+        className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-lg px-3 py-1.5 transition flex-shrink-0"
+      >
+        <Zap className="h-3.5 w-3.5" />
+        {running ? "กำลังวิเคราะห์…" : "วิเคราะห์ใหม่"}
+      </button>
+      {error && <p className="w-full text-[11px] text-amber-600">{error}</p>}
+    </div>
+  );
+}
+
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [aiSummaries, setAiSummaries] = useState([]); // จาก AiStatusStrip — ใช้ทำ badge สถานะ AI ในตาราง + ส่งต่อให้โมดัลรายคน
   const [remainingSec] = useState(null);
   const [search, setSearch] = useState("");
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
@@ -3212,6 +3374,10 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     : null;
   const examMaxScore = passEligible.length ? passEligible[0].maxScore : (results?.students?.[0]?.maxScore ?? null);
 
+  // map userId -> แถวผลวิเคราะห์ AI (ถ้ามี) — ใช้ทำ badge สถานะในตารางรายชื่อ และส่งต่อ
+  // ให้ StudentDetailModal ตอนเปิดดูรายคน (ข้อมูลมาจาก AiStatusStrip ด้านล่าง)
+  const aiByUserId = useMemo(() => new Map(aiSummaries.map((r) => [r.userId, r])), [aiSummaries]);
+
   if (status !== "closed" && status !== "active") {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
@@ -3268,7 +3434,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
       <QuestionFlagsCard flags={results.questionFlags} submittedCount={results.submittedCount} />
 
-      <AiSummaryPanel examId={exam.id} submittedCount={results.submittedCount} />
+      <AiStatusStrip examId={exam.id} examStatus={status} submittedCount={results.submittedCount} onSummariesChange={setAiSummaries} />
 
       {/* Search & Filter */}
       <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
@@ -3367,7 +3533,18 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       <td className="px-4 py-3">
                         <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
+                      <td className="px-4 py-3 font-medium text-neutral-800">
+                        <span className="inline-flex items-center gap-1.5">
+                          {s.name}
+                          {status === "closed" && s.submittedAt && (
+                            aiByUserId.get(s.userId) ? (
+                              <span title="วิเคราะห์ AI แล้ว — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
+                            ) : (
+                              <span title="กำลังวิเคราะห์ AI" className="text-neutral-300 text-xs leading-none">⏳</span>
+                            )
+                          )}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
                       <td className="px-4 py-3">
                         {pct != null ? (
@@ -3458,6 +3635,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           examJoinId={selectedStudent.examJoinId}
           examName={exam.name}
           examQuestions={exam.questions}
+          aiSummary={aiByUserId.get(selectedStudent.userId)}
           onClose={() => setSelectedStudent(null)}
         />
       )}
