@@ -1688,6 +1688,7 @@ const TABS = [
 // ต่างกันแค่สองจุดเท่านั้น:
 //   1) api      — แหล่งข้อมูล ฝั่งติวเตอร์ยิง /api/exam ฝั่งแอดมินยิง /api/admin/progress
 //   2) breadcrumb / roleNote — เส้นทางกลับกับป้ายบอกบทบาท ต่างกันตามผู้ใช้
+// (ไม่มีเรื่องอนุมัติผล AI แยกตามบทบาทแล้ว — ตัดขั้นตอนอนุมัติออกทั้งระบบ)
 //
 // ⚠ api ต้องถูก memo ไว้แล้วจากฝั่งผู้เรียก ({ fetchExams, fetchExamResults, fetchTopicBreakdown })
 //   ถ้าสร้าง object ใหม่ทุกรอบ render effect ที่มี api เป็น dependency จะวนไม่จบ
@@ -1704,8 +1705,6 @@ export function ExamAnalyticsView({
   roleNote = null,
   initialExamId = 1,
   initialTab = "overview",
-  // ฝั่งแอดมินส่ง false เข้ามา แผง AI จะไม่มีปุ่มอนุมัติให้กด
-  canApproveAi = true,
 }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [examId, setExamId] = useState(initialExamId);
@@ -1879,7 +1878,6 @@ export function ExamAnalyticsView({
             key={realExamId(examId)}
             examId={realExamId(examId)}
             submittedCount={examResults[examId]?.submittedCount ?? 0}
-            canApprove={canApproveAi}
           />
         ) : (
           <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
@@ -1910,6 +1908,9 @@ export default function TutorExamAnalytics() {
   // เข้ามาจากหน้ารายละเอียดรอบสอบ (exam-detail) หรือไม่ — ใช้ตัดสินว่า breadcrumb
   // ต้องแทรกชั้น "รอบสอบ" คั่นไว้ให้กดกลับไปหน้านั้นได้ไหม (ถ้าเข้าจากหน้ารายการสอบตรงๆ ไม่ต้องมี)
   const fromExamDetail = searchParams.get("from") === "exam-detail";
+  // เข้ามาจากหน้า "ภาพรวมพัฒนาการ" (/tutor/progress) หรือไม่ — ถ้าใช่ breadcrumb ต้อง
+  // ชี้กลับไปหน้านั้นแทนที่จะโผล่ "คอร์ส > จัดการการสอบ" เหมือนเข้าจากหน้าคอร์สตรงๆ
+  const fromProgress = searchParams.get("from") === "progress";
 
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
   const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
@@ -1937,14 +1938,23 @@ export default function TutorExamAnalytics() {
         // ถ้าเข้ามาจากหน้ารอบสอบ (from=exam-detail) จะแทรกชั้นรอบสอบให้ด้วย และชั้นนั้น
         // จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย)
         <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
-          <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
-          <ChevronRight className="h-4 w-4" />
-          <Link
-            to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
-            className="hover:text-orange-600 transition font-medium"
-          >
-            {subjectName || "จัดการการสอบ"}
-          </Link>
+          {fromProgress ? (
+            <>
+              <Link to="/tutor/progress" className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
+              <ChevronRight className="h-4 w-4" />
+            </>
+          ) : (
+            <>
+              <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
+              <ChevronRight className="h-4 w-4" />
+              <Link
+                to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
+                className="hover:text-orange-600 transition font-medium"
+              >
+                {subjectName || "จัดการการสอบ"}
+              </Link>
+            </>
+          )}
           {fromExamDetail && (
             <>
               <ChevronRight className="h-4 w-4" />

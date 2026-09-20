@@ -130,12 +130,15 @@ export default function TutorProgressOverview() {
   const totalPages = Math.ceil(courseCards.length / ITEMS_PER_PAGE) || 1;
   const paginatedCourses = courseCards.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
+  // ส่ง from=progress ไปด้วยเสมอ ไม่งั้นหน้า analytics จะไม่รู้ว่าต้องพา breadcrumb
+  // กลับมาที่หน้านี้ (เข้าใจผิดว่าเข้ามาจากหน้าคอร์สแทน)
   const openAnalytics = (courseId, courseName, subjectId, subjectName) => {
     const params = new URLSearchParams({
       courseId: String(courseId),
       subjectId: String(subjectId),
       courseName,
       subjectName,
+      from: "progress",
     });
     navigate(`/tutor/exam-analytics?${params.toString()}`);
   };

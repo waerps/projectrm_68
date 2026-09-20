@@ -77,7 +77,6 @@ export default function AdminExamAnalytics() {
           </span>
         </div>
       )}
-      canApproveAi={false}
     />
   );
 }

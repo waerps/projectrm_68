@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge, UserX, Flag, Filter,
+  Tags, Merge, UserX, Flag, Filter, Lightbulb, MessageCircle, Copy,
 } from "lucide-react";
 
 import {
@@ -2794,13 +2794,12 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // ─── Results Tab ─────────────────────────────────────────────────────────────
 // ─── AI Summary Panel — บทวิเคราะห์รายคนหลังปิดสอบ ──────────────────────────
 // ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อ่านรูปแบบการตอบผิดแล้วอธิบายเป็นภาษาคน
-// ทุกฉบับเป็นร่างจนกว่าครูจะกดอนุมัติ ข้อความถึงผู้ปกครองจึงไม่หลุดออกไปเอง
+// เป็นข้อความช่วยร่างให้เท่านั้น ไม่ใช่ข้อสรุปสุดท้าย — ครู/แอดมินอ่านทบทวนเองก่อนส่งให้ผู้ปกครองทุกครั้ง
+// (ตัดขั้นตอน "อนุมัติ" ออกตามที่ผู้ใช้ขอ ไม่มีสถานะฉบับร่าง/อนุมัติอีกต่อไป — ใครก็แก้ข้อความ
+// และคัดลอกไปส่งได้เลย ไม่ต้องรอใครกดอนุมัติก่อน)
 // export เพื่อให้หน้า analytics (ExamAnalyticsView) ใช้แผงเดียวกันนี้ได้
 // ทั้งฝั่งติวเตอร์และฝั่งแอดมิน จะได้ไม่มีสองชุดที่ค่อยๆ เพี้ยนจากกัน
-// canApprove = false สำหรับฝั่งแอดมิน: อ่านและคัดลอกไปใช้ได้ แต่ไม่มีปุ่มอนุมัติ
-// เพราะการอนุมัติคือด่านตรวจ "เนื้อหาถูกต้องตามที่เด็กเป็นจริงไหม" ซึ่งคนที่ตอบได้
-// คือติวเตอร์ที่สอนเด็กคนนั้น ไม่ใช่แอดมิน แอดมินเป็นคนเอาไปสื่อสารต่อ
-export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
+export function AiSummaryPanel({ examId, submittedCount }) {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
@@ -2896,8 +2895,6 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
     return copyText(row, L.join("\n"), `all-${row.id}`);
   };
 
-  const approvedCount = summaries.filter((s) => s.status === "approved").length;
-
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl p-5 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2906,14 +2903,10 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
             <Zap className="h-4 w-4 text-amber-500" /> บทวิเคราะห์รายคนด้วย AI
           </h3>
           <p className="text-xs text-neutral-500 mt-1">
-            {summaries.length > 0
-              ? `มีผลวิเคราะห์ ${summaries.length} คน · อนุมัติแล้ว ${approvedCount} คน`
-              : "ยังไม่เคยวิเคราะห์รอบสอบนี้"}
+            {summaries.length > 0 ? `มีผลวิเคราะห์ ${summaries.length} คน` : "ยังไม่เคยวิเคราะห์รอบสอบนี้"}
           </p>
           <p className="text-[11px] text-neutral-400 mt-0.5">
-            {canApprove
-              ? "ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง ครูต้องอ่านและอนุมัติก่อนใช้"
-              : "ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง การอนุมัติเป็นหน้าที่ของติวเตอร์ผู้สอน"}
+            ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง — อ่านทบทวนก่อนส่งให้ผู้ปกครองทุกครั้ง
           </p>
         </div>
         <button
@@ -2964,38 +2957,46 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
                     </p>
                     <p className="text-xs text-neutral-500 line-clamp-1">{row.overview}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${row.status === "approved" ? "bg-green-50 text-green-700 border-green-200" : "bg-neutral-100 text-neutral-500 border-neutral-200"}`}>
-                      {row.status === "approved" ? "อนุมัติแล้ว" : "ฉบับร่าง"}
-                    </span>
-                    <ChevronRight className={`h-4 w-4 text-neutral-400 transition ${open ? "rotate-90" : ""}`} />
-                  </div>
+                  <ChevronRight className={`h-4 w-4 text-neutral-400 transition flex-shrink-0 ${open ? "rotate-90" : ""}`} />
                 </button>
 
                 {open && (
                   <div className="px-4 pb-4 space-y-3">
-                    <div>
-                      <p className="text-xs font-semibold text-neutral-500 mb-1">ภาพรวม</p>
+                    <div className="bg-orange-50/70 border border-orange-100 rounded-xl px-4 py-3">
+                      <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> ภาพรวม
+                      </p>
                       <p className="text-sm text-neutral-700 leading-relaxed">{row.overview}</p>
                     </div>
 
                     {row.byCategory?.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-neutral-500 mb-1">รายหมวด</p>
-                        <ul className="space-y-1">
+                        <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
+                          <BarChart2 className="h-3.5 w-3.5" /> รายหมวด
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-2">
                           {row.byCategory.map((c, i) => (
-                            <li key={i} className="text-sm text-neutral-700">
-                              <span className="font-medium">{c.topic}</span>
-                              {c.trend ? ` · ${c.trend}` : ""} — {c.comment}
-                            </li>
+                            <div key={i} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3 py-2">
+                              <p className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 flex-wrap">
+                                {c.topic}
+                                {c.trend && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-white border border-neutral-200 text-[10px] font-medium text-neutral-500">
+                                    {c.trend}
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-neutral-600 mt-1 leading-relaxed">{c.comment}</p>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
 
                     {row.misconceptions?.length > 0 && (
                       <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                        <p className="text-xs font-semibold text-amber-800 mb-1">จุดที่น่าจะเข้าใจผิด</p>
+                        <p className="text-xs font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5">
+                          <Lightbulb className="h-3.5 w-3.5" /> จุดที่น่าจะเข้าใจผิด
+                        </p>
                         <ul className="space-y-1.5">
                           {row.misconceptions.map((m, i) => (
                             <li key={i} className="text-sm text-amber-900">
@@ -3008,32 +3009,46 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
                     )}
 
                     {row.behavior && (
-                      <div>
-                        <p className="text-xs font-semibold text-neutral-500 mb-1">ข้อสังเกตจากเวลาที่ใช้</p>
+                      <div className="border border-neutral-100 bg-neutral-50/60 rounded-xl px-4 py-3">
+                        <p className="text-xs font-semibold text-neutral-500 mb-1 flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" /> ข้อสังเกตจากเวลาที่ใช้
+                        </p>
                         <p className="text-sm text-neutral-700">{row.behavior}</p>
                       </div>
                     )}
 
                     {row.focusNext?.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-neutral-500 mb-1">ควรทำต่อ เรียงตามลำดับ</p>
-                        <ol className="list-decimal list-inside space-y-1">
+                        <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
+                          <CheckCircle className="h-3.5 w-3.5" /> ควรทำต่อ เรียงตามลำดับ
+                        </p>
+                        <div className="space-y-1.5">
                           {row.focusNext.map((f, i) => (
-                            <li key={i} className="text-sm text-neutral-700">
-                              {typeof f === "string" ? f : f.action}
-                              {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
-                            </li>
+                            <div key={i} className="flex items-start gap-2">
+                              <span className="flex-shrink-0 h-5 w-5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold flex items-center justify-center mt-0.5">
+                                {i + 1}
+                              </span>
+                              <p className="text-sm text-neutral-700 leading-relaxed">
+                                {typeof f === "string" ? f : f.action}
+                                {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
+                              </p>
+                            </div>
                           ))}
-                        </ol>
+                        </div>
                       </div>
                     )}
 
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-semibold text-neutral-500">ข้อความสำหรับผู้ปกครอง (แก้ได้)</p>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => copyAll(row)} className="text-xs font-semibold text-orange-600 hover:text-orange-700">
-                            {copiedId === `all-${row.id}` ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
+                    <div className="border border-neutral-200 rounded-xl px-4 py-3">
+                      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                        <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
+                          <MessageCircle className="h-3.5 w-3.5" /> ข้อความสำหรับผู้ปกครอง (แก้ได้)
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => copyAll(row)}
+                            className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-lg px-2.5 py-1 transition"
+                          >
+                            <Copy className="h-3.5 w-3.5" /> {copiedId === `all-${row.id}` ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
                           </button>
                           <button onClick={() => copyMessage(row)} className="text-xs font-semibold text-neutral-500 hover:text-neutral-700">
                             {copiedId === row.id ? "คัดลอกแล้ว" : "คัดลอกเฉพาะท่อนนี้"}
@@ -3048,7 +3063,7 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
                       />
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-3">
                       {dirty && (
                         <button
                           onClick={() => save(row, { parentMessage })}
@@ -3056,23 +3071,6 @@ export function AiSummaryPanel({ examId, submittedCount, canApprove = true }) {
                           className="text-xs font-semibold border border-neutral-200 hover:border-orange-300 hover:text-orange-600 rounded-lg px-3 py-1.5 disabled:opacity-40"
                         >
                           {savingId === row.id ? "กำลังบันทึก…" : "บันทึกข้อความ"}
-                        </button>
-                      )}
-                      {!canApprove ? null : row.status === "approved" ? (
-                        <button
-                          onClick={() => save(row, { status: "draft" })}
-                          disabled={savingId === row.id}
-                          className="text-xs font-semibold text-neutral-500 hover:text-neutral-700 px-2 py-1.5"
-                        >
-                          ยกเลิกการอนุมัติ
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => save(row, { status: "approved", ...(dirty ? { parentMessage } : {}) })}
-                          disabled={savingId === row.id}
-                          className="flex items-center gap-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 disabled:opacity-40"
-                        >
-                          <Check className="h-3.5 w-3.5" /> อนุมัติข้อความนี้
                         </button>
                       )}
                       {row.model && <span className="text-[11px] text-neutral-400">วิเคราะห์โดย {row.model}</span>}
