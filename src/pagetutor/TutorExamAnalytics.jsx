@@ -11,9 +11,12 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore } from "../utils/examScore";
-import { tutorExamAnalyticsApi } from "../utils/examShared";
-// แผงผลวิเคราะห์ AI ตัวเดียวกับที่หน้ารายละเอียดรอบสอบใช้ ไม่ได้ทำขึ้นใหม่
-import { AiSummaryPanel } from "./TutorExamDetail.jsx";
+import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary } from "../utils/examShared";
+// เนื้อหาบทวิเคราะห์ AI แบบละเอียด (รายหมวด/จุดที่เข้าใจผิด/ข้อความถึงผู้ปกครอง) ใช้ตัวเดียวกับ
+// ที่หน้ารายละเอียดรอบสอบใช้ ไม่ได้เขียนซ้ำ — เดิมหน้านี้เคยมีแท็บ "ผล AI" แยก (ใช้ AiSummaryPanel
+// ซึ่งเป็นแผง accordion ทั้งห้อง) แต่ตัดออกแล้วเพราะซ้ำซ้อนกับแท็บ "รายคน" ที่มีอยู่แล้ว —
+// ย้ายไปแสดงใน StudentProgressModal ด้านล่างแทน (ดูคอมเมนต์ตรงนั้น) AiSummaryPanel เลยถูกลบทิ้ง
+import { AiSummaryDetail } from "./TutorExamDetail.jsx";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -944,7 +947,7 @@ function StudentTab({ data, examLabel }) {
 
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
-function StudentProgressTab({ examResults, topicResults, loading }) {
+function StudentProgressTab({ examResults, topicResults, aiSummaries, loading }) {
   // ── Hooks ทั้งหมด (useState + useMemo) ต้องอยู่บนสุด ก่อน early return ทุกอัน ──
   // เดิม sortKey/sortDir (useState) และ useMemo อีก 2 ตัวถูกประกาศ "หลัง" `if (loading) return`
   // ทำให้ตอน loading=true เรียกแค่ 2 hooks (search, selected) แต่พอ loading=false เรียก 8 hooks
@@ -1064,18 +1067,49 @@ function StudentProgressTab({ examResults, topicResults, loading }) {
         </div>
       </div>
 
-      {selected != null && <StudentProgressModal studentId={selected} crossExamData={crossExamData} onClose={() => setSelected(null)} />}
+      {selected != null && <StudentProgressModal studentId={selected} crossExamData={crossExamData} aiSummaries={aiSummaries} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-function StudentProgressModal({ studentId, crossExamData, onClose }) {
+function StudentProgressModal({ studentId, crossExamData, aiSummaries, onClose }) {
+  // hook ต้องอยู่บนสุดก่อน early return เสมอ (Rules of Hooks — ดูคอมเมนต์เดียวกันที่
+  // OverviewTab/StudentProgressTab ด้านบนที่เคยแก้บั๊กนี้มาแล้ว) เผื่ออนาคตมี early
+  // return เพิ่มจนทำให้จำนวน hook ไม่เท่ากันข้าม render
+  const [aiDetailOpen, setAiDetailOpen] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null); // ข้อความถึงผู้ปกครองที่แก้ค้างไว้ก่อนบันทึก (เฉพาะโมดัลนี้)
+  const [aiSavedMessage, setAiSavedMessage] = useState(null); // ค่าที่บันทึกสำเร็จล่าสุดในโมดัลนี้ (เผื่อ props ยังไม่รีเฟรช)
+  const [aiSaving, setAiSaving] = useState(false);
+
   const data = crossExamData.find(d => d.studentId === studentId);
   if (!data) return null;
 
   const submittedExams = data.exams.filter(e => e.submitted);
   const hasEnoughData = submittedExams.length >= 2;
   const missingExams = data.exams.filter(e => !e.submitted);
+
+  // ผลวิเคราะห์ AI ของ "รอบล่าสุดที่นักเรียนคนนี้สอบ" — ใช้ index ตรงจาก data.exams
+  // (0=pre,1=mid,2=post) แทนที่จะพึ่ง submittedExams ที่ผ่าน filter ไปแล้ว (ไม่เหลือ
+  // index เดิมให้ใช้) หา index สูงสุดที่ submitted=true คือรอบล่าสุดที่สอบจริง
+  const lastSubmittedIndex = [2, 1, 0].find((i) => data.exams[i]?.submitted) ?? null;
+  const aiSummaryRow = lastSubmittedIndex != null
+    ? (aiSummaries?.[lastSubmittedIndex] || []).find((r) => r.userId === studentId) || null
+    : null;
+  const aiBaselineMessage = aiSavedMessage ?? aiSummaryRow?.parentMessage ?? "";
+  const aiParentMessage = aiDraft ?? aiBaselineMessage;
+  const aiDirty = aiDraft != null && aiDraft !== aiBaselineMessage;
+
+  const saveAiSummary = async () => {
+    if (!aiSummaryRow) return;
+    setAiSaving(true);
+    try {
+      await updateAiSummary(aiSummaryRow.id, { parentMessage: aiParentMessage });
+      setAiSavedMessage(aiParentMessage);
+      setAiDraft(null);
+    } catch (err) {
+      console.error("Update AI summary failed:", err);
+    } finally { setAiSaving(false); }
+  };
 
   const first = submittedExams[0];
   const last = submittedExams[submittedExams.length - 1];
@@ -1139,6 +1173,53 @@ function StudentProgressModal({ studentId, crossExamData, onClose }) {
           </div>
         ))}
       </div>
+
+      {aiSummaryRow && (
+        <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
+                <Sparkles className="h-3.5 w-3.5" /> สรุปโดย AI · {data.exams[lastSubmittedIndex].label}
+              </p>
+              <p className="text-sm text-slate-700 leading-relaxed">{aiSummaryRow.overview}</p>
+              {(aiSummaryRow.byCategory?.some((c) => c.trend) || aiSummaryRow.misconceptions?.length > 0) && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {aiSummaryRow.byCategory?.filter((c) => c.trend).map((c, i) => (
+                    <span key={i} className="text-[11px] font-medium bg-white border border-orange-200 text-orange-700 rounded-full px-2 py-0.5">
+                      {c.topic} · {c.trend}
+                    </span>
+                  ))}
+                  {aiSummaryRow.misconceptions?.length > 0 && (
+                    <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
+                      จุดที่ควรระวัง {aiSummaryRow.misconceptions.length} เรื่อง
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            {aiSummaryRow.model && <span className="text-[10px] text-slate-400 flex-shrink-0">โดย {aiSummaryRow.model}</span>}
+          </div>
+          <button
+            onClick={() => setAiDetailOpen((v) => !v)}
+            className="mt-3 flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
+          >
+            <ChevronRight className={`h-3.5 w-3.5 transition ${aiDetailOpen ? "rotate-90" : ""}`} />
+            {aiDetailOpen ? "ซ่อนบทวิเคราะห์แบบละเอียด" : "ดูบทวิเคราะห์แบบละเอียด"}
+          </button>
+          {aiDetailOpen && (
+            <div className="mt-3 -mx-4 -mb-3.5 border-t border-orange-100">
+              <AiSummaryDetail
+                row={aiSummaryRow}
+                parentMessage={aiParentMessage}
+                dirty={aiDirty}
+                saving={aiSaving}
+                onDraftChange={setAiDraft}
+                onSave={saveAiSummary}
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {!hasEnoughData ? (
         <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
@@ -1679,7 +1760,6 @@ const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
   { id: "progress", label: "รายคน", icon: Users },
-  { id: "ai", label: "ผล AI", icon: Sparkles },
 ];
 
 // ─── ตัวแสดงผลกลาง — ใช้ร่วมกันทั้งฝั่งติวเตอร์และฝั่งแอดมิน ─────────────────
@@ -1769,6 +1849,26 @@ export function ExamAnalyticsView({
     ).then(setTopicResults);
   }, [loadingExams, examList]);
 
+  // ── Step 7: ผลวิเคราะห์ AI ต่อรอบ (ใช้ใน StudentProgressModal แท็บ "รายคน") ──────
+  // ดึงพร้อมกับข้อมูลรอบอื่นๆ ตั้งแต่โหลดหน้า ไม่ต้องรอกดเข้าแท็บไหนก่อน (แพทเทิร์นเดียวกับ
+  // topicResults ด้านบน) — เดิมตอนยังมีแท็บ "ผล AI" แยก ปล่อยให้ AiSummaryPanel ดึงเองตอน
+  // กดเข้าแท็บ แต่ตอนนี้ย้ายมาดึงรวมตรงนี้แทน เพื่อให้ StudentProgressModal ใช้ได้ทันที
+  const [aiSummaries, setAiSummaries] = useState([null, null, null]); // ผลวิเคราะห์ AI ของ pre/mid/post
+
+  useEffect(() => {
+    if (loadingExams || examList.length === 0) return;
+    Promise.all(
+      [0, 1, 2].map((i) => {
+        const id = realExamId(i);
+        if (!id) return Promise.resolve(null);
+        return fetchAiSummaries(id).catch((err) => {
+          console.error(`Fetch AI summaries for exam ${id} failed:`, err);
+          return null;
+        });
+      })
+    ).then(setAiSummaries);
+  }, [loadingExams, examList]);
+
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
 
@@ -1801,7 +1901,7 @@ export function ExamAnalyticsView({
           {roleNote}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(activeTab === "overview" || activeTab === "ai") && (
+          {activeTab === "overview" && (
             <div className="flex rounded-xl overflow-hidden border border-slate-200">
               {EXAMS_META.map(e => (
                 <button key={e.id} onClick={() => setExamId(e.id)}
@@ -1866,26 +1966,7 @@ export function ExamAnalyticsView({
       {/* Content */}
       {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
-      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} loading={dataLoading} />}
-      {activeTab === "ai" && (
-        dataLoading ? (
-          <div className="flex flex-col items-center justify-center h-64 text-orange-600">
-            <Clock className="w-7 h-7 animate-spin mb-3" />
-            <p className="text-sm font-medium text-slate-500">กำลังโหลด...</p>
-          </div>
-        ) : realExamId(examId) ? (
-          <AiSummaryPanel
-            key={realExamId(examId)}
-            examId={realExamId(examId)}
-            submittedCount={examResults[examId]?.submittedCount ?? 0}
-          />
-        ) : (
-          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
-            <p className="text-slate-500 font-medium">ยังไม่มีข้อมูลของรอบ {examLabel} นี้</p>
-          </div>
-        )
-      )}
-
+      {activeTab === "progress" && <StudentProgressTab examResults={examResults} topicResults={topicResults} aiSummaries={aiSummaries} loading={dataLoading} />}
       {excelPreviewRows && (
         <ExcelPreviewModal
           rows={excelPreviewRows}

@@ -2405,7 +2405,8 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, aiSu
   const [error, setError] = useState("");
 
   // บทวิเคราะห์ AI ของนักเรียนคนนี้ (ถ้ามี) — ส่วน "ดูบทวิเคราะห์แบบละเอียด" ใช้ AiSummaryDetail
-  // ตัวเดียวกับที่ AiSummaryPanel ใช้ (ดูด้านบนไฟล์นี้) เพื่อไม่ต้องเขียน JSX ซ้ำสองที่
+  // ตัวเดียวกับที่ StudentProgressModal ใน TutorExamAnalytics.jsx ใช้ (export ไว้ด้านบนไฟล์นี้)
+  // เพื่อไม่ต้องเขียน JSX ซ้ำสองที่
   const [aiDetailOpen, setAiDetailOpen] = useState(false);
   const [aiDraft, setAiDraft] = useState(null); // ข้อความถึงผู้ปกครองที่แก้ค้างไว้ก่อนบันทึก (เฉพาะโมดัลนี้)
   const [aiSavedMessage, setAiSavedMessage] = useState(null); // ค่าที่บันทึกสำเร็จล่าสุดในโมดัลนี้ (เผื่อ props ยังไม่รีเฟรชจาก AiStatusStrip)
@@ -2871,13 +2872,15 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // (ตัดขั้นตอน "อนุมัติ" ออกตามที่ผู้ใช้ขอ ไม่มีสถานะฉบับร่าง/อนุมัติอีกต่อไป — ใครก็แก้ข้อความ
 // และคัดลอกไปส่งได้เลย ไม่ต้องรอใครกดอนุมัติก่อน)
 // ─── AI Summary Detail — เนื้อหาบทวิเคราะห์แบบละเอียดของนักเรียน 1 คน ────────────
-// แยกออกมาจาก AiSummaryPanel (ด้านล่าง) เพื่อให้ใช้ซ้ำได้ทั้งจากแผงรายชื่อทั้งห้อง
-// (แท็บ "ai" ที่หน้าวิเคราะห์เชิงลึก ผ่าน AiSummaryPanel เดิม) และจากในโมดัลรายบุคคล
-// (StudentDetailModal ด้านล่างในไฟล์นี้) โดยไม่ต้องเขียน JSX ชุดเดียวกันซ้ำสองที่
+// export ไว้ให้ใช้ข้ามไฟล์ได้ — ตอนนี้มีสองที่เรียกใช้: StudentDetailModal ด้านล่างใน
+// ไฟล์นี้ (หน้า "จัดการรอบสอบ") และ StudentProgressModal ใน TutorExamAnalytics.jsx
+// (หน้า "ภาพรวมพัฒนาการ" แท็บ "รายคน") — เดิมเคยมี AiSummaryPanel (แผง accordion
+// ทั้งห้อง) เป็นผู้เรียกที่ 3 ด้วย แต่ถูกลบไปแล้วเพราะซ้ำซ้อนกับ StudentProgressModal
+// ที่มีอยู่แล้ว (ดูคอมเมนต์ที่ AiStatusStrip ด้านล่างสำหรับรายละเอียด)
 // ผู้เรียกเป็นคนคุม state ของ "ข้อความสำหรับผู้ปกครองที่แก้ค้างไว้" เอง (parentMessage/
-// dirty/saving) เพราะ AiSummaryPanel ต้องเก็บ draft ของหลายแถวพร้อมกัน (สลับเปิด-ปิด
-// accordion ไปมาไม่อยากให้ข้อความที่พิมพ์ค้างหาย) ส่วน StudentDetailModal มีแค่แถวเดียว
-function AiSummaryDetail({ row, parentMessage, dirty, saving, onDraftChange, onSave }) {
+// dirty/saving) เพราะแต่ละที่ที่เรียกมีบริบทไม่เหมือนกัน (เช่น ต้องรองรับหลายแถว
+// พร้อมกันไหม ต้องมี fallback ข้อความล่าสุดที่บันทึกไปแล้วไหม)
+export function AiSummaryDetail({ row, parentMessage, dirty, saving, onDraftChange, onSave }) {
   const [copied, setCopied] = useState(null); // แค่ animation "คัดลอกแล้ว" ชั่วคราว ไม่กระทบข้อมูลจริง เก็บไว้ในนี้พอ
 
   const copyText = async (text, mark) => {
@@ -3046,144 +3049,15 @@ function AiSummaryDetail({ row, parentMessage, dirty, saving, onDraftChange, onS
   );
 }
 
-// export เพื่อให้หน้า analytics (ExamAnalyticsView) ใช้แผงเดียวกันนี้ได้
-// ทั้งฝั่งติวเตอร์และฝั่งแอดมิน จะได้ไม่มีสองชุดที่ค่อยๆ เพี้ยนจากกัน
-export function AiSummaryPanel({ examId, submittedCount }) {
-  const [summaries, setSummaries] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [running, setRunning] = useState(false);
-  const [error, setError] = useState("");
-  const [openId, setOpenId] = useState(null);
-  const [drafts, setDrafts] = useState({});       // แก้ข้อความค้างไว้ก่อนบันทึก
-  const [savingId, setSavingId] = useState(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    fetchAiSummaries(examId)
-      .then((rows) => setSummaries(Array.isArray(rows) ? rows : []))
-      .catch((err) => { console.error("Fetch AI summaries failed:", err); setError("โหลดผลวิเคราะห์ไม่สำเร็จ"); })
-      .finally(() => setLoading(false));
-  }, [examId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const runAnalyze = async () => {
-    setRunning(true); setError("");
-    try {
-      const res = await analyzeExamWithAi(examId);
-      load();
-      if (res?.failed > 0) setError(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
-    } catch (err) {
-      console.error("Analyze failed:", err);
-      setError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally { setRunning(false); }
-  };
-
-  const save = async (row, patch) => {
-    setSavingId(row.id);
-    try {
-      await updateAiSummary(row.id, patch);
-      load();
-    } catch (err) {
-      console.error("Update summary failed:", err);
-      setError(err.response?.data?.message || "บันทึกไม่สำเร็จ");
-    } finally { setSavingId(null); }
-  };
-
-
-
-  return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-5 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
-            <Zap className="h-4 w-4 text-amber-500" /> บทวิเคราะห์รายคนด้วย AI
-          </h3>
-          <p className="text-xs text-neutral-500 mt-1">
-            {summaries.length > 0 ? `มีผลวิเคราะห์ ${summaries.length} คน` : "ยังไม่เคยวิเคราะห์รอบสอบนี้"}
-          </p>
-          <p className="text-[11px] text-neutral-400 mt-0.5">
-            ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อธิบายรูปแบบการตอบผิดและร่างข้อความถึงผู้ปกครอง — อ่านทบทวนก่อนส่งให้ผู้ปกครองทุกครั้ง
-          </p>
-        </div>
-        <button
-          onClick={runAnalyze}
-          disabled={running || !submittedCount}
-          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2 text-sm font-semibold transition flex-shrink-0"
-        >
-          <Zap className="h-4 w-4" />
-          {running ? "กำลังวิเคราะห์…" : summaries.length > 0 ? "วิเคราะห์ใหม่" : "วิเคราะห์ด้วย AI"}
-        </button>
-      </div>
-
-      {running && (
-        <p className="text-xs text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5">
-          กำลังให้ AI อ่านผลทีละคน ห้องใหญ่อาจใช้เวลาหลายนาที อย่าเพิ่งปิดหน้านี้
-        </p>
-      )}
-
-      {error && (
-        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">{error}</p>
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-neutral-400">กำลังโหลด…</p>
-      ) : summaries.length === 0 ? (
-        !submittedCount ? (
-          <p className="text-xs text-neutral-400">ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้</p>
-        ) : null
-      ) : (
-        <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
-          {summaries.map((row) => {
-            const open = openId === row.id;
-            const draft = drafts[row.id] || {};
-            const parentMessage = draft.parentMessage ?? row.parentMessage;
-            const dirty = draft.parentMessage != null && draft.parentMessage !== row.parentMessage;
-            return (
-              <div key={row.id}>
-                <button
-                  onClick={() => setOpenId(open ? null : row.id)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-neutral-50"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-neutral-800 truncate">
-                      {row.studentName}{row.nickname ? ` (${row.nickname})` : ""}
-                    </p>
-                    <p className="text-xs text-neutral-500 line-clamp-1">{row.overview}</p>
-                  </div>
-                  <ChevronRight className={`h-4 w-4 text-neutral-400 transition flex-shrink-0 ${open ? "rotate-90" : ""}`} />
-                </button>
-
-                {open && (
-                  <AiSummaryDetail
-                    row={row}
-                    parentMessage={parentMessage}
-                    dirty={dirty}
-                    saving={savingId === row.id}
-                    onDraftChange={(text) => setDrafts((d) => ({ ...d, [row.id]: { ...d[row.id], parentMessage: text } }))}
-                    onSave={() => save(row, { parentMessage })}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── AI Status Strip — แถบสถานะสั้นๆ แทนที่ AiSummaryPanel แบบ accordion เดิมในหน้านี้ ──
 // ตั้งแต่เปลี่ยนมาให้ AI วิเคราะห์อัตโนมัติตอนสอบปิด (ดู backend services/aiAnalysis.js
 // + triggerAiAnalysisInBackground ที่ session/close และ examAutoClose.js) ไม่จำเป็นต้อง
 // มีปุ่ม "วิเคราะห์ด้วย AI" เป็นตัวเลือกหลักอีกต่อไป — บทวิเคราะห์รายคนย้ายไปอยู่ในโมดัล
 // "ดูผล" ของนักเรียนแต่ละคนแทน (ดู StudentDetailModal) ที่นี่เหลือแค่สรุปสถานะสั้นๆ
 // + ปุ่ม "วิเคราะห์ใหม่" เล็กๆ ไว้เป็นทางสำรอง เผื่อรอบอัตโนมัติพลาด/timeout ไป
-// แผงแบบเดิม (accordion ทุกคนพร้อมกัน) ยังอยู่ที่หน้า "วิเคราะห์เชิงลึก" แท็บ "ai"
-// ผ่าน AiSummaryPanel เดิมข้างบน ไม่ได้แตะส่วนนั้นเลยในเฟสนี้
+// (Phase 2) แท็บ "ผล AI" แยกที่หน้า "ภาพรวมพัฒนาการ" (TutorExamAnalytics.jsx) ก็ถูก
+// ตัดออกไปแล้วเหมือนกัน ย้ายไปแสดงในโมดัล "ดูพัฒนาการ" (StudentProgressModal) ของหน้านั้น
+// แทน ด้วยเหตุผลเดียวกัน — AiSummaryPanel เดิมที่เคยรองรับทั้งสองจุดนี้จึงถูกลบทิ้งไปเลย
 function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }) {
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
