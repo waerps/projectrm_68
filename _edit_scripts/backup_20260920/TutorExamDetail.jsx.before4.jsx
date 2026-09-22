@@ -502,33 +502,26 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     setConfirming(true);
     setError("");
     try {
-      // (แก้บั๊ก) เดิม invalidCount/bad (ดูด้านล่าง) ใช้แสดงผล "! ข้อมีปัญหา" อย่างเดียว ไม่เคย
-      // กันแถวที่ข้อมูลไม่ครบ (ไม่มีโจทย์/ตัวเลือก/ยังไม่เลือกเฉลย) ออกจากที่จะส่งเข้าคลังจริง
-      // กดยืนยันแล้วส่งไปทั้งแถวที่เสีย จึงกรองออกตั้งแต่ฝั่ง frontend ก่อนส่ง แล้วแจ้งจำนวนที่
-      // ถูกข้ามให้ผู้สอนเห็นหลังนำเข้าเสร็จ (ดู onImported ด้านล่าง)
-      const isInvalidRow = (q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
-
-      const mappedAll = rows.map((r, i) => ({
-        ...r,
-        category: catMap[r.category?.trim()] || r.category,
-        bankId: rowPlan[i]?.mode === "update" ? rowPlan[i].id : null,
-        gradeLevelId: (() => {
-          const eff = effGradeId(i);
-          return eff === "" ? null : Number(eff);
-        })(),
-      }));
-
-      const mapped = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && !isInvalidRow(r));
-      const skippedInvalidCount = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && isInvalidRow(r)).length;
+      const mapped = rows
+        .map((r, i) => ({
+          ...r,
+          category: catMap[r.category?.trim()] || r.category,
+          bankId: rowPlan[i]?.mode === "update" ? rowPlan[i].id : null,
+          gradeLevelId: (() => {
+            const eff = effGradeId(i);
+            return eff === "" ? null : Number(eff);
+          })(),
+        }))
+        .filter((_r, i) => !(skipDup && dupFlags[i]));
 
       if (!mapped.length) {
-        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว หรือข้อมูลไม่ครบ");
+        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว");
         setConfirming(false);
         return;
       }
 
       const result = await onConfirmRows(mapped);
-      onImported({ ...(result || {}), skippedInvalidCount });
+      onImported(result || {});
     } catch (err) {
       console.error("Excel import save failed:", err);
       setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -1070,11 +1063,9 @@ export function BankTab({ subjectId, showToast, subjectName }) {
               setMode(null);
               const ins = Number(r?.inserted || 0);
               const upd = Number(r?.updated || 0);
-              const skipped = Number(r?.skippedInvalidCount || 0);
               const parts = [];
               if (ins) parts.push(`เพิ่มใหม่ ${ins} ข้อ`);
               if (upd) parts.push(`อัปเดตทับ ${upd} ข้อ`);
-              if (skipped) parts.push(`ข้าม ${skipped} ข้อ (ข้อมูลไม่ครบ)`);
               showToast?.("success", "นำเข้าเรียบร้อย", parts.join(" · ") || "ไม่มีการเปลี่ยนแปลง");
             }}
             categoryOptions={categoryOptions}
@@ -1084,12 +1075,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
         )}
 
         {editing && (
-          // (แก้บั๊ก) เพิ่ม key={editing.id} เพื่อบังคับให้ React mount ฟอร์มใหม่ทุกครั้งที่
-          // เปลี่ยนไปแก้ข้อสอบข้อใหม่ — เดิมไม่มี key เลย ทำให้กดแก้ไขข้อ B ระหว่างฟอร์ม
-          // ข้อ A เปิดค้างอยู่ (ดูจุดกันการกดซ้อนอีกจุดด้านล่าง) จะ reuse instance เดิมไม่รีเซ็ต
-          // state ภายในฟอร์ม เสี่ยง save เนื้อหาเก่าของ A ทับเป็นข้อ B แบบเงียบๆ
           <QuestionFormPanel
-            key={editing.id}
             initial={{ ...editing, score: 1 }}
             saving={saving}
             error={formError}
@@ -1210,10 +1196,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
 
       {loadError && <p className="text-sm text-red-600">{loadError}</p>}
 
-      {/* (แก้บั๊ก) เดิมรายการข้อสอบด้านล่างนี้ไม่ได้ถูกกันด้วย !editing เหมือนแถบ
-          ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
-          ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
-      {!editing && (!loading && items.length === 0 && !mode ? (
+      {!loading && items.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
           <p className="text-sm font-semibold text-neutral-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
@@ -1271,7 +1254,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
             <p className="px-4 py-8 text-center text-sm text-neutral-400">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
           )}
         </div>
-      ))}
+      )}
     </div>
   );
 }

@@ -514,11 +514,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   }
 
   const pcts = submitted.map(s => s.totalScore / s.maxScore);
-  // (แก้บั๊ก) ใช้ค่าเฉลี่ยจาก backend (results.averageScorePct) ซึ่งตัดคนที่ไม่ยินยอมให้เก็บ
-  // พฤติกรรมการใช้อุปกรณ์ระหว่างสอบ (ExamBehaviorConsent = 0) ออกแล้ว ให้ตรงกับค่าเฉลี่ยที่
-  // โชว์ในแท็บ "เปรียบเทียบ" — เดิมคำนวณเองจากนักเรียนที่ส่งข้อสอบทุกคน ทำให้ตัวเลข
-  // "ค่าเฉลี่ย" ไม่ตรงกันข้ามแท็บของรอบสอบเดียวกัน
-  const avgPct = (results.averageScorePct ?? 0) / 100;
+  const avgPct = avg(pcts);
   const sdPct = sdev(pcts);
   const passRate = submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length / submitted.length;
   const maxPct = Math.max(...pcts);
@@ -1522,25 +1518,13 @@ function ComparisonTab({ examResults, topicResults, loading }) {
 const buildExcelRows = (results) => {
   if (!results || !results.students?.length) return [];
 
-  // (แก้บั๊ก) เดิมไม่มี tie-break ทำให้นักเรียนคะแนนเท่ากันได้ "อันดับ" ต่างจากที่โชว์ในหน้า
-  // อื่น (exportToPdf/buildRealCrossExamData ที่ tie-break ด้วยชื่อภาษาไทยเหมือนกัน) จึง
-  // เพิ่ม tie-break แบบเดียวกันให้ตรงกันทุกที่
   const ranked = [...results.students]
     .filter(s => s.submittedAt && s.maxScore)
-    .sort((a, b) => {
-      const pa = a.totalScore / a.maxScore;
-      const pb = b.totalScore / b.maxScore;
-      if (pb !== pa) return pb - pa;
-      return (a.name || "").localeCompare(b.name || "", "th");
-    });
+    .sort((a, b) => (b.totalScore / b.maxScore) - (a.totalScore / a.maxScore));
   const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
 
   return results.students.map((s) => {
     const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
-    // (แก้บั๊ก) ตัดสิน "ผ่าน/ไม่ผ่าน" ด้วยเปอร์เซ็นต์ดิบ (ไม่ปัดเศษ) — ปัดเศษไว้ใช้แค่แสดงผลใน
-    // คอลัมน์ "เปอร์เซ็นต์" เท่านั้น เดิมใช้ pct ที่ปัดเศษแล้วตัดสิน ทำให้คนที่ได้เช่น 59.95%
-    // อาจถูกปัดขึ้นเป็น 60.0% แล้วโชว์ว่า "ผ่าน" ทั้งที่จริงไม่ผ่านเกณฑ์
-    const rawPct = s.maxScore ? (s.totalScore / s.maxScore) * 100 : null;
     return {
       "อันดับ": rankByJoinId.get(s.examJoinId) ?? "—",
       "ชื่อนักเรียน": s.name,
@@ -1548,7 +1532,7 @@ const buildExcelRows = (results) => {
       "คะแนนรวม": s.totalScore ?? "—",
       "คะแนนเต็ม": s.maxScore ?? "—",
       "เปอร์เซ็นต์": pct != null ? `${pct}%` : "—",
-      "ผล": rawPct != null ? (rawPct >= PASS_PCT ? "ผ่าน" : "ไม่ผ่าน") : "—",
+      "ผล": pct != null ? (pct >= PASS_PCT ? "ผ่าน" : "ไม่ผ่าน") : "—",
       "เวลาที่ใช้ (นาที)": s.secondsUsed != null ? Math.round(s.secondsUsed / 60) : "—",
     };
   });
@@ -1618,9 +1602,7 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
 
   const submitted = results.students.filter((s) => s.submittedAt && s.maxScore);
   const pcts = submitted.map((s) => s.totalScore / s.maxScore);
-  // (แก้บั๊ก) ใช้ค่าเฉลี่ยจาก backend (results.averageScorePct) ที่ตัดคนไม่ยินยอมออกแล้ว
-  // เหมือนกับ exportComparisonToPdf/ComparisonTab แทนการคำนวณเองจากทุกคนที่ส่งข้อสอบ
-  const avgPct = results.averageScorePct != null ? results.averageScorePct / 100 : (pcts.length ? avg(pcts) : 0);
+  const avgPct = pcts.length ? avg(pcts) : 0;
   const sdPct = pcts.length ? sdev(pcts) : 0;
   const passRate = pcts.length ? submitted.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length / submitted.length : 0;
   const maxPct = pcts.length ? Math.max(...pcts) : 0;
@@ -1641,11 +1623,7 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
 
   const studentRows = results.students.map((s) => {
     const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
-    // (แก้บั๊ก) ใช้เปอร์เซ็นต์ดิบตัดสินผ่าน/ไม่ผ่าน ให้สอดคล้องกับ passRate ด้านบนที่ใช้เศษ
-    // ส่วนดิบเหมือนกัน — เดิมใช้ pct ที่ปัดเศษแล้ว ทำให้บางแถวโชว์ "ผ่าน" แต่ไม่ถูกนับในอัตรา
-    // ผ่านของสรุปด้านบนในรายงานเดียวกัน
-    const rawPct = s.maxScore ? (s.totalScore / s.maxScore) * 100 : null;
-    const passed = s.submittedAt && rawPct != null ? rawPct >= PASS_PCT : null;
+    const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
     return `<tr>
       <td>${rankByJoinId.get(s.examJoinId) ?? "—"}</td>
       <td>${s.name}</td>
@@ -1718,7 +1696,7 @@ const exportComparisonToPdf = (examResults, summary, topicTrendData, courseName,
         <tr><td>แย่ลง</td><td style="text-align:right">${summary.declined} คน</td><td style="text-align:right">${summary.declinedPct}%</td></tr>
         <tr><td>เท่าเดิม</td><td style="text-align:right">${summary.same} คน</td><td style="text-align:right">${summary.samePct}%</td></tr>
       </tbody></table>
-      <p style="color:#9ca3af;font-size:11px;margin-top:6px;">เทียบจากนักเรียน ${summary.total} คนที่สอบครบทั้ง 2 รอบ โดยเทียบเปอร์เซ็นต์คะแนนดิบของตัวเองระหว่าง Pre-test กับ Post-test (วัดพัฒนาการของตัวเอง ไม่ได้เทียบอันดับกับเพื่อนร่วมห้อง)</p>`;
+      <p style="color:#9ca3af;font-size:11px;margin-top:6px;">เทียบจากนักเรียน ${summary.total} คนที่สอบครบทั้ง 2 รอบ โดยใช้อันดับในห้องเทียบ ไม่ใช่คะแนนดิบ (เพราะข้อสอบแต่ละรอบยากง่ายไม่เท่ากัน)</p>`;
 
   const topicRows = (topicTrendData || []).length
     ? topicTrendData.map((row) => `<tr>
@@ -2055,10 +2033,6 @@ export function ExamAnalyticsView({
   useEffect(() => {
     if (loadingExams) return; // ยังรอรายชื่อ exam อยู่
     if (examList.length === 0) { setLoadingResults(false); return; } // โหลด exam list เสร็จแต่ไม่มี exam เลย
-    // (แก้บั๊ก) เดิมไม่มีการกัน request เก่ามาทับ request ใหม่ (race condition) — ถ้าสลับดูวิชา/
-    // ติวเตอร์เร็วๆ แล้ว request ของอันเก่า resolve ช้ากว่าอันใหม่ จะเผลอเอาผลลัพธ์เก่าทับผล
-    // ลัพธ์ใหม่ที่โหลดเสร็จไปแล้ว ใช้ pattern เดียวกับ effect โหลด examList ด้านบน (cancelled flag)
-    let cancelled = false;
     setLoadingResults(true);
     Promise.all(
       [0, 1, 2].map((i) => {
@@ -2069,9 +2043,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setExamResults(data); })
-      .finally(() => { if (!cancelled) setLoadingResults(false); });
-    return () => { cancelled = true; };
+    ).then(setExamResults).finally(() => setLoadingResults(false));
   }, [loadingExams, examList]);
 
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
@@ -2079,8 +2051,6 @@ export function ExamAnalyticsView({
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
-    // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ examResults ด้านบน
-    let cancelled = false;
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
@@ -2090,8 +2060,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setTopicResults(data); });
-    return () => { cancelled = true; };
+    ).then(setTopicResults);
   }, [loadingExams, examList]);
 
   // ── Step 7: ผลวิเคราะห์ AI ต่อรอบ (ใช้ใน StudentProgressModal แท็บ "รายคน") ──────
@@ -2102,8 +2071,6 @@ export function ExamAnalyticsView({
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
-    // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ 2 effect ด้านบน
-    let cancelled = false;
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
@@ -2113,8 +2080,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setAiSummaries(data); });
-    return () => { cancelled = true; };
+    ).then(setAiSummaries);
   }, [loadingExams, examList]);
 
   const examLabel = EXAMS_META[examId].label;

@@ -159,14 +159,9 @@ export const parseXlsx = (file) =>
             id: `import-${Date.now()}-${i}`,
             text: String(r.question || ""),
             options: [String(r.option_a || ""), String(r.option_b || ""), String(r.option_c || ""), String(r.option_d || "")],
-            // (แก้บั๊ก) เดิมไม่ trim() ก่อนเทียบ ทำให้ค่าที่มีช่องว่างเกินติดมาจากไฟล์ Excel เช่น
-            // "A " (มีเว้นวรรคท้าย) เทียบไม่ตรงกับ key ใน OPTION_MAP แล้วถูกตั้งเป็น null แบบ
-            // เงียบๆ ทั้งที่จริงเฉลยคือ A
-            correct: OPTION_MAP[String(r.correct_answer || "").trim().toUpperCase()] ?? null,
+            correct: OPTION_MAP[String(r.correct_answer || "").toUpperCase()] ?? null,
             score: Number(r.score) || 1,
-            // (แก้บั๊ก) เดิมไม่ trim() ก่อนเทียบเหมือนกัน ทำให้ค่าที่มีช่องว่างเกินติดมาเทียบไม่ตรง
-            // แล้วเงียบๆ กลายเป็นค่า default "ปานกลาง" ทั้งที่ผู้สอนตั้งใจใส่ระดับอื่น
-            level: ["ง่าย", "ปานกลาง", "ยาก"].includes(String(r.level || "").trim()) ? String(r.level).trim() : "ปานกลาง",
+            level: ["ง่าย", "ปานกลาง", "ยาก"].includes(r.level) ? r.level : "ปานกลาง",
             category: String(r.category || ""),
             explanation: String(r.explanation || ""),   // ← เพิ่ม
             gradeLabel: String(r.grade_level || "").trim(),

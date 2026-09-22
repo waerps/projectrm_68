@@ -2055,10 +2055,6 @@ export function ExamAnalyticsView({
   useEffect(() => {
     if (loadingExams) return; // ยังรอรายชื่อ exam อยู่
     if (examList.length === 0) { setLoadingResults(false); return; } // โหลด exam list เสร็จแต่ไม่มี exam เลย
-    // (แก้บั๊ก) เดิมไม่มีการกัน request เก่ามาทับ request ใหม่ (race condition) — ถ้าสลับดูวิชา/
-    // ติวเตอร์เร็วๆ แล้ว request ของอันเก่า resolve ช้ากว่าอันใหม่ จะเผลอเอาผลลัพธ์เก่าทับผล
-    // ลัพธ์ใหม่ที่โหลดเสร็จไปแล้ว ใช้ pattern เดียวกับ effect โหลด examList ด้านบน (cancelled flag)
-    let cancelled = false;
     setLoadingResults(true);
     Promise.all(
       [0, 1, 2].map((i) => {
@@ -2069,9 +2065,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setExamResults(data); })
-      .finally(() => { if (!cancelled) setLoadingResults(false); });
-    return () => { cancelled = true; };
+    ).then(setExamResults).finally(() => setLoadingResults(false));
   }, [loadingExams, examList]);
 
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
@@ -2079,8 +2073,6 @@ export function ExamAnalyticsView({
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
-    // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ examResults ด้านบน
-    let cancelled = false;
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
@@ -2090,8 +2082,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setTopicResults(data); });
-    return () => { cancelled = true; };
+    ).then(setTopicResults);
   }, [loadingExams, examList]);
 
   // ── Step 7: ผลวิเคราะห์ AI ต่อรอบ (ใช้ใน StudentProgressModal แท็บ "รายคน") ──────
@@ -2102,8 +2093,6 @@ export function ExamAnalyticsView({
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
-    // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ 2 effect ด้านบน
-    let cancelled = false;
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
@@ -2113,8 +2102,7 @@ export function ExamAnalyticsView({
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setAiSummaries(data); });
-    return () => { cancelled = true; };
+    ).then(setAiSummaries);
   }, [loadingExams, examList]);
 
   const examLabel = EXAMS_META[examId].label;

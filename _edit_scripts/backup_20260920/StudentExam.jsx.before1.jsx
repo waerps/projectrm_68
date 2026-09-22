@@ -2,8 +2,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
 import { fmtScore } from "../utils/examScore";
-import { useToast } from "../components/useToast";
-import { ToastContainer } from "../components/Toast";
 import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
@@ -157,8 +155,6 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const [error, setError] = useState("");
   const submittedRef = useRef(false);
   const didInitialLog = useRef(false); // ข้อแรกถูก log ไว้แล้วตอน /start ที่ backend
-  // (แก้บั๊ก) ใช้แจ้งเตือนตอน autosave คำตอบล้มเหลว — ดูจุดแก้ที่ pickAnswer ด้านล่าง
-  const { toasts, showToast, removeToast } = useToast();
 
   const current = questions[activeIdx];
   const answeredCount = questions.filter((q) => q.selected !== null && q.selected !== undefined).length;
@@ -241,20 +237,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
-    const questionId = current.id;
-    // (แก้บั๊ก) เดิม autosave fail แล้วแค่ console.error เงียบๆ หน้าจอยังโชว์ว่าเลือกคำตอบแล้ว
-    // ทั้งที่ยังไม่ถูกบันทึกจริง นักเรียนไม่รู้ตัวจนกว่าจะเห็นคะแนนตอนจบ — ลองบันทึกซ้ำอีกครั้ง
-    // เผื่อเป็นแค่เน็ตสะดุดชั่วคราว ถ้ายังไม่สำเร็จอีกรอบค่อยแจ้งเตือนผู้ใช้จริงๆ
-    const trySave = (isRetry) =>
-      saveAnswer({ examJoinId, userId, questionId, selected: optIdx }).catch((err) => {
-        console.error("Autosave failed:", err);
-        if (!isRetry) {
-          trySave(true);
-          return;
-        }
-        showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "กรุณาเลือกคำตอบข้อนี้ใหม่อีกครั้ง เช็คสัญญาณอินเทอร์เน็ตของคุณด้วย");
-      });
-    trySave(false);
+    saveAnswer({ examJoinId, userId, questionId: current.id, selected: optIdx }).catch((err) => {
+      console.error("Autosave failed:", err);
+    });
   };
 
   // Guard: exam has no questions at all — show a clear message instead of
@@ -267,7 +252,6 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
       <div className="bg-white border border-neutral-200 rounded-3xl p-8 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
