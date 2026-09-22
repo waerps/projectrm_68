@@ -121,6 +121,7 @@ const ALL_DATA = [
 const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
 const sdev = arr => { const m = avg(arr); return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length); };
 const fmtPct = v => `${(v * 100).toFixed(1)}%`;
+const fmtMin = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")} น.`;
 
 const computeItemAnalysis = (data) => {
   const n = data.length;
@@ -385,7 +386,568 @@ const ChartTooltip = ({ active, payload, label, formatValue }) => {
   );
 };
 
-// (ลบโค้ดที่ไม่ได้ใช้ออก) StudentTab/StudentModal เป็น mock เก่าที่ไม่มีจุดไหนเรียกใช้แล้ว
+// ─── Student Drill-down Modal (mock — ใช้ใน StudentTab ที่ปิดใช้งานอยู่) ──────
+
+function StudentModal({ student, examLabel, onClose }) {
+  if (!student) return null;
+  const topicBreakdown = TOPICS.map(topic => {
+    const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
+    const maxSc = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
+    const sc = qIdx.reduce((s, i) => s + (student.answers[i].correct ? QUESTIONS[i].score : 0), 0);
+    return { topic, sc, maxSc, pct: sc / maxSc, color: TOPIC_COLORS[topic] };
+  });
+  const grade = student.pct >= 0.90 ? "A" : student.pct >= 0.80 ? "B+" : student.pct >= 0.70 ? "B" : student.pct >= 0.60 ? "C" : "F";
+
+  return (
+    <Modal title={`ผลสอบ: ${student.name}`} icon={Eye} onClose={onClose} wide>
+      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+        <div className="h-16 w-16 rounded-2xl bg-white/20 border-2 border-white/30 flex items-center justify-center shrink-0">
+          <span className="text-lg font-bold text-white">{student.id}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-lg">{student.name}</p>
+          <p className="text-sm text-orange-100">{examLabel} · ใช้เวลา {fmtMin(student.timeSec)}</p>
+        </div>
+        <div className="flex gap-3 shrink-0">
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{grade}</p>
+            <p className="text-[10px] text-orange-100">เกรด</p>
+          </div>
+          <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+            <p className="text-xl font-black">{fmtScore(student.totalScore)}/{fmtScore(MAX_SCORE)}</p>
+            <p className="text-[10px] text-orange-100">{fmtPct(student.pct)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        <div>
+          <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหัวข้อ</p>
+          <div className="space-y-2.5">
+            {topicBreakdown.map(t => (
+              <div key={t.topic} className="flex items-center gap-3">
+                <p className="text-xs text-slate-500 w-36 flex-shrink-0">{t.topic}</p>
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${t.pct * 100}%`, backgroundColor: t.color }} />
+                </div>
+                <p className="text-xs font-semibold text-slate-700 w-20 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="text-sm font-bold text-slate-800 mb-3">รายข้อ</p>
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    {["ข้อ", "หัวข้อ", "ระดับ", "ผล", "คะแนน", "เวลา"].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {QUESTIONS.map((q, qi) => {
+                    const ans = student.answers[qi];
+                    return (
+                      <tr key={q.id} className={ans.correct ? "bg-emerald-50/30" : "bg-red-50/30"}>
+                        <td className="px-4 py-2.5 font-medium text-slate-600">{q.id}</td>
+                        <td className="px-4 py-2.5"><span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
+                        <td className="px-4 py-2.5"><span className={`px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${LevelBadge[q.level]}`}>{q.level}</span></td>
+                        <td className="px-4 py-2.5">{ans.correct ? <span className="flex items-center gap-1 text-emerald-700 font-semibold text-xs"><CheckCircle className="h-3 w-3" /> ถูก</span> : <span className="flex items-center gap-1 text-red-500 font-semibold text-xs"><X className="h-3 w-3" /> ผิด</span>}</td>
+                        <td className="px-4 py-2.5 text-slate-700">{ans.correct ? q.score : 0}/{q.score}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{Math.floor(ans.timeSec / 60)}:{String(ans.timeSec % 60).padStart(2, "0")} น.</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ─── Tab 1: ภาพรวม (ข้อมูลจริงจาก fetchExamResults) ────────────────────────
+function OverviewTab({ results, topicBreakdown, loading }) {
+  // ── Hooks ต้องถูกเรียกแบบไม่มีเงื่อนไขทุก render (Rules of Hooks) ──
+  // เดิม useMemo ทั้งสองตัวอยู่หลัง `if (loading) return` และ `if (!results...) return`
+  // พอ loading เปลี่ยนจาก true → false ระหว่างที่ component ยัง mount อยู่ (ไม่ได้ unmount)
+  // จำนวน hook ที่ถูกเรียกในแต่ละ render จะไม่เท่ากัน → React throw "Rendered fewer/more
+  // hooks than expected" หน้าแครช จึงย้าย submitted + useMemo ทั้งหมดมาไว้บนสุดแทน
+  const submitted = (results?.students || []).filter(s => s.submittedAt && s.maxScore);
+
+  const hist = useMemo(() => {
+    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
+    submitted.forEach(s => { bins[Math.min(9, Math.floor((s.totalScore / s.maxScore) * 10))].count++; });
+    return bins;
+  }, [submitted]);
+
+  const topicStats = useMemo(() => computeTopicStatsReal(topicBreakdown), [topicBreakdown]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-slate-100 rounded-2xl" />)}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-64 bg-slate-100 rounded-2xl" />
+          <div className="h-64 bg-slate-100 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!results || submitted.length === 0) {
+    return (
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
+        <BarChart2 className="h-10 w-10 text-slate-300" />
+        <p className="text-sm font-semibold text-slate-600">ยังไม่มีข้อมูลผลสอบรอบนี้</p>
+        <p className="text-xs text-slate-400">ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คน</p>
+      </div>
+    );
+  }
+
+  const pcts = submitted.map(s => s.totalScore / s.maxScore);
+  // (แก้บั๊ก) ใช้ค่าเฉลี่ยจาก backend (results.averageScorePct) ซึ่งตัดคนที่ไม่ยินยอมให้เก็บ
+  // พฤติกรรมการใช้อุปกรณ์ระหว่างสอบ (ExamBehaviorConsent = 0) ออกแล้ว ให้ตรงกับค่าเฉลี่ยที่
+  // โชว์ในแท็บ "เปรียบเทียบ" — เดิมคำนวณเองจากนักเรียนที่ส่งข้อสอบทุกคน ทำให้ตัวเลข
+  // "ค่าเฉลี่ย" ไม่ตรงกันข้ามแท็บของรอบสอบเดียวกัน
+  const avgPct = (results.averageScorePct ?? 0) / 100;
+  const sdPct = sdev(pcts);
+  const passRate = submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length / submitted.length;
+  const maxPct = Math.max(...pcts);
+  const minPct = Math.min(...pcts);
+  const maxScore = submitted[0].maxScore;
+  const maxRawScore = Math.max(...submitted.map(s => s.totalScore));
+  const minRawScore = Math.min(...submitted.map(s => s.totalScore));
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard icon={Award} label="คะแนนเฉลี่ย" value={fmtPct(avgPct)} sub={`${fmtScore(avgPct * maxScore)} / ${fmtScore(maxScore)} คะแนน`} color="bg-orange-500" />
+        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${submitted.filter(s => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length} จาก ${submitted.length} คน`} color="bg-emerald-500" />
+        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
+        <StatCard
+          icon={BarChart2}
+          label="ส่วนเบี่ยงเบนมาตรฐาน"
+          value={fmtPct(sdPct)}
+          sub="σ (sigma)"
+          color="bg-amber-500"
+          tooltip="วัดว่าคะแนนของนักเรียนในห้องกระจายกันมากแค่ไหน ค่าน้อย = คะแนนใกล้เคียงกันทั้งห้อง (เก่ง-อ่อนไม่ต่างกันมาก) ค่ามาก = คะแนนกระจายกว้าง มีทั้งกลุ่มที่ทำได้ดีมากและกลุ่มที่ทำได้น้อยมากปนกันอยู่ในห้องเดียวกัน"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SectionCard title="การกระจายตัวของคะแนน" icon={BarChart2}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={hist} barCategoryGap="15%">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
+              <Tooltip content={<ChartTooltip formatValue={(v) => `${v} คน`} />} cursor={{ fill: "#f8fafc" }} />
+              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
+                {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 justify-center mt-2 flex-wrap">
+            {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–59% ใกล้ผ่าน"], ["#22c55e", "60%+ ผ่าน"]].map(([c, l]) => (
+              <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: c }} />{l}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="คะแนนเฉลี่ยรายหัวข้อ" icon={BookOpen}>
+          {topicStats.length === 0 ? (
+            <div className="flex flex-col items-center text-center gap-2 py-10">
+              <Info className="h-6 w-6 text-slate-300" />
+              <p className="text-xs text-slate-400">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-slate-400 mb-3">ห้องนี้เข้าใจเรื่องไหนดี และเรื่องไหนที่ควรสอนซ้ำ</p>
+              <div className="flex items-center gap-4 mb-4 flex-wrap">
+                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> 70%+ ผ่านเกณฑ์ดี
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" /> 50–69% พอใช้
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                  <span className="h-2 w-2 rounded-full bg-red-400" /> ต่ำกว่า 50% ควรทบทวน
+                </span>
+              </div>
+
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={topicStats} layout="vertical" barCategoryGap="20%">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <ReferenceLine x={0.6} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
+                  <XAxis
+                    type="number"
+                    domain={[0, 1]}
+                    tickFormatter={v => `${(v * 100).toFixed(0)}%`}
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    dataKey="topic"
+                    type="category"
+                    width={100}
+                    tick={{ fontSize: 10, fill: "#475569" }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const pct = payload[0].value;
+                      const msg =
+                        pct >= 0.7 ? "ผ่านเกณฑ์ดี ไม่ต้องสอนซ้ำ" :
+                          pct >= 0.5 ? "พอใช้ ควรทบทวนเล็กน้อย" :
+                            "ควรสอนซ้ำบทนี้";
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
+                          <p className="font-semibold text-slate-700 mb-1">{label}</p>
+                          <p className="text-slate-600">{fmtPct(pct)}</p>
+                          <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
+                            → {msg}
+                          </p>
+                        </div>
+                      );
+                    }}
+                    cursor={{ fill: "#f8fafc" }}
+                  />
+                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ย">
+                    {topicStats.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={
+                          entry.avgPct >= 0.7 ? "#22c55e" :
+                            entry.avgPct >= 0.5 ? "#f97316" :
+                              "#ef4444"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              {topicStats.some(t => t.avgPct < 0.5) && (
+                <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600">
+                    <span className="font-semibold">
+                      {topicStats.filter(t => t.avgPct < 0.5).map(t => t.topic).join(", ")}
+                    </span>
+                    {" "}— นักเรียนส่วนใหญ่ทำได้ต่ำกว่า 50% ควรพิจารณาสอนซ้ำก่อนสอบครั้งถัดไป
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab 2: วิเคราะห์ข้อสอบ — ปิดใช้งานชั่วคราว (mock, ไม่แตะ) ────────────────
+/*
+function ItemAnalysisTab({ data }) {
+  const [filterTopic, setFilterTopic] = useState("ทั้งหมด");
+  const [filterFlag, setFilterFlag] = useState("ทั้งหมด");
+  const [filterLevel, setFilterLevel] = useState("ทั้งหมด");
+  const [expandedQ, setExpandedQ] = useState(null);
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState(1);
+
+  const ia = useMemo(() => computeItemAnalysis(data), [data]);
+  const filtered = useMemo(() => {
+    let r = ia;
+    if (filterTopic !== "ทั้งหมด") r = r.filter(q => q.topic === filterTopic);
+    if (filterLevel !== "ทั้งหมด") r = r.filter(q => q.level === filterLevel);
+    if (filterFlag === "ปัญหา") r = r.filter(q => q.flag);
+    if (filterFlag === "ดี") r = r.filter(q => !q.flag);
+    return [...r].sort((a, b) => {
+      const va = a[sortKey] ?? 0, vb = b[sortKey] ?? 0;
+      return sortDir * (va < vb ? -1 : va > vb ? 1 : 0);
+    });
+  }, [ia, filterTopic, filterLevel, filterFlag, sortKey, sortDir]);
+
+  const flaggedCount = ia.filter(q => q.flag).length;
+  const avgPVal = avg(ia.map(q => q.pValue));
+  const avgDIdx = avg(ia.map(q => q.dIndex));
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d * -1);
+    else { setSortKey(key); setSortDir(-1); }
+  };
+  const SortIcon = ({ k }) => sortKey === k
+    ? <ChevronDown className={`h-3 w-3 inline ml-0.5 transition-transform ${sortDir === -1 ? "rotate-180" : ""}`} />
+    : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0"><AlertTriangle className="h-4 w-4 text-red-500" /></div>
+          <div><p className="text-xl font-bold text-red-600">{flaggedCount} ข้อ</p><p className="text-xs text-neutral-500">ต้องพิจารณาแก้ไข</p></div>
+        </div>
+        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0"><Target className="h-4 w-4 text-blue-500" /></div>
+          <div>
+            <p className="text-xl font-bold text-blue-600">{fmtPct(avgPVal)}</p>
+            <p className="text-xs text-neutral-500">P-value เฉลี่ย <span className="text-neutral-400">(เป้า 0.3–0.7)</span></p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0"><TrendingUp className="h-4 w-4 text-green-500" /></div>
+          <div>
+            <p className="text-xl font-bold text-green-600">{fmtPct(avgDIdx)}</p>
+            <p className="text-xs text-neutral-500">D-index เฉลี่ย <span className="text-neutral-400">(เป้า ≥0.3)</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-orange-300">
+          <option>ทั้งหมด</option>
+          {TOPICS.map(t => <option key={t}>{t}</option>)}
+        </select>
+        <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-orange-300">
+          <option>ทั้งหมด</option>
+          <option>ง่าย</option><option>ปานกลาง</option><option>ยาก</option>
+        </select>
+        <div className="flex rounded-xl overflow-hidden border border-neutral-200">
+          {["ทั้งหมด", "ปัญหา", "ดี"].map(f => (
+            <button key={f} onClick={() => setFilterFlag(f)} className={`px-3 py-2 text-xs font-medium transition ${filterFlag === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}>
+              {f === "ปัญหา" ? "⚠️ มีปัญหา" : f === "ดี" ? "✓ ผ่านเกณฑ์" : f}
+            </button>
+          ))}
+        </div>
+        <p className="ml-auto flex items-center text-xs text-neutral-400 self-center">{filtered.length} ข้อ</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-neutral-50 border-b border-neutral-100">
+              <th onClick={() => handleSort("id")} className="cursor-pointer text-left font-semibold text-neutral-500 px-4 py-3 w-10">ข้อ <SortIcon k="id" /></th>
+              <th className="text-left font-semibold text-neutral-500 px-3 py-3">หัวข้อ</th>
+              <th className="text-left font-semibold text-neutral-500 px-3 py-3">ระดับ</th>
+              <th onClick={() => handleSort("pValue")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">P-value <SortIcon k="pValue" /></th>
+              <th onClick={() => handleSort("dIndex")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">D-index <SortIcon k="dIndex" /></th>
+              <th className="text-left font-semibold text-neutral-500 px-3 py-3 min-w-[160px]">การเลือกตัวเลือก</th>
+              <th onClick={() => handleSort("avgTimeSec")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">เวลาเฉลี่ย <SortIcon k="avgTimeSec" /></th>
+              <th className="px-3 py-3 w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(q => {
+              const isExpanded = expandedQ === q.id;
+              const totalOpts = q.optCounts.reduce((s, c) => s + c, 0);
+              return (
+                <>
+                  <tr key={q.id} className={`border-b border-neutral-50 hover:bg-neutral-50/60 transition cursor-pointer ${q.flag ? "bg-red-50/20" : ""}`} onClick={() => setExpandedQ(isExpanded ? null : q.id)}>
+                    <td className="px-4 py-3 font-bold text-neutral-700">{q.flag && <AlertTriangle className="h-3 w-3 text-red-400 inline mr-1" />}{q.id}</td>
+                    <td className="px-3 py-3"><span className="px-2 py-0.5 rounded-md font-semibold text-[10px]" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
+                    <td className="px-3 py-3"><span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${LevelBadge[q.level]}`}>{q.level}</span></td>
+                    <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${PValColor(q.pValue)}`}>{fmtPct(q.pValue)}</span></td>
+                    <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${DIdxColor(q.dIndex)}`}>{q.dIndex >= 0 ? "+" : ""}{fmtPct(q.dIndex)}</span></td>
+                    <td className="px-3 py-3">
+                      <div className="space-y-0.5 w-40">
+                        {["A", "B", "C", "D"].map((label, oi) => {
+                          const pct = totalOpts > 0 ? q.optCounts[oi] / totalOpts : 0;
+                          const isCorrect = oi === q.correctOpt;
+                          return (
+                            <div key={label} className="flex items-center gap-1.5">
+                              <span className={`text-[9px] font-bold w-3.5 ${isCorrect ? "text-green-600" : "text-neutral-400"}`}>{label}</span>
+                              <div className="flex-1 h-3 bg-neutral-100 rounded-sm overflow-hidden">
+                                <div className="h-full rounded-sm transition-all" style={{ width: `${pct * 100}%`, backgroundColor: isCorrect ? "#22c55e" : "#e5e7eb" }} />
+                              </div>
+                              <span className={`text-[9px] w-5 text-right ${isCorrect ? "text-green-600 font-bold" : "text-neutral-400"}`}>{q.optCounts[oi]}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-500">{Math.floor(q.avgTimeSec / 60)}:{String(Math.round(q.avgTimeSec % 60)).padStart(2, "0")} น.</td>
+                    <td className="px-3 py-3"><ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></td>
+                  </tr>
+                  {isExpanded && (
+                    <tr key={`${q.id}-detail`} className="border-b border-neutral-100 bg-neutral-50/60">
+                      <td colSpan={8} className="px-6 py-3">
+                        <div className="flex gap-6 items-start">
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-neutral-700 mb-1">โจทย์ข้อที่ {q.id}</p>
+                            <p className="text-xs text-neutral-600">{q.text}</p>
+                          </div>
+                          {q.flag && (
+                            <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-w-xs">
+                              <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1"><AlertTriangle className="h-3 w-3" /> คำแนะนำ</p>
+                              <ul className="text-xs text-red-600 space-y-0.5">
+                                {q.pValue < 0.25 && <li>• P-value ต่ำมาก — ข้อนี้อาจยากเกินไปหรือโจทย์ไม่ชัดเจน</li>}
+                                {q.pValue > 0.92 && <li>• P-value สูงมาก — ข้อนี้อาจง่ายเกินไป</li>}
+                                {q.dIndex < 0.15 && <li>• D-index ต่ำ — ข้อนี้ไม่ช่วยแยกแยะความสามารถนักเรียน</li>}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+*/
+
+// ─── Tab 3: ผลนักเรียน — ปิดใช้งานชั่วคราว (mock, dead code — ไม่แตะ) ─────────
+
+function StudentTab({ data, examLabel }) {
+  const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState("rank");
+  const [sortDir, setSortDir] = useState(1);
+  const [filterPass, setFilterPass] = useState("ทั้งหมด");
+  const [selected, setSelected] = useState(null);
+
+  const sorted = useMemo(() =>
+    [...data].sort((a, b) => b.pct - a.pct).map((s, i) => ({ ...s, rank: i + 1 }))
+    , [data]);
+
+  const displayed = useMemo(() => {
+    let r = sorted;
+    if (search) r = r.filter(s => s.name.includes(search));
+    if (filterPass === "ผ่าน") r = r.filter(s => s.passed);
+    if (filterPass === "ไม่ผ่าน") r = r.filter(s => !s.passed);
+    return [...r].sort((a, b) => {
+      const va = a[sortKey] ?? 0, vb = b[sortKey] ?? 0;
+      return sortDir * (va < vb ? -1 : va > vb ? 1 : 0);
+    });
+  }, [sorted, search, filterPass, sortKey, sortDir]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d * -1);
+    else { setSortKey(key); setSortDir(key === "rank" ? 1 : -1); }
+  };
+  const SortIcon = ({ k }) => sortKey === k ? <span className="ml-0.5 text-orange-500">{sortDir === 1 ? "▲" : "▼"}</span> : null;
+
+  const passCount = data.filter(s => s.passed).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard icon={CheckCircle} label="ผ่านเกณฑ์" value={passCount} sub={fmtPct(passCount / data.length)} color="bg-emerald-500" />
+        <StatCard icon={X} label="ไม่ผ่านเกณฑ์" value={data.length - passCount} sub={fmtPct((data.length - passCount) / data.length)} color="bg-red-500" />
+        <StatCard icon={Clock} label="เวลาเฉลี่ย" value={fmtMin(Math.round(avg(data.map(s => s.timeSec))))} sub="ต่อคน" color="bg-blue-500" />
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="ค้นหานักเรียน..."
+              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            />
+          </div>
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 shrink-0">
+            {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน"].map(f => (
+              <button key={f} onClick={() => setFilterPass(f)}
+                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {displayed.length} จาก {data.length} คน</p>
+      </div>
+
+      {displayed.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+          <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  {[["rank", "อันดับ"], ["name", "ชื่อ"], ["totalScore", "คะแนน"], [null, "รายหัวข้อ"], ["timeSec", "เวลา"], [null, "ผล"], [null, ""]].map(([k, label]) => (
+                    <th key={label} onClick={k ? () => handleSort(k) : undefined}
+                      className={`text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${k ? "cursor-pointer hover:text-slate-700" : ""}`}>
+                      {label}{k && <SortIcon k={k} />}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {displayed.map(s => {
+                  const topicPcts = TOPICS.map(topic => {
+                    const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
+                    const maxSc = qIdx.reduce((sum, i) => sum + QUESTIONS[i].score, 0);
+                    const sc = qIdx.reduce((sum, i) => sum + (s.answers[i].correct ? QUESTIONS[i].score : 0), 0);
+                    return sc / maxSc;
+                  });
+                  return (
+                    <tr key={s.id} className="hover:bg-orange-50/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
+                      </td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{s.name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${s.pct * 100}%`, backgroundColor: s.pct >= 0.7 ? "#22c55e" : s.pct >= 0.6 ? "#f97316" : "#ef4444" }} />
+                          </div>
+                          <span className="font-semibold text-slate-700">{Math.round(s.pct * 100)}%</span>
+                        </div>
+                        <p className="text-slate-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(MAX_SCORE)}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          {topicPcts.map((pct, ti) => (
+                            <div key={ti} title={`${TOPICS[ti]}: ${Math.round(pct * 100)}%`} className="h-4 w-4 rounded-sm" style={{ backgroundColor: pct >= 0.7 ? TOPIC_COLORS[TOPICS[ti]] : pct >= 0.4 ? `${TOPIC_COLORS[TOPICS[ti]]}88` : "#fee2e2" }} />
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">{fmtMin(s.timeSec)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${s.passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>{s.passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setSelected(s)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
+                          <Eye className="h-3.5 w-3.5" /> ดูผล
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {selected && <StudentModal student={selected} examLabel={examLabel} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
 
 // ─── Tab: รายคน (cross-exam) — ข้อมูลจริงจาก fetchExamResults ────────────────
 
