@@ -140,11 +140,8 @@ export default function TutorStudentDetail() {
 
     useEffect(() => {
         const fetchAll = async () => {
-            // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-            const token = localStorage.getItem("student_token");
-            const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
             try {
-                const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders);
+                const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`);
                 const found = res.data.students.find(
                     s => String(s.UserId || s.id) === String(studentId)
                 );
@@ -162,7 +159,7 @@ export default function TutorStudentDetail() {
 
                 // คะแนนสอบจริงข้ามทุกวิชาในคอร์ส (endpoint เดียวกับหน้ารายชื่อ)
                 try {
-                    const sumRes = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders);
+                    const sumRes = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`);
                     setExamSummary(sumRes.data);
                     setExamData((sumRes.data.students || []).find((s) => String(s.userId) === String(sid)) || null);
                 } catch (err) {
@@ -173,8 +170,7 @@ export default function TutorStudentDetail() {
 
                 try {
                     const attRes = await axios.get(
-                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/attendance`,
-                        authHeaders
+                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/attendance`
                     );
                     console.log('attendance data:', attRes.data)
                     setAttendance(attRes.data);
@@ -184,8 +180,7 @@ export default function TutorStudentDetail() {
 
                 try {
                     const vidRes = await axios.get(
-                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/videos`,
-                        authHeaders
+                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/videos`
                     );
                     setVideos(vidRes.data);
                 } catch {

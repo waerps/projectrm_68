@@ -121,11 +121,7 @@ function useTutorIncome(adminId) {
     setLoading(true);
     setError(null);
     try {
-      // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-      const token = localStorage.getItem("student_token");
-      const res = await fetch(`${API_BASE}/income/${adminId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API_BASE}/income/${adminId}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);

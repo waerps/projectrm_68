@@ -104,12 +104,9 @@ export default function TutorStudents() {
             if (!courseId || courseId === "undefined") { setLoading(false); return; }
             try {
                 // ดึงรายชื่อนักเรียน + สรุปคะแนนสอบข้ามวิชาพร้อมกัน (สรุปคะแนนพลาดได้ ไม่ทำให้หน้าพัง)
-                // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-                const token = localStorage.getItem("student_token");
-                const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
                 const [response, summaryRes] = await Promise.all([
-                    axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders),
-                    axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders).catch((err) => {
+                    axios.get(`${API_URL}/coursestutor/${courseId}/students`),
+                    axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`).catch((err) => {
                         console.error("Fetch exam summary failed:", err);
                         return null;
                     }),

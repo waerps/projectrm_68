@@ -28,8 +28,6 @@ const fmtDate = (v) => {
 
 export default function TutorProgressOverview() {
   const tutorId = JSON.parse(localStorage.getItem("user") || "{}")?.id;
-  // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-  const token = localStorage.getItem("student_token");
   const navigate = useNavigate();
 
   const [rows, setRows] = useState([]);   // แถวละ 1 คอร์ส x 1 วิชา (ดิบจาก API)
@@ -46,9 +44,7 @@ export default function TutorProgressOverview() {
     }
     let cancelled = false;
     axios
-      .get(`${API_URL}/coursestutor?adminId=${tutorId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      .get(`${API_URL}/coursestutor?adminId=${tutorId}`)
       .then((res) => {
         if (cancelled) return;
         const seen = new Set();
@@ -76,7 +72,7 @@ export default function TutorProgressOverview() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [tutorId, token]);
+  }, [tutorId]);
 
   const stats = useMemo(() => {
     const courses = new Map();

@@ -12,9 +12,6 @@ export default function TutorProfile() {
     const [isSaving, setIsSaving] = useState(false)
     const [alertModal, setAlertModal] = useState({ show: false, fields: [] })
     const TUTOR_ID = JSON.parse(localStorage.getItem("user"))?.id;
-    // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend (/api/tutor/:id ฯลฯ) ต้อง login
-    // ก่อนแล้ว ถ้าไม่แนบ Authorization header จะโดน 401 ทันที
-    const token = localStorage.getItem("student_token");
 
     const [formData, setFormData] = useState({
         firstname: "", lastname: "", nickname: "", phone: "",
@@ -28,9 +25,7 @@ export default function TutorProfile() {
     useEffect(() => {
         const fetchTutorData = async () => {
             try {
-                const response = await axios.get(`${API_URL}/api/tutor/${TUTOR_ID}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const response = await axios.get(`${API_URL}/api/tutor/${TUTOR_ID}`);
                 const dbData = response.data;
                 const mappedData = {
                     firstname: dbData.Firstname || "",
@@ -60,7 +55,7 @@ export default function TutorProfile() {
             }
         };
         fetchTutorData();
-    }, [TUTOR_ID, token]);
+    }, [TUTOR_ID]);
 
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
@@ -69,7 +64,7 @@ export default function TutorProfile() {
         data.append('profileImage', file);
         try {
             const res = await axios.post(`${API_URL}/api/tutor/${TUTOR_ID}/upload-profile`, data, {
-                headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
             alert("อัปโหลดสำเร็จ!");
@@ -108,9 +103,7 @@ export default function TutorProfile() {
 
         setIsSaving(true)
         try {
-            await axios.put(`${API_URL}/api/tutor/${TUTOR_ID}`, formData, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await axios.put(`${API_URL}/api/tutor/${TUTOR_ID}`, formData);
             setOriginalData(formData);
             setIsEditing(false);
         } catch (error) {

@@ -70,10 +70,7 @@ export default function CoursesPage() {
     const fetchCourses = async () => {
       try {
         // ยิง API พร้อมพารามิเตอร์ adminId
-        // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-        const response = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`);
         console.log("RAW API RESPONSE:", response.data); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
 
         // ✅ Group ตาม CourseID เพื่อรวมหลายวิชาไว้ใน Course เดียว
