@@ -3,12 +3,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TrendingUp, TrendingDown, Clock, Calendar,
   Download, Search, Check, AlertCircle, FileText,
-  BarChart3, Eye, CreditCard, RefreshCw, BookOpen, ChevronDown,
+  BarChart3, Eye, RefreshCw, BookOpen, ChevronDown,
   ChevronLeft, ChevronRight,
+  Wallet, Hourglass, CheckCircle2, Trophy, Coins, Users, CalendarDays, CalendarCheck, Receipt,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ComposedChart, Line, Bar, Cell, LabelList, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import * as XLSX from 'xlsx';
 
@@ -176,6 +178,118 @@ const CustomXTick = ({ x, y, payload, index, monthly }) => {
     </g>
   );
 };
+
+// ─── ชิ้นส่วน UI หน้ารายรับ (ดีไซน์ใหม่ — ตรรกะ/ข้อมูลเหมือนเดิมทั้งหมด) ────────────
+const prefersReducedMotion = () => {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+};
+const TH_MONTHS_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const LEVEL_BADGE = {
+  elementary: 'bg-blue-50 text-blue-700 border-blue-200',
+  secondary: 'bg-purple-50 text-purple-700 border-purple-200',
+};
+const tierIndexOf = (n) => (n <= 4 ? 0 : n <= 10 ? 1 : n <= 15 ? 2 : n <= 20 ? 3 : 4);
+
+// ตัวเลขเงินนับขึ้นตอนแสดงครั้งแรก
+function MoneyCountUp({ value }) {
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    if (!value || prefersReducedMotion()) { setShown(value); return undefined; }
+    let raf;
+    const t0 = performance.now();
+    const step = (t) => {
+      const p = Math.min(1, (t - t0) / 1100);
+      setShown(Math.round(value * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return (shown ?? 0).toLocaleString();
+}
+
+// กราฟเส้นจิ๋ว 6 เดือนล่าสุดในการ์ดสรุปด้านบน
+function IncomeSparkline({ months }) {
+  const W = 300, H = 90;
+  if (!months.length) return null;
+  const max = Math.max(1, ...months.map((m) => m.total));
+  const pts = months.map((m, i) => [10 + i * ((W - 20) / Math.max(1, months.length - 1)), H - 12 - (m.total / max) * (H - 26)]);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const last = pts.length - 1;
+  return (
+    <svg viewBox={`0 0 ${W} ${H + 18}`} className="w-full mt-2" aria-hidden="true">
+      <defs>
+        <linearGradient id="incSpark" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#fb923c" stopOpacity=".3" /><stop offset="1" stopColor="#fb923c" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {pts.length > 1 && <path d={`${d} L${pts[last][0]},${H} L${pts[0][0]},${H} Z`} fill="url(#incSpark)" />}
+      <path d={d} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="sa-draw" style={{ '--len': 600 }} />
+      {pts.map((p, i) => (
+        <g key={i}>
+          <circle cx={p[0]} cy={p[1]} r={i === last ? 5 : 3} fill={i === last ? '#f97316' : '#fff'} stroke="#f97316" strokeWidth="1.8">
+            <title>{`${months[i].month} ${months[i].year}: ${months[i].total.toLocaleString()} บาท`}</title>
+          </circle>
+          <text x={p[0]} y={H + 14} textAnchor="middle" fontSize="10" fill={i === last ? '#ea580c' : '#a3a3a3'} fontWeight={i === last ? 700 : 400}>{months[i].month}</text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ปฏิทินการสอน 26 สัปดาห์ล่าสุด — 1 ช่อง = 1 วัน ยิ่งเข้มยิ่งได้รายรับมาก
+function TeachingHeatmap({ sessions }) {
+  const { cols, byDay, maxDay, end } = useMemo(() => {
+    const endDate = new Date(); endDate.setHours(0, 0, 0, 0);
+    const first = new Date(endDate); first.setDate(endDate.getDate() - 7 * 26 + 1);
+    while (first.getDay() !== 0) first.setDate(first.getDate() - 1);
+    const map = new Map();
+    sessions.forEach((s) => {
+      const d = new Date(s.sessionDate); d.setHours(0, 0, 0, 0);
+      map.set(d.toDateString(), (map.get(d.toDateString()) || 0) + s.earnedAmount);
+    });
+    const out = []; const cur = new Date(first);
+    while (cur <= endDate) {
+      const col = [];
+      for (let i = 0; i < 7; i += 1) { col.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
+      out.push(col);
+    }
+    return { cols: out, byDay: map, maxDay: Math.max(1, ...map.values()), end: endDate };
+  }, [sessions]);
+  const tone = (v) => (!v ? 'bg-neutral-100' : v / maxDay > 0.66 ? 'bg-orange-600' : v / maxDay > 0.33 ? 'bg-orange-400' : 'bg-orange-200');
+  return (
+    <div className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 p-6">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2"><CalendarDays className="h-5 w-5 text-orange-600" /> ปฏิทินการสอน 6 เดือน</h2>
+          <p className="text-xs text-neutral-500 mt-0.5">1 ช่อง = 1 วัน · สีเข้ม = วันที่ได้รายรับมาก · ชี้เพื่อดูยอด</p>
+        </div>
+        <div className="flex items-center gap-1 text-[11px] text-neutral-400">
+          น้อย {['bg-neutral-100', 'bg-orange-200', 'bg-orange-400', 'bg-orange-600'].map((c) => <span key={c} className={`h-3.5 w-3.5 rounded ${c}`} />)} มาก
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="inline-flex gap-1 min-w-max">
+          <div className="flex flex-col gap-1 pr-1 text-[10px] text-neutral-400">
+            {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d) => <span key={d} className="h-[18px] leading-[18px]">{d}</span>)}
+          </div>
+          {cols.map((col, ci) => (
+            <div key={ci} className="flex flex-col gap-1">
+              {col.map((d) => {
+                const v = byDay.get(d.toDateString()) || 0;
+                return (
+                  <span key={d.toISOString()}
+                    className={`h-[18px] w-[18px] rounded-[5px] transition ${d > end ? 'opacity-0' : `${tone(v)} hover:ring-2 hover:ring-neutral-800`}`}
+                    title={`${d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' })}${v ? ` · ${v.toLocaleString()} บาท` : ' · ไม่มีคลาส'}`} />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Page Size Options ───────────────────────────────────────
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
@@ -374,6 +488,33 @@ export default function TutorIncome() {
     ? monthly
     : monthly.filter(m => m.year === Number(selectedYear));
 
+  // ── ค่าที่ใช้แสดงผลเท่านั้น (ไม่เปลี่ยนตรรกะเดิม) ─────────────────
+  const recentMonths = monthly.slice(-6);
+  const totalHours = sessions.reduce((a, s) => a + Number(s.durationHours || 0), 0);
+  const paidPct = summary.totalEarned > 0 ? Math.round((summary.totalPaid / summary.totalEarned) * 100) : 0;
+  const avgPerSession = summary.totalSessions > 0 ? Math.round(summary.totalEarned / summary.totalSessions) : 0;
+  const thisMonthSessions = monthly.length ? monthly[monthly.length - 1].sessions : 0;
+  const elementaryTotal = sessions.filter(s => s.levelType === 'elementary').reduce((a, s) => a + s.earnedAmount, 0);
+  const secondaryTotal = sessions.filter(s => s.levelType === 'secondary').reduce((a, s) => a + s.earnedAmount, 0);
+  const bestMonth = filteredMonthly.reduce((b, m) => (!b || m.total > b.total ? m : b), null);
+  const currentMonthKey = monthly.length ? `${monthly[monthly.length - 1].month}-${monthly[monthly.length - 1].year}` : null;
+  const tierCounts = [0, 0, 0, 0, 0];
+  sessions.forEach(s => { tierCounts[tierIndexOf(Number(s.actualStudents) || 0)] += 1; });
+  const topTier = sessions.length ? tierCounts.indexOf(Math.max(...tierCounts)) : -1;
+  const chartData = filteredMonthly.map(m => ({
+    ...m,
+    label: m.month,
+    isCurrent: `${m.month}-${m.year}` === currentMonthKey,
+    isBest: bestMonth && m === bestMonth && m.total > 0,
+  }));
+
+  const TABS = [
+    { key: 'overview', label: 'ภาพรวม & กราฟ', icon: BarChart3 },
+    { key: 'courses', label: 'รายคอร์ส', icon: BookOpen },
+    { key: 'sessions', label: 'รายคลาส', icon: CalendarDays },
+    { key: 'history', label: 'ประวัติรับเงิน', icon: Receipt },
+  ];
+
   return (
     <div className="space-y-6 mt-[80px]">
       <div className="">
@@ -386,7 +527,7 @@ export default function TutorIncome() {
               <p className="mt-1 text-sm text-neutral-500">ติดตามรายได้และประวัติการรับเงินของคุณ</p>
             </div>
             <div className="relative group">
-              <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium shadow-sm">
+              <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition font-medium">
                 <Download className="h-4 w-4" />
                 ดาวน์โหลดรายงาน
                 <ChevronDown className="h-4 w-4" />
@@ -405,77 +546,86 @@ export default function TutorIncome() {
           </div>
         </div>
 
-        {/* ── Summary Cards ─────────────────────────────────────── */}
-        <div className="grid gap-4 md:grid-cols-3 mb-6">
-          <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-green-100 rounded-xl">
-                <span className="text-2xl text-green-600">฿</span>
+        {/* ── การ์ดสรุปด้านบน (โทนขาว) ───────────────────────────── */}
+        <div className="sa-rise relative overflow-hidden bg-white rounded-2xl border-2 border-neutral-200 mb-6">
+          <div className="absolute -right-24 -top-28 h-72 w-72 rounded-full bg-orange-50" />
+          <div className="absolute right-56 -bottom-24 h-48 w-48 rounded-full bg-amber-50/70" />
+          <div className="relative grid lg:grid-cols-[1fr_20rem] gap-6 p-6">
+            <div>
+              <p className="text-sm font-medium text-neutral-600 flex items-center gap-2">
+                <span className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white flex items-center justify-center shadow-sm"><Wallet className="h-4 w-4" /></span>
+                รายรับเดือนนี้
+              </p>
+              <div className="flex items-end gap-3 flex-wrap mt-3">
+                <p className="tabular-nums text-4xl font-black leading-none text-neutral-900">
+                  <MoneyCountUp value={summary.thisMonthEarned} />
+                  <span className="text-lg font-semibold text-neutral-400 ml-2">บาท</span>
+                </p>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-bold mb-0.5 ${summary.growth >= 0 ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
+                  {summary.growth >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+                  {summary.growth >= 0 ? '+' : ''}{summary.growth}% จากเดือนก่อน
+                </span>
               </div>
-              <div className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full border font-semibold ${summary.growth >= 0 ? 'bg-green-50 text-green-600 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-                {summary.growth >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                {summary.growth >= 0 ? '+' : ''}{summary.growth}%
-              </div>
-            </div>
-            <h3 className="text-sm text-neutral-600 mb-1">รายรับเดือนนี้</h3>
-            <p className="text-3xl font-bold text-neutral-900">
-              {summary.thisMonthEarned.toLocaleString()}
-              <span className="text-lg text-neutral-500 ml-2">บาท</span>
-            </p>
-            <p className="text-xs text-neutral-500 mt-2">เดือนก่อน {summary.lastMonthEarned.toLocaleString()} บาท</p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
-              </div>
-              <span className="text-xs text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">{summary.totalSessions} คลาส</span>
-            </div>
-            <h3 className="text-sm text-neutral-600 mb-1">รายรับสะสม</h3>
-            <p className="text-3xl font-bold text-neutral-900">
-              {summary.totalEarned.toLocaleString()}
-              <span className="text-lg text-neutral-500 ml-2">บาท</span>
-            </p>
-            <p className="text-xs text-neutral-500 mt-2">รับแล้ว {summary.totalPaid.toLocaleString()} บาท</p>
-          </div>
-
-          <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-orange-100 rounded-xl">
-                <Clock className="h-6 w-6 text-orange-600" />
-              </div>
-              {summary.pendingSessionCount > 0 && (
-                <div className="text-sm bg-orange-50 text-orange-600 px-3 py-1 rounded-full border border-orange-200 font-semibold">
-                  {summary.pendingSessionCount} คลาส
+              <p className="text-sm text-neutral-500 mt-2">
+                {thisMonthSessions} คลาส · เดือนก่อน {summary.lastMonthEarned.toLocaleString()} บาท
+              </p>
+              <div className="mt-5 max-w-xl">
+                <div className="space-y-2 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-neutral-600 font-bold">โอนแล้ว <span className="text-neutral-400 font-medium ml-1">(รายรับสะสม {summary.totalEarned.toLocaleString()} บาท)</span></span>
+                    <span className="font-black text-orange-600">{paidPct}%</span>
+                  </div>
+                  <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+                    <div className="sa-grow h-full bg-gradient-to-r from-orange-400 to-orange-600" style={{ width: `${paidPct}%` }} />
+                  </div>
                 </div>
-              )}
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-3 py-2.5">
+                    <span className="w-9 h-9 rounded-full bg-green-100 text-green-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-4 w-4" /></span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-green-700">รับแล้ว</p>
+                      <p className="tabular-nums text-lg font-black text-neutral-900 leading-tight">{summary.totalPaid.toLocaleString()} <span className="text-xs font-medium text-neutral-400">บาท</span></p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5">
+                    <span className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0"><Hourglass className="h-4 w-4" /></span>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-orange-700">รอรับเงิน{summary.pendingSessionCount > 0 ? ` · ${summary.pendingSessionCount} คลาส` : ''}</p>
+                      <p className="tabular-nums text-lg font-black text-neutral-900 leading-tight">{summary.totalPending.toLocaleString()} <span className="text-xs font-medium text-neutral-400">บาท</span></p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-sm text-neutral-600 mb-1">รอรับเงิน</h3>
-            <p className="text-3xl font-bold text-neutral-900">
-              {summary.totalPending.toLocaleString()}
-              <span className="text-lg text-neutral-500 ml-2">บาท</span>
-            </p>
-            <p className="text-xs text-neutral-500 mt-2">
-              {summary.pendingSessionCount > 0 ? 'ยังไม่ได้รับเงิน' : 'รับครบแล้ว 🎉'}
-            </p>
+            <div className="rounded-2xl bg-white/80 border border-orange-100 backdrop-blur-sm p-4 flex flex-col shadow-sm">
+              <p className="text-xs font-semibold text-neutral-500">6 เดือนล่าสุด</p>
+              <IncomeSparkline months={recentMonths} />
+              <div className="mt-auto grid grid-cols-2 gap-2 text-center">
+                <div className="rounded-xl bg-neutral-50 border border-neutral-100 py-2">
+                  <p className="tabular-nums text-lg font-black text-neutral-900">{summary.totalSessions}</p>
+                  <p className="text-[10px] text-neutral-500">คลาสทั้งหมด</p>
+                </div>
+                <div className="rounded-xl bg-neutral-50 border border-neutral-100 py-2">
+                  <p className="tabular-nums text-lg font-black text-neutral-900">{Number(totalHours.toFixed(1))}</p>
+                  <p className="text-[10px] text-neutral-500">ชั่วโมงสอน</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ── Tabs ──────────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden mb-6">
-          <div className="flex border-b border-neutral-200">
-            {[
-              { key: 'overview', label: 'ภาพรวม & กราฟ' },
-              { key: 'courses', label: 'รายคอร์ส' },
-              { key: 'sessions', label: 'รายคลาส' },
-              { key: 'history', label: 'ประวัติรับเงิน' },
-            ].map(tab => (
-              <button key={tab.key} onClick={() => setViewMode(tab.key)}
-                className={`flex-1 px-4 py-4 text-sm font-medium transition ${viewMode === tab.key ? 'bg-orange-50 text-orange-600 border-b-2 border-orange-600' : 'text-neutral-600 hover:bg-neutral-50'}`}>
-                {tab.label}
-              </button>
-            ))}
+          <div className="flex border-b border-neutral-200 overflow-x-auto">
+            {TABS.map(tab => {
+              const TabIcon = tab.icon;
+              return (
+                <button key={tab.key} onClick={() => setViewMode(tab.key)}
+                  className={`flex-1 min-w-max flex items-center justify-center gap-2 px-4 py-4 text-sm font-medium transition ${viewMode === tab.key ? 'bg-orange-50 text-orange-600 border-b-2 border-orange-600' : 'text-neutral-600 hover:bg-neutral-50'}`}>
+                  <TabIcon className="h-4 w-4" />{tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -498,84 +648,77 @@ export default function TutorIncome() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-              <h2 className="text-lg font-bold text-neutral-900 mb-6">รายรับรายเดือน</h2>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={filteredMonthly}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" tick={(props) => <CustomXTick {...props} monthly={filteredMonthly} />} height={40} />
-                  <YAxis stroke="#6b7280" tickFormatter={v => `฿${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={v => [`฿${v.toLocaleString()}`, '']} contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="total" stroke="#f97316" strokeWidth={3} name="รายรับรวม" dot={{ r: 4 }} />
-                  <Line type="monotone" dataKey="elementary" stroke="#3b82f6" strokeWidth={2} name="ประถม" dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="secondary" stroke="#10b981" strokeWidth={2} name="มัธยม" dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-              <h2 className="text-lg font-bold text-neutral-900 mb-6">จำนวนคลาสรายเดือน</h2>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={filteredMonthly}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" tick={(props) => <CustomXTick {...props} monthly={filteredMonthly} />} height={40} />
-                  <YAxis stroke="#6b7280" allowDecimals={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }} />
-                  <Bar dataKey="sessions" fill="#f97316" name="จำนวนคลาส" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-                <h3 className="font-bold text-neutral-900 mb-4 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-orange-600" />
-                  สรุปรายได้ตามระดับ
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                    <span className="text-sm text-neutral-700">ระดับประถม (ป.1–ป.6)</span>
-                    <span className="font-bold text-neutral-900">
-                      {sessions.filter(s => s.levelType === 'elementary').reduce((a, s) => a + s.earnedAmount, 0).toLocaleString()} บาท
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                    <span className="text-sm text-neutral-700">ระดับมัธยม</span>
-                    <span className="font-bold text-neutral-900">
-                      {sessions.filter(s => s.levelType === 'secondary').reduce((a, s) => a + s.earnedAmount, 0).toLocaleString()} บาท
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-xl border border-green-200">
-                    <span className="text-sm text-green-700 font-medium">รวมทั้งหมด</span>
-                    <span className="font-bold text-green-700">{summary.totalEarned.toLocaleString()} บาท</span>
+            <div className="grid lg:grid-cols-[1fr_20rem] gap-4">
+              {/* กราฟแท่งรายรับ + เส้นจำนวนคลาส */}
+              <div className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 p-6">
+                <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                  <h2 className="text-lg font-bold text-neutral-900">รายรับและจำนวนคลาสรายเดือน</h2>
+                  <div className="flex gap-3 text-[11px] text-neutral-500">
+                    <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-orange-400" />รายรับ</span>
+                    <span className="flex items-center gap-1"><span className="h-0.5 w-4 bg-neutral-800 rounded" />จำนวนคลาส</span>
                   </div>
                 </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={chartData} margin={{ top: 24, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="incBar" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#fed7aa" /><stop offset="1" stopColor="#fdba74" /></linearGradient>
+                      <linearGradient id="incBarNow" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#fbbf24" /><stop offset="1" stopColor="#ea580c" /></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
+                    <XAxis dataKey="label" tick={(props) => <CustomXTick {...props} monthly={filteredMonthly} />} height={40} tickLine={false} axisLine={false} />
+                    <YAxis yAxisId="money" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: '#a3a3a3' }} tickLine={false} axisLine={false} width={40} />
+                    <YAxis yAxisId="count" orientation="right" hide domain={[0, (max) => Math.max(1, max) * 1.6]} />
+                    <Tooltip
+                      cursor={{ fill: '#fff7ed' }}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e5e5', borderRadius: '12px', fontSize: 12 }}
+                      formatter={(v, name) => (name === 'จำนวนคลาส' ? [`${v} คลาส`, name] : [`${Number(v).toLocaleString()} บาท`, name])}
+                      labelFormatter={(l, p) => (p?.[0] ? `${p[0].payload.month} ${p[0].payload.year}` : l)}
+                    />
+                    <Bar yAxisId="money" dataKey="total" name="รายรับรวม" radius={[10, 10, 0, 0]} maxBarSize={56}>
+                      {chartData.map((m, i) => <Cell key={i} fill={m.isCurrent ? 'url(#incBarNow)' : 'url(#incBar)'} />)}
+                      <LabelList dataKey="total" position="top" formatter={v => (v ? `${(v / 1000).toFixed(1)}k` : '')} style={{ fontSize: 11, fontWeight: 700, fill: '#737373' }} />
+                    </Bar>
+                    <Line yAxisId="count" type="linear" dataKey="sessions" name="จำนวนคลาส" stroke="#262626" strokeWidth={2}
+                      dot={{ r: 11, fill: '#171717', stroke: '#171717' }} activeDot={{ r: 12 }}>
+                      <LabelList dataKey="sessions" position="center" style={{ fontSize: 10, fontWeight: 700, fill: '#fff' }} />
+                    </Line>
+                  </ComposedChart>
+                </ResponsiveContainer>
               </div>
 
-              <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6">
-                <h3 className="font-bold text-neutral-900 mb-4 flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-orange-600" />
-                  สถิติการสอน
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                    <span className="text-sm text-neutral-700">คลาสที่สอนทั้งหมด</span>
-                    <span className="font-bold text-neutral-900">{summary.totalSessions} คลาส</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-neutral-50 rounded-xl">
-                    <span className="text-sm text-neutral-700">เฉลี่ยต่อคลาส</span>
-                    <span className="font-bold text-neutral-900">
-                      {summary.totalSessions > 0 ? Math.round(summary.totalEarned / summary.totalSessions).toLocaleString() : 0} บาท
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl border border-blue-200">
-                    <span className="text-sm text-blue-700 font-medium">รับแล้ว / ค้างรับ</span>
-                    <span className="font-bold text-blue-700">
-                      {summary.totalPaid.toLocaleString()} / {summary.totalPending.toLocaleString()} บาท
-                    </span>
+              {/* การ์ดข้าง */}
+              <div className="space-y-4">
+                <div className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 p-5" style={{ animationDelay: '.06s' }}>
+                  <p className="text-xs text-neutral-500 font-medium">เฉลี่ยต่อคลาส</p>
+                  <p className="tabular-nums text-2xl font-bold text-neutral-900 mt-0.5">{avgPerSession.toLocaleString()} <span className="text-sm font-medium text-neutral-500">บาท</span></p>
+                  <p className="text-[11px] text-neutral-400">จาก {summary.totalSessions} คลาส · รับแล้ว {summary.totalPaid.toLocaleString()} / ค้างรับ {summary.totalPending.toLocaleString()} บาท</p>
+                </div>
+                <div className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 p-5" style={{ animationDelay: '.1s' }}>
+                  <p className="text-xs text-neutral-500 font-medium">รายได้แยกระดับชั้น</p>
+                  {[
+                    ['ระดับมัธยม', secondaryTotal, 'from-orange-500 to-amber-400'],
+                    ['ระดับประถม (ป.1–ป.6)', elementaryTotal, 'from-sky-400 to-blue-500'],
+                  ].map(([label, value, grad]) => (
+                    <div key={label} className="mt-2.5">
+                      <div className="flex justify-between text-sm gap-2"><span className="font-semibold text-neutral-700">{label}</span><span className="tabular-nums font-bold text-neutral-900">{value.toLocaleString()} บาท</span></div>
+                      <div className="h-2.5 rounded-full bg-neutral-100 mt-1 overflow-hidden">
+                        <span className={`sa-grow block h-full rounded-full bg-gradient-to-r ${grad}`} style={{ width: `${summary.totalEarned ? (value / summary.totalEarned) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between mt-3 p-2.5 bg-green-50 rounded-xl border border-green-200">
+                    <span className="text-xs text-green-700 font-medium">รวมทั้งหมด</span>
+                    <span className="tabular-nums text-sm font-bold text-green-700">{summary.totalEarned.toLocaleString()} บาท</span>
                   </div>
                 </div>
+                {bestMonth && bestMonth.total > 0 && (
+                  <div className="sa-rise relative overflow-hidden rounded-2xl bg-neutral-900 text-white p-5" style={{ animationDelay: '.14s' }}>
+                    <div className="absolute -right-10 -bottom-12 h-40 w-40 rounded-full bg-orange-500/30 blur-2xl" />
+                    <p className="relative text-xs font-bold text-amber-300 flex items-center gap-1.5"><Trophy className="h-3.5 w-3.5" /> เดือนที่ดีที่สุด</p>
+                    <p className="relative tabular-nums text-2xl font-black mt-1">{bestMonth.month} {bestMonth.year} · {bestMonth.total.toLocaleString()} บาท</p>
+                    <p className="relative text-[11px] text-neutral-400">{bestMonth.sessions} คลาสในเดือนเดียว</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -600,7 +743,6 @@ export default function TutorIncome() {
                   <option value="pending">ยังไม่ได้รับ</option>
                   <option value="partial">รับบางส่วน</option>
                 </select>
-                {/* Page size */}
                 <select className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
                   value={coursePageSize} onChange={e => setCoursePageSize(Number(e.target.value))}>
                   {PAGE_SIZE_OPTIONS.map(n => (
@@ -610,58 +752,73 @@ export default function TutorIncome() {
               </div>
             </div>
 
-            {/* Course cards */}
-            <div className="space-y-3">
-              {coursePag.paged.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-2xl border-2 border-neutral-200">
-                  <FileText className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
-                  <p className="text-neutral-500 text-sm">ไม่พบคอร์สที่ค้นหา</p>
-                </div>
-              ) : coursePag.paged.map(course => {
-                const status = getCourseStatus(course);
-                const sc = statusConfig[status];
-                return (
-                  <div key={course.courseId} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-300 transition p-5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-bold text-neutral-900">{course.courseName}</h3>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${course.levelType === 'elementary' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                            {course.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
+            {coursePag.paged.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-2xl border-2 border-neutral-200">
+                <FileText className="h-12 w-12 text-neutral-300 mx-auto mb-3" />
+                <p className="text-neutral-500 text-sm">ไม่พบคอร์สที่ค้นหา</p>
+              </div>
+            ) : (
+              <div className="grid gap-5 md:grid-cols-2">
+                {coursePag.paged.map((course, idx) => {
+                  const status = getCourseStatus(course);
+                  const sc = statusConfig[status];
+                  const pp = course.totalEarned > 0 ? Math.round((course.paidEarned / course.totalEarned) * 100) : 0;
+                  return (
+                    <div key={course.courseId} className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col" style={{ animationDelay: `${Math.min(idx, 8) * 0.04}s` }}>
+                      <div className="p-5 border-b border-neutral-100 flex-1">
+                        <div className="flex justify-between items-start gap-3 mb-4">
+                          <div className="min-w-0">
+                            <h3 className="text-lg font-bold text-neutral-900 leading-tight">{course.courseName}</h3>
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span className={`text-[11px] px-2 py-0.5 rounded-full border font-semibold ${LEVEL_BADGE[course.levelType] || LEVEL_BADGE.secondary}`}>
+                                {course.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
+                              </span>
+                              {course.lastSession && (
+                                <span className="text-[11px] text-neutral-400 flex items-center gap-1"><Clock className="w-3 h-3" />ล่าสุด {formatDate(course.lastSession)}</span>
+                              )}
+                            </div>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-black whitespace-nowrap border ${sc.bg}`}>
+                            {sc.icon}{sc.label}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
-                          <span>สอนไปแล้ว {course.sessions} คลาส</span>
-                          <span className="text-green-600">รับแล้ว {course.paidEarned.toLocaleString()} บาท</span>
-                          {course.pendingEarned > 0 && (
-                            <span className="text-orange-600">ค้างรับ {course.pendingEarned.toLocaleString()} บาท</span>
-                          )}
-                          {course.lastSession && (
-                            <span className="text-neutral-400">ล่าสุด {formatDate(course.lastSession)}</span>
-                          )}
+                        <div className="space-y-2 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-neutral-600 font-bold">รับเงินแล้ว <span className="text-neutral-400 font-medium ml-1">({course.paidEarned.toLocaleString()}/{course.totalEarned.toLocaleString()} บาท)</span></span>
+                            <span className="font-black text-orange-600">{pp}%</span>
+                          </div>
+                          <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+                            <div className="sa-grow h-full bg-gradient-to-r from-orange-400 to-orange-600" style={{ width: `${pp}%` }} />
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-xs text-neutral-500 mb-1">รายได้รวม</div>
-                        <div className="text-2xl font-bold text-orange-600">
-                          {course.totalEarned.toLocaleString()}
-                          <span className="text-sm text-neutral-500 ml-1">บาท</span>
-                        </div>
+                      <div className="grid grid-cols-3 gap-2 p-4 bg-neutral-50/50">
+                        {[
+                          [CalendarCheck, 'bg-blue-100 text-blue-600', course.sessions, 'คลาส'],
+                          [Check, 'bg-green-100 text-green-600', course.paidEarned.toLocaleString(), 'รับแล้ว (บาท)'],
+                          [Clock, 'bg-orange-100 text-orange-600', course.pendingEarned.toLocaleString(), 'ค้างรับ (บาท)'],
+                        ].map((item, k) => {
+                          const StatIcon = item[0];
+                          return (
+                            <div key={k} className={`flex items-center gap-2 min-w-0 ${k < 2 ? 'border-r border-neutral-200 pr-2' : ''}`}>
+                              <div className={`w-8 h-8 rounded-full ${item[1]} flex items-center justify-center shrink-0`}><StatIcon className="w-4 h-4" /></div>
+                              <div className="min-w-0">
+                                <p className="tabular-nums font-bold text-neutral-900 leading-none truncate">{item[2]}</p>
+                                <p className="text-[10px] text-neutral-500 mt-0.5">{item[3]}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-neutral-200">
-                      <span className={`text-xs px-3 py-1 rounded-full border flex items-center gap-1 font-medium ${sc.bg}`}>
-                        {sc.icon}{sc.label}
-                      </span>
                       <button onClick={() => { setViewMode('sessions'); setSearchQuery(course.courseName); }}
-                        className="flex items-center gap-1 px-3 py-1.5 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm">
-                        <Eye className="h-3 w-3" />ดูคลาสทั้งหมด
+                        className="flex items-center justify-center gap-1.5 px-4 py-2.5 border-t border-neutral-100 text-sm font-medium text-neutral-600 hover:bg-orange-50 hover:text-orange-600 transition">
+                        <Eye className="h-3.5 w-3.5" />ดูคลาสทั้งหมด
                       </button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Course Pagination */}
             {coursePag.totalPages > 1 && (
@@ -681,6 +838,8 @@ export default function TutorIncome() {
         {/* ══ Tab: Sessions ══════════════════════════════════════ */}
         {viewMode === 'sessions' && (
           <div className="space-y-4">
+            <TeachingHeatmap sessions={sessions} />
+
             {/* Filter bar */}
             <div className="bg-white border border-neutral-200 rounded-xl p-3">
               <div className="flex flex-col md:flex-row gap-3">
@@ -690,7 +849,6 @@ export default function TutorIncome() {
                     onChange={e => setSearchQuery(e.target.value)}
                     className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
-                {/* Page size */}
                 <select className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
                   value={sessionPageSize} onChange={e => setSessionPageSize(Number(e.target.value))}>
                   {PAGE_SIZE_OPTIONS.map(n => (
@@ -701,7 +859,7 @@ export default function TutorIncome() {
             </div>
 
             <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
-              <div className="p-5 border-b border-neutral-200 flex items-center justify-between">
+              <div className="p-5 border-b border-neutral-200 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-bold text-neutral-900">รายละเอียดแต่ละคลาส</h2>
                   <p className="text-xs text-neutral-500 mt-1">
@@ -709,109 +867,55 @@ export default function TutorIncome() {
                   </p>
                 </div>
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="text-xs text-orange-600 hover:underline">
+                  <button onClick={() => setSearchQuery('')} className="text-xs text-orange-600 hover:underline shrink-0">
                     ล้างตัวกรอง
                   </button>
                 )}
               </div>
 
-              {/* Mobile */}
-              <div className="block md:hidden divide-y divide-neutral-100">
-                {sessionPag.paged.map(s => (
-                  <div key={s.tutorCheckinId} className="p-4 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-neutral-800 text-sm">{s.courseName}</p>
-                        {s.subjectName && (
-                          <p className="text-xs text-neutral-500 flex items-center gap-1 mt-0.5">
-                            <BookOpen className="h-3 w-3" />{s.subjectName}
-                          </p>
-                        )}
-                        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {s.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
-                        </span>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full border shrink-0 ml-2 ${s.levelType === 'elementary' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                        {s.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
-                      <span>📅 {formatDate(s.sessionDate)}</span>
-                      <span>👨‍🎓 {s.actualStudents} คน</span>
-                      <span>⏱ {Number(s.durationHours).toFixed(1)} ชม.</span>
-                      <span>💰 {s.ratePerSession} บ./คลาส</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-orange-600 text-base">{s.earnedAmount.toLocaleString()} บาท</span>
-                      {s.isPaid
-                        ? <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 flex items-center gap-1"><Check className="h-3 w-3" />รับแล้ว</span>
-                        : <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 flex items-center gap-1"><Clock className="h-3 w-3" />ค้างรับ</span>
-                      }
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-neutral-50 text-neutral-600 text-xs">
-                    <tr>
-                      <th className="text-left px-4 py-3">วันที่สอน</th>
-                      <th className="text-left px-4 py-3">คอร์ส / วิชา</th>
-                      <th className="text-center px-4 py-3">ระดับ</th>
-                      <th className="text-center px-4 py-3">นักเรียนจริง</th>
-                      <th className="text-center px-4 py-3">ชั่วโมง</th>
-                      <th className="text-center px-4 py-3">Rate/คลาส</th>
-                      <th className="text-right px-4 py-3">รายได้</th>
-                      <th className="text-center px-4 py-3">สถานะ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {sessionPag.paged.map(s => (
-                      <tr key={s.tutorCheckinId} className="hover:bg-neutral-50 transition">
-                        <td className="px-4 py-3 text-neutral-700 whitespace-nowrap">{formatDate(s.sessionDate)}</td>
-                        <td className="px-4 py-3 max-w-[220px]">
-                          <p className="font-medium text-neutral-800 truncate">{s.courseName}</p>
-                          {s.subjectName && (
-                            <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
-                              <BookOpen className="h-3 w-3" />{s.subjectName}
-                            </p>
-                          )}
-                          <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                            {s.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`text-xs px-2 py-1 rounded-full border ${s.levelType === 'elementary' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                            {s.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center font-semibold text-neutral-800">{s.actualStudents} คน</td>
-                        <td className="px-4 py-3 text-center text-neutral-600">{Number(s.durationHours).toFixed(1)} ชม.</td>
-                        <td className="px-4 py-3 text-center text-neutral-600"><p>{s.ratePerSession} บ./1.5 ชม.</p><p className="mt-0.5 text-[10px] text-neutral-400">{s.ratePerSession} × ({Number(s.durationHours).toFixed(1)} ÷ 1.5)</p></td>
-                        <td className="px-4 py-3 text-right font-bold text-orange-600">{s.earnedAmount.toLocaleString()} บ.</td>
-                        <td className="px-4 py-3 text-center">
+              {sessionPag.paged.length === 0 ? (
+                <div className="text-center py-10">
+                  <FileText className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
+                  <p className="text-neutral-500 text-sm">ไม่พบคลาสที่ค้นหา</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-neutral-100">
+                  {sessionPag.paged.map(s => {
+                    const d = new Date(s.sessionDate);
+                    return (
+                      <div key={s.tutorCheckinId} className="px-5 py-3.5 flex items-center gap-4 hover:bg-orange-50/40 transition">
+                        <div className={`w-14 shrink-0 text-center rounded-xl py-1.5 ${s.isPaid ? 'bg-neutral-50' : 'bg-orange-50'}`}>
+                          <p className={`text-[10px] font-semibold ${s.isPaid ? 'text-neutral-400' : 'text-orange-500'}`}>{TH_MONTHS_SHORT[d.getMonth()]} {String((d.getFullYear() + 543) % 100).padStart(2, '0')}</p>
+                          <p className={`tabular-nums text-lg font-black leading-none ${s.isPaid ? 'text-neutral-800' : 'text-orange-600'}`}>{d.getDate()}</p>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-neutral-900 truncate">{s.courseName}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 mt-0.5">
+                            {s.subjectName && <span className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-[11px] font-semibold">{s.subjectName}</span>}
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full border ${LEVEL_BADGE[s.levelType] || LEVEL_BADGE.secondary}`}>{s.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                              {s.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
+                            </span>
+                            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{s.actualStudents} คน</span>
+                            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{Number(s.durationHours).toFixed(1)} ชม.</span>
+                            <span className="text-neutral-400" title="rate ต่อคาบ × (ชั่วโมง ÷ 1.5)">{s.ratePerSession} × ({Number(s.durationHours).toFixed(1)} ÷ 1.5)</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="tabular-nums font-black text-neutral-900">{s.earnedAmount.toLocaleString()} <span className="text-xs font-normal text-neutral-400">บาท</span></p>
                           {s.isPaid
-                            ? <span className="text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 inline-flex items-center gap-1"><Check className="h-3 w-3" />รับแล้ว</span>
-                            : <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-700 border border-orange-200 inline-flex items-center gap-1"><Clock className="h-3 w-3" />ค้างรับ</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-neutral-50 border-t-2 border-neutral-200">
-                    <tr>
-                      <td colSpan={6} className="px-4 py-3 text-sm font-bold text-neutral-700">
-                        รวมทั้งหมด ({filteredSessions.length} คลาส)
-                      </td>
-                      <td className="px-4 py-3 text-right font-bold text-orange-600 text-base">
-                        {filteredSessions.reduce((sum, s) => sum + s.earnedAmount, 0).toLocaleString()} บ.
-                      </td>
-                      <td />
-                    </tr>
-                  </tfoot>
-                </table>
+                            ? <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-semibold bg-green-50 text-green-700 border-green-200"><Check className="h-3 w-3" />รับแล้ว</span>
+                            : <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border font-semibold bg-orange-50 text-orange-700 border-orange-200"><Clock className="h-3 w-3" />ค้างรับ</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between px-5 py-3 bg-neutral-50 border-t-2 border-neutral-200">
+                <span className="text-sm font-bold text-neutral-700">รวมทั้งหมด ({filteredSessions.length} คลาส)</span>
+                <span className="tabular-nums font-black text-orange-600">{filteredSessions.reduce((sum, s) => sum + s.earnedAmount, 0).toLocaleString()} บาท</span>
               </div>
 
               {/* Session Pagination */}
@@ -887,149 +991,146 @@ export default function TutorIncome() {
                 </div>
               )}
 
-              <div className="bg-white rounded-2xl border-2 border-neutral-200 p-5">
-                {/* ── Header + Filters ── */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              {/* ── ค้างรับ ── */}
+              {!isFiltered && summary.totalPending > 0 && (
+                <div className="sa-rise flex items-center gap-4 rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/60 p-4">
+                  <div className="h-12 w-12 rounded-xl bg-orange-500 text-white flex items-center justify-center shrink-0"><Hourglass className="h-6 w-6" /></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-neutral-900">ยังค้างรับ {summary.pendingSessionCount} คลาส</p>
+                    <p className="text-xs text-neutral-500">จะขึ้นในประวัติเมื่อแอดมินโอนและแนบสลิปแล้ว</p>
+                  </div>
+                  <p className="tabular-nums text-xl font-black text-orange-600 shrink-0">{summary.totalPending.toLocaleString()} <span className="text-xs font-medium text-neutral-400">บาท</span></p>
+                </div>
+              )}
+
+              {/* ── Header + Filters ── */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                   <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-orange-600" />
                     ประวัติการรับเงิน
                   </h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={historyYear}
-                      onChange={e => { setHistoryYear(e.target.value); setHistoryMonth('all'); }}
-                      className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
-                    >
-                      <option value="all">ทุกปี</option>
-                      {paymentYears.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <select
-                      value={historyMonth}
-                      onChange={e => setHistoryMonth(e.target.value)}
-                      disabled={historyYear === 'all'}
-                      className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <option value="all">ทุกเดือน</option>
-                      {monthsInYear.map(m => <option key={m} value={m}>{THAI_MONTHS[m]}</option>)}
-                    </select>
-                    {isFiltered && (
-                      <button
-                        onClick={() => { setHistoryYear('all'); setHistoryMonth('all'); }}
-                        className="text-xs text-orange-600 hover:underline px-1"
-                      >รีเซ็ต</button>
-                    )}
-                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-semibold text-green-700">
+                    {isFiltered ? 'ยอดรับในช่วงที่เลือก' : 'รับไปแล้วทั้งหมด'} <span className="tabular-nums font-black">{filteredTotal.toLocaleString()} บาท</span> · {filteredPayments.length} ครั้ง
+                  </span>
                 </div>
-
-                {/* ── Summary ── */}
-                <div className="flex gap-3 mb-5">
-                  <div className="flex-1 bg-green-50 border border-green-200 rounded-xl p-3 text-center">
-                    <p className="text-xs text-green-600 mb-0.5">{isFiltered ? 'ยอดรับในช่วงที่เลือก' : 'รับไปแล้วทั้งหมด'}</p>
-                    <p className="text-xl font-bold text-green-700">{filteredTotal.toLocaleString()} บาท</p>
-                    <p className="text-xs text-green-500 mt-0.5">{filteredPayments.length} ครั้ง</p>
-                  </div>
-                  {!isFiltered && summary.totalPending > 0 && (
-                    <div className="flex-1 bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
-                      <p className="text-xs text-orange-600 mb-0.5">ยังค้างรับ</p>
-                      <p className="text-xl font-bold text-orange-700">{summary.totalPending.toLocaleString()} บาท</p>
-                      <p className="text-xs text-orange-500 mt-0.5">{summary.pendingSessionCount} คลาส</p>
-                    </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={historyYear}
+                    onChange={e => { setHistoryYear(e.target.value); setHistoryMonth('all'); }}
+                    className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="all">ทุกปี</option>
+                    {paymentYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <select
+                    value={historyMonth}
+                    onChange={e => setHistoryMonth(e.target.value)}
+                    disabled={historyYear === 'all'}
+                    className="px-3 py-1.5 bg-white border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <option value="all">ทุกเดือน</option>
+                    {monthsInYear.map(m => <option key={m} value={m}>{THAI_MONTHS[m]}</option>)}
+                  </select>
+                  {isFiltered && (
+                    <button
+                      onClick={() => { setHistoryYear('all'); setHistoryMonth('all'); }}
+                      className="text-xs text-orange-600 hover:underline px-1"
+                    >รีเซ็ต</button>
                   )}
                 </div>
-
-                {/* ── Timeline ── */}
-                {filteredPayments.length === 0 ? (
-                  <div className="text-center py-10">
-                    <FileText className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
-                    <p className="text-neutral-500 text-sm">ไม่พบข้อมูลในช่วงเวลาที่เลือก</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredPayments.map((payment, index) => (
-                      <div key={payment.tutorPaymentId} className="relative">
-                        {index !== filteredPayments.length - 1 && (
-                          <div className="absolute left-6 top-14 bottom-0 w-0.5 bg-neutral-200" />
-                        )}
-                        <div className="flex gap-4">
-                          <div className="shrink-0">
-                            <div className="h-12 w-12 rounded-full bg-green-100 border-2 border-green-500 flex items-center justify-center">
-                              <Check className="h-6 w-6 text-green-600" />
-                            </div>
-                          </div>
-                          <div className="flex-1 bg-neutral-50 rounded-xl p-4 border border-neutral-200">
-                            {/* วันที่ + ยอด + เลขที่ */}
-                            <div className="mb-3">
-                              <div className="text-sm text-neutral-500 mb-1">
-                                {payment.paymentDate
-                                  ? new Date(payment.paymentDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
-                                  : '-'}
-                              </div>
-                              <div className="text-2xl font-bold text-green-600">
-                                +{Number(payment.paymentCost).toLocaleString()}
-                                <span className="text-sm text-neutral-500 ml-1">บาท</span>
-                              </div>
-                              {payment.billNo && (
-                                <div className="text-xs text-neutral-400 mt-1">เลขที่ใบจ่าย: {payment.billNo}</div>
-                              )}
-                            </div>
-
-                            {/* คอร์สที่เกี่ยวข้อง */}
-                            {payment.courses.length > 0 && (
-                              <div className="mb-3">
-                                <div className="text-xs text-neutral-500 mb-2 font-medium">คอร์สที่เกี่ยวข้อง:</div>
-                                <div className="flex flex-wrap gap-2">
-                                  {payment.courses.map((c, i) => (
-                                    <span key={i} className="text-xs bg-white text-neutral-700 px-3 py-1 rounded-md border border-neutral-200">{c}</span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* ปุ่มดูสลิป */}
-                            {payment.paymentPicture && (
-                              <button
-                                onClick={() => setSlipUrl(payment.paymentPicture)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-neutral-300 text-neutral-600 rounded-lg text-xs font-medium hover:border-neutral-400 hover:text-neutral-800 transition mt-2"
-                              >
-                                <Eye className="h-3.5 w-3.5" />
-                                ดูสลิป
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
+
+              {/* ── Timeline ── */}
+              {filteredPayments.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-2xl border-2 border-neutral-200">
+                  <FileText className="h-10 w-10 text-neutral-300 mx-auto mb-3" />
+                  <p className="text-neutral-500 text-sm">ไม่พบข้อมูลในช่วงเวลาที่เลือก</p>
+                </div>
+              ) : (
+                <ol className="relative space-y-4 pl-9 before:absolute before:left-3 before:top-3 before:bottom-3 before:w-0.5 before:bg-gradient-to-b before:from-green-300 before:to-neutral-200">
+                  {filteredPayments.map((payment, index) => (
+                    <li key={payment.tutorPaymentId} className="sa-rise relative" style={{ animationDelay: `${Math.min(index, 8) * 0.05}s` }}>
+                      <span className="absolute -left-9 top-5 h-6 w-6 rounded-full bg-green-500 ring-4 ring-green-100 text-white flex items-center justify-center"><Check className="h-3.5 w-3.5" /></span>
+                      <div className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden">
+                        <div className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 flex items-start justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="text-xs font-bold text-orange-600 flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5" />
+                              โอนเมื่อ {payment.paymentDate
+                                ? new Date(payment.paymentDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : '-'}
+                            </p>
+                            <p className="tabular-nums text-3xl font-bold text-neutral-900 mt-1">
+                              +{Number(payment.paymentCost).toLocaleString()} <span className="text-base font-medium text-neutral-500">บาท</span>
+                            </p>
+                            {payment.billNo && <p className="text-xs text-neutral-500 mt-0.5">เลขที่ใบจ่าย: {payment.billNo}</p>}
+                          </div>
+                          {payment.paymentPicture && (
+                            <button
+                              onClick={() => setSlipUrl(payment.paymentPicture)}
+                              className="flex items-center gap-1.5 rounded-xl border border-orange-200 bg-white px-3.5 py-2 text-sm font-bold text-orange-700 hover:bg-orange-100 transition"
+                            >
+                              <ImageIcon className="h-4 w-4" />ดูสลิป
+                            </button>
+                          )}
+                        </div>
+                        {payment.courses.length > 0 && (
+                          <div className="px-5 py-3 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-neutral-400 font-semibold">คอร์สที่เกี่ยวข้อง:</span>
+                            {payment.courses.map((c, i) => (
+                              <span key={i} className="px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600 text-[11px] font-semibold">{c}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
             </div>
           );
         })()}
       </div>
 
-      {/* ── Rate Table ── */}
-      <div className="mb-6">
-        <div className="grid grid-cols-2 gap-3">
-          {(['elementary', 'secondary']).map(level => (
-            <div key={level} className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-              <div className="px-4 py-2.5 border-b border-neutral-200">
-                <span className="text-sm font-medium text-neutral-900">{level === 'elementary' ? 'ประถม' : 'มัธยม'}</span>
-                <span className="text-xs text-neutral-400 ml-2">{level === 'elementary' ? 'ป.1–ป.6' : 'ม.1–ม.6'}</span>
-              </div>
-              <table className="w-full text-sm">
-                <tbody>
-                  {RATE_TABLE[level].map((r, i) => (
-                    <tr key={r.rate} className={i % 2 === 0 ? 'bg-neutral-50' : 'bg-white'}>
-                      <td className="px-4 py-2 text-neutral-500">{r.label}</td>
-                      <td className="px-4 py-2 text-right font-medium text-neutral-900">{r.rate} บ.</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+      {/* ── อัตราค่าสอน ── */}
+      <div className="sa-rise bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden mb-6">
+        <div className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div>
+            <h3 className="font-bold text-neutral-900 flex items-center gap-2"><Coins className="h-5 w-5 text-orange-600" /> อัตราค่าสอน</h3>
+            <p className="text-xs text-neutral-500 mt-0.5">ต่อ 1.5 ชม. — คิดตามจำนวนนักเรียนที่มาจริง</p>
+          </div>
+          {topTier >= 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white border border-orange-200 text-orange-700 text-xs font-bold px-3 py-1.5">
+              <Users className="h-3.5 w-3.5" /> คลาสส่วนใหญ่ของคุณมีนักเรียน {RATE_TABLE.secondary[topTier].label} ({tierCounts[topTier]} คลาส)
+            </span>
+          )}
         </div>
-        <p className="text-xs text-neutral-400 mt-2">ต่อ 1.5 ชม. — คิดตามจำนวนนักเรียนที่มาจริง</p>
+        <div className="grid md:grid-cols-2 gap-6 p-6">
+          {(['elementary', 'secondary']).map(level => {
+            const rates = RATE_TABLE[level];
+            const lo = Math.min(...rates.map(r => r.rate)) - 40;
+            const hi = Math.max(...RATE_TABLE.secondary.map(r => r.rate));
+            return (
+              <div key={level}>
+                <p className="text-sm font-bold text-neutral-700 mb-2 flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full border ${LEVEL_BADGE[level]}`}>{level === 'elementary' ? 'ประถม' : 'มัธยม'}</span>
+                  {level === 'elementary' ? 'ป.1–ป.6' : 'ม.1–ม.6'}
+                </p>
+                <div className="flex items-end gap-2 h-40">
+                  {rates.map((r, i) => (
+                    <div key={r.rate} className="flex-1 flex flex-col items-center justify-end h-full">
+                      <span className={`tabular-nums text-sm font-black ${i === topTier ? 'text-orange-600' : 'text-neutral-700'}`}>{r.rate}</span>
+                      <div className={`sa-growY w-full rounded-t-xl mt-1 ${i === topTier ? 'bg-gradient-to-t from-orange-600 to-amber-400 ring-4 ring-orange-100' : 'bg-orange-100'}`}
+                        style={{ height: `${((r.rate - lo) / (hi - lo)) * 100}%`, animationDelay: `${i * 0.06}s` }} />
+                      <span className={`text-[11px] mt-1.5 text-center leading-tight ${i === topTier ? 'font-bold text-neutral-800' : 'text-neutral-500'}`}>{r.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

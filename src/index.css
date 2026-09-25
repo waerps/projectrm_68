@@ -55,3 +55,6 @@ html, body {
   .sa-rise, .sa-grow, .sa-draw, .sa-pulse-red, .sa-shine, .sa-float, .sa-caret::after { animation: none !important; }
   .sa-tilt { transition: none; }
 }
+@keyframes sa-growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.sa-growY { transform-origin: bottom; animation: sa-growY .8s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .sa-growY { animation: none !important; } }
