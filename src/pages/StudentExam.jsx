@@ -1,12 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
+import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
   getCurrentUserId, formatTime,
-  fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
+  fetchExamByToken, startExam, saveAnswer, submitExam,
   logQuestionEnter, logIntegrityEvent,
   markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
@@ -393,64 +393,20 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
 }
 
 // ─── Result screen ───────────────────────────────────────────────────────────
-function QuestionReviewRow({ q, index }) {
-  const OPTION_LABELS = ["A", "B", "C", "D"];
-  const wasAnswered = q.selected !== null && q.selected !== undefined;
-
-  return (
-    <div className={`border rounded-xl p-4 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-black text-neutral-400">{index + 1}.</span>
-          <p className="text-sm font-medium text-neutral-900 leading-relaxed">{q.text}</p>
-        </div>
-        <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-          {q.isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-          {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)} คะแนน
-        </span>
-      </div>
-
-      <div className="space-y-1.5 pl-6">
-        {(q.options || []).map((opt, optIdx) => {
-          const isCorrectOpt = optIdx === q.correct;
-          const isSelectedOpt = optIdx === q.selected;
-          let cls = "border-neutral-200 text-neutral-500";
-          if (isCorrectOpt) cls = "border-green-400 bg-green-100 text-green-800 font-medium";
-          else if (isSelectedOpt && !isCorrectOpt) cls = "border-red-300 bg-red-100 text-red-700 font-medium";
-
-          return (
-            <div key={optIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${cls}`}>
-              <span className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 bg-white/70">
-                {OPTION_LABELS[optIdx]}
-              </span>
-              <span className="flex-1">{opt}</span>
-              {isCorrectOpt && <span className="text-[10px] font-bold text-green-700">คำตอบที่ถูก</span>}
-              {isSelectedOpt && !isCorrectOpt && <span className="text-[10px] font-bold text-red-600">คำตอบของคุณ</span>}
-            </div>
-          );
-        })}
-        {!wasAnswered && (
-          <p className="text-[11px] text-neutral-400 italic pt-0.5">ไม่ได้ตอบข้อนี้</p>
-        )}
-
-        {/* ↓↓↓ เพิ่มบล็อกนี้ ↓↓↓ */}
-        {q.explanation && q.explanation.trim() && (
-          <div className="mt-3 ml-6 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
-            <span className="text-sm flex-shrink-0">💡</span>
-            <div>
-              <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
-              <p className="text-xs text-blue-700/90 leading-relaxed">{q.explanation}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+// ไม่แสดงเฉลยรายข้อให้นักเรียนแล้ว (กันเฉลยหลุดไปถึงเพื่อนที่ยังสอบอยู่ และไม่อยากให้เด็ก
+// โฟกัสแค่ข้อที่ผิด) — เหลือแค่คะแนน + ข้อความให้กำลังใจที่ไม่ตัดสินจากคะแนน
+const ENCOURAGEMENTS = [
+  { title: "เก่งมากที่ทำจนจบ!", body: "คะแนนเป็นแค่ตัวเลขของวันนี้ ไม่ได้บอกว่าเราเก่งหรือไม่เก่ง สิ่งที่มีค่าที่สุดคือความตั้งใจที่เราใส่ลงไปในทุกข้อ" },
+  { title: "ทุกข้อคือการเรียนรู้", body: "ข้อที่ยังไม่ถูก คือเรื่องที่เรากำลังจะเข้าใจมากขึ้น ครูจะช่วยทบทวนไปด้วยกันนะ ไม่ต้องกังวลเลย" },
+  { title: "ขอบคุณที่พยายามเต็มที่", body: "เก่งขึ้นทีละนิดทุกวันก็ดีมากแล้ว ไม่จำเป็นต้องเปรียบเทียบกับใคร ขอแค่วันนี้เราดีกว่าเมื่อวาน" },
+  { title: "ภูมิใจในตัวเองได้เลย", body: "คะแนนมากหรือน้อยไม่ได้บอกว่าเราเป็นคนแบบไหน ความพยายามของเราวันนี้คือสิ่งที่พาเราไปได้ไกล" },
+  { title: "พักสมองสักหน่อยนะ", body: "ทำข้อสอบมาเหนื่อยแล้ว ให้รางวัลตัวเองสักนิด แล้วเรามาเรียนรู้ต่อไปด้วยกัน ครูเชื่อในตัวเราเสมอ" },
+];
 
 function ResultCard({ result }) {
   const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
-  const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
+  // สุ่มครั้งเดียวตอน mount — ไม่ผูกกับคะแนน ข้อความจึงไม่ "ตัดสิน" ว่าคะแนนดีหรือไม่ดี
+  const [msg] = useState(() => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
 
   return (
     <div className="space-y-4 pt-0">
@@ -467,16 +423,14 @@ function ResultCard({ result }) {
         {result.correctCount != null && (
           <p className="text-sm text-neutral-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
         )}
-      </div>
-
-      {hasQuestions && (
-        <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-3">
-          <p className="text-sm font-semibold text-neutral-700 mb-1">เฉลยรายข้อ</p>
-          {result.questions.map((q, i) => (
-            <QuestionReviewRow key={q.id ?? i} q={q} index={i} />
-          ))}
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-left flex gap-3">
+          <span className="text-2xl flex-shrink-0" aria-hidden="true">🌱</span>
+          <div>
+            <p className="text-sm font-bold text-orange-700 mb-1">{msg.title}</p>
+            <p className="text-sm text-orange-800/90 leading-relaxed">{msg.body}</p>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -542,18 +496,11 @@ export default function StudentExam() {
     }
   };
 
-  const handleSubmitted = async (submitResult) => {
+  const handleSubmitted = (submitResult) => {
     clearExamActive(); // ส่งข้อสอบแล้ว — ปลดล็อกแชตบอตทั้งเว็บ
     setResult(submitResult);
     setPhase("result");
-    // Best-effort refresh with the full breakdown. Merge instead of overwrite:
-    // GET /result doesn't include fields like correctCount/totalQuestions that
-    // the UI needs, so spreading `full` on top of `prev` keeps whatever the
-    // submit response already gave us for any key `full` doesn't have.
-    try {
-      const full = await fetchExamResult(runData.examJoinId, userId);
-      setResult((prev) => ({ ...prev, ...full }));
-    } catch { /* keep the submit response as-is */ }
+    // (ตัดเฉลยรายข้อออกแล้ว) ไม่ต้องดึง GET /result มาเติมอีก — คะแนนจาก submit ครบแล้ว
   };
 
   if (phase === "loading") {

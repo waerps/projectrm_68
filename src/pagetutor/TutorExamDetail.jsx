@@ -6,7 +6,7 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge, UserX, Flag, Filter, Lightbulb, MessageCircle, Copy,
+  Tags, Merge, UserX, Flag, Filter, Copy,
 } from "lucide-react";
 
 import {
@@ -2421,6 +2421,7 @@ function StudentDetailModal({
 }) {
   // แบ่งเนื้อหาเป็น 2 แท็บ — เดิมต่อกันยาวทั้งหมดในหน้าเดียว พอข้อสอบเยอะจะตาลาย
   const [modalTab, setModalTab] = useState("overview");
+  const [copiedMsg, setCopiedMsg] = useState(false); // แค่ animation "คัดลอกแล้ว" ของปุ่มข้อความถึงผู้ปกครอง
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -2553,45 +2554,53 @@ function StudentDetailModal({
               ไม่บังคับเปิดให้เห็นตลอด กันหน้าจอรกเกินไปสำหรับคนที่แค่อยากดูสรุปเร็วๆ */}
           {modalTab === "overview" && aiSummary && (
             <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
-                    <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
-                  </p>
-                  <p className="text-sm text-neutral-700 leading-relaxed">{aiSummary.overview}</p>
-                  {(aiSummary.byCategory?.some((c) => c.trend) || aiSummary.misconceptions?.length > 0) && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {aiSummary.byCategory?.filter((c) => c.trend).map((c, i) => (
-                        <span key={i} className="text-[11px] font-medium bg-white border border-orange-200 text-orange-700 rounded-full px-2 py-0.5">
-                          {c.topic} · {c.trend}
-                        </span>
-                      ))}
-                      {aiSummary.misconceptions?.length > 0 && (
-                        <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
-                          จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
-                        </span>
-                      )}
-                    </div>
+              {/* หน้านี้ = ดูเร็วหลังสอบ: AI แบบสั้น (สรุป 3 บรรทัด + คัดลอกข้อความถึงผู้ปกครอง)
+                  ส่วนแบบละเอียด (รายหมวด/จุดเข้าใจผิด/แผนทำต่อ/แก้ข้อความ) อยู่หน้าวิเคราะห์ แท็บ "รายคน" ที่เดียว */}
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
+                  <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
+                  {aiSummary.misconceptions?.length > 0 && (
+                    <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
+                      จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
+                    </span>
                   )}
-                </div>
+                </p>
                 {aiSummary.model && <span className="text-[10px] text-neutral-400 flex-shrink-0">โดย {aiSummary.model}</span>}
               </div>
-              {/* (Phase 3) ไม่มีปุ่มขยายดู/แก้ไขบทวิเคราะห์แบบละเอียดในหน้านี้แล้ว — ให้ไปดูที่
-                  หน้า "วิเคราะห์เชิงลึก" (TutorExamAnalytics.jsx) ที่เดียว ตามที่ตกลงกัน */}
-              <Link
-                to={`/tutor/exam-analytics?${new URLSearchParams({
-                  courseId: courseId || "",
-                  subjectId: subjectId || "",
-                  courseName: courseName || "",
-                  subjectName: subjectName || "",
-                  examType: examType || "",
-                  tab: "progress",
-                  from: "exam-detail",
-                }).toString()}`}
-                className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
-              >
-                ดูรายละเอียดที่หน้าวิเคราะห์เชิงลึก <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
+              <p className="text-sm text-neutral-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
+              <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                <Link
+                  to={`/tutor/exam-analytics?${new URLSearchParams({
+                    courseId: courseId || "",
+                    subjectId: subjectId || "",
+                    courseName: courseName || "",
+                    subjectName: subjectName || "",
+                    examType: examType || "",
+                    tab: "progress",
+                    studentId: String(student?.userId ?? ""),
+                    from: "exam-detail",
+                  }).toString()}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
+                >
+                  ดูพัฒนาการเต็มของคนนี้ <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+                {aiSummary.parentMessage && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(`${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
+                        setCopiedMsg(true);
+                        setTimeout(() => setCopiedMsg(false), 2000);
+                      } catch (err) { console.error("Copy failed:", err); }
+                    }}
+                    className="flex items-center gap-1 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg px-2.5 py-1 transition"
+                  >
+                    {copiedMsg ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedMsg ? "คัดลอกแล้ว" : "คัดลอกข้อความถึงผู้ปกครอง"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -2865,189 +2874,6 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 }
 
 // ─── Results Tab ─────────────────────────────────────────────────────────────
-// ─── AI Summary Panel — บทวิเคราะห์รายคนหลังปิดสอบ ──────────────────────────
-// ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่อ่านรูปแบบการตอบผิดแล้วอธิบายเป็นภาษาคน
-// เป็นข้อความช่วยร่างให้เท่านั้น ไม่ใช่ข้อสรุปสุดท้าย — ครู/แอดมินอ่านทบทวนเองก่อนส่งให้ผู้ปกครองทุกครั้ง
-// (ตัดขั้นตอน "อนุมัติ" ออกตามที่ผู้ใช้ขอ ไม่มีสถานะฉบับร่าง/อนุมัติอีกต่อไป — ใครก็แก้ข้อความ
-// และคัดลอกไปส่งได้เลย ไม่ต้องรอใครกดอนุมัติก่อน)
-// ─── AI Summary Detail — เนื้อหาบทวิเคราะห์แบบละเอียดของนักเรียน 1 คน ────────────
-// export ไว้ให้ใช้ข้ามไฟล์ได้ — ตอนนี้มีสองที่เรียกใช้: StudentDetailModal ด้านล่างใน
-// ไฟล์นี้ (หน้า "จัดการรอบสอบ") และ StudentProgressModal ใน TutorExamAnalytics.jsx
-// (หน้า "ภาพรวมพัฒนาการ" แท็บ "รายคน") — เดิมเคยมี AiSummaryPanel (แผง accordion
-// ทั้งห้อง) เป็นผู้เรียกที่ 3 ด้วย แต่ถูกลบไปแล้วเพราะซ้ำซ้อนกับ StudentProgressModal
-// ที่มีอยู่แล้ว (ดูคอมเมนต์ที่ AiStatusStrip ด้านล่างสำหรับรายละเอียด)
-// ผู้เรียกเป็นคนคุม state ของ "ข้อความสำหรับผู้ปกครองที่แก้ค้างไว้" เอง (parentMessage/
-// dirty/saving) เพราะแต่ละที่ที่เรียกมีบริบทไม่เหมือนกัน (เช่น ต้องรองรับหลายแถว
-// พร้อมกันไหม ต้องมี fallback ข้อความล่าสุดที่บันทึกไปแล้วไหม)
-export function AiSummaryDetail({ row, parentMessage, dirty, saving, onDraftChange, onSave }) {
-  const [copied, setCopied] = useState(null); // แค่ animation "คัดลอกแล้ว" ชั่วคราว ไม่กระทบข้อมูลจริง เก็บไว้ในนี้พอ
-
-  const copyText = async (text, mark) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(mark);
-      setTimeout(() => setCopied(null), 2000);
-    } catch (err) {
-      console.error("Copy failed:", err);
-    }
-  };
-
-  // คัดลอกเฉพาะข้อความถึงผู้ปกครอง (ท่อนล่าง) — ของเดิม
-  const copyMessage = () => copyText(`${row.nickname || row.studentName}\n\n${parentMessage}`, "message");
-
-  // คัดลอกบทวิเคราะห์ทั้งฉบับ — ท่อนล่างมันสั้นเกินกว่าจะใช้สื่อสารจริงได้
-  // ประกอบเป็นข้อความอ่านง่ายเรียงตามที่แสดงบนหน้าจอ ส่วนไหนไม่มีข้อมูลก็ข้ามไป
-  const copyAll = () => {
-    const L = [];
-    L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
-    if (row.overview) L.push("", "ภาพรวม", row.overview);
-    if (row.byCategory?.length) {
-      L.push("", "รายหมวด");
-      row.byCategory.forEach((c) =>
-        L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`)
-      );
-    }
-    if (row.misconceptions?.length) {
-      L.push("", "จุดที่น่าจะเข้าใจผิด");
-      row.misconceptions.forEach((m) => {
-        L.push(`- ${m.topic} — ${m.pattern}`);
-        if (m.evidence) L.push(`  หลักฐาน: ${m.evidence}`);
-      });
-    }
-    if (row.behavior) L.push("", "ข้อสังเกตจากเวลาที่ใช้", row.behavior);
-    if (row.focusNext?.length) {
-      L.push("", "ควรทำต่อ เรียงตามลำดับ");
-      row.focusNext.forEach((f, i) =>
-        L.push(
-          typeof f === "string"
-            ? `${i + 1}. ${f}`
-            : `${i + 1}. ${f.action}${f.why ? ` — ${f.why}` : ""}`
-        )
-      );
-    }
-    if (parentMessage) L.push("", "ข้อความสำหรับผู้ปกครอง", parentMessage);
-    return copyText(L.join("\n"), "all");
-  };
-
-  return (
-    <div className="px-4 pb-4 space-y-3">
-      <div className="bg-orange-50/70 border border-orange-100 rounded-xl px-4 py-3">
-        <p className="text-xs font-semibold text-orange-700 mb-1 flex items-center gap-1.5">
-          <Info className="h-3.5 w-3.5" /> ภาพรวม
-        </p>
-        <p className="text-sm text-neutral-700 leading-relaxed">{row.overview}</p>
-      </div>
-
-      {row.byCategory?.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
-            <BarChart2 className="h-3.5 w-3.5" /> รายหมวด
-          </p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {row.byCategory.map((c, i) => (
-              <div key={i} className="border border-neutral-100 bg-neutral-50/60 rounded-lg px-3 py-2">
-                <p className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5 flex-wrap">
-                  {c.topic}
-                  {c.trend && (
-                    <span className="px-1.5 py-0.5 rounded-full bg-white border border-neutral-200 text-[10px] font-medium text-neutral-500">
-                      {c.trend}
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-neutral-600 mt-1 leading-relaxed">{c.comment}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {row.misconceptions?.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-amber-800 mb-1.5 flex items-center gap-1.5">
-            <Lightbulb className="h-3.5 w-3.5" /> จุดที่น่าจะเข้าใจผิด
-          </p>
-          <ul className="space-y-1.5">
-            {row.misconceptions.map((m, i) => (
-              <li key={i} className="text-sm text-amber-900">
-                <span className="font-medium">{m.topic}</span> — {m.pattern}
-                {m.evidence && <span className="block text-[11px] text-amber-700 mt-0.5">หลักฐาน: {m.evidence}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {row.behavior && (
-        <div className="border border-neutral-100 bg-neutral-50/60 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-neutral-500 mb-1 flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" /> ข้อสังเกตจากเวลาที่ใช้
-          </p>
-          <p className="text-sm text-neutral-700">{row.behavior}</p>
-        </div>
-      )}
-
-      {row.focusNext?.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold text-neutral-500 mb-1.5 flex items-center gap-1.5">
-            <CheckCircle className="h-3.5 w-3.5" /> ควรทำต่อ เรียงตามลำดับ
-          </p>
-          <div className="space-y-1.5">
-            {row.focusNext.map((f, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="flex-shrink-0 h-5 w-5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-bold flex items-center justify-center mt-0.5">
-                  {i + 1}
-                </span>
-                <p className="text-sm text-neutral-700 leading-relaxed">
-                  {typeof f === "string" ? f : f.action}
-                  {typeof f !== "string" && f.why && <span className="text-neutral-400"> — {f.why}</span>}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="border border-neutral-200 rounded-xl px-4 py-3">
-        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
-          <p className="text-xs font-semibold text-neutral-500 flex items-center gap-1.5">
-            <MessageCircle className="h-3.5 w-3.5" /> ข้อความสำหรับผู้ปกครอง (แก้ได้)
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={copyAll}
-              className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-lg px-2.5 py-1 transition"
-            >
-              <Copy className="h-3.5 w-3.5" /> {copied === "all" ? "คัดลอกทั้งหมดแล้ว" : "คัดลอกทั้งหมด"}
-            </button>
-            <button onClick={copyMessage} className="text-xs font-semibold text-neutral-500 hover:text-neutral-700">
-              {copied === "message" ? "คัดลอกแล้ว" : "คัดลอกเฉพาะท่อนนี้"}
-            </button>
-          </div>
-        </div>
-        <textarea
-          value={parentMessage}
-          rows={5}
-          onChange={(e) => onDraftChange(e.target.value)}
-          className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300"
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        {dirty && (
-          <button
-            onClick={onSave}
-            disabled={saving}
-            className="text-xs font-semibold border border-neutral-200 hover:border-orange-300 hover:text-orange-600 rounded-lg px-3 py-1.5 disabled:opacity-40"
-          >
-            {saving ? "กำลังบันทึก…" : "บันทึกข้อความ"}
-          </button>
-        )}
-        {row.model && <span className="text-[11px] text-neutral-400">วิเคราะห์โดย {row.model}</span>}
-      </div>
-    </div>
-  );
-}
-
 // ─── AI Status Strip — แถบสถานะสั้นๆ (ดูผ่านๆ เร็วๆ เท่านั้น) ─────────────────
 // (Phase 3) ตัดปุ่ม "วิเคราะห์ใหม่" ออกจากหน้านี้แล้ว — ย้ายไปอยู่หน้า "วิเคราะห์เชิงลึก"
 // (TutorExamAnalytics.jsx แท็บ "ภาพรวม") ที่เดียว ตามหลักที่ตกลงกันว่าฟังก์ชันเกี่ยวกับ
@@ -3209,7 +3035,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const avgTimeSec = submittedWithTime.length
     ? Math.round(submittedWithTime.reduce((sum, s) => sum + s.secondsUsed, 0) / submittedWithTime.length)
     : null;
-  const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore);
+  // ใช้กลุ่มเดียวกับ averageScorePct ของ backend และหน้าวิเคราะห์ (ส่งแล้ว + มีคะแนนเต็ม + ไม่ได้
+  // ปฏิเสธความยินยอม exam_behavior) — เดิมอัตราผ่านนับทุกคน ตัวเลขการ์ดข้างกันจึงมาจากคนละกลุ่ม
+  const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
   const passedCount = passEligible.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
   const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
   const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;

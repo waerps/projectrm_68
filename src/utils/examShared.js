@@ -429,7 +429,7 @@ export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
 
 // ── AI อ่านผลสอบรายคน (/api/ai) ──────────────────────────────────────────────
 // ตัวเลขทั้งหมดมาจากระบบ AI ทำหน้าที่แปลเป็นคำอธิบายและร่างข้อความถึงผู้ปกครอง
-// ทุกฉบับเป็นร่างเสมอ ติวเตอร์ต้องกดอนุมัติก่อนจึงจะถือว่าใช้ได้
+// (ไม่มีขั้นตอนอนุมัติแล้ว — ครู/แอดมินอ่านทบทวนแล้วคัดลอกไปใช้ได้เลย)
 const AI_BASE = `${API_URL}/api/ai`;
 
 // POST /api/ai/analyze → ปุ่ม "วิเคราะห์ใหม่" สำรอง (flow หลักคือวิเคราะห์อัตโนมัติ
@@ -448,7 +448,7 @@ export async function fetchAiSummaries(examId) {
   return data;
 }
 
-// PUT /api/ai/summaries/:id → แก้ข้อความ หรือกดอนุมัติ
+// PUT /api/ai/summaries/:id → แก้ข้อความ (overview / parentMessage)
 export async function updateAiSummary(id, patch) {
   const { data } = await axios.put(`${AI_BASE}/summaries/${id}`, patch, { headers: authHeaders() });
   return data;
