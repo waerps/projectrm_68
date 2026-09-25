@@ -994,8 +994,8 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
   if (loading) {
     return (
       <div className="space-y-5 animate-pulse">
-        <div className="h-28 bg-slate-100 rounded-3xl" />
-        <div className="grid sm:grid-cols-3 gap-4">{[1, 2, 3].map((i) => <div key={i} className="h-32 bg-slate-100 rounded-3xl" />)}</div>
+        <div className="h-28 bg-slate-100 rounded-2xl" />
+        <div className="grid sm:grid-cols-3 gap-4">{[1, 2, 3].map((i) => <div key={i} className="h-32 bg-slate-100 rounded-2xl" />)}</div>
         <div className="grid md:grid-cols-2 gap-3">{[1, 2, 3, 4].map((i) => <div key={i} className="h-24 bg-slate-100 rounded-2xl" />)}</div>
       </div>
     );
@@ -1003,7 +1003,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
 
   if (students.length === 0) {
     return (
-      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-10">
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
         <Users className="h-10 w-10 text-slate-300" />
         <p className="text-sm font-semibold text-slate-600">ยังไม่มีข้อมูลนักเรียน</p>
         <p className="text-xs text-slate-400">ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คนในรอบใดรอบหนึ่ง</p>
@@ -1015,13 +1015,13 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
     <div className="space-y-5">
       {/* ── ดาวรุ่งของห้อง ── */}
       {rising.length > 0 && (
-        <div className="sa-rise relative overflow-hidden rounded-3xl bg-slate-900 text-white p-5 sm:p-6">
+        <div className="sa-rise relative overflow-hidden rounded-2xl bg-slate-900 text-white p-5">
           <div className="absolute inset-0 sa-grain opacity-30" />
           <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-orange-500/30 blur-3xl" />
           <div className="relative flex flex-col lg:flex-row lg:items-center gap-5">
             <div className="lg:w-56 flex-shrink-0">
               <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> ดาวรุ่งของห้อง</p>
-              <p className="text-xl font-black mt-1 leading-snug">พัฒนาจากตัวเองมากที่สุด</p>
+              <p className="text-lg font-bold mt-1 leading-snug">พัฒนาจากตัวเองมากที่สุด</p>
               <p className="text-[11px] text-slate-400 mt-1">เทียบคะแนนรอบแรกกับรอบล่าสุดของแต่ละคน ไม่ได้เทียบกับเพื่อน</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 flex-1">
@@ -1039,7 +1039,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                     </span>
                     <span className="min-w-0">
                       <span className="block font-bold truncate">{nick || full.split(" ")[0]} <span className="font-normal text-slate-400 text-xs">{nick ? full.split(" ")[0] : ""}</span></span>
-                      <span className="tabular-nums block text-2xl font-black text-emerald-300">{signed(s.scoreChange)}</span>
+                      <span className="tabular-nums block text-xl font-black text-emerald-300">{signed(s.scoreChange)}</span>
                     </span>
                   </button>
                 );
@@ -1056,7 +1056,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           const on = statusFilter === k;
           return (
             <button key={k} type="button" onClick={() => setStatusFilter(on ? "all" : k)} aria-pressed={on}
-              className={`sa-rise relative overflow-hidden text-left rounded-3xl p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
+              className={`sa-rise relative overflow-hidden text-left rounded-2xl p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
               style={{ animationDelay: `${i * 0.06}s` }}>
               {on && <><div className={`absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><div className="absolute inset-0 sa-grain opacity-50" /></>}
               <div className="relative flex items-center justify-between gap-2">
@@ -1067,7 +1067,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                 </div>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
               </div>
-              <p className={`relative tabular-nums text-5xl font-black mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+              <p className={`relative tabular-nums text-3xl font-black mt-3 ${on ? "text-white" : "text-slate-900"}`}>
                 {counts[k]}<span className={`text-lg font-bold ml-1 ${on ? "text-white/80" : "text-slate-400"}`}>คน</span>
               </p>
               <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
@@ -1096,7 +1096,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
               style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
               <span className="sa-glow" />
               <span className="relative flex-shrink-0">
-                <span className={`h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-300 text-white flex items-center justify-center text-xl font-black ring-4 ring-offset-2 ${STATUS_RING[s.status]}`}>{initialOf(s.name)}</span>
+                <span className={`h-12 w-12 rounded-xl bg-gradient-to-br from-orange-400 to-amber-300 text-white flex items-center justify-center text-lg font-bold ring-[3px] ring-offset-2 ${STATUS_RING[s.status]}`}>{initialOf(s.name)}</span>
                 <span className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-white ${STATUS_DOT[s.status]} ${s.status === "care" ? "sa-pulse-red" : ""}`} />
               </span>
               <span className="relative min-w-0 flex-1">
@@ -1207,7 +1207,7 @@ const buildAiFullText = (row, parentMessage) => {
 //   4) สิ่งที่ต้องช่วย — เรื่องที่เข้าใจผิด + หน้าปัดจังหวะการทำข้อสอบ + แผนทำต่อ
 //   5) ข้อความถึงผู้ปกครอง — ฟองแชต แก้ไข/บันทึก/คัดลอก
 
-function ScoreRing({ pct, size = 132, stroke = 12 }) {
+function ScoreRing({ pct, size = 108, stroke = 10 }) {
   const R = (size - stroke) / 2, C = 2 * Math.PI * R, c = size / 2;
   const ang = ((PASS_PCT * 3.6 - 90) * Math.PI) / 180;
   return (
@@ -1221,8 +1221,9 @@ function ScoreRing({ pct, size = 132, stroke = 12 }) {
   );
 }
 
-function ScoreLineChart({ exams, classAvgs, name }) {
-  const W = 560, H = 214, L = 44, Rr = 44, T = 34, B = 36;
+// รอบที่ไม่ได้สอบ: ไม่วาดอะไรกลางกราฟ (เคยทับป้ายแกน/เกณฑ์ผ่าน) — บอกสถานะใต้ชื่อรอบแทน
+function ScoreLineChart({ exams, classAvgs, name, roundsWithData = [] }) {
+  const W = 560, H = 226, L = 44, Rr = 44, T = 34, B = 52;
   const x = (i) => L + i * ((W - L - Rr) / 2);
   const y = (v) => T + (1 - v) * (H - T - B);
   const mine = exams.map((e) => (e.submitted ? e.pct : null));
@@ -1249,7 +1250,7 @@ function ScoreLineChart({ exams, classAvgs, name }) {
       <path d={toPath(mine)} fill="none" stroke="#f97316" strokeWidth="3.5" strokeLinecap="round" className="sa-draw" style={{ "--len": 700 }} />
       {classAvgs.map((v, i) => (v == null ? null : <circle key={`c${i}`} cx={x(i)} cy={y(v)} r="3.5" fill="#fff" stroke="#94a3b8" strokeWidth="2" />))}
       {mine.map((v, i) => (v == null
-        ? <text key={i} x={x(i)} y={y(0.5)} textAnchor="middle" fontSize="11" fill="#cbd5e1">ไม่ได้สอบ</text>
+        ? <circle key={i} cx={x(i)} cy={y(0)} r="5" fill="#fff" stroke="#cbd5e1" strokeWidth="2" strokeDasharray="3 2" />
         : (
           <g key={i}>
             <circle cx={x(i)} cy={y(v)} r="9" fill="#f97316" opacity=".18" />
@@ -1258,7 +1259,16 @@ function ScoreLineChart({ exams, classAvgs, name }) {
             <text x={x(i)} y={y(v) - 16} textAnchor="middle" fontSize="11" fontWeight="700" fill="#fff">{Math.round(v * 100)}%</text>
           </g>
         )))}
-      {exams.map((e, i) => <text key={e.label} x={x(i)} y={H - 12} textAnchor="middle" fontSize="12" fontWeight="600" fill="#475569">{e.label}</text>)}
+      {exams.map((e, i) => (
+        <g key={e.label}>
+          <text x={x(i)} y={H - 28} textAnchor="middle" fontSize="12" fontWeight="600" fill={e.submitted ? "#475569" : "#94a3b8"}>{e.label}</text>
+          {!e.submitted && (
+            <text x={x(i)} y={H - 11} textAnchor="middle" fontSize="10.5" fontWeight="600" fill={roundsWithData.includes(i) ? "#f43f5e" : "#94a3b8"}>
+              {roundsWithData.includes(i) ? "ขาดสอบ" : "ยังไม่มีรอบนี้"}
+            </text>
+          )}
+        </g>
+      ))}
     </svg>
   );
 }
@@ -1474,22 +1484,22 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-6" onClick={onClose}>
       <div ref={scrollRef} onScroll={onScroll} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={`พัฒนาการของ ${data.name}`}
-        className="relative bg-slate-50 rounded-3xl w-full max-w-5xl max-h-[94vh] overflow-y-auto shadow-2xl sa-scroll">
+        className="relative bg-slate-50 rounded-2xl w-full max-w-5xl max-h-[94vh] overflow-y-auto shadow-2xl sa-scroll">
 
         {/* ── HERO ── */}
-        <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-400 text-white">
+        <div className="relative overflow-hidden rounded-t-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-400 text-white">
           <div className="absolute inset-0 sa-grain opacity-60" />
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
           <button type="button" onClick={onClose} aria-label="ปิด" className="absolute right-4 top-4 z-10 h-9 w-9 rounded-xl bg-white/15 hover:bg-white/30 flex items-center justify-center"><X className="h-5 w-5" /></button>
-          <div className="relative p-6 sm:p-8 grid md:grid-cols-[1fr_auto] gap-6 items-center">
+          <div className="relative p-5 grid md:grid-cols-[1fr_auto] gap-6 items-center">
             <div className="flex gap-4 items-start min-w-0">
               <div className="relative flex-shrink-0">
-                <div className="h-20 w-20 rounded-3xl bg-white text-orange-500 flex items-center justify-center text-4xl font-black shadow-lg">{initialOf(data.name)}</div>
+                <div className="h-16 w-16 rounded-2xl bg-white text-orange-500 flex items-center justify-center text-2xl font-black shadow">{initialOf(data.name)}</div>
                 <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${STATUS_GRAD[status.key]} text-white shadow ring-2 ring-white ${status.key === "care" ? "sa-pulse-red" : ""}`}>{st.short}</span>
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
-                <h2 className="text-2xl sm:text-3xl font-black leading-tight">{fullName}</h2>
+                <h2 className="text-xl font-bold leading-tight">{fullName}</h2>
                 <p className="text-sm text-white/90">{nick ? `น้อง${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
@@ -1508,12 +1518,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <div className="relative">
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="tabular-nums text-3xl font-black">{Math.round(latest.pct * 100)}%</p>
+                    <p className="tabular-nums text-xl font-black">{Math.round(latest.pct * 100)}%</p>
                     <p className="text-[11px] text-white/80">{latest.label}</p>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="tabular-nums text-4xl font-black">{change == null ? "—" : <><CountUp value={change} />%</>}</p>
+                  <p className="tabular-nums text-2xl font-black">{change == null ? "—" : <><CountUp value={change} />%</>}</p>
                   <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `เทียบกับ ${first.label}`}</p>
                   <p className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
                     {latest.pct * 100 >= PASS_PCT ? "ผ่านเกณฑ์" : `ต่ำกว่าเกณฑ์ ${Math.round(PASS_PCT - latest.pct * 100)}%`}
@@ -1542,19 +1552,19 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
         <div className="p-4 sm:p-6 space-y-5">
           {/* ── 1) สรุป ── */}
           <div id="sec-sum" className="grid md:grid-cols-[15rem_1fr] gap-4">
-            <div className={`sa-rise relative overflow-hidden rounded-3xl p-5 text-white bg-gradient-to-br ${STATUS_GRAD[status.key]}`}>
+            <div className={`sa-rise relative overflow-hidden rounded-2xl p-5 text-white bg-gradient-to-br ${STATUS_GRAD[status.key]}`}>
               <div className="absolute inset-0 sa-grain opacity-40" />
               <div className="relative">
                 <div className="inline-flex gap-2 bg-slate-900/25 rounded-full px-2.5 py-2">
                   {[2, 1, 0].map((l) => <span key={l} className={`h-4 w-4 rounded-full ${l === st.level ? "bg-white shadow-[0_0_12px_rgba(255,255,255,.9)]" : "bg-white/25"}`} />)}
                 </div>
-                <p className="text-2xl font-black mt-3">{st.label}</p>
+                <p className="text-xl font-bold mt-3">{st.label}</p>
                 <ul className="mt-2 space-y-1">
                   {status.reasons.map((r) => <li key={r} className="text-xs text-white/95 flex gap-1.5 before:content-['•'] before:opacity-70">{r}</li>)}
                 </ul>
               </div>
             </div>
-            <div className="sa-rise relative rounded-3xl bg-slate-900 text-white p-5 sm:p-6 overflow-hidden" style={{ animationDelay: ".06s" }}>
+            <div className="sa-rise relative rounded-2xl bg-slate-900 text-white p-5 overflow-hidden" style={{ animationDelay: ".06s" }}>
               <Quote className="absolute right-5 top-4 h-16 w-16 text-orange-500/25" />
               <p className="relative text-[11px] font-bold text-orange-300 flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5" /> สรุปจาก AI{aiRow ? ` · ${latest.label}` : ""}{aiRow?.model ? ` · ${aiRow.model}` : ""}
@@ -1575,7 +1585,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
           {latest && (
             <>
               {/* ── 2) คะแนนข้ามรอบ ── */}
-              <div id="sec-score" className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6" style={{ animationDelay: ".1s" }}>
+              <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".1s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
@@ -1585,7 +1595,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 </div>
                 <div className="grid lg:grid-cols-[1fr_15rem] gap-4 items-center">
                   <div className="overflow-x-auto sa-scroll"><div className="min-w-[420px]">
-                    <ScoreLineChart exams={exams} classAvgs={[0, 1, 2].map(classAvgPct)} name={data.name} />
+                    <ScoreLineChart exams={exams} classAvgs={[0, 1, 2].map(classAvgPct)} name={data.name} roundsWithData={data.roundsWithData} />
                   </div></div>
                   <div className="grid grid-cols-3 lg:grid-cols-1 gap-2">
                     {exams.map((e, i) => (
@@ -1613,7 +1623,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 3) รายหมวด ── */}
-              <div id="sec-topic" className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6" style={{ animationDelay: ".14s" }}>
+              <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".14s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><BookOpen className="h-4 w-4 text-orange-500" /> รายหมวด · {latest.label}</h3>
                   {topics.length >= 3 && canSelfCompare && (
@@ -1679,7 +1689,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 4) สิ่งที่ต้องช่วย ── */}
-              <div id="sec-help" className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6 space-y-5" style={{ animationDelay: ".18s" }}>
+              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5" style={{ animationDelay: ".18s" }}>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
                 <div className={`grid gap-4 ${paceRatio != null ? "lg:grid-cols-[1fr_17rem]" : ""}`}>
                   <div className="space-y-2.5">
@@ -1695,7 +1705,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                             <div key={i} className="relative rounded-2xl bg-gradient-to-br from-rose-50 to-white border border-rose-100 p-4 pl-5 overflow-hidden">
                               <div className="absolute left-0 inset-y-0 w-1.5 bg-gradient-to-b from-rose-400 to-red-500" />
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-black text-rose-800">{m.topic}</p>
+                                <p className="text-sm font-bold text-rose-800">{m.topic}</p>
                                 <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500" title="วัดจากจำนวนข้อที่ผิดรูปแบบเดียวกัน">
                                   ความรุนแรง {[1, 2, 3].map((l) => <span key={l} className={`h-2 w-2 rounded-full ${l <= severity ? "bg-rose-500" : "bg-rose-200"}`} />)}
                                 </span>
@@ -1712,7 +1722,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     <div className="rounded-2xl bg-slate-50 p-4 text-center">
                       <p className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1.5"><Timer className="h-3.5 w-3.5" /> จังหวะการทำข้อสอบ · {latest.label}</p>
                       <PaceGauge ratio={paceRatio} />
-                      <p className="tabular-nums text-2xl font-black text-slate-900 -mt-1">{Math.round(myPace)} <span className="text-sm font-semibold text-slate-400">วิ/ข้อ</span></p>
+                      <p className="tabular-nums text-xl font-black text-slate-900 -mt-1">{Math.round(myPace)} <span className="text-sm font-semibold text-slate-400">วิ/ข้อ</span></p>
                       <p className="text-xs font-semibold text-slate-600">
                         {paceDiff === 0 ? "ใกล้เคียงค่าเฉลี่ยห้อง" : paceDiff > 0 ? `ช้ากว่าห้อง ${paceDiff}%` : `เร็วกว่าห้อง ${Math.abs(paceDiff)}%`} · ห้องเฉลี่ย {Math.round(roomPace)} วิ
                       </p>
@@ -1728,14 +1738,14 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       <MapIcon className="h-3.5 w-3.5 text-orange-500" /> แผนที่ควรทำต่อ <span className="text-[10px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
                     </p>
                     <ol className={`relative grid gap-3 ${focusNext.length >= 3 ? "sm:grid-cols-3" : focusNext.length === 2 ? "sm:grid-cols-2" : ""}`}>
-                      {focusNext.length >= 2 && <div className="hidden sm:block absolute top-6 left-[16%] right-[16%] h-1 rounded-full bg-gradient-to-r from-orange-200 via-orange-300 to-amber-300" />}
+                      {focusNext.length >= 2 && <div className="hidden sm:block absolute top-5 left-[16%] right-[16%] h-1 rounded-full bg-gradient-to-r from-orange-200 via-orange-300 to-amber-300" />}
                       {focusNext.map((f, i) => {
                         const action = typeof f === "string" ? f : f.action;
                         const why = typeof f === "string" ? null : f.why;
                         const time = aiTimeHint(action) || aiTimeHint(why);
                         return (
                           <li key={i} className="relative flex flex-col items-center text-center">
-                            <span className="relative z-10 h-12 w-12 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-white text-lg font-black flex items-center justify-center shadow-md shadow-orange-200 ring-4 ring-white">{i + 1}</span>
+                            <span className="relative z-10 h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 text-white text-base font-bold flex items-center justify-center shadow-sm ring-4 ring-white">{i + 1}</span>
                             <div className="mt-2 bg-orange-50/70 border border-orange-100 rounded-2xl p-3 w-full h-full">
                               <p className="text-sm font-bold text-slate-800 leading-snug">{action}</p>
                               {why && <p className="text-[11px] text-slate-500 mt-1">{why}</p>}
@@ -1750,7 +1760,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
-              <div id="sec-parent" className="sa-rise rounded-3xl overflow-hidden border border-slate-100 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
+              <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap px-5 sm:px-6 pt-5">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><MessageCircle className="h-4 w-4 text-orange-500" /> ข้อความถึงผู้ปกครอง</h3>
                   {aiRow && (
@@ -1770,7 +1780,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 </div>
                 {aiRow ? (
                   <>
-                    <div className="m-5 sm:m-6 rounded-3xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
+                    <div className="m-5 sm:m-6 rounded-2xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
                       <p className="text-center text-[10px] text-white/90 mb-3"><span className="bg-slate-900/20 rounded-full px-2 py-0.5">ตัวอย่างตอนส่งในแชต</span></p>
                       <div className="flex gap-2 justify-end items-end">
                         <span className="text-[10px] text-white/90 mb-1 text-right">อ่านแล้ว</span>
@@ -1931,10 +1941,10 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-56 bg-slate-100 rounded-3xl" />
-        <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-6">
-          <div className="h-72 bg-slate-100 rounded-3xl" />
-          <div className="h-72 bg-slate-100 rounded-3xl" />
+        <div className="h-56 bg-slate-100 rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
+          <div className="h-72 bg-slate-100 rounded-2xl" />
+          <div className="h-72 bg-slate-100 rounded-2xl" />
         </div>
       </div>
     );
@@ -1942,7 +1952,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
 
   if (cmp.rounds.length < 2) {
     return (
-      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-3xl p-10">
+      <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
         <TrendingUp className="h-10 w-10 text-slate-300" />
         <p className="text-sm font-semibold text-slate-600">ยังมีข้อมูลไม่พอเปรียบเทียบ</p>
         <p className="text-xs text-slate-400 max-w-sm">ต้องมีอย่างน้อย 2 รอบสอบที่มีคนส่งข้อสอบแล้ว ถึงจะเทียบพัฒนาการได้</p>
@@ -1965,18 +1975,18 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
   const donutSeg = [[cmp.improved, "#10b981"], [cmp.declined, "#f43f5e"], [cmp.same, "#94a3b8"]].filter(([n]) => n);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* ── HERO ── */}
-      <div className="sa-rise relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-400 text-white shadow-lg shadow-orange-200">
+      <div className="sa-rise relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-400 text-white shadow-sm">
         <div className="absolute inset-0 sa-grain opacity-60" />
         <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
         <div className="absolute -left-10 -bottom-24 h-60 w-60 rounded-full bg-rose-400/30 blur-2xl" />
         <Confetti fire={cmp.avgGain > 0} />
-        <div className="relative grid lg:grid-cols-[18rem_1fr] gap-6 p-6 sm:p-8">
+        <div className="relative grid lg:grid-cols-[18rem_1fr] gap-6 p-5">
           <div>
             <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "ห้องนี้เก่งขึ้นเฉลี่ย" : "คะแนนห้องนี้เปลี่ยนไปเฉลี่ย"}</p>
-            <p className="tabular-nums text-6xl sm:text-7xl font-black leading-none mt-2 drop-shadow-sm">
-              <CountUp value={cmp.avgGain} /><span className="text-3xl font-bold">%</span>
+            <p className="tabular-nums text-4xl font-black leading-none mt-2 drop-shadow-sm">
+              <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
             <p className="text-sm text-white/90 mt-3">{cmp.fromLabel} → {cmp.toLabel} · จากนักเรียน <b>{cmp.cohortSize} คน</b> ที่สอบครบทุกรอบ</p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1995,12 +2005,12 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
         {/* ── ดีขึ้น / ลดลง / เท่าเดิม ── */}
-        <div className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".08s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".08s" }}>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><PieChart className="h-4 w-4 text-orange-500" /> ดีขึ้น / ลดลง / เท่าเดิม</h3>
-          <div className="relative mx-auto mt-3 h-44 w-44">
-            <svg viewBox="0 0 180 180" className="h-44 w-44 -rotate-90" aria-hidden="true">
+          <div className="relative mx-auto mt-3 h-36 w-36">
+            <svg viewBox="0 0 180 180" className="h-36 w-36 -rotate-90" aria-hidden="true">
               <circle cx="90" cy="90" r={R} fill="none" stroke="#f1f5f9" strokeWidth="22" />
               {donutSeg.map(([n, c]) => {
                 const len = (C * n) / cmp.cohortSize;
@@ -2010,7 +2020,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               })}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="tabular-nums text-4xl font-black text-emerald-600">{cmp.improvedPct}%</p>
+              <p className="tabular-nums text-2xl font-black text-emerald-600">{cmp.improvedPct}%</p>
               <p className="text-xs text-slate-500 font-semibold">ของห้องดีขึ้น</p>
             </div>
           </div>
@@ -2031,7 +2041,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
-        <div className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".14s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".14s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> ใครขยับไปเท่าไร</h3>
             <div className="inline-flex bg-slate-100 rounded-xl p-1 text-xs font-bold">
@@ -2060,7 +2070,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <p className="text-xs text-blue-700">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
         </div>
       ) : (
-        <div className="sa-rise bg-white rounded-3xl border border-slate-100 shadow-sm p-5 sm:p-6" style={{ animationDelay: ".2s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".2s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการรายหมวด</h3>
