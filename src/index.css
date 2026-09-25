@@ -27,3 +27,31 @@ html, body {
   from { opacity: 0; transform: scale(0.96) translateY(4px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
+/* ─── หน้าวิเคราะห์ (แท็บเปรียบเทียบ / รายคน / หน้าต่างรายคน) ───────────────── */
+@keyframes sa-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes sa-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes sa-draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+@keyframes sa-pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+@keyframes sa-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes sa-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes sa-caret { 50% { opacity: 0; } }
+.sa-rise { animation: sa-rise .5s ease both; }
+.sa-grow { transform-origin: left; animation: sa-grow .8s cubic-bezier(.2,.8,.2,1) both; }
+.sa-draw { stroke-dasharray: var(--len); animation: sa-draw 1.2s ease both; }
+.sa-pulse-red { animation: sa-pulse-red 1.8s infinite; }
+.sa-shine { background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); background-size: 200% 100%; animation: sa-shimmer 3.5s linear infinite; }
+.sa-float { animation: sa-float 3.2s ease-in-out infinite; }
+.sa-caret::after { content: ""; display: inline-block; width: 2px; height: 1em; background: currentColor; margin-left: 2px; vertical-align: -2px; animation: sa-caret .8s step-end infinite; }
+.sa-grain { background-image: radial-gradient(rgba(255,255,255,.18) 1px, transparent 1px); background-size: 14px 14px; }
+.sa-tilt { transform-style: preserve-3d; transition: transform .15s ease, box-shadow .2s, border-color .2s; will-change: transform; }
+.sa-glow { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s; background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(251,146,60,.22), transparent 60%); }
+.sa-tilt:hover .sa-glow { opacity: 1; }
+.sa-slope-line { transition: opacity .2s, stroke-width .2s; }
+.sa-slope:hover .sa-slope-line { opacity: .15; }
+.sa-slope .sa-slope-g:hover .sa-slope-line { opacity: 1; stroke-width: 4; }
+.sa-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+.sa-scroll::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 9px; }
+@media (prefers-reduced-motion: reduce) {
+  .sa-rise, .sa-grow, .sa-draw, .sa-pulse-red, .sa-shine, .sa-float, .sa-caret::after { animation: none !important; }
+  .sa-tilt { transition: none; }
+}
