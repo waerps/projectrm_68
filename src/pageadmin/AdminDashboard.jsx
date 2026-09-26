@@ -263,7 +263,7 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
 
   return (
       <div className="flex flex-col items-center gap-6 h-full justify-center">
-          <div className="relative w-64 h-64 shrink-0">
+          <div className="relative w-56 h-56 sm:w-64 sm:h-64 shrink-0">
               {/* วงเงาด้านหลัง จำลองความหนาของจาน (depth disc) */}
               <div className="absolute inset-4 rounded-full bg-slate-300/40 blur-md translate-y-2" />
               <ResponsiveContainer width="100%" height="100%">
@@ -489,7 +489,7 @@ export default function AdminDashboard() {
         <SectionCard
           title="สัดส่วนคอร์สตามสถานะ"
           icon={PieChartIcon}
-          className={T.chartCardH}
+          className="lg:h-[480px]"
           action={
             <button onClick={() => navigate("/admin/courses")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
               ดูทั้งหมด <ChevronRight className="h-3 w-3" />
@@ -502,7 +502,7 @@ export default function AdminDashboard() {
         <SectionCard
           title="รายรับ vs รายจ่าย (6 เดือนล่าสุด)"
           icon={Wallet}
-          className={T.chartCardH}
+          className="h-80 md:h-96 lg:h-[480px]"
           action={
             <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 whitespace-nowrap shrink-0">
               ดูรายละเอียด <ChevronRight className="h-3 w-3" />

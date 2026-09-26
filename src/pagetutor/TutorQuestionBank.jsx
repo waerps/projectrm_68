@@ -190,7 +190,31 @@ export default function TutorQuestionBank() {
         </div>
       ) : (
         !error && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <>
+          {/* มือถือ/แท็บเล็ต: การ์ดรายวิชา แตะทั้งการ์ดเพื่อเปิดคลัง */}
+          <div className="lg:hidden grid gap-3 md:grid-cols-2">
+            {filtered.map((s) => (
+              <button key={s.subjectId} onClick={() => openSubject(s.subjectId)}
+                className="min-w-0 text-left bg-white rounded-2xl border border-slate-200 shadow-sm p-4 active:bg-orange-50/60">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || `วิชา #${s.subjectId}`}</p>
+                    <p className="text-[11px] text-slate-400">#{s.subjectId}{fmtDate(s.lastUpdatedAt) ? ` · ${fmtDate(s.lastUpdatedAt)}` : ""}</p>
+                  </div>
+                  {s.total > 0 ? (
+                    <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
+                  ) : (
+                    <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-50 text-amber-700 border-amber-200">ยังไม่มีข้อสอบ</span>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <p className="text-xs text-slate-500"><span className="text-sm font-bold text-slate-900">{s.total}</span> ข้อ{s.categories > 0 ? ` · หมวดหมู่ ${s.categories}` : ""}</p>
+                  <span className="flex items-center gap-1 text-xs font-bold text-orange-600"><Settings2 className="h-4 w-4" /> จัดการคลัง</span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
@@ -257,6 +281,7 @@ export default function TutorQuestionBank() {
               </table>
             </div>
           </div>
+          </>
         )
       )}
     </div>

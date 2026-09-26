@@ -47,8 +47,8 @@ const blockNegativeKeys = (e) => {
 // ─── Modal wrapper ─────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
-            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[fadeIn_0.15s_ease-out]">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
                 <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
                     <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                         {Icon && (
@@ -694,7 +694,48 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
 // ─── FacilityTable — แสดงข้อมูลแบบตาราง ─────────────────────────────
 function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ: การ์ดรายอุปกรณ์ (ตารางแสดงตั้งแต่แท็บเล็ตขึ้นไป) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+            {items.map(item => {
+                const st = styleOf(item.StatusId);
+                const CIcon = iconForCategory(item.Category_Name);
+                const outOfStock = item.Quantity === 0;
+                const lowStock = !outOfStock && item.LowStock;
+                return (
+                    <div key={item.CommonFacilityId}
+                        className={`min-w-0 rounded-2xl border shadow-sm p-4 ${outOfStock ? "bg-red-50/50 border-red-200" : lowStock ? "bg-yellow-50/50 border-yellow-200" : "bg-white border-slate-200"}`}>
+                        <button onClick={() => onView(item)} className="w-full text-left flex items-start gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                                <CIcon className="h-5 w-5 text-orange-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-900 leading-snug">{item.Name}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <p className="text-slate-700 text-sm"><span className="font-black text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</p>
+                                {outOfStock && <p className="text-[11px] font-bold text-red-600">หมดสต๊อก</p>}
+                                {lowStock && <p className="text-[11px] font-bold text-yellow-700">ใกล้หมด</p>}
+                            </div>
+                        </button>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                                {item.Status_Name}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                                <button onClick={() => onView(item)} title="ดูรายละเอียด" className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-50 border border-orange-100 rounded-xl"><Eye className="h-4 w-4" /></button>
+                                <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป" className="flex items-center justify-center w-10 h-10 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Edit2 className="h-4 w-4" /></button>
+                                <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ" className="flex items-center justify-center w-10 h-10 text-slate-600 bg-slate-50 border border-slate-200 rounded-xl"><AlertTriangle className="h-4 w-4" /></button>
+                                <button onClick={() => onDelete(item)} title="นำออกจากรายการ" className="flex items-center justify-center w-10 h-10 text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
                 <table className="w-full min-w-[860px] text-sm">
                     <thead>
@@ -790,6 +831,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                 </table>
             </div>
         </div>
+        </>
     );
 }
 

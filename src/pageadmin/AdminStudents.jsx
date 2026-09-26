@@ -79,8 +79,8 @@ function StudentAvatar({ student, className = "h-10 w-10 rounded-xl" }) {
 // ─── Modal ─────────────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col w-full ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
             {Icon && (
@@ -1826,11 +1826,11 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
         </span>
 
         {/* Avatar — ★ เปลี่ยนมาใช้ StudentAvatar */}
-        <StudentAvatar student={student} className="h-9 w-9 rounded-xl border border-orange-100" />
+        <StudentAvatar student={student} className="h-9 w-9 rounded-xl border border-orange-100 hidden sm:block" />
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-slate-900 break-words">{name}</p>
+          <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{name}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border
               ${badge.bg} ${badge.text} ${badge.border}`}>
@@ -1856,7 +1856,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
         </div>
 
         {/* Score Ring — คะแนนของกระดานที่กำลังดูอยู่ */}
-        <StudentScoreRing score={student._score} />
+        <div className="flex shrink-0 -mx-2 scale-75 sm:mx-0 sm:scale-100"><StudentScoreRing score={student._score} /></div>
 
         {/* ปุ่มดูข้อมูลนักเรียน (ไม่ใช้ modal) */}
         <button
@@ -2380,7 +2380,55 @@ export default function AdminStudentsPage() {
           <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ/แท็บเล็ต: การ์ดรายคน (ตารางแสดงบนจอใหญ่) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+          {paginated.map(s => {
+            const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
+            return (
+              <div key={s.UserId} className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col">
+                <button onClick={() => setViewStudentId(s.UserId)} className="flex items-start gap-3 text-left">
+                  <StudentAvatar student={s} className="h-11 w-11 rounded-xl shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
+                    {s.Nickname && <p className="text-xs text-slate-400 truncate">{s.Firstname} {s.Lastname}</p>}
+                    <p className="text-[11px] text-slate-400">#{s.UserId}</p>
+                  </div>
+                  {s.GPA ? (
+                    <span className="shrink-0 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">GPA {s.GPA}</span>
+                  ) : null}
+                </button>
+                <div className="mt-3 space-y-1.5 text-xs text-slate-600">
+                  {s.SchoolName && (
+                    <p className="flex items-center gap-1.5"><School className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span className="truncate">{s.SchoolName}</span></p>
+                  )}
+                  {s.PhoneNo && (
+                    <p className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{s.PhoneNo}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {s.GradeDetail && <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">{s.GradeDetail}</span>}
+                    {s.GenderName && <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[11px] font-semibold">{s.GenderName}</span>}
+                    {s.EnrolledCourses > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-bold"><BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส</span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-auto pt-3">
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
+                    <button onClick={() => setViewStudentId(s.UserId)}
+                      className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                      <Eye className="h-4 w-4" /> ดูข้อมูล
+                    </button>
+                    <button onClick={() => setEditingStudent(s)} title="แก้ไขข้อมูล" className="w-10 h-10 flex items-center justify-center text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => setResetPwdStudent(s)} title="รีเซ็ตรหัสผ่าน" className="w-10 h-10 flex items-center justify-center text-slate-500 bg-slate-50 border border-slate-200 rounded-xl"><KeyRound className="h-4 w-4" /></button>
+                    <button onClick={() => setDeletingStudent(s)} title="ลบ" className="w-10 h-10 flex items-center justify-center text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-sm">
               <thead>
@@ -2506,6 +2554,7 @@ export default function AdminStudentsPage() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Pagination */}

@@ -842,7 +842,60 @@ export default function TutorAttendanceDashboard() {
       {/* ★ แก้: ตัดคอลัมน์ "ค้างจ่าย" / "รายได้ค้างจ่าย" ออก
           เพิ่มคอลัมน์ "ขาด" และ "บันทึกล่าสุด"
           หัวคอลัมน์ระบุหน่วยชัดเจน (ครั้ง) vs (%) กันสับสน */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* มือถือ/แท็บเล็ต: การ์ดรายติวเตอร์ (ตารางแสดงบนจอใหญ่) */}
+      <div className="lg:hidden">
+        {loading ? (
+          <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+            <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm">กำลังโหลด...</p>
+          </div>
+        ) : processed.length === 0 ? (
+          <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">
+            <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">{tutors.length === 0 ? 'ไม่มีข้อมูลการสอนในช่วงเวลานี้' : 'ไม่พบติวเตอร์ที่ตรงกับตัวกรองที่เลือก'}</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {paginated.map((t, idx) => {
+              const isAtRisk = t.AttendanceRate !== null && t.AttendanceRate !== undefined && t.AttendanceRate < 50;
+              return (
+                <div key={t.AdminId} className={`min-w-0 rounded-2xl border shadow-sm p-4 ${isAtRisk ? 'bg-red-50/40 border-red-200' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center gap-3">
+                    <TutorAvatar tutor={t} idx={idx} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 text-sm truncate">{t.Nickname}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{t.Firstname} {t.Lastname}</p>
+                    </div>
+                    <button onClick={(e) => handleViewDetail(t, e)}
+                      className="shrink-0 inline-flex items-center gap-1.5 h-10 px-3 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                      <EyeIcon className="w-4 h-4" /> ดูประวัติ
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-xl bg-slate-50 py-2"><p className="text-base font-bold text-slate-800">{t.TotalScheduled}</p><p className="text-[10px] text-slate-500">คาบทั้งหมด</p></div>
+                    <div className="rounded-xl bg-emerald-50 py-2"><p className="text-base font-bold text-emerald-700">{t.TotalCheckin}</p><p className="text-[10px] text-slate-500">เช็กอิน (ครั้ง)</p></div>
+                    <div className={`rounded-xl py-2 ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50' : 'bg-slate-50'}`}><p className={`text-base font-bold ${(t.MissedCount ?? 0) > 0 ? 'text-red-700' : 'text-slate-400'}`}>{t.MissedCount ?? 0}</p><p className="text-[10px] text-slate-500">ขาด (ครั้ง)</p></div>
+                  </div>
+                  <div className="mt-3">
+                    {t.AttendanceRate !== null && t.AttendanceRate !== undefined
+                      ? <RateBar rate={t.AttendanceRate} />
+                      : <span className="text-xs text-slate-300">ไม่มีข้อมูล</span>}
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="text-slate-500">บันทึกล่าสุด {t.LastCheckinAt ? shortDate(t.LastCheckinAt) : <span className="text-red-400 font-semibold">ยังไม่เคยบันทึก</span>}</span>
+                    {(t.TotalCheckin ?? 0) > 0 && (t.IncompletePhotoCount ?? 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                        <Camera className="w-3 h-3" />รูปไม่ครบ {t.IncompletePhotoCount}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] lg:min-w-0 text-sm">
             <thead>

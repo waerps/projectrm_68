@@ -3171,7 +3171,57 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
-        <div className="border border-neutral-100 rounded-xl overflow-hidden">
+        <>
+        {/* มือถือ/แท็บเล็ต: การ์ดรายนักเรียน (ตารางแสดงบนจอใหญ่) */}
+        <div className="lg:hidden grid gap-2.5 md:grid-cols-2">
+          {displayedStudents.map((s) => {
+            const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+            const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+            return (
+              <div key={s.examJoinId} className="min-w-0 rounded-xl border border-neutral-100 bg-white p-3.5">
+                <div className="flex items-center gap-3">
+                  <span className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-neutral-800 text-sm truncate">{s.name}</p>
+                    <p className="text-[11px] text-neutral-400 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
+                  </div>
+                  {passed != null && (
+                    <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                      {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
+                    </span>
+                  )}
+                </div>
+                {pct != null && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
+                    </div>
+                    <span className="text-sm font-semibold text-neutral-700">{pct}%</span>
+                    <span className="text-xs text-neutral-400">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
+                  <span className="inline-flex items-center gap-1 text-neutral-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                  <span className={`font-mono ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                    {s.submittedAt ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—") : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                  </span>
+                  <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                  {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"><Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ</span>
+                  )}
+                </div>
+                {s.submittedAt && (
+                  <button onClick={() => setSelectedStudent(s)}
+                    className="mt-3 w-full h-10 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                    <Eye className="h-4 w-4" /> ดูผล
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block border border-neutral-100 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
               <thead>
@@ -3280,6 +3330,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {results.students.length > 0 && (

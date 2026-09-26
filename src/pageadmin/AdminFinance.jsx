@@ -810,7 +810,33 @@ export default function AdminFinance() {
                                     />
                                 </div>
                             ) : (
-                                <div className={`${T.card} overflow-hidden`}>
+                                <>
+                                {/* มือถือ/แท็บเล็ต: การ์ดรายการรับเงิน */}
+                                <div className="lg:hidden grid gap-3 md:grid-cols-2">
+                                    {txData.map(txn => {
+                                        const isFull = txn.PaymentPlan === 'full';
+                                        return (
+                                            <button key={txn.TransactionId} onClick={() => setViewTxId(txn.TransactionId)}
+                                                className={`min-w-0 text-left ${T.card} p-4`}>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-slate-900 truncate">{studentDisplayName(txn)}</p>
+                                                        <p className={T.caption}>{txn.PhoneNo || 'ไม่มีเบอร์โทร'}</p>
+                                                    </div>
+                                                    <p className="shrink-0 font-bold text-green-600">+{formatMoney(txn.Amount)}</p>
+                                                </div>
+                                                <p className="mt-2 text-sm font-semibold text-slate-800 line-clamp-2">{txn.CourseName}</p>
+                                                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+                                                        {isFull ? 'เต็มจำนวน' : `ผ่อน งวด ${txn.InstallmentNo}/${txn.InstallmentCount}`}
+                                                    </span>
+                                                    <span className={T.caption}>{formatDate(txn.TransDate || txn.Created_at)} · #{txn.TransactionId}</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className={`hidden lg:block ${T.card} overflow-hidden`}>
                                     <div className="overflow-x-auto">
                                         <table className="w-full min-w-[820px] text-sm">
                                             <thead>
@@ -830,6 +856,7 @@ export default function AdminFinance() {
                                         </table>
                                     </div>
                                 </div>
+                                </>
                             )}
                         </ApiState>
                     ) : (
@@ -839,7 +866,41 @@ export default function AdminFinance() {
                                     <EmptyState icon={Users} message="ไม่พบรายการค่าติวเตอร์" suggestion="ค่าสอนจะแสดงหลังติวเตอร์เช็กอินสอนและมีข้อมูลเช็กชื่อนักเรียน" />
                                 </div>
                             ) : (
-                                <div className={`${T.card} overflow-x-auto`}>
+                                <>
+                                {/* มือถือ/แท็บเล็ต: การ์ดค่าติวเตอร์ */}
+                                <div className="lg:hidden grid gap-3 md:grid-cols-2">
+                                    {tutorData.map(item => (
+                                        <div key={item.key} className={`min-w-0 ${T.card} p-4 flex flex-col`}>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-slate-900">{item.tutorName}</p>
+                                                    <p className={T.caption}>{item.period || '—'} · {item.sessionCount} คาบ</p>
+                                                </div>
+                                                <p className="shrink-0 font-bold text-slate-900">{formatMoney(item.amount)}</p>
+                                            </div>
+                                            <p className={`${T.caption} mt-1 line-clamp-2`}>{item.courses.join(', ')}</p>
+                                            <div className="mt-2 flex items-center justify-between gap-2">
+                                                <p className="text-xs text-slate-600 min-w-0 truncate">{item.bankName || 'ข้อมูลไม่ครบ'} · {item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p>
+                                                <StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} />
+                                            </div>
+                                            <div className="mt-auto pt-3">
+                                                <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                                                    <button onClick={() => setTutorDetailItem(item)}
+                                                        className="h-10 px-3 flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold">
+                                                        <Eye className="h-4 w-4" /> ดูรายละเอียดคาบสอน
+                                                    </button>
+                                                    <div className="flex-1 flex justify-end">
+                                                        {item.status === 'unpaid' ? (item.canPay
+                                                            ? <button onClick={() => setPayoutItem(item)} className="h-10 px-4 bg-orange-500 text-white rounded-xl text-xs font-bold">บันทึกการโอน</button>
+                                                            : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
+                                                            : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="h-10 px-3 flex items-center text-orange-600 text-xs font-bold">ดูสลิป</a> : null}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className={`hidden lg:block ${T.card} overflow-x-auto`}>
                                     <table className="w-full min-w-[900px] text-sm">
                                         <thead className="bg-slate-50">
                                             <tr>
@@ -877,6 +938,7 @@ export default function AdminFinance() {
                                         </tbody>
                                     </table>
                                 </div>
+                                </>
                             )}
                         </ApiState>
                     )}

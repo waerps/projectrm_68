@@ -669,8 +669,8 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className={`bg-white rounded-t-2xl sm:rounded-2xl w-full shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
             {Icon && (
@@ -1544,6 +1544,53 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 }
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
+// การ์ดติวเตอร์สำหรับมือถือ/แท็บเล็ต — ข้อมูลและปุ่มเดียวกับ TutorRow
+function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
+  const navigate = useNavigate();
+  const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
+  const fullName = `${t.Firstname} ${t.Lastname}`;
+  const status = statusOf(t.Status_Tutor_Id);
+  const isInactive = Number(t.Status_Tutor_Id) === 2;
+  const iconBtn = "w-10 h-10 flex items-center justify-center rounded-xl border";
+  return (
+    <div className={`min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col ${isInactive ? "opacity-60" : ""}`}>
+      <button onClick={() => setViewTutor(t)} className="flex items-start gap-3 text-left">
+        <TutorAvatar tutor={t} className="h-11 w-11 rounded-xl text-sm shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
+          {t.Nickname && displayName !== fullName && <p className="text-xs text-slate-400 truncate">{fullName}</p>}
+          <p className="text-[11px] text-slate-400">#{t.AdminId} · {t.ExperienceYear} ปี</p>
+        </div>
+        <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+          {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+          {status.label}
+        </span>
+      </button>
+      <div className="mt-3 space-y-1.5 text-xs">
+        {t.Occupation && <p className="flex items-center gap-1.5 text-orange-600 font-medium"><Briefcase className="h-3.5 w-3.5 shrink-0" /><span className="line-clamp-1">{t.Occupation}</span></p>}
+        {(t.TeachingSubjects || t.Subjects) && <p className="flex items-start gap-1.5 text-slate-500"><BookOpen className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" /><span className="line-clamp-2">{t.TeachingSubjects || t.Subjects}</span></p>}
+        {t.PhoneNo && t.PhoneNo !== "000-000-0000" && <p className="flex items-center gap-1.5 text-slate-600"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{t.PhoneNo}</p>}
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-[11px] font-bold">นักเรียน {t.StudentCount || 0}</span>
+          {t.RatePerTutors ? <span className="px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-bold">{Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
+        </div>
+      </div>
+      <div className="mt-auto pt-3">
+        <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
+          <button onClick={() => setEditingTutor(t)} className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+            <Edit2 className="h-4 w-4" /> แก้ไข
+          </button>
+          <button onClick={() => setViewTutor(t)} title="ดูข้อมูลติวเตอร์" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><Eye className="h-4 w-4" /></button>
+          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}&from=tutors`)} title="ดูภาพรวมพัฒนาการ" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><BarChart2 className="h-4 w-4" /></button>
+          <button onClick={() => setStatusTutor(t)} title="เปลี่ยนสถานะ" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><UserCog className="h-4 w-4" /></button>
+          <button onClick={() => setResetPwdTutor(t)} title="รีเซ็ตรหัสผ่าน" className={`${iconBtn} text-indigo-600 bg-indigo-50 border-indigo-100`}><KeyRound className="h-4 w-4" /></button>
+          <button onClick={() => setDeletingTutor(t)} title="ลบ" className={`${iconBtn} text-red-500 bg-red-50 border-red-100`}><Trash2 className="h-4 w-4" /></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
   const navigate = useNavigate();
   const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
@@ -1797,7 +1844,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
           </div>
         </div>
         {/* score ring */}
-        <ScoreRing score={tutor.PerformanceScore} />
+        <div className="flex shrink-0 -mx-2 scale-75 sm:mx-0 sm:scale-100"><ScoreRing score={tutor.PerformanceScore} /></div>
 
         {/* ★ เพิ่ม: ปุ่มดวงตา — วางตรงนี้ ระหว่าง ScoreRing กับ chevron */}
         <button
@@ -2527,7 +2574,21 @@ export default function AdminTutorsPage() {
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <>
+          <div className="lg:hidden grid gap-3 md:grid-cols-2">
+            {paginated.map(t => (
+              <TutorCard
+                key={t.AdminId}
+                t={t}
+                setEditingTutor={setEditingTutor}
+                setResetPwdTutor={setResetPwdTutor}
+                setDeletingTutor={setDeletingTutor}
+                setStatusTutor={setStatusTutor}
+                setViewTutor={setViewTutor}
+              />
+            ))}
+          </div>
+          <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
                 <thead>
@@ -2557,6 +2618,7 @@ export default function AdminTutorsPage() {
               </table>
             </div>
           </div>
+          </>
         )}
 
         {/* Pagination */}

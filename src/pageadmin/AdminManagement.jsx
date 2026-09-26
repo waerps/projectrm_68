@@ -28,8 +28,8 @@ function getCurrentAdminId() {
 // ─── Modal wrapper (โครงเดียวกับหน้าอื่นในระบบ) ────────────────────────────
 function Modal({ title, icon: Icon, onClose, children }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
             {Icon && (
@@ -480,7 +480,53 @@ export default function AdminManagement() {
           <p className="text-slate-500 font-medium">ไม่พบผู้ดูแลระบบที่ค้นหา</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ: การ์ดรายคน (ตารางแสดงตั้งแต่แท็บเล็ตขึ้นไป) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+          {filtered.map(a => {
+            const displayName = a.Nickname || `${a.Firstname} ${a.Lastname}`;
+            const isSelf = String(a.AdminId) === String(currentAdminId);
+            return (
+              <div key={a.AdminId} className={`min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 ${!a.IsActive ? "opacity-60" : ""}`}>
+                <div className="flex items-start gap-3">
+                  <AdminAvatar admin={a} className="h-11 w-11 rounded-xl text-sm shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
+                      <span className="truncate">{displayName}</span>
+                      {isSelf && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[10px] font-bold">คุณ</span>}
+                    </p>
+                    {a.Nickname && <p className="text-xs text-slate-400 truncate">{a.Firstname} {a.Lastname}</p>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                      {a.PhoneNo && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-slate-400" />{a.PhoneNo}</span>}
+                      <span className="font-mono break-all">{a.Username}</span>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${a.IsActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
+                    {a.IsActive ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}
+                    {a.IsActive ? "ใช้งานอยู่" : "ปิดใช้งาน"}
+                  </span>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2">
+                  <button onClick={() => setEditingAdmin(a)}
+                    className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                    <Edit2 className="h-4 w-4" /> แก้ไข
+                  </button>
+                  <button onClick={() => setResetPwdAdmin(a)}
+                    className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl">
+                    <KeyRound className="h-4 w-4" /> รีเซ็ตรหัสผ่าน
+                  </button>
+                  <button onClick={() => setStatusChange({ admin: a, nextIsActive: !a.IsActive })}
+                    disabled={isSelf && a.IsActive}
+                    className={`min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold rounded-xl border disabled:opacity-40 ${a.IsActive ? "text-red-500 bg-red-50 border-red-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>
+                    {a.IsActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                    {a.IsActive ? "ปิดใช้งานบัญชี" : "เปิดใช้งานบัญชี"}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] lg:min-w-[720px] text-sm">
               <thead>
@@ -566,6 +612,7 @@ export default function AdminManagement() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Modals */}

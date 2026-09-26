@@ -200,8 +200,8 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
 function Modal({ onClose, children, title, icon: Icon, wide }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className={`bg-white rounded-t-2xl sm:rounded-2xl w-full shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white truncate pr-4">
             {Icon && (

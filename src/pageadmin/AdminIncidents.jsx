@@ -56,8 +56,8 @@ const formatDateTime = (d) => {
 // ─── Modal (โครงเดียวกับ AdminStudents.jsx) ──────────────────────────────────
 function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-3xl" : "max-w-lg"}`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col w-full ${wide ? "max-w-3xl" : "max-w-lg"}`}>
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
             {Icon && (
@@ -465,7 +465,66 @@ export default function AdminIncidents() {
           <p className="text-slate-500 font-medium">ไม่มีเคสในหมวดนี้</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ: การ์ดรายเคส (ตารางแสดงตั้งแต่แท็บเล็ตขึ้นไป) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+          {paginated.map(inc => {
+            const sevMeta = getSeverityMeta(inc.Severity);
+            const SevIcon = sevMeta.icon;
+            const typeMeta = getIncidentTypeById(inc.IncidentTypeId);
+            const statusMeta = STATUS_META[inc.Status] || STATUS_META.new;
+            const needsUrgentReview = inc.Severity === SEVERITY.CRITICAL && inc.Status === "new";
+            const reporterName = inc.IsAnonymous
+              ? "ไม่เปิดเผยตัวตน"
+              : (inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`);
+            return (
+              <button key={inc.IncidentId} onClick={() => setViewId(inc.IncidentId)}
+                className={`min-w-0 w-full text-left bg-white rounded-2xl border shadow-sm p-4 active:bg-orange-50/60 ${needsUrgentReview ? "border-red-200 bg-red-50/40" : "border-slate-200"}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`h-10 w-10 rounded-xl ${sevMeta.solidBg} flex items-center justify-center shrink-0`}>
+                    <SevIcon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{typeMeta?.label || inc.IncidentTypeId}</p>
+                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                      #{String(inc.IncidentId).padStart(4, "0")} · <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
+                    </p>
+                  </div>
+                  <Eye className="h-4 w-4 text-orange-500 shrink-0 mt-1" />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>{sevLabel(inc.Severity)}</span>
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>{statusMeta.label}</span>
+                  {needsUrgentReview && (
+                    <span className="text-[11px] font-bold text-red-600 flex items-center gap-1"><AlertOctagon className="h-3 w-3" /> ต้องตรวจสอบทันที</span>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                  <p className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-slate-400">ผู้แจ้ง</span>
+                    <span className="font-medium text-slate-700">{reporterName}</span>
+                    <span className="text-[11px] text-slate-400">· {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}</span>
+                  </p>
+                  {(inc.TutorFirstname || inc.CourseName) && (
+                    <div className="flex flex-wrap gap-1">
+                      {inc.TutorFirstname && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold max-w-full">
+                          <GraduationCap className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.TutorFirstname} {inc.TutorLastname}</span>
+                        </span>
+                      )}
+                      {inc.CourseName && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[11px] font-semibold max-w-full">
+                          <BookOpen className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.CourseName}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] lg:min-w-[820px] text-sm">
               <thead>
@@ -579,6 +638,7 @@ export default function AdminIncidents() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Pagination — โครงเดียวกับ AdminStudents.jsx */}

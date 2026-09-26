@@ -113,7 +113,7 @@ export default function Navbar() {
                                     </div>
                                 </div>
                                 <ul className="flex-1 overflow-y-auto p-2 md:grid md:grid-cols-2 md:gap-x-1 md:content-start">
-                                    {mobileItems.map(({ to, label, icon: Icon }) => (
+                                    {mobileItems.map((item) => { const { to, label } = item; const Icon = item.icon; return (
                                         <li key={to}>
                                             <NavLink
                                                 to={to}
@@ -124,7 +124,7 @@ export default function Navbar() {
                                                 <span className="truncate">{label}</span>
                                             </NavLink>
                                         </li>
-                                    ))}
+                                    ); })}
                                 </ul>
                                 <div className="border-t border-gray-100 p-2">
                                     <button
