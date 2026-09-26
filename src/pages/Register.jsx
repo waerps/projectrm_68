@@ -109,7 +109,7 @@ const handleSubmit = async (e) => {
   };
 
   return (
-    <div className="min-h-screen  via-white to-orange-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen  via-white to-orange-50 bg-orange-50/40 sm:bg-transparent py-6 sm:py-10 lg:py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* Background */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full blur-3xl opacity-20 animate-pulse"></div>
@@ -117,22 +117,23 @@ const handleSubmit = async (e) => {
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header */}
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600 mb-3">
+        <div className="text-center mb-5 sm:mb-8 lg:mb-10">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl leading-tight lg:leading-none font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-orange-600 mb-2 lg:mb-3">
             ลงทะเบียนผู้ใช้งาน
           </h1>
-          <p className="text-gray-600 text-lg">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อสร้างบัญชีผู้ใช้งาน</p>
+          <p className="text-gray-600 text-sm sm:text-base lg:text-lg">กรุณากรอกข้อมูลให้ครบถ้วนเพื่อสร้างบัญชีผู้ใช้งาน</p>
         </div>
 
         {/* Main Form Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8 lg:p-12 backdrop-blur-lg border border-gray-100">
-          <div className="space-y-8">
+        <div className="sm:bg-white rounded-3xl sm:shadow-2xl p-0 sm:p-8 lg:p-12 backdrop-blur-lg sm:border border-gray-100">
+          <div className="space-y-4 sm:space-y-8">
             {/* ข้อมูลส่วนตัว */}
-            <div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
+                <span className="h-5 w-1 shrink-0 rounded-full bg-orange-500 sm:hidden" />
                 ข้อมูลส่วนตัว
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     ชื่อ <span className="text-red-500">*</span>
@@ -243,11 +244,12 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* ข้อมูลการศึกษา */}
-            <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-none sm:border-x-0 sm:border-b-0 sm:border-t sm:border-gray-200 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:shadow-none">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
+                <span className="h-5 w-1 shrink-0 rounded-full bg-orange-500 sm:hidden" />
                 ข้อมูลการศึกษา
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     โรงเรียน
@@ -328,12 +330,13 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* ข้อมูลติดต่อ */}
-            <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-none sm:border-x-0 sm:border-b-0 sm:border-t sm:border-gray-200 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:shadow-none">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
+                <span className="h-5 w-1 shrink-0 rounded-full bg-orange-500 sm:hidden" />
                 ข้อมูลติดต่อและอื่นๆ
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="group">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+                <div className="group md:col-span-2 lg:col-span-1">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Line ID
                   </label>
@@ -364,11 +367,12 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* ข้อมูลบัญชีผู้ใช้ */}
-            <div className="border-t border-gray-200 pt-8">
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:rounded-none sm:border-x-0 sm:border-b-0 sm:border-t sm:border-gray-200 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-8 sm:shadow-none">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 mb-4 sm:mb-6 flex items-center gap-2">
+                <span className="h-5 w-1 shrink-0 rounded-full bg-orange-500 sm:hidden" />
                 ข้อมูลบัญชีผู้ใช้
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
                 <div className="group md:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     ชื่อผู้ใช้ (Username) <span className="text-red-500">*</span>
@@ -394,12 +398,12 @@ const handleSubmit = async (e) => {
                       value={formData.password}
                       onChange={handleChange}
                       placeholder="กรอกรหัสผ่าน"
-                      className="w-full px-4 py-3 pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
+                      className="w-full px-4 py-3 pr-12 lg:pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-1 lg:right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 lg:block lg:h-auto lg:w-auto place-items-center text-gray-400 hover:text-gray-600"
                       aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
                       tabIndex={-1}
                     >
@@ -419,12 +423,12 @@ const handleSubmit = async (e) => {
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       placeholder="กรอกรหัสผ่านอีกครั้ง"
-                      className="w-full px-4 py-3 pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
+                      className="w-full px-4 py-3 pr-12 lg:pr-11 bg-gray-50 rounded-xl border-2 border-gray-100 outline-none focus:border-orange-500 focus:bg-white transition-all duration-300 text-gray-700"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      className="absolute right-1 lg:right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 lg:block lg:h-auto lg:w-auto place-items-center text-gray-400 hover:text-gray-600"
                       aria-label={showConfirmPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
                       tabIndex={-1}
                     >
@@ -436,21 +440,21 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* PDPA — ข้อความแจ้งการเก็บ/ใช้ข้อมูล (ประกาศเฉย ๆ ไม่มีการขอความยินยอมที่หน้านี้) */}
-            <div className="border-t border-gray-200 pt-6 mt-6">
+            <div className="sm:border-t border-gray-200 sm:pt-6 sm:mt-6">
               <div className="rounded-xl bg-orange-50 border border-orange-100 p-4">
-                <p className="text-xs text-gray-600 leading-relaxed">
+                <p className="text-[13px] lg:text-xs text-gray-600 leading-relaxed">
                   สถาบันจะเก็บและใช้ข้อมูลที่ท่านกรอกในหน้านี้ เพื่อจัดการบัญชีผู้เรียนและการเรียนการสอนเท่านั้น
                   ส่วนข้อมูลอื่นที่อาจกระทบความเป็นส่วนตัวมากกว่านี้ เช่น การบันทึกพฤติกรรมระหว่างทำข้อสอบ
                   ระบบจะขอความยินยอมจากท่านแยกต่างหากอีกครั้งก่อนชำระเงินซื้อคอร์สเรียน โดยจะถามเพียงครั้งเดียวเท่านั้น
                 </p>
-                <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                <label className="mt-3 flex items-start gap-2.5 lg:gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={pdpaAcknowledged}
                     onChange={(e) => setPdpaAcknowledged(e.target.checked)}
-                    className="mt-0.5 accent-orange-500 w-4 h-4 shrink-0"
+                    className="mt-0.5 accent-orange-500 w-5 h-5 lg:w-4 lg:h-4 shrink-0"
                   />
-                  <span className="text-xs font-semibold text-gray-700">
+                  <span className="text-sm lg:text-xs font-semibold text-gray-700">
                     ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว <span className="text-red-500">*</span>
                   </span>
                 </label>
@@ -458,17 +462,17 @@ const handleSubmit = async (e) => {
             </div>
 
             {/* Buttons */}
-            <div className="border-t border-gray-200 pt-8 flex flex-col sm:flex-row gap-4">
+            <div className="sm:border-t border-gray-200 pt-1 sm:pt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <button
                 onClick={handleSubmit}
                 disabled={!pdpaAcknowledged}
-                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-lg"
+                className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-3.5 sm:py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:shadow-lg"
               >
                 ลงทะเบียน
               </button>
               <button
                 onClick={() => window.history.back()}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-4 rounded-xl transition-all duration-300"
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 sm:py-4 rounded-xl transition-all duration-300"
               >
                 ยกเลิก
               </button>
@@ -489,7 +493,7 @@ const handleSubmit = async (e) => {
         </div>
 
         {/* Footer Note */}
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-4 sm:mt-6 text-center text-sm text-gray-500">
           <p>หมายเหตุ: ข้อมูลที่มีเครื่องหมาย <span className="text-red-500">*</span> จำเป็นต้องกรอก</p>
         </div>
       </div>

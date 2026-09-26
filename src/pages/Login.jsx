@@ -129,11 +129,11 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-gray-50/50 p-4">
+    <div className="min-h-screen flex items-center justify-center relative bg-gradient-to-b from-orange-50 via-white to-gray-50 md:bg-none md:bg-gray-50/50 px-4 py-6 sm:py-10 md:p-4">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full blur-3xl opacity-20 animate-pulse -z-10"></div>
 
-      <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2 border border-gray-100">
+      <div className="relative w-full max-w-md md:max-w-lg lg:max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 border border-gray-100">
         <button type="button" onClick={() => navigate("/")} className="absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-gray-500 shadow-md backdrop-blur transition hover:bg-white hover:text-orange-500" aria-label="ปิดและกลับหน้า Home" title="กลับหน้า Home">
           <X className="h-5 w-5" />
         </button>
@@ -142,7 +142,7 @@ export function Login() {
         <div className="hidden md:flex flex-col relative"> 
 
           {/* ส่วนแสดงรูปภาพสไลด์ */}
-          <div className="relative overflow-hidden group" style={{ height: "400px" }}>
+          <div className="relative overflow-hidden group h-48 lg:h-[400px]">
             <div
               className="flex h-full w-full transition-transform duration-1000 ease-in-out"
               style={{ transform: `translateX(-${currentImage * 100}%)` }}
@@ -172,7 +172,7 @@ export function Login() {
           </div>
 
           {/* ปุ่มสลับ Role */}
-          <div className="p-6 bg-white border-t border-orange-100 z-10">
+          <div className="px-10 pt-6 lg:p-6 bg-white border-t border-orange-100 z-10">
             <div className="flex gap-4">
               <button
                 type="button"
@@ -199,14 +199,24 @@ export function Login() {
         </div>
 
         {/* ================= Right Form Section ================= */}
-        <div className="flex flex-col justify-center px-8 md:px-16 py-12 transition-all duration-500 bg-white">
+        <div className="flex flex-col justify-center px-6 sm:px-8 md:px-10 lg:px-16 pt-7 pb-8 sm:py-10 md:pt-7 md:pb-10 lg:py-12 transition-all duration-500 bg-white">
+          {/* แบรนด์ + สลับบทบาท (มือถือ — จอใหญ่อยู่ใต้สไลด์) */}
+          <div className="md:hidden mb-6 flex items-center gap-2.5 pr-12">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 p-1.5">
+              <img src="/logo.png" alt="ศรเสริมติวเตอร์" className="h-auto w-full object-contain" />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="font-bold text-sm text-gray-800">SORNSERM</span>
+              <span className="font-bold text-sm text-orange-500">TUTOR</span>
+            </div>
+          </div>
 
-          <h2 className="text-3xl font-bold text-orange-500 mb-2 md:hidden">
+          <h2 className="text-base font-semibold text-orange-500 mb-1 md:hidden">
             เข้าสู่ระบบ
           </h2>
 
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">
+          <div className="mb-6 lg:mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
               {role === "user" ? "เข้าสู่ระบบนักเรียน" : "เข้าสู่ระบบติวเตอร์และ Admin"}
             </h2>
             <p className="text-gray-500 mt-2 text-sm">
@@ -216,8 +226,27 @@ export function Login() {
             </p>
           </div>
 
+          <div className="md:hidden mb-6 grid grid-cols-2 gap-1 rounded-2xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setRole("user")}
+              aria-pressed={role === "user"}
+              className={`h-11 rounded-xl text-[15px] font-bold transition-all ${role === "user" ? "bg-orange-500 text-white shadow-md" : "text-gray-500 hover:text-orange-500"}`}
+            >
+              นักเรียน
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("admin")}
+              aria-pressed={role === "admin"}
+              className={`h-11 rounded-xl text-[15px] font-bold transition-all ${role === "admin" ? "bg-gray-800 text-white shadow-md" : "text-gray-500 hover:text-gray-800"}`}
+            >
+              ผู้ดูแลระบบ
+            </button>
+          </div>
+
           {/* Form เชื่อมต่อกับ handleSubmit */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-5 lg:space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-1">
               <label className="text-sm font-medium text-gray-700 ml-1">
                 {role === "user" ? "ชื่อผู้ใช้" : "ชื่อติวเตอร์ / ชื่อผู้ดูแลระบบ"}
@@ -228,7 +257,7 @@ export function Login() {
                 value={formData.username}     // Bind ค่า
                 onChange={handleChange}       // รับค่าเมื่อพิมพ์
                 placeholder={role === "user" ? "กรอกชื่อผู้ใช้ของคุณ" : "กรอกรหัส Admin"}
-                className="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                className="w-full h-12 lg:h-auto px-4 sm:px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
               />
             </div>
 
@@ -241,12 +270,12 @@ export function Login() {
                   value={formData.password}     // Bind ค่า
                   onChange={handleChange}       // รับค่าเมื่อพิมพ์
                   placeholder="กรอกรหัสผ่าน"
-                  className="w-full px-5 py-3 pr-11 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                  className="w-full h-12 lg:h-auto px-4 sm:px-5 py-3 pr-12 lg:pr-11 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-1 lg:right-3 top-1/2 -translate-y-1/2 grid h-10 w-10 lg:block lg:h-auto lg:w-auto place-items-center text-gray-400 hover:text-gray-600"
                   aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
                   tabIndex={-1}
                 >
@@ -255,8 +284,8 @@ export function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-gray-600 cursor-pointer">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 text-sm">
+              <label className="flex min-h-10 lg:min-h-0 items-center gap-2 text-gray-600 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -268,7 +297,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => { setForgotForm({ username: formData.username, phoneNo: '' }); setShowForgotModal(true); }}
-                className="text-orange-500 hover:underline"
+                className="min-h-10 lg:min-h-0 text-orange-500 hover:underline"
               >
                 ลืมรหัสผ่าน?
               </button>
@@ -286,7 +315,7 @@ export function Login() {
           </form>
 
           {role === "user" && (
-            <p className="text-center text-sm text-gray-500 mt-8">
+            <p className="text-center text-sm text-gray-500 mt-6 lg:mt-8">
               ยังไม่มีบัญชีผู้ใช้?{" "}
               <a href="/register" className="text-orange-500 font-bold hover:underline">
                 ลงทะเบียน
@@ -297,11 +326,11 @@ export function Login() {
       </div>
 
       {showForgotModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4">
+          <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white p-5 pb-6 sm:p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-800">ลืมรหัสผ่าน</h3>
-              <button type="button" onClick={() => setShowForgotModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button type="button" onClick={() => setShowForgotModal(false)} className="-mr-2 grid h-10 w-10 place-items-center rounded-full text-gray-400 hover:text-gray-600 sm:mr-0 sm:block sm:h-auto sm:w-auto">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -316,7 +345,7 @@ export function Login() {
                   value={forgotForm.username}
                   onChange={(e) => setForgotForm((f) => ({ ...f, username: e.target.value }))}
                   placeholder="กรอกชื่อผู้ใช้"
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                  className="w-full h-11 sm:h-auto px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
                 />
               </div>
               <div>
@@ -326,7 +355,7 @@ export function Login() {
                   value={forgotForm.phoneNo}
                   onChange={(e) => setForgotForm((f) => ({ ...f, phoneNo: e.target.value }))}
                   placeholder="0xx-xxx-xxxx"
-                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
+                  className="w-full h-11 sm:h-auto px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
                 />
               </div>
               <button
