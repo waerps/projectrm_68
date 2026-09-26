@@ -89,6 +89,8 @@ function getCourseSubjects(course, allSubjects) {
 
 // ─── component ────────────────────────────────────────────────
 export default function AdminSchedule() {
+  // มือถือ: วันที่เลือกดูในมุมมองรายวัน (1=อาทิตย์ … 7=เสาร์ แบบเดียวกับ DayOfWeek)
+  const [mobileDow, setMobileDow] = useState(() => new Date().getDay() + 1);
   // data
   const [schedule, setSchedule] = useState([]);
   const [meta, setMeta] = useState({ rooms: [], tutors: [], subjects: [], courses: [] });
@@ -562,7 +564,66 @@ export default function AdminSchedule() {
               <span>กำลังโหลด...</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* มือถือ: มุมมองรายวัน */}
+            <div className="md:hidden">
+              <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
+                {DAY_ORDER.map(dow => {
+                  const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
+                  const isToday = isoDate(dayDate) === isoDate(new Date());
+                  const holiday = holidayMap[isoDate(dayDate)];
+                  const active = dow === mobileDow;
+                  const n = Object.values(scheduleMap[dow] || {}).reduce((a, arr) => a + arr.filter(pass).length, 0);
+                  return (
+                    <button key={dow} type="button" onClick={() => setMobileDow(dow)}
+                      className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : holiday ? 'bg-red-50 border-red-200 text-red-700' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-neutral-200 text-neutral-700'}`}>
+                      <div className="text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</div>
+                      <div className={`text-[10px] ${active ? 'text-orange-100' : 'text-neutral-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</div>
+                      <div className={`mt-0.5 text-[10px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {(() => {
+                const dow = mobileDow;
+                const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
+                const dateStr = isoDate(dayDate);
+                const holiday = holidayMap[dateStr];
+                const addAt = (slot) => {
+                  if (holiday) {
+                    const ok = window.confirm(`วันที่เลือกเป็นวันหยุดของสถาบัน (${holiday}) ต้องการเพิ่มคาบเรียนในวันนี้หรือไม่?`);
+                    if (!ok) return;
+                  }
+                  openAdd(dow, slot.start, slot.end);
+                };
+                return (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-bold text-neutral-800">วัน{DAY_MAP[dow]} <span className="font-normal text-neutral-400">· {dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })}</span></p>
+                    {holiday && <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">🎌 วันหยุด: {holiday}</p>}
+                    {derivedTimeSlots.filter(sl => !sl.isBreak).map(slot => {
+                      const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
+                      return (
+                        <div key={slot.label} className={`flex gap-3 rounded-2xl border p-2.5 ${entries.length ? 'bg-white border-neutral-200' : 'bg-neutral-50 border-dashed border-neutral-200'}`}>
+                          <div className="w-16 shrink-0 pt-1 text-center text-xs font-bold text-neutral-600 leading-tight">{slot.label}</div>
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            {entries.map(e => (
+                              <ClassCard key={e.CourseScheduleDetailId} entry={e} weekStart={weekStart}
+                                onEdit={() => openEdit(e)}
+                                onDelete={() => { setSelected(e); setDeleteScope('this'); setShowDelete(true); }} />
+                            ))}
+                            <button type="button" onClick={() => addAt(slot)}
+                              className={`w-full ${entries.length ? 'h-8' : 'h-10'} rounded-xl text-xs font-semibold text-neutral-400 hover:text-orange-500 flex items-center justify-center gap-1 border border-dashed border-neutral-200 bg-white/60`}>
+                              <Plus className="h-3.5 w-3.5" /> เพิ่มคาบ
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="hidden md:block overflow-x-auto">
               <div className="min-w-[1100px]">
                 <div className="grid grid-cols-8 gap-1.5">
 
@@ -696,6 +757,7 @@ export default function AdminSchedule() {
                 </div>
               </div>
             </div>
+            </>
           )}
         </div>
       </div>

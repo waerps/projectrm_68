@@ -130,8 +130,8 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
         <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-neutral-100">
           <div>
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
@@ -1526,8 +1526,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-neutral-100">
           <div>
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
@@ -2212,8 +2212,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmReopen && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmReopen(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmReopen(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
                     <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
@@ -2264,8 +2264,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmOverride && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmOverride(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmOverride(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
                     <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
@@ -2347,8 +2347,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmClose && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmClose(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmClose(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
                     <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
@@ -2470,8 +2470,8 @@ function StudentDetailModal({
   const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-neutral-800">รายละเอียดผลสอบ</p>

@@ -384,7 +384,7 @@ export default function CoursesPage() {
           )}
         </div>
         {subjectModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             {/* Overlay */}
             <div
               className="absolute inset-0 bg-neutral-900/50 backdrop-blur-sm"
@@ -392,7 +392,7 @@ export default function CoursesPage() {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl">
 
               {/* Header */}
               <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-5 border-b border-neutral-100">

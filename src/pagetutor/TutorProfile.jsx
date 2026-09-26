@@ -369,7 +369,7 @@ function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
 
 function ValidationModal({ fields, onClose }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -377,7 +377,7 @@ function ValidationModal({ fields, onClose }) {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden animate-in">
+            <div className="relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in">
                 {/* Top accent */}
                 <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 to-amber-400" />
 

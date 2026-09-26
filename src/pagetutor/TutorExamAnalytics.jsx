@@ -2170,8 +2170,8 @@ const exportToExcel = (rows, examLabel) => {
 const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
   const columns = rows.length ? Object.keys(rows[0]) : [];
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 lg:gap-0 px-4 sm:px-6 py-4 border-b border-slate-100">
           <h3 className="font-bold text-slate-800 min-w-0 lg:min-w-auto">พรีวิวก่อน Export Excel · {examLabel}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">

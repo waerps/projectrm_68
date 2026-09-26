@@ -377,8 +377,8 @@ export default function TutorCourseManagePage() {
       {questionVideo && <TutorVideoQuestionEditor video={questionVideo} token={token} onClose={() => setQuestionVideo(null)} />}
 
       {isAddVideoOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <UploadCloud className="h-5 w-5 text-orange-500" /> อัปโหลดวิดีโอบทเรียน
             </h3>
@@ -417,8 +417,8 @@ export default function TutorCourseManagePage() {
 
       {/* ===== MODAL: UPLOAD DOC ===== */}
       {isUploadDocOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <UploadCloud className="h-5 w-5 text-blue-500" /> อัปโหลดเอกสาร
             </h3>
@@ -452,8 +452,8 @@ export default function TutorCourseManagePage() {
 
       {/* ===== MODAL: EDIT DOC ===== */}
       {editingDoc && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-500" /> แก้ไขเอกสาร
             </h3>

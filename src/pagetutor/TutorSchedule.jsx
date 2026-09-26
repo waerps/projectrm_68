@@ -116,6 +116,68 @@ const STATUS_STYLE = {
 }
 
 // ─── Component ──────────────────────────────────────────────────────
+// มุมมองรายวันสำหรับมือถือ — ใช้ข้อมูล/สถานะ/การกดเหมือนตารางรายสัปดาห์ทุกอย่าง
+function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, clockNow, onPick }) {
+  const todayName = DAYS_GRID.find(d => weekDates[d]?.iso === todayDate)
+  const [day, setDay] = useState(todayName || DAYS_GRID[0])
+  useEffect(() => { if (todayName) setDay(todayName) }, [todayName])
+  const count = (d) => slots.filter(sl => !sl.isBreak && scheduleMap[d]?.[sl.label]).length
+  const items = slots.filter(sl => !sl.isBreak && scheduleMap[day]?.[sl.label])
+  return (
+    <div className="md:hidden">
+      <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
+        {DAYS_GRID.map(d => {
+          const active = d === day
+          const isToday = weekDates[d]?.iso === todayDate
+          const n = count(d)
+          return (
+            <button key={d} type="button" onClick={() => setDay(d)}
+              className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-neutral-200 text-neutral-700'}`}>
+              <div className="text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</div>
+              <div className={`text-[10px] ${active ? 'text-orange-100' : 'text-neutral-400'}`}>{weekDates[d]?.display}</div>
+              <div className={`mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
+            </button>
+          )
+        })}
+      </div>
+      <p className="mt-2 mb-3 text-sm font-bold text-neutral-800">วัน{day} <span className="font-normal text-neutral-400">· {items.length} คาบ</span></p>
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white py-10 text-center text-sm text-neutral-400">ไม่มีคาบสอนในวันนี้</div>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map(sl => {
+            const cls = scheduleMap[day][sl.label]
+            const status = getSlotStatus(cls, slotPhases, clockNow)
+            const style = status ? STATUS_STYLE[status] : null
+            return (
+              <button key={sl.label} type="button" onClick={() => onPick(day, sl.label, cls)}
+                className={`w-full text-left flex gap-3 rounded-2xl border-2 p-3 ${style ? style.card : 'bg-white border-neutral-200'}`}>
+                <div className="w-16 shrink-0 text-center">
+                  <p className="text-xs font-bold text-neutral-700 leading-tight">{sl.label}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
+                  <p className="mt-1 text-sm text-neutral-700 leading-snug line-clamp-2">{cls.courseName}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+                    <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
+                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
+                  </div>
+                  {style && (
+                    <div className={`mt-2 inline-flex text-[11px] font-bold py-1 px-2 rounded-md border items-center gap-1 ${style.badge}`}>
+                      {style.Icon ? <style.Icon className="w-3.5 h-3.5 shrink-0" /> : <span className="h-2 w-2 rounded-full bg-neutral-300 inline-block shrink-0" />}
+                      <span>{style.label}</span>
+                    </div>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TutorSchedule() {
   const { toasts, showToast, removeToast } = useToast()
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id
@@ -565,8 +627,12 @@ export default function TutorSchedule() {
           </span>
         </div>
 
-        {/* Grid ตาราง */}
-        <div className="bg-neutral-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-neutral-100">
+        {/* มือถือ: มุมมองรายวัน */}
+        <MobileDayView weekDates={weekDates} todayDate={todayDate} slots={derivedTimeSlots} scheduleMap={scheduleMap}
+          slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
+
+        {/* Grid ตาราง (แท็บเล็ตขึ้นไป) */}
+        <div className="hidden md:block bg-neutral-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-neutral-100">
           <div className="grid grid-cols-8 gap-2 min-w-[760px] lg:min-w-[1000px]">
             <div className="text-center font-bold text-neutral-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-neutral-50 lg:static lg:bg-transparent">เวลา</div>
 
@@ -699,8 +765,8 @@ export default function TutorSchedule() {
 
       {/* ════════════════ MODAL ════════════════ */}
       {releaseModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg max-h-[90vh] lg:max-h-none overflow-y-auto lg:overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 p-0 sm:p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg max-h-[90vh] lg:max-h-none overflow-y-auto lg:overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 lg:gap-0 border-b p-4 sm:p-6">
               <div>
                 <h2 className="text-xl font-bold">ปล่อยคลาสสอน</h2>
@@ -743,8 +809,8 @@ export default function TutorSchedule() {
       )}
       {
         showModal && selectedClass && (
-          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white rounded-t-[28px] sm:rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
 
               {/* Header */}
               <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0">
