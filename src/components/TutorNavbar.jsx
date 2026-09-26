@@ -15,7 +15,7 @@ export default function Navbar() {
 
     return (
         <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
-            <nav className="mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-8 rounded-2xl bg-white px-6 md:px-8 shadow-lg">
+            <nav className="mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-4 md:gap-8 rounded-2xl bg-white px-4 md:px-8 shadow-lg">
 
                 <div className="flex items-center gap-6">
                     <Link to="/tutor" className="shrink-0">
@@ -56,13 +56,13 @@ export default function Navbar() {
                     <Link
                         to="/tutor/schedule"
                         className="relative h-11 w-11 flex items-center justify-center rounded-lg
-                       hover:bg-orange-100 hover:text-orange-500 transition-colors mr-4"
+                       hover:bg-orange-100 hover:text-orange-500 transition-colors mr-1 md:mr-4"
                         aria-label="ตารางสอน"
                     >
                         <Calendar className="h-5 w-5" />
                     </Link>
 
-                    <div className="relative group flex items-center gap-2">
+                    <div tabIndex={0} className="relative group flex items-center gap-2 outline-none">
                         <div className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white">
                             <img
                                 src={getFileUrl(user?.photo) || "/tutor.jpeg"}
@@ -87,6 +87,7 @@ export default function Navbar() {
                 rounded-xl bg-white shadow-xl
                 opacity-0 invisible
                 group-hover:opacity-100 group-hover:visible
+                group-focus-within:opacity-100 group-focus-within:visible
                 transition-all duration-200
                 z-50
               "

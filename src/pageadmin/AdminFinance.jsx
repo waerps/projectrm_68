@@ -34,7 +34,7 @@ const DONUT_COLORS = [
    ────────────────────────────────────────────────────────────────────── */
 const T = {
     card: 'bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition',
-    cardPad: 'p-6',
+    cardPad: 'p-4 sm:p-6',
     cardPadSm: 'p-4',
     transition: 'transition duration-200 ease-out',
     title: 'text-lg font-bold text-slate-900',
@@ -284,7 +284,7 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet,
             </div>
 
             <ApiState loading={loading} error={error} onRetry={onRetry} minHeight="h-28" skeletonHeight="h-28">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                     <div>
                         <p className={T.label}>รายรับเดือนนี้</p>
                         <p className={`${T.value} mt-1`}>{formatMoney(revenue)}</p>
@@ -634,7 +634,7 @@ export default function AdminFinance() {
 
             {/* ── Secondary KPIs ── */}
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     <KPICard label="รายรับสะสม" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
                     <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="blue" />
                     <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} icon={Users} tone="purple" />
@@ -812,7 +812,7 @@ export default function AdminFinance() {
                             ) : (
                                 <div className={`${T.card} overflow-hidden`}>
                                     <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
+                                        <table className="w-full min-w-[820px] text-sm">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
                                                     {['รหัส', 'นักเรียน', 'คอร์ส', 'รูปแบบ', 'ยอดรับ', 'วันที่รับ', ''].map((h, i) => (
@@ -840,7 +840,7 @@ export default function AdminFinance() {
                                 </div>
                             ) : (
                                 <div className={`${T.card} overflow-x-auto`}>
-                                    <table className="w-full text-sm">
+                                    <table className="w-full min-w-[900px] text-sm">
                                         <thead className="bg-slate-50">
                                             <tr>
                                                 {['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => (
@@ -965,7 +965,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
-                <div className="sticky top-0 z-10 px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 flex justify-between items-center">
+                <div className="sticky top-0 z-10 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 flex justify-between items-center">
                     <div>
                         <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -979,7 +979,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     <ApiState loading={loading} error={error} minHeight="h-64">
                         {data && <div className="space-y-5">
                             <div className="grid md:grid-cols-3 gap-3">
@@ -991,7 +991,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>นักเรียน</p><p className="font-bold">{studentDisplayName(data)}</p><p>{data.PhoneNo || '—'}</p><p className="text-slate-500">{data.CourseName}</p></div>
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>ข้อมูลการโอน</p><p>วันที่ {formatDate(data.TransDate || data.Created_at)}</p><p>เลขอ้างอิง {data.TransRef}</p><p>{data.SendingBank || 'ไม่ระบุธนาคารต้นทาง'} → {data.ReceivingBank || 'บัญชีสถาบัน'}</p></div>
                             </div>
-                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
+                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full min-w-[480px] text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
                             <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border border-slate-200 object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
                         </div>}
                     </ApiState>
@@ -1007,7 +1007,7 @@ function TutorPaymentDetailModal({ item, onClose }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-                <div className="flex items-center justify-between border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4">
+                <div className="flex items-center justify-between border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 px-4 sm:px-6 py-4">
                     <div>
                         <h3 className="flex items-center gap-2 text-base font-bold text-white">
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -1021,19 +1021,19 @@ function TutorPaymentDetailModal({ item, onClose }) {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
-                <div className="overflow-y-auto p-6">
+                <div className="overflow-y-auto p-4 sm:p-6">
                     <div className="mb-5 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>ยอดรวม</p>
-                            <p className="mt-1 text-2xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>จำนวนคาบ</p>
-                            <p className="mt-1 text-2xl font-bold text-slate-900">{item.sessionCount} คาบ</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.sessionCount} คาบ</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>เรทในโปรไฟล์ติวเตอร์</p>
-                            <p className="mt-1 text-2xl font-bold text-slate-900">{item.profileRate != null ? `${Number(item.profileRate).toLocaleString('th-TH')} บาท/ชม.` : 'ไม่ได้ระบุ'}</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.profileRate != null ? `${Number(item.profileRate).toLocaleString('th-TH')} บาท/ชม.` : 'ไม่ได้ระบุ'}</p>
                         </div>
                     </div>
                     <div className="overflow-x-auto rounded-2xl border border-slate-200">
@@ -1106,8 +1106,8 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
     const bankReady = item.bankName && item.bankAccountNumber && item.bankAccountName;
     const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500">
+        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto lg:max-h-none lg:overflow-hidden">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500">
                 <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
                         <Wallet className="h-4 w-4 text-white" />
@@ -1118,23 +1118,23 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
                     <X className="h-5 w-5" />
                 </button>
             </div>
-            <p className="px-6 pt-3 text-xs text-slate-400">{item.tutorName} · รอบ {item.period}</p>
-            <div className="p-6 space-y-4">
+            <p className="px-4 sm:px-6 pt-3 text-xs text-slate-400">{item.tutorName} · รอบ {item.period}</p>
+            <div className="p-4 sm:p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
                     <p className={T.label}>ยอดที่ต้องโอน</p>
-                    <p className="text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
                     <p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                     <div><p className={T.label}>ธนาคาร</p><p className="font-semibold">{item.bankName || 'ยังไม่กรอก'}</p></div>
-                    <div><p className={T.label}>เลขบัญชี</p><p className="font-semibold">{item.bankAccountNumber || 'ยังไม่กรอก'}</p></div>
+                    <div><p className={T.label}>เลขบัญชี</p><p className="font-semibold break-all">{item.bankAccountNumber || 'ยังไม่กรอก'}</p></div>
                     <div className="col-span-2"><p className={T.label}>ชื่อบัญชี</p><p className="font-semibold">{item.bankAccountName || 'ยังไม่กรอก'}</p></div>
                 </div>
                 {!bankReady && <p className="text-sm text-red-600 bg-red-50 p-3 rounded-xl">ข้อมูลบัญชีติวเตอร์ไม่ครบ กรุณาแก้ในหน้าจัดการติวเตอร์ก่อนโอนเงิน</p>}
                 <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className={`mt-1 ${inp}`} /></label>
                 {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
-            <div className="px-6 py-4 border-t border-slate-100 flex gap-3">
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex gap-3">
                 <button type="button" onClick={onClose} disabled={saving}
                     className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
                     ยกเลิก

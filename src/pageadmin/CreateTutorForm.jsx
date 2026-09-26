@@ -92,12 +92,12 @@ export default function CreateTutorForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 py-10 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 py-6 sm:py-10 px-4">
       <div className="mx-auto max-w-3xl">
 
         {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-200">
+        <div className="mb-6 sm:mb-8 flex items-center gap-3 sm:gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-200">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
@@ -106,7 +106,7 @@ export default function CreateTutorForm() {
             </svg>
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-gray-900">สร้างบัญชี Tutor</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">สร้างบัญชี Tutor</h1>
             <p className="text-sm text-gray-500">กรอกข้อมูลให้ครบเพื่อสร้างบัญชีผู้สอน</p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function CreateTutorForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* Section: ข้อมูลส่วนตัว */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               ข้อมูลส่วนตัว
@@ -159,7 +159,7 @@ export default function CreateTutorForm() {
           </div>
 
           {/* Section: ช่องทางติดต่อ */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               ช่องทางติดต่อ
@@ -181,7 +181,7 @@ export default function CreateTutorForm() {
           </div>
 
           {/* Section: บัญชีผู้ใช้ */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               บัญชีผู้ใช้
@@ -246,7 +246,7 @@ export default function CreateTutorForm() {
           </div>
 
           {/* Submit */}
-          <div className="flex justify-end gap-3 pb-4">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pb-4">
             <button
               type="button"
               onClick={() => { setForm(initialForm); setAlert(null); }}

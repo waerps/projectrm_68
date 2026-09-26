@@ -127,7 +127,7 @@ function InfoRow({ label, value, name, isEditing, onChange, editable = true, typ
   return (
     <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
       <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">{label}</span>
-      <div className="flex-1 text-right">
+      <div className="flex-1 min-w-0 text-right">
         {isEditing && editable ? (
           <input
             type={type}
@@ -137,7 +137,7 @@ function InfoRow({ label, value, name, isEditing, onChange, editable = true, typ
             className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
           />
         ) : (
-          <span className="text-sm font-semibold text-neutral-800">
+          <span className="text-sm font-semibold text-neutral-800 break-words">
             {value || <span className="text-neutral-300 font-normal">-</span>}
           </span>
         )}
@@ -263,7 +263,7 @@ export default function AdminProfile() {
 
       {/* Edit Mode Banner */}
       {isEditing && (
-        <div className="flex items-center justify-between rounded-2xl bg-orange-400 px-5 py-3 shadow-md">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-orange-400 px-4 sm:px-5 py-3 shadow-md">
           <div className="flex items-center gap-2.5 text-white">
             <Pencil className="h-4 w-4" />
             <span className="font-semibold text-sm">กำลังแก้ไขข้อมูล</span>
@@ -285,7 +285,7 @@ export default function AdminProfile() {
 
       {/* Profile Header Card */}
       <div className="overflow-hidden rounded-2xl shadow-lg">
-        <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-8 md:p-10">
+        <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-5 sm:p-8 md:p-10">
           <div className="flex flex-col gap-8 md:flex-row md:items-center">
 
             {/* รูปโปรไฟล์ */}
@@ -319,7 +319,7 @@ export default function AdminProfile() {
                       className="rounded-xl px-3 py-2 text-neutral-800 text-lg font-semibold w-40 outline-none border-2 border-transparent focus:border-orange-300 bg-white shadow-sm transition" />
                   </div>
                 ) : (
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight break-words">
                     {formData.firstname} {formData.lastname}
                   </h1>
                 )}

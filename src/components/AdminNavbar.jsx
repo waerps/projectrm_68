@@ -16,7 +16,7 @@ export default function Navbar() {
 
     return (
         <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
-            <nav className="mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-8 rounded-2xl bg-white px-6 md:px-8 shadow-lg">
+            <nav className="mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-4 md:gap-8 rounded-2xl bg-white px-4 md:px-8 shadow-lg">
 
                 <div className="flex items-center gap-6">
                     <Link to="dashboard" className="shrink-0">
@@ -39,7 +39,7 @@ export default function Navbar() {
 
                 <div className="flex items-center gap-2">
                     <NotificationBell role="admin" pagePath="/admin/notification" />
-                    <div className="relative group flex items-center gap-2">
+                    <div tabIndex={0} className="relative group flex items-center gap-2 outline-none">
                         <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
                             {user?.photo ? (
                                 <img
@@ -72,6 +72,7 @@ export default function Navbar() {
                 rounded-xl bg-white shadow-xl
                 opacity-0 invisible
                 group-hover:opacity-100 group-hover:visible
+                group-focus-within:opacity-100 group-focus-within:visible
                 transition-all duration-200
                 z-50
               "

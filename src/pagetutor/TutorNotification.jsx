@@ -72,14 +72,14 @@ export default function TutorNotifications(){
         </div>
         {unread>0 && (
           <button onClick={markAll} disabled={busy==='all'}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm disabled:opacity-60">
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm disabled:opacity-60">
             <Check className="h-4 w-4" /> อ่านทั้งหมด
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{error}</span>
           <button onClick={load} className="font-bold underline">ลองใหม่</button>
         </div>
@@ -142,12 +142,12 @@ export default function TutorNotifications(){
                         </button>
                       </div>
 
-                      <div className="p-4 pl-5 flex gap-3">
+                      <div className="p-3 pl-4 sm:p-4 sm:pl-5 flex gap-3">
                         <div className={`h-9 w-9 rounded-lg ${m.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                           <m.Icon className={`h-4.5 w-4.5 ${m.text}`} />
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-16">
+                        <div className="flex-1 min-w-0 pr-14 sm:pr-16">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="text-sm font-bold text-slate-900">
                               {item.title}
@@ -157,8 +157,8 @@ export default function TutorNotifications(){
                               {m.label}
                             </span>
                           </div>
-                          <p className="text-sm leading-6 text-slate-600">{item.message}</p>
-                          <div className="mt-2 flex items-center justify-between">
+                          <p className="text-sm leading-6 text-slate-600 break-words">{item.message}</p>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                             <span className="text-xs text-slate-400">{ago(item.createdAt)}</span>
                             {item.link && (
                               <button onClick={()=>act(item)}

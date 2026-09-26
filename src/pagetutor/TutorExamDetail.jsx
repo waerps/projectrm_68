@@ -316,7 +316,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={hideScore ? "hidden" : ""}>
           <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
           {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
@@ -791,7 +791,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               <p className="text-xs text-red-600">{error}</p>
             </div>
           )}
-          <div className="flex justify-between">
+          <div className="flex flex-wrap justify-between gap-2">
             <button onClick={() => setStep(1)} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium">← อัปโหลดไฟล์อื่น</button>
             <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
               {confirming
@@ -1012,7 +1012,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
           </p>
         </div>
         {!mode && !editing && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {items.length > 0 && (
               <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-neutral-200 hover:border-green-300 hover:text-green-700 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
                 <Download className="h-4 w-4" /> ส่งออก Excel
@@ -1528,7 +1528,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-neutral-100">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-neutral-100">
           <div>
             <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
               <Zap className="h-4 w-4 text-amber-500" /> จัดชุดข้อสอบ
@@ -1538,7 +1538,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="flex gap-1 px-6 pt-3 border-b border-neutral-100">
+        <div className="flex gap-1 px-4 sm:px-6 pt-3 border-b border-neutral-100">
           {[["auto", "ให้ระบบสุ่มให้"], ["manual", "เลือกเอง"]].map(([k, label]) => (
             <button
               key={k}
@@ -1551,7 +1551,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
         </div>
 
         {courseGradeLevelId && !loading && bank.length > 0 && (
-          <div className="mx-6 mt-3 flex items-start sm:items-center justify-between gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex-col sm:flex-row">
+          <div className="mx-4 sm:mx-6 mt-3 flex items-start sm:items-center justify-between gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 flex-col sm:flex-row">
             <div className="flex items-start gap-2">
               <Filter className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-blue-700">
@@ -1570,7 +1570,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
           {loading ? (
             <p className="text-sm text-neutral-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
           ) : !bank.length ? (
@@ -1582,7 +1582,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           ) : tab === "auto" && !working ? (
             <>
               <div className="overflow-x-auto border border-neutral-200 rounded-xl">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[480px] text-sm">
                   <thead>
                     <tr className="bg-neutral-50 text-neutral-500 text-xs">
                       <th className="text-left font-semibold px-4 py-2.5">หมวดเนื้อหา</th>
@@ -1789,11 +1789,11 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-neutral-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-neutral-100">
           <p className="text-xs text-neutral-400">
             {applyTo === "all" ? "จะใส่ลงทั้ง Pre / Mid / Post และแทนที่ข้อสอบเดิมของรอบเหล่านั้น" : "จะใส่ลงเฉพาะรอบนี้และแทนที่ข้อสอบเดิม"}
           </p>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
             <button onClick={onClose} className="px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 rounded-xl">ยกเลิก</button>
             {tab === "auto" && working ? (
               <>
@@ -1860,7 +1860,7 @@ function PreviewTab({ exam, goToAssemble }) {
         </div>
       )}
 
-      <div className="border border-neutral-200 rounded-2xl p-6">
+      <div className="border border-neutral-200 rounded-2xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
             <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-neutral-200 flex items-center justify-center text-neutral-500 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
@@ -2055,7 +2055,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const setScoreSum = sumScores(setQuestions);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       {/* ── ข้อสอบของรอบนี้ — จุดเริ่มต้นก่อนเปิดสอบ ── */}
       <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2472,7 +2472,7 @@ function StudentDetailModal({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-semibold text-neutral-800">รายละเอียดผลสอบ</p>
             <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
@@ -2680,7 +2680,7 @@ function StudentDetailModal({
               <div className="space-y-2.5">
                 {topicBreakdown.map((t) => (
                   <div key={t.category} className="flex items-center gap-3">
-                    <p className="text-xs text-neutral-500 w-32 flex-shrink-0 truncate">{t.category}</p>
+                    <p className="text-xs text-neutral-500 w-24 sm:w-32 flex-shrink-0 truncate">{t.category}</p>
                     <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-orange-400" style={{ width: `${t.pct * 100}%` }} />
                     </div>
@@ -2703,12 +2703,12 @@ function StudentDetailModal({
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
                       <p className="text-sm font-medium text-neutral-900 flex-1 leading-relaxed">
                         <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
                         {q.text}
                       </p>
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
@@ -2847,13 +2847,13 @@ function QuestionFlagsCard({ flags, submittedCount }) {
           }
           return (
             <div key={f.questionId} className="border border-neutral-100 bg-neutral-50/60 rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-1 sm:gap-3">
                 <p className="text-sm font-semibold text-neutral-800 min-w-0">
                   <span className="text-amber-600">ข้อ {f.no}</span>
                   {f.category ? <span className="text-neutral-400 font-medium"> · {f.category}</span> : null}
                   <span className="block text-neutral-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
                 </p>
-                <p className="text-sm font-semibold text-neutral-600 whitespace-nowrap flex-shrink-0 text-right">
+                <p className="text-sm font-semibold text-neutral-600 whitespace-nowrap flex-shrink-0 text-left sm:text-right">
                   {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีคนส่ง"}
                 </p>
               </div>
@@ -2905,7 +2905,7 @@ function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }
   return (
     <div className="bg-white border border-neutral-200 rounded-2xl px-5 py-3.5 flex items-center gap-2">
       <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
-      <p className="text-xs text-neutral-500 truncate">
+      <p className="text-xs text-neutral-500 min-w-0 lg:truncate">
         {loading
           ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
           : summaries.length > 0
@@ -3160,7 +3160,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                 <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                   <UserX className="h-4 w-4 text-red-400" />
                 </div>
-                <p className="text-sm font-medium text-neutral-700 flex-1">{s.name}</p>
+                <p className="text-sm font-medium text-neutral-700 flex-1 min-w-0 break-words">{s.name}</p>
                 <span className="text-xs font-medium text-red-500">ขาดสอบ</span>
               </div>
             ))}
@@ -3389,10 +3389,10 @@ export default function TutorExamDetail() {
       </div>
 
       {/* Exam header */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+      <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <Badge className={TYPE_BADGE[exam.type]}>{meta?.label}</Badge>
               <Badge className={sb.cls}>
                 {status === "active" && <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />}
@@ -3402,7 +3402,7 @@ export default function TutorExamDetail() {
             <h1 className="text-xl font-bold text-neutral-900">{exam.name}</h1>
             <p className="text-sm text-neutral-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             <div className="flex items-center gap-2 text-sm text-neutral-600"><FileQuestion className="h-4 w-4 text-neutral-400" />{exam.questions?.length || 0} ข้อ</div>
             <div className="flex items-center gap-2 text-sm text-neutral-600"><Clock className="h-4 w-4 text-neutral-400" />{exam.settings?.duration || 0} นาที</div>
             {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-neutral-600"><Calendar className="h-4 w-4 text-neutral-400" />{exam.settings.date}</div>}

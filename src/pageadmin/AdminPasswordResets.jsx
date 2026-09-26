@@ -52,10 +52,10 @@ export default function AdminPasswordResets() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center gap-2">
           <KeyRound className="h-6 w-6 text-orange-500" /> คำขอลืมรหัสผ่าน
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -80,13 +80,13 @@ export default function AdminPasswordResets() {
                 {pending.map((r) => (
                   <div key={r.RequestId} className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-white border border-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-700">
                           {r.UserType === "admin" ? "แอดมิน/ติวเตอร์" : "นักเรียน"}
                         </span>
-                        <span className="font-bold text-slate-800 flex items-center gap-1"><User className="h-3.5 w-3.5" /> {r.Username}</span>
+                        <span className="font-bold text-slate-800 flex items-center gap-1 break-all"><User className="h-3.5 w-3.5" /> {r.Username}</span>
                       </div>
-                      <div className="mt-1 flex items-center gap-4 text-xs text-slate-500">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {r.PhoneNo || "ไม่มีเบอร์โทร"}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(r.Created_at).toLocaleString("th-TH")}</span>
                       </div>
@@ -110,8 +110,8 @@ export default function AdminPasswordResets() {
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">ทำเสร็จแล้วล่าสุด</p>
               <div className="space-y-2">
                 {recentlyDone.map((r) => (
-                  <div key={r.RequestId} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex items-center justify-between text-sm">
-                    <span className="text-slate-600">
+                  <div key={r.RequestId} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
+                    <span className="text-slate-600 break-all">
                       {r.UserType === "admin" ? "แอดมิน/ติวเตอร์" : "นักเรียน"} · {r.Username}
                     </span>
                     <span className="text-xs text-slate-400">{new Date(r.ResolvedAt).toLocaleString("th-TH")}</span>

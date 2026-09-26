@@ -58,7 +58,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-3xl" : "max-w-lg"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
             {Icon && (
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -71,7 +71,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -123,7 +123,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
   return (
     <Modal title={`เคส #${String(i.IncidentId).padStart(4, "0")}`} icon={AlertOctagon} onClose={onClose} wide>
       {/* Header summary */}
-      <div className={`flex flex-col md:flex-row gap-4 mb-6 p-4 rounded-2xl border ${sevMeta.bg} ${sevMeta.border}`}>
+      <div className={`flex flex-col md:flex-row gap-4 mb-5 sm:mb-6 p-4 rounded-2xl border ${sevMeta.bg} ${sevMeta.border}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
@@ -146,8 +146,8 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
           <User className="h-3.5 w-3.5" /> ผู้แจ้ง
         </p>
         <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-semibold text-slate-900">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p className="font-semibold text-slate-900 break-words">
               {i.IsAnonymous ? "ไม่เปิดเผยตัวตน" : (i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`)}
               <span className="ml-2 text-xs font-normal text-slate-400">
                 ({i.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"})
@@ -467,7 +467,7 @@ export default function AdminIncidents() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เคส</th>
@@ -583,11 +583,11 @@ export default function AdminIncidents() {
 
       {/* Pagination — โครงเดียวกับ AdminStudents.jsx */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> เคส
           </p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
               <ChevronLeft className="h-4 w-4" />

@@ -171,9 +171,9 @@ export default function CoursesPage() {
               {viewMode === 'primary' ? 'ติดตามความคืบหน้าและจัดการข้อมูลในรายวิชาของคุณ' : 'ดูรายละเอียดคลาสที่รับสอนแทน เนื้อหาที่ต้องสอน และเอกสารประกอบ'}
             </p>
           </div>
-          <div className="flex rounded-xl bg-slate-100 p-1 shadow-inner">
-            <button type="button" onClick={() => setViewMode('primary')} className={`rounded-lg px-4 py-2 text-sm font-bold transition ${viewMode === 'primary' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คอร์สที่สอนหลัก</button>
-            <button type="button" onClick={() => setViewMode('accepted')} className={`rounded-lg px-4 py-2 text-sm font-bold transition ${viewMode === 'accepted' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คลาสที่รับมาสอน</button>
+          <div className="flex self-start md:self-auto max-w-full rounded-xl bg-slate-100 p-1 shadow-inner">
+            <button type="button" onClick={() => setViewMode('primary')} className={`rounded-lg px-3 sm:px-4 py-2 text-sm font-bold transition ${viewMode === 'primary' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คอร์สที่สอนหลัก</button>
+            <button type="button" onClick={() => setViewMode('accepted')} className={`rounded-lg px-3 sm:px-4 py-2 text-sm font-bold transition ${viewMode === 'accepted' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>คลาสที่รับมาสอน</button>
           </div>
         </div>
 
@@ -224,13 +224,13 @@ export default function CoursesPage() {
         {viewMode === 'accepted' && (
           <div className="grid gap-5 md:grid-cols-2">
             {acceptedClasses.length === 0 ? (
-              <div className="col-span-2 rounded-3xl border border-dashed border-neutral-200 bg-white py-16 text-center">
+              <div className="md:col-span-2 rounded-3xl border border-dashed border-neutral-200 bg-white py-16 text-center">
                 <BookOpen className="mx-auto mb-3 h-10 w-10 text-neutral-300" />
                 <p className="font-medium text-neutral-500">ยังไม่มีคลาสที่รับมาสอน</p>
               </div>
             ) : acceptedClasses.map(item => (
               <article key={item.releaseId} className="overflow-hidden rounded-2xl border-2 border-blue-100 bg-white shadow-sm">
-                <div className="border-b border-blue-100 bg-blue-50/60 p-5">
+                <div className="border-b border-blue-100 bg-blue-50/60 p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-bold text-blue-600">คลาสที่รับมาสอน</p>
@@ -240,7 +240,7 @@ export default function CoursesPage() {
                     <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">รับสอนแล้ว</span>
                   </div>
                 </div>
-                <div className="space-y-4 p-5">
+                <div className="space-y-4 p-4 sm:p-5">
                   <div className="grid gap-2 text-sm text-neutral-600 sm:grid-cols-2">
                     <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-orange-500" />{new Date(item.startDateTime).toLocaleDateString('th-TH', { dateStyle: 'medium' })} · {item.startTime}–{item.endTime}</p>
                     <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-orange-500" />{item.room || 'ไม่ระบุห้อง'}</p>
@@ -265,17 +265,17 @@ export default function CoursesPage() {
         {/* Course Grid */}
         <div className={`${viewMode === 'primary' ? 'grid' : 'hidden'} gap-5 md:grid-cols-2 lg:grid-cols-2`}>
           {filteredCourses.length === 0 ? (
-            <div className="col-span-2 text-center py-16 bg-white rounded-3xl border border-neutral-200 border-dashed">
+            <div className="md:col-span-2 text-center py-16 bg-white rounded-3xl border border-neutral-200 border-dashed">
               <div className="text-5xl mb-3">📚</div>
               <p className="text-neutral-500 font-medium">ไม่พบคอร์สเรียนของคุณ</p>
             </div>
           ) : (
             filteredCourses.map((course) => (
               <div key={course.id} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
-                <div className="p-5 border-b border-neutral-100 flex-1">
+                <div className="p-4 sm:p-5 border-b border-neutral-100 flex-1">
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1 pr-4">
-                      <h2 className="text-lg font-bold text-neutral-900 leading-tight mb-1">
+                    <div className="flex-1 min-w-0 pr-3 sm:pr-4">
+                      <h2 className="text-lg font-bold text-neutral-900 leading-tight mb-1 break-words">
                         {course.name}
                       </h2>
                       <p className="text-xs text-neutral-500 flex items-center gap-1 font-medium">
@@ -357,7 +357,7 @@ export default function CoursesPage() {
                 </div>
 
                 {/* ✅ แก้ไขปุ่ม Action (ส่งชื่อคอร์สและวิชาไปใน URL ด้วย) */}
-                <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
+                <div className="flex flex-col gap-2 lg:flex-row lg:gap-3 p-4 bg-white border-t border-neutral-100">
                   <Link
                     to={`/tutor/students?courseId=${course.id}`}
                     className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
@@ -392,10 +392,10 @@ export default function CoursesPage() {
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
 
               {/* Header */}
-              <div className="px-6 pt-6 pb-5 border-b border-neutral-100">
+              <div className="px-5 sm:px-6 pt-5 sm:pt-6 pb-5 border-b border-neutral-100">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
@@ -433,7 +433,7 @@ export default function CoursesPage() {
               </div>
 
               {/* Subjects */}
-              <div className="px-6 py-5">
+              <div className="px-5 sm:px-6 py-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold text-neutral-800">
                     วิชาที่รับผิดชอบ
@@ -484,7 +484,7 @@ export default function CoursesPage() {
               </div>
 
               {/* Footer */}
-              <div className="border-t border-neutral-100 bg-neutral-50/70 px-6 py-4">
+              <div className="border-t border-neutral-100 bg-neutral-50/70 px-5 sm:px-6 py-4">
                 <button
                   onClick={() => setSubjectModal(null)}
                   className="w-full rounded-xl py-2.5 text-sm font-medium text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-700"

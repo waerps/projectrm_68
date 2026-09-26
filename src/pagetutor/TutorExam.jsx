@@ -75,7 +75,7 @@ export default function TutorExam() {
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 break-words">
             จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
           </h1>
           <p className="text-sm text-neutral-500 mt-1">

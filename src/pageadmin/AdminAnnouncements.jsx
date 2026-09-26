@@ -80,7 +80,7 @@ function TargetBadge({ target }) {
 function Modal({ children, onClose }) {
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-6 my-8 relative">
+            <div className="bg-white rounded-2xl max-w-2xl w-full p-4 sm:p-6 my-8 relative">
                 {children}
             </div>
         </div>
@@ -154,7 +154,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
             </div>
 
             {/* Category + Target */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className={lbl}>หมวดหมู่</label>
                     <select className={inp} value={formData.category}
@@ -241,7 +241,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                                 <button
                                     onClick={() => removeExistingExtra(img.ImageId)}
                                     className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow
-                                               opacity-0 group-hover:opacity-100 transition hover:bg-red-50">
+                                               opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition hover:bg-red-50">
                                     <X className="h-3.5 w-3.5 text-red-500" />
                                 </button>
                             </div>
@@ -258,7 +258,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                                     className="h-24 w-full object-cover rounded-xl border border-orange-200" />
                                 <button onClick={() => removeNewExtra(idx)}
                                     className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow
-                                               opacity-0 group-hover:opacity-100 transition hover:bg-red-50">
+                                               opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition hover:bg-red-50">
                                     <X className="h-3.5 w-3.5 text-red-500" />
                                 </button>
                                 <span className="absolute bottom-1 left-1 bg-orange-500 text-white
@@ -473,7 +473,7 @@ export default function AdminAnnouncements() {
 
     // ── render ─────────────────────────────────────────────────────────────────
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
 
             {/* Header */}
             <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -482,7 +482,7 @@ export default function AdminAnnouncements() {
                     <p className="mt-1 text-sm text-neutral-500">จัดการข่าวสารและประกาศทั้งหมดในระบบ</p>
                 </div>
                 <button onClick={() => { resetForm(); setShowAddModal(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium">
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium">
                     <Plus className="h-4 w-4" /> เพิ่มข่าวใหม่
                 </button>
             </div>
@@ -550,7 +550,7 @@ export default function AdminAnnouncements() {
                 <div className="space-y-4">
                     {displayed.map(item => (
                         <div key={item.NewsId} className="bg-white rounded-2xl border-2 border-neutral-200 transition overflow-hidden hover:border-orange-300">
-                            <div className="p-5">
+                            <div className="p-4 sm:p-5">
                                 <div className="flex flex-col md:flex-row gap-4">
                                     {/* รูปหน้าปก */}
                                     <div className="md:w-[180px] shrink-0">

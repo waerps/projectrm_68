@@ -159,7 +159,7 @@ export default function AdminProgressOverview() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: "คอร์สที่เปิดสอน", value: totals?.courses ?? 0, color: "bg-orange-600", icon: BookOpen },
           { label: "วิชา x ติวเตอร์", value: totals?.subjectGroups ?? 0, color: "bg-blue-500", icon: GraduationCap },
@@ -176,13 +176,13 @@ export default function AdminProgressOverview() {
         ].map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+            <div key={i} className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-black text-slate-900">
+                <p className="text-lg sm:text-xl font-black text-slate-900 break-words">
                   {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
                 </p>
               </div>
@@ -278,11 +278,11 @@ export default function AdminProgressOverview() {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-500">
                   แสดง <span className="font-semibold">{(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, courseCards.length)}</span> จาก <span className="font-semibold">{courseCards.length}</span> คอร์ส
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}

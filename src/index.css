@@ -58,3 +58,21 @@ html, body {
 @keyframes sa-growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 .sa-growY { transform-origin: bottom; animation: sa-growY .8s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .sa-growY { animation: none !important; } }
+
+/* ── หน้ารายรับ: จุดวิ่งในเส้นทางเงิน / แถบลาย / วงกระพริบ ── */
+@keyframes sa-flow { from { left: -6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { left: calc(100% - 2px); opacity: 0; } }
+@keyframes sa-flowY { from { top: -6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { top: calc(100% - 2px); opacity: 0; } }
+@keyframes sa-ring { 0% { box-shadow: 0 0 0 0 rgba(249,115,22,.35); } 100% { box-shadow: 0 0 0 12px rgba(249,115,22,0); } }
+@keyframes sa-stripes { from { background-position: 0 0; } to { background-position: 24px 0; } }
+@keyframes sa-hourglass { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(180deg); } }
+@keyframes sa-pop { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.sa-flow { position: absolute; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 9999px; animation: sa-flow 2.4s linear infinite; }
+.sa-flowY { position: absolute; left: 50%; margin-left: -3px; width: 6px; height: 6px; border-radius: 9999px; animation: sa-flowY 1.8s linear infinite; }
+.sa-ring { animation: sa-ring 1.6s ease-out infinite; }
+.sa-stripes { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 6px, transparent 6px 12px); background-size: 24px 24px; animation: sa-stripes 1.2s linear infinite; }
+.sa-hourglass { animation: sa-hourglass 3s ease-in-out infinite; }
+.sa-pop { animation: sa-pop .45s cubic-bezier(.2,.8,.2,1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .sa-ring, .sa-stripes, .sa-hourglass, .sa-pop { animation: none !important; }
+  .sa-flow, .sa-flowY { display: none; }
+}

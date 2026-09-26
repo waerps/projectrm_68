@@ -81,8 +81,8 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
             {Icon && (
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
                 <Icon className="h-4 w-4 text-white" />
@@ -94,7 +94,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -320,7 +320,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
@@ -330,7 +330,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อเล่น</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} />
@@ -355,7 +355,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
             placeholder="เทศบาลสวนสนุก" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>Line ID</label>
           <input className={inp} value={form.lineId || ""} onChange={e => set("lineId", e.target.value)} />
@@ -365,7 +365,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={lbl}>ระดับชั้น</label>
           <select className={inp} value={form.gradeLevelId || ""} onChange={e => set("gradeLevelId", e.target.value)}>
@@ -432,7 +432,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         }))} />
         <p className="text-[11px] text-slate-400">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input className={inp} placeholder="ชื่อผู้ปกครอง"
             value={form.parentFirstname}
             onChange={e => setForm(f => ({ ...f, parentFirstname: e.target.value, parentId: "", removeParent: false }))} />
@@ -484,7 +484,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" /> ข้อมูลเข้าสู่ระบบ
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} autoComplete="off" />
@@ -872,7 +872,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
       {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
       {selectedCourse && tab !== "courses" && (
-        <div className="flex items-center gap-2 mb-4 text-xs">
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <span className="text-slate-400">กำลังดูคอร์ส:</span>
           <span className="bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-semibold">
             {selectedCourse.CourseName}
@@ -888,7 +888,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5 flex-wrap">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
             {t.label}
             {t.count !== null && (
               <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
@@ -987,7 +987,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการเข้าเรียนในคอร์สนี้</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[520px] text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs">
                       <th className="text-left px-4 py-3 font-semibold">วันที่</th>
@@ -1045,7 +1045,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
                           <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
                           {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
                         </div>
@@ -1666,7 +1666,7 @@ function ScoreBar({ label, value, sub, weight }) {
   return (
     <div>
       <div className="flex items-center gap-2.5">
-        <span className="text-sm text-slate-600 w-44 shrink-0">
+        <span className="text-sm text-slate-600 w-28 sm:w-44 shrink-0">
           {label}
           {weight != null && <span className="text-xs ml-1 text-slate-400">(×{weight}%)</span>}
         </span>
@@ -1677,7 +1677,7 @@ function ScoreBar({ label, value, sub, weight }) {
           {value == null ? '—' : Math.round(value)}
         </span>
       </div>
-      {sub && <p className="text-xs text-slate-400 ml-[11.75rem] mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-400 ml-[7.75rem] sm:ml-[11.75rem] mt-1">{sub}</p>}
     </div>
   );
 }
@@ -1784,7 +1784,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
       {otherEligible && (
         <button
           onClick={(e) => { e.stopPropagation(); onSwitchBoard(other.key); }}
-          className="w-full flex items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
+          className="w-full flex flex-wrap items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
         >
           <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
           <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
@@ -1817,7 +1817,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
     <div className={`bg-white rounded-2xl border transition-all
       ${rank === 1 ? 'border-amber-300' : 'border-slate-200'}`}>
       {/* แถวหลัก */}
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={onToggle}>
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer" onClick={onToggle}>
         {/* อันดับ — standard competition ranking: คะแนนเท่ากัน = อันดับเดียวกัน */}
         <span className="text-lg w-6 text-center shrink-0">
           {MEDAL[rank]
@@ -1830,7 +1830,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-base font-semibold text-slate-900">{name}</p>
+          <p className="text-base font-semibold text-slate-900 break-words">{name}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border
               ${badge.bg} ${badge.text} ${badge.border}`}>
@@ -1960,7 +1960,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-orange-100
+      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-orange-100
                       bg-gradient-to-r from-orange-500 to-amber-500">
         <div className="flex items-center gap-2.5">
           <BarChart2 className="h-5 w-5 text-white" />
@@ -1972,7 +1972,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
       {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
           เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
           เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
-      <div className="flex gap-1 px-5 pt-3 border-b border-slate-100">
+      <div className="flex gap-1 px-4 sm:px-5 pt-3 border-b border-slate-100">
         {Object.values(BOARDS).map((b) => {
           const TabIcon = b.Icon;
           return (
@@ -1991,10 +1991,10 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           );
         })}
       </div>
-      <p className="px-5 pt-3 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
+      <p className="px-4 sm:px-5 pt-3 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
 
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative ml-auto">
+      <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+        <div className="relative w-full sm:w-auto ml-auto">
           <select
             value={filterGrade}
             onChange={e => setFilterGrade(e.target.value)}
@@ -2019,7 +2019,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         </div>
 
         {/* ★ เพิ่ม: dropdown กรองตามช่วง Performance Score */}
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
@@ -2052,7 +2052,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         )}
       </div>
 
-      <div className="px-5 pb-5 space-y-4">
+      <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
@@ -2067,14 +2067,14 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
             {filtered.length > 0 && (() => {
               const MEDALS = ['🥇', '🥈', '🥉'];
               return (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
 
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                          className="min-w-0 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 text-center"
                           style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                         >
                           <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
@@ -2092,11 +2092,11 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
+                        className={`min-w-0 rounded-xl border p-2 sm:p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                       >
                         <div className="text-2xl">{MEDALS[medalIdx]}</div>
-                        <div className="flex justify-center -space-x-2 mt-2">
+                        <div className="flex flex-wrap justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(s => (
                             <button key={s.UserId} onClick={() => onViewStudent(s.UserId)}
                               className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
@@ -2144,7 +2144,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
             </div>
 
             {/* ── Show More / Show Less ───────────────────────────── */}
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <p className="text-sm text-slate-400">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
@@ -2382,7 +2382,7 @@ export default function AdminStudentsPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
@@ -2510,7 +2510,7 @@ export default function AdminStudentsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
           </p>

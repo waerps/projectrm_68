@@ -64,7 +64,7 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-bold text-neutral-900">แผงควบคุมระบบ</h1>
               <p className="mt-1 text-sm text-neutral-500">ภาพรวมสถาบันติวศรเสริม ติวเตอร์</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="px-4 py-2 bg-white border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500">
                 <option value="today">วันนี้</option>
                 <option value="week">สัปดาห์นี้</option>
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
           {stats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="bg-white rounded-2xl border-2 border-neutral-200 p-6 hover:border-orange-300 hover:shadow-lg transition cursor-pointer">
+              <div key={idx} className="bg-white rounded-2xl border-2 border-neutral-200 p-4 sm:p-6 hover:border-orange-300 hover:shadow-lg transition cursor-pointer">
                 <div className="flex items-center justify-between mb-4">
                   <div className={`p-3 rounded-xl ${stat.color}`}><Icon className="h-6 w-6 text-white" /></div>
                   <div className={`flex items-center gap-1 text-sm px-2 py-1 rounded-full ${stat.trend === 'up' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
@@ -92,13 +92,13 @@ export default function AdminDashboard() {
                   </div>
                 </div>
                 <h3 className="text-sm text-neutral-600 mb-1">{stat.label}</h3>
-                <p className="text-3xl font-bold text-neutral-900">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-neutral-900">{stat.value}</p>
               </div>
             );
           })}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4 mb-6">
           {quickStats.map((stat, idx) => (
             <div key={idx} className="bg-white rounded-xl border border-neutral-200 p-4">
               <p className="text-xs text-neutral-600 mb-1">{stat.label}</p>
@@ -110,7 +110,7 @@ export default function AdminDashboard() {
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
             <div className="p-5 bg-linear-to-br from-orange-50 to-amber-50 border-b border-orange-100">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-bold text-neutral-900 flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-orange-600" />
                   คลาสเรียนวันนี้ ({todayClasses.length})
@@ -122,8 +122,8 @@ export default function AdminDashboard() {
               {todayClasses.map((cls) => (
                 <div key={cls.id} className="p-4 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
                         <span className="text-sm font-bold text-orange-600">{cls.time}</span>
                         {getStatusBadge(cls.status)}
                       </div>

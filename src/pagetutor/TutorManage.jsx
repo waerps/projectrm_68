@@ -188,12 +188,12 @@ export default function TutorCourseManagePage() {
 
         {/* Header */}
         <div className="py-6">
-  <div className="mb-3 flex items-center text-sm text-neutral-500">
+  <div className="mb-3 flex flex-wrap items-center text-sm text-neutral-500">
     <Link to="/tutor/courses" className="hover:text-orange-600 transition">คอร์สของฉัน</Link>
     <ChevronRight className="mx-1.5 h-4 w-4" />
     <span className="text-neutral-800 font-medium">จัดการเนื้อหา</span>
   </div>
-  <h1 className="text-2xl font-bold text-neutral-900">
+  <h1 className="text-xl sm:text-2xl font-bold text-neutral-900 break-words">
     จัดการเนื้อหา{subjectName ? ` — ${subjectName}` : ""}
   </h1>
   <p className="text-sm text-neutral-500 mt-1">
@@ -208,7 +208,7 @@ export default function TutorCourseManagePage() {
           {/* VIDEOS */}
           <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
             {/* Header */}
-            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+            <div className="px-4 sm:px-5 py-4 border-b border-neutral-100 flex items-center justify-between gap-2 flex-shrink-0">
               <h2 className="flex items-center gap-2 font-bold text-neutral-800">
                 <span className="p-1.5 bg-orange-100 rounded-lg"><Video className="h-4 w-4 text-orange-500" /></span>
                 คลิปวิดีโอ
@@ -221,7 +221,7 @@ export default function TutorCourseManagePage() {
             </div>
 
             {/* Scrollable list */}
-            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+            <div className="overflow-y-auto flex-1 p-3 sm:p-4 space-y-2">
               {videos.length > 0 ? videos.map((video) => (
                 <div key={video.VideoId} className="rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden">
                   {editingVideoId === video.VideoId ? (
@@ -315,7 +315,7 @@ export default function TutorCourseManagePage() {
           {/* DOCUMENTS */}
           <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
             {/* Header */}
-            <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+            <div className="px-4 sm:px-5 py-4 border-b border-neutral-100 flex items-center justify-between gap-2 flex-shrink-0">
               <h2 className="flex items-center gap-2 font-bold text-neutral-800">
                 <span className="p-1.5 bg-blue-100 rounded-lg"><FileText className="h-4 w-4 text-blue-500" /></span>
                 เอกสาร
@@ -328,9 +328,9 @@ export default function TutorCourseManagePage() {
             </div>
 
             {/* Scrollable list */}
-            <div className="overflow-y-auto flex-1 p-4 space-y-2">
+            <div className="overflow-y-auto flex-1 p-3 sm:p-4 space-y-2">
               {documents.length > 0 ? documents.map((doc) => (
-                <div key={doc.FileId} className="rounded-xl border border-neutral-200 hover:border-blue-200 hover:shadow-sm transition bg-white p-4 flex items-center gap-3">
+                <div key={doc.FileId} className="rounded-xl border border-neutral-200 hover:border-blue-200 hover:shadow-sm transition bg-white p-3 sm:p-4 flex items-center gap-3">
                   {/* Icon */}
                   <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -378,7 +378,7 @@ export default function TutorCourseManagePage() {
 
       {isAddVideoOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <UploadCloud className="h-5 w-5 text-orange-500" /> อัปโหลดวิดีโอบทเรียน
             </h3>
@@ -418,7 +418,7 @@ export default function TutorCourseManagePage() {
       {/* ===== MODAL: UPLOAD DOC ===== */}
       {isUploadDocOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <UploadCloud className="h-5 w-5 text-blue-500" /> อัปโหลดเอกสาร
             </h3>
@@ -453,7 +453,7 @@ export default function TutorCourseManagePage() {
       {/* ===== MODAL: EDIT DOC ===== */}
       {editingDoc && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl">
             <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
               <Pencil className="h-5 w-5 text-blue-500" /> แก้ไขเอกสาร
             </h3>

@@ -44,7 +44,7 @@ const NewsCard = ({ item, highlight, onClick }) => (
           className="h-40 w-full rounded-2xl object-cover"
         />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
             {item.tag}
@@ -58,7 +58,7 @@ const NewsCard = ({ item, highlight, onClick }) => (
             </span>
           )}
         </div>
-        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed">{item.title}</h4>
+        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed break-words">{item.title}</h4>
         <p className="mt-1 text-xs text-orange-500 font-medium">อ่านต่อ →</p>
       </div>
     </div>
@@ -100,7 +100,7 @@ function ImageGallery({ images }) {
         >
           <button
             onClick={(e) => { e.stopPropagation(); prev(); }}
-            className="absolute left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
+            className="absolute left-2 sm:left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
             <ChevronLeft className="h-6 w-6 text-white" />
           </button>
@@ -114,7 +114,7 @@ function ImageGallery({ images }) {
 
           <button
             onClick={(e) => { e.stopPropagation(); next(); }}
-            className="absolute right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
+            className="absolute right-2 sm:right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
             <ChevronRight className="h-6 w-6 text-white" />
           </button>
@@ -181,7 +181,7 @@ function NewsDetailModal({ newsId, onClose }) {
               </div>
             )}
 
-            <div className="p-6 md:p-8">
+            <div className="p-5 sm:p-6 md:p-8">
               {/* Badge + วันที่ */}
               <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-medium">
@@ -193,13 +193,13 @@ function NewsDetailModal({ newsId, onClose }) {
               </div>
 
               {/* หัวข้อ */}
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4 break-words">
                 {detail.title}
               </h2>
 
               {/* เนื้อหา */}
               {detail.sub && (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">{detail.sub}</p>
+                <p className="text-gray-600 leading-relaxed whitespace-pre-line break-words">{detail.sub}</p>
               )}
 
               {/* รูปเพิ่มเติม */}

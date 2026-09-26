@@ -49,7 +49,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
                     <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                         {Icon && (
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -62,7 +62,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
-                <div className="overflow-y-auto flex-1 p-6">{children}</div>
+                <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
             </div>
         </div>
     );
@@ -241,7 +241,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className={lbl}>หมวดหมู่ <span className="text-red-400 normal-case">*</span></label>
                     <select className={`${inp} ${errors.categoryId ? errInp : ""}`} value={form.categoryId} onChange={e => set("categoryId", e.target.value)}>
@@ -264,7 +264,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
             </div>
 
             {!isEdit && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className={lbl}>จำนวนเริ่มต้น <span className="text-red-400 normal-case">*</span></label>
                         <input
@@ -546,7 +546,7 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
 function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                         <AlertTriangle className="h-6 w-6 text-red-500" />
@@ -671,13 +671,13 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                     <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                         {logs.map(log => (
                             <div key={log.LogId} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <p className="text-xs font-semibold text-slate-700">
                                         {log.ActionType === "quantity_change"
                                             ? `จำนวน: ${log.Old_Value} → ${log.New_Value} ${item.Unit}`
                                             : `สถานะ: ${statusNameOf(log.Old_Value)} → ${statusNameOf(log.New_Value)}`}
                                     </p>
-                                    <span className="text-[10px] text-slate-400">
+                                    <span className="text-[10px] text-slate-400 shrink-0">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
@@ -696,7 +696,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">อุปกรณ์</th>

@@ -59,7 +59,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) return null;
     
     return (
-        <div className="flex items-center justify-center gap-2 py-4">
+        <div className="flex flex-wrap items-center justify-center gap-2 py-4 px-4">
             <button
                 onClick={() => onPageChange(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -278,21 +278,21 @@ export default function TutorStudentDetail() {
         <div className="space-y-6 mt-[90px]">
 
             {/* Breadcrumb & Profile Card (เหมือนเดิม) */}
-            <div className="flex items-center text-sm text-neutral-500 gap-2">
+            <div className="flex flex-wrap items-center text-sm text-neutral-500 gap-2">
                 <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
                 <ChevronRight className="h-4 w-4" />
                 <Link to={`/tutor/students?courseId=${courseId}`} className="hover:text-orange-600 transition font-medium">ข้อมูลนักเรียน</Link>
                 <ChevronRight className="h-4 w-4" />
-                <span className="text-neutral-800 font-semibold">{student.name}</span>
+                <span className="text-neutral-800 font-semibold break-words min-w-0">{student.name}</span>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-5">
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <div className="h-20 w-20 rounded-xl border-2 border-orange-200 overflow-hidden shrink-0 bg-white">
                         <StudentAvatar student={student} />
                     </div>
-                    <div className="flex-1">
-                        <h1 className="text-xl font-bold text-neutral-900">{student.name}</h1>
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-xl font-bold text-neutral-900 break-words">{student.name}</h1>
                         <div className="flex flex-wrap gap-2 mt-1 text-xs text-neutral-600">
                             <span className="bg-white border rounded px-2 py-0.5">🏫 {student.school}</span>
                             <span className="bg-white border rounded px-2 py-0.5">📞 {student.phone}</span>
@@ -350,7 +350,7 @@ export default function TutorStudentDetail() {
             {/* ── Tab: Attendance with Pagination ── */}
             {activeTab === "attendance" && (
                 <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+                    <div className="p-4 border-b border-neutral-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Users className="h-5 w-5 text-orange-600" />
                             <h2 className="font-bold text-neutral-900">ประวัติการเข้าเรียนรายคาบ</h2>
@@ -370,7 +370,7 @@ export default function TutorStudentDetail() {
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full min-w-[520px] text-sm">
                             <thead>
                                 <tr className="bg-neutral-50 text-neutral-500 text-xs">
                                     <th className="text-left px-4 py-3 font-semibold">วันที่</th>
@@ -418,7 +418,7 @@ export default function TutorStudentDetail() {
             {/* ── Tab: Videos with Pagination ── */}
             {activeTab === "videos" && (
                 <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+                    <div className="p-4 border-b border-neutral-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Video className="h-5 w-5 text-orange-600" />
                             <h2 className="font-bold text-neutral-900">รายการคลิปทั้งหมด</h2>
@@ -441,7 +441,7 @@ export default function TutorStudentDetail() {
                         {paginatedVideos.length === 0 ? (
                             <div className="text-center py-10 text-neutral-400">ยังไม่มีคลิปในคอร์สนี้</div>
                         ) : paginatedVideos.map((vid) => (
-                            <div key={vid.id} className={`flex items-center gap-4 px-4 py-3.5 ${vid.watched ? "" : "bg-neutral-50"}`}>
+                            <div key={vid.id} className={`flex items-center gap-3 sm:gap-4 px-4 py-3.5 ${vid.watched ? "" : "bg-neutral-50"}`}>
                                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${vid.watched ? "bg-orange-100" : "bg-neutral-200"}`}>
                                     <PlayCircle className={`h-5 w-5 ${vid.watched ? "text-orange-600" : "text-neutral-400"}`} />
                                 </div>
@@ -503,7 +503,7 @@ export default function TutorStudentDetail() {
                     </div>
 
                     {/* สรุปพัฒนาการรวมทั้งแพ็กเกจ */}
-                    <div className="px-5 py-3.5 border-b border-neutral-100 bg-neutral-50">
+                    <div className="px-4 sm:px-5 py-3.5 border-b border-neutral-100 bg-neutral-50">
                         {improvement ? (
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div>
@@ -557,13 +557,13 @@ export default function TutorStudentDetail() {
                     </div>
 
                     {/* รายวิชา */}
-                    <div className="p-5 space-y-3">
+                    <div className="p-3 sm:p-5 space-y-3">
                         {(examData?.bySubject || []).map((s, idx) => {
                             const delta = subjectDelta(s);
                             const trend = delta == null ? "stable" : delta > 0 ? "up" : delta < 0 ? "down" : "stable";
                             const untested = s.pre == null && s.mid == null && s.post == null;
                             return (
-                                <div key={s.subjectId} className={`rounded-xl p-4 border ${untested ? "bg-neutral-50/60 border-neutral-200 border-dashed" : "bg-neutral-50 border-neutral-200"}`}>
+                                <div key={s.subjectId} className={`rounded-xl p-3 sm:p-4 border ${untested ? "bg-neutral-50/60 border-neutral-200 border-dashed" : "bg-neutral-50 border-neutral-200"}`}>
                                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                                         <div className="flex items-center gap-2">
                                             <div className={`w-3 h-3 rounded-full ${untested ? "bg-neutral-300" : SUBJECT_DOT_COLORS[idx % SUBJECT_DOT_COLORS.length]}`} />
@@ -589,9 +589,9 @@ export default function TutorStudentDetail() {
                                             { label: "กลางภาค", val: s.mid, hi: false },
                                             { label: "หลังเรียน", val: s.post, hi: true },
                                         ].map((cell) => (
-                                            <div key={cell.label} className={`p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-neutral-200"}`}>
+                                            <div key={cell.label} className={`p-2 sm:p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-neutral-200"}`}>
                                                 <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-neutral-500"}`}>{cell.label}</p>
-                                                <p className={`text-lg font-bold ${cell.val == null ? "text-neutral-300" : cell.hi ? "text-orange-600" : "text-neutral-900"}`}>
+                                                <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-neutral-300" : cell.hi ? "text-orange-600" : "text-neutral-900"}`}>
                                                     {cell.val == null ? "—" : fmtScoreNum(cell.val)}
                                                     {cell.val != null && <span className="text-xs font-semibold text-neutral-400">/{s.cap}</span>}
                                                 </p>
@@ -631,13 +631,13 @@ export default function TutorStudentDetail() {
                         ].map((s, i) => (
                             <div key={i} className="bg-white border border-neutral-200 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-neutral-500 font-medium">{s.label}</span></div>
-                                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                                <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
                             </div>
                         ))}
                     </div>
 
                     {/* Attendance Timeline */}
-                    <div className="bg-white border border-neutral-200 rounded-2xl p-5">
+                    <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <TrendingUp className="h-5 w-5 text-orange-600" />
                             <h2 className="font-bold text-neutral-900">Timeline การเข้าเรียน</h2>
@@ -666,7 +666,7 @@ export default function TutorStudentDetail() {
                     </div>
 
                     {/* Video progress overview */}
-                    <div className="bg-white border border-neutral-200 rounded-2xl p-5">
+                    <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <BarChart2 className="h-5 w-5 text-orange-600" />
                             <h2 className="font-bold text-neutral-900">ความคืบหน้าคลิป</h2>
@@ -674,7 +674,7 @@ export default function TutorStudentDetail() {
                         <div className="space-y-2.5">
                             {videos.map((vid) => (
                                 <div key={vid.id} className="flex items-center gap-3">
-                                    <span className="text-xs text-neutral-500 w-32 truncate shrink-0">{vid.title}</span>
+                                    <span className="text-xs text-neutral-500 w-24 sm:w-32 truncate shrink-0">{vid.title}</span>
                                     <div className="flex-1 h-2.5 bg-neutral-100 rounded-full overflow-hidden">
                                         <div className={`h-full rounded-full ${vid.watched ? "bg-orange-500" : "bg-neutral-300"}`}
                                             style={{ width: `${vid.watched ? 100 : vid.progress}%` }} />

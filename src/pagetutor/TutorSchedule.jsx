@@ -509,9 +509,9 @@ export default function TutorSchedule() {
     : ''
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 md:px-0 max-w-[1384px] mx-auto pb-10">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0 max-w-[1384px] mx-auto pb-10">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="bg-white rounded-2xl border border-neutral-200 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6 shadow-sm">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -544,7 +544,7 @@ export default function TutorSchedule() {
         )}
 
         {/* Legend — ปรับจาก AdminSchedule (4 สถานะ) + เพิ่ม "รอถ่ายรูปท้ายคาบ" เฉพาะติวเตอร์ */}
-        <div className="mb-4 flex flex-wrap gap-4 text-xs font-semibold">
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 lg:gap-4 text-xs font-semibold">
           <span className="flex items-center gap-1.5 text-green-600">
             <CheckCircle className="h-3.5 w-3.5" /> เช็กอินแล้ว
           </span>
@@ -566,7 +566,7 @@ export default function TutorSchedule() {
         </div>
 
         {/* Grid ตาราง */}
-        <div className="bg-neutral-50 rounded-2xl p-4 overflow-x-auto border border-neutral-100">
+        <div className="bg-neutral-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-neutral-100">
           <div className="grid grid-cols-8 gap-2 min-w-[1000px]">
             <div className="text-center font-bold text-neutral-400 py-2 text-sm uppercase tracking-wider">เวลา</div>
 
@@ -663,7 +663,7 @@ export default function TutorSchedule() {
         </div>
       </div >
 
-      <div className={`rounded-2xl border p-6 shadow-sm ${lineLinked ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+      <div className={`rounded-2xl border p-4 sm:p-6 shadow-sm ${lineLinked ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-start gap-3">
             <div className={`rounded-full p-2.5 ${lineLinked ? 'bg-green-600 text-white' : 'bg-white text-green-600'}`}>
@@ -700,15 +700,15 @@ export default function TutorSchedule() {
       {/* ════════════════ MODAL ════════════════ */}
       {releaseModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b p-6">
+          <div className="w-full max-w-lg max-h-[90vh] lg:max-h-none overflow-y-auto lg:overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 lg:gap-0 border-b p-4 sm:p-6">
               <div>
                 <h2 className="text-xl font-bold">ปล่อยคลาสสอน</h2>
                 <p className="mt-1 text-sm text-neutral-500">{releaseModal.courseName} · {releaseModal.subjectName} · {releaseModal.time}</p>
               </div>
-              <button type="button" onClick={() => setReleaseModal(null)} className="rounded-full bg-neutral-100 p-2"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setReleaseModal(null)} className="shrink-0 rounded-full bg-neutral-100 p-2"><X className="h-4 w-4" /></button>
             </div>
-            <div className="space-y-4 p-6">
+            <div className="space-y-4 p-4 sm:p-6">
               <div>
                 <label className="mb-2 block text-sm font-bold">เนื้อหาที่ผู้รับคลาสต้องสอน <span className="text-red-500">*</span></label>
                 <textarea rows="4" value={releaseForm.teachingInstructions}
@@ -732,7 +732,7 @@ export default function TutorSchedule() {
                   placeholder="เช่น ติดธุระด่วน" className="w-full rounded-xl border-2 border-neutral-200 p-3 text-sm outline-none focus:border-orange-500" />
               </div>
             </div>
-            <div className="flex gap-3 border-t bg-neutral-50 p-5">
+            <div className="flex gap-3 border-t bg-neutral-50 p-4 sm:p-5">
               <button type="button" onClick={() => setReleaseModal(null)} className="flex-1 rounded-xl border bg-white py-3 text-sm font-bold">ยกเลิก</button>
               <button type="button" onClick={submitRelease} disabled={releaseSaving} className="flex-1 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white disabled:opacity-50">
                 {releaseSaving ? 'กำลังปล่อยคลาส...' : 'ยืนยันปล่อยคลาส'}
@@ -747,16 +747,16 @@ export default function TutorSchedule() {
             <div className="bg-white rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
 
               {/* Header */}
-              <div className="p-6 border-b flex justify-between items-center bg-white sticky top-0">
+              <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0">
                 <div>
-                  <h2 className="text-xl font-bold text-neutral-900">
+                  <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
                     {modalPhase === 1 ? 'บันทึกต้นคาบ' : 'ถ่ายรูปปิดคาบ'}
                   </h2>
                   <p className="text-xs text-neutral-500 mt-0.5">คาบเรียนเวลา {selectedClass.time}</p>
                 </div>
 
                 {/* Step indicator */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black
                   ${modalPhase === 1 ? 'bg-orange-500 text-white' : 'bg-green-500 text-white'}`}>
                     {modalPhase === 1 ? '1' : '✓'}
@@ -766,7 +766,7 @@ export default function TutorSchedule() {
                   ${modalPhase === 2 ? 'bg-orange-500 text-white' : 'bg-neutral-200 text-neutral-400'}`}>
                     2
                   </div>
-                  <button onClick={closeModal} className="ml-3 w-10 h-10 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-500 hover:bg-red-50 hover:text-red-500 transition-colors">
+                  <button onClick={closeModal} className="ml-1 sm:ml-3 w-10 h-10 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-500 hover:bg-red-50 hover:text-red-500 transition-colors">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -774,7 +774,7 @@ export default function TutorSchedule() {
 
               {/* ══ PHASE 1 ══════════════════════════════════ */}
               {modalPhase === 1 && (
-                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
 
                   {/* Course info */}
                   <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl p-5 shadow-md">
@@ -856,7 +856,7 @@ export default function TutorSchedule() {
 
               {/* ══ PHASE 2 ══════════════════════════════════ */}
               {modalPhase === 2 && (
-                <div className="p-6 space-y-5 overflow-y-auto flex-1">
+                <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
 
                   {/* Reminder */}
                   <div className="bg-green-50 border border-green-200 rounded-2xl p-4 flex items-start gap-3">
@@ -906,7 +906,7 @@ export default function TutorSchedule() {
               )}
 
               {/* Footer ปุ่ม */}
-              <div className="p-6 border-t bg-white">
+              <div className="p-4 sm:p-6 border-t bg-white">
                 {modalPhase === 1 ? (
                   <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="flex items-center gap-2">

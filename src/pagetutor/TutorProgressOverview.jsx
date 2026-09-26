@@ -237,7 +237,7 @@ export default function TutorProgressOverview() {
                 >
                   <div className="px-4 py-3 border-b border-slate-100">
                     <p className="font-bold text-slate-900 text-sm">{c.courseName}</p>
-                    <div className="flex items-center gap-3 mt-1">
+                    <div className="flex flex-wrap items-center gap-3 mt-1">
                       <span className="flex items-center gap-1 text-xs text-slate-500">
                         <Calendar className="h-3.5 w-3.5 text-slate-400" />
                         {fmtDate(c.startDate) ? `เริ่ม ${fmtDate(c.startDate)}` : "ยังไม่ระบุวันเริ่ม"}
@@ -274,11 +274,11 @@ export default function TutorProgressOverview() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-500">
                   แสดง <span className="font-semibold">{(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, courseCards.length)}</span> จาก <span className="font-semibold">{courseCards.length}</span> คอร์ส
                 </p>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}

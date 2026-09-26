@@ -1056,7 +1056,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           const on = statusFilter === k;
           return (
             <button key={k} type="button" onClick={() => setStatusFilter(on ? "all" : k)} aria-pressed={on}
-              className={`sa-rise relative overflow-hidden text-left rounded-2xl p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
+              className={`sa-rise relative overflow-hidden text-left rounded-2xl p-4 sm:p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
               style={{ animationDelay: `${i * 0.06}s` }}>
               {on && <><div className={`absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><div className="absolute inset-0 sa-grain opacity-50" /></>}
               <div className="relative flex items-center justify-between gap-2">
@@ -1067,7 +1067,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                 </div>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
               </div>
-              <p className={`relative tabular-nums text-3xl font-black mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+              <p className={`relative tabular-nums text-2xl sm:text-3xl font-black mt-3 ${on ? "text-white" : "text-slate-900"}`}>
                 {counts[k]}<span className={`text-lg font-bold ml-1 ${on ? "text-white/80" : "text-slate-400"}`}>คน</span>
               </p>
               <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
@@ -1092,7 +1092,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           const { full, nick } = splitName(s.name);
           return (
             <button key={s.studentId} type="button" onClick={() => onOpenStudent(s.studentId)} {...tiltHandlers}
-              className="sa-tilt sa-rise relative text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-4 items-center"
+              className="sa-tilt sa-rise relative text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-3 sm:gap-4 items-center"
               style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
               <span className="sa-glow" />
               <span className="relative flex-shrink-0">
@@ -1491,7 +1491,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
           <div className="absolute inset-0 sa-grain opacity-60" />
           <div className="absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/15 blur-2xl" />
           <button type="button" onClick={onClose} aria-label="ปิด" className="absolute right-4 top-4 z-10 h-9 w-9 rounded-xl bg-white/15 hover:bg-white/30 flex items-center justify-center"><X className="h-5 w-5" /></button>
-          <div className="relative p-5 grid md:grid-cols-[1fr_auto] gap-6 items-center">
+          <div className="relative p-5 pr-14 lg:pr-5 grid md:grid-cols-[1fr_auto] gap-4 sm:gap-6 items-center">
             <div className="flex gap-4 items-start min-w-0">
               <div className="relative flex-shrink-0">
                 <div className="h-16 w-16 rounded-2xl bg-white text-orange-500 flex items-center justify-center text-2xl font-black shadow">{initialOf(data.name)}</div>
@@ -1499,7 +1499,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
-                <h2 className="text-xl font-bold leading-tight">{fullName}</h2>
+                <h2 className="text-xl font-bold leading-tight break-words">{fullName}</h2>
                 <p className="text-sm text-white/90">{nick ? `น้อง${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
@@ -1585,7 +1585,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
           {latest && (
             <>
               {/* ── 2) คะแนนข้ามรอบ ── */}
-              <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".1s" }}>
+              <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".1s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
@@ -1623,11 +1623,11 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 3) รายหมวด ── */}
-              <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".14s" }}>
+              <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".14s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><BookOpen className="h-4 w-4 text-orange-500" /> รายหมวด · {latest.label}</h3>
                   {topics.length >= 3 && canSelfCompare && (
-                    <div className="inline-flex bg-slate-100 rounded-xl p-1 text-xs font-bold">
+                    <div className="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 text-xs font-bold">
                       {[["class", "เทียบค่าเฉลี่ยห้อง"], ["self", `เทียบตัวเองตอน ${first.label}`]].map(([k, l]) => (
                         <button key={k} type="button" onClick={() => setRadarMode(k)}
                           className={`px-3 py-1.5 rounded-lg transition ${mode === k ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
@@ -1689,7 +1689,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 4) สิ่งที่ต้องช่วย ── */}
-              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5" style={{ animationDelay: ".18s" }}>
+              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
                 <div className={`grid gap-4 ${paceRatio != null ? "lg:grid-cols-[1fr_17rem]" : ""}`}>
                   <div className="space-y-2.5">
@@ -1761,7 +1761,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
-                <div className="flex items-center justify-between gap-3 flex-wrap px-5 sm:px-6 pt-5">
+                <div className="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 pt-5">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><MessageCircle className="h-4 w-4 text-orange-500" /> ข้อความถึงผู้ปกครอง</h3>
                   {aiRow && (
                     <div className="flex gap-2 items-center flex-wrap">
@@ -1780,7 +1780,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 </div>
                 {aiRow ? (
                   <>
-                    <div className="m-5 sm:m-6 rounded-2xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
+                    <div className="m-4 sm:m-6 rounded-2xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
                       <p className="text-center text-[10px] text-white/90 mb-3"><span className="bg-slate-900/20 rounded-full px-2 py-0.5">ตัวอย่างตอนส่งในแชต</span></p>
                       <div className="flex gap-2 justify-end items-end">
                         <span className="text-[10px] text-white/90 mb-1 text-right">อ่านแล้ว</span>
@@ -1793,7 +1793,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                           className="w-full mt-3 rounded-2xl border-0 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300" />
                       )}
                     </div>
-                    <div className="px-5 sm:px-6 pb-5 -mt-2 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="px-4 sm:px-6 pb-5 -mt-2 flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-[10.5px] text-slate-400">{parentMessage.length} ตัวอักษร · AI ร่างให้ ครูอ่านทบทวนก่อนส่งทุกครั้ง · กด "วิเคราะห์ใหม่" จะเขียนทับข้อความที่แก้ไว้</span>
                       {dirty && (
                         <button type="button" onClick={saveMessage} disabled={saving}
@@ -1803,7 +1803,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       )}
                     </div>
                   </>
-                ) : <p className="px-5 sm:px-6 pb-5 pt-2 text-xs text-slate-400">{noAiNote}</p>}
+                ) : <p className="px-4 sm:px-6 pb-5 pt-2 text-xs text-slate-400">{noAiNote}</p>}
               </div>
             </>
           )}
@@ -1982,10 +1982,10 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         <div className="absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/15 blur-2xl" />
         <div className="absolute -left-10 -bottom-24 h-60 w-60 rounded-full bg-rose-400/30 blur-2xl" />
         <Confetti fire={cmp.avgGain > 0} />
-        <div className="relative grid lg:grid-cols-[18rem_1fr] gap-6 p-5">
+        <div className="relative grid lg:grid-cols-[18rem_1fr] gap-4 lg:gap-6 p-4 sm:p-5">
           <div>
             <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "ห้องนี้เก่งขึ้นเฉลี่ย" : "คะแนนห้องนี้เปลี่ยนไปเฉลี่ย"}</p>
-            <p className="tabular-nums text-4xl font-black leading-none mt-2 drop-shadow-sm">
+            <p className="tabular-nums text-3xl sm:text-4xl font-black leading-none mt-2 drop-shadow-sm">
               <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
             <p className="text-sm text-white/90 mt-3">{cmp.fromLabel} → {cmp.toLabel} · จากนักเรียน <b>{cmp.cohortSize} คน</b> ที่สอบครบทุกรอบ</p>
@@ -2007,7 +2007,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
         {/* ── ดีขึ้น / ลดลง / เท่าเดิม ── */}
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".08s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".08s" }}>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><PieChart className="h-4 w-4 text-orange-500" /> ดีขึ้น / ลดลง / เท่าเดิม</h3>
           <div className="relative mx-auto mt-3 h-36 w-36">
             <svg viewBox="0 0 180 180" className="h-36 w-36 -rotate-90" aria-hidden="true">
@@ -2041,7 +2041,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".14s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 min-w-0 lg:min-w-auto" style={{ animationDelay: ".14s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> ใครขยับไปเท่าไร</h3>
             <div className="inline-flex bg-slate-100 rounded-xl p-1 text-xs font-bold">
@@ -2070,13 +2070,13 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <p className="text-xs text-blue-700">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
         </div>
       ) : (
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-5" style={{ animationDelay: ".2s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการรายหมวด</h3>
               <p className="text-xs text-slate-400 mt-0.5">เรียงจากหมวดที่ขยับน้อยที่สุด — แถวบนสุดคือที่ควรปรับวิธีสอนหรือเพิ่มเวลา</p>
             </div>
-            <div className="flex items-center gap-3 text-[11px] text-slate-500">
+            <div className="flex items-center gap-3 flex-wrap text-[11px] text-slate-500">
               <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-400" />70%+</span>
               <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-amber-300" />50–69%</span>
               <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-rose-400" />ต่ำกว่า 50%</span>
@@ -2172,13 +2172,13 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="font-bold text-slate-800">พรีวิวก่อน Export Excel · {examLabel}</h3>
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800 min-w-0">พรีวิวก่อน Export Excel · {examLabel}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-auto px-6 py-4 flex-1">
+        <div className="overflow-auto px-4 sm:px-6 py-4 flex-1">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="bg-slate-50">
@@ -2200,7 +2200,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2 flex-wrap px-4 sm:px-6 py-4 border-t border-slate-100">
           <button onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
             ยกเลิก
@@ -2758,7 +2758,7 @@ export function ExamAnalyticsView({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
           <p className="text-sm text-slate-500 mt-1">
             {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
             {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
@@ -2834,7 +2834,7 @@ export function ExamAnalyticsView({
           (ย้ายจากแท็บ "ภาพรวม" มาอยู่แท็บ "รายคน" อย่างเดียว) ปุ่มเลือกรอบเดิมอยู่แค่แท็บภาพรวม
           จึงใส่ปุ่มเลือกรอบไว้ในแถบนี้เองด้วย (ใช้ state examId ร่วมกับแท็บภาพรวม) */}
       {activeTab === "progress" && (
-        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
@@ -2855,7 +2855,7 @@ export function ExamAnalyticsView({
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-wrap lg:flex-shrink-0">
             <button
               onClick={handleReanalyze}
               disabled={reanalyzing || !examResults[examId]?.submittedCount}

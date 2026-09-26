@@ -371,7 +371,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">เบอร์โทร</p>
           <p className="text-sm text-slate-800">{application.PhoneNo || "—"}</p>
@@ -565,7 +565,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] lg:min-w-0 text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้สมัคร</th>
@@ -671,10 +671,10 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
             {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
                 <Icon className="h-4 w-4 text-white" />
               </span>
             )}
@@ -684,7 +684,7 @@ function Modal({ title, icon: Icon, onClose, children, wide }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -940,7 +940,7 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
             );
             return (
               <div key={localId} className="flex items-center gap-3 px-3 py-2">
-                <span className="flex-1 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
+                <span className="flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
                 <select
                   value={SubjectId}
                   onChange={e => setSubjectFor(localId, e.target.value)}
@@ -1156,7 +1156,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
@@ -1166,7 +1166,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} placeholder="นามสกุล" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อเล่น / ชื่อที่ใช้เรียก</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} placeholder="เช่น ครูเป้ว" />
@@ -1182,7 +1182,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>Line ID</label>
           <input className={inp} value={form.lineId || ""} onChange={e => set("lineId", e.target.value)} placeholder="@lineid" />
@@ -1192,7 +1192,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>อาชีพ / สาขาวิชา</label>
           <input className={inp} value={form.occupation || ""} onChange={e => set("occupation", e.target.value)} placeholder="เช่น นักศึกษา" />
@@ -1225,7 +1225,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
           <CreditCard className="h-3.5 w-3.5" /> ข้อมูลบัญชีธนาคาร
         </p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={lbl}>ธนาคาร</label>
             <input className={inp} value={form.bankName || ""} onChange={e => set("bankName", e.target.value)} placeholder="เช่น ไทยพาณิชย์" />
@@ -1243,7 +1243,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       {/* ผู้ติดต่อฉุกเฉิน — ★ แก้: เลือกชื่อจากรายชื่อติวเตอร์ในระบบได้ (Searchable Select), เบอร์เติมอัตโนมัติแต่แก้เองได้ */}
       <div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={lbl}>ชื่อผู้ติดต่อฉุกเฉิน</label>
             <EmergencyContactSelect
@@ -1287,7 +1287,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" /> ข้อมูลเข้าสู่ระบบ
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} placeholder="username" autoComplete="off" />
@@ -1717,7 +1717,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
   ];
 
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+    <div className="mt-3 bg-slate-50 rounded-xl px-3 sm:px-4 py-3 space-y-2">
       {/* ★ เพิ่ม: เตือนรวมด้านบนถ้าคาบสอนน้อยกว่าเกณฑ์ขึ้นโพเดียม */}
       {tutor.LowDataWarning && (
         <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1">
@@ -1736,7 +1736,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
         return (
           <div key={m.name}>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-36 shrink-0">
+              <span className="text-xs text-slate-500 w-28 sm:w-36 shrink-0">
                 {m.name}
                 <span className="text-[10px] ml-1">(×{m.weight}%)</span>
               </span>
@@ -1748,16 +1748,16 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
                 {contrib}
               </span>
             </div>
-            <p className={`text-[10px] ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+            <p className={`text-[10px] ml-[7.5rem] sm:ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
               {m.warn && <Info className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}{m.sub}
             </p>
           </div>
         );
       })}
 
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+      <div className="pt-2 border-t border-slate-200 flex justify-between items-center gap-3">
         <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold">
+        <span className="text-base font-semibold text-right">
           {tutor.PerformanceScore === null ? 'ยังไม่มีข้อมูล (ไม่มีตารางสอนเดือนนี้)' : `${tutor.PerformanceScore} / 100`}
         </span>
       </div>
@@ -1772,7 +1772,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
   return (
     <div className={`bg-white rounded-2xl border transition-all
       ${index === 0 ? 'border-amber-300' : 'border-slate-200'}`}>
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer"
         onClick={onToggle}>
         {/* rank */}
         <span className="text-lg w-6 text-center shrink-0">
@@ -1782,7 +1782,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
         <TutorAvatar tutor={tutor} className="h-9 w-9 rounded-xl text-xs shrink-0" />
         {/* info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
+          <p className="text-sm font-semibold text-slate-900 truncate">{tutor.Nickname}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
@@ -1813,7 +1813,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
           ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
           : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
       </div>
-      {expanded && <div className="px-4 pb-3"><MetricBreakdown tutor={tutor} minWeeksForConsistency={minWeeksForConsistency} /></div>}
+      {expanded && <div className="px-3 sm:px-4 pb-3"><MetricBreakdown tutor={tutor} minWeeksForConsistency={minWeeksForConsistency} /></div>}
     </div>
   );
 }
@@ -1899,7 +1899,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-orange-100
+      <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-0 px-4 sm:px-5 py-4 border-b border-orange-100
                       bg-gradient-to-r from-orange-500 to-amber-500">
         <div className="flex items-center gap-2.5">
           <BarChart2 className="h-5 w-5 text-white" />
@@ -1909,7 +1909,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
       </div>
 
       {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
-      <div className="px-5 pt-3">
+      <div className="px-4 sm:px-5 pt-3">
         <p className="flex items-center gap-1 text-[11px] text-slate-400">
           <Info className="h-3 w-3 shrink-0" />
           คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงตามช่วงวันที่ที่เลือกในหน้าบันทึกชั่วโมงการสอน)
@@ -1917,8 +1917,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
       </div>
 
       {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative ml-auto">
+      <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+        <div className="relative w-full sm:w-auto ml-auto">
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
@@ -1933,7 +1933,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         </div>
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
@@ -1960,7 +1960,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         )}
       </div>
 
-      <div className="px-5 pb-5 space-y-4">
+      <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
@@ -1973,7 +1973,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <>
             {filtered.length >= 1 && (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
                     const MEDALS = ['🥇', '🥈', '🥉'];
@@ -1981,7 +1981,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
+                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 text-center"
                           style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
                         >
                           <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
@@ -1997,7 +1997,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center transition-all duration-200 cursor-pointer
+                        className={`rounded-xl border p-2 sm:p-3 text-center transition-all duration-200 cursor-pointer
                         hover:-translate-y-1.5 hover:shadow-lg hover:scale-[1.03]
                         ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
                         style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
@@ -2006,13 +2006,13 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                         <div className="flex justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(t => (
                             <button key={t.AdminId} onClick={() => onViewTutor(t)}
-                              className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
+                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
                               title={t.Nickname}>
-                              <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-xs" />
+                              <TutorAvatar tutor={t} className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl text-xs" />
                             </button>
                           ))}
                           {group.members.length > 4 && (
-                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            <span className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
                               +{group.members.length - 4}
                             </span>
                           )}
@@ -2045,7 +2045,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <p className="text-xs text-slate-400">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
@@ -2073,7 +2073,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
       </div>
 
       {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
-      <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+      <div className="px-4 sm:px-5 py-4 border-t border-slate-100 bg-slate-50/50">
         {/* <p className="text-xs text-slate-500 leading-relaxed">
           <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
           คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
@@ -2081,7 +2081,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
         </p> */}
         {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
-        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+        <p className="flex items-start sm:items-center gap-1 text-[11px] text-slate-400">
           <Info className="h-3 w-3 shrink-0" />
           ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
         </p>
@@ -2133,7 +2133,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   return (
     <Modal title={`ข้อมูลติวเตอร์: ${displayName}`} icon={Eye} onClose={onClose} wide>
       {/* Profile card */}
-      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
         <TutorAvatar tutor={tutor} className="h-16 w-16 rounded-2xl text-lg border-2 border-white/30" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-lg">{displayName}</p>
@@ -2149,7 +2149,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
             )}
           </div>
         </div>
-        <div className="flex gap-3 shrink-0">
+        <div className="flex gap-3 shrink-0 w-full sm:w-auto">
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
             <p className="text-xl font-black">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
             <p className="text-[10px] text-orange-100">นักเรียน</p>
@@ -2162,10 +2162,10 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5">
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto mb-5">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}>
+            className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap shrink-0 transition ${tab === t.key ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}>
             {t.label}{t.count !== undefined && ` (${t.count})`}
           </button>
         ))}
@@ -2212,9 +2212,9 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               ? <p className="text-center text-slate-400 py-8">ยังไม่มีนักเรียน</p>
               : <div className="space-y-1">
                 {data.students.map(s => (
-                  <div key={`${s.UserId}-${s.CourseID}`} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50">
+                  <div key={`${s.UserId}-${s.CourseID}`} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
                     <span className="text-sm text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
-                    <span className="text-[11px] text-slate-400">{s.CourseName}</span>
+                    <span className="text-[11px] text-slate-400 text-right">{s.CourseName}</span>
                   </div>
                 ))}
               </div>
@@ -2387,7 +2387,7 @@ export default function AdminTutorsPage() {
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── Tab Bar ── */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveTab('list')}
           className={`px-4 py-2 rounded-xl text-sm font-medium transition
@@ -2529,7 +2529,7 @@ export default function AdminTutorsPage() {
         ) : (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติวเตอร์</th>
@@ -2561,11 +2561,11 @@ export default function AdminTutorsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-slate-500">
               แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
             </p>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
                 <ChevronLeft className="h-4 w-4" />

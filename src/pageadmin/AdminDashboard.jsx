@@ -15,7 +15,7 @@ const API_BASE = `${API_URL}/api/admin/dashboard`;
 /* ─── Design tokens (อิงจาก AdminStudent.jsx / AdminTutors.jsx เพื่อให้เป็นระบบเดียวกัน) ─── */
 const T = {
   card: "bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition",
-  cardPad: "p-5",
+  cardPad: "p-4 sm:p-5",
   transition: "transition duration-200 ease-out",
   title: "text-base font-bold text-slate-900",
   subtitle: "text-sm text-slate-500",
@@ -80,7 +80,7 @@ function ErrorState({ message, onRetry }) {
 function SectionCard({ title, icon: Icon, action, children, className = "" }) {
   return (
     <div className={`${T.card} ${T.cardPad} flex flex-col ${className}`}>
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
         <h3 className={`${T.title} flex items-center gap-2`}>
           {Icon && <Icon className="h-4 w-4 text-orange-500" />}
           {title}
@@ -356,7 +356,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 mt-[90px]">
+      <div className="space-y-6 mt-[90px] px-4 lg:px-0">
         <Skeleton className="h-14 w-full" />
         <SkeletonGrid count={3} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
 
   if (error && !data) {
     return (
-      <div className="mt-[90px]">
+      <div className="mt-[90px] px-4 lg:px-0">
         <ErrorState message={error} onRetry={() => fetchData()} />
       </div>
     );
@@ -428,7 +428,7 @@ export default function AdminDashboard() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">ภาพรวมสถาบัน</h1>

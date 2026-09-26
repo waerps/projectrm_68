@@ -88,14 +88,14 @@ export default function TutorQuestionBank() {
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-slate-900 break-words">
               คลังข้อสอบ{selected?.subjectName ? ` — ${selected.subjectName}` : ""}
             </h1>
             <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดหมวดหมู่ข้อสอบของคุณในวิชานี้</p>
           </div>
           <button
             onClick={backToList}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:border-orange-300 hover:text-orange-600 transition shrink-0"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:border-orange-300 hover:text-orange-600 transition shrink-0 self-start md:self-auto"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนวิชา
           </button>
@@ -192,7 +192,7 @@ export default function TutorQuestionBank() {
         !error && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วิชา</th>

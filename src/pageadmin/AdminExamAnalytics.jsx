@@ -45,7 +45,7 @@ export default function AdminExamAnalytics() {
 
   if (!courseId || !subjectId || !tutorId) {
     return (
-      <div className="mt-[90px] text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+      <div className="mt-[90px] text-center py-20 px-4 bg-white rounded-3xl border border-dashed border-slate-200">
         <div className="text-5xl mb-3">🔎</div>
         <p className="text-slate-500 font-medium">ลิงก์ไม่ครบ ต้องระบุคอร์ส วิชา และติวเตอร์</p>
         <Link to="/admin/progress" className="inline-block mt-3 text-sm font-semibold text-orange-600 hover:underline">
@@ -72,7 +72,7 @@ export default function AdminExamAnalytics() {
           )}
           <Link to={backToOverview} className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
           <ChevronRight className="h-4 w-4" />
-          <span className="font-semibold text-slate-700">
+          <span className="font-semibold text-slate-700 break-words min-w-0">
             {courseName || "คอร์ส"}{subjectName ? ` · ${subjectName}` : ""}
           </span>
         </div>

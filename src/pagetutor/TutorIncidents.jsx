@@ -55,7 +55,7 @@ function IncidentCard({ incident, showReporter, onClick }) {
                         </p>
                     )}
 
-                    <p className="text-sm text-slate-600 mt-1.5 line-clamp-2">{incident.Description}</p>
+                    <p className="text-sm text-slate-600 mt-1.5 line-clamp-2 break-words">{incident.Description}</p>
 
                     {incident.Attachments?.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
@@ -87,7 +87,7 @@ function IncidentCard({ incident, showReporter, onClick }) {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
                         </span>
@@ -138,7 +138,7 @@ export default function TutorIncidents() {
     }
 
     if (error) {
-        return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+        return <div className="mt-[90px] rounded-xl bg-red-50 p-6 sm:p-10 text-center font-medium text-red-600">{error}</div>;
     }
 
     const list = tab === "mine" ? mine : against;
@@ -150,13 +150,13 @@ export default function TutorIncidents() {
                 <p className="text-sm text-slate-500 mt-1">เรื่องที่คุณแจ้งไป และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>
             </div>
 
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit">
                 {[
                     { key: "mine", label: "เรื่องที่ฉันแจ้ง", count: mine.length },
                     { key: "against", label: "เรื่องที่ถูกแจ้งเกี่ยวกับฉัน", count: against.length },
                 ].map((t) => (
                     <button key={t.key} onClick={() => setTab(t.key)}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
+                        className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
                         {t.label}
                         <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
                             {t.count}

@@ -271,7 +271,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
             <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
                     <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                         {Icon && (
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -284,7 +284,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
-                <div className="overflow-y-auto flex-1 p-6">{children}</div>
+                <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
             </div>
         </div>
     );
@@ -886,7 +886,7 @@ export default function AdminRooms() {
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 md:px-0">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -895,7 +895,7 @@ export default function AdminRooms() {
                     <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
                 </div>
                 <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
                     <Plus className="h-4 w-4" /> เพิ่มห้องเรียน
                 </button>
             </div>
@@ -930,7 +930,7 @@ export default function AdminRooms() {
                     </div>
                     <div className="relative">
                         <select value={filterFloor} onChange={e => setFilterFloor(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px]">
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[140px]">
                             <option value="all">ทุกชั้น</option>
                             {floors.map(f => <option key={f} value={f}>ชั้น {f}</option>)}
                         </select>
@@ -938,7 +938,7 @@ export default function AdminRooms() {
                     </div>
                     <div className="relative">
                         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]">
+                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[150px]">
                             <option value="all">ทุกสถานะ</option>
                             {statuses.map(s => <option key={s.Status_Room_Id} value={s.Status_Room_Id}>{s.Status_Room_Name}</option>)}
                         </select>

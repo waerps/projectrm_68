@@ -67,7 +67,7 @@ export default function CourseManagePage() {
         <div className="mb-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-neutral-900">{courseInfo.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">{courseInfo.name}</h1>
               <p className="mt-1 text-sm text-neutral-500">
                 เริ่มเรียน: {courseInfo.startDate} • นักเรียน {courseInfo.studentCount} คน
               </p>
@@ -90,7 +90,7 @@ export default function CourseManagePage() {
               </div>
             </div>
 
-            <div className="p-5 space-y-3 bg-neutral-50">
+            <div className="p-3 sm:p-5 space-y-3 bg-neutral-50">
               {videos.map((video) => (
                 <div key={video.id} className="bg-white rounded-xl p-4 border-2 border-neutral-200 hover:border-orange-300 transition">
                   <h4 className="font-semibold text-neutral-900">{video.title}</h4>
@@ -102,7 +102,7 @@ export default function CourseManagePage() {
                     <span>{video.duration}</span>
                     <span>{video.size}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-200">
+                  <div className="flex flex-wrap gap-2 items-center justify-between mt-3 pt-3 border-t border-neutral-200">
                     <div className="flex items-center gap-2 text-sm">
                       <Eye className="h-4 w-4 text-orange-600" />
                       <span className="font-semibold text-neutral-900">{video.views}</span>
@@ -156,14 +156,14 @@ export default function CourseManagePage() {
               </div>
             </div>
 
-            <div className="p-5 space-y-3 bg-neutral-50">
+            <div className="p-3 sm:p-5 space-y-3 bg-neutral-50">
               {documents.map((doc) => (
                 <div key={doc.id} className="bg-white rounded-xl p-4 border-2 border-neutral-200 hover:border-orange-300 transition">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="bg-orange-50 text-orange-600 px-2 py-1 rounded text-xs font-medium border border-orange-200">
                       {doc.type}
                     </span>
-                    <h4 className="font-semibold text-neutral-900">{doc.title}</h4>
+                    <h4 className="font-semibold text-neutral-900 min-w-0 break-words">{doc.title}</h4>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-600">
                     <span className="flex items-center gap-1">
@@ -172,7 +172,7 @@ export default function CourseManagePage() {
                     </span>
                     <span>{doc.size}</span>
                   </div>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-neutral-200">
+                  <div className="flex flex-wrap gap-2 items-center justify-between mt-3 pt-3 border-t border-neutral-200">
                     <div className="flex items-center gap-2 text-sm">
                       <Download className="h-4 w-4 text-orange-600" />
                       <span className="font-semibold text-neutral-900">{doc.downloads}</span>

@@ -440,7 +440,7 @@ export default function AdminSchedule() {
         )}
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <StatCard
             icon={<BookOpen className="h-5 w-5 text-white" />}
             bg="bg-blue-500"
@@ -746,7 +746,7 @@ export default function AdminSchedule() {
       {/* Delete */}
       {showDelete && selected && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+          <div className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-neutral-900 mb-2">ยืนยันการลบคาบสอน</h3>
             <p className="text-sm text-neutral-600 mb-4">
               ลบคาบ <strong>{selected.SubjectName || selected.CourseName}</strong> วัน{DAY_MAP[selected.DayOfWeek]} {selected.StartTime}–{selected.EndTime}
@@ -905,7 +905,7 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
       )}
 
       {/* Actions */}
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-1">
+      <div className="absolute top-1 right-1 opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition flex gap-1">
         <button
           onClick={e => {
             e.stopPropagation();
@@ -1068,7 +1068,7 @@ function ScheduleModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-neutral-900">{title}</h3>
           <button onClick={onClose}>
@@ -1107,7 +1107,7 @@ function ScheduleModal({
           )}
 
           {/* Day + Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-neutral-600 mb-1 block">วัน *</label>
               <select
@@ -1198,7 +1198,7 @@ function ScheduleModal({
           />
 
           {/* Subject + Room */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-neutral-600 mb-1 block">วิชา</label>
               <select
@@ -1251,7 +1251,7 @@ function ScheduleModal({
               <label className="text-xs text-neutral-600 mb-1 block">
                 ช่วงเทอม * <span className="text-neutral-400">(จะสร้างทุกสัปดาห์อัตโนมัติ)</span>
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="date"
                   value={formData.TermStartDate}

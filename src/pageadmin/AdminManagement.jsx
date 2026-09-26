@@ -30,7 +30,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
             {Icon && (
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -43,7 +43,7 @@ function Modal({ title, icon: Icon, onClose, children }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -148,7 +148,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
         <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
@@ -158,7 +158,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} placeholder="นามสกุล" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อเล่น</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} placeholder="เช่น กวาง" />
@@ -188,7 +188,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
           <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5" /> ข้อมูลเข้าสู่ระบบ
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} placeholder="username" autoComplete="off" />
@@ -249,7 +249,7 @@ function ResetPasswordModal({ admin, onClose, showToast }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
             <KeyRound className="h-5 w-5 text-orange-600" />
@@ -290,7 +290,7 @@ function ConfirmStatusModal({ admin, nextIsActive, onConfirm, onCancel, isSubmit
   const displayName = admin.Nickname || `${admin.Firstname} ${admin.Lastname}`;
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${nextIsActive ? "bg-emerald-100" : "bg-red-100"}`}>
             {nextIsActive ? <UserCheck className="h-6 w-6 text-emerald-500" /> : <UserX className="h-6 w-6 text-red-500" />}
@@ -438,7 +438,7 @@ export default function AdminManagement() {
           <p className="text-sm text-slate-500 mt-1">ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน แต่ละคนมีบัญชีของตัวเอง</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
           <Plus className="h-4 w-4" /> เพิ่มผู้ดูแลระบบ
         </button>
       </div>
@@ -482,7 +482,7 @@ export default function AdminManagement() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้ดูแลระบบ</th>

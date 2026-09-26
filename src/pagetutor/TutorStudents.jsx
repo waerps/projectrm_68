@@ -277,7 +277,7 @@ export default function TutorStudents() {
             <div className="">
                 {/* Header */}
                 <div className="mb-6">
-                    <div className="mb-6 flex items-center text-sm">
+                    <div className="mb-6 flex flex-wrap items-center text-sm">
                         <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">คอร์ส</Link>
                         <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
                         <span className="font-medium text-gray-800">ข้อมูลนักเรียน</span>
@@ -289,8 +289,8 @@ export default function TutorStudents() {
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
                         </div>
-                        <div className="relative group">
-                            <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition font-medium">
+                        <div className="relative group self-start md:self-auto">
+                            <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition font-medium">
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
                             <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-neutral-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
@@ -355,14 +355,14 @@ export default function TutorStudents() {
                         <div key={student.id} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-300 transition overflow-hidden">
 
                             {/* Student Header */}
-                            <div className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100">
+                            <div className="p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-16 w-16 overflow-hidden rounded-xl border-2 border-orange-200 shrink-0 bg-white">
+                                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                        <div className="h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-xl border-2 border-orange-200 shrink-0 bg-white">
                                             <StudentAvatar student={student} />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-neutral-900">{student.name}</h3>
+                                            <h3 className="text-lg font-bold text-neutral-900 break-words">{student.name}</h3>
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
                                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200 mt-1">
                                                     ⚠️ เข้าเรียนต่ำกว่า 60%
@@ -384,7 +384,7 @@ export default function TutorStudents() {
                                     </div>
 
                                     {/* ── ลบ expandedStudent button ออก เหลือแค่ trend + ปุ่มดูรายละเอียด ── */}
-                                    <div className="flex items-center gap-2 md:gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
                                         {student.exam?.improvement && (
                                             <div
                                                 className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}
@@ -405,7 +405,7 @@ export default function TutorStudents() {
                             </div>
 
                             {/* Quick Overview (stats cards ยังคงอยู่) */}
-                            <div className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-50">
+                            <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-neutral-50">
                                 <div className="bg-white rounded-xl p-3 border border-neutral-200">
                                     <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">การเข้าเรียน</span></div>
                                     {getAttendanceRate(student) === null ? <p className="text-xs text-neutral-400">ยังไม่มีข้อมูล</p> : (
@@ -475,12 +475,12 @@ export default function TutorStudents() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-neutral-500">
                             แสดง <span className="font-semibold text-neutral-700">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)}</span>
                             {' '}จาก <span className="font-semibold text-neutral-700">{filteredStudents.length}</span> คน
                         </p>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                             <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
                                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition">
                                 <ChevronLeft className="h-4 w-4" />

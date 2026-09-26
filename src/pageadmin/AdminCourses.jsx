@@ -202,7 +202,7 @@ function Modal({ onClose, children, title, icon: Icon, wide }) {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="flex items-center gap-2.5 text-base font-bold text-white truncate pr-4">
             {Icon && (
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
@@ -215,7 +215,7 @@ function Modal({ onClose, children, title, icon: Icon, wide }) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -706,7 +706,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
           onFocus={e => e.target.select()}
           placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
@@ -906,7 +906,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
       {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
       {hasSuggestion && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+        <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
             แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
@@ -997,7 +997,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
       {adding && (
         <div className="px-4 py-3 bg-orange-50 border-t border-orange-100 space-y-2 rounded-b-xl">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select value={newRow.SubjectId} onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
               className={inp + " flex-1"}>
               <option value="">เลือกวิชา</option>
@@ -1018,7 +1018,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               }}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="number" min="0" step="1" placeholder="ชม. (เว้นว่าง = ให้ระบบแนะนำ)" value={newRow.TotalHours}
               onKeyDown={blockNegativeKeys}
@@ -1512,7 +1512,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
           )}
         </p>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           {[
             { key: "profit", label: "กำไรเป้าหมายของทั้งคอร์ส (บาท)" },
             { key: "percent", label: "กรอก % กำไร (ทั้งคอร์ส)" },
@@ -1615,17 +1615,17 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
         </p>
 
         <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
-          <div className="p-3 text-center bg-neutral-50">
+          <div className="p-2 sm:p-3 text-center bg-neutral-50">
             <p className="text-[10px] text-neutral-400 uppercase tracking-wide">จุดคุ้มทุน</p>
-            <p className="text-base font-bold text-neutral-800 mt-0.5">≥ {breakEvenStudents} คน</p>
+            <p className="text-sm sm:text-base font-bold text-neutral-800 mt-0.5">≥ {breakEvenStudents} คน</p>
           </div>
-          <div className="p-3 text-center bg-neutral-50">
+          <div className="p-2 sm:p-3 text-center bg-neutral-50">
             <p className="text-[10px] text-neutral-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
-            <p className="text-base font-bold text-neutral-800 mt-0.5">{currentStudentCount || 0} คน</p>
+            <p className="text-sm sm:text-base font-bold text-neutral-800 mt-0.5">{currentStudentCount || 0} คน</p>
           </div>
-          <div className={`p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
+          <div className={`p-2 sm:p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
             <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
-            <p className={`text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
+            <p className={`text-sm sm:text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
               {isProfitable ? "+" : ""}฿{formatPrice(currentProfit)}
             </p>
           </div>
@@ -1757,7 +1757,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
             <span className="text-xs text-neutral-400 shrink-0">บาท</span>
           </div>
         ))}
-        <div className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
           <div className="flex items-center gap-2">
             {ok ? <Check className="h-4 w-4 text-emerald-600" /> : <AlertTriangle className="h-4 w-4 text-red-500" />}
             <span className={`text-xs font-semibold ${ok ? "text-emerald-700" : "text-red-600"}`}>รวมทุกงวด ฿{formatPrice(sum)}</span>
@@ -1944,7 +1944,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>วันเริ่มสอน <span className="text-red-400 normal-case">*</span></label>
             <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls} />
@@ -1961,7 +1961,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </p>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>สถานะคอร์ส</label>
             <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
@@ -1976,7 +1976,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
             <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
@@ -2012,7 +2012,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <p className="text-[11px] text-neutral-400 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>ประเภทคอร์ส</label>
             <div className="grid grid-cols-2 gap-2">
@@ -2578,7 +2578,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 
       {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
       {hasSuggestion && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
+        <div className="flex flex-col items-start sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-2.5 bg-blue-50 border-b border-blue-100">
           <p className="text-[11px] text-blue-700 flex items-center gap-1.5">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
             แบ่งชั่วโมงที่เหลือ ({formatHoursLabel(remainingForSuggestion)}) เท่า ๆ กันอัตโนมัติ —
@@ -2658,7 +2658,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         );
       })}
 
-      <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 rounded-b-xl">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-orange-50 rounded-b-xl">
         <select
           value={newRow.SubjectId}
           onChange={e => setNewRow(r => ({ ...r, SubjectId: e.target.value }))}
@@ -3081,13 +3081,13 @@ export default function AdminCoursesPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm"
+          className="flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm"
         >
           <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
         </button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
@@ -3095,7 +3095,7 @@ export default function AdminCoursesPage() {
         ].map(({ label, value, icon: Icon, color }, i) => (
           <div
             key={i}
-            className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition"
+            className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition"
           >
             <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
@@ -3170,7 +3170,7 @@ export default function AdminCoursesPage() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:gap-0 items-center sm:justify-between">
           <p className="text-sm text-neutral-500">
             แสดง{" "}
             <span className="font-semibold text-neutral-700">
@@ -3179,7 +3179,7 @@ export default function AdminCoursesPage() {
             </span>{" "}
             จาก <span className="font-semibold text-neutral-700">{filtered.length}</span> คอร์ส
           </p>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap justify-center items-center gap-1.5">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}

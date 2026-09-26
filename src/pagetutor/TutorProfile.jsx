@@ -140,8 +140,8 @@ export default function TutorProfile() {
 
                 {/* ── Edit Mode Banner ── */}
                 {isEditing && (
-                    <div className="mb-4 flex items-center justify-between rounded-2xl bg-orange-400 px-5 py-3 shadow-md">
-                        <div className="flex items-center gap-2.5 text-white">
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl bg-orange-400 px-4 sm:px-5 py-3 shadow-md">
+                        <div className="flex flex-wrap items-center gap-2.5 text-white">
                             <Pencil className="h-4 w-4" />
                             <span className="font-semibold text-sm">กำลังแก้ไขข้อมูล</span>
                             <span className="text-orange-200 text-xs">— กรอกข้อมูลให้ครบแล้วกดบันทึก</span>
@@ -168,7 +168,7 @@ export default function TutorProfile() {
 
                 {/* ── Profile Header Card ── */}
                 <div className="mb-6 overflow-hidden rounded-2xl shadow-lg">
-                    <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-8 md:p-10">
+                    <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-5 sm:p-8 md:p-10">
                         <div className="flex flex-col gap-8 md:flex-row md:items-center">
 
                             {/* รูปโปรไฟล์ */}
@@ -210,7 +210,7 @@ export default function TutorProfile() {
                                             />
                                         </div>
                                     ) : (
-                                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight break-words">
                                             {formData.firstname} {formData.lastname}
                                         </h1>
                                     )}
@@ -223,7 +223,7 @@ export default function TutorProfile() {
                                         </span>
                                     ))}
                                 </div>
-                                <div className="flex justify-center md:justify-start gap-5 text-sm font-medium">
+                                <div className="flex flex-wrap justify-center md:justify-start gap-2 sm:gap-5 text-sm font-medium">
                                     <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
                                         <Users className="h-4 w-4" />
                                         {formData.studentCount} นักเรียน
@@ -282,7 +282,7 @@ export default function TutorProfile() {
                         isEditing={isEditing}
                     >
                         {/* ส่วนโชว์เรทค่าสอน */}
-                        <div className="flex justify-between items-center rounded-xl border border-orange-200 p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
+                        <div className="flex flex-wrap gap-3 justify-between items-center rounded-xl border border-orange-200 p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
                             <div>
                                 <p className="text-xs text-neutral-500 mb-1">ค่าตอบแทนต่อคาบ</p>
                                 <p className="text-2xl font-bold text-orange-600">
@@ -350,7 +350,7 @@ function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
     return (
         <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
             <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">{label}</span>
-            <div className="flex-1 text-right">
+            <div className="flex-1 min-w-0 text-right">
                 {isEditing ? (
                     <input
                         type={type}
@@ -360,7 +360,7 @@ function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
                         className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
                     />
                 ) : (
-                    <span className="text-sm font-semibold text-neutral-800">{value || <span className="text-neutral-300 font-normal">-</span>}</span>
+                    <span className="text-sm font-semibold text-neutral-800 break-words">{value || <span className="text-neutral-300 font-normal">-</span>}</span>
                 )}
             </div>
         </div>
