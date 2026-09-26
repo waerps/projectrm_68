@@ -144,7 +144,7 @@ export default function TutorIncidents() {
     const list = tab === "mine" ? mine : against;
 
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900">รายการแจ้งเหตุการณ์</h1>
                 <p className="text-sm text-slate-500 mt-1">เรื่องที่คุณแจ้งไป และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>

@@ -113,7 +113,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
                 className="flex items-center gap-1 px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
                 <span className="text-sm font-medium">ถัดไป</span>
-                <ChevronRightIcon className="h-4 w-4" />
+                <ChevronRight className="h-4 w-4" />
             </button>
         </div>
     );
@@ -275,7 +275,7 @@ export default function TutorStudentDetail() {
     );
 
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
 
             {/* Breadcrumb & Profile Card (เหมือนเดิม) */}
             <div className="flex flex-wrap items-center text-sm text-neutral-500 gap-2">
@@ -370,12 +370,12 @@ export default function TutorStudentDetail() {
                         </div>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[520px] text-sm">
+                        <table className="w-full sm:min-w-[520px] text-sm">
                             <thead>
                                 <tr className="bg-neutral-50 text-neutral-500 text-xs">
                                     <th className="text-left px-4 py-3 font-semibold">วันที่</th>
                                     <th className="text-left px-4 py-3 font-semibold">วิชา</th>
-                                    <th className="text-left px-4 py-3 font-semibold">เวลา</th>
+                                    <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">เวลา</th>
                                     <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
                                 </tr>
                             </thead>
@@ -388,7 +388,7 @@ export default function TutorStudentDetail() {
                                         {new Date(rec.date + 'T00:00:00').toLocaleDateString("th-TH", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
                                         </td>
                                         <td className="px-4 py-3 text-neutral-600">{rec.subject}</td>
-                                        <td className="px-4 py-3 text-neutral-500 text-xs">{rec.startTime} – {rec.endTime} น.</td>
+                                        <td className="hidden sm:table-cell px-4 py-3 text-neutral-500 text-xs">{rec.startTime} – {rec.endTime} น.</td>
                                         <td className="px-4 py-3 text-center">
                                             {rec.status === "present" ? (
                                                 <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
@@ -652,7 +652,7 @@ export default function TutorStudentDetail() {
                                             : "bg-red-100 border-red-300 text-red-600"
                                     }`}>
                                     {idx + 1}
-                                    <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                                    <div className="hidden lg:block absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
                                         {new Date(rec.date).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
                                         <br />{rec.subject} • {rec.status === "present" ? "มา" : "ขาด"}
                                     </div>

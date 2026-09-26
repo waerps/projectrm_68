@@ -428,7 +428,7 @@ export default function AdminManagement() {
   );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
@@ -482,7 +482,7 @@ export default function AdminManagement() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[860px] lg:min-w-[720px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้ดูแลระบบ</th>
@@ -502,7 +502,7 @@ export default function AdminManagement() {
                         <div className="flex items-center gap-3">
                           <AdminAvatar admin={a} className="h-10 w-10 rounded-xl text-sm" />
                           <div>
-                            <p className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+                            <p className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 whitespace-nowrap lg:whitespace-normal">
                               {displayName}
                               {isSelf && (
                                 <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[10px] font-bold">
@@ -518,7 +518,7 @@ export default function AdminManagement() {
                       </td>
                       <td className="px-4 py-3">
                         {a.PhoneNo && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap lg:whitespace-normal">
                             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{a.PhoneNo}</span>
                           </div>
@@ -528,7 +528,7 @@ export default function AdminManagement() {
                         <span className="text-xs text-slate-600 font-mono">{a.Username}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${a.IsActive
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${a.IsActive
                           ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                           : "bg-slate-200 text-slate-600 border-slate-300"}`}>
                           {a.IsActive ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}

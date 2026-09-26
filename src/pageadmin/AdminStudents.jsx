@@ -987,11 +987,11 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการเข้าเรียนในคอร์สนี้</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-sm">
+                <table className="w-full min-w-0 sm:min-w-[520px] text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs">
                       <th className="text-left px-4 py-3 font-semibold">วันที่</th>
-                      <th className="text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
+                      <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
                       <th className="text-left px-4 py-3 font-semibold">เวลา</th>
                       <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
                     </tr>
@@ -1002,18 +1002,18 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                         <td className="px-4 py-3 font-medium text-slate-800 text-xs">
                           {formatDate(a.ClassDate || a.AttendanceDate)}
                         </td>
-                        <td className="px-4 py-3 text-slate-600 text-xs">
+                        <td className="hidden sm:table-cell px-4 py-3 text-slate-600 text-xs">
                           <span className="font-medium">{a.CourseName}</span>
                           {a.SubjectName && <span className="text-slate-400"> · {a.SubjectName}</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{a.StartTime} – {a.EndTime} น.</td>
+                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap lg:whitespace-normal">{a.StartTime} – {a.EndTime} น.</td>
                         <td className="px-4 py-3 text-center">
                           {a.Status === "1" ? (
-                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
                               <CheckCircle className="h-3 w-3" /> มาเรียน
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
                               <XCircle className="h-3 w-3" /> ขาดเรียน
                             </span>
                           )}
@@ -1045,7 +1045,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
+                        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
                           <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
                           {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
                         </div>
@@ -1356,7 +1356,7 @@ function ConsentTab({ studentId, showToast }) {
             <select
               value={selectedCourseId ?? ""}
               onChange={(e) => setSelectedCourseId(Number(e.target.value))}
-              className="flex-1 rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
+              className="flex-1 min-w-0 w-full lg:min-w-auto lg:w-auto rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
             >
               {courses.map((c) => (
                 <option key={c.courseId} value={c.courseId}>{c.courseName}</option>
@@ -2303,7 +2303,7 @@ export default function AdminStudentsPage() {
   })();
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* Header */}
@@ -2390,7 +2390,7 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">GPA</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                  <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -2399,7 +2399,7 @@ export default function AdminStudentsPage() {
                   return (
                     <tr key={s.UserId} className="hover:bg-orange-50/40 transition-colors group">
                       {/* คอลัมน์: นักเรียน */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 min-w-[180px] lg:min-w-0">
                         <div className="flex items-center gap-3">
                           {/* ★ เปลี่ยนมาใช้ StudentAvatar */}
                           <StudentAvatar student={s} className="h-9 w-9 rounded-xl" />
@@ -2438,7 +2438,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: ติดต่อ */}
                       <td className="px-4 py-3">
                         {s.PhoneNo && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap lg:whitespace-normal">
                             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{s.PhoneNo}</span>
                           </div>
@@ -2448,7 +2448,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: คอร์ส */}
                       <td className="px-4 py-3 text-center">
                         {s.EnrolledCourses > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
                             <BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส
                           </span>
                         ) : (
@@ -2468,11 +2468,11 @@ export default function AdminStudentsPage() {
                       </td>
 
                       {/* คอลัมน์: ปุ่มจัดการ */}
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setViewStudentId(s.UserId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                            className="flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                           >
                             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
                           </button>

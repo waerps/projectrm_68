@@ -571,7 +571,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip })
           )}
         </div>
         <p className="text-xl font-black text-slate-900">{value}</p>
-        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+        {sub && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate">{sub}</p>}
       </div>
     </div>
   );
@@ -1086,13 +1086,13 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
       </div>
 
       {/* ── การ์ดนักเรียน ── */}
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {filtered.map((s, i) => {
           const st = STUDENT_STATUS[s.status];
           const { full, nick } = splitName(s.name);
           return (
             <button key={s.studentId} type="button" onClick={() => onOpenStudent(s.studentId)} {...tiltHandlers}
-              className="sa-tilt sa-rise relative text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-3 sm:gap-4 items-center"
+              className="sa-tilt sa-rise relative min-w-0 text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-3 sm:gap-4 items-center"
               style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
               <span className="sa-glow" />
               <span className="relative flex-shrink-0">
@@ -1661,7 +1661,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                           <details key={t.topic} className={`group rounded-2xl px-3 py-2.5 open:shadow-sm ${t.pct < 0.5 ? "bg-rose-50/70 ring-1 ring-rose-100" : "bg-slate-50"}`}>
                             <summary className={`list-none grid grid-cols-[1fr_auto] gap-3 items-center ${t.comment ? "cursor-pointer" : "cursor-default"}`} onClick={(e) => { if (!t.comment) e.preventDefault(); }}>
                               <div className="min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
+                                <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
                                   <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
                                   {t.trend && (
                                     <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>AI: {t.trend}</span>
@@ -1672,7 +1672,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                   {t.cls != null && <span className="absolute -top-1 -bottom-1 w-[3px] rounded bg-slate-700" style={{ left: `calc(${Math.round(t.cls * 100)}% - 1px)` }} title={`ค่าเฉลี่ยห้อง ${fmtPct(t.cls)}`} />}
                                 </div>
                               </div>
-                              <div className="text-right tabular-nums leading-tight w-24">
+                              <div className="text-right tabular-nums leading-tight w-20 sm:w-24">
                                 <p className="text-base font-black text-slate-900">{Math.round(t.pct * 100)}%</p>
                                 {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} จากห้อง</p>}
                                 {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} จาก {first.label.replace(/-test$/i, "")}</p>}
@@ -2172,8 +2172,8 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100">
-          <h3 className="font-bold text-slate-800 min-w-0">พรีวิวก่อน Export Excel · {examLabel}</h3>
+        <div className="flex items-center justify-between gap-3 lg:gap-0 px-4 sm:px-6 py-4 border-b border-slate-100">
+          <h3 className="font-bold text-slate-800 min-w-0 lg:min-w-auto">พรีวิวก่อน Export Excel · {examLabel}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="h-5 w-5" />
           </button>
@@ -2200,7 +2200,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-end gap-2 flex-wrap px-4 sm:px-6 py-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2 flex-wrap lg:flex-nowrap px-4 sm:px-6 py-4 border-t border-slate-100">
           <button onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 border border-slate-200 hover:bg-slate-50 transition">
             ยกเลิก
@@ -2750,7 +2750,7 @@ export function ExamAnalyticsView({
   };
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {typeof breadcrumb === "function"
         ? breadcrumb({ examId, examLabel, realExamId })
         : breadcrumb}

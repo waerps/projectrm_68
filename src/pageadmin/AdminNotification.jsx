@@ -126,7 +126,7 @@ export default function AdminNotifications() {
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

@@ -697,7 +697,7 @@ export default function TutorIncome() {
   ];
 
   return (
-    <div className="space-y-6 mt-[80px]">
+    <div className="space-y-6 mt-[80px] px-4 lg:px-0">
       <div className="">
 
         {/* ── Header ────────────────────────────────────────────── */}

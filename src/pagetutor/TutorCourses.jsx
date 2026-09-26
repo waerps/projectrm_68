@@ -161,7 +161,7 @@ export default function CoursesPage() {
   if (loading) return <div className="mt-[90px] text-center p-10 font-medium text-neutral-500">กำลังโหลดข้อมูลคอร์ส...</div>;
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <div className="">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -237,7 +237,7 @@ export default function CoursesPage() {
                       <h2 className="mt-1 text-lg font-bold text-neutral-900">{item.courseName}</h2>
                       <p className="text-sm text-neutral-500">{item.subjectName}</p>
                     </div>
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">รับสอนแล้ว</span>
+                    <span className="shrink-0 whitespace-nowrap lg:shrink lg:whitespace-normal rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">รับสอนแล้ว</span>
                   </div>
                 </div>
                 <div className="space-y-4 p-4 sm:p-5">

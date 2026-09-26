@@ -565,8 +565,8 @@ function StudentPreviewModal({ course, onClose }) {
                         ) : (
                           <PlayCircle className="h-10 w-10 text-neutral-300" />
                         )}
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition">
-                          <PlayCircle className="h-12 w-12 text-white opacity-0 group-hover:opacity-100 transition" />
+                        <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+                          <PlayCircle className="h-12 w-12 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
                         </div>
                       </button>
                     </div>
@@ -1161,7 +1161,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
                 showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ");
               }
             }}
-            className="text-red-400 hover:text-red-600 transition"
+            className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition"
             title="นำออกจากคอร์ส"
           >
             <X className="h-3.5 w-3.5" />
@@ -1352,8 +1352,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
               ) : (
                 <PlayCircle className="h-5 w-5 text-neutral-300" />
               )}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center transition">
-                <PlayCircle className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition" />
+              <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+                <PlayCircle className="h-5 w-5 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
               </div>
             </button>
             <div className="flex-1 min-w-0">
@@ -1363,10 +1363,10 @@ function CoursePreviewVideos({ courseId, showToast }) {
                 {v.VideoType === "youtube" ? <><Youtube className="h-3 w-3" /> YouTube</> : v.VideoType === "drive" ? <><FolderOpen className="h-3 w-3" /> Drive</> : <><Video className="h-3 w-3" /> ไฟล์อัปโหลด</>}
               </span>
             </div>
-            <button onClick={() => startEdit(v)} className="text-neutral-300 hover:text-orange-500 transition shrink-0" title="แก้ไข">
+            <button onClick={() => startEdit(v)} className="p-1.5 lg:p-0 text-neutral-300 hover:text-orange-500 transition shrink-0" title="แก้ไข">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => handleDelete(v.VideoId)} className="text-red-400 hover:text-red-600 transition shrink-0" title="ลบ">
+            <button onClick={() => handleDelete(v.VideoId)} className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition shrink-0" title="ลบ">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -1392,7 +1392,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
                 <button key={key} type="button"
                   onClick={() => setForm(f => ({ ...f, mode: key, url: key !== f.mode ? "" : f.url }))}
                   disabled={saving}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold border transition
+                  className={`flex-1 min-w-0 lg:min-w-auto flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 lg:px-0 py-2 rounded-lg text-xs font-bold border transition
                     ${form.mode === key ? "bg-orange-500 text-white border-orange-500" : "bg-white text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
                   <Icon className="h-3.5 w-3.5" /> {label}
                 </button>
@@ -1681,7 +1681,7 @@ function InstallmentAmountInput({ value, onChange }) {
         setText(value === "" || value === null || value === undefined ? "" : String(value));
       }}
       onChange={handleChange} onKeyDown={blockNegativeKeys}
-      className="flex-1 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+      className="flex-1 min-w-0 lg:min-w-auto px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
     />
   );
 }
@@ -1752,7 +1752,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
       <div className="p-4 space-y-2 bg-white">
         {amounts.map((amt, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <span className="w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
+            <span className="w-14 sm:w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
             <InstallmentAmountInput value={amt} onChange={(v) => updateAt(idx, v)} />
             <span className="text-xs text-neutral-400 shrink-0">บาท</span>
           </div>
@@ -2423,7 +2423,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
               <button
                 type="button"
                 onClick={() => remove(String(s.UserId))}
-                className="text-red-400 hover:text-red-600 transition"
+                className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition"
                 title="เอาออก"
               >
                 <X className="h-3.5 w-3.5" />
@@ -3072,7 +3072,7 @@ export default function AdminCoursesPage() {
     );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

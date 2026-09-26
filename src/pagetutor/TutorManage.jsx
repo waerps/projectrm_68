@@ -183,7 +183,7 @@ export default function TutorCourseManagePage() {
   );
 
   return (
-    <div className="min-h-screen mt-[70px] pb-12">
+    <div className="min-h-screen mt-[70px] pb-12 px-4 lg:px-0">
       <div className="mx-auto">
 
         {/* Header */}
@@ -203,10 +203,10 @@ export default function TutorCourseManagePage() {
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
           {/* VIDEOS */}
-          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col min-w-0" style={{ maxHeight: '75vh' }}>
             {/* Header */}
             <div className="px-4 sm:px-5 py-4 border-b border-neutral-100 flex items-center justify-between gap-2 flex-shrink-0">
               <h2 className="flex items-center gap-2 font-bold text-neutral-800">
@@ -286,15 +286,15 @@ export default function TutorCourseManagePage() {
                           </span>
                           <div className="flex items-center gap-0.5">
                             <button onClick={() => setQuestionVideo(video)} title="จัดการคำถามในวิดีโอ"
-                              className="p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50">
+                              className="p-2 lg:p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50">
                               <CircleHelp className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, type: video.VideoType || getVideoType(video.VideoUrl), duration: video.Duration || "" }); }}
-                              className="p-1.5 text-neutral-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
+                              className="p-2 lg:p-1.5 text-neutral-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                             <button onClick={() => handleDeleteVideo(video.VideoId)}
-                              className="p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50">
+                              className="p-2 lg:p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -313,7 +313,7 @@ export default function TutorCourseManagePage() {
           </div>
 
           {/* DOCUMENTS */}
-          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col" style={{ maxHeight: '75vh' }}>
+          <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm flex flex-col min-w-0" style={{ maxHeight: '75vh' }}>
             {/* Header */}
             <div className="px-4 sm:px-5 py-4 border-b border-neutral-100 flex items-center justify-between gap-2 flex-shrink-0">
               <h2 className="flex items-center gap-2 font-bold text-neutral-800">
@@ -348,15 +348,15 @@ export default function TutorCourseManagePage() {
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <a href={getFileUrl(doc.FilePath)} download target="_blank" rel="noreferrer"
-                      className="p-1.5 text-neutral-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
+                      className="p-2 lg:p-1.5 text-neutral-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
                       <Download className="h-4 w-4" />
                     </a>
                     <button onClick={() => { setEditingDoc(doc); setEditDocName(doc.FileName); setEditDocFile(null); }}
-                      className="p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50" title="แก้ไข">
+                      className="p-2 lg:p-1.5 text-neutral-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50" title="แก้ไข">
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button onClick={() => handleDeleteDoc(doc.FileId)}
-                      className="p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="ลบ">
+                      className="p-2 lg:p-1.5 text-neutral-300 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="ลบ">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>

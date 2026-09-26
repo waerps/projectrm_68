@@ -328,7 +328,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                 {/* Session Row */}
                 <div
                   onClick={() => setExpandedSession(isExpanded ? null : session.TutorCheckinId)}
-                  className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
+                  className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3.5 cursor-pointer hover:bg-slate-50 transition-colors"
                 >
                   {/* Date */}
                   <div className="w-20 sm:w-24 shrink-0">
@@ -343,7 +343,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   </div>
 
                   {/* Photo pill */}
-                  <div className="shrink-0">
+                  <div className="shrink-0 order-last basis-full pl-[88px] sm:order-none sm:basis-auto sm:pl-0">
                     {session.PhotoStart && session.PhotoEnd ? (
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${isValid ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
                         <Camera className="w-3 h-3" />
@@ -874,7 +874,7 @@ export default function TutorAttendanceDashboard() {
                   รูปไม่ครบ
                 </th>
                 {/* <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th> */}
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ประวัติ</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide sticky right-0 bg-slate-50 lg:static">ประวัติ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -993,7 +993,7 @@ export default function TutorAttendanceDashboard() {
                       </div>
                     </td> */}
                     {/* View detail button */}
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-4 py-3 text-center sticky right-0 bg-white lg:static lg:bg-transparent">
                       <button
                         onClick={(e) => handleViewDetail(t, e)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
@@ -1711,8 +1711,8 @@ function AbsenceHeatmap({ selectedMonth }) {
                         <div className="flex items-center gap-2">
                           <TutorAvatar tutor={t} idx={idx} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-slate-800 truncate">{t.Nickname}</p>
-                            <p className="text-[10px] text-slate-400 truncate">{t.Firstname}</p>
+                            <p className="text-xs font-semibold text-slate-800 truncate max-w-[80px] sm:max-w-none">{t.Nickname}</p>
+                            <p className="text-[10px] text-slate-400 truncate max-w-[80px] sm:max-w-none">{t.Firstname}</p>
                           </div>
                         </div>
                       </td>

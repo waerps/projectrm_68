@@ -668,7 +668,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                         ยังไม่มีประวัติการเปลี่ยนแปลง
                     </p>
                 ) : (
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 lg:max-h-64 lg:overflow-y-auto pr-1">
                         {logs.map(log => (
                             <div key={log.LogId} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="flex items-center justify-between gap-2">
@@ -704,7 +704,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
                             <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                             <th className="text-center px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
-                            <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">การจัดการ</th>
+                            <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide sticky right-0 bg-slate-50 lg:static">การจัดการ</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -724,7 +724,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                                 <CIcon className="h-4 w-4 text-orange-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="font-bold text-slate-900 truncate">{item.Name}</p>
+                                                <p className="font-bold text-slate-900 truncate max-w-[180px] sm:max-w-[240px] lg:max-w-none">{item.Name}</p>
                                                 {item.Detail && <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Detail}</p>}
                                             </div>
                                         </div>
@@ -746,7 +746,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap lg:whitespace-normal ${st.bg} ${st.text} ${st.border}`}>
                                             <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                             {item.Status_Name}
                                         </span>
@@ -754,7 +754,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             <p className="text-[10px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 text-center">
+                                    <td className="px-4 py-3 text-slate-500 text-center min-w-[140px] lg:min-w-0">
                                         {item.Location ? (
                                             <span className="flex items-center justify-center gap-1 text-xs">
                                                 <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
@@ -763,7 +763,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             <span className="text-xs text-slate-300">-</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                         <div className="flex items-center justify-end gap-1.5">
                                             <button onClick={() => onView(item)} title="ดูรายละเอียด"
                                                 className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
@@ -920,7 +920,7 @@ export default function AdminCommonFacilities() {
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 md:px-0">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

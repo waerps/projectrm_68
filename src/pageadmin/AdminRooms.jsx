@@ -480,7 +480,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
                             หากยืนยันเปลี่ยนสถานะ ห้องนี้จะยังคงถูกจองไว้ในตารางเรียนเดิม กรุณาย้ายห้องคาบเหล่านี้ก่อน หรือกดยืนยันเพื่อดำเนินการต่อ
                         </p>
                     </div>
-                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 lg:max-h-56 lg:overflow-y-auto pr-1">
                         {conflicts.map(c => (
                             <div key={c.CourseScheduleDetailId} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <span className="text-xs font-bold text-slate-700 w-20 shrink-0">{c.ClassDate}</span>
@@ -716,8 +716,8 @@ function RoomDetailModal({ room, onClose }) {
                     <p className="text-[10px] text-slate-400 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
                     <div className="space-y-2">
                         {utilDetail.byCourse.map(c => (
-                            <div key={c.CourseID} className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                                <span className="text-xs font-semibold text-slate-700 truncate flex-1">{c.CourseName}</span>
+                            <div key={c.CourseID} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                <span className="text-xs font-semibold text-slate-700 truncate flex-1 basis-full sm:basis-auto">{c.CourseName}</span>
                                 <SeatFillGrid filled={c.EnrolledCount} capacity={utilDetail.capacity} size="lg" />
                                 <span className="text-[11px] font-bold text-slate-500 shrink-0 w-14 text-right">
                                     {c.EnrolledCount}/{utilDetail.capacity} คน
@@ -738,7 +738,7 @@ function RoomDetailModal({ room, onClose }) {
                         ยังไม่มีคาบสอนที่จองห้องนี้
                     </p>
                 ) : (
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 lg:max-h-64 lg:overflow-y-auto pr-1">
                         {schedule.map(item => (
                             <div key={item.CourseScheduleDetailId} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="text-center shrink-0 w-14">
@@ -769,7 +769,7 @@ function RoomDetailModal({ room, onClose }) {
                         ยังไม่มีประวัติการเปลี่ยนสถานะ
                     </p>
                 ) : (
-                    <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 lg:max-h-56 lg:overflow-y-auto pr-1">
                         {statusLogs.map(log => (
                             <div key={log.Room_Status_Log_Id} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="flex items-center justify-between">

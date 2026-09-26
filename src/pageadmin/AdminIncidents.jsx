@@ -385,7 +385,7 @@ export default function AdminIncidents() {
   );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
@@ -467,7 +467,7 @@ export default function AdminIncidents() {
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-sm">
+            <table className="w-full min-w-[1000px] lg:min-w-[820px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เคส</th>
@@ -527,12 +527,12 @@ export default function AdminIncidents() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {inc.TutorFirstname && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold whitespace-nowrap max-w-[220px] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible">
                               <GraduationCap className="h-3 w-3" /> {inc.TutorFirstname} {inc.TutorLastname}
                             </span>
                           )}
                           {inc.CourseName && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold whitespace-nowrap max-w-[220px] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible">
                               <BookOpen className="h-3 w-3" /> {inc.CourseName}
                             </span>
                           )}
@@ -549,14 +549,14 @@ export default function AdminIncidents() {
 
                       {/* คอลัมน์: ความรุนแรง */}
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
                           {sevLabel(inc.Severity)}
                         </span>
                       </td>
 
                       {/* คอลัมน์: สถานะ */}
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
                           {statusMeta.label}
                         </span>
                       </td>
@@ -566,7 +566,7 @@ export default function AdminIncidents() {
                         <div className="flex items-center justify-end">
                           <button
                             onClick={() => setViewId(inc.IncidentId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                            className="flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                           >
                             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
                           </button>

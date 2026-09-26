@@ -82,7 +82,7 @@ function getStatusStyle(name = '') {
 function StatusBadge({ name }) {
     const { bg, text, border, icon: Icon } = getStatusStyle(name || '');
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${bg} ${text} ${border}`}>
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-xs font-semibold border ${bg} ${text} ${border}`}>
             <Icon className="h-3 w-3" />{name || 'ไม่ระบุสถานะ'}
         </span>
     );
@@ -592,7 +592,7 @@ export default function AdminFinance() {
     const totalTx = txPagination.total || 0;
 
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
 
             {/* ── Page header ── */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -816,7 +816,7 @@ export default function AdminFinance() {
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
                                                     {['รหัส', 'นักเรียน', 'คอร์ส', 'รูปแบบ', 'ยอดรับ', 'วันที่รับ', ''].map((h, i) => (
-                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide ${i === 4 ? 'text-right' : 'text-left'}`}>
+                                                        <th key={i} className={`px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide last:sticky last:right-0 last:bg-slate-50 lg:last:static lg:last:bg-transparent ${i === 4 ? 'text-right' : 'text-left'}`}>
                                                             {h}
                                                         </th>
                                                     ))}
@@ -844,20 +844,20 @@ export default function AdminFinance() {
                                         <thead className="bg-slate-50">
                                             <tr>
                                                 {['ติวเตอร์', 'รอบ/คอร์ส', 'คาบ', 'ยอดเงิน', 'บัญชีรับเงิน', 'สถานะ', ''].map((h, i) => (
-                                                    <th key={h} className={`px-4 py-3 text-xs text-slate-500 ${i === 3 ? 'text-right' : i === 6 ? 'text-right' : 'text-left'}`}>{h}</th>
+                                                    <th key={h} className={`px-4 py-3 text-xs text-slate-500 last:sticky last:right-0 last:bg-slate-50 lg:last:static lg:last:bg-transparent ${i === 3 ? 'text-right' : i === 6 ? 'text-right' : 'text-left'}`}>{h}</th>
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
                                             {tutorData.map(item => (
                                                 <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
-                                                    <td className="px-4 py-3 font-semibold">{item.tutorName}</td>
+                                                    <td className="px-4 py-3 font-semibold whitespace-nowrap lg:whitespace-normal">{item.tutorName}</td>
                                                     <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
-                                                    <td className="px-4 py-3">{item.sessionCount} คาบ</td>
+                                                    <td className="px-4 py-3 whitespace-nowrap lg:whitespace-normal">{item.sessionCount} คาบ</td>
                                                     <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
-                                                    <td className="px-4 py-3"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
+                                                    <td className="px-4 py-3 min-w-[140px] lg:min-w-0"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
                                                     <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
-                                                    <td className="px-4 py-3">
+                                                    <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <button
                                                                 onClick={() => setTutorDetailItem(item)}
@@ -944,7 +944,7 @@ function StudentPaymentRow({ txn, onView }) {
             </td>
             <td className="px-4 py-3 text-right font-bold text-green-600">+{formatMoney(txn.Amount)}</td>
             <td className="px-4 py-3 text-xs text-slate-500">{formatDate(txn.TransDate || txn.Created_at)}</td>
-            <td className="px-4 py-3">
+            <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                 <button onClick={() => onView(txn.TransactionId)} className={`p-2 rounded-lg border border-slate-200 hover:border-orange-300 hover:text-orange-600 ${T.transition}`} title="ดูรายละเอียดและสลิป">
                     <Eye className="h-4 w-4" />
                 </button>
@@ -991,7 +991,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>นักเรียน</p><p className="font-bold">{studentDisplayName(data)}</p><p>{data.PhoneNo || '—'}</p><p className="text-slate-500">{data.CourseName}</p></div>
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>ข้อมูลการโอน</p><p>วันที่ {formatDate(data.TransDate || data.Created_at)}</p><p>เลขอ้างอิง {data.TransRef}</p><p>{data.SendingBank || 'ไม่ระบุธนาคารต้นทาง'} → {data.ReceivingBank || 'บัญชีสถาบัน'}</p></div>
                             </div>
-                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full min-w-[480px] text-sm"><thead className="bg-slate-50"><tr><th className="p-3 text-left">งวด</th><th className="p-3 text-right">ยอด</th><th className="p-3 text-left">กำหนด</th><th className="p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-3">งวด {i.InstallmentNo}</td><td className="p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-3">{formatDate(i.DueDate)}</td><td className="p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
+                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full sm:min-w-[480px] text-sm"><thead className="bg-slate-50"><tr><th className="p-2 sm:p-3 text-left">งวด</th><th className="p-2 sm:p-3 text-right">ยอด</th><th className="p-2 sm:p-3 text-left">กำหนด</th><th className="p-2 sm:p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-2 sm:p-3">งวด {i.InstallmentNo}</td><td className="p-2 sm:p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-2 sm:p-3">{formatDate(i.DueDate)}</td><td className="p-2 sm:p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
                             <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border border-slate-200 object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
                         </div>}
                     </ApiState>
@@ -1054,7 +1054,7 @@ function TutorPaymentDetailModal({ item, onClose }) {
                                 {sessions.map(session => (
                                     <tr key={session.tutorCheckinId} className="hover:bg-orange-50/30">
                                         <td className="px-4 py-3">
-                                            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${session.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            <span className={`whitespace-nowrap lg:whitespace-normal rounded-full px-2.5 py-1 text-xs font-semibold ${session.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
                                                 {session.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
                                             </span>
                                         </td>

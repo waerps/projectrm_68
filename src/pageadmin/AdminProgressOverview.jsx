@@ -144,7 +144,7 @@ export default function AdminProgressOverview() {
     : null;
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <Breadcrumb cameFrom={cameFrom} />
 
       {/* Header */}

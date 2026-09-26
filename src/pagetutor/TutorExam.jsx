@@ -63,7 +63,7 @@ export default function TutorExam() {
   };
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* Breadcrumb */}
       <div className="flex items-center text-sm flex-wrap gap-y-1">
         <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">

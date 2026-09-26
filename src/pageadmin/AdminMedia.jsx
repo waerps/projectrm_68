@@ -110,7 +110,7 @@ export default function CourseManagePage() {
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => handleEditDoc(doc)}
+                        onClick={() => handleEditVideo(video)}
                         className="flex items-center gap-1 px-2 py-1 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition text-sm"
                       >
                         <Plus className="h-3 w-3" />
@@ -218,7 +218,7 @@ export default function CourseManagePage() {
 
       {/* Upload Video Modal */}
       {isUploadVideoOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-neutral-900 mb-4">เพิ่มวิดีโอใหม่</h3>
             <div className="space-y-4">
@@ -259,7 +259,7 @@ export default function CourseManagePage() {
 
       {/* Upload Document Modal */}
       {isUploadDocOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-neutral-900 mb-4">เพิ่มเอกสารใหม่</h3>
             <div className="space-y-4">
@@ -300,7 +300,7 @@ export default function CourseManagePage() {
 
       {/* Edit Video Modal */}
       {editingVideo && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-neutral-900 mb-4">แก้ไขวิดีโอ</h3>
             <div className="space-y-4">
@@ -334,7 +334,7 @@ export default function CourseManagePage() {
 
       {/* Edit Document Modal */}
       {editingDoc && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-neutral-900 mb-4">แก้ไขเอกสาร</h3>
             <div className="space-y-4">

@@ -135,7 +135,7 @@ export default function TutorProfile() {
     );
 
     return (
-        <div className="space-y-6 mt-[100px]">
+        <div className="space-y-6 mt-[100px] px-4 lg:px-0">
             <div className="">
 
                 {/* ── Edit Mode Banner ── */}

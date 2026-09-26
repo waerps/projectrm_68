@@ -273,7 +273,7 @@ export default function TutorStudents() {
     );
 
     return (
-        <div className="space-y-6 mt-[90px]">
+        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
             <div className="">
                 {/* Header */}
                 <div className="mb-6">
@@ -293,7 +293,7 @@ export default function TutorStudents() {
                             <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition font-medium">
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
-                            <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-neutral-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                            <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-neutral-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
                                 <button onClick={downloadExcel} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-neutral-700 hover:bg-orange-50 hover:text-orange-600 rounded-t-xl transition font-medium">📊 ดาวน์โหลด Excel</button>
                                 <button onClick={downloadPDF} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-neutral-700 hover:bg-orange-50 hover:text-orange-600 rounded-b-xl transition font-medium">📄 ดาวน์โหลด PDF</button>
                             </div>
@@ -384,7 +384,7 @@ export default function TutorStudents() {
                                     </div>
 
                                     {/* ── ลบ expandedStudent button ออก เหลือแค่ trend + ปุ่มดูรายละเอียด ── */}
-                                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                                    <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 md:gap-3">
                                         {student.exam?.improvement && (
                                             <div
                                                 className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}

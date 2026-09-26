@@ -61,7 +61,7 @@ export default function TutorNotifications(){
   const grouped = useMemo(()=>groupByDate(filtered),[filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -147,7 +147,7 @@ export default function TutorNotifications(){
                           <m.Icon className={`h-4.5 w-4.5 ${m.text}`} />
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-14 sm:pr-16">
+                        <div className="flex-1 min-w-0 pr-16">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="text-sm font-bold text-slate-900">
                               {item.title}

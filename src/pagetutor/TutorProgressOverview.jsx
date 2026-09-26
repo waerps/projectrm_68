@@ -155,7 +155,7 @@ export default function TutorProgressOverview() {
   );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
         <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
         <ChevronRight className="h-4 w-4" />
@@ -260,7 +260,7 @@ export default function TutorProgressOverview() {
                           className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-orange-50/40 transition-colors"
                         >
                           <BarChart2 className="h-4 w-4 text-slate-400 shrink-0" />
-                          <span className="flex-1 text-sm font-medium text-slate-700 truncate">
+                          <span className="flex-1 text-sm font-medium text-slate-700 line-clamp-2 lg:line-clamp-none lg:truncate">
                             {s.subjectName || `วิชา #${s.subjectId}`}
                           </span>
                           <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />

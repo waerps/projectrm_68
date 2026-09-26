@@ -258,7 +258,7 @@ export default function AdminProfile() {
   );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Edit Mode Banner */}

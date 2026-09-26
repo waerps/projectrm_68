@@ -567,8 +567,8 @@ export default function TutorSchedule() {
 
         {/* Grid ตาราง */}
         <div className="bg-neutral-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-neutral-100">
-          <div className="grid grid-cols-8 gap-2 min-w-[1000px]">
-            <div className="text-center font-bold text-neutral-400 py-2 text-sm uppercase tracking-wider">เวลา</div>
+          <div className="grid grid-cols-8 gap-2 min-w-[760px] lg:min-w-[1000px]">
+            <div className="text-center font-bold text-neutral-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-neutral-50 lg:static lg:bg-transparent">เวลา</div>
 
             {/* หัวคอลัมน์วัน — เพิ่มวันที่ใต้ชื่อวัน (เอามาจาก AdminSchedule) */}
             {DAYS_GRID.map(d => {
@@ -587,7 +587,7 @@ export default function TutorSchedule() {
             {/* แถวเวลา — ใช้ derivedTimeSlots แทนการ derive จาก data อย่างเดียว */}
             {derivedTimeSlots.map(slot => (
               <React.Fragment key={slot.label}>
-                <div className="text-center text-xs text-neutral-500 py-4 font-bold flex items-center justify-center border-r border-neutral-200/50">
+                <div className="text-center text-xs text-neutral-500 py-4 font-bold flex items-center justify-center border-r border-neutral-200/50 sticky left-0 z-10 bg-neutral-50 lg:static lg:bg-transparent">
                   {slot.label}
                 </div>
 

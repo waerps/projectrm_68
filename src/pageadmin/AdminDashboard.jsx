@@ -121,7 +121,7 @@ function MiniPersonRow({ photo, name, sub, tone = "slate", LeadIcon }) {
         {LeadIcon && <LeadIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
         <p className="text-sm font-semibold text-slate-800 truncate">{name}</p>
       </div>
-      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 ${toneCls}`}>{sub}</span>
+      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 max-w-[55%] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible ${toneCls}`}>{sub}</span>
     </div>
   );
 }
@@ -504,7 +504,7 @@ export default function AdminDashboard() {
           icon={Wallet}
           className={T.chartCardH}
           action={
-            <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1">
+            <button onClick={() => navigate("/admin/finance")} className="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 whitespace-nowrap shrink-0">
               ดูรายละเอียด <ChevronRight className="h-3 w-3" />
             </button>
           }

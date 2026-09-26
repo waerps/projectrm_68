@@ -570,9 +570,9 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้สมัคร</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ / อาชีพ</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
+                  <th className="whitespace-nowrap lg:whitespace-normal text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                  <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -599,13 +599,13 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
+                      <td className="whitespace-nowrap lg:whitespace-normal px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
                           {status.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => setViewingApp(a)}
                             className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูรายละเอียด">
@@ -939,12 +939,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
               s => !excludeIds.includes(String(s.SubjectId)) || String(s.SubjectId) === String(SubjectId)
             );
             return (
-              <div key={localId} className="flex items-center gap-3 px-3 py-2">
-                <span className="flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
+              <div key={localId} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2">
+                <span className="flex-1 basis-full sm:flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
                 <select
                   value={SubjectId}
                   onChange={e => setSubjectFor(localId, e.target.value)}
-                  className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-orange-400"
+                  className="flex-1 min-w-0 sm:flex-initial sm:min-w-auto px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-orange-400"
                 >
                   <option value="">เลือกวิชา...</option>
                   {subjectOptions.map(s => (
@@ -1553,7 +1553,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
 
   return (
     <tr className={`hover:bg-orange-50/40 transition-colors ${isInactive ? "opacity-60" : ""}`}>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 min-w-[180px] lg:min-w-0">
         <div className="flex items-center gap-3">
           <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-sm" />
           <div>
@@ -1567,7 +1567,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       <td className="px-4 py-3">
         {t.Occupation && (
-          <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mb-1 max-w-[200px] lg:max-w-none">
             <Briefcase className="h-3.5 w-3.5 shrink-0" />
             <span>{t.Occupation}</span>
           </div>
@@ -1582,7 +1582,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       <td className="px-4 py-3">
         {t.PhoneNo && t.PhoneNo !== "000-000-0000" && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap lg:whitespace-normal">
             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <span>{t.PhoneNo}</span>
           </div>
@@ -1590,7 +1590,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       {/* ★ เพิ่ม: คอลัมน์สถานะ */}
       <td className="px-4 py-3 text-center">
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}
         </span>
@@ -1609,7 +1609,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
           <span className="text-xs text-slate-300">—</span>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
         <div className="flex items-center justify-end gap-1.5">
           {/* ★ เพิ่ม: ปุ่มดูข้อมูล วางไว้เป็นปุ่มแรกสุด เหมือนหน้านักเรียน */}
           <button onClick={() => setViewTutor(t)}
@@ -2139,7 +2139,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
           <p className="font-bold text-lg">{displayName}</p>
           <p className="text-sm text-orange-100">{tutor.Firstname} {tutor.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
-            {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-full">{tutor.TeachingSubjects}</span>}
+            {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-lg sm:rounded-full">{tutor.TeachingSubjects}</span>}
             <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
             {/* ★ เพิ่ม: บอกด้วยว่าถ้าข้อมูลยังไม่พอ จะไม่ถูกจัดอันดับโพเดียม */}
             {perf?.LowDataWarning && (
@@ -2212,9 +2212,9 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               ? <p className="text-center text-slate-400 py-8">ยังไม่มีนักเรียน</p>
               : <div className="space-y-1">
                 {data.students.map(s => (
-                  <div key={`${s.UserId}-${s.CourseID}`} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
+                  <div key={`${s.UserId}-${s.CourseID}`} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center justify-between sm:gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
                     <span className="text-sm text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
-                    <span className="text-[11px] text-slate-400 text-right">{s.CourseName}</span>
+                    <span className="text-[11px] text-slate-400 text-left sm:text-right">{s.CourseName}</span>
                   </div>
                 ))}
               </div>
@@ -2383,7 +2383,7 @@ export default function AdminTutorsPage() {
   const inactiveTutorCount = tutors.length - activeTutorCount;
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── Tab Bar ── */}
@@ -2538,7 +2538,7 @@ export default function AdminTutorsPage() {
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทค่าสอน (บาท/ชม.)</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                    <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">

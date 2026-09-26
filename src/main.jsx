@@ -192,7 +192,7 @@ const router = createBrowserRouter(
             { path: "notification", element: <AdminNotification /> },
             { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
             { path: "create-tutor", element: <CreateTutorForm /> },
-            { path: "attendance", element: <AdminAttendanceDashboard /> },
+            { path: "attendance", element: <div className="mt-[90px] px-4 lg:px-0"><AdminAttendanceDashboard /></div> },
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },

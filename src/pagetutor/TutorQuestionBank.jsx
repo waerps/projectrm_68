@@ -71,7 +71,7 @@ export default function TutorQuestionBank() {
   // ── เลือกวิชาแล้ว: แสดงตัวจัดการคลังตัวเดียวกับหน้าจัดการการสอบ ──
   if (subjectId) {
     return (
-      <div className="space-y-6 mt-[90px]">
+      <div className="space-y-6 mt-[90px] px-4 lg:px-0">
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="flex items-center text-sm flex-wrap gap-y-1">
@@ -111,7 +111,7 @@ export default function TutorQuestionBank() {
   }
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
+    <div className="mt-[90px] px-4 lg:px-0 flex flex-col items-center justify-center h-64 text-orange-600">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคลังข้อสอบ...</p>
     </div>
@@ -119,7 +119,7 @@ export default function TutorQuestionBank() {
 
   // ── ยังไม่เลือกวิชา: ให้เลือกก่อน ──
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
@@ -200,7 +200,7 @@ export default function TutorQuestionBank() {
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">แก้ไขล่าสุด</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide sticky right-0 bg-slate-50 lg:static lg:bg-transparent">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -241,11 +241,11 @@ export default function TutorQuestionBank() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openSubject(s.subjectId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition whitespace-nowrap lg:whitespace-normal"
                           >
                             <Settings2 className="h-3.5 w-3.5" /> จัดการคลัง
                           </button>
