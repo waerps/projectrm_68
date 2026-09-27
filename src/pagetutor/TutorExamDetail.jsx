@@ -1016,7 +1016,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
           </p>
         </div>
         {!mode && !editing && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto [&>button]:flex-1 [&>button]:justify-center sm:[&>button]:flex-none">
             {items.length > 0 && (
               <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-slate-200 hover:border-green-300 hover:text-green-700 text-slate-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
                 <Download className="h-4 w-4" /> ส่งออก Excel
@@ -2081,7 +2081,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               </button>
             )}
           </div>
-          <button aria-label="จัดชุดข้อสอบอัตโนมัติ"
+          <button
             onClick={() => setShowAssemble(true)}
             disabled={status === "active"}
             className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 rounded-xl px-4 py-2.5 text-sm font-semibold transition`}
@@ -2178,7 +2178,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button aria-label="ยืนยัน" onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+        <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
           {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
         </button>
       </div>
@@ -2309,7 +2309,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                 <p className="text-xs text-amber-700">ข้อสอบยังไม่พร้อม — ตรวจสอบที่แท็บ ดูตัวอย่างข้อสอบ ก่อนเปิดสอบ</p>
               </div>
             )}
-            <button aria-label="เล่น"
+            <button
               onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
               disabled={!ready || opening}
               className={`${BTN.primary} inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-5 py-2.5 text-sm font-semibold transition`}
@@ -2589,7 +2589,7 @@ function StudentDetailModal({
                   ดูพัฒนาการเต็มของคนนี้ <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
                 {aiSummary.parentMessage && (
-                  <button aria-label="ยืนยัน"
+                  <button
                     type="button"
                     onClick={async () => {
                       try {

@@ -9,6 +9,7 @@ import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbulb as LuLightbulb } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -430,7 +431,7 @@ export default function AdminSchedule() {
                 setConflicts([]);
                 setShowAdd(true);
               }}
-              className={`${BTN.primary} flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium`}
+              className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold`}
             >
               <Plus className="h-4 w-4" /> เพิ่มคาบสอน
             </button>
@@ -490,10 +491,6 @@ export default function AdminSchedule() {
 
         {/* ── Filters ── */}
         <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-2">
-            <Layers className="h-3.5 w-3.5 text-orange-500" /> กรองข้อมูล
-          </div>
-
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -526,17 +523,12 @@ export default function AdminSchedule() {
               placeholder="ทุกวิชา"
             />
 
-            <button
-              onClick={() => {
+            <ClearFiltersButton show={fTutor !== 'all' || fRoom !== 'all' || fSubject !== 'all' || !!fSearch} onClick={() => {
                 setFTutor('all');
                 setFRoom('all');
                 setFSubject('all');
                 setFSearch('');
-              }}
-              className="px-3 py-1.5 border border-slate-200 rounded-xl text-xs hover:bg-slate-50 transition text-slate-600"
-            >
-              ล้างตัวกรอง
-            </button>
+              }} />
           </div>
         </div>
 
@@ -1368,7 +1360,7 @@ function ScheduleModal({
             ยกเลิก
           </button>
 
-          <button aria-label="บันทึก"
+          <button
             onClick={onSave}
             disabled={saving || !canSave}
             className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50`}

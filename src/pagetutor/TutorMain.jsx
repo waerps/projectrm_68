@@ -15,16 +15,12 @@ function resolveImg(img) {
   return `${SERVER_URL}${img}`;
 }
 
-const FALLBACK = "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=800";
-
-const SafeImg = ({ src, className, alt }) => (
-  <img
-    src={src || FALLBACK}
-    onError={(e) => { e.currentTarget.src = FALLBACK; }}
-    className={className}
-    alt={alt}
-  />
-);
+// รูปเสีย/ไม่มีรูป → ซ่อนช่องรูปทั้งช่อง (ไม่ดึงรูปสำรองจากเว็บภายนอก และไม่ทิ้งกรอบเทาว่าง)
+const SafeImg = ({ src, className, alt }) => {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return null;
+  return <img src={src} onError={() => setBroken(true)} className={className} alt={alt} loading="lazy" />;
+};
 
 const SectionTitle = ({ children, sub }) => (
   <div className="mb-4">
@@ -41,7 +37,7 @@ const NewsCard = ({ item, highlight, onClick }) => (
                hover:shadow-md hover:border-orange-300 transition cursor-pointer"
   >
     <div className="flex flex-col sm:flex-row gap-4">
-      <div className="sm:w-48 md:w-56 shrink-0">
+      <div className="sm:w-48 md:w-56 shrink-0 empty:hidden">
         <SafeImg
           src={item.img}
           alt={item.title}

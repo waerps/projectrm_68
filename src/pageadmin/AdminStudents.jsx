@@ -23,6 +23,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { GraduationCap as LuGraduationCap } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -534,7 +535,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+        <button onClick={submit} disabled={isSubmitting}
           className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
@@ -1935,36 +1936,20 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-orange-100
-                      bg-gradient-to-r from-orange-500 to-amber-500">
+      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-base">คะแนนนักเรียน · {board.heading}</h2>
+          <BarChart2 className="h-5 w-5 text-orange-500" />
+          <h2 className="font-bold text-slate-900 text-base">คะแนนนักเรียน · {board.heading}</h2>
         </div>
-        <span className="text-xs text-orange-100">{board.formula}</span>
+        <span className="text-xs text-slate-500">{board.formula}</span>
       </div>
 
       {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
           เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
           เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
-      <div className="flex gap-1 px-4 sm:px-5 pt-3 border-b border-slate-100">
-        {Object.values(BOARDS).map((b) => {
-          const TabIcon = b.Icon;
-          return (
-            <button
-              key={b.key}
-              onClick={() => setBoardKey(b.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-t-lg transition border-b-2 -mb-px ${
-                b.key === boardKey
-                  ? 'text-orange-600 border-orange-500 bg-orange-50/60'
-                  : 'text-slate-400 border-transparent hover:text-slate-600'
-              }`}
-            >
-              <TabIcon className="h-4 w-4" />
-              {b.tab}
-            </button>
-          );
-        })}
+      <div className="px-4 sm:px-5 pt-3">
+        <SegmentedControl stretchMobile value={boardKey} onChange={setBoardKey}
+          options={Object.values(BOARDS).map((b) => ({ id: b.key, label: b.tab, icon: b.Icon }))} />
       </div>
       <p className="px-4 sm:px-5 pt-3 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
 
@@ -2042,23 +2027,23 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
             {filtered.length > 0 && (() => {
               const MEDALS = ['🥇', '🥈', '🥉'];
               return (
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
 
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="min-w-0 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 text-center"
-                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                          className={`min-w-0 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center  ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                          data-rank={medalIdx + 1}
                         >
-                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="text-2xl opacity-30 shrink-0">{MEDALS[medalIdx]}</div>
                           <div className="flex justify-center mt-2">
                             <span className="h-10 w-10 rounded-xl bg-slate-200/60 flex items-center justify-center">
                               <Users className="h-4 w-4 text-slate-400" />
                             </span>
                           </div>
-                          <p className="text-sm font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
+                          <p className="flex-1 min-w-0 sm:flex-none text-sm font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
                           <p className="text-2xl font-bold text-slate-300 mt-1">—</p>
                           <p className="text-xs text-slate-300">คะแนน</p>
                         </div>
@@ -2067,10 +2052,10 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`min-w-0 rounded-xl border p-2 sm:p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        className={`min-w-0 rounded-xl border p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'} ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                        data-rank={medalIdx + 1}
                       >
-                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="text-2xl shrink-0">{MEDALS[medalIdx]}</div>
                         <div className="flex flex-wrap justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(s => (
                             <button key={s.UserId} onClick={() => onViewStudent(s.UserId)}
@@ -2086,7 +2071,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-semibold text-slate-800 mt-1.5 truncate">
+                        <p className="flex-1 min-w-0 sm:flex-none text-sm font-semibold text-slate-800 mt-1.5 truncate">
                           {group.members.length === 1
                             ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
                             : `${group.members.length} คนเสมอกัน`}
@@ -2268,10 +2253,7 @@ export default function AdminStudentsPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลนักเรียน...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลนักเรียน..." />
   );
   if (loadError && students.length === 0) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 

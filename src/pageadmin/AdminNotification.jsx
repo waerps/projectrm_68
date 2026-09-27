@@ -5,6 +5,7 @@ import { API_URL } from '../config';
 import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API = `${API_URL}/api/admin/notifications`;
 const auth = () => {
@@ -142,8 +143,8 @@ export default function AdminNotifications() {
         </div>
         {unreadCount > 0 && (
           <button onClick={markAll} disabled={busy === 'all'}
-            className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm disabled:opacity-60`}>
-            <Check className="h-4 w-4" /> อ่านทั้งหมด
+            className={`${BTN.secondary} flex items-center justify-center gap-2 self-end sm:self-auto px-4 py-2 rounded-xl font-semibold transition text-sm disabled:opacity-60`}>
+            <Check className="h-4 w-4 text-slate-500" /> อ่านทั้งหมด
           </button>
         )}
       </div>
@@ -151,11 +152,14 @@ export default function AdminNotifications() {
       {/* ★ ใหม่: Stat summary — เหมือนหน้า AdminTutors/AdminStudents */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
-          { label: 'การแจ้งเตือนทั้งหมด', value: items.length, color: 'bg-orange-500', Icon: Bell },
-          { label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500', Icon: Filter },
-          { label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500', Icon: AlertTriangle },
-        ].map(({ label, value, color, Icon }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+          { key: 'all', label: 'การแจ้งเตือนทั้งหมด', value: items.length, color: 'bg-orange-500', Icon: Bell },
+          { key: 'unread', label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500', Icon: Filter },
+          { key: 'action', label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500', Icon: AlertTriangle },
+        ].map(({ key, label, value, color, Icon }) => (
+          // กดการ์ดเพื่อกรองตามสถานะ — ใช้แทนตัวเลขซ้ำในตัวกรองด้านล่าง
+          <button key={key} type="button" aria-pressed={filterStatus === key}
+            onClick={() => setFilterStatus(filterStatus === key && key !== 'all' ? 'all' : key)}
+            className={`flex min-w-0 items-center gap-3 p-4 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterStatus === key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
@@ -163,7 +167,7 @@ export default function AdminNotifications() {
               <p className="text-xs text-slate-500 font-medium">{label}</p>
               <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -176,9 +180,6 @@ export default function AdminNotifications() {
 
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-3">
-          <Filter className="h-4 w-4 text-orange-600" /> กรองการแจ้งเตือน
-        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none max-w-full md:max-w-[240px] truncate">
@@ -195,16 +196,16 @@ export default function AdminNotifications() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none max-w-full md:max-w-[240px] truncate">
             <option value="all">ทุกสถานะ</option>
-            <option value="unread">ยังไม่ได้อ่าน ({unreadCount})</option>
+            <option value="unread">ยังไม่ได้อ่าน</option>
             <option value="read">อ่านแล้ว</option>
-            <option value="action">ต้องดำเนินการ ({actionRequiredCount})</option>
+            <option value="action">ต้องดำเนินการ</option>
           </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
+        <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
           <span>แสดง {filtered.length} จาก {items.length} รายการจริง</span>
-          <button onClick={() => { setFilterType('all'); setFilterPriority('all'); setFilterStatus('all'); }}
-            className="text-orange-600 hover:underline font-semibold">ล้างตัวกรอง</button>
-        </p>
+          <ClearFiltersButton show={filterType !== 'all' || filterPriority !== 'all' || filterStatus !== 'all'}
+            onClick={() => { setFilterType('all'); setFilterPriority('all'); setFilterStatus('all'); }} />
+        </div>
       </div>
 
       {/* Content */}
@@ -278,7 +279,7 @@ export default function AdminNotifications() {
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                             <span className="text-xs text-slate-500">{timeAgo(item.createdAt)}</span>
                             {item.link && (
-                              <button aria-label="ถัดไป" onClick={() => takeAction(item)}
+                              <button onClick={() => takeAction(item)}
                                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
                                 {item.actionLabel || 'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>

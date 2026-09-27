@@ -85,8 +85,8 @@ export default function Navbar() {
                     <NotificationBell role="tutor" pagePath="/tutor/notification" />
                     <Link
                         to="/tutor/schedule"
-                        className="relative h-11 w-11 flex items-center justify-center rounded-lg
-                       hover:bg-orange-100 hover:text-orange-500 transition-colors mr-0.5 md:mr-2 lg:mr-4"
+                        className="relative h-10 w-10 flex items-center justify-center rounded-xl
+                       hover:bg-orange-100 hover:text-orange-500 transition-colors"
                         aria-label="ตารางสอน"
                     >
                         <Calendar className="h-5 w-5" />

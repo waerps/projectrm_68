@@ -19,6 +19,8 @@ import UIModal from "../components/ui/Modal";
 import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API = `${API_URL}/api/admin/incidents`;
 const ITEMS_PER_PAGE = 12;
@@ -364,10 +366,7 @@ export default function AdminIncidents() {
   const SEVERITY_CARDS = SEVERITY_ORDER.map(key => ({ key, ...getSeverityMeta(key) }));
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลเคส...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลเคส..." />
   );
 
   return (
@@ -380,13 +379,14 @@ export default function AdminIncidents() {
         <p className={PAGE_SUBTITLE}>จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน</p>
       </div>
 
-      {/* Stats — การ์ดสรุปภาพรวมเท่านั้น ไม่ใช่ตัวกรอง (โครง/พฤติกรรมเดียวกับสถิติในหน้า AdminStudents) */}
+      {/* Stats — กดการ์ดเพื่อกรองตามระดับความรุนแรง (กดซ้ำเพื่อยกเลิก) ใช้ตัวเลขชุดเดียวกับตัวกรอง */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {SEVERITY_CARDS.map(s => {
           const Icon = s.icon;
           return (
-            <div key={s.key}
-              className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+            <button key={s.key} type="button" aria-pressed={filterSeverity === s.key}
+              onClick={() => setFilterSeverity(filterSeverity === s.key ? "all" : s.key)}
+              className={`flex min-w-0 items-center gap-3 p-4 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterSeverity === s.key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
               <div className={`h-10 w-10 rounded-xl ${s.solidBg} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
@@ -394,7 +394,7 @@ export default function AdminIncidents() {
                 <p className="text-xs text-slate-500 font-medium">{sevLabel(s.key)}</p>
                 <p className="text-xl font-bold text-slate-900">{summary[s.key] ?? 0}</p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -433,13 +433,8 @@ export default function AdminIncidents() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           </div>
-          {(filterSeverity !== "all" || filterStatus !== "all" || search) && (
-            <button
-              onClick={() => { setFilterSeverity("all"); setFilterStatus("all"); setSearch(""); }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition">
-              <X className="h-3.5 w-3.5" /> ล้างตัวกรอง
-            </button>
-          )}
+          <ClearFiltersButton show={filterSeverity !== "all" || filterStatus !== "all" || !!search}
+            onClick={() => { setFilterSeverity("all"); setFilterStatus("all"); setSearch(""); }} />
         </div>
         <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {incidents.length} เคส</p>
       </div>

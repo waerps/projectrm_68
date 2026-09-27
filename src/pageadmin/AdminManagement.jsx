@@ -12,6 +12,7 @@ import {
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 const API = `${API_URL}/api/admin`;
 
@@ -204,7 +205,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
           className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+        <button onClick={submit} disabled={isSubmitting}
           className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
@@ -400,10 +401,7 @@ export default function AdminManagement() {
   const inactiveCount = admins.length - activeCount;
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลผู้ดูแลระบบ...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลผู้ดูแลระบบ..." />
   );
 
   return (
@@ -494,7 +492,7 @@ export default function AdminManagement() {
                     className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl">
                     <KeyRound className="h-4 w-4" /> รีเซ็ตรหัสผ่าน
                   </button>
-                  <button aria-label="ปฏิเสธ" onClick={() => setStatusChange({ admin: a, nextIsActive: !a.IsActive })}
+                  <button onClick={() => setStatusChange({ admin: a, nextIsActive: !a.IsActive })}
                     disabled={isSelf && a.IsActive}
                     className={`min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold rounded-xl border disabled:opacity-40 ${a.IsActive ? "text-red-500 bg-red-50 border-red-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>
                     {a.IsActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}

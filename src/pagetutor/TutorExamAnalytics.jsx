@@ -1772,10 +1772,10 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       <button type="button" onClick={() => copyText(buildAiFullText(aiRow, parentMessage), "all")} className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2">
                         {copied === "all" ? "คัดลอกทั้งฉบับแล้ว" : copied === "all-fail" ? "คัดลอกไม่ได้" : "คัดลอกทั้งฉบับ"}
                       </button>
-                      <button aria-label="แก้ไข" type="button" onClick={() => { setEditing((v) => !v); setTyped(null); }} className="flex items-center gap-1 text-xs font-bold text-orange-700 bg-white border border-orange-200 hover:bg-orange-50 rounded-xl px-3 py-1.5">
+                      <button type="button" onClick={() => { setEditing((v) => !v); setTyped(null); }} className="flex items-center gap-1 text-xs font-bold text-orange-700 bg-white border border-orange-200 hover:bg-orange-50 rounded-xl px-3 py-1.5">
                         <Pencil className="h-3.5 w-3.5" /> {editing ? "ปิดการแก้ไข" : "แก้ไข"}
                       </button>
-                      <button aria-label="ยืนยัน" type="button" disabled={!parentMessage} onClick={() => copyText(`${aiRow.nickname || aiRow.studentName}\n\n${parentMessage}`, "msg")}
+                      <button type="button" disabled={!parentMessage} onClick={() => copyText(`${aiRow.nickname || aiRow.studentName}\n\n${parentMessage}`, "msg")}
                         className={`${BTN.primary} flex items-center gap-1 text-xs font-bold rounded-xl px-3 py-1.5 disabled:opacity-40`}>
                         {copied === "msg" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === "msg" ? "คัดลอกแล้ว" : copied === "msg-fail" ? "คัดลอกไม่ได้" : "คัดลอกข้อความ"}
                       </button>
@@ -1800,7 +1800,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     <div className="px-4 sm:px-6 pb-5 -mt-2 flex items-center justify-between gap-2 flex-wrap">
                       <span className="text-[10.5px] text-slate-400">{parentMessage.length} ตัวอักษร · AI ร่างให้ ครูอ่านทบทวนก่อนส่งทุกครั้ง · กด "วิเคราะห์ใหม่" จะเขียนทับข้อความที่แก้ไว้</span>
                       {dirty && (
-                        <button aria-label="ยืนยัน" type="button" onClick={saveMessage} disabled={saving}
+                        <button type="button" onClick={saveMessage} disabled={saving}
                           className="flex items-center gap-1 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl px-3 py-1.5 disabled:opacity-40">
                           <Check className="h-3.5 w-3.5" /> {saving ? "กำลังบันทึก…" : "บันทึกข้อความ"}
                         </button>
@@ -2839,7 +2839,7 @@ export function ExamAnalyticsView({
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap lg:flex-shrink-0">
-            <button aria-label="วิเคราะห์ด้วย AI"
+            <button
               onClick={handleReanalyze}
               disabled={reanalyzing || !examResults[examId]?.submittedCount}
               className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition"

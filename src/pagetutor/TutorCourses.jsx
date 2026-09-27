@@ -8,6 +8,8 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
+import { ClipboardList } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
 
 export default function CoursesPage() {
   console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
@@ -362,26 +364,27 @@ export default function CoursesPage() {
                 </div>
 
                 {/* ✅ แก้ไขปุ่ม Action (ส่งชื่อคอร์สและวิชาไปใน URL ด้วย) */}
-                <div className="flex flex-col gap-2 lg:flex-row lg:gap-3 p-4 bg-white border-t border-slate-100">
-                  <Link
-                    to={`/tutor/students?courseId=${course.id}`}
-                    className="flex-1 border border-slate-200 text-slate-700 rounded-xl py-2.5 hover:bg-slate-50 hover:border-slate-300 transition flex items-center justify-center gap-2 font-bold text-sm"
-                  >
-                    <Users className="h-4 w-4 text-slate-400" /> ดูนักเรียน
-                  </Link>
-
+                {/* ปุ่มหลัก 1 ปุ่ม (จัดการเนื้อหา) + ปุ่มรอง 2 ปุ่ม — มือถือ: หลักเต็มแถว รองแบ่งครึ่ง */}
+                <div className="grid grid-cols-2 gap-2 p-4 bg-white border-t border-slate-100 lg:flex lg:gap-3">
                   <button
                     onClick={() => handleSubjectAction(course, "content")}
-                    className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                    className={`${BTN.base} ${BTN.primary} ${BTN.md} col-span-2 lg:order-3 lg:flex-1`}
                   >
                     <FileText className="h-4 w-4" /> จัดการเนื้อหา
                   </button>
 
+                  <Link
+                    to={`/tutor/students?courseId=${course.id}`}
+                    className={`${BTN.base} ${BTN.secondary} ${BTN.md} lg:order-1 lg:flex-1`}
+                  >
+                    <Users className="h-4 w-4 text-slate-500" /> ดูนักเรียน
+                  </Link>
+
                   <button
                     onClick={() => handleSubjectAction(course, "exam")}
-                    className="flex-1 bg-blue-50 text-blue-600 border-2 border-blue-100 rounded-xl py-2.5 hover:bg-blue-100 hover:border-blue-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                    className={`${BTN.base} ${BTN.secondary} ${BTN.md} lg:order-2 lg:flex-1`}
                   >
-                    <FileText className="h-4 w-4" /> จัดการข้อสอบ
+                    <ClipboardList className="h-4 w-4 text-slate-500" /> จัดการข้อสอบ
                   </button>
                 </div>
               </div>

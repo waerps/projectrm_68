@@ -161,7 +161,7 @@ export default function TutorProfile() {
                                 <X className="h-3.5 w-3.5" />
                                 ยกเลิก
                             </button>
-                            <button aria-label="บันทึก"
+                            <button
                                 onClick={handleSave}
                                 disabled={isSaving}
                                 className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
@@ -355,16 +355,16 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ── Info Row ──────────────────────────────────────────────────
 function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
     return (
-        <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide shrink-0">{label}</span>
-            <div className="flex-1 min-w-0 text-right">
+        <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+            <div className="min-w-0 text-left">
                 {isEditing ? (
                     <input
                         type={type}
                         name={name}
                         value={value}
                         onChange={onChange}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-right text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-left text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
                     />
                 ) : (
                     <span className="text-sm font-semibold text-slate-800 break-words">{value || <span className="text-slate-300 font-normal">-</span>}</span>

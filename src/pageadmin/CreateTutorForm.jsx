@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import { toast } from "../components/ui/dialogs";
 
 const val = (v) => (v === "" || v === undefined ? null : v);
 
@@ -40,7 +41,8 @@ export default function CreateTutorForm() {
   const [form, setForm] = useState(initialForm);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [alert, setAlert] = useState(null); // { type: 'success'|'error', msg }
+  // แจ้งผลด้วย toast กลางของระบบ (แทนกล่องแจ้งในหน้า) — คง signature setAlert เดิมไว้
+  const setAlert = (a) => { if (a) toast(a.msg, a.type); };
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -114,18 +116,6 @@ export default function CreateTutorForm() {
         </div>
 
         {/* Alert */}
-        {alert && (
-          <div
-            className={`mb-6 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium ${
-              alert.type === "success"
-                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                : "bg-red-50 text-red-700 border border-red-200"
-            }`}
-          >
-            <span className="text-base">{alert.type === "success" ? "✓" : "✕"}</span>
-            {alert.msg}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
 

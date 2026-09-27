@@ -12,6 +12,8 @@ import {
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API = `${API_URL}/api/admin`;
 
@@ -311,7 +313,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                     className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
-                <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
+                <button onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
                     className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
@@ -444,7 +446,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                         className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button aria-label="ยืนยัน" onClick={submit} disabled={loading || !hasChange}
+                    <button onClick={submit} disabled={loading || !hasChange}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isDecrease ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
@@ -517,7 +519,7 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
                         className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button aria-label="ยืนยัน" onClick={submit} disabled={loading}
+                    <button onClick={submit} disabled={loading}
                         className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
@@ -936,10 +938,7 @@ export default function AdminCommonFacilities() {
         ];
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคลังอุปกรณ์...</p>
-        </div>
+        <Spinner block label="กำลังโหลดข้อมูลคลังอุปกรณ์..." />
     );
 
     return (
@@ -1021,7 +1020,11 @@ export default function AdminCommonFacilities() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
+                <div className="mt-2 pl-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {items.length} รายการ</p>
+                    <ClearFiltersButton show={!!search || filterType !== "all" || filterCategory !== "all" || filterStatus !== "all" || filterStock !== "all"}
+                        onClick={() => { setSearch(""); setFilterType("all"); setFilterCategory("all"); setFilterStatus("all"); setFilterStock("all"); }} />
+                </div>
             </div>
 
             {filtered.length === 0 ? (

@@ -12,6 +12,8 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import { MapPin as LuMapPin } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
+import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
+import { Info } from "lucide-react";
 const API_BASE = `${API_URL}/api/admin`;
 
 // ── Avatar สีวน ──────────────────────────────────────────────
@@ -1392,8 +1394,9 @@ function TutorReleaseRanking({ selectedMonth }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl px-5 py-4">
-        <p className="text-sm text-amber-800 font-medium">
+      <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
+        <Info className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
+        <p className="font-medium">
           <span className="font-bold">สรุปการปล่อยคลาส —&nbsp;</span>
           <span className="font-bold text-amber-700">{top.Nickname}</span> ปล่อยคลาสบ่อยที่สุด {top.ReleaseCount} ครั้ง
           จากทั้งหมด {data.totalReleases} ครั้งในช่วงนี้
@@ -1497,9 +1500,9 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
   return (
     <div className="space-y-3">
       {/* Insight bar */}
-      <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-100 rounded-2xl px-5 py-4 flex flex-wrap items-center gap-3">
-        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-        <p className="text-sm text-red-800 font-medium flex-1">
+      <div className={`${CALLOUT.box} ${CALLOUT.danger}`}>
+        <AlertTriangle className={`w-5 h-5 shrink-0 ${CALLOUT_ICON.danger}`} />
+        <p className="font-medium flex-1">
           <span className="font-bold">สรุปเดือนนี้ —&nbsp;</span>
           วัน<span className="font-bold text-red-600">{DAY_FULL[worstDayNum]}</span>มีการขาดสอนบ่อยที่สุด ({daySummary[worstDayNum]} ครั้ง)
           {worstTutor && <>, และ <span className="font-bold text-red-600">{worstTutor.Nickname}</span> ขาดมากที่สุด {worstTutor.totalMissed} ครั้ง</>}

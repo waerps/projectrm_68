@@ -315,7 +315,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button aria-label="ยืนยัน" onClick={submit} disabled={submitting || !incidentTypeId}
+        <button onClick={submit} disabled={submitting || !incidentTypeId}
           className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ส่งเรื่อง</>}
         </button>

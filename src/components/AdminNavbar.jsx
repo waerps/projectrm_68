@@ -6,6 +6,7 @@ import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
 import { AlertOctagon, ChevronDown, Menu, X, LayoutDashboard, BookOpen, GraduationCap, Users, TrendingUp, CalendarDays, DoorOpen, Package, Megaphone, Wallet, ShieldCheck, UserCircle, LogOut } from "lucide-react";
+import { Library } from "lucide-react";
 
 export default function Navbar() {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -41,6 +42,7 @@ export default function Navbar() {
         { to: "schedule", label: "ตารางเรียน", icon: CalendarDays },
         { to: "rooms", label: "ห้องเรียน", icon: DoorOpen },
         { to: "common-facilities", label: "คลังอุปกรณ์", icon: Package },
+        { to: "media", label: "คลังสื่อการสอน", icon: Library },
         { to: "announcements", label: "ประชาสัมพันธ์", icon: Megaphone },
         { to: "finance", label: "การเงิน", icon: Wallet },
         { to: "management", label: "ผู้ดูแลระบบ", icon: ShieldCheck },
@@ -235,6 +237,9 @@ export default function Navbar() {
                                     <Link to="common-facilities" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">
                                         คลังอุปกรณ์
                                     </Link>
+                                </li>
+                                <li>
+                                    <Link to="media" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">คลังสื่อการสอน</Link>
                                 </li>
 
                                 <li>

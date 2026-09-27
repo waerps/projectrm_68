@@ -8,6 +8,7 @@ import {
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { TrendingUp as LuTrendingUp } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
 
 // ─── ภาพรวมพัฒนาการ — ทางลัดจากเมนู ──────────────────────────────────────────
 // หน้าวิเคราะห์ผูกกับ "คอร์ส + วิชา" โดยธรรมชาติ (TutorExamAnalytics ต้องมีทั้งสองค่า
@@ -151,10 +152,7 @@ export default function TutorProgressOverview() {
   };
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." />
   );
 
   return (

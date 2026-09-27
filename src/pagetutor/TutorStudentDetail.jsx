@@ -304,8 +304,33 @@ export default function TutorStudentDetail() {
                             <div className={`h-full rounded-full transition-all ${rateColor}`} style={{ width: `${attendanceRate}%` }} />
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full sm:min-w-[520px] text-sm">
+                    {/* มือถือ/แท็บเล็ต: รายการแบบการ์ด (ตารางแสดงตั้งแต่ lg) */}
+                    <ul className="lg:hidden divide-y divide-slate-100">
+                        {paginatedAttendance.length === 0 ? (
+                            <li className="px-4 py-10 text-center text-sm text-slate-500">ยังไม่มีข้อมูลการเข้าเรียน</li>
+                        ) : paginatedAttendance.map((rec, idx) => (
+                            <li key={idx} className={`flex items-center justify-between gap-3 px-4 py-3 ${rec.status === "absent" ? "bg-red-50" : ""}`}>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-slate-800">
+                                        {new Date(rec.date + 'T00:00:00').toLocaleDateString("th-TH", { weekday: "short", day: "numeric", month: "short", year: "2-digit" })}
+                                        <span className="ml-1.5 text-xs font-normal text-slate-500">{rec.startTime} – {rec.endTime} น.</span>
+                                    </p>
+                                    <p className="mt-0.5 truncate text-xs text-slate-600">{rec.subject}</p>
+                                </div>
+                                {rec.status === "present" ? (
+                                    <span className="inline-flex shrink-0 items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                                        <CheckCircle className="h-3.5 w-3.5" /> มาเรียน
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex shrink-0 items-center gap-1 bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                                        <XCircle className="h-3.5 w-3.5" /> ขาดเรียน
+                                    </span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="hidden lg:block overflow-x-auto">
+                        <table className="w-full min-w-[520px] text-sm">
                             <thead>
                                 <tr className="bg-slate-50 text-slate-500 text-xs">
                                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่</th>

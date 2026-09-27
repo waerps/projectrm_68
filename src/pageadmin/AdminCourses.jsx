@@ -20,6 +20,8 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
 import UIErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -285,7 +287,7 @@ function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
             className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
-          <button aria-label="ยืนยัน" onClick={handleConfirm} disabled={isSubmitting}
+          <button onClick={handleConfirm} disabled={isSubmitting}
             className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยันทำสำเนา</>}
           </button>
@@ -1425,7 +1427,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
               className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition">
               ยกเลิก
             </button>
-            <button aria-label="ยืนยัน" onClick={handleSave} disabled={saving || uploading}
+            <button onClick={handleSave} disabled={saving || uploading}
               className={`${BTN.primary} flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition`}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Check className="h-3.5 w-3.5" /> บันทึก</>}
             </button>
@@ -2021,7 +2023,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </div>
           <div>
             <label className={labelCls}>คอร์สโปรโมชัน</label>
-            <button aria-label="เปิด/ปิด"
+            <button
               type="button"
               onClick={() => set("Is_Promotion", !form.Is_Promotion)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
@@ -2315,7 +2317,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         >
           ยกเลิก
         </button>
-        <button aria-label="ยืนยัน"
+        <button
           onClick={handleSubmit}
           disabled={isSubmitting || hoursMismatch || installmentMismatch}
           className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}
@@ -3043,10 +3045,7 @@ export default function AdminCoursesPage() {
 
   if (loading)
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-        <Loader2 className="w-8 h-8 animate-spin mb-3" />
-        <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</p>
-      </div>
+      <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." />
     );
   if (loadError && courses.length === 0) return <div className="px-4 lg:px-0"><UIErrorState description="โหลดข้อมูลคอร์สไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 
@@ -3121,9 +3120,11 @@ export default function AdminCoursesPage() {
             ))}
           </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1">
-          แสดง {filtered.length} จาก {courses.length} คอร์ส
-        </p>
+        <div className="mt-2 pl-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {courses.length} คอร์ส</p>
+          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterAvailability !== "all" || filterCourseType !== "all"}
+            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterAvailability("all"); setFilterCourseType("all"); }} />
+        </div>
       </div>
 
       {paginated.length === 0 ? (

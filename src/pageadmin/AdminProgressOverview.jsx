@@ -10,6 +10,8 @@ import {
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
+import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
 // หนึ่งแถว = คอร์ส 1 × วิชา 1 × ติวเตอร์ 1 ซึ่งตรงกับหน่วยที่ระบบใช้จริง
@@ -131,10 +133,7 @@ export default function AdminProgressOverview() {
   }, [navigate, cameFrom]);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดภาพรวมพัฒนาการ...</p>
-    </div>
+    <Spinner block label="กำลังโหลดภาพรวมพัฒนาการ..." />
   );
 
   // ป้ายบอกว่ากำลังกรองอะไรอยู่ เมื่อเข้ามาจากปุ่มในหน้าอื่น
@@ -196,9 +195,9 @@ export default function AdminProgressOverview() {
 
       {/* ข้อมูลไม่สอดคล้อง — แจ้งอย่างเดียว ไม่แก้ให้เอง */}
       {orphanGroups > 0 && (
-        <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-800">
+        <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
+          <AlertTriangle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
+          <p>
             พบชุดข้อสอบ {orphanGroups} กลุ่ม ที่ผูกกับคอร์ส+วิชาแต่ติวเตอร์เจ้าของไม่ได้ถูกมอบหมายให้สอนวิชานั้นแล้ว
             ผลสอบของกลุ่มนี้จะไม่ถูกนับในตารางด้านล่าง — เป็นการแจ้งให้ทราบเฉยๆ ระบบไม่ได้แก้ไขข้อมูลใดๆ ให้
           </p>

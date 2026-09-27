@@ -11,6 +11,8 @@ import {
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API = `${API_URL}/api/admin`;
 
@@ -373,7 +375,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
                     className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
-                <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+                <button onClick={submit} disabled={isSubmitting}
                     className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
@@ -526,7 +528,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
                         className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button aria-label="ยืนยัน" onClick={() => submit(false)} disabled={loading}
+                    <button onClick={() => submit(false)} disabled={loading}
                         className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
@@ -860,10 +862,7 @@ export default function AdminRooms() {
     const availableCount = rooms.filter(r => Number(r.Status_Room_Id) === 1).length;
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลห้องเรียน...</p>
-        </div>
+        <Spinner block label="กำลังโหลดข้อมูลห้องเรียน..." />
     );
 
     return (
@@ -926,7 +925,11 @@ export default function AdminRooms() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {rooms.length} ห้อง</p>
+                <div className="mt-2 pl-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {rooms.length} ห้อง</p>
+                    <ClearFiltersButton show={!!search || filterFloor !== "all" || filterStatus !== "all"}
+                        onClick={() => { setSearch(""); setFilterFloor("all"); setFilterStatus("all"); }} />
+                </div>
             </div>
 
             {filtered.length === 0 ? (

@@ -12,6 +12,7 @@ import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API_BASE = `${API_URL}/api/admin/news`;
 const SERVER_URL = API_URL;
@@ -485,10 +486,7 @@ export default function AdminAnnouncements() {
             </div>
 
             {/* Filter Bar */}
-            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-3">
-                    <Filter className="h-4 w-4 text-orange-500" /> กรองข้อมูล
-                </div>
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-6">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -506,10 +504,8 @@ export default function AdminAnnouncements() {
                         <option value="all">ทุกกลุ่มเป้าหมาย</option>
                         {TARGETS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
-                    <button onClick={() => { setSearchQuery(''); setCategoryFilter('all'); setTargetFilter('all'); setStatusFilter('all'); }}
-                        className="px-4 py-2 border border-slate-300 rounded-xl text-sm hover:bg-slate-50 transition text-slate-600">
-                        ล้างตัวกรอง
-                    </button>
+                    <ClearFiltersButton show={!!searchQuery || categoryFilter !== 'all' || targetFilter !== 'all' || statusFilter !== 'all'}
+                        onClick={() => { setSearchQuery(''); setCategoryFilter('all'); setTargetFilter('all'); setStatusFilter('all'); }} />
                 </div>
             </div>
 
@@ -656,7 +652,7 @@ export default function AdminAnnouncements() {
                                 className={`${BTN.secondary} flex-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50`}>
                                 ยกเลิก
                             </button>
-                            <button aria-label="ลบ" onClick={handleDelete} disabled={submitting}
+                            <button onClick={handleDelete} disabled={submitting}
                                 className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition flex items-center gap-2 disabled:opacity-50">
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 {submitting ? 'กำลังลบ...' : 'ลบข่าว'}

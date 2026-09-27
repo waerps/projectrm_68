@@ -21,6 +21,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { Users as LuUsers } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -431,7 +432,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
               )}
             </div>
           ) : (
-            <button aria-label="ดูรายละเอียด" onClick={handleOpenPreview} disabled={previewing}
+            <button onClick={handleOpenPreview} disabled={previewing}
               className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 disabled:opacity-50 transition">
               {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
               {previewing ? "กำลังเปิด..." : "ดูตัวอย่าง Resume"}
@@ -1341,7 +1342,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+        <button onClick={submit} disabled={isSubmitting}
           className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
@@ -1932,13 +1933,12 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-0 px-4 sm:px-5 py-4 border-b border-orange-100
-                      bg-gradient-to-r from-orange-500 to-amber-500">
+      <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-0 px-4 sm:px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-sm">Performance Score ติวเตอร์ประจำเดือน</h2>
+          <BarChart2 className="h-5 w-5 text-orange-500" />
+          <h2 className="font-bold text-slate-900 text-base">Performance Score ติวเตอร์ประจำเดือน</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
+        <span className="text-xs text-slate-500">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
       </div>
 
       {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
@@ -2006,7 +2006,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <>
             {filtered.length >= 1 && (
               <>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
                     const MEDALS = ['🥇', '🥈', '🥉'];
@@ -2014,14 +2014,14 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 text-center"
-                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                          className={`rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center  ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                          data-rank={medalIdx + 1}
                         >
-                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="text-2xl opacity-30 shrink-0">{MEDALS[medalIdx]}</div>
                           <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
                             <Users className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-xs font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
+                          <p className="flex-1 min-w-0 sm:flex-none text-xs font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
                           <p className="text-lg font-bold text-slate-300 mt-1">—</p>
                           <p className="text-[11px] text-slate-300">คะแนน</p>
                         </div>
@@ -2030,12 +2030,12 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-2 sm:p-3 text-center transition-all duration-200 cursor-pointer
-                        hover:-translate-y-1.5 hover:shadow-lg hover:scale-[1.03]
-                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        className={`rounded-xl border p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center transition-all duration-200 cursor-pointer
+                        sm:hover:-translate-y-1.5 hover:shadow-lg sm:hover:scale-[1.03]
+                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'} ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                        data-rank={medalIdx + 1}
                       >
-                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="text-2xl shrink-0">{MEDALS[medalIdx]}</div>
                         <div className="flex justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(t => (
                             <button key={t.AdminId} onClick={() => onViewTutor(t)}
@@ -2050,7 +2050,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        <p className="flex-1 min-w-0 sm:flex-none text-xs font-semibold text-slate-800 mt-1.5 truncate">
                           {group.members.length === 1
                             ? group.members[0].Nickname
                             : `${group.members.length} คนเสมอกัน`}
@@ -2402,10 +2402,7 @@ export default function AdminTutorsPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลติวเตอร์...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลติวเตอร์..." />
   );
   if (loadError && tutors.length === 0) return <ErrorState onRetry={() => { setLoadError(false); setLoading(true); fetchTutors(); }} />;
 

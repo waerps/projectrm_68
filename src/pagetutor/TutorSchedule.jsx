@@ -9,6 +9,7 @@ import { confirmDialog } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
+import { CalendarDays } from "lucide-react";
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -588,7 +589,9 @@ export default function TutorSchedule() {
             <h1 className={PAGE_TITLE}>ตารางสอนของฉัน</h1>
             <p className={PAGE_SUBTITLE}>บันทึกชั่วโมงการสอน</p>
           </div>
-          <div className="bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md self-start md:self-center">
+          {/* ข้อมูลวันนี้ (ไม่ใช่ปุ่ม) — ใช้ป้ายโทนอ่อน ไม่ให้ดูเหมือนปุ่มหลัก */}
+          <div className="inline-flex items-center gap-2 self-start md:self-center rounded-full border border-orange-200 bg-orange-50 px-3.5 py-1.5 text-sm font-semibold text-orange-700">
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
             วัน{todayLabel}ที่ {formattedDate}
           </div>
         </div>
@@ -755,13 +758,13 @@ export default function TutorSchedule() {
           </div>
 
           {lineLinked ? (
-            <button aria-label="ยกเลิกการเชื่อมต่อ" type="button" onClick={disconnectTutorLine} disabled={lineLoading}
+            <button type="button" onClick={disconnectTutorLine} disabled={lineLoading}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50">
               <Unlink className="h-4 w-4" />
               {lineLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกการเชื่อม'}
             </button>
           ) : (
-            <button aria-label="ส่งข้อความ" type="button" onClick={connectTutorLine} disabled={lineLoading || !token}
+            <button type="button" onClick={connectTutorLine} disabled={lineLoading || !token}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#06C755] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#05ad49] disabled:opacity-50">
               <MessageCircle className="h-4 w-4" />
               {lineLoading ? 'กำลังตรวจสอบ...' : 'เชื่อมบัญชีกับ LINE'}

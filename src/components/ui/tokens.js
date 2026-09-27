@@ -37,3 +37,14 @@ export const PAGE_SUBTITLE = "text-sm text-slate-500 mt-1";
    - ตารางสอนรายสัปดาห์ (ติวเตอร์/แอดมิน): จอ < lg แสดงแบบรายวัน       → `lg:hidden` / `hidden lg:block`
    - Navbar: เมนูเต็มแสดงที่ md ขึ้นไป */
 export const BREAKPOINT = { table: "lg", schedule: "lg", navbar: "md" };
+
+/* แถบแจ้งเตือนในหน้า (Callout) — ใช้กล่อง + สีตามระดับเดียวกันทุกหน้า
+   ใช้คู่กัน: className={`${CALLOUT.box} ${CALLOUT.warning}`} + ไอคอน h-5 w-5 สี CALLOUT_ICON.warning */
+export const CALLOUT = {
+  box: "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
+  info: "bg-blue-50 border-blue-200 text-blue-800",
+  warning: "bg-amber-50 border-amber-200 text-amber-800",
+  danger: "bg-red-50 border-red-200 text-red-800",
+  success: "bg-emerald-50 border-emerald-200 text-emerald-800",
+};
+export const CALLOUT_ICON = { info: "text-blue-500", warning: "text-amber-500", danger: "text-red-500", success: "text-emerald-500" };

@@ -1,20 +1,21 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
+import { toast } from "./ui/dialogs";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   useToast — คง API เดิม (toasts, showToast, removeToast) ไว้ให้หน้าเดิมใช้ต่อได้
+   แต่ส่งทุกข้อความไปที่ toast กลางของระบบ (components/ui/dialogs) ที่เดียว
+   → toast ทั้งระบบซ้อน/เรียงอยู่ชุดเดียว ไม่มี 2 ระบบแข่งกัน
+   ToastContainer ที่หน้าเดิมวางไว้จะได้ toasts = [] จึงไม่แสดงอะไรซ้ำ
+   ────────────────────────────────────────────────────────────────────── */
+const EMPTY = [];
 
 export function useToast() {
-  const [toasts, setToasts] = useState([]);
-
-  // ✅ ต้องใช้ setToasts แบบ functional เพื่อให้ setTimeout เห็นค่าล่าสุด
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  }, []);
-
   const showToast = useCallback((type, title, message) => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, type, title, message }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id)); // ✅ ไม่พึ่ง removeToast
-    }, 3500);
+    const text = message ? `${title ?? ""}\n${message}` : String(title ?? "");
+    toast(text, type);
   }, []);
 
-  return { toasts, showToast, removeToast };
+  const removeToast = useCallback(() => {}, []);
+
+  return { toasts: EMPTY, showToast, removeToast };
 }

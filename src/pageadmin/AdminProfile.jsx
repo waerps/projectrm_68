@@ -9,6 +9,7 @@ import {
   KeyRound, Eye, EyeOff, Loader2, CalendarDays, AlertTriangle,
 } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 const API = `${API_URL}/api/admin/profile`;
 
@@ -126,16 +127,16 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ─── Info Row (เหมือน TutorProfile.jsx) ────────────────────────────────────
 function InfoRow({ label, value, name, isEditing, onChange, editable = true, type = "text" }) {
   return (
-    <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide shrink-0">{label}</span>
-      <div className="flex-1 min-w-0 text-right">
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+      <div className="min-w-0 text-left">
         {isEditing && editable ? (
           <input
             type={type}
             name={name}
             value={value}
             onChange={onChange}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-right text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-left text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
           />
         ) : (
           <span className="text-sm font-semibold text-slate-800 break-words">
@@ -252,10 +253,7 @@ export default function AdminProfile() {
   };
 
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูล..." />
   );
 
   return (
@@ -275,7 +273,7 @@ export default function AdminProfile() {
               className="flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-4 py-1.5 text-sm text-white font-medium hover:bg-white/20 transition">
               <X className="h-3.5 w-3.5" /> ยกเลิก
             </button>
-            <button aria-label="บันทึก" onClick={handleSave} disabled={isSaving}
+            <button onClick={handleSave} disabled={isSaving}
               className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60">
               <Save className="h-3.5 w-3.5" />
               {isSaving ? "กำลังบันทึก..." : "บันทึก"}

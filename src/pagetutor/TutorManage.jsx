@@ -251,7 +251,7 @@ export default function TutorCourseManagePage() {
                           className="flex-1 flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-200 transition">
                           <X className="h-4 w-4" /> ยกเลิก
                         </button>
-                        <button aria-label="ยืนยัน" onClick={() => handleSaveEditVideo(video.VideoId)} disabled={isSubmitting}
+                        <button onClick={() => handleSaveEditVideo(video.VideoId)} disabled={isSubmitting}
                           className={`${BTN.primary} flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-sm font-bold transition`}>
                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                         </button>
@@ -488,7 +488,7 @@ export default function TutorCourseManagePage() {
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditingDoc(null)} disabled={isSubmitting}
                   className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>ยกเลิก</button>
-                <button aria-label="ยืนยัน" onClick={handleSaveEditDoc} disabled={isSubmitting}
+                <button onClick={handleSaveEditDoc} disabled={isSubmitting}
                   className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>

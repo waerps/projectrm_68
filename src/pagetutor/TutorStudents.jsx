@@ -16,6 +16,7 @@ import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet,
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
+import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -280,8 +281,8 @@ export default function TutorStudents() {
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
                         </div>
-                        <div className="relative group self-start md:self-auto">
-                            <button className={`${BTN.primary} flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>
+                        <div className="relative group w-full sm:w-auto md:self-auto">
+                            <button className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
                             <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
@@ -314,7 +315,7 @@ export default function TutorStudents() {
 
                 {/* Low Attendance Warning */}
                 {getLowAttendanceStudents().length > 0 && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                    <div className={`rounded-2xl border p-4 mb-6 ${CALLOUT.danger}`}>
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                                 <LuAlertTriangle className="h-5 w-5 text-red-500" />
@@ -387,7 +388,7 @@ export default function TutorStudents() {
                                         )}
                                         <button
                                             onClick={() => navigate(`/tutor/students/detail?courseId=${courseId}&studentId=${student.id}`)}
-                                            className={`${BTN.primary} flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition`}
+                                            className={`${BTN.secondary} flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition hover:border-orange-300 hover:text-orange-600`}
                                         >
                                             ดูรายละเอียด <ChevronRight className="h-3.5 w-3.5" />
                                         </button>

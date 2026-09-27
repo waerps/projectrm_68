@@ -74,8 +74,8 @@ export default function TutorNotifications(){
         </div>
         {unread>0 && (
           <button onClick={markAll} disabled={busy==='all'}
-            className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm disabled:opacity-60`}>
-            <Check className="h-4 w-4" /> อ่านทั้งหมด
+            className={`${BTN.secondary} flex items-center justify-center gap-2 self-end sm:self-auto px-4 py-2 rounded-xl font-semibold transition text-sm disabled:opacity-60`}>
+            <Check className="h-4 w-4 text-slate-500" /> อ่านทั้งหมด
           </button>
         )}
       </div>
@@ -163,7 +163,7 @@ export default function TutorNotifications(){
                           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                             <span className="text-xs text-slate-500">{ago(item.createdAt)}</span>
                             {item.link && (
-                              <button aria-label="ถัดไป" onClick={()=>act(item)}
+                              <button onClick={()=>act(item)}
                                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
                                 {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>

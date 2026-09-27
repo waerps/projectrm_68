@@ -20,6 +20,7 @@ import Badge from "../components/ui/Badge";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import UIEmptyState from "../components/ui/EmptyState";
 import { BTN } from "../components/ui/tokens";
+import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 
 const FINANCE_API = `${API_URL}/api/admin/finance`;
 const ITEMS_PER_PAGE = 10;
@@ -589,9 +590,9 @@ export default function AdminFinance() {
             </div>
 
             {missingPriceCount > 0 && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-orange-50 border border-orange-200 rounded-2xl text-sm text-orange-700">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ
+                <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
+                    <AlertCircle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
+                    <p>พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ</p>
                 </div>
             )}
 
