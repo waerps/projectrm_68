@@ -13,7 +13,7 @@ import Spinner from "../components/ui/Spinner";
 import UIErrorState from "../components/ui/ErrorState";
 import { BTN, INPUT } from "../components/ui/tokens";
 import { toast, confirmDialog } from "../components/ui/dialogs";
-import { PRIVATE_ICONS, PRIVATE_LEVELS, privateIconOf } from "../config/privateCourses";
+import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, privateIconOf } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
    แอดมิน · คอร์สเดี่ยว (ตัวต่อตัว 1 วิชา 1 นักเรียน) — แท็บ "คอร์สเดี่ยว" ในหน้าจัดการคอร์ส (/admin/courses?type=single)
@@ -598,13 +598,20 @@ function PaymentModal({ course, onClose, onDone }) {
 function OfferModal({ offer, subjects, onClose, onDone }) {
   const [f, setF] = useState(() => ({
     Title: offer?.Title || "", SubjectId: offer?.SubjectId ? String(offer.SubjectId) : "", IconKey: offer?.IconKey || "math",
-    Levels: offer?.Levels || ["ม.ต้น", "ม.ปลาย"], Note: offer?.Note || "",
+    Levels: offer?.Levels || [], Note: offer?.Note || "",
     askPrice: offer ? offer.StartingPrice === null : false, StartingPrice: offer?.StartingPrice ?? 350,
     SortOrder: offer?.SortOrder ?? 0, IsActive: offer ? offer.IsActive : true,
   }));
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   const toggleLevel = (l) => set("Levels", f.Levels.includes(l) ? f.Levels.filter((x) => x !== l) : [...f.Levels, l]);
+  // ปุ่ม "ทั้งหมด" ของแต่ละกลุ่ม: กดครั้งเดียวเลือก/ยกเลิกทุกชั้นในกลุ่มนั้น ส่วนชั้นแต่ละชั้นยังเลือกแยกได้ตามใจ
+  const toggleGroup = (group) => {
+    const allSelected = group.grades.every((g) => f.Levels.includes(g));
+    set("Levels", allSelected
+      ? f.Levels.filter((x) => !group.grades.includes(x))
+      : [...new Set([...f.Levels, ...group.grades])]);
+  };
 
   const submit = async () => {
     setSaving(true);
@@ -653,13 +660,28 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
         </div>
         <div>
           <label className={labelCls}>ระดับชั้น</label>
-          <div className="flex flex-wrap gap-2">
-            {PRIVATE_LEVELS.map((l) => (
-              <button key={l} type="button" onClick={() => toggleLevel(l)}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${f.Levels.includes(l) ? "border-orange-500 bg-orange-500 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-orange-300"}`}>
-                {f.Levels.includes(l) && <CheckCircle2 className="mr-1 inline h-3 w-3" />}{l}
-              </button>
-            ))}
+          <p className="mb-2 text-[11px] text-slate-500">กดชื่อกลุ่มเพื่อเลือก/ยกเลิกทั้งกลุ่ม หรือกดเลือกทีละชั้นก็ได้ เช่น เปิดสอนเฉพาะ ม.6</p>
+          <div className="space-y-2.5">
+            {PRIVATE_GRADE_GROUPS.map((group) => {
+              const allSelected = group.grades.every((g) => f.Levels.includes(g));
+              const someSelected = !allSelected && group.grades.some((g) => f.Levels.includes(g));
+              return (
+                <div key={group.key} className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
+                  <button type="button" onClick={() => toggleGroup(group)}
+                    className={`mb-2 rounded-full border px-3 py-1 text-xs font-bold transition ${allSelected ? "border-orange-500 bg-orange-500 text-white" : someSelected ? "border-orange-300 bg-orange-50 text-orange-600" : "border-slate-300 bg-white text-slate-600 hover:border-orange-300"}`}>
+                    {allSelected && <CheckCircle2 className="mr-1 inline h-3 w-3" />}{group.label} (ทั้งหมด)
+                  </button>
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.grades.map((l) => (
+                      <button key={l} type="button" onClick={() => toggleLevel(l)}
+                        className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${f.Levels.includes(l) ? "border-orange-500 bg-orange-500 text-white" : "border-slate-200 bg-white text-slate-600 hover:border-orange-300"}`}>
+                        {f.Levels.includes(l) && <CheckCircle2 className="mr-1 inline h-3 w-3" />}{l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">

@@ -18,8 +18,15 @@ export const PRIVATE_CONTACT = {
 // ราคาเริ่มต้น/ชม. ที่แสดงบนแบนเนอร์ (ราคาจริงพี่กวางกำหนดตามวิชา ความยาก และจำนวนชั่วโมง)
 export const PRIVATE_STARTING_PRICE = 350;
 
-// ระดับชั้นที่เลือกได้ในหน้าแอดมิน และใช้เป็นตัวกรองในหน้าเว็บ
-export const PRIVATE_LEVELS = ["ประถม", "ม.ต้น", "ม.ปลาย"];
+// ระดับชั้นแยกเป็นชั้นปีจริง (ไม่ใช่แค่ช่วงกว้างๆ) เพราะบางวิชาอาจเปิดสอนแค่ชั้นเดียว เช่น ม.6
+// ปุ่ม "ทั้งหมด" ของแต่ละกลุ่มในหน้าแอดมินจะเลือก/ยกเลิกทุกชั้นในกลุ่มนั้นให้ทีเดียว
+export const PRIVATE_GRADE_GROUPS = [
+  { key: "primary", label: "ประถม", grades: ["ป.3", "ป.4", "ป.5", "ป.6"] },
+  { key: "middle", label: "ม.ต้น", grades: ["ม.1", "ม.2", "ม.3"] },
+  { key: "high", label: "ม.ปลาย", grades: ["ม.4", "ม.5", "ม.6"] },
+];
+// รายชั้นทั้งหมดแบบแบน (ใช้เป็นตัวกรองในหน้าเว็บ — โชว์เฉพาะชั้นที่มีวิชาเปิดสอนจริง)
+export const PRIVATE_LEVELS = PRIVATE_GRADE_GROUPS.flatMap((g) => g.grades);
 
 // ไอคอนวิชา: key ที่เก็บใน private_course_offers.IconKey → ไอคอนที่แสดง
 export const PRIVATE_ICONS = {
