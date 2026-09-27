@@ -13,6 +13,9 @@ import {
     ChevronDown, ChevronUp,
     Award, TrendingUp, TrendingDown, Minus, ArrowLeft,   // ★ เพิ่ม
   } from "lucide-react";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import { Phone as LuPhone, School as LuSchool } from "lucide-react";
 
 // สีประจำวิชา — วนตามลำดับวิชาที่มีจริงในคอร์ส (เดิมผูกกับชื่อวิชา 5 วิชาที่ hardcode ไว้)
 const SUBJECT_DOT_COLORS = [
@@ -41,83 +44,10 @@ function StudentAvatar({ student, className = "h-full w-full object-cover" }) {
 
 
 // ── ✨ Pagination Component ────────────────────────────────────────
-const Pagination = ({ currentPage, totalPages, onPageChange }) => {
-    const pages = [];
-    const maxVisible = 5;
-    
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    
-    if (endPage - startPage < maxVisible - 1) {
-        startPage = Math.max(1, endPage - maxVisible + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        pages.push(i);
-    }
-    
-    if (totalPages <= 1) return null;
-    
-    return (
-        <div className="flex flex-wrap items-center justify-center gap-2 py-4 px-4">
-            <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="text-sm font-medium">ก่อนหน้า</span>
-            </button>
-            
-            {startPage > 1 && (
-                <>
-                    <button
-                        onClick={() => onPageChange(1)}
-                        className="px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition text-sm font-medium"
-                    >
-                        1
-                    </button>
-                    {startPage > 2 && <span className="text-neutral-400">...</span>}
-                </>
-            )}
-            
-            {pages.map(page => (
-                <button
-                    key={page}
-                    onClick={() => onPageChange(page)}
-                    className={`px-3 py-2 rounded-lg border text-sm font-medium transition ${
-                        page === currentPage
-                            ? "bg-orange-500 text-white border-orange-500"
-                            : "border-neutral-300 text-neutral-700 hover:bg-neutral-50"
-                    }`}
-                >
-                    {page}
-                </button>
-            ))}
-            
-            {endPage < totalPages && (
-                <>
-                    {endPage < totalPages - 1 && <span className="text-neutral-400">...</span>}
-                    <button
-                        onClick={() => onPageChange(totalPages)}
-                        className="px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 transition text-sm font-medium"
-                    >
-                        {totalPages}
-                    </button>
-                </>
-            )}
-            
-            <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-                <span className="text-sm font-medium">ถัดไป</span>
-                <ChevronRight className="h-4 w-4" />
-            </button>
-        </div>
-    );
-};
+const Pagination = ({ currentPage, totalPages, onPageChange }) => (
+    // ใช้ตัวแบ่งหน้ากลางของระบบ (components/ui/Pagination)
+    <UIPagination page={currentPage} totalPages={totalPages} onChange={onPageChange} className="px-4 py-4" />
+);
 
 // ── Component ────────────────────────────────────────────
 export default function TutorStudentDetail() {
@@ -268,22 +198,22 @@ export default function TutorStudentDetail() {
     const rateText  = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
     if (loading) return (
-        <div className="mt-[90px] text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>
+        <div className="text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>
     );
     if (!student) return (
-        <div className="mt-[90px] text-center p-10 text-neutral-500">ไม่พบข้อมูลนักเรียน</div>
+        <div className="text-center p-10 text-slate-500">ไม่พบข้อมูลนักเรียน</div>
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
 
             {/* Breadcrumb & Profile Card (เหมือนเดิม) */}
-            <div className="flex flex-wrap items-center text-sm text-neutral-500 gap-2">
+            <div className="flex flex-wrap items-center text-sm text-slate-500 gap-2">
                 <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
                 <ChevronRight className="h-4 w-4" />
                 <Link to={`/tutor/students?courseId=${courseId}`} className="hover:text-orange-600 transition font-medium">ข้อมูลนักเรียน</Link>
                 <ChevronRight className="h-4 w-4" />
-                <span className="text-neutral-800 font-semibold break-words min-w-0">{student.name}</span>
+                <span className="text-slate-800 font-semibold break-words min-w-0">{student.name}</span>
             </div>
 
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-4 sm:p-5">
@@ -292,10 +222,10 @@ export default function TutorStudentDetail() {
                         <StudentAvatar student={student} />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <h1 className="text-xl font-bold text-neutral-900 break-words">{student.name}</h1>
-                        <div className="flex flex-wrap gap-2 mt-1 text-xs text-neutral-600">
-                            <span className="bg-white border rounded px-2 py-0.5">🏫 {student.school}</span>
-                            <span className="bg-white border rounded px-2 py-0.5">📞 {student.phone}</span>
+                        <h1 className={`${PAGE_TITLE} break-words`}>{student.name}</h1>
+                        <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-600">
+                            <span className="inline-flex items-center gap-1 bg-white border rounded px-2 py-0.5"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</span>
+                            <span className="inline-flex items-center gap-1 bg-white border rounded px-2 py-0.5"><LuPhone className="h-3.5 w-3.5 text-slate-400" /> {student.phone}</span>
                             <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{student.gradeLevel}</span>
                             {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
                             {student.gpa && student.gpa !== '-' && (
@@ -305,14 +235,14 @@ export default function TutorStudentDetail() {
                     </div>
                     <div className="flex gap-3 flex-wrap">
                         <div className="bg-white border border-green-200 rounded-xl px-4 py-2 text-center">
-                            <p className="text-xs text-neutral-500 mb-0.5">เข้าเรียน</p>
+                            <p className="text-xs text-slate-500 mb-0.5">เข้าเรียน</p>
                             <p className={`text-lg font-bold ${rateText}`}>{attendanceRate}%</p>
-                            <p className="text-xs text-neutral-400">{attendedCount}/{attendance.length} คาบ</p>
+                            <p className="text-xs text-slate-400">{attendedCount}/{attendance.length} คาบ</p>
                         </div>
                         <div className="bg-white border border-orange-200 rounded-xl px-4 py-2 text-center">
-                            <p className="text-xs text-neutral-500 mb-0.5">ดูคลิป</p>
+                            <p className="text-xs text-slate-500 mb-0.5">ดูคลิป</p>
                             <p className="text-lg font-bold text-orange-600">{videoRate}%</p>
-                            <p className="text-xs text-neutral-400">{watchedCount}/{videos.length} คลิป</p>
+                            <p className="text-xs text-slate-400">{watchedCount}/{videos.length} คลิป</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-4 py-2 text-center ${getTrendColor(getOverallTrend())}`}>
                             <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
@@ -320,7 +250,7 @@ export default function TutorStudentDetail() {
                                 {getTrendIcon(getOverallTrend())}
                                 <p className="text-lg font-bold">{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
                             </div>
-                            <div className="text-xs text-neutral-400">
+                            <div className="text-xs text-slate-400">
                                 {improvement
                                     ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
                                     : "ยังไม่มีข้อมูลสอบ"}
@@ -331,7 +261,7 @@ export default function TutorStudentDetail() {
             </div>
 
             {/* Tabs (เหมือนเดิม) */}
-            <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl w-fit flex-wrap">
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
                 {[
                     { key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> },
                     { key: "videos",     label: "รายการคลิป",     icon: <Video className="h-4 w-4" /> },
@@ -339,8 +269,8 @@ export default function TutorStudentDetail() {
                     { key: "overview",   label: "ภาพรวม",          icon: <BarChart2 className="h-4 w-4" /> },
                 ].map(tab => (
                     <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                            activeTab === tab.key ? "bg-white shadow text-orange-600" : "text-neutral-500 hover:text-neutral-700"
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition ${
+                            activeTab === tab.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"
                         }`}>
                         {tab.icon}{tab.label}
                     </button>
@@ -349,53 +279,53 @@ export default function TutorStudentDetail() {
 
             {/* ── Tab: Attendance with Pagination ── */}
             {activeTab === "attendance" && (
-                <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex flex-wrap gap-2 items-center justify-between">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Users className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">ประวัติการเข้าเรียนรายคาบ</h2>
+                            <h2 className="font-bold text-slate-900">ประวัติการเข้าเรียนรายคาบ</h2>
                         </div>
                         <div className="flex gap-2 text-xs font-semibold">
                             <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">มา {attendedCount} คาบ</span>
                             <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full">ขาด {absentCount} คาบ</span>
                         </div>
                     </div>
-                    <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
-                        <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
                             <span>อัตราการเข้าเรียน</span>
                             <span className={`font-bold ${rateText}`}>{attendanceRate}%</span>
                         </div>
-                        <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all ${rateColor}`} style={{ width: `${attendanceRate}%` }} />
                         </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full sm:min-w-[520px] text-sm">
                             <thead>
-                                <tr className="bg-neutral-50 text-neutral-500 text-xs">
-                                    <th className="text-left px-4 py-3 font-semibold">วันที่</th>
-                                    <th className="text-left px-4 py-3 font-semibold">วิชา</th>
-                                    <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">เวลา</th>
-                                    <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
+                                <tr className="bg-slate-50 text-slate-500 text-xs">
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่</th>
+                                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วิชา</th>
+                                    <th className="hidden sm:table-cell text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เวลา</th>
+                                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {paginatedAttendance.length === 0 ? (
-                                    <tr><td colSpan={4} className="text-center py-10 text-neutral-400">ยังไม่มีข้อมูลการเข้าเรียน</td></tr>
+                                    <tr><td colSpan={4} className="text-center py-10 text-slate-400">ยังไม่มีข้อมูลการเข้าเรียน</td></tr>
                                 ) : paginatedAttendance.map((rec, idx) => (
-                                    <tr key={idx} className={`border-t border-neutral-100 ${rec.status === "absent" ? "bg-red-50" : "hover:bg-neutral-50"}`}>
-                                        <td className="px-4 py-3 font-medium text-neutral-800">
+                                    <tr key={idx} className={`border-t border-slate-100 ${rec.status === "absent" ? "bg-red-50" : "hover:bg-slate-50"}`}>
+                                        <td className="px-4 py-3 font-medium text-slate-800">
                                         {new Date(rec.date + 'T00:00:00').toLocaleDateString("th-TH", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
                                         </td>
-                                        <td className="px-4 py-3 text-neutral-600">{rec.subject}</td>
-                                        <td className="hidden sm:table-cell px-4 py-3 text-neutral-500 text-xs">{rec.startTime} – {rec.endTime} น.</td>
+                                        <td className="px-4 py-3 text-slate-600">{rec.subject}</td>
+                                        <td className="hidden sm:table-cell px-4 py-3 text-slate-500 text-xs">{rec.startTime} – {rec.endTime} น.</td>
                                         <td className="px-4 py-3 text-center">
                                             {rec.status === "present" ? (
-                                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                                <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                                                     <CheckCircle className="h-3.5 w-3.5" /> มาเรียน
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs font-bold px-2.5 py-1 rounded-full">
+                                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                                                     <XCircle className="h-3.5 w-3.5" /> ขาดเรียน
                                                 </span>
                                             )}
@@ -417,37 +347,37 @@ export default function TutorStudentDetail() {
 
             {/* ── Tab: Videos with Pagination ── */}
             {activeTab === "videos" && (
-                <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex flex-wrap gap-2 items-center justify-between">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Video className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">รายการคลิปทั้งหมด</h2>
+                            <h2 className="font-bold text-slate-900">รายการคลิปทั้งหมด</h2>
                         </div>
                         <div className="flex gap-2 text-xs font-semibold">
                             <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full">▶ ดูแล้ว {watchedCount} คลิป</span>
-                            <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded-full">⏸ ยังไม่ดู {videos.length - watchedCount} คลิป</span>
+                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded-full">⏸ ยังไม่ดู {videos.length - watchedCount} คลิป</span>
                         </div>
                     </div>
-                    <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
-                        <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
                             <span>ความคืบหน้าการดูคลิป</span>
                             <span className="font-bold text-orange-600">{videoRate}%</span>
                         </div>
-                        <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all" style={{ width: `${videoRate}%` }} />
                         </div>
                     </div>
-                    <div className="divide-y divide-neutral-100">
+                    <div className="divide-y divide-slate-100">
                         {paginatedVideos.length === 0 ? (
-                            <div className="text-center py-10 text-neutral-400">ยังไม่มีคลิปในคอร์สนี้</div>
+                            <div className="text-center py-10 text-slate-400">ยังไม่มีคลิปในคอร์สนี้</div>
                         ) : paginatedVideos.map((vid) => (
-                            <div key={vid.id} className={`flex items-center gap-3 sm:gap-4 px-4 py-3.5 ${vid.watched ? "" : "bg-neutral-50"}`}>
-                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${vid.watched ? "bg-orange-100" : "bg-neutral-200"}`}>
-                                    <PlayCircle className={`h-5 w-5 ${vid.watched ? "text-orange-600" : "text-neutral-400"}`} />
+                            <div key={vid.id} className={`flex items-center gap-3 sm:gap-4 px-4 py-3.5 ${vid.watched ? "" : "bg-slate-50"}`}>
+                                <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${vid.watched ? "bg-orange-100" : "bg-slate-200"}`}>
+                                    <PlayCircle className={`h-5 w-5 ${vid.watched ? "text-orange-600" : "text-slate-400"}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-semibold truncate ${vid.watched ? "text-neutral-900" : "text-neutral-400"}`}>{vid.title}</p>
-                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-400">
+                                    <p className={`text-sm font-semibold truncate ${vid.watched ? "text-slate-900" : "text-slate-400"}`}>{vid.title}</p>
+                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
                                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vid.duration}</span>
                                         {vid.watchedAt && (
                                             <span>ดูเมื่อ {new Date(vid.watchedAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -455,7 +385,7 @@ export default function TutorStudentDetail() {
                                     </div>
                                     {!vid.watched && vid.progress > 0 && (
                                         <div className="mt-1.5 flex items-center gap-2">
-                                            <div className="flex-1 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+                                            <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                                 <div className="h-full bg-orange-400 rounded-full" style={{ width: `${vid.progress}%` }} />
                                             </div>
                                             <span className="text-xs text-orange-500 font-medium">{vid.progress}%</span>
@@ -464,11 +394,11 @@ export default function TutorStudentDetail() {
                                 </div>
                                 <div className="shrink-0">
                                     {vid.watched ? (
-                                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                                             <CheckCircle className="h-3.5 w-3.5" /> ดูแล้ว
                                         </span>
                                     ) : (
-                                        <span className="inline-flex items-center gap-1 bg-neutral-200 text-neutral-500 text-xs font-bold px-2.5 py-1 rounded-full">ยังไม่ดู</span>
+                                        <span className="inline-flex items-center gap-1 bg-slate-200 text-slate-500 text-xs font-semibold px-2.5 py-0.5 rounded-full">ยังไม่ดู</span>
                                     )}
                                 </div>
                             </div>
@@ -487,32 +417,32 @@ export default function TutorStudentDetail() {
 
             {/* ── Tab: Scores — คะแนนจริงข้ามทุกวิชาในแพ็กเกจ ── */}
             {activeTab === "scores" && (
-                <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                             <Award className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">
+                            <h2 className="font-bold text-slate-900">
                                 คะแนนสอบ{examSummary?.subjectCount ? ` ${examSummary.subjectCount} วิชาในแพ็กเกจ` : ""}
                             </h2>
                         </div>
                         {examSummary?.packageMax ? (
-                            <span className="text-xs font-semibold text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-full">
+                            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">
                                 เต็ม {examSummary.packageMax} คะแนน (วิชาละ {examSummary.cap})
                             </span>
                         ) : null}
                     </div>
 
                     {/* สรุปพัฒนาการรวมทั้งแพ็กเกจ */}
-                    <div className="px-4 sm:px-5 py-3.5 border-b border-neutral-100 bg-neutral-50">
+                    <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                         {improvement ? (
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div>
-                                    <p className="text-sm font-bold text-neutral-800 leading-relaxed">
-                                        คะแนนรวมทุกวิชา: ก่อนเรียนได้ <span className="text-neutral-900">{fmtScoreNum(improvement.from)}</span> คะแนน
+                                    <p className="text-sm font-bold text-slate-800 leading-relaxed">
+                                        คะแนนรวมทุกวิชา: ก่อนเรียนได้ <span className="text-slate-900">{fmtScoreNum(improvement.from)}</span> คะแนน
                                         {" → "}{improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"}ได้ <span className="text-orange-600">{fmtScoreNum(improvement.to)}</span> คะแนน
-                                        <span className="text-neutral-400 font-semibold"> (จากเต็ม {improvement.max})</span>
+                                        <span className="text-slate-400 font-semibold"> (จากเต็ม {improvement.max})</span>
                                     </p>
-                                    <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                                         คะแนนเต็ม {improvement.max} มาจาก {improvement.subjectsCounted} วิชาที่สอบครบทั้งสองรอบ × วิชาละ {examSummary?.cap ?? 20} คะแนน
                                         {(examData?.untestedSubjects || []).length > 0
                                             ? ` (ยังไม่นับ ${examData.untestedSubjects.join(", ")} เพราะยังไม่ได้สอบ)`
@@ -520,8 +450,8 @@ export default function TutorStudentDetail() {
                                         {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบหลังเรียน จึงเทียบกับกลางภาคก่อน" : ""}
                                     </p>
                                     {improvement.growth != null && (
-                                        <p className="text-xs text-neutral-500 mt-1.5 leading-relaxed">
-                                            คิดเป็นพัฒนาการ <span className="font-bold text-neutral-700">{getGrowthText()}</span>
+                                        <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                            คิดเป็นพัฒนาการ <span className="font-bold text-slate-700">{getGrowthText()}</span>
                                             {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังมีช่องว่างให้พัฒนาอีก {improvement.room}% และปิดช่องว่างนั้นไปได้แล้ว {getGrowthText()}
                                             {improvement.growthCapped
                                                 ? " · นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
@@ -535,17 +465,17 @@ export default function TutorStudentDetail() {
                                         {improvement.growth != null ? getGrowthText() : `${getAverageImprovement()} คะแนน`}
                                     </span>
                                     {improvement.growth != null && (
-                                        <span className="text-[10px] font-medium opacity-70">{getAverageImprovement()} คะแนน</span>
+                                        <span className="text-[11px] font-medium opacity-70">{getAverageImprovement()} คะแนน</span>
                                     )}
                                 </div>
                             </div>
                         ) : examData?.latest ? (
-                            <p className="text-sm text-neutral-600 leading-relaxed">
+                            <p className="text-sm text-slate-600 leading-relaxed">
                                 สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
-                                <span className="text-neutral-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังสอบแค่รอบเดียว ต้องมีทั้งก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
+                                <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังสอบแค่รอบเดียว ต้องมีทั้งก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
                             </p>
                         ) : (
-                            <p className="text-sm text-neutral-400">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
+                            <p className="text-sm text-slate-400">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
                         )}
 
                         {examSummary?.hasNonStandardMax && (
@@ -563,19 +493,19 @@ export default function TutorStudentDetail() {
                             const trend = delta == null ? "stable" : delta > 0 ? "up" : delta < 0 ? "down" : "stable";
                             const untested = s.pre == null && s.mid == null && s.post == null;
                             return (
-                                <div key={s.subjectId} className={`rounded-xl p-3 sm:p-4 border ${untested ? "bg-neutral-50/60 border-neutral-200 border-dashed" : "bg-neutral-50 border-neutral-200"}`}>
+                                <div key={s.subjectId} className={`rounded-xl p-3 sm:p-4 border ${untested ? "bg-slate-50/60 border-slate-200 border-dashed" : "bg-slate-50 border-slate-200"}`}>
                                     <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-3 h-3 rounded-full ${untested ? "bg-neutral-300" : SUBJECT_DOT_COLORS[idx % SUBJECT_DOT_COLORS.length]}`} />
-                                            <span className="font-semibold text-neutral-900">{s.subjectName}</span>
+                                            <div className={`w-3 h-3 rounded-full ${untested ? "bg-slate-300" : SUBJECT_DOT_COLORS[idx % SUBJECT_DOT_COLORS.length]}`} />
+                                            <span className="font-semibold text-slate-900">{s.subjectName}</span>
                                             {s.nonStandardMax && (
                                                 <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">ปรับฐานเป็น {s.cap}</span>
                                             )}
                                         </div>
                                         {untested ? (
-                                            <span className="text-xs text-neutral-400 font-medium">ยังไม่ได้สอบวิชานี้</span>
+                                            <span className="text-xs text-slate-400 font-medium">ยังไม่ได้สอบวิชานี้</span>
                                         ) : delta == null ? (
-                                            <span className="text-xs text-neutral-400 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
+                                            <span className="text-xs text-slate-400 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
                                         ) : (
                                             <div className={`px-2 py-1 rounded-full flex items-center gap-1 text-xs border ${getTrendColor(trend)}`}>
                                                 {getTrendIcon(trend)}
@@ -589,11 +519,11 @@ export default function TutorStudentDetail() {
                                             { label: "กลางภาค", val: s.mid, hi: false },
                                             { label: "หลังเรียน", val: s.post, hi: true },
                                         ].map((cell) => (
-                                            <div key={cell.label} className={`p-2 sm:p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-neutral-200"}`}>
-                                                <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-neutral-500"}`}>{cell.label}</p>
-                                                <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-neutral-300" : cell.hi ? "text-orange-600" : "text-neutral-900"}`}>
+                                            <div key={cell.label} className={`p-2 sm:p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-slate-200"}`}>
+                                                <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-slate-500"}`}>{cell.label}</p>
+                                                <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-slate-300" : cell.hi ? "text-orange-600" : "text-slate-900"}`}>
                                                     {cell.val == null ? "—" : fmtScoreNum(cell.val)}
-                                                    {cell.val != null && <span className="text-xs font-semibold text-neutral-400">/{s.cap}</span>}
+                                                    {cell.val != null && <span className="text-xs font-semibold text-slate-400">/{s.cap}</span>}
                                                 </p>
                                             </div>
                                         ))}
@@ -603,16 +533,16 @@ export default function TutorStudentDetail() {
                         })}
 
                         {examData && (examData.untestedSubjects || []).length > 0 && (
-                            <p className="text-xs text-neutral-500 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2">
+                            <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                                 วิชาที่ยังไม่ได้สอบเลย: {examData.untestedSubjects.join(", ")} — คะแนนรวมด้านบนจึงไม่ได้นับวิชาเหล่านี้
                             </p>
                         )}
 
                         {!examData && (
                             <div className="text-center py-10">
-                                <Award className="h-10 w-10 text-neutral-200 mx-auto mb-2" />
-                                <p className="text-sm text-neutral-400">ยังไม่มีข้อมูลการสอบ</p>
-                                <p className="text-xs text-neutral-400 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
+                                <Award className="h-10 w-10 text-slate-200 mx-auto mb-2" />
+                                <p className="text-sm text-slate-400">ยังไม่มีข้อมูลการสอบ</p>
+                                <p className="text-xs text-slate-400 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
                             </div>
                         )}
                     </div>
@@ -624,23 +554,23 @@ export default function TutorStudentDetail() {
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
-                            { label: "คาบทั้งหมด",     value: attendance.length,                      color: "text-neutral-700", icon: <Calendar className="h-5 w-5 text-neutral-500" /> },
+                            { label: "คาบทั้งหมด",     value: attendance.length,                      color: "text-slate-700", icon: <Calendar className="h-5 w-5 text-slate-500" /> },
                             { label: "มาเรียน",         value: `${attendedCount} คาบ`,                 color: "text-green-600",   icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
                             { label: "ขาดเรียน",        value: `${absentCount} คาบ`,                   color: "text-red-500",     icon: <XCircle className="h-5 w-5 text-red-400" /> },
                             { label: "คลิปที่ยังไม่ดู", value: `${videos.length - watchedCount} คลิป`, color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-500" /> },
                         ].map((s, i) => (
-                            <div key={i} className="bg-white border border-neutral-200 rounded-xl p-4">
-                                <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-neutral-500 font-medium">{s.label}</span></div>
+                            <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
+                                <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-slate-500 font-medium">{s.label}</span></div>
                                 <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
                             </div>
                         ))}
                     </div>
 
                     {/* Attendance Timeline */}
-                    <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <TrendingUp className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">Timeline การเข้าเรียน</h2>
+                            <h2 className="font-bold text-slate-900">Timeline การเข้าเรียน</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {attendance.map((rec, idx) => (
@@ -652,34 +582,34 @@ export default function TutorStudentDetail() {
                                             : "bg-red-100 border-red-300 text-red-600"
                                     }`}>
                                     {idx + 1}
-                                    <div className="hidden lg:block absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-neutral-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
+                                    <div className="hidden lg:block absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs rounded-lg px-2 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition pointer-events-none z-10">
                                         {new Date(rec.date).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
                                         <br />{rec.subject} • {rec.status === "present" ? "มา" : "ขาด"}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="flex gap-4 mt-3 text-xs text-neutral-500">
+                        <div className="flex gap-4 mt-3 text-xs text-slate-500">
                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-green-300 inline-block" /> มาเรียน</span>
                             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-red-300 inline-block" /> ขาดเรียน</span>
                         </div>
                     </div>
 
                     {/* Video progress overview */}
-                    <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-5">
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5">
                         <div className="flex items-center gap-2 mb-4">
                             <BarChart2 className="h-5 w-5 text-orange-600" />
-                            <h2 className="font-bold text-neutral-900">ความคืบหน้าคลิป</h2>
+                            <h2 className="font-bold text-slate-900">ความคืบหน้าคลิป</h2>
                         </div>
                         <div className="space-y-2.5">
                             {videos.map((vid) => (
                                 <div key={vid.id} className="flex items-center gap-3">
-                                    <span className="text-xs text-neutral-500 w-24 sm:w-32 truncate shrink-0">{vid.title}</span>
-                                    <div className="flex-1 h-2.5 bg-neutral-100 rounded-full overflow-hidden">
-                                        <div className={`h-full rounded-full ${vid.watched ? "bg-orange-500" : "bg-neutral-300"}`}
+                                    <span className="text-xs text-slate-500 w-24 sm:w-32 truncate shrink-0">{vid.title}</span>
+                                    <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${vid.watched ? "bg-orange-500" : "bg-slate-300"}`}
                                             style={{ width: `${vid.watched ? 100 : vid.progress}%` }} />
                                     </div>
-                                    <span className={`text-xs font-bold w-10 text-right ${vid.watched ? "text-orange-600" : "text-neutral-400"}`}>
+                                    <span className={`text-xs font-bold w-10 text-right ${vid.watched ? "text-orange-600" : "text-slate-400"}`}>
                                         {vid.watched ? "100%" : `${vid.progress}%`}
                                     </span>
                                 </div>

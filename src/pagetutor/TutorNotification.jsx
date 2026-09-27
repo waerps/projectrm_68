@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2 } from 'lucide-react';
+import { PAGE_TITLE } from "../components/ui/tokens";
 
 const API=`${API_URL}/api/tutor/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
@@ -61,11 +62,11 @@ export default function TutorNotifications(){
   const grouped = useMemo(()=>groupByDate(filtered),[filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+          <h1 className={`${PAGE_TITLE} flex items-center gap-2.5`}>
             <Bell className="h-6 w-6 text-orange-600" /> การแจ้งเตือน
           </h1>
           <p className="text-sm text-slate-500 mt-1">ข้อมูลจริงสำหรับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p>
@@ -105,7 +106,7 @@ export default function TutorNotifications(){
           <p className="text-sm font-medium text-slate-500">กำลังโหลดงานของคุณ...</p>
         </div>
       ) : filtered.length===0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีการแจ้งเตือน</p>
           <p className="text-sm text-slate-400 mt-1">หากไม่มีงานค้าง หน้านี้ว่างได้เป็นปกติ</p>
@@ -153,7 +154,7 @@ export default function TutorNotifications(){
                               {item.title}
                               {!item.isRead && <span className="ml-1.5 inline-block w-1.5 h-1.5 bg-orange-500 rounded-full align-middle" />}
                             </h3>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${m.bg} ${m.text}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${m.bg} ${m.text}`}>
                               {m.label}
                             </span>
                           </div>

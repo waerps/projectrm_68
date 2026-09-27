@@ -13,6 +13,11 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
+import UIModal from "../components/ui/Modal";
+import { confirmDialog, toast } from "../components/ui/dialogs";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -22,7 +27,7 @@ const STATUS_MAP = {
   1: { label: "เปิดรับสมัคร", color: "bg-blue-100 text-blue-700 border-blue-200" },
   2: { label: "กำลังสอน", color: "bg-green-100 text-green-700 border-green-200" },
   3: { label: "ปิดรับสมัคร", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  4: { label: "ปิดคอร์ส", color: "bg-neutral-100 text-neutral-500 border-neutral-200" },
+  4: { label: "ปิดคอร์ส", color: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
 const TERM_FILTERS = [
@@ -135,16 +140,16 @@ const initialsOf = (name) => {
 
 function Avatar({ photo, size = "w-6 h-6", name, seed }) {
   if (photo) {
-    return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-neutral-100`} />;
+    return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-slate-100`} />;
   }
   if (name) {
     return (
       <div className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
-        <span className="text-[9px] leading-none">{initialsOf(name)}</span>
+        <span className="text-[11px] leading-none">{initialsOf(name)}</span>
       </div>
     );
   }
-  return <span className={`${size} rounded-full bg-neutral-200 shrink-0`} />;
+  return <span className={`${size} rounded-full bg-slate-200 shrink-0`} />;
 }
 
 // ─── AvatarSelect: dropdown แบบ custom พร้อมรูปโปรไฟล์ (ใช้กับติวเตอร์) ───────
@@ -166,18 +171,18 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] text-left hover:border-orange-300 transition"
+        className="w-full flex items-center gap-2 px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-[13px] text-left hover:border-orange-300 transition"
       >
         <Avatar photo={selected?.Photo} />
-        <span className={`flex-1 truncate ${selected ? "text-neutral-700" : "text-neutral-400"}`}>
+        <span className={`flex-1 truncate ${selected ? "text-slate-700" : "text-slate-400"}`}>
           {selected ? selected.label : placeholder}
         </span>
-        <ChevronsUpDown className="h-3.5 w-3.5 text-neutral-300 shrink-0" />
+        <ChevronsUpDown className="h-3.5 w-3.5 text-slate-300 shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-neutral-200 rounded-xl shadow-lg py-1">
+        <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1">
           {options.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-neutral-400">ไม่พบข้อมูล</p>
+            <p className="px-3 py-2 text-xs text-slate-400">ไม่พบข้อมูล</p>
           ) : (
             options.map(o => (
               <button
@@ -187,7 +192,7 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
                 className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 text-[13px] text-left transition ${String(o.id) === String(value) ? "bg-orange-50" : ""}`}
               >
                 <Avatar photo={o.Photo} name={o.label} seed={o.id} />
-                <span className="truncate text-neutral-700">{o.label}</span>
+                <span className="truncate text-slate-700">{o.label}</span>
               </button>
             ))
           )}
@@ -198,50 +203,28 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
 }
 
 // ─── Modal Overlay ────────────────────────────────────────────────────────────
-function Modal({ onClose, children, title, icon: Icon, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className={`bg-white rounded-t-2xl sm:rounded-2xl w-full shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-3xl"}`}>
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white truncate pr-4">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            <span className="truncate">{title}</span>
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition shrink-0">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? '2xl' : 'xl'}>{children}</UIModal>;
 }
 
 // ─── Confirm Dialog ───────────────────────────────────────────────────────────
 function ConfirmDialog({ course, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-neutral-900">ยืนยันการลบคอร์ส</h3>
-            <p className="text-xs text-neutral-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบคอร์ส</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
           <p className="text-sm font-semibold text-red-800 truncate">{course?.CourseName}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 transition text-sm"
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition text-sm"
           >
             ยกเลิก
           </button>
@@ -263,24 +246,24 @@ function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
   const [lastDate, setLastDate] = useState(course.LastDate?.slice(0, 10) || "");
 
   const handleConfirm = () => {
-    if (!startDate || !lastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
-    if (new Date(startDate) >= new Date(lastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    if (!startDate || !lastDate) return toast("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    if (new Date(startDate) >= new Date(lastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     onConfirm({ StartDate: startDate, LastDate: lastDate });
   };
 
-  const inputCls = "w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
-  const labelCls = "block text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wide";
+  const inputCls = "w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const labelCls = "block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide";
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-            <Copy className="h-6 w-6 text-blue-500" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Copy className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-neutral-900">ทำสำเนาคอร์ส</h3>
-            <p className="text-xs text-neutral-400 mt-0.5 truncate">{course.CourseName}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">ทำสำเนาคอร์ส</h3>
+            <p className="text-xs text-white/80 truncate">{course.CourseName}</p>
           </div>
         </div>
 
@@ -297,7 +280,7 @@ function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
 
         <div className="flex gap-3">
           <button onClick={onCancel} disabled={isSubmitting}
-            className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition text-sm">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
             ยกเลิก
           </button>
           <button onClick={handleConfirm} disabled={isSubmitting}
@@ -364,9 +347,9 @@ function VideoPlayerModal({ video, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div className="bg-black rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 bg-neutral-900">
+        <div className="flex items-center justify-between px-4 py-3 bg-slate-900">
           <p className="text-sm font-bold text-white truncate pr-4">{VideoTitle}</p>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-neutral-400 hover:bg-white/10 hover:text-white transition shrink-0">
+          <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -380,8 +363,8 @@ function VideoPlayerModal({ video, onClose }) {
 
 function ErrorState({ message }) {
   return (
-    <div className="w-full h-full flex items-center justify-center bg-neutral-900">
-      <p className="text-sm text-neutral-400">{message}</p>
+    <div className="w-full h-full flex items-center justify-center bg-slate-900">
+      <p className="text-sm text-slate-400">{message}</p>
     </div>
   );
 }
@@ -428,19 +411,19 @@ function StudentPreviewModal({ course, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-neutral-50 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-neutral-200 bg-white shrink-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-slate-50 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 shrink-0">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20 shrink-0">
               <Eye className="h-4 w-4 text-white" />
             </span>
             <div>
-              <p className="text-sm font-bold text-neutral-800 leading-tight">พรีวิวมุมมองนักเรียน</p>
-              <p className="text-[11px] text-neutral-400 leading-tight">แสดงตัวอย่างเท่านั้น ปุ่มบางส่วนใช้งานไม่ได้จริง</p>
+              <p className="text-base font-bold text-white leading-tight">พรีวิวมุมมองนักเรียน</p>
+              <p className="text-xs text-white/80 leading-tight">แสดงตัวอย่างเท่านั้น ปุ่มบางส่วนใช้งานไม่ได้จริง</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition">
+          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -448,7 +431,7 @@ function StudentPreviewModal({ course, onClose }) {
         <div className="overflow-y-auto flex-1 p-5 space-y-5">
           <div className="grid gap-5 md:grid-cols-12">
             <div className="md:col-span-5">
-              <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-neutral-100">
+              <div className="overflow-hidden rounded-2xl bg-white shadow-sm border border-slate-200">
                 {course.CourseImage ? (
                   <img src={getFileUrl(course.CourseImage)} alt={course.CourseName} className="aspect-[16/10] w-full object-cover" />
                 ) : (
@@ -461,36 +444,36 @@ function StudentPreviewModal({ course, onClose }) {
 
             <div className="md:col-span-7 space-y-4">
               <div>
-                <h2 className="text-xl font-bold text-neutral-900 leading-snug">{course.CourseName}</h2>
+                <h2 className="text-xl font-bold text-slate-900 leading-snug">{course.CourseName}</h2>
 
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {Number(course.Is_Promotion) === 1 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-white px-2.5 py-0.5 text-xs font-semibold shadow-sm">
                       <Sparkles className="h-3.5 w-3.5" /> โปรโมชัน
                     </span>
                   )}
                   {course.Term_Name && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] font-medium text-neutral-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-700">
                       <BadgeCheck className="h-3.5 w-3.5 text-orange-500" /> {course.Term_Name}
                     </span>
                   )}
                   {course.Course_Type && (
-                    <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-[11px] font-semibold">
+                    <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold">
                       {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
                     </span>
                   )}
                   {course.Course_Availability_Name && (
-                    <span className="rounded-full bg-purple-50 text-purple-700 px-2.5 py-1 text-[11px] font-semibold">
+                    <span className="rounded-full bg-purple-50 text-purple-700 px-2.5 py-0.5 text-xs font-semibold">
                       {course.Course_Availability_Name}
                     </span>
                   )}
                   {Number(course.Discount) > 0 && (
-                    <span className="rounded-full bg-red-50 text-red-600 px-2.5 py-1 text-[11px] font-bold">
+                    <span className="rounded-full bg-red-50 text-red-600 px-2.5 py-0.5 text-xs font-semibold">
                       ลด {formatPrice(course.Discount)} บาท
                     </span>
                   )}
                   {course.VideosFree > 0 && (
-                    <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-[11px] font-bold">
+                    <span className="rounded-full bg-amber-50 text-amber-700 px-2.5 py-0.5 text-xs font-semibold">
                       ฟรี {course.VideosFree} คลิป
                     </span>
                   )}
@@ -498,18 +481,18 @@ function StudentPreviewModal({ course, onClose }) {
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-neutral-100">
+                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-slate-100">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50 text-green-600 font-bold">฿</span>
                   <div>
-                    <div className="text-[11px] text-neutral-500">ค่าเรียน</div>
-                    <div className="text-sm font-bold text-neutral-900">{formatPrice(course.FullCost || course.Price)} บาท</div>
+                    <div className="text-[11px] text-slate-500">ค่าเรียน</div>
+                    <div className="text-sm font-bold text-slate-900">{formatPrice(course.FullCost || course.Price)} บาท</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-neutral-100">
+                <div className="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm border border-slate-100">
                   <Calendar className="h-5 w-5 text-orange-500 shrink-0" />
                   <div>
-                    <div className="text-[11px] text-neutral-500">รอบเรียน</div>
-                    <div className="text-sm font-bold text-neutral-900">{dateRange}</div>
+                    <div className="text-[11px] text-slate-500">รอบเรียน</div>
+                    <div className="text-sm font-bold text-slate-900">{dateRange}</div>
                   </div>
                 </div>
               </div>
@@ -521,49 +504,49 @@ function StudentPreviewModal({ course, onClose }) {
                 className="w-full flex items-center justify-center gap-2 rounded-2xl bg-orange-300 py-3 text-white font-bold cursor-not-allowed shadow-sm"
               >
                 ซื้อคอร์สเรียน
-                <span className="text-[10px] font-normal bg-white/25 px-2 py-0.5 rounded-full">พรีวิว</span>
+                <span className="text-[11px] font-normal bg-white/25 px-2 py-0.5 rounded-full">พรีวิว</span>
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-5 shadow-sm border border-neutral-100">
-            <h3 className="mb-2.5 text-sm font-bold text-neutral-800">รายละเอียดคอร์ส</h3>
-            <p className="text-sm text-neutral-600 whitespace-pre-line">
+          <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
+            <h3 className="mb-2.5 text-sm font-bold text-slate-800">รายละเอียดคอร์ส</h3>
+            <p className="text-sm text-slate-600 whitespace-pre-line">
               {course.Remark?.trim() || "ไม่มีรายละเอียดเพิ่มเติม"}
             </p>
           </div>
 
-          <div className="rounded-2xl bg-white shadow-sm border border-neutral-100 overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-neutral-100">
-              <h3 className="text-sm font-bold text-neutral-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
+          <div className="rounded-2xl bg-white shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
             </div>
             {loadingVideos ? (
               <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-orange-400" />
+                <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
               </div>
             ) : videos.length === 0 ? (
-              <div className="px-5 py-4 text-sm text-neutral-500">ยังไม่มีคลิปเพิ่มเติม</div>
+              <div className="px-5 py-4 text-sm text-slate-500">ยังไม่มีคลิปเพิ่มเติม</div>
             ) : (
               videos.map((v, i) => (
                 <div key={v.VideoId}>
                   <button
                     onClick={() => setOpenIdx(openIdx === i ? null : i)}
-                    className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-neutral-50 border-b border-neutral-100 last:border-0"
+                    className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                   >
-                    <span className="text-sm font-medium text-neutral-800">{v.VideoTitle}</span>
-                    {openIdx === i ? <ChevronUp className="h-4 w-4 text-neutral-400" /> : <ChevronDown className="h-4 w-4 text-neutral-400" />}
+                    <span className="text-sm font-medium text-slate-800">{v.VideoTitle}</span>
+                    {openIdx === i ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
                   </button>
                   {openIdx === i && (
                     <div className="px-5 pb-4">
                       <button
                         type="button"
                         onClick={() => setPlayingVideo(v)}
-                        className="relative w-full overflow-hidden rounded-xl bg-neutral-100 aspect-[16/9] flex items-center justify-center group cursor-pointer"
+                        className="relative w-full overflow-hidden rounded-xl bg-slate-100 aspect-[16/9] flex items-center justify-center group cursor-pointer"
                       >
                         {getThumbnail(v) ? (
                           <img src={getThumbnail(v)} alt={v.VideoTitle} className="w-full h-full object-cover" />
                         ) : (
-                          <PlayCircle className="h-10 w-10 text-neutral-300" />
+                          <PlayCircle className="h-10 w-10 text-slate-300" />
                         )}
                         <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                           <PlayCircle className="h-12 w-12 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
@@ -608,7 +591,7 @@ function ImageUpload({ value, onChange }) {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
         className={`relative flex flex-col items-center justify-center h-32 rounded-xl border-2 border-dashed cursor-pointer transition
-          ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-neutral-200 bg-neutral-50 hover:border-orange-300 hover:bg-orange-50"}`}
+          ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50"}`}
       >
         {value && !uploading && (
           <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
@@ -618,7 +601,7 @@ function ImageUpload({ value, onChange }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-neutral-400" /><p className="text-xs text-neutral-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-neutral-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -627,7 +610,7 @@ function ImageUpload({ value, onChange }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-neutral-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -662,20 +645,20 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
       <input
         type="number" min="0" step="1" value={hours}
         onChange={handleHoursChange} onKeyDown={blockNegativeKeys}
-        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
+        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
         autoFocus
       />
-      <span className="text-xs text-neutral-400">ชม.</span>
+      <span className="text-xs text-slate-400">ชม.</span>
       <input
         type="number" min="0" max="59" step="1" value={minutes}
         onChange={handleMinutesChange} onKeyDown={blockNegativeKeys}
-        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
+        className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
       />
-      <span className="text-xs text-neutral-400">นาที</span>
+      <span className="text-xs text-slate-400">นาที</span>
       <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700 transition">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
       </button>
-      <button onClick={onCancel} disabled={saving} className="p-1 text-neutral-400 hover:text-red-500 transition">
+      <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500 transition">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -709,22 +692,22 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
       <div className="flex flex-wrap items-center gap-1.5">
         <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
           onFocus={e => e.target.select()}
-          placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
-        <span className="text-[10px] text-neutral-400">/ชม.</span>
+          placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" autoFocus />
+        <span className="text-[11px] text-slate-400">/ชม.</span>
         <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
           onFocus={e => e.target.select()}
-          placeholder="ใหม่" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
-        <span className="text-[10px] text-neutral-400">/ชม.</span>
+          placeholder="ใหม่" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" />
+        <span className="text-[11px] text-slate-400">/ชม.</span>
         <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
         </button>
-        <button onClick={onCancel} disabled={saving} className="p-1 text-neutral-400 hover:text-red-500">
+        <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
       {/* ★ แก้ (ข้อ 1): ระบุชัดว่าเป็นค่าสอนของติวเตอร์ที่ลดลง ไม่ใช้คำว่า "ขาดทุน" เฉย ๆ */}
       {invalid && (
-        <p className="text-[10px] text-red-500 flex items-center gap-1">
+        <p className="text-[11px] text-red-500 flex items-center gap-1">
           <AlertTriangle className="h-2.5 w-2.5" /> เรทใหม่ต่ำกว่าเรทปัจจุบัน ติวเตอร์จะได้รับค่าสอนลดลงเหลือ {Number(st).toFixed(0)} บาท/ชม.
         </p>
       )}
@@ -883,7 +866,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     } catch (e) { showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ"); }
   };
 
-  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
   const tutorOptions = allTutors.map(t => ({
@@ -893,9 +876,9 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-visible">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200 rounded-t-xl">
-        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">วิชาในคอร์สนี้</p>
+    <div className="border border-slate-200 rounded-xl overflow-visible">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200 rounded-t-xl">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">วิชาในคอร์สนี้</p>
         {!adding && (
           <button onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
@@ -913,28 +896,28 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
             วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
           </p>
           <button onClick={applySuggestedToAll} disabled={applyingAll}
-            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 disabled:opacity-50 transition flex items-center gap-1">
+            className="shrink-0 px-3 py-1.5 bg-orange-500 text-white rounded-xl text-[11px] font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1">
             {applyingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} ใช้ค่าที่แนะนำทั้งหมด
           </button>
         </div>
       )}
 
       {subjects.length === 0 && !adding && (
-        <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
+        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
       )}
 
       {subjects.map((s) => {
         const avgPerMonthLabel = formatAvgPerMonth(s.TotalHours, monthsSpanned);
         const isManual = manualIds.has(s.TutorCourseDetailId);
         return (
-          <div key={s.TutorCourseDetailId} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+          <div key={s.TutorCourseDetailId} className="border-b border-slate-100 last:border-0 px-4 py-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
                 <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-800 truncate">{s.SubjectName}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{s.SubjectName}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-1">
@@ -962,7 +945,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                 />
               ) : (
                 <button type="button" onClick={() => setEditingRateId(s.TutorCourseDetailId)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition">
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-500 hover:border-orange-300 hover:text-orange-600 transition">
                   เรทปัจจุบัน {s.TutorRatePerHourOverride || s.RatePerTutors || "-"}/ชม. · ใหม่ {s.StudentRatePerHourOverride || "-"}/ชม.
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -978,13 +961,13 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                 ) : (
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <span className="text-xs text-neutral-500 block">
+                      <span className="text-xs text-slate-500 block">
                         {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
                       </span>
-                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                      {avgPerMonthLabel && <span className="text-[11px] text-slate-400 block">{avgPerMonthLabel}</span>}
                     </div>
                     <button onClick={() => setEditingId(s.TutorCourseDetailId)}
-                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -1040,11 +1023,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
               className={inp + " w-28"} />
             <button onClick={handleAdd}
-              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+              className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition">
               <Check className="h-3.5 w-3.5" />
             </button>
             <button onClick={() => setAdding(false)}
-              className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+              className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -1117,12 +1100,12 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
     }
   };
 
-  const inp = "px-2.5 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
+  const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition";
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
-        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
         {!adding && canAddStudents && (
           <button onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
@@ -1141,14 +1124,14 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
       )}
 
       {students.length === 0 && !adding && (
-        <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
+        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
       )}
 
       {students.map(s => (
-        <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+        <div key={s.EnrollId} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-0">
           {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
           <Avatar photo={s.Photo} size="w-7 h-7" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
-          <span className="flex-1 text-sm font-semibold text-neutral-800">
+          <span className="flex-1 text-sm font-semibold text-slate-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
           </span>
           <button
@@ -1180,7 +1163,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
           </div>
           <div className="max-h-48 overflow-y-auto px-4 space-y-1 pb-2">
             {filtered.length === 0 ? (
-              <p className="text-xs text-neutral-400 text-center py-3">ไม่พบนักเรียนที่สามารถเพิ่มได้</p>
+              <p className="text-xs text-slate-400 text-center py-3">ไม่พบนักเรียนที่สามารถเพิ่มได้</p>
             ) : filtered.map(s => {
               const id = String(s.UserId);
               const checked = selectedIds.includes(id);
@@ -1189,19 +1172,19 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
                   <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
                   {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
                   <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
-                  <span className="flex-1 font-medium text-neutral-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
+                  <span className="flex-1 font-medium text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
                 </label>
               );
             })}
           </div>
           <div className="flex items-center gap-2 px-4 py-3 border-t border-orange-100">
-            <span className="text-xs text-neutral-500 flex-1">เลือกแล้ว {selectedIds.length} คน</span>
+            <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คน</span>
             <button onClick={handleAdd} disabled={saving || !selectedIds.length}
-              className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+              className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
             </button>
             <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
-              className="px-3 py-2 bg-neutral-200 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-300 transition">
+              className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -1299,7 +1282,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("ต้องการลบคลิปตัวอย่างนี้?")) return;
+    if (!await confirmDialog("ต้องการลบคลิปตัวอย่างนี้?")) return;
     try {
       await axios.delete(`${API_BASE}/preview-videos/${id}`);
       fetchVideos();
@@ -1318,12 +1301,12 @@ function CoursePreviewVideos({ courseId, showToast }) {
     setAdding(true);
   };
 
-  const inp = "w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none";
+  const inp = "w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none";
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-neutral-50 border-b border-neutral-200">
-        <p className="text-xs font-bold text-neutral-600 uppercase tracking-wide">
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
           คลิปตัวอย่าง (นับอัตโนมัติ: {videos.length} คลิป)
         </p>
         {!adding && (
@@ -1335,35 +1318,35 @@ function CoursePreviewVideos({ courseId, showToast }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-400" /></div>
+        <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
       ) : videos.length === 0 && !adding ? (
-        <p className="text-xs text-neutral-400 text-center py-6">ยังไม่มีคลิปตัวอย่าง</p>
+        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีคลิปตัวอย่าง</p>
       ) : (
         videos.map(v => (
-          <div key={v.VideoId} className="flex items-center gap-3 px-4 py-2.5 border-b border-neutral-100 last:border-0">
+          <div key={v.VideoId} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-0">
             <button
               type="button"
               onClick={() => setPlayingVideo(v)}
-              className="relative w-14 h-9 rounded-lg bg-neutral-100 flex items-center justify-center overflow-hidden shrink-0 group cursor-pointer"
+              className="relative w-14 h-9 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 group cursor-pointer"
               title="เล่นวิดีโอ"
             >
               {getThumbnail(v) ? (
                 <img src={getThumbnail(v)} className="w-full h-full object-cover" />
               ) : (
-                <PlayCircle className="h-5 w-5 text-neutral-300" />
+                <PlayCircle className="h-5 w-5 text-slate-300" />
               )}
               <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                 <PlayCircle className="h-5 w-5 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
               </div>
             </button>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-neutral-800 truncate">{v.VideoTitle}</p>
-              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5
+              <p className="text-sm font-semibold text-slate-800 truncate">{v.VideoTitle}</p>
+              <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-full mt-0.5
                 ${v.VideoType === "youtube" ? "bg-red-50 text-red-500" : v.VideoType === "drive" ? "bg-blue-50 text-blue-500" : "bg-purple-50 text-purple-500"}`}>
                 {v.VideoType === "youtube" ? <><Youtube className="h-3 w-3" /> YouTube</> : v.VideoType === "drive" ? <><FolderOpen className="h-3 w-3" /> Drive</> : <><Video className="h-3 w-3" /> ไฟล์อัปโหลด</>}
               </span>
             </div>
-            <button onClick={() => startEdit(v)} className="p-1.5 lg:p-0 text-neutral-300 hover:text-orange-500 transition shrink-0" title="แก้ไข">
+            <button onClick={() => startEdit(v)} className="p-1.5 lg:p-0 text-slate-300 hover:text-orange-500 transition shrink-0" title="แก้ไข">
               <Pencil className="h-3.5 w-3.5" />
             </button>
             <button onClick={() => handleDelete(v.VideoId)} className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition shrink-0" title="ลบ">
@@ -1376,13 +1359,13 @@ function CoursePreviewVideos({ courseId, showToast }) {
       {adding && (
         <div className="p-4 bg-orange-50 border-t border-orange-100 space-y-3">
           <div>
-            <label className="block text-xs font-bold text-neutral-500 mb-1">ชื่อคลิป</label>
+            <label className="block text-xs font-bold text-slate-500 mb-1">ชื่อคลิป</label>
             <input type="text" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               className={inp} placeholder="เช่น ตัวอย่างการสอน EP.1" disabled={saving} />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-neutral-500 mb-1.5">แหล่งที่มาของวิดีโอ</label>
+            <label className="block text-xs font-bold text-slate-500 mb-1.5">แหล่งที่มาของวิดีโอ</label>
             <div className="flex gap-2">
               {[
                 { key: "youtube", label: "YouTube", icon: Youtube },
@@ -1392,8 +1375,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
                 <button key={key} type="button"
                   onClick={() => setForm(f => ({ ...f, mode: key, url: key !== f.mode ? "" : f.url }))}
                   disabled={saving}
-                  className={`flex-1 min-w-0 lg:min-w-auto flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 lg:px-0 py-2 rounded-lg text-xs font-bold border transition
-                    ${form.mode === key ? "bg-orange-500 text-white border-orange-500" : "bg-white text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
+                  className={`flex-1 min-w-0 lg:min-w-auto flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-1 lg:px-0 py-2 rounded-xl text-xs font-bold border transition
+                    ${form.mode === key ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}>
                   <Icon className="h-3.5 w-3.5" /> {label}
                 </button>
               ))}
@@ -1402,16 +1385,16 @@ function CoursePreviewVideos({ courseId, showToast }) {
 
           {form.mode === "upload" ? (
             <div>
-              <label className="block text-xs font-bold text-neutral-500 mb-1">ไฟล์วิดีโอ (ไม่เกิน 200MB)</label>
+              <label className="block text-xs font-bold text-slate-500 mb-1">ไฟล์วิดีโอ (ไม่เกิน 200MB)</label>
               <input ref={fileInputRef} type="file" accept="video/*" disabled={uploading || saving}
                 onChange={e => handleUploadFile(e.target.files[0])}
-                className="block w-full text-sm text-neutral-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 transition cursor-pointer" />
+                className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-orange-100 file:text-orange-600 hover:file:bg-orange-200 transition cursor-pointer" />
               {uploading && <p className="mt-1.5 text-xs text-orange-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> กำลังอัปโหลด...</p>}
-              {!uploading && form.url && form.mode === "upload" && <p className="mt-1.5 text-xs text-green-600">✅ อัปโหลดไฟล์แล้ว</p>}
+              {!uploading && form.url && form.mode === "upload" && <p className="mt-1.5 text-xs text-green-600 flex items-center gap-1"><LuCheckCircle2 className="h-3.5 w-3.5" /> อัปโหลดไฟล์แล้ว</p>}
             </div>
           ) : (
             <div>
-              <label className="block text-xs font-bold text-neutral-500 mb-1">
+              <label className="block text-xs font-bold text-slate-500 mb-1">
                 ลิงก์ {form.mode === "youtube" ? "YouTube" : "Google Drive"}
               </label>
               <input type="url" value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
@@ -1420,16 +1403,16 @@ function CoursePreviewVideos({ courseId, showToast }) {
           )}
 
           <div>
-            <label className="block text-xs font-bold text-neutral-500 mb-1">ความยาวคลิป (ไม่บังคับ)</label>
+            <label className="block text-xs font-bold text-slate-500 mb-1">ความยาวคลิป (ไม่บังคับ)</label>
             <input type="text" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
               className={inp} placeholder="เช่น 5 นาที" disabled={saving} />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-neutral-500 mb-1.5">
+            <label className="block text-xs font-bold text-slate-500 mb-1.5">
               ภาพปกคลิป (ไม่บังคับ)
             </label>
-            <p className="text-[11px] text-neutral-400 mb-2">
+            <p className="text-[11px] text-slate-400 mb-2">
               หากไม่เลือกภาพ ระบบจะดึงภาพหน้าปกจากเนื้อหาในวิดีโอให้อัตโนมัติ
             </p>
             <ImageUpload value={form.thumbnail} onChange={(path) => setForm(f => ({ ...f, thumbnail: path }))} />
@@ -1437,11 +1420,11 @@ function CoursePreviewVideos({ courseId, showToast }) {
 
           <div className="flex gap-2 pt-1">
             <button onClick={resetForm} disabled={saving}
-              className="flex-1 py-2 bg-neutral-100 text-neutral-600 rounded-lg text-xs font-bold hover:bg-neutral-200 transition">
+              className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition">
               ยกเลิก
             </button>
             <button onClick={handleSave} disabled={saving || uploading}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Check className="h-3.5 w-3.5" /> บันทึก</>}
             </button>
           </div>
@@ -1503,12 +1486,12 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-neutral-400 leading-relaxed">
-          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-neutral-500">฿{formatPrice(cost)}</span> {maxCount > 0
-            ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-neutral-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
-            : <>และนักเรียนปัจจุบัน <span className="font-semibold text-neutral-500">{capacityCount} คน</span></>}
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-slate-500">฿{formatPrice(cost)}</span> {maxCount > 0
+            ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-slate-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
+            : <>และนักเรียนปัจจุบัน <span className="font-semibold text-slate-500">{capacityCount} คน</span></>}
           {capacityCount === 0 && (
-            <span className="block mt-1 text-amber-600 font-semibold">⚠ ยังไม่ได้กรอก "จำนวนที่รับสูงสุด" และยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณากรอกจำนวนที่รับสูงสุดก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
+            <span className="block mt-1 text-amber-600 font-semibold"><LuAlertTriangle className="inline h-3.5 w-3.5 -mt-0.5" /> ยังไม่ได้กรอก "จำนวนที่รับสูงสุด" และยังไม่มีนักเรียนในคอร์ส โหมด "กำไรเป้าหมาย" และ "% กำไร" จะยังคำนวณราคาต่อคนไม่ได้ — กรุณากรอกจำนวนที่รับสูงสุดก่อน หรือใช้โหมด "กรอกราคาขาย" แทน</span>
           )}
         </p>
 
@@ -1533,7 +1516,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
               }
             }}
               className={`flex-1 py-2 rounded-xl text-xs font-bold border transition
-                ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}>
+                ${mode === opt.key ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"}`}>
               {opt.label}
             </button>
           ))}
@@ -1542,35 +1525,35 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
         {mode === "profit" && (
           <input type="number" min="0" value={profitInput} onChange={e => setProfitInput(e.target.value)}
             placeholder="กำไรเป้าหมายที่ต้องการทั้งคอร์ส (บาท)" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "percent" && (
           <input type="number" min="0" max="99" value={percentInput} onChange={e => setPercentInput(e.target.value)}
             placeholder="% กำไรที่ต้องการของทั้งคอร์ส" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
         {mode === "price" && (
           <input type="number" min="0" value={priceInput} onChange={e => setPriceInput(e.target.value)}
             placeholder="ราคาขายสุทธิต่อคนที่ต้องการ" onKeyDown={blockNegativeKeys}
-            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+            className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         )}
 
         <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
-            <div className="p-3 text-center bg-neutral-50">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
-              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
+            <div className="p-3 text-center bg-slate-50">
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
+              <p className="text-base font-bold text-slate-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
             </div>
-            <div className="p-3 text-center bg-neutral-50">
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">รายได้รวม</p>
-              <p className="text-base font-bold text-neutral-800 mt-0.5">฿{formatPrice(totalRevenue)}</p>
+            <div className="p-3 text-center bg-slate-50">
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide">รายได้รวม</p>
+              <p className="text-base font-bold text-slate-800 mt-0.5">฿{formatPrice(totalRevenue)}</p>
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(totalProfit)}</p>
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-wide">อัตรากำไร (%)</p>
+              <p className="text-[11px] text-slate-400 uppercase tracking-wide">อัตรากำไร (%)</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
             </div>
           </div>
@@ -1610,21 +1593,21 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-neutral-400 leading-relaxed">
-          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-neutral-500">฿{formatPrice(pricePerStudent)}</span>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-slate-500">฿{formatPrice(pricePerStudent)}</span>
         </p>
 
         <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
-          <div className="p-2 sm:p-3 text-center bg-neutral-50">
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">จุดคุ้มทุน</p>
-            <p className="text-sm sm:text-base font-bold text-neutral-800 mt-0.5">≥ {breakEvenStudents} คน</p>
+          <div className="p-2 sm:p-3 text-center bg-slate-50">
+            <p className="text-[11px] text-slate-400 uppercase tracking-wide">จุดคุ้มทุน</p>
+            <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">≥ {breakEvenStudents} คน</p>
           </div>
-          <div className="p-2 sm:p-3 text-center bg-neutral-50">
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
-            <p className="text-sm sm:text-base font-bold text-neutral-800 mt-0.5">{currentStudentCount || 0} คน</p>
+          <div className="p-2 sm:p-3 text-center bg-slate-50">
+            <p className="text-[11px] text-slate-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
+            <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">{currentStudentCount || 0} คน</p>
           </div>
           <div className={`p-2 sm:p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
-            <p className="text-[10px] text-neutral-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+            <p className="text-[11px] text-slate-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
             <p className={`text-sm sm:text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
               {isProfitable ? "+" : ""}฿{formatPrice(currentProfit)}
             </p>
@@ -1641,8 +1624,8 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
         </div>
 
         {maxCount !== null && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-neutral-50 border-neutral-200 text-xs">
-            <span className="text-neutral-500">หากมีนักเรียนเป้าหมายเต็มจำนวนนักเรียนสูงสุด ({maxCount} คน)</span>
+          <div className="flex items-center justify-between gap-3 rounded-xl border px-4 py-2.5 bg-slate-50 border-slate-200 text-xs">
+            <span className="text-slate-500">หากมีนักเรียนเป้าหมายเต็มจำนวนนักเรียนสูงสุด ({maxCount} คน)</span>
             <span className={`font-bold ${maxProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
               {maxProfit >= 0 ? "เกินจุดคุ้มทุน" : "ยังไม่ถึงจุดคุ้มทุน"} (฿{formatPrice(maxProfit)})
             </span>
@@ -1681,7 +1664,7 @@ function InstallmentAmountInput({ value, onChange }) {
         setText(value === "" || value === null || value === undefined ? "" : String(value));
       }}
       onChange={handleChange} onKeyDown={blockNegativeKeys}
-      className="flex-1 min-w-0 lg:min-w-auto px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
+      className="flex-1 min-w-0 lg:min-w-auto px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
     />
   );
 }
@@ -1752,9 +1735,9 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
       <div className="p-4 space-y-2 bg-white">
         {amounts.map((amt, idx) => (
           <div key={idx} className="flex items-center gap-2">
-            <span className="w-14 sm:w-16 text-xs text-neutral-500 shrink-0">งวดที่ {idx + 1}</span>
+            <span className="w-14 sm:w-16 text-xs text-slate-500 shrink-0">งวดที่ {idx + 1}</span>
             <InstallmentAmountInput value={amt} onChange={(v) => updateAt(idx, v)} />
-            <span className="text-xs text-neutral-400 shrink-0">บาท</span>
+            <span className="text-xs text-slate-400 shrink-0">บาท</span>
           </div>
         ))}
         <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
@@ -1854,8 +1837,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   };
 
   const handleSubmit = () => {
-    if (!form.CourseName.trim()) return alert("กรุณากรอกชื่อคอร์ส");
-    if (!form.StartDate || !form.LastDate) return alert("กรุณากรอกวันเริ่มและวันสิ้นสุด");
+    if (!form.CourseName.trim()) return toast("กรุณากรอกชื่อคอร์ส");
+    if (!form.StartDate || !form.LastDate) return toast("กรุณากรอกวันเริ่มและวันสิ้นสุด");
     const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
     if (!DATE_RE.test(String(form.StartDate).slice(0, 10)) || !DATE_RE.test(String(form.LastDate).slice(0, 10))) {
       return showToast(
@@ -1864,9 +1847,9 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         "กรุณาลบข้อมูลในช่องวันเริ่มสอน/วันสิ้นสุด แล้วเลือกวันที่ใหม่จากปฏิทินอีกครั้ง"
       );
     }
-    if (new Date(form.StartDate) >= new Date(form.LastDate)) return alert("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
-    if (!form.Price || Number(form.Price) <= 0) return alert("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
-    if (!form.YearId) return alert("กรุณากรอกปีการศึกษา");
+    if (new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    if (!form.Price || Number(form.Price) <= 0) return toast("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
+    if (!form.YearId) return toast("กรุณากรอกปีการศึกษา");
 
     if (hoursMismatch) {
       setActiveTab("subjects");
@@ -1898,8 +1881,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   };
 
   const inputCls =
-    "w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
-  const labelCls = "block text-xs font-semibold text-neutral-500 mb-1.5 uppercase tracking-wide";
+    "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+  const labelCls = "block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide";
 
   return (
     <div className="space-y-5">
@@ -1914,12 +1897,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               type="button"
               onClick={() => setActiveTab(t.key)}
               className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition
-                ${active ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+                ${active ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"}`}
             >
               <Icon className="h-3.5 w-3.5" />
               {t.label}
               {typeof t.badge === "number" && t.badge > 0 && (
-                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-black ${active ? "bg-white/25" : "bg-orange-100 text-orange-600"}`}>
+                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-white/25" : "bg-orange-100 text-orange-600"}`}>
                   {t.badge}
                 </span>
               )}
@@ -2009,7 +1992,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>
             ))}
           </select>
-          <p className="text-[11px] text-neutral-400 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
+          <p className="text-[11px] text-slate-400 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2027,7 +2010,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                   className={`py-2.5 rounded-xl text-sm font-bold border transition
                   ${form.Course_Type === opt.value
                       ? "bg-orange-500 text-white border-orange-500"
-                      : "bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-orange-300"}`}
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"}`}
                 >
                   {opt.label}
                 </button>
@@ -2042,15 +2025,15 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
               ${form.Is_Promotion
                   ? "bg-amber-50 border-amber-300"
-                  : "bg-neutral-50 border-neutral-200 hover:border-amber-200"}`}
+                  : "bg-slate-50 border-slate-200 hover:border-amber-200"}`}
             >
-              <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-neutral-500"}`}>
-                <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-neutral-400"}`} />
+              <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-slate-500"}`}>
+                <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-slate-400"}`} />
                 {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
               </span>
               {form.Is_Promotion
                 ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
-                : <ToggleLeft className="h-6 w-6 text-neutral-300 shrink-0" />}
+                : <ToggleLeft className="h-6 w-6 text-slate-300 shrink-0" />}
             </button>
           </div>
         </div>
@@ -2062,7 +2045,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
         <div>
           <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
-          <p className="text-[11px] text-neutral-400 mb-2 normal-case">
+          <p className="text-[11px] text-slate-400 mb-2 normal-case">
             ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
           </p>
           <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
@@ -2138,11 +2121,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               }}
               className={inputCls} />
             <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-neutral-100 text-neutral-500 border border-neutral-200"}`}>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-500 border border-slate-200"}`}>
                 {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
               </span>
               {isInstallmentEnabled && (
-                <span className="text-[11px] text-neutral-500">
+                <span className="text-[11px] text-slate-500">
                   ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
                 </span>
               )}
@@ -2166,7 +2149,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 onChange={(v) => set("InstallmentAmounts", v)}
               />
             ) : (
-              <div className="px-3 py-2.5 bg-neutral-50 border border-dashed border-neutral-200 rounded-xl text-xs text-neutral-400 text-center">
+              <div className="px-3 py-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 text-center">
                 เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
               </div>
             )}
@@ -2217,7 +2200,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             className={inputCls} placeholder="เช่น 120"
           />
           {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
-          <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+          <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
             {!monthsSpanned
               ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
               : !form.TotalCourseHours
@@ -2264,30 +2247,30 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         </div>
 
         {totalTutorCost > 0 && (
-          <div className="mt-2.5 rounded-2xl border border-neutral-200 bg-neutral-50/60 overflow-hidden">
+          <div className="mt-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 overflow-hidden">
             <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-400 shrink-0">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-400 shrink-0">
                 <Info className="h-3.5 w-3.5 text-white" />
               </span>
-              <p className="text-xs font-bold text-neutral-700">
+              <p className="text-xs font-bold text-slate-700">
                 สรุปต้นทุนคอร์ส
               </p>
             </div>
 
             <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
               <div className="pr-3 py-1.5">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
-                <p className="text-sm font-bold text-neutral-700">฿{formatPrice(totalTutorCost)}</p>
+                <p className="text-[11px] text-slate-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+                <p className="text-sm font-bold text-slate-700">฿{formatPrice(totalTutorCost)}</p>
               </div>
               <div className="pl-3 py-1.5">
-                <p className="text-[10px] text-neutral-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
-                <p className="text-sm font-bold text-neutral-700">
+                <p className="text-[11px] text-slate-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+                <p className="text-sm font-bold text-slate-700">
                   ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
                 </p>
               </div>
             </div>
 
-            <p className="px-4 py-2 text-[11px] text-neutral-400 border-t border-neutral-200/60 leading-relaxed">
+            <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200/60 leading-relaxed">
               ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
             </p>
           </div>
@@ -2313,8 +2296,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           {initial.CourseID ? (
             <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
           ) : (
-            <div className="border border-dashed border-neutral-200 rounded-xl p-4 text-center">
-              <p className="text-xs text-neutral-400">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
+            <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center">
+              <p className="text-xs text-slate-400">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
             </div>
           )}
         </div>
@@ -2322,11 +2305,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       {/* ═══ END TAB: คลิปตัวอย่าง ═══ */}
 
       {/* ═══ ปุ่มบันทึก/ยกเลิก — แสดงตลอด ไม่ขึ้นกับแท็บ ═══ */}
-      <div className="flex gap-3 pt-2 border-t border-neutral-100">
+      <div className="flex gap-3 pt-2 border-t border-slate-100">
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-neutral-100 text-neutral-700 rounded-xl font-bold hover:bg-neutral-200 disabled:opacity-50 transition text-sm"
+          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm"
         >
           ยกเลิก
         </button>
@@ -2350,7 +2333,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <button
             type="button"
             onClick={() => setShowPreview(true)}
-            className="flex items-center justify-center gap-2 py-2.5 border border-neutral-200 text-neutral-600 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition text-sm w-full"
+            className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition text-sm w-full"
           >
             <Eye className="h-4 w-4" /> Preview หน้าคอร์ส (มุมมองนักเรียน)
           </button>
@@ -2397,9 +2380,9 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
     .filter(Boolean);
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center">
-        <p className="text-xs font-bold text-neutral-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+        <p className="text-xs font-bold text-slate-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
       </div>
 
       {willBeBlocked && items.length > 0 && (
@@ -2412,12 +2395,12 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
       )}
 
       {selectedStudents.length > 0 && (
-        <div className="divide-y divide-neutral-100 border-b border-neutral-200">
+        <div className="divide-y divide-slate-100 border-b border-slate-200">
           {selectedStudents.map(s => (
             <div key={s.UserId} className="flex items-center gap-3 px-4 py-2 bg-orange-50/50">
               {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียน */}
               <Avatar photo={s.Photo} />
-              <span className="flex-1 text-sm font-medium text-neutral-800">
+              <span className="flex-1 text-sm font-medium text-slate-800">
                 {s.Nickname || `${s.Firstname} ${s.Lastname}`}
               </span>
               <button
@@ -2439,7 +2422,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
           placeholder="ค้นหานักเรียน..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          className="flex-1 px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
         />
         <button
           onClick={toggleAll}
@@ -2453,7 +2436,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 
       <div className="max-h-48 overflow-y-auto px-4 space-y-1 py-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-neutral-400 text-center py-3">ไม่พบนักเรียน</p>
+          <p className="text-xs text-slate-400 text-center py-3">ไม่พบนักเรียน</p>
         ) : (
           filtered.map(s => {
             const id = String(s.UserId);
@@ -2461,13 +2444,13 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
             return (
               <label
                 key={id}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-neutral-50"
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-slate-50"
                   }`}
               >
                 <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
                 <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
-                <span className="flex-1 font-medium text-neutral-700">
+                <span className="flex-1 font-medium text-slate-700">
                   {s.Nickname || `${s.Firstname} ${s.Lastname}`}
                 </span>
               </label>
@@ -2517,12 +2500,12 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   const add = () => {
     if (!newRow.SubjectId || !newRow.AdminId) {
       if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
-      return alert("กรุณาเลือกวิชาและติวเตอร์");
+      return toast("กรุณาเลือกวิชาและติวเตอร์");
     }
     if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
       const msg = "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)";
       if (showToast) return showToast("error", msg);
-      return alert(msg);
+      return toast(msg);
     }
     const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
     let hoursToUse = willBeManual ? Number(newRow.TotalHours) : 0;
@@ -2561,7 +2544,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
     return true;
   };
 
-  const inp = "px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[13px] outline-none";
+  const inp = "px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-[13px] outline-none";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4)
   const tutorOptions = allTutors.map(t => ({
@@ -2571,9 +2554,9 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   }));
 
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-visible">
-      <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-200 flex justify-between items-center rounded-t-xl">
-        <p className="text-xs font-bold text-neutral-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
+    <div className="border border-slate-200 rounded-xl overflow-visible">
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center rounded-t-xl">
+        <p className="text-xs font-bold text-slate-600 uppercase">วิชาที่จะเพิ่ม ({items.length})</p>
       </div>
 
       {/* ★ แก้ (ข้อ 6): ย่อข้อความแนะนำแบ่งชั่วโมงให้สั้นแต่ยังสื่อความ */}
@@ -2585,7 +2568,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
             วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
           </p>
           <button onClick={applySuggestedToAll}
-            className="shrink-0 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-bold hover:bg-blue-600 transition flex items-center gap-1">
+            className="shrink-0 px-3 py-1.5 bg-orange-500 text-white rounded-xl text-[11px] font-bold hover:bg-orange-600 transition flex items-center gap-1">
             <Check className="h-3 w-3" /> ใช้ค่าที่แนะนำทั้งหมด
           </button>
         </div>
@@ -2596,16 +2579,16 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         const tut = allTutors.find(t => String(t.AdminId) === String(it.AdminId));
         const avgPerMonthLabel = formatAvgPerMonth(it.TotalHours, monthsSpanned);
         return (
-          <div key={idx} className="border-b border-neutral-100 last:border-0 px-4 py-3.5">
+          <div key={idx} className="border-b border-slate-100 last:border-0 px-4 py-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์ */}
                 <Avatar photo={tut?.Photo} size="w-8 h-8" name={tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : undefined} seed={tut?.AdminId} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-neutral-800 truncate">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
                     {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
                   </p>
-                  <p className="text-xs text-neutral-500 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
                   </p>
                 </div>
@@ -2626,7 +2609,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
                 />
               ) : (
                 <button type="button" onClick={() => setEditingRateIndex(idx)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-[11px] text-neutral-500 hover:border-orange-300 hover:text-orange-600 transition shrink-0">
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-500 hover:border-orange-300 hover:text-orange-600 transition shrink-0">
                   เรทปัจจุบัน {it.TutorRatePerHourOverride || "-"}/ชม. · ใหม่ {it.StudentRatePerHourOverride || "-"}/ชม.
                   <Pencil className="h-3 w-3" />
                 </button>
@@ -2641,13 +2624,13 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
                 ) : (
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <span className="text-xs text-neutral-500 block">
+                      <span className="text-xs text-slate-500 block">
                         {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
                       </span>
-                      {avgPerMonthLabel && <span className="text-[10px] text-neutral-400 block">{avgPerMonthLabel}</span>}
+                      {avgPerMonthLabel && <span className="text-[11px] text-slate-400 block">{avgPerMonthLabel}</span>}
                     </div>
                     <button onClick={() => setEditingIndex(idx)}
-                      className="p-1.5 text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -2711,7 +2694,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
           className={inp + " w-24"}
         />
 
-        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 transition">
+        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition">
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -2739,7 +2722,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
   const [showPreview, setShowPreview] = useState(false);
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-400 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-orange-400 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
       <div className="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
         {course.CourseImage && !imgErr ? (
           <img
@@ -2762,7 +2745,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
             });
             onStatusChange();
           }}
-          className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-black border cursor-pointer ${status.color}`}
+          className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer ${status.color}`}
           onClick={(e) => e.stopPropagation()}
         >
           {statusOptions.map((s) => (
@@ -2774,11 +2757,11 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-bold text-neutral-900 text-sm leading-snug mb-3 line-clamp-2">
+        <h3 className="font-bold text-slate-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
         </h3>
 
-        <div className="space-y-1.5 text-xs text-neutral-500 mb-3">
+        <div className="space-y-1.5 text-xs text-slate-500 mb-3">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-orange-400" />
             <span>{formatDate(course.StartDate)} – {formatDate(course.LastDate)}</span>
@@ -2787,7 +2770,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
             <span className="font-bold text-green-500 text-sm">฿</span>
             <span className="font-bold text-green-700 text-sm">{formatPrice(course.FullCost || course.Price)} บาท</span>
             {Number(course.Discount) > 0 && (
-              <span className="line-through text-neutral-400">{formatPrice(course.Price)}</span>
+              <span className="line-through text-slate-400">{formatPrice(course.Price)}</span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
@@ -2798,38 +2781,38 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
 
         <div className="flex gap-1.5 flex-wrap mb-3">
           {Number(course.Is_Promotion) === 1 && (
-            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full text-[10px] font-bold shadow-sm">
+            <span className="inline-flex items-center gap-0.5 px-2.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full text-xs font-semibold shadow-sm">
               <Sparkles className="h-3 w-3" /> โปรโมชัน
             </span>
           )}
           {course.Term_Name && (
-            <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+            <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
               {course.Term_Name}
             </span>
           )}
           {course.Course_Type && (
-            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
               {course.Course_Type === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}
             </span>
           )}
           {course.Course_Availability_Name && (
-            <span className="px-2 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[10px] font-semibold">
+            <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-xs font-semibold">
               {course.Course_Availability_Name}
             </span>
           )}
           {course.VideosFree > 0 && (
-            <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-[10px] font-semibold">
+            <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
               ฟรี {course.VideosFree} คลิป
             </span>
           )}
           {course.Subjects && course.Subjects.split(",").map((s) => (
-            <span key={s} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+            <span key={s} className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
               {s.trim()}
             </span>
           ))}
         </div>
 
-        <div className="flex gap-2 mt-auto pt-2 border-t border-neutral-100">
+        <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">
           <button
             onClick={() => onEdit(course)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
@@ -2838,7 +2821,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           </button>
           <button
             onClick={() => setShowPreview(true)}
-            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-neutral-500 bg-neutral-50 border border-neutral-100 rounded-xl hover:bg-neutral-100 hover:border-neutral-200 transition"
+            className="flex items-center justify-center px-3 py-2 text-xs font-bold text-slate-500 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 hover:border-slate-200 transition"
             title="Preview มุมมองนักเรียน"
           >
             <Eye className="h-3.5 w-3.5" />
@@ -3053,31 +3036,21 @@ export default function AdminCoursesPage() {
   const activeCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(activeStatusId)).length;
   const closedCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(closedStatusId)).length;
 
-  const getPageNumbers = () => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) pages.push(i);
-      else if (i === 2 && currentPage > 3) pages.push("...");
-      else if (i === totalPages - 1 && currentPage < totalPages - 2) pages.push("...");
-    }
-    return pages.filter((p, idx) => pages.indexOf(p) === idx);
-  };
-
   if (loading)
     return (
-      <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
+      <div className="flex flex-col items-center justify-center h-64 text-orange-500">
         <Loader2 className="w-8 h-8 animate-spin mb-3" />
-        <p className="text-sm font-medium text-neutral-500">กำลังโหลดข้อมูลคอร์ส...</p>
+        <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</p>
       </div>
     );
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900">จัดการคอร์สเรียน</h1>
-          <p className="text-sm text-neutral-500 mt-1">เพิ่ม แก้ไข และจัดการคอร์สทั้งหมดในสถาบัน</p>
+          <h1 className={PAGE_TITLE}>จัดการคอร์สเรียน</h1>
+          <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการคอร์สทั้งหมดในสถาบัน</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -3091,39 +3064,39 @@ export default function AdminCoursesPage() {
         {[
           { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
-          { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-neutral-400" },
+          { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-slate-400" },
         ].map(({ label, value, icon: Icon, color }, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition"
+            className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition"
           >
             <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-xs text-neutral-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-neutral-900">{value}</p>
+              <p className="text-xs text-slate-500 font-medium">{label}</p>
+              <p className="text-xl font-bold text-slate-900">{value}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row md:flex-wrap gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="ค้นหาชื่อคอร์ส..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
             <option value="all">สถานะทั้งหมด ({allStatusCount})</option>
             {statusOptions.map((s) => (
@@ -3135,23 +3108,23 @@ export default function AdminCoursesPage() {
           <select
             value={filterCourseType}
             onChange={(e) => setFilterCourseType(e.target.value)}
-            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
           >
             {COURSE_TYPE_FILTERS.map((t) => (
               <option key={t.key} value={t.key}>{t.label}</option>
             ))}
           </select>
         </div>
-        <p className="text-xs text-neutral-400 mt-2 pl-1">
+        <p className="text-xs text-slate-400 mt-2 pl-1">
           แสดง {filtered.length} จาก {courses.length} คอร์ส
         </p>
       </div>
 
       {paginated.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-neutral-200">
-          <div className="text-6xl mb-3">📚</div>
-          <p className="text-neutral-500 font-medium">ไม่พบคอร์สเรียนที่ค้นหา</p>
-          <p className="text-xs text-neutral-400 mt-1">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
+          <p className="text-base font-semibold text-slate-700">ไม่พบคอร์สเรียนที่ค้นหา</p>
+          <p className="mt-1 text-sm text-slate-500">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -3169,50 +3142,7 @@ export default function AdminCoursesPage() {
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-0 items-center sm:justify-between">
-          <p className="text-sm text-neutral-500">
-            แสดง{" "}
-            <span className="font-semibold text-neutral-700">
-              {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-              {Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}
-            </span>{" "}
-            จาก <span className="font-semibold text-neutral-700">{filtered.length}</span> คอร์ส
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-1.5">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {getPageNumbers().map((page, idx) =>
-              page === "..." ? (
-                <span key={`dots-${idx}`} className="flex h-9 w-9 items-center justify-center text-neutral-400 text-sm">…</span>
-              ) : (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === page
-                    ? "bg-orange-500 text-white shadow-sm"
-                    : "border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600"
-                    }`}
-                >
-                  {page}
-                </button>
-              )
-            )}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คอร์ส" onChange={setCurrentPage} />
 
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>

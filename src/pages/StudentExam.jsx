@@ -10,6 +10,8 @@ import {
   logQuestionEnter, logIntegrityEvent,
   markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import { Sprout as LuSprout } from "lucide-react";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
@@ -31,13 +33,13 @@ function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
 function LoadingSkeleton() {
   return (
     <PageShell maxWidth="max-w-md">
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4 animate-pulse">
-        <div className="h-5 w-2/3 bg-neutral-200 rounded mx-auto" />
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4 animate-pulse">
+        <div className="h-5 w-2/3 bg-slate-200 rounded mx-auto" />
         <div className="flex justify-center gap-6">
-          <div className="h-4 w-16 bg-neutral-200 rounded" />
-          <div className="h-4 w-10 bg-neutral-200 rounded" />
+          <div className="h-4 w-16 bg-slate-200 rounded" />
+          <div className="h-4 w-10 bg-slate-200 rounded" />
         </div>
-        <div className="h-11 w-full bg-neutral-200 rounded-xl" />
+        <div className="h-11 w-full bg-slate-200 rounded-xl" />
       </div>
     </PageShell>
   );
@@ -82,13 +84,13 @@ function LandingCard({ status, exam, onStart, starting }) {
   const startDisabled = starting;
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-3xl p-8 text-center space-y-5">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 text-center space-y-5">
       <GoldenRetriever className="h-24 w-24 mx-auto" />
 
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold text-neutral-900">{exam.name}</h1>
-        <div className="flex justify-center gap-7 text-base text-neutral-600">
-          <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-neutral-400" />{exam.duration} นาที</div>
+        <h1 className={`${PAGE_TITLE}`}>{exam.name}</h1>
+        <div className="flex justify-center gap-7 text-base text-slate-600">
+          <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-slate-400" />{exam.duration} นาที</div>
           <div>{exam.totalQuestions} ข้อ</div>
         </div>
       </div>
@@ -132,10 +134,10 @@ function LandingCard({ status, exam, onStart, starting }) {
 
 function NoQuestionsNotice() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-3">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-3">
       <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
-      <p className="text-sm font-semibold text-neutral-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
-      <p className="text-xs text-neutral-400">กรุณาติดต่อผู้สอนของคุณ</p>
+      <p className="text-sm font-semibold text-slate-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
+      <p className="text-xs text-slate-400">กรุณาติดต่อผู้สอนของคุณ</p>
     </div>
   );
 }
@@ -269,16 +271,16 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
-      <div className="bg-white border border-neutral-200 rounded-3xl p-8 flex flex-col">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
         <div className="min-h-[320px]">
           <div className="flex items-baseline justify-between gap-3 mb-5">
             <div className="flex items-baseline gap-3">
-              <span className="text-2xl font-black text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-lg font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+              <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
+              <p className="text-lg font-medium text-slate-900 leading-relaxed">{current.text}</p>
             </div>
-            <span className="flex-shrink-0 text-sm font-semibold text-neutral-400 bg-neutral-100 px-3 py-1.5 rounded-full">
+            <span className="flex-shrink-0 text-sm font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
             </span>
           </div>
@@ -289,10 +291,10 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                 <button
                   key={label}
                   onClick={() => pickAnswer(optIdx)}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
+                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
                 >
-                  <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                  <span className="text-base text-neutral-800">{current.options?.[optIdx]}</span>
+                  <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+                  <span className="text-base text-slate-800">{current.options?.[optIdx]}</span>
                   {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto" />}
                 </button>
               );
@@ -300,8 +302,8 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
-          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-base text-neutral-500 disabled:opacity-30">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-base text-slate-500 disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" /> ข้อก่อนหน้า
           </button>
           {activeIdx < questions.length - 1 ? (
@@ -319,9 +321,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       </div>
 
       {/* ── ฝั่งขวา: ผังข้อสอบ (Question Map) ── */}
-      <div className="bg-white border border-neutral-200 rounded-3xl p-5 space-y-4 lg:sticky lg:top-6">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 lg:sticky lg:top-6">
         <div>
-          <p className="text-sm font-semibold text-neutral-500 mb-2.5">ข้อสอบ</p>
+          <p className="text-sm font-semibold text-slate-500 mb-2.5">ข้อสอบ</p>
           <div className="grid grid-cols-4 gap-1.5">
             {questions.map((q, i) => {
               const answered = q.selected !== null && q.selected !== undefined;
@@ -335,7 +337,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                       ? "border-orange-500 bg-orange-500 text-white"
                       : answered
                         ? "border-green-300 bg-green-50 text-green-700"
-                        : "border-neutral-200 text-neutral-500"
+                        : "border-slate-200 text-slate-500"
                     }`}
                 >
                   {i + 1}
@@ -345,23 +347,23 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           </div>
         </div>
 
-        <div className="border-t border-neutral-100 pt-3 space-y-1.5 text-sm">
+        <div className="border-t border-slate-100 pt-3 space-y-1.5 text-sm">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-neutral-600">
+            <span className="flex items-center gap-1.5 text-slate-600">
               <span className="h-2.5 w-2.5 rounded-sm bg-green-300 border border-green-400 inline-block" /> ตอบแล้ว
             </span>
-            <span className="font-semibold text-neutral-700">{answeredCount}/{questions.length}</span>
+            <span className="font-semibold text-slate-700">{answeredCount}/{questions.length}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-neutral-600">
-              <span className="h-2.5 w-2.5 rounded-sm bg-neutral-100 border border-neutral-300 inline-block" /> ยังไม่ตอบ
+            <span className="flex items-center gap-1.5 text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-sm bg-slate-100 border border-slate-300 inline-block" /> ยังไม่ตอบ
             </span>
-            <span className="font-semibold text-neutral-700">{questions.length - answeredCount}/{questions.length}</span>
+            <span className="font-semibold text-slate-700">{questions.length - answeredCount}/{questions.length}</span>
           </div>
         </div>
 
-        <div className={`border-t border-neutral-100 pt-3 ${lowTime ? "text-red-600" : "text-neutral-700"}`}>
-          <p className="text-sm font-semibold text-neutral-500 mb-1">เวลาที่เหลือ</p>
+        <div className={`border-t border-slate-100 pt-3 ${lowTime ? "text-red-600" : "text-slate-700"}`}>
+          <p className="text-sm font-semibold text-slate-500 mb-1">เวลาที่เหลือ</p>
           <div className="flex items-center gap-2 font-mono font-bold text-xl">
             <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
           </div>
@@ -369,18 +371,18 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       </div>
 
       {confirmSubmit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmSubmit(false)}>
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmSubmit(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="text-center mb-5">
               <div className="h-14 w-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-orange-600" /></div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันส่งข้อสอบ?</h3>
-              <p className="text-sm text-neutral-500">
+              <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันส่งข้อสอบ?</h3>
+              <p className="text-sm text-slate-500">
                 คุณตอบแล้ว {answeredCount}/{questions.length} ข้อ
                 {answeredCount < questions.length && " — ข้อที่ไม่ได้ตอบจะได้ 0 คะแนน"}
               </p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmSubmit(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ตรวจทานอีกครั้ง</button>
+              <button onClick={() => setConfirmSubmit(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ตรวจทานอีกครั้ง</button>
               <button onClick={doSubmit} disabled={submitting} className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold">
                 {submitting ? "กำลังส่ง…" : "ยืนยันส่ง"}
               </button>
@@ -410,21 +412,21 @@ function ResultCard({ result }) {
 
   return (
     <div className="space-y-4 pt-0">
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-        <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
-        <div className="bg-neutral-50 rounded-xl p-5">
-          <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
+        <h1 className="text-lg font-bold text-slate-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
+        <div className="bg-slate-50 rounded-xl p-5">
+          <p className="text-sm text-slate-500 mb-1">คะแนน</p>
           <p className="text-3xl font-bold text-orange-600">
             {fmtScore(result.totalScore)}/{fmtScore(result.maxScore)}
           </p>
-          <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
+          <p className="text-sm text-slate-500 mt-1">{pct}%</p>
         </div>
         {result.correctCount != null && (
-          <p className="text-sm text-neutral-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
+          <p className="text-sm text-slate-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
         )}
         <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-left flex gap-3">
-          <span className="text-2xl flex-shrink-0" aria-hidden="true">🌱</span>
+          <LuSprout className="h-6 w-6 shrink-0 text-emerald-500" />
           <div>
             <p className="text-sm font-bold text-orange-700 mb-1">{msg.title}</p>
             <p className="text-sm text-orange-800/90 leading-relaxed">{msg.body}</p>
@@ -511,7 +513,7 @@ export default function StudentExam() {
       <PageShell maxWidth="max-w-md">
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
-          <p className="text-sm text-neutral-600">{errorMsg}</p>
+          <p className="text-sm text-slate-600">{errorMsg}</p>
         </div>
       </PageShell>
     );

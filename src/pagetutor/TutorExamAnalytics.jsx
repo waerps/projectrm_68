@@ -15,6 +15,8 @@ import {
 import * as XLSX from "xlsx";
 import { fmtScore } from "../utils/examScore";
 import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWithAi } from "../utils/examShared";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import { PAGE_TITLE } from "../components/ui/tokens";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -552,7 +554,7 @@ const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปา�
 function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip }) {
   const Icon = icon;
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition h-full">
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
@@ -561,7 +563,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip })
           <p className="text-xs text-slate-500 font-medium">{label}</p>
           {tooltip && (
             <div className="relative group">
-              <span className="h-3.5 w-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[9px] text-slate-400 cursor-default shrink-0">
+              <span className="h-3.5 w-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[10px] text-slate-400 cursor-default shrink-0">
                 ?
               </span>
               <div className="absolute bottom-full right-0 mb-2 w-60 max-w-[80vw] bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-600 leading-relaxed shadow-lg hidden group-hover:block z-10">
@@ -570,7 +572,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip })
             </div>
           )}
         </div>
-        <p className="text-xl font-black text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
         {sub && <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate">{sub}</p>}
       </div>
     </div>
@@ -579,7 +581,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip })
 
 function SectionCard({ title, icon: Icon, children, action, tooltip, className = "" }) {
   return (
-    <div className={`bg-white rounded-2xl border border-slate-100 shadow-sm p-5 ${className}`}>
+    <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm p-5 ${className}`}>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           {Icon && <Icon className="h-4 w-4 text-orange-500" />}
@@ -846,57 +848,57 @@ function ItemAnalysisTab({ data }) {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0"><AlertTriangle className="h-4 w-4 text-red-500" /></div>
-          <div><p className="text-xl font-bold text-red-600">{flaggedCount} ข้อ</p><p className="text-xs text-neutral-500">ต้องพิจารณาแก้ไข</p></div>
+          <div><p className="text-xl font-bold text-red-600">{flaggedCount} ข้อ</p><p className="text-xs text-slate-500">ต้องพิจารณาแก้ไข</p></div>
         </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0"><Target className="h-4 w-4 text-blue-500" /></div>
           <div>
             <p className="text-xl font-bold text-blue-600">{fmtPct(avgPVal)}</p>
-            <p className="text-xs text-neutral-500">P-value เฉลี่ย <span className="text-neutral-400">(เป้า 0.3–0.7)</span></p>
+            <p className="text-xs text-slate-500">P-value เฉลี่ย <span className="text-slate-400">(เป้า 0.3–0.7)</span></p>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center gap-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0"><TrendingUp className="h-4 w-4 text-green-500" /></div>
           <div>
             <p className="text-xl font-bold text-green-600">{fmtPct(avgDIdx)}</p>
-            <p className="text-xs text-neutral-500">D-index เฉลี่ย <span className="text-neutral-400">(เป้า ≥0.3)</span></p>
+            <p className="text-xs text-slate-500">D-index เฉลี่ย <span className="text-slate-400">(เป้า ≥0.3)</span></p>
           </div>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400">
           <option>ทั้งหมด</option>
           {TOPICS.map(t => <option key={t}>{t}</option>)}
         </select>
-        <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400">
           <option>ทั้งหมด</option>
           <option>ง่าย</option><option>ปานกลาง</option><option>ยาก</option>
         </select>
-        <div className="flex rounded-xl overflow-hidden border border-neutral-200">
+        <div className="flex rounded-xl overflow-hidden border border-slate-200">
           {["ทั้งหมด", "ปัญหา", "ดี"].map(f => (
-            <button key={f} onClick={() => setFilterFlag(f)} className={`px-3 py-2 text-xs font-medium transition ${filterFlag === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}>
-              {f === "ปัญหา" ? "⚠️ มีปัญหา" : f === "ดี" ? "✓ ผ่านเกณฑ์" : f}
+            <button key={f} onClick={() => setFilterFlag(f)} className={`px-3 py-2 text-xs font-medium transition ${filterFlag === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
+              {f === "ปัญหา" ? "มีปัญหา" : f === "ดี" ? "✓ ผ่านเกณฑ์" : f}
             </button>
           ))}
         </div>
-        <p className="ml-auto flex items-center text-xs text-neutral-400 self-center">{filtered.length} ข้อ</p>
+        <p className="ml-auto flex items-center text-xs text-slate-400 self-center">{filtered.length} ข้อ</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-neutral-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-neutral-50 border-b border-neutral-100">
-              <th onClick={() => handleSort("id")} className="cursor-pointer text-left font-semibold text-neutral-500 px-4 py-3 w-10">ข้อ <SortIcon k="id" /></th>
-              <th className="text-left font-semibold text-neutral-500 px-3 py-3">หัวข้อ</th>
-              <th className="text-left font-semibold text-neutral-500 px-3 py-3">ระดับ</th>
-              <th onClick={() => handleSort("pValue")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">P-value <SortIcon k="pValue" /></th>
-              <th onClick={() => handleSort("dIndex")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">D-index <SortIcon k="dIndex" /></th>
-              <th className="text-left font-semibold text-neutral-500 px-3 py-3 min-w-[160px]">การเลือกตัวเลือก</th>
-              <th onClick={() => handleSort("avgTimeSec")} className="cursor-pointer text-left font-semibold text-neutral-500 px-3 py-3">เวลาเฉลี่ย <SortIcon k="avgTimeSec" /></th>
-              <th className="px-3 py-3 w-8" />
+            <tr className="bg-slate-50 border-b border-slate-100">
+              <th onClick={() => handleSort("id")} className="cursor-pointer text-left font-semibold text-slate-500 px-4 py-3 w-10">ข้อ <SortIcon k="id" /></th>
+              <th className="text-left font-semibold text-slate-500 px-3 py-3">หัวข้อ</th>
+              <th className="text-left font-semibold text-slate-500 px-3 py-3">ระดับ</th>
+              <th onClick={() => handleSort("pValue")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">P-value <SortIcon k="pValue" /></th>
+              <th onClick={() => handleSort("dIndex")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">D-index <SortIcon k="dIndex" /></th>
+              <th className="text-left font-semibold text-slate-500 px-3 py-3 min-w-[160px]">การเลือกตัวเลือก</th>
+              <th onClick={() => handleSort("avgTimeSec")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">เวลาเฉลี่ย <SortIcon k="avgTimeSec" /></th>
+              <th className="px-3 py-3 w-8 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
             </tr>
           </thead>
           <tbody>
@@ -905,10 +907,10 @@ function ItemAnalysisTab({ data }) {
               const totalOpts = q.optCounts.reduce((s, c) => s + c, 0);
               return (
                 <>
-                  <tr key={q.id} className={`border-b border-neutral-50 hover:bg-neutral-50/60 transition cursor-pointer ${q.flag ? "bg-red-50/20" : ""}`} onClick={() => setExpandedQ(isExpanded ? null : q.id)}>
-                    <td className="px-4 py-3 font-bold text-neutral-700">{q.flag && <AlertTriangle className="h-3 w-3 text-red-400 inline mr-1" />}{q.id}</td>
-                    <td className="px-3 py-3"><span className="px-2 py-0.5 rounded-md font-semibold text-[10px]" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
-                    <td className="px-3 py-3"><span className={`px-2 py-0.5 rounded-full font-semibold text-[10px] ${LevelBadge[q.level]}`}>{q.level}</span></td>
+                  <tr key={q.id} className={`border-b border-slate-50 hover:bg-slate-50/60 transition cursor-pointer ${q.flag ? "bg-red-50/20" : ""}`} onClick={() => setExpandedQ(isExpanded ? null : q.id)}>
+                    <td className="px-4 py-3 font-bold text-slate-700">{q.flag && <AlertTriangle className="h-3 w-3 text-red-400 inline mr-1" />}{q.id}</td>
+                    <td className="px-3 py-3"><span className="px-2 py-0.5 rounded-md font-semibold text-[11px]" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
+                    <td className="px-3 py-3"><span className={`px-2.5 py-0.5 rounded-full font-semibold text-xs ${LevelBadge[q.level]}`}>{q.level}</span></td>
                     <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${PValColor(q.pValue)}`}>{fmtPct(q.pValue)}</span></td>
                     <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${DIdxColor(q.dIndex)}`}>{q.dIndex >= 0 ? "+" : ""}{fmtPct(q.dIndex)}</span></td>
                     <td className="px-3 py-3">
@@ -918,26 +920,26 @@ function ItemAnalysisTab({ data }) {
                           const isCorrect = oi === q.correctOpt;
                           return (
                             <div key={label} className="flex items-center gap-1.5">
-                              <span className={`text-[9px] font-bold w-3.5 ${isCorrect ? "text-green-600" : "text-neutral-400"}`}>{label}</span>
-                              <div className="flex-1 h-3 bg-neutral-100 rounded-sm overflow-hidden">
+                              <span className={`text-[11px] font-bold w-3.5 ${isCorrect ? "text-green-600" : "text-slate-400"}`}>{label}</span>
+                              <div className="flex-1 h-3 bg-slate-100 rounded-sm overflow-hidden">
                                 <div className="h-full rounded-sm transition-all" style={{ width: `${pct * 100}%`, backgroundColor: isCorrect ? "#22c55e" : "#e5e7eb" }} />
                               </div>
-                              <span className={`text-[9px] w-5 text-right ${isCorrect ? "text-green-600 font-bold" : "text-neutral-400"}`}>{q.optCounts[oi]}</span>
+                              <span className={`text-[11px] w-5 text-right ${isCorrect ? "text-green-600 font-bold" : "text-slate-400"}`}>{q.optCounts[oi]}</span>
                             </div>
                           );
                         })}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-neutral-500">{Math.floor(q.avgTimeSec / 60)}:{String(Math.round(q.avgTimeSec % 60)).padStart(2, "0")} น.</td>
-                    <td className="px-3 py-3"><ChevronDown className={`h-4 w-4 text-neutral-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></td>
+                    <td className="px-3 py-3 text-slate-500">{Math.floor(q.avgTimeSec / 60)}:{String(Math.round(q.avgTimeSec % 60)).padStart(2, "0")} น.</td>
+                    <td className="px-3 py-3"><ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></td>
                   </tr>
                   {isExpanded && (
-                    <tr key={`${q.id}-detail`} className="border-b border-neutral-100 bg-neutral-50/60">
+                    <tr key={`${q.id}-detail`} className="border-b border-slate-100 bg-slate-50/60">
                       <td colSpan={8} className="px-6 py-3">
                         <div className="flex gap-6 items-start">
                           <div className="flex-1">
-                            <p className="text-xs font-semibold text-neutral-700 mb-1">โจทย์ข้อที่ {q.id}</p>
-                            <p className="text-xs text-neutral-600">{q.text}</p>
+                            <p className="text-xs font-semibold text-slate-700 mb-1">โจทย์ข้อที่ {q.id}</p>
+                            <p className="text-xs text-slate-600">{q.text}</p>
                           </div>
                           {q.flag && (
                             <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-w-xs">
@@ -1032,14 +1034,14 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                   <button key={s.studentId} type="button" onClick={() => onOpenStudent(s.studentId)}
                     className="relative text-left rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 p-4 flex items-center gap-3 transition">
                     <span className="relative flex-shrink-0">
-                      <span className={`${i === 0 ? "sa-float " : ""}h-12 w-12 rounded-2xl bg-gradient-to-br ${["from-amber-300 to-orange-500", "from-slate-200 to-slate-400", "from-orange-300 to-rose-400"][i]} text-slate-900 flex items-center justify-center text-xl font-black shadow-lg`}>
+                      <span className={`${i === 0 ? "sa-float " : ""}h-12 w-12 rounded-2xl bg-gradient-to-br ${["from-amber-300 to-orange-500", "from-slate-200 to-slate-400", "from-orange-300 to-rose-400"][i]} text-slate-900 flex items-center justify-center text-xl font-bold shadow-lg`}>
                         {initialOf(s.name)}
                       </span>
                       <span className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-orange-600 flex items-center justify-center shadow"><BadgeIcon className="h-3.5 w-3.5" /></span>
                     </span>
                     <span className="min-w-0">
                       <span className="block font-bold truncate">{nick || full.split(" ")[0]} <span className="font-normal text-slate-400 text-xs">{nick ? full.split(" ")[0] : ""}</span></span>
-                      <span className="tabular-nums block text-xl font-black text-emerald-300">{signed(s.scoreChange)}</span>
+                      <span className="tabular-nums block text-xl font-bold text-emerald-300">{signed(s.scoreChange)}</span>
                     </span>
                   </button>
                 );
@@ -1067,7 +1069,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                 </div>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
               </div>
-              <p className={`relative tabular-nums text-2xl sm:text-3xl font-black mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+              <p className={`relative tabular-nums text-2xl sm:text-3xl font-bold mt-3 ${on ? "text-white" : "text-slate-900"}`}>
                 {counts[k]}<span className={`text-lg font-bold ml-1 ${on ? "text-white/80" : "text-slate-400"}`}>คน</span>
               </p>
               <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
@@ -1080,7 +1082,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อหรือชื่อเล่น..."
-            className="pl-10 pr-4 py-2.5 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition" />
+            className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition" />
         </div>
         <p className="text-xs text-slate-400">แสดง {filtered.length} จาก {students.length} คน · เรียงคนที่ต้องดูแลขึ้นก่อน · แนวโน้ม = รอบแรกที่สอบ → รอบล่าสุด</p>
       </div>
@@ -1092,7 +1094,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           const { full, nick } = splitName(s.name);
           return (
             <button key={s.studentId} type="button" onClick={() => onOpenStudent(s.studentId)} {...tiltHandlers}
-              className="sa-tilt sa-rise relative min-w-0 text-left bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-3 sm:gap-4 items-center"
+              className="sa-tilt sa-rise relative min-w-0 text-left bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-orange-200 p-4 flex gap-3 sm:gap-4 items-center"
               style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
               <span className="sa-glow" />
               <span className="relative flex-shrink-0">
@@ -1105,7 +1107,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                   {nick && <span className="text-xs text-slate-400 flex-shrink-0">({nick})</span>}
                 </span>
                 <span className="flex items-center gap-1.5 mt-1 min-w-0">
-                  <span className={`flex-shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-full border ${st.pill}`}>{st.short}</span>
+                  <span className={`flex-shrink-0 text-xs font-semibold px-2.5 py-0.5 rounded-full border ${st.pill}`}>{st.short}</span>
                   <span className="text-[11px] text-slate-500 truncate" title={s.statusReasons.join(" · ")}>{s.statusReasons.slice(0, 2).join(" · ")}</span>
                 </span>
                 <span className="flex gap-1 mt-2">
@@ -1117,7 +1119,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
               </span>
               <span className="relative flex flex-col items-end gap-1 flex-shrink-0">
                 <Sparkline values={s.rounds.map((r) => r.pct)} color={STATUS_HEX[s.status]} />
-                <span className={`tabular-nums text-lg font-black leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPct != null ? fmtPct(s.latestPct) : "—"}</span>
+                <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPct != null ? fmtPct(s.latestPct) : "—"}</span>
                 <span className={`tabular-nums text-[11px] font-bold ${s.scoreChange > 0 ? "text-emerald-600" : s.scoreChange < 0 ? "text-rose-500" : "text-slate-300"}`}>
                   {s.scoreChange == null ? "ยังเทียบไม่ได้" : signed(s.scoreChange)}
                 </span>
@@ -1494,8 +1496,8 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
           <div className="relative p-5 pr-14 lg:pr-5 grid md:grid-cols-[1fr_auto] gap-4 sm:gap-6 items-center">
             <div className="flex gap-4 items-start min-w-0">
               <div className="relative flex-shrink-0">
-                <div className="h-16 w-16 rounded-2xl bg-white text-orange-500 flex items-center justify-center text-2xl font-black shadow">{initialOf(data.name)}</div>
-                <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${STATUS_GRAD[status.key]} text-white shadow ring-2 ring-white ${status.key === "care" ? "sa-pulse-red" : ""}`}>{st.short}</span>
+                <div className="h-16 w-16 rounded-2xl bg-white text-orange-500 flex items-center justify-center text-2xl font-bold shadow">{initialOf(data.name)}</div>
+                <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r ${STATUS_GRAD[status.key]} text-white shadow ring-2 ring-white ${status.key === "care" ? "sa-pulse-red" : ""}`}>{st.short}</span>
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
@@ -1503,12 +1505,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <p className="text-sm text-white/90">{nick ? `น้อง${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
-                    <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-3 py-1 text-xs font-bold backdrop-blur">
+                    <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
                       <span className="absolute inset-0 sa-shine" /><BadgeIcon className="h-3.5 w-3.5" />{l}
                     </span>
                   ); })}
                   {missingExams.length > 0 && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/30 px-3 py-1 text-xs font-bold"><CalendarX className="h-3.5 w-3.5" /> ขาดสอบ {missingExams.join(", ")}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900/30 px-2.5 py-0.5 text-xs font-semibold"><CalendarX className="h-3.5 w-3.5" /> ขาดสอบ {missingExams.join(", ")}</span>
                   )}
                 </div>
               </div>
@@ -1518,14 +1520,14 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <div className="relative">
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="tabular-nums text-xl font-black">{Math.round(latest.pct * 100)}%</p>
+                    <p className="tabular-nums text-xl font-bold">{Math.round(latest.pct * 100)}%</p>
                     <p className="text-[11px] text-white/80">{latest.label}</p>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="tabular-nums text-2xl font-black">{change == null ? "—" : <><CountUp value={change} />%</>}</p>
+                  <p className="tabular-nums text-2xl font-bold">{change == null ? "—" : <><CountUp value={change} />%</>}</p>
                   <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `เทียบกับ ${first.label}`}</p>
-                  <p className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
+                  <p className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
                     {latest.pct * 100 >= PASS_PCT ? "ผ่านเกณฑ์" : `ต่ำกว่าเกณฑ์ ${Math.round(PASS_PCT - latest.pct * 100)}%`}
                   </p>
                 </div>
@@ -1538,7 +1540,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
         <nav className="sticky top-0 z-20 bg-slate-50/85 backdrop-blur border-b border-slate-200/70 px-4 sm:px-6 py-2.5 flex items-center gap-2 overflow-x-auto sa-scroll">
           {MODAL_SECTIONS.filter(([id]) => latest || id === "sec-sum").map((sec) => { const [id, l] = sec; const SecIcon = sec[2]; return (
             <button key={id} type="button" onClick={() => jumpTo(id)} aria-current={activeSec === id}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-bold rounded-full px-3 py-1.5 transition ${activeSec === id ? "bg-orange-500 text-white shadow-md shadow-orange-200" : "text-slate-600 bg-white border border-slate-200 hover:border-orange-200"}`}>
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-0.5 transition ${activeSec === id ? "bg-orange-500 text-white shadow-md shadow-orange-200" : "text-slate-600 bg-white border border-slate-200 hover:border-orange-200"}`}>
               <SecIcon className="h-3.5 w-3.5" />{l}
             </button>
           ); })}
@@ -1585,7 +1587,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
           {latest && (
             <>
               {/* ── 2) คะแนนข้ามรอบ ── */}
-              <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".1s" }}>
+              <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".1s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
@@ -1603,7 +1605,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                         <div>
                           <p className="text-[11px] font-bold text-slate-500">{e.label}</p>
                           {e.submitted
-                            ? <p className={`tabular-nums text-lg font-black ${e.pct * 100 >= PASS_PCT ? "text-slate-900" : "text-rose-500"}`}>{fmtPct(e.pct)}</p>
+                            ? <p className={`tabular-nums text-lg font-bold ${e.pct * 100 >= PASS_PCT ? "text-slate-900" : "text-rose-500"}`}>{fmtPct(e.pct)}</p>
                             : <p className="text-xs text-slate-300">{data.roundsWithData.includes(i) ? "ขาดสอบ" : "ยังไม่มีรอบนี้"}</p>}
                         </div>
                         {e.submitted && (
@@ -1623,14 +1625,14 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 3) รายหมวด ── */}
-              <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".14s" }}>
+              <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".14s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><BookOpen className="h-4 w-4 text-orange-500" /> รายหมวด · {latest.label}</h3>
                   {topics.length >= 3 && canSelfCompare && (
                     <div className="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 text-xs font-bold">
                       {[["class", "เทียบค่าเฉลี่ยห้อง"], ["self", `เทียบตัวเองตอน ${first.label}`]].map(([k, l]) => (
                         <button key={k} type="button" onClick={() => setRadarMode(k)}
-                          className={`px-3 py-1.5 rounded-lg transition ${mode === k ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
+                          className={`px-3 py-1.5 rounded-xl transition ${mode === k ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
                       ))}
                     </div>
                   )}
@@ -1664,7 +1666,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
                                   <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
                                   {t.trend && (
-                                    <span className={`flex-shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>AI: {t.trend}</span>
+                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>AI: {t.trend}</span>
                                   )}
                                 </div>
                                 <div className="relative h-3 rounded-full bg-white mt-1.5">
@@ -1673,7 +1675,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 </div>
                               </div>
                               <div className="text-right tabular-nums leading-tight w-20 sm:w-24">
-                                <p className="text-base font-black text-slate-900">{Math.round(t.pct * 100)}%</p>
+                                <p className="text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</p>
                                 {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} จากห้อง</p>}
                                 {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} จาก {first.label.replace(/-test$/i, "")}</p>}
                               </div>
@@ -1689,12 +1691,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 4) สิ่งที่ต้องช่วย ── */}
-              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
+              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
                 <div className={`grid gap-4 ${paceRatio != null ? "lg:grid-cols-[1fr_17rem]" : ""}`}>
                   <div className="space-y-2.5">
                     <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 text-rose-500" /> เรื่องที่น่าจะเข้าใจผิด <span className="text-[10px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
+                      <AlertTriangle className="h-3.5 w-3.5 text-rose-500" /> เรื่องที่น่าจะเข้าใจผิด <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
                     </p>
                     {!aiRow ? <p className="text-xs text-slate-400">{noAiNote}</p>
                       : misconceptions.length === 0 ? <p className="text-xs text-slate-400">AI ไม่พบรูปแบบการตอบผิดที่ซ้ำกัน</p>
@@ -1706,7 +1708,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                               <div className="absolute left-0 inset-y-0 w-1.5 bg-gradient-to-b from-rose-400 to-red-500" />
                               <div className="flex items-center justify-between gap-2">
                                 <p className="text-sm font-bold text-rose-800">{m.topic}</p>
-                                <span className="flex items-center gap-1 text-[10px] font-bold text-rose-500" title="วัดจากจำนวนข้อที่ผิดรูปแบบเดียวกัน">
+                                <span className="flex items-center gap-1 text-[11px] font-bold text-rose-500" title="วัดจากจำนวนข้อที่ผิดรูปแบบเดียวกัน">
                                   ความรุนแรง {[1, 2, 3].map((l) => <span key={l} className={`h-2 w-2 rounded-full ${l <= severity ? "bg-rose-500" : "bg-rose-200"}`} />)}
                                 </span>
                               </div>
@@ -1722,7 +1724,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     <div className="rounded-2xl bg-slate-50 p-4 text-center">
                       <p className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1.5"><Timer className="h-3.5 w-3.5" /> จังหวะการทำข้อสอบ · {latest.label}</p>
                       <PaceGauge ratio={paceRatio} />
-                      <p className="tabular-nums text-xl font-black text-slate-900 -mt-1">{Math.round(myPace)} <span className="text-sm font-semibold text-slate-400">วิ/ข้อ</span></p>
+                      <p className="tabular-nums text-xl font-bold text-slate-900 -mt-1">{Math.round(myPace)} <span className="text-sm font-semibold text-slate-400">วิ/ข้อ</span></p>
                       <p className="text-xs font-semibold text-slate-600">
                         {paceDiff === 0 ? "ใกล้เคียงค่าเฉลี่ยห้อง" : paceDiff > 0 ? `ช้ากว่าห้อง ${paceDiff}%` : `เร็วกว่าห้อง ${Math.abs(paceDiff)}%`} · ห้องเฉลี่ย {Math.round(roomPace)} วิ
                       </p>
@@ -1735,7 +1737,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 {focusNext.length > 0 && (
                   <div>
                     <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 mb-3">
-                      <MapIcon className="h-3.5 w-3.5 text-orange-500" /> แผนที่ควรทำต่อ <span className="text-[10px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
+                      <MapIcon className="h-3.5 w-3.5 text-orange-500" /> แผนที่ควรทำต่อ <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
                     </p>
                     <ol className={`relative grid gap-3 ${focusNext.length >= 3 ? "sm:grid-cols-3" : focusNext.length === 2 ? "sm:grid-cols-2" : ""}`}>
                       {focusNext.length >= 2 && <div className="hidden sm:block absolute top-5 left-[16%] right-[16%] h-1 rounded-full bg-gradient-to-r from-orange-200 via-orange-300 to-amber-300" />}
@@ -1749,7 +1751,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                             <div className="mt-2 bg-orange-50/70 border border-orange-100 rounded-2xl p-3 w-full h-full">
                               <p className="text-sm font-bold text-slate-800 leading-snug">{action}</p>
                               {why && <p className="text-[11px] text-slate-500 mt-1">{why}</p>}
-                              {time && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-700 bg-white border border-orange-200 rounded-full px-1.5 py-0.5 mt-1.5"><Clock className="h-3 w-3" /> {time}</span>}
+                              {time && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-700 bg-white border border-orange-200 rounded-full px-1.5 py-0.5 mt-1.5"><Clock className="h-3 w-3" /> {time}</span>}
                             </div>
                           </li>
                         );
@@ -1760,7 +1762,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               </div>
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
-              <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
+              <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 pt-5">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><MessageCircle className="h-4 w-4 text-orange-500" /> ข้อความถึงผู้ปกครอง</h3>
                   {aiRow && (
@@ -1781,16 +1783,16 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 {aiRow ? (
                   <>
                     <div className="m-4 sm:m-6 rounded-2xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
-                      <p className="text-center text-[10px] text-white/90 mb-3"><span className="bg-slate-900/20 rounded-full px-2 py-0.5">ตัวอย่างตอนส่งในแชต</span></p>
+                      <p className="text-center text-[11px] text-white/90 mb-3"><span className="bg-slate-900/20 rounded-full px-2 py-0.5">ตัวอย่างตอนส่งในแชต</span></p>
                       <div className="flex gap-2 justify-end items-end">
-                        <span className="text-[10px] text-white/90 mb-1 text-right">อ่านแล้ว</span>
+                        <span className="text-[11px] text-white/90 mb-1 text-right">อ่านแล้ว</span>
                         <div className={`max-w-[85%] bg-[#06c755] text-white rounded-[20px_20px_4px_20px] px-4 py-3 text-sm leading-relaxed shadow whitespace-pre-line ${typed != null ? "sa-caret" : ""}`}>
                           {bubbleText || <span className="opacity-70">ยังไม่มีข้อความ</span>}
                         </div>
                       </div>
                       {editing && (
                         <textarea value={parentMessage} rows={5} onChange={(e) => setDraft(e.target.value)} aria-label="แก้ข้อความถึงผู้ปกครอง"
-                          className="w-full mt-3 rounded-2xl border-0 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-300" />
+                          className="w-full mt-3 rounded-2xl border-0 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-400" />
                       )}
                     </div>
                     <div className="px-4 sm:px-6 pb-5 -mt-2 flex items-center justify-between gap-2 flex-wrap">
@@ -1985,15 +1987,15 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         <div className="relative grid lg:grid-cols-[18rem_1fr] gap-4 lg:gap-6 p-4 sm:p-5">
           <div>
             <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "ห้องนี้เก่งขึ้นเฉลี่ย" : "คะแนนห้องนี้เปลี่ยนไปเฉลี่ย"}</p>
-            <p className="tabular-nums text-3xl sm:text-4xl font-black leading-none mt-2 drop-shadow-sm">
+            <p className="tabular-nums text-3xl sm:text-4xl font-bold leading-none mt-2 drop-shadow-sm">
               <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
             <p className="text-sm text-white/90 mt-3">{cmp.fromLabel} → {cmp.toLabel} · จากนักเรียน <b>{cmp.cohortSize} คน</b> ที่สอบครบทุกรอบ</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {best && best.delta > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-semibold"><Flame className="h-3.5 w-3.5" /> ขึ้นมากสุด: {best.topic} {signed(best.delta)}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Flame className="h-3.5 w-3.5" /> ขึ้นมากสุด: {best.topic} {signed(best.delta)}</span>
               )}
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-3 py-1 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> ดีขึ้น {cmp.improved}/{cmp.cohortSize} คน</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> ดีขึ้น {cmp.improved}/{cmp.cohortSize} คน</span>
             </div>
           </div>
           <div className="bg-white/10 rounded-2xl border border-white/20 backdrop-blur-sm p-3 overflow-x-auto sa-scroll">
@@ -2007,7 +2009,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
         {/* ── ดีขึ้น / ลดลง / เท่าเดิม ── */}
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".08s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".08s" }}>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><PieChart className="h-4 w-4 text-orange-500" /> ดีขึ้น / ลดลง / เท่าเดิม</h3>
           <div className="relative mx-auto mt-3 h-36 w-36">
             <svg viewBox="0 0 180 180" className="h-36 w-36 -rotate-90" aria-hidden="true">
@@ -2020,7 +2022,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               })}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="tabular-nums text-2xl font-black text-emerald-600">{cmp.improvedPct}%</p>
+              <p className="tabular-nums text-2xl font-bold text-emerald-600">{cmp.improvedPct}%</p>
               <p className="text-xs text-slate-500 font-semibold">ของห้องดีขึ้น</p>
             </div>
           </div>
@@ -2032,7 +2034,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             ].map((item) => { const [n, l, c, b] = item; const CountIcon = item[4]; return (
               <div key={l} className={`${b} rounded-2xl py-2.5`}>
                 <CountIcon className={`h-4 w-4 mx-auto ${c}`} />
-                <p className={`tabular-nums text-xl font-black ${c}`}>{n}</p>
+                <p className={`tabular-nums text-xl font-bold ${c}`}>{n}</p>
                 <p className="text-[11px] text-slate-500">คน {l}</p>
               </div>
             ); })}
@@ -2041,15 +2043,10 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5 min-w-0 lg:min-w-auto" style={{ animationDelay: ".14s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 min-w-0 lg:min-w-auto" style={{ animationDelay: ".14s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> ใครขยับไปเท่าไร</h3>
-            <div className="inline-flex bg-slate-100 rounded-xl p-1 text-xs font-bold">
-              {[["swarm", "กลุ่มวงกลม"], ["slope", "เส้นรายคน"]].map(([k, l]) => (
-                <button key={k} type="button" onClick={() => setView(k)}
-                  className={`px-3 py-1.5 rounded-lg transition ${view === k ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
-              ))}
-            </div>
+            <SegmentedControl size="sm" value={view} onChange={setView} options={[{ id: "swarm", label: "กลุ่มวงกลม" }, { id: "slope", label: "เส้นรายคน" }]} />
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
             {view === "swarm"
@@ -2070,7 +2067,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <p className="text-xs text-blue-700">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
         </div>
       ) : (
-        <div className="sa-rise bg-white rounded-2xl border border-slate-100 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
+        <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการรายหมวด</h3>
@@ -2107,7 +2104,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
                       <span className="h-2 w-16 rounded-full bg-slate-100 overflow-hidden">
                         <span className={`sa-grow block h-full rounded-full ${row.delta > 0 ? "bg-emerald-400" : "bg-rose-400"}`} style={{ width: `${Math.min(100, Math.abs(row.delta ?? 0) * 3)}%` }} />
                       </span>
-                      <span className={`tabular-nums text-sm font-black ${row.delta == null ? "text-slate-300" : row.delta > 0 ? "text-emerald-600" : row.delta < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(row.delta)}</span>
+                      <span className={`tabular-nums text-sm font-bold ${row.delta == null ? "text-slate-300" : row.delta > 0 ? "text-emerald-600" : row.delta < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(row.delta)}</span>
                     </span>
                   </div>
                 );
@@ -2170,11 +2167,11 @@ const exportToExcel = (rows, examLabel) => {
 const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
   const columns = rows.length ? Object.keys(rows[0]) : [];
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
-        <div className="flex items-center justify-between gap-3 lg:gap-0 px-4 sm:px-6 py-4 border-b border-slate-100">
-          <h3 className="font-bold text-slate-800 min-w-0 lg:min-w-auto">พรีวิวก่อน Export Excel · {examLabel}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <h3 className="text-base font-bold text-white min-w-0 truncate">พรีวิวก่อน Export Excel · {examLabel}</h3>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -2750,7 +2747,7 @@ export function ExamAnalyticsView({
   };
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {typeof breadcrumb === "function"
         ? breadcrumb({ examId, examLabel, realExamId })
         : breadcrumb}
@@ -2758,7 +2755,7 @@ export function ExamAnalyticsView({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการนักเรียน</h1>
+          <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
           <p className="text-sm text-slate-500 mt-1">
             {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
             {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
@@ -2798,20 +2795,7 @@ export function ExamAnalyticsView({
       {/* Tab Nav — Export PDF ของแท็บ "เปรียบเทียบ"/"รายคน" อยู่แถวเดียวกันนี้เลย (ไม่ใช่แถวแยก
           ด้านล่างเหมือนเดิม จะได้ไม่มีช่องว่างเว้นเยอะระหว่างแท็บกับปุ่ม export) */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex gap-2 flex-wrap">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition
-                  ${isActive ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl value={activeTab} onChange={setActiveTab} options={TABS.map(t => ({ id: t.id, label: t.label, icon: t.icon }))} />
         {activeTab === "compare" && (
           <button
             onClick={() => exportComparisonToPdf(comparisonForExport, courseName, subjectName)}
@@ -2859,7 +2843,7 @@ export function ExamAnalyticsView({
             <button
               onClick={handleReanalyze}
               disabled={reanalyzing || !examResults[examId]?.submittedCount}
-              className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-lg px-3 py-1.5 transition"
+              className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition"
             >
               <Sparkles className="h-3.5 w-3.5" />
               {reanalyzing ? "กำลังวิเคราะห์…" : "วิเคราะห์ใหม่"}

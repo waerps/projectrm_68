@@ -5,6 +5,7 @@ import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import { Paperclip, FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -40,7 +41,7 @@ function IncidentCard({ incident, onClick }) {
                         <p className="font-semibold text-sm text-slate-900">
                             {type?.label || incident.IncidentTypeId}
                         </p>
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
                             {statusMeta.label}
                         </span>
                     </div>
@@ -122,12 +123,12 @@ export default function MyIncidents() {
     return (
         <div className="space-y-6 mt-[90px]">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900">ประวัติการแจ้งเรื่อง</h1>
-                <p className="text-sm text-slate-500 mt-1">รายการที่คุณเคยแจ้งไปและความคืบหน้าปัจจุบัน</p>
+                <h1 className={PAGE_TITLE}>ประวัติการแจ้งเรื่อง</h1>
+                <p className={PAGE_SUBTITLE}>รายการที่คุณเคยแจ้งไปและความคืบหน้าปัจจุบัน</p>
             </div>
 
             {incidents.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <Inbox className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500 font-medium">ยังไม่มีเรื่องที่แจ้งไป</p>
                 </div>

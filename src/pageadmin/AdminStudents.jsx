@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { getFileUrl } from "../utils/fileUrl";
 import { getConsentCatalog } from "../callapi/callusers_student";   // ← เพิ่ม: PDPA (endpoint สาธารณะ ไม่ต้องใช้ token)
+import UIModal from "../components/ui/Modal";
+import { confirmDialog, toast } from "../components/ui/dialogs";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { GraduationCap as LuGraduationCap } from "lucide-react";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -77,27 +83,9 @@ function StudentAvatar({ student, className = "h-10 w-10 rounded-xl" }) {
 }
 
 // ─── Modal ─────────────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className={`bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col w-full ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? '2xl' : 'lg'}>{children}</UIModal>;
 }
 
 // ─── ImageUpload (เหมือนหน้าติวเตอร์ทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
@@ -142,7 +130,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -182,7 +170,7 @@ function ParentSearchSelect({ onSelect }) {
   return (
     <div className="relative">
       <input
-        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition"
+        className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -248,13 +236,13 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = () => {
-    if (!form.firstname.trim() || !form.lastname.trim()) return alert("กรุณากรอกชื่อ-นามสกุล");
-    if (!isEdit && (!form.username.trim() || !form.password.trim())) return alert("กรุณากรอก Username และ Password");
+    if (!form.firstname.trim() || !form.lastname.trim()) return toast("กรุณากรอกชื่อ-นามสกุล");
+    if (!isEdit && (!form.username.trim() || !form.password.trim())) return toast("กรุณากรอก Username และ Password");
     // ★ กันเคสกรอกชื่อ/นามสกุลผู้ปกครองมาไม่ครบ
     const hasPartialParent =
       (form.parentFirstname.trim() || form.parentLastname.trim()) &&
       !(form.parentFirstname.trim() && form.parentLastname.trim());
-    if (hasPartialParent) return alert("กรุณากรอกชื่อและนามสกุลผู้ปกครองให้ครบ");
+    if (hasPartialParent) return toast("กรุณากรอกชื่อและนามสกุลผู้ปกครองให้ครบ");
 
     onSave({
       ...form,
@@ -270,7 +258,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     return formatted;
   };
 
-  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
+  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
   const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่
@@ -515,7 +503,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {courses.map(c => (
-              <span key={c.CourseID} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+              <span key={c.CourseID} className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                 {c.CourseName}
                 <button
                   type="button"
@@ -525,7 +513,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
                       await axios.delete(`${API}/enroll/${c.EnrollId}`);
                       loadCourses();
                     } catch (err) {
-                      alert(err.response?.data?.message || "ลบไม่สำเร็จ");
+                      toast(err.response?.data?.message || "ลบไม่สำเร็จ");
                     }
                   }}
                   className="text-orange-400 hover:text-red-500 transition"
@@ -541,11 +529,11 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
           ยกเลิก
         </button>
         <button onClick={submit} disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 disabled:opacity-50 transition text-sm shadow-sm">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
@@ -558,33 +546,33 @@ function ResetPasswordModal({ student, onClose }) {
   const [pwd, setPwd] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const inp = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition";
+  const inp = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400 transition";
 
   const submit = async () => {
-    if (!pwd.trim()) return alert("กรุณากรอกรหัสผ่านใหม่");
+    if (!pwd.trim()) return toast("กรุณากรอกรหัสผ่านใหม่");
     setLoading(true);
     try {
       await axios.patch(`${API}/students/${student.UserId}/reset-password`, { newPassword: pwd });
-      alert("รีเซ็ตรหัสผ่านสำเร็จ");
+      toast("รีเซ็ตรหัสผ่านสำเร็จ");
       onClose();
     } catch (e) {
-      alert(e.response?.data?.message || "เกิดข้อผิดพลาด");
+      toast(e.response?.data?.message || "เกิดข้อผิดพลาด");
     } finally { setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <KeyRound className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">รีเซ็ตรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">{student.Nickname || `${student.Firstname} ${student.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
+            <p className="text-xs text-white/80 truncate">{student.Nickname || `${student.Firstname} ${student.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="relative mb-4">
@@ -598,11 +586,11 @@ function ResetPasswordModal({ student, onClose }) {
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-sm hover:bg-orange-700 disabled:opacity-50 transition">
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
           </button>
         </div>
@@ -686,7 +674,7 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 
       <div className="flex items-center gap-2 p-3">
         <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+          className="flex-1 px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
           {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
         </button>
@@ -712,11 +700,11 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
       <div className="flex items-center gap-2 p-3 border-t border-orange-100">
         <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คอร์ส</span>
         <button onClick={handleAdd} disabled={saving || !selectedIds.length}
-          className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition flex items-center gap-1.5">
+          className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
         </button>
         <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
-          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -753,7 +741,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   if (loading) return (
     <Modal title="ข้อมูลนักเรียน" icon={Eye} onClose={onClose} wide>
-      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
+      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
     </Modal>
   );
 
@@ -858,13 +846,13 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         <div className="flex gap-3 shrink-0">
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
             <p className="text-xs text-orange-200">เข้าเรียน (รวม)</p>
-            <p className="text-xl font-black text-white">{attRate}%</p>
-            <p className="text-[10px] text-orange-300">{attended}/{totalClasses} คาบ</p>
+            <p className="text-xl font-bold text-white">{attRate}%</p>
+            <p className="text-[11px] text-orange-300">{attended}/{totalClasses} คาบ</p>
           </div>
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
             <p className="text-xs text-orange-200">วิดีโอ (รวม)</p>
-            <p className="text-xl font-black text-white">{watchedVideos}</p>
-            <p className="text-[10px] text-orange-300">/{totalVideos} คลิป</p>
+            <p className="text-xl font-bold text-white">{watchedVideos}</p>
+            <p className="text-[11px] text-orange-300">/{totalVideos} คลิป</p>
           </div>
         </div>
       </div>
@@ -885,19 +873,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5 flex-wrap">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
-            {t.label}
-            {t.count !== null && (
-              <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl className="mb-5" value={tab} onChange={setTab}
+        options={TABS.map(t => ({ id: t.key, label: t.label, count: t.count }))} />
 
       {/* Tab: คอร์สที่ลงทะเบียน — คลิกเพื่อเลือกดูรายละเอียด */}
       {tab === "courses" && (
@@ -935,10 +912,10 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 {rate !== null && (
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-right">
-                      <p className={`text-sm font-black ${rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                      <p className={`text-sm font-bold ${rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-500" : "text-red-500"}`}>
                         {rate}%
                       </p>
-                      <p className="text-[10px] text-slate-400">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
+                      <p className="text-[11px] text-slate-400">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
                     </div>
                     <div className="h-10 w-2 bg-slate-200 rounded-full overflow-hidden flex items-end">
                       <div className={`w-full rounded-full ${rColor}`} style={{ height: `${rate}%` }} />
@@ -949,7 +926,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                   type="button"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    if (!confirm(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
+                    if (!await confirmDialog(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
                     try {
                       await axios.delete(`${API}/enroll/${c.EnrollId}`);
                       loadDetail();
@@ -975,7 +952,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-500 font-medium">อัตราการเข้าเรียนในคอร์สนี้</span>
-                <span className={`font-black ${cAttRate >= 80 ? "text-emerald-600" : cAttRate >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                <span className={`font-bold ${cAttRate >= 80 ? "text-emerald-600" : cAttRate >= 60 ? "text-amber-500" : "text-red-500"}`}>
                   {cAttRate}% ({cAttended}/{cAttendance.length} คาบ)
                 </span>
               </div>
@@ -990,10 +967,10 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 <table className="w-full min-w-0 sm:min-w-[520px] text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs">
-                      <th className="text-left px-4 py-3 font-semibold">วันที่</th>
-                      <th className="hidden sm:table-cell text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
-                      <th className="text-left px-4 py-3 font-semibold">เวลา</th>
-                      <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่</th>
+                      <th className="hidden sm:table-cell text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส / วิชา</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เวลา</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1009,11 +986,11 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                         <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap lg:whitespace-normal">{a.StartTime} – {a.EndTime} น.</td>
                         <td className="px-4 py-3 text-center">
                           {a.Status === "1" ? (
-                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               <CheckCircle className="h-3 w-3" /> มาเรียน
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               <XCircle className="h-3 w-3" /> ขาดเรียน
                             </span>
                           )}
@@ -1054,17 +1031,17 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                             <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                               <div className="h-full bg-orange-400 rounded-full" style={{ width: `${v.WatchPercent}%` }} />
                             </div>
-                            <span className="text-[10px] text-orange-500 font-medium">{v.WatchPercent}%</span>
+                            <span className="text-[11px] text-orange-500 font-medium">{v.WatchPercent}%</span>
                           </div>
                         )}
                       </div>
                       <div className="shrink-0">
                         {done ? (
-                          <span className="inline-flex items-center gap-1 bg-orange-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                          <span className="inline-flex items-center gap-1 bg-orange-500 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
                             <CheckCircle className="h-3 w-3" /> ดูแล้ว
                           </span>
                         ) : (
-                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
                         )}
                       </div>
                     </div>
@@ -1092,7 +1069,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       <span className="font-semibold text-sm text-slate-900">{sub.subject}</span>
                     </div>
                     {sub.improvement !== null && (
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold ${trendColor(t)}`}>
+                      <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${trendColor(t)}`}>
                         {trendIcon(t)}
                         {sub.improvement > 0 ? `+${sub.improvement}` : sub.improvement}
                       </span>
@@ -1105,8 +1082,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       { label: "หลังเรียน", value: sub.post },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
-                        <p className="text-[10px] text-slate-400 mb-1">{label}</p>
-                        <p className="text-sm font-black text-slate-800">{value !== null ? `${value}%` : "—"}</p>
+                        <p className="text-[11px] text-slate-400 mb-1">{label}</p>
+                        <p className="text-sm font-bold text-slate-800">{value !== null ? `${value}%` : "—"}</p>
                       </div>
                     ))}
                   </div>
@@ -1130,7 +1107,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               ].map((st, i) => (
                 <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
                   <p className="text-xs text-slate-500 font-medium mb-1">{st.label}</p>
-                  <p className={`text-xl font-black ${st.color}`}>{st.value}</p>
+                  <p className={`text-xl font-bold ${st.color}`}>{st.value}</p>
                 </div>
               ))}
             </div>
@@ -1169,7 +1146,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 {parent.Nickname || `${parent.Firstname} ${parent.Lastname}`}
               </p>
               {parent.ParentProfilesType_Name && (
-                <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                   {parent.ParentProfilesType_Name}
                 </span>
               )}
@@ -1227,12 +1204,12 @@ function ParentPrivacyNoticeBlock({ parent }) {
 
       {acknowledgedAt ? (
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-emerald-200 px-3 py-2">
-          <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 text-[11px] font-bold">รับทราบแล้ว</span>
+          <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold">รับทราบแล้ว</span>
           <span className="text-xs text-slate-500">เมื่อ {new Date(acknowledgedAt).toLocaleString("th-TH")}</span>
         </div>
       ) : (
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-amber-200 px-3 py-2">
-          <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-1 text-[11px] font-bold">ยังไม่ได้แจ้ง</span>
+          <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold">ยังไม่ได้แจ้ง</span>
           <span className="text-xs text-slate-500">ระบบจะให้นักเรียนกรอกข้อมูลนี้และรับทราบเองตอนซื้อคอร์สแรก</span>
         </div>
       )}
@@ -1329,7 +1306,7 @@ function ConsentTab({ studentId, showToast }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
   }
 
   if (!courses.length) {
@@ -1356,7 +1333,7 @@ function ConsentTab({ studentId, showToast }) {
             <select
               value={selectedCourseId ?? ""}
               onChange={(e) => setSelectedCourseId(Number(e.target.value))}
-              className="flex-1 min-w-0 w-full lg:min-w-auto lg:w-auto rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
+              className="flex-1 min-w-0 w-full lg:min-w-auto lg:w-auto rounded-xl border border-orange-200 bg-white px-2.5 h-10 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
             >
               {courses.map((c) => (
                 <option key={c.courseId} value={c.courseId}>{c.courseName}</option>
@@ -1382,9 +1359,9 @@ function ConsentTab({ studentId, showToast }) {
                     <p className="mt-0.5 text-[11px] text-slate-400">{item.summary}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${s.cls}`}>{s.text}</span>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.text}</span>
                     {latest && (
-                      <span className="text-[10px] text-slate-400">
+                      <span className="text-[11px] text-slate-400">
                         {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
                       </span>
                     )}
@@ -1430,7 +1407,7 @@ function ConsentTab({ studentId, showToast }) {
               type="button"
               disabled={saving || !answeredCount}
               onClick={handleSavePaper}
-              className="mt-4 flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-orange-700 disabled:opacity-50"
+              className="mt-4 flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {saving ? "กำลังบันทึก..." : "บันทึกคำตอบแทนนักเรียน"}
@@ -1445,16 +1422,12 @@ function ConsentTab({ studentId, showToast }) {
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ยืนยันการลบนักเรียน</h3>
-            <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบนักเรียน</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
           <p className="text-sm font-semibold text-red-800">
@@ -1462,9 +1435,9 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
           </p>
           <p className="text-xs text-red-400 mt-0.5">ID: #{student.UserId}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
             ยกเลิก
           </button>
           {/* FIX #7: ปุ่ม disable + loading ระหว่าง request */}
@@ -1733,7 +1706,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
             <p className="text-xs text-slate-400 mt-0.5">{board.formula}</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-2xl font-black text-slate-900 leading-none">
+            <p className="text-2xl font-bold text-slate-900 leading-none">
               {board.score(s) ?? '—'}
               {board.score(s) != null && <span className="text-sm font-semibold text-slate-400"> / 100</span>}
             </p>
@@ -1998,7 +1971,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <select
             value={filterGrade}
             onChange={e => setFilterGrade(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -2023,7 +1996,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -2043,7 +2016,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <button
             onClick={() => { setFilterGrade('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
-                 text-slate-500 bg-white border border-slate-200 rounded-lg
+                 text-slate-500 bg-white border border-slate-200 rounded-xl
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
           >
             <X className="h-3.5 w-3.5" />
@@ -2084,7 +2057,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </span>
                           </div>
                           <p className="text-sm font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                          <p className="text-2xl font-black text-slate-300 mt-1">—</p>
+                          <p className="text-2xl font-bold text-slate-300 mt-1">—</p>
                           <p className="text-xs text-slate-300">คะแนน</p>
                         </div>
                       );
@@ -2106,7 +2079,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </button>
                           ))}
                           {group.members.length > 4 && (
-                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-600 shadow-sm">
                               +{group.members.length - 4}
                             </span>
                           )}
@@ -2116,7 +2089,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-2xl font-black text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-2xl font-bold text-slate-900 mt-1">{group.score}</p>
                         <p className="text-xs text-slate-400">คะแนน</p>
                       </div>
                     );
@@ -2163,7 +2136,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                     onClick={() => setShowLimit(v => v + DEFAULT_LIMIT)}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
                                text-orange-600 bg-orange-50 border border-orange-200
-                               rounded-lg hover:bg-orange-100 transition"
+                               rounded-xl hover:bg-orange-100 transition"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                     แสดงเพิ่มอีก {Math.min(DEFAULT_LIMIT, filtered.length - showLimit)} คน
@@ -2290,7 +2263,7 @@ export default function AdminStudentsPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
+    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลนักเรียน...</p>
     </div>
@@ -2303,14 +2276,14 @@ export default function AdminStudentsPage() {
   })();
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">จัดการนักเรียน</h1>
-          <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
+          <h1 className={PAGE_TITLE}>จัดการนักเรียน</h1>
+          <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
@@ -2326,13 +2299,13 @@ export default function AdminStudentsPage() {
           { label: "ยังไม่ลงทะเบียน", value: students.filter(s => !s.EnrolledCourses).length, color: "bg-amber-500" },
 
         ].map(({ label, value, color }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value}</p>
+              <p className="text-xl font-bold text-slate-900">{value}</p>
             </div>
           </div>
         ))}
@@ -2351,11 +2324,11 @@ export default function AdminStudentsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อ, ชื่อเล่น, โรงเรียน, เบอร์โทร, ID..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[160px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]">
             <option value="all">ทุกระดับชั้น ({allGradeCount})</option>
             {gradeLevels.map(g => (
               <option key={g.GradeLevelId} value={g.GradeLevelId}>
@@ -2364,7 +2337,7 @@ export default function AdminStudentsPage() {
             ))}
           </select>
           <select value={filterEnrolled} onChange={e => setFilterEnrolled(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[180px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px]">
             <option value="all">สถานะลงทะเบียนทั้งหมด ({enrolledCount + notEnrolledCount})</option>
             <option value="enrolled">ลงทะเบียนแล้ว ({enrolledCount})</option>
             <option value="not_enrolled">ยังไม่ลงทะเบียน ({notEnrolledCount})</option>
@@ -2375,9 +2348,9 @@ export default function AdminStudentsPage() {
 
       {/* Table */}
       {paginated.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="text-6xl mb-3">👨‍🎓</div>
-          <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuGraduationCap className="h-7 w-7 text-orange-400" /></div>
+          <p className="text-base font-semibold text-slate-700">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
         <>
@@ -2395,7 +2368,7 @@ export default function AdminStudentsPage() {
                     <p className="text-[11px] text-slate-400">#{s.UserId}</p>
                   </div>
                   {s.GPA ? (
-                    <span className="shrink-0 px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">GPA {s.GPA}</span>
+                    <span className="shrink-0 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">GPA {s.GPA}</span>
                   ) : null}
                 </button>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-600">
@@ -2406,10 +2379,10 @@ export default function AdminStudentsPage() {
                     <p className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{s.PhoneNo}</p>
                   )}
                   <div className="flex flex-wrap gap-1 pt-0.5">
-                    {s.GradeDetail && <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">{s.GradeDetail}</span>}
-                    {s.GenderName && <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[11px] font-semibold">{s.GenderName}</span>}
+                    {s.GradeDetail && <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{s.GradeDetail}</span>}
+                    {s.GenderName && <span className="px-2.5 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-xs font-semibold">{s.GenderName}</span>}
                     {s.EnrolledCourses > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-bold"><BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส</span>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"><BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส</span>
                     )}
                   </div>
                 </div>
@@ -2456,7 +2429,7 @@ export default function AdminStudentsPage() {
                             {s.Nickname && (
                               <p className="text-xs text-slate-400">{s.Firstname} {s.Lastname}</p>
                             )}
-                            <p className="text-[10px] text-slate-400">#{s.UserId}</p>
+                            <p className="text-[11px] text-slate-400">#{s.UserId}</p>
                           </div>
                         </div>
                       </td>
@@ -2471,12 +2444,12 @@ export default function AdminStudentsPage() {
                         )}
                         <div className="flex flex-wrap gap-1">
                           {s.GradeDetail && (
-                            <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                            <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                               {s.GradeDetail}
                             </span>
                           )}
                           {s.GenderName && (
-                            <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[10px] font-semibold">
+                            <span className="px-2.5 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-xs font-semibold">
                               {s.GenderName}
                             </span>
                           )}
@@ -2496,7 +2469,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: คอร์ส */}
                       <td className="px-4 py-3 text-center">
                         {s.EnrolledCourses > 0 ? (
-                          <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
                             <BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส
                           </span>
                         ) : (
@@ -2507,7 +2480,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: GPA */}
                       <td className="px-4 py-3 text-center">
                         {s.GPA ? (
-                          <span className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">
+                          <span className="inline-block px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
                             {s.GPA}
                           </span>
                         ) : (
@@ -2558,38 +2531,7 @@ export default function AdminStudentsPage() {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500">
-            แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-              .reduce((acc, p, idx, arr) => {
-                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, idx) => p === "..." ? (
-                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-              ) : (
-                <button key={p} onClick={() => setCurrentPage(p)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                  {p}
-                </button>
-              ))}
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} />
 
       {/* Modals */}
       {showAddModal && (

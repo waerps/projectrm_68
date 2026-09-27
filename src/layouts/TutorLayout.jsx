@@ -6,7 +6,8 @@ export default function TutorLayout() {
   return (
     <div className="min-h-screen">
       <TutorNavbar />
-      <main className="pt-[30px]">
+      {/* ระยะห่างจาก navbar กำหนดที่นี่ที่เดียว (navbar สูง ~90px + ช่องไฟ 30px) — หน้าในไม่ต้องใส่ mt เอง */}
+      <main className="pt-[120px]">
         <Outlet />
       </main>
       <IncidentReportButton role="tutor" />

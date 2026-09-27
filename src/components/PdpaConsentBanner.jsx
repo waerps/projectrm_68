@@ -46,10 +46,10 @@ export default function PdpaConsentBanner() {
   };
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
+    <div className="bg-orange-50 border-b border-orange-200 px-4 py-2.5">
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-amber-800 text-xs sm:text-sm min-w-0">
-          <ShieldAlert className="h-4 w-4 flex-shrink-0" />
+        <div className="flex items-center gap-2 text-slate-700 text-xs sm:text-sm min-w-0">
+          <ShieldAlert className="h-4 w-4 flex-shrink-0 text-orange-500" />
           <span className="truncate">
             มีเรื่องความยินยอมด้านข้อมูลส่วนบุคคล {pendingCount} รายการที่ยังไม่ได้ตอบ — ไม่กระทบการใช้งานตอนนี้ แวะไปตอบเมื่อสะดวกได้เลย
           </span>
@@ -57,7 +57,7 @@ export default function PdpaConsentBanner() {
         <div className="flex items-center gap-3 flex-shrink-0">
           <Link
             to="/profile"
-            className="text-xs font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900"
+            className="text-xs font-bold text-orange-600 underline underline-offset-2 hover:text-orange-700"
           >
             ไปตอบเลย
           </Link>
@@ -65,7 +65,7 @@ export default function PdpaConsentBanner() {
             type="button"
             onClick={handleDismiss}
             aria-label="ปิด"
-            className="text-amber-500 hover:text-amber-700"
+            className="text-slate-400 hover:text-slate-600"
           >
             <X className="h-4 w-4" />
           </button>

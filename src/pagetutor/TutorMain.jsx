@@ -2,6 +2,7 @@ import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { X, ChevronLeft, ChevronRight, Calendar, Tag } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
 
 const SERVER_URL = API_URL;
 
@@ -25,7 +26,7 @@ const SafeImg = ({ src, className, alt }) => (
 const SectionTitle = ({ children, sub }) => (
   <div className="text-center mb-8 md:mb-10">
     <h2 className="text-2xl md:text-[32px] font-extrabold text-orange-500">{children}</h2>
-    {sub && <p className="mt-2 text-gray-500">{sub}</p>}
+    {sub && <p className="mt-2 text-slate-500">{sub}</p>}
   </div>
 );
 
@@ -33,7 +34,7 @@ const SectionTitle = ({ children, sub }) => (
 const NewsCard = ({ item, highlight, onClick }) => (
   <div
     onClick={onClick}
-    className="rounded-3xl border border-gray-100 bg-white p-4 md:p-5 shadow-sm
+    className="rounded-2xl border border-slate-100 bg-white p-4 md:p-5 shadow-sm
                hover:shadow-md hover:border-orange-200 transition cursor-pointer"
   >
     <div className="flex flex-col md:flex-row gap-4">
@@ -46,10 +47,10 @@ const NewsCard = ({ item, highlight, onClick }) => (
       </div>
       <div className="flex-1 min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
             {item.tag}
           </span>
-          <span className="text-gray-400">{item.date}</span>
+          <span className="text-slate-400">{item.date}</span>
           {item.sub && (
             <span className={`rounded-full px-2 py-0.5 ${
               highlight ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
@@ -156,17 +157,17 @@ function NewsDetailModal({ newsId, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl"
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {loading ? (
-          <div className="p-16 text-center text-gray-400">กำลังโหลด...</div>
+          <Spinner block label="กำลังโหลด..." />
         ) : !detail ? (
-          <div className="p-16 text-center text-gray-400">ไม่พบข้อมูล</div>
+          <div className="p-16 text-center text-slate-400">ไม่พบข้อมูล</div>
         ) : (
           <>
             {/* รูปหน้าปก */}
@@ -187,26 +188,26 @@ function NewsDetailModal({ newsId, onClose }) {
                 <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-medium">
                   <Tag className="h-3 w-3" />{detail.tag}
                 </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
+                <span className="inline-flex items-center gap-1 text-slate-400">
                   <Calendar className="h-3 w-3" />{detail.date}
                 </span>
               </div>
 
               {/* หัวข้อ */}
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4 break-words">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-4 break-words">
                 {detail.title}
               </h2>
 
               {/* เนื้อหา */}
               {detail.sub && (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line break-words">{detail.sub}</p>
+                <p className="text-slate-600 leading-relaxed whitespace-pre-line break-words">{detail.sub}</p>
               )}
 
               {/* รูปเพิ่มเติม */}
               {detail.extraImages?.length > 0 && (
                 <>
-                  <hr className="my-5 border-gray-100" />
-                  <p className="text-sm font-semibold text-gray-700 mb-2">
+                  <hr className="my-5 border-slate-100" />
+                  <p className="text-sm font-semibold text-slate-700 mb-2">
                     รูปภาพเพิ่มเติม ({detail.extraImages.length} รูป)
                   </p>
                   <ImageGallery images={detail.extraImages} />
@@ -216,8 +217,8 @@ function NewsDetailModal({ newsId, onClose }) {
               {/* ปุ่มปิด */}
               <button
                 onClick={onClose}
-                className="mt-6 w-full py-2.5 rounded-2xl border border-gray-200 text-sm
-                           text-gray-600 hover:bg-gray-50 transition font-medium"
+                className="mt-6 w-full py-2.5 rounded-2xl border border-slate-200 text-sm
+                           text-slate-600 hover:bg-slate-50 transition font-medium"
               >
                 ปิด
               </button>
@@ -230,7 +231,7 @@ function NewsDetailModal({ newsId, onClose }) {
           onClick={onClose}
           className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-full p-1.5 shadow hover:bg-white transition"
         >
-          <X className="h-4 w-4 text-gray-700" />
+          <X className="h-4 w-4 text-slate-700" />
         </button>
       </div>
     </div>
@@ -253,11 +254,11 @@ export default function TutorMain() {
   const publicNews = news.filter((n) => n.type === "public");
   const tutorNews  = news.filter((n) => n.type === "tutor");
 
-  if (loading) return <div className="mt-20 text-center text-gray-500">กำลังโหลดข่าวสาร...</div>;
+  if (loading) return <Spinner block label="กำลังโหลดข่าวสาร..." />;
 
   return (
     <div className="pb-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6 mt-20">
+      <div className="mx-auto max-w-[1200px] px-4 md:px-6">
 
         {publicNews.length > 0 && (
           <>
@@ -282,7 +283,7 @@ export default function TutorMain() {
         )}
 
         {publicNews.length === 0 && tutorNews.length === 0 && (
-          <div className="text-center py-20 text-gray-400">ยังไม่มีข่าวในระบบ</div>
+          <div className="text-center py-20 text-slate-400">ยังไม่มีข่าวในระบบ</div>
         )}
       </div>
 

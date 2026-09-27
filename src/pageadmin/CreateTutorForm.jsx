@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 const val = (v) => (v === "" || v === undefined ? null : v);
 
@@ -21,9 +22,9 @@ const initialForm = {
 };
 
 const inputClass =
-  "w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100";
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 h-10 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400";
 
-const labelClass = "block mb-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide";
+const labelClass = "block mb-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide";
 
 function Field({ label, children }) {
   return (
@@ -92,7 +93,7 @@ export default function CreateTutorForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 py-6 sm:py-10 px-4 mt-[90px]">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-amber-50 py-6 sm:py-10 px-4">
       <div className="mx-auto max-w-3xl">
 
         {/* Header */}
@@ -106,8 +107,8 @@ export default function CreateTutorForm() {
             </svg>
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">สร้างบัญชี Tutor</h1>
-            <p className="text-sm text-gray-500">กรอกข้อมูลให้ครบเพื่อสร้างบัญชีผู้สอน</p>
+            <h1 className={PAGE_TITLE}>สร้างบัญชี Tutor</h1>
+            <p className={PAGE_SUBTITLE}>กรอกข้อมูลให้ครบเพื่อสร้างบัญชีผู้สอน</p>
           </div>
         </div>
 
@@ -128,7 +129,7 @@ export default function CreateTutorForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* Section: ข้อมูลส่วนตัว */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               ข้อมูลส่วนตัว
@@ -153,13 +154,13 @@ export default function CreateTutorForm() {
                 <input type="number" min="0" step="0.01" className={inputClass} placeholder="เช่น 300.00" value={form.ratePerTutors} onChange={set("ratePerTutors")} />
               </Field>
               <Field label="หมายเหตุ">
-                <textarea rows={2} className={inputClass + " resize-none"} placeholder="บันทึกเพิ่มเติม..." value={form.remark} onChange={set("remark")} />
+                <textarea rows={2} className={inputClass.replace("h-10", "py-2.5") + " resize-none"} placeholder="บันทึกเพิ่มเติม..." value={form.remark} onChange={set("remark")} />
               </Field>
             </div>
           </div>
 
           {/* Section: ช่องทางติดต่อ */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               ช่องทางติดต่อ
@@ -181,7 +182,7 @@ export default function CreateTutorForm() {
           </div>
 
           {/* Section: บัญชีผู้ใช้ */}
-          <div className="rounded-3xl border border-gray-100 bg-white p-4 sm:p-6 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm">
             <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-orange-500 uppercase tracking-widest">
               <span className="inline-block h-1 w-6 rounded-full bg-orange-400" />
               บัญชีผู้ใช้
@@ -208,7 +209,7 @@ export default function CreateTutorForm() {
                     autoComplete="new-password"
                   />
                   <button type="button" onClick={() => setShowPw((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                     {showPw ? (
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -250,7 +251,7 @@ export default function CreateTutorForm() {
             <button
               type="button"
               onClick={() => { setForm(initialForm); setAlert(null); }}
-              className="rounded-2xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
+              className="rounded-2xl border border-slate-200 bg-white px-6 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
             >
               รีเซ็ต
             </button>

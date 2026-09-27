@@ -78,8 +78,8 @@ export default function Navbar() {
                                 />
                             </div>
                             <div className="hidden flex-col md:flex">
-                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-gray-800"}`}>SORNSERM</span>
-                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-gray-800"}`}>TUTOR</span>
+                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-slate-800"}`}>SORNSERM</span>
+                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-slate-800"}`}>TUTOR</span>
                             </div>
                         </div>
                     </Link>
@@ -95,20 +95,20 @@ export default function Navbar() {
                             onClick={() => setMenuOpen(v => !v)}
                             aria-label="เมนูบัญชี"
                             aria-expanded={menuOpen}
-                            className={`flex h-11 items-center gap-2 rounded-full border pl-1 pr-2.5 transition-colors ${menuOpen ? "border-orange-200 bg-orange-50 text-orange-500" : "border-gray-200 text-gray-700 hover:border-orange-200 hover:bg-orange-50"}`}
+                            className={`flex h-11 items-center gap-2 rounded-full border pl-1 pr-2.5 transition-colors ${menuOpen ? "border-orange-200 bg-orange-50 text-orange-500" : "border-slate-200 text-slate-700 hover:border-orange-200 hover:bg-orange-50"}`}
                         >
                             {avatar("h-8 w-8")}
-                            <span className="hidden md:block max-w-[180px] truncate text-sm font-medium">แอดมิน {user?.firstname || "ไม่ทราบชื่อ"}</span>
+                            <span className="hidden md:block max-w-[160px] truncate text-sm font-medium">{user?.firstname || "ไม่ทราบชื่อ"}</span>
                             {menuOpen ? <X className="h-5 w-5 md:hidden" /> : <Menu className="h-5 w-5 md:hidden" />}
                             <ChevronDown className={`hidden md:block h-4 w-4 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
                         </button>
 
                         {menuOpen && (
-                            <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl md:absolute md:inset-x-auto md:right-0 md:top-[calc(100%+12px)] md:w-[440px] md:max-h-[calc(100dvh-110px)]">
-                                <div className="flex items-center gap-3 border-b border-gray-100 bg-orange-50/60 px-4 py-3.5">
+                            <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl md:absolute md:inset-x-auto md:right-0 md:top-[calc(100%+12px)] md:w-[440px] md:max-h-[calc(100dvh-110px)]">
+                                <div className="flex items-center gap-3 border-b border-slate-100 bg-orange-50/60 px-4 py-3.5">
                                     {avatar("h-11 w-11 ring-2 ring-white")}
                                     <div className="min-w-0">
-                                        <p className="truncate text-base font-bold text-gray-900">แอดมิน {[user?.firstname || "ไม่ทราบชื่อ", user?.lastname].filter(Boolean).join(" ")}</p>
+                                        <p className="truncate text-base font-bold text-slate-900">{[user?.firstname || "ไม่ทราบชื่อ", user?.lastname].filter(Boolean).join(" ")}</p>
                                         <p className="text-xs font-medium text-orange-600">ผู้ดูแลระบบ</p>
                                     </div>
                                 </div>
@@ -118,7 +118,7 @@ export default function Navbar() {
                                             <NavLink
                                                 to={to}
                                                 onClick={() => setMenuOpen(false)}
-                                                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive ? "bg-orange-50 text-orange-600" : "text-gray-700 hover:bg-orange-50 hover:text-orange-500"}`}
+                                                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive ? "bg-orange-50 text-orange-600" : "text-slate-700 hover:bg-orange-50 hover:text-orange-500"}`}
                                             >
                                                 <Icon className="h-5 w-5 shrink-0" />
                                                 <span className="truncate">{label}</span>
@@ -126,7 +126,7 @@ export default function Navbar() {
                                         </li>
                                     ); })}
                                 </ul>
-                                <div className="border-t border-gray-100 p-2">
+                                <div className="border-t border-slate-100 p-2">
                                     <button
                                         type="button"
                                         onClick={logout}
@@ -161,10 +161,10 @@ export default function Navbar() {
                             to="profile"
                             className={`flex items-center gap-1 font-medium text-sm transition-colors pb-1 ${isActive("/admin/profile")
                                 ? "text-orange-500"
-                                : "text-gray-700 hover:text-orange-500"
+                                : "text-slate-700 hover:text-orange-500"
                                 }`}
                         >
-                            <span>แอดมิน {user?.firstname || "ไม่ทราบชื่อ"}</span>
+                            <span>{user?.firstname || "ไม่ทราบชื่อ"}</span>
                         </Link>
 
                         <div
@@ -178,7 +178,7 @@ export default function Navbar() {
                 z-50
               "
                         >
-                            <ul className="py-2 text-sm text-gray-700 text-right">
+                            <ul className="py-2 text-sm text-slate-700 text-right">
                                 
                                 <li>
                                     <Link

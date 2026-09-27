@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react";
 import { ExamAnalyticsView } from "../pagetutor/TutorExamAnalytics.jsx";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
 import { adminExamAnalyticsApi } from "../utils/examShared";
+import { SearchX as LuSearchX } from "lucide-react";
 
 // ─── ภาพรวมพัฒนาการรายวิชา (มุมแอดมิน) ───────────────────────────────────────
 // ใช้ ExamAnalyticsView ตัวเดียวกับที่ติวเตอร์ใช้ ไม่ได้ก๊อปโค้ดมาทำใหม่
@@ -45,9 +46,9 @@ export default function AdminExamAnalytics() {
 
   if (!courseId || !subjectId || !tutorId) {
     return (
-      <div className="mt-[90px] text-center py-20 px-4 bg-white rounded-3xl border border-dashed border-slate-200">
-        <div className="text-5xl mb-3">🔎</div>
-        <p className="text-slate-500 font-medium">ลิงก์ไม่ครบ ต้องระบุคอร์ส วิชา และติวเตอร์</p>
+      <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuSearchX className="h-7 w-7 text-orange-400" /></div>
+        <p className="text-base font-semibold text-slate-700">ลิงก์ไม่ครบ ต้องระบุคอร์ส วิชา และติวเตอร์</p>
         <Link to="/admin/progress" className="inline-block mt-3 text-sm font-semibold text-orange-600 hover:underline">
           กลับไปหน้าภาพรวมพัฒนาการ
         </Link>

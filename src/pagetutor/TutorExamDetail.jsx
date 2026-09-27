@@ -24,6 +24,8 @@ import {
 import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import { Lightbulb as LuLightbulb } from "lucide-react";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -46,15 +48,15 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", onClick })
   return (
     <Wrapper
       onClick={onClick}
-      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
+      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
     >
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-neutral-500 font-medium">{label}</p>
-        <p className="text-lg sm:text-xl font-black text-neutral-900 whitespace-nowrap lg:whitespace-normal">{value}</p>
-        {sub && <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{sub}</p>}
+        <p className="text-xs text-slate-500 font-medium">{label}</p>
+        <p className="text-lg sm:text-xl font-bold text-slate-900 whitespace-nowrap lg:whitespace-normal">{value}</p>
+        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
       </div>
     </Wrapper>
   );
@@ -75,16 +77,16 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 function AddMethodPicker({ onPick }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <button onClick={() => onPick("manual")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
+      <button onClick={() => onPick("manual")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-neutral-800">พิมพ์ข้อสอบเอง</p>
-        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
+        <p className="text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</p>
+        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
       </button>
 
-      <button onClick={() => onPick("excel")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
+      <button onClick={() => onPick("excel")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-neutral-800">Import จาก Excel</p>
-        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
+        <p className="text-sm font-semibold text-slate-800">Import จาก Excel</p>
+        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
       </button>
     </div>
   );
@@ -130,27 +132,27 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
-        <div className="flex items-start justify-between gap-3 px-6 py-4 border-b border-neutral-100">
-          <div>
-            <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-              <Tags className="h-4 w-4 text-neutral-400" /> จัดการหมวดหมู่
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Tags className="h-4 w-4 text-white" /> จัดการหมวดหมู่
             </h3>
-            <p className="text-xs text-neutral-500 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
+            <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
           </div>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
           {loading ? (
-            <p className="text-sm text-neutral-500 py-6 text-center">กำลังโหลด…</p>
+            <p className="text-sm text-slate-500 py-6 text-center">กำลังโหลด…</p>
           ) : error ? (
             <p className="text-sm text-red-600 py-6 text-center">{error}</p>
           ) : !categories.length ? (
-            <p className="text-sm text-neutral-400 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
+            <p className="text-sm text-slate-400 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
           ) : (
-            <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
+            <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
               {categories.map((c) => (
                 <div key={c.category} className="px-4 py-2.5">
                   {renamingFrom === c.category ? (
@@ -160,28 +162,28 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
                         placeholder="ชื่อใหม่ หรือพิมพ์ชื่อหมวดที่มีอยู่เพื่อรวมเข้าด้วยกัน"
-                        className="w-full border border-neutral-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                       />
                       {findSimilarCategory(renameTo, categories) && (
                         <p className="text-[11px] text-amber-700">จะถูกรวมเข้ากับหมวด "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={confirmRename} disabled={saving} className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg px-3 py-1.5">
+                        <button onClick={confirmRename} disabled={saving} className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-3 py-1.5">
                           {saving ? "กำลังบันทึก…" : "บันทึก"}
                         </button>
-                        <button onClick={() => { setRenamingFrom(null); setSaveError(""); }} className="text-xs text-neutral-500 px-2">ยกเลิก</button>
+                        <button onClick={() => { setRenamingFrom(null); setSaveError(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
                       </div>
                       {saveError && <p className="text-[11px] text-red-600">{saveError}</p>}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm text-neutral-800 truncate">{c.category}</p>
-                        <p className="text-[11px] text-neutral-400">{c.count} ข้อ</p>
+                        <p className="text-sm text-slate-800 truncate">{c.category}</p>
+                        <p className="text-[11px] text-slate-400">{c.count} ข้อ</p>
                       </div>
                       <button
                         onClick={() => { setRenamingFrom(c.category); setRenameTo(c.category); setSaveError(""); }}
-                        className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-neutral-500 hover:text-orange-600 px-2 py-1"
+                        className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-orange-600 px-2 py-1"
                       >
                         <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวม
                       </button>
@@ -192,19 +194,19 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
             </div>
           )}
 
-          <label className="flex items-start gap-2 cursor-pointer bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3">
+          <label className="flex items-start gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
             <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} className="mt-0.5 accent-orange-500" />
             <span>
-              <span className="text-sm text-neutral-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
-              <span className="block text-xs text-neutral-400 mt-0.5">
+              <span className="text-sm text-slate-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
+              <span className="block text-xs text-slate-400 mt-0.5">
                 กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง ถ้าไม่ติ๊กจะแก้เฉพาะในคลัง
               </span>
             </span>
           </label>
         </div>
 
-        <div className="flex justify-end px-6 py-4 border-t border-neutral-100">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-neutral-600 hover:bg-neutral-100 rounded-xl">ปิด</button>
+        <div className="flex justify-end px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">ปิด</button>
         </div>
       </div>
     </div>
@@ -277,52 +279,52 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   const complete = q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
 
   return (
-    <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
+    <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-neutral-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
-        <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        <p className="text-sm font-semibold text-slate-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
+        <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-neutral-800 mb-2">โจทย์</label>
-        <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none" />
+        <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
+        <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
       </div>
 
       <div className="space-y-2.5">
         {OPTION_LABELS.map((label, optIdx) => {
           const isCorrect = q.correct === optIdx;
           return (
-            <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200 bg-white"}`}>
-              <button onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-neutral-300 hover:border-green-400"}`}>
+            <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200 bg-white"}`}>
+              <button onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-slate-300 hover:border-green-400"}`}>
                 {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
-              <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-neutral-800" />
+              <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-slate-800" />
             </div>
           );
         })}
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-neutral-800 mb-2">
-          💡 คำอธิบายเฉลย <span className="text-xs font-normal text-neutral-400">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
+        <label className="block text-sm font-semibold text-slate-800 mb-2">
+          <LuLightbulb className="inline h-4 w-4 -mt-0.5 text-amber-500" /> คำอธิบายเฉลย <span className="text-xs font-normal text-slate-400">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
         </label>
         <textarea
           value={q.explanation || ""}
           onChange={(e) => patch({ explanation: e.target.value })}
           placeholder="อธิบายว่าทำไมคำตอบนี้ถึงถูก…"
           rows={2}
-          className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
         />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={hideScore ? "hidden" : ""}>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">คะแนน</label>
           {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
               ปุ่ม −/+ เดินทีละ 0.5 ส่วนช่องกลางพิมพ์ตัวเลขเองได้ทุกค่า */}
-          <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden">
-            <button onClick={() => patch({ score: Math.max(0.5, Math.round((q.score - 0.5) * 100) / 100) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
+          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden">
+            <button onClick={() => patch({ score: Math.max(0.5, Math.round((q.score - 0.5) * 100) / 100) })} className="px-3 py-2 text-slate-500 hover:bg-slate-50 text-sm font-bold">−</button>
             <input
               type="number" step="0.25" min="0"
               value={q.score}
@@ -331,21 +333,21 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 patch({ score: v === "" ? "" : Math.max(0, Math.round(Number(v) * 100) / 100) });
               }}
               onBlur={(e) => { if (e.target.value === "" || Number(e.target.value) <= 0) patch({ score: 1 }); }}
-              className="flex-1 w-full text-center text-sm font-semibold text-neutral-800 outline-none py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="flex-1 w-full text-center text-sm font-semibold text-slate-800 outline-none py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
-            <button onClick={() => patch({ score: Math.round((Number(q.score) + 0.5) * 100) / 100 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
+            <button onClick={() => patch({ score: Math.round((Number(q.score) + 0.5) * 100) / 100 })} className="px-3 py-2 text-slate-500 hover:bg-slate-50 text-sm font-bold">+</button>
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Difficulty</label>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Difficulty</label>
           <div className="flex gap-1">
             {["ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
-              <button key={lv} onClick={() => patch({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${q.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-neutral-200 text-neutral-500"}`}>{lv}</button>
+              <button key={lv} onClick={() => patch({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${q.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-slate-200 text-slate-500"}`}>{lv}</button>
             ))}
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">หมวดหมู่</label>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">หมวดหมู่</label>
           {/* เลือกจากรายการเป็นหลัก เพื่อไม่ให้เกิดหมวดชื่อเพี้ยนซ้ำซ้อน
               จะสร้างหมวดใหม่ต้องกดปุ่ม และระบบจะเตือนถ้าชื่อคล้ายของเดิม */}
           {addingCategory ? (
@@ -356,22 +358,22 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
                 placeholder="ชื่อหมวดใหม่"
-                className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
               {newCategory.trim() && (() => {
                 const kw = newCategory.trim().toLowerCase();
                 const matches = (categoryOptions || []).filter((c) => c.category?.toLowerCase().includes(kw)).slice(0, 6);
                 if (!matches.length) return null;
                 return (
-                  <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-32 overflow-y-auto">
+                  <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-32 overflow-y-auto">
                     {matches.map((c) => (
                       <button
                         key={c.category}
                         type="button"
                         onClick={() => { patch({ category: c.category }); setAddingCategory(false); setNewCategory(""); }}
-                        className="w-full text-left px-3 py-1.5 text-xs text-neutral-700 hover:bg-orange-50 hover:text-orange-700"
+                        className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-orange-50 hover:text-orange-700"
                       >
-                        {c.category} <span className="text-neutral-400">({c.questionCount} ข้อ)</span>
+                        {c.category} <span className="text-slate-400">({c.questionCount} ข้อ)</span>
                       </button>
                     ))}
                   </div>
@@ -399,11 +401,11 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                   type="button"
                   disabled={!newCategory.trim()}
                   onClick={() => { patch({ category: newCategory.trim() }); setAddingCategory(false); setNewCategory(""); }}
-                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg px-3 py-1.5"
+                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-3 py-1.5"
                 >
                   ใช้หมวดนี้
                 </button>
-                <button type="button" onClick={() => { setAddingCategory(false); setNewCategory(""); }} className="text-xs text-neutral-500 px-2">ยกเลิก</button>
+                <button type="button" onClick={() => { setAddingCategory(false); setNewCategory(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
               </div>
             </div>
           ) : (
@@ -411,7 +413,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
               <select
                 value={q.category || ""}
                 onChange={(e) => patch({ category: e.target.value })}
-                className="flex-1 min-w-0 lg:min-w-auto border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
               >
                 <option value="">เลือกหมวด</option>
                 {(categoryOptions || []).map((c) => (
@@ -424,7 +426,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
               <button
                 type="button"
                 onClick={() => setAddingCategory(true)}
-                className="flex-shrink-0 border border-neutral-200 hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
+                className="flex-shrink-0 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
               >
                 + หมวดใหม่
               </button>
@@ -432,15 +434,15 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           )}
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
-            ระดับชั้น <span className="text-[10px] font-normal text-neutral-400">(ไม่บังคับ)</span>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+            ระดับชั้น <span className="text-[11px] font-normal text-slate-400">(ไม่บังคับ)</span>
           </label>
           {/* แท็กไว้ให้ตอนจัดชุดข้อสอบกรองตามระดับชั้นของคอร์สได้ ปล่อย "ไม่ระบุ" ได้ถ้ายังไม่แน่ใจ —
               ข้อที่ไม่ระบุจะไม่ถูกกรองออกไม่ว่าจะเลือกระดับชั้นไหนตอนจัดชุด */}
           <select
             value={q.gradeLevelId ?? ""}
             onChange={(e) => patch({ gradeLevelId: e.target.value === "" ? null : Number(e.target.value) })}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+            className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
           >
             <option value="">ไม่ระบุ</option>
             {(gradeLevelOptions || []).map((g) => (
@@ -458,7 +460,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       )}
 
       <div className="flex justify-end gap-2 pt-1">
-        <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium px-3">ยกเลิก</button>
+        <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3">ยกเลิก</button>
         <button
           onClick={() => onSave(q)}
           disabled={!complete || saving}
@@ -619,10 +621,10 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
   const newCount = importCount - updateCount;
 
   return (
-    <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
+    <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-neutral-800">นำเข้าข้อสอบจาก Excel</p>
-        <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        <p className="text-sm font-semibold text-slate-800">นำเข้าข้อสอบจาก Excel</p>
+        <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
       </div>
 
       {step === 1 && (
@@ -630,12 +632,12 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           <button onClick={downloadXlsxTemplate} className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-green-300 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl py-2.5 text-xs font-semibold transition">
             <Download className="h-3.5 w-3.5" /> ดาวน์โหลด Template (.xlsx)
           </button>
-          <div onClick={() => fileRef.current?.click()} onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }} onDragOver={(e) => e.preventDefault()} className="border-2 border-dashed border-neutral-200 rounded-xl p-6 text-center cursor-pointer hover:border-orange-300 transition">
-            {loading ? <p className="text-xs text-neutral-500 animate-pulse">กำลังอ่านไฟล์…</p> : (
+          <div onClick={() => fileRef.current?.click()} onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }} onDragOver={(e) => e.preventDefault()} className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center cursor-pointer hover:border-orange-300 transition">
+            {loading ? <p className="text-xs text-slate-500 animate-pulse">กำลังอ่านไฟล์…</p> : (
               <>
-                <FileSpreadsheet className="h-7 w-7 text-neutral-300 mx-auto mb-1.5" />
-                <p className="text-xs text-neutral-500">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
-                <p className="text-[10px] text-neutral-400 mt-1">รองรับ .xlsx, .xls, .csv</p>
+                <FileSpreadsheet className="h-7 w-7 text-slate-300 mx-auto mb-1.5" />
+                <p className="text-xs text-slate-500">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+                <p className="text-[11px] text-slate-400 mt-1">รองรับ .xlsx, .xls, .csv</p>
               </>
             )}
           </div>
@@ -655,14 +657,14 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
             <Badge className="bg-green-100 text-green-700">พบ {rows.length} ข้อ</Badge>
             {invalidCount > 0 && <Badge className="bg-amber-100 text-amber-700">{invalidCount} ข้อมีปัญหา</Badge>}
             {updateCount > 0 && <Badge className="bg-blue-100 text-blue-700">ทับของเดิม {updateCount} ข้อ</Badge>}
-            {newCount > 0 && <Badge className="bg-neutral-100 text-neutral-600">เพิ่มใหม่ {newCount} ข้อ</Badge>}
+            {newCount > 0 && <Badge className="bg-slate-100 text-slate-600">เพิ่มใหม่ {newCount} ข้อ</Badge>}
             {dupCount > 0 && <Badge className="bg-red-100 text-red-700">{dupCount} ข้อซ้ำ</Badge>}
             <div className="flex items-center gap-1.5 ml-auto">
-              <span className="text-xs text-neutral-500">ระดับชั้นเริ่มต้นของไฟล์นี้:</span>
+              <span className="text-xs text-slate-500">ระดับชั้นเริ่มต้นของไฟล์นี้:</span>
               <select
                 value={bulkGrade}
                 onChange={(e) => setBulkGrade(e.target.value)}
-                className="border border-neutral-200 rounded-lg px-2 py-1 text-xs bg-white"
+                className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
               >
                 <option value="">ไม่ระบุ</option>
                 {(gradeLevelOptions || []).map((g) => (
@@ -671,7 +673,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               </select>
             </div>
           </div>
-          <p className="text-[10px] text-neutral-400 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
+          <p className="text-[11px] text-slate-400 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
 
           {dupCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
@@ -695,12 +697,12 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                 const similar = findSimilarCategory(cat, categoryOptions);
                 return (
                   <div key={cat} className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-neutral-800">"{cat}"</span>
-                    <span className="text-[11px] text-neutral-500">{countOfCat(cat)} ข้อ</span>
+                    <span className="text-xs text-slate-800">"{cat}"</span>
+                    <span className="text-[11px] text-slate-500">{countOfCat(cat)} ข้อ</span>
                     <select
                       value={catMap[cat] ?? ""}
                       onChange={(e) => setCatMap((m) => ({ ...m, [cat]: e.target.value }))}
-                      className="border border-neutral-200 rounded-lg px-2 py-1 text-xs bg-white"
+                      className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                     >
                       <option value="">สร้างเป็นหมวดใหม่</option>
                       {(categoryOptions || []).map((c) => (
@@ -721,45 +723,45 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               })}
             </div>
           )}
-          <div className="border border-neutral-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-neutral-50">
+          <div className="border border-slate-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-slate-50">
             {rows.map((q, i) => {
               const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
               const dup = dupFlags[i];
               const skipped = skipDup && dup;
               const plan = rowPlan[i] || { mode: "new" };
               return (
-                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-neutral-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
-                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-600"}`}>{bad ? "!" : i + 1}</span>
+                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
+                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs truncate ${skipped ? "text-neutral-400 line-through" : "text-neutral-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
+                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
                     {plan.mode === "update" && (
-                      <p className="text-[10px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
+                      <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
                     )}
                     {plan.note === "notfound" && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">ไม่พบ bank_id นี้ในคลังของวิชานี้ — จะเพิ่มเป็นข้อใหม่แทน</p>
+                      <p className="text-[11px] text-amber-600 mt-0.5">ไม่พบ bank_id นี้ในคลังของวิชานี้ — จะเพิ่มเป็นข้อใหม่แทน</p>
                     )}
                     {plan.note === "iddup" && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">bank_id ซ้ำกับแถวก่อนหน้าในไฟล์เดียวกัน — จะเพิ่มเป็นข้อใหม่แทน</p>
+                      <p className="text-[11px] text-amber-600 mt-0.5">bank_id ซ้ำกับแถวก่อนหน้าในไฟล์เดียวกัน — จะเพิ่มเป็นข้อใหม่แทน</p>
                     )}
                     {dup && (
-                      <p className="text-[10px] text-red-600 mt-0.5">
+                      <p className="text-[11px] text-red-600 mt-0.5">
                         {dup === "bank" ? "โจทย์ซ้ำกับข้อที่มีอยู่แล้วในคลัง" : "โจทย์ซ้ำกับอีกข้อในไฟล์เดียวกัน"}
                         {skipped ? " — จะไม่ถูกนำเข้า" : ""}
                       </p>
                     )}
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[11px] text-slate-400">
                       {q.level} {q.category && `· ${q.category}`}
                       {q.explanation?.trim() ? (
                         <span className="text-blue-500"> · มีคำอธิบายเฉลย</span>
                       ) : (
-                        <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
+                        <span className="text-slate-300"> · ไม่มีคำอธิบายเฉลย</span>
                       )}
                     </p>
                     {q.category?.trim() && catMap[q.category.trim()] && (
-                      <p className="text-[10px] text-green-600 mt-0.5">จะบันทึกเป็นหมวด "{catMap[q.category.trim()]}"</p>
+                      <p className="text-[11px] text-green-600 mt-0.5">จะบันทึกเป็นหมวด "{catMap[q.category.trim()]}"</p>
                     )}
                     {q.category?.trim() && !catMap[q.category.trim()] && knownCategories.size > 0 && !knownCategories.has(normCategory(q.category)) && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
+                      <p className="text-[11px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
                     )}
                     {(() => {
                       const eff = effGradeId(i);
@@ -767,14 +769,14 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                       const g = (gradeLevelOptions || []).find((x) => String(x.id) === String(eff));
                       if (!g) return null;
                       const fromFile = gradeIdFromLabel(q.gradeLabel) != null && (rowGradeOverrides[i] === undefined || rowGradeOverrides[i] === "");
-                      return <p className="text-[10px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}{fromFile ? " (จากไฟล์)" : ""}</p>;
+                      return <p className="text-[11px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}{fromFile ? " (จากไฟล์)" : ""}</p>;
                     })()}
                   </div>
                   <select
                     value={rowGradeOverrides[i] ?? ""}
                     onChange={(e) => setRowGradeOverrides((m) => ({ ...m, [i]: e.target.value }))}
                     title="ระดับชั้นของข้อนี้ (ว่าง = ใช้ค่าเริ่มต้นของทั้งไฟล์ด้านบน)"
-                    className="flex-shrink-0 border border-neutral-200 rounded-lg px-1.5 py-1 text-[10px] bg-white w-20 self-start"
+                    className="flex-shrink-0 border border-slate-200 rounded-xl px-1.5 py-1 text-[11px] bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 w-20 self-start"
                   >
                     <option value="">ค่าเริ่มต้น</option>
                     {(gradeLevelOptions || []).map((g) => (
@@ -792,7 +794,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
             </div>
           )}
           <div className="flex flex-wrap justify-between gap-2">
-            <button onClick={() => setStep(1)} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium">← อัปโหลดไฟล์อื่น</button>
+            <button onClick={() => setStep(1)} className="text-sm text-slate-500 hover:text-slate-700 font-medium">← อัปโหลดไฟล์อื่น</button>
             <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
               {confirming
                 ? "กำลังบันทึก…"
@@ -1005,8 +1007,8 @@ export function BankTab({ subjectId, showToast, subjectName }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-bold text-neutral-900">คลังข้อสอบของฉัน</p>
-          <p className="text-xs text-neutral-500 mt-0.5">
+          <p className="text-sm font-bold text-slate-900">คลังข้อสอบของฉัน</p>
+          <p className="text-xs text-slate-500 mt-0.5">
             {loading ? "กำลังโหลด…" : `มี ${items.length} ข้อ`} · เป็นข้อสอบของคุณเอง ใช้ซ้ำได้ทุกคอร์สและทุกรอบสอบของวิชานี้
             {" "}· ตอนจะเปิดสอบค่อยไปจัดชุดที่แท็บตั้งค่า
           </p>
@@ -1014,12 +1016,12 @@ export function BankTab({ subjectId, showToast, subjectName }) {
         {!mode && !editing && (
           <div className="flex flex-wrap items-center gap-2">
             {items.length > 0 && (
-              <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-neutral-200 hover:border-green-300 hover:text-green-700 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+              <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-slate-200 hover:border-green-300 hover:text-green-700 text-slate-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
                 <Download className="h-4 w-4" /> ส่งออก Excel
               </button>
             )}
             {items.length > 0 && (
-              <button onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+              <button onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
                 <Tags className="h-4 w-4" /> จัดการหมวดหมู่
               </button>
             )}
@@ -1040,9 +1042,9 @@ export function BankTab({ subjectId, showToast, subjectName }) {
 
       <div ref={panelRef}>
         {mode === "picker" && (
-          <div className="border border-neutral-200 rounded-2xl p-5 relative">
-            <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-            <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
+          <div className="border border-slate-200 rounded-2xl p-5 relative">
+            <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
+            <p className="text-sm font-semibold text-slate-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
             <AddMethodPicker onPick={setMode} />
           </div>
         )}
@@ -1106,24 +1108,24 @@ export function BankTab({ subjectId, showToast, subjectName }) {
       {items.length > 0 && !editing && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหาจากโจทย์"
-              className="w-full border border-neutral-200 rounded-xl pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+              className="w-full border border-slate-200 rounded-xl pl-9 pr-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
-          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-sm">
+          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm">
             <option value="">ทุกหมวด</option>
             {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
           </select>
-          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-neutral-200 rounded-xl px-3 py-2 text-sm">
+          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm">
             <option value="">ทุกระดับ</option>
             {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
           </select>
           {filtered.length > 0 && (
-            <label className="flex items-center gap-1.5 text-xs text-neutral-600 cursor-pointer select-none px-1">
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none px-1">
               <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="accent-orange-500" />
               เลือกทั้งหมด ({filtered.length})
             </label>
@@ -1136,20 +1138,20 @@ export function BankTab({ subjectId, showToast, subjectName }) {
           <p className="text-xs font-semibold text-orange-800">เลือกไว้ {selectedIds.length} ข้อ</p>
           <button
             onClick={() => { setSelectedIds([]); setBulkPending(null); }}
-            className="text-[11px] text-neutral-500 hover:text-neutral-700 underline"
+            className="text-[11px] text-slate-500 hover:text-slate-700 underline"
           >
             ยกเลิกการเลือก
           </button>
 
           {bulkPending ? (
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className={`text-xs font-medium ${bulkPending.type === "delete" ? "text-red-700" : "text-neutral-700"}`}>
+              <span className={`text-xs font-medium ${bulkPending.type === "delete" ? "text-red-700" : "text-slate-700"}`}>
                 {bulkPendingText()}
               </span>
               <button
                 onClick={runBulkPending}
                 disabled={bulkBusy}
-                className={`text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition disabled:opacity-40 ${
+                className={`text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition disabled:opacity-40 ${
                   bulkPending.type === "delete" ? "bg-red-600 hover:bg-red-700" : "bg-orange-500 hover:bg-orange-600"
                 }`}
               >
@@ -1158,7 +1160,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
               <button
                 onClick={() => setBulkPending(null)}
                 disabled={bulkBusy}
-                className="text-xs text-neutral-600 font-medium px-2 py-1.5 hover:bg-white rounded-lg transition disabled:opacity-40"
+                className="text-xs text-slate-600 font-medium px-2 py-1.5 hover:bg-white rounded-xl transition disabled:opacity-40"
               >
                 ยกเลิก
               </button>
@@ -1176,7 +1178,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                     label: v === "none" ? "ไม่ระบุระดับชั้น" : (gradeLevels.find((g) => String(g.id) === v)?.label || ""),
                   });
                 }}
-                className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs"
+                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs"
               >
                 <option value="">เปลี่ยนระดับชั้น…</option>
                 <option value="none">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
@@ -1191,7 +1193,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                   if (!v) return;
                   setBulkPending({ type: "category", value: v });
                 }}
-                className="border border-orange-200 bg-white rounded-lg px-2 py-1.5 text-xs disabled:opacity-40"
+                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs disabled:opacity-40"
               >
                 <option value="">เปลี่ยนหมวดหมู่…</option>
                 {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
@@ -1199,7 +1201,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
 
               <button
                 onClick={() => setBulkPending({ type: "delete" })}
-                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition"
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl px-3 py-1.5 text-xs font-semibold transition"
               >
                 <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก
               </button>
@@ -1214,21 +1216,21 @@ export function BankTab({ subjectId, showToast, subjectName }) {
           ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
           ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
       {!editing && (!loading && items.length === 0 && !mode ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-          <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-          <p className="text-sm font-semibold text-neutral-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
-          <p className="text-xs text-neutral-400 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+          <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
+          <p className="text-sm font-semibold text-slate-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
+          <p className="text-xs text-slate-400 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
         </div>
       ) : (
-        <div className="border border-neutral-200 rounded-2xl divide-y divide-neutral-100">
+        <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100">
           {filtered.map((it) => (
             <div key={it.id} className={`px-4 py-3 flex items-start gap-3 ${deletingId === it.id ? "bg-red-50" : selectedIds.includes(it.id) ? "bg-orange-50/60" : ""}`}>
               {deletingId === it.id ? (
                 <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-red-700 font-medium">ลบข้อนี้ออกจากคลังถาวร? (ข้อที่เคยใช้สอบไปแล้วจะไม่กระทบผลสอบเดิม)</p>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg px-3 py-1.5 transition">ลบเลย</button>
-                    <button onClick={() => setDeletingId(null)} className="text-xs text-neutral-600 font-medium px-3 py-1.5 hover:bg-neutral-100 rounded-lg transition">ไม่ลบ</button>
+                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition">ลบเลย</button>
+                    <button onClick={() => setDeletingId(null)} className="text-xs text-slate-600 font-medium px-3 py-1.5 hover:bg-slate-100 rounded-xl transition">ไม่ลบ</button>
                   </div>
                 </div>
               ) : (
@@ -1241,14 +1243,14 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                     className="mt-1 accent-orange-500 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
+                    <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category || "ไม่ระบุหมวด"}</span>
-                      <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวด"}</span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
                       {it.gradeDetail && (
                         <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{it.gradeDetail}</span>
                       )}
-                      <span className="text-[11px] text-neutral-400">
+                      <span className="text-[11px] text-slate-400">
                         {it.usedCount > 0
                           ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
                           : "ยังไม่เคยใช้"}
@@ -1256,10 +1258,10 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 hover:text-neutral-700">
+                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500">
+                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -1268,7 +1270,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
             </div>
           ))}
           {filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-neutral-400">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-400">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
           )}
         </div>
       ))}
@@ -1314,30 +1316,30 @@ function SetSummaryTable({ items }) {
     { "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0, total: 0 }
   );
   return (
-    <div className="border border-neutral-200 rounded-xl overflow-hidden">
-      <p className="text-xs font-semibold text-neutral-600 px-4 pt-3 pb-1.5">สรุปชุดนี้ — ก่อนกดใช้ ลองดูว่าสัดส่วนพอใจไหม</p>
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <p className="text-xs font-semibold text-slate-600 px-4 pt-3 pb-1.5">สรุปชุดนี้ — ก่อนกดใช้ ลองดูว่าสัดส่วนพอใจไหม</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-neutral-50 text-neutral-500 text-xs">
-              <th className="text-left font-semibold px-4 py-2">หมวดเนื้อหา</th>
+            <tr className="bg-slate-50 text-slate-500 text-xs">
+              <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
               {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2 w-20">{lv}</th>)}
-              <th className="text-center font-semibold px-3 py-2 w-16">รวม</th>
+              <th className="text-center px-3 py-2 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.category} className="border-t border-neutral-100">
-                <td className="px-4 py-1.5 text-neutral-800">{r.category}</td>
+              <tr key={r.category} className="border-t border-slate-100">
+                <td className="px-4 py-1.5 text-slate-800">{r.category}</td>
                 {BANK_LEVELS.map((lv) => (
-                  <td key={lv} className="text-center px-3 py-1.5 text-neutral-600">{r[lv] || "-"}</td>
+                  <td key={lv} className="text-center px-3 py-1.5 text-slate-600">{r[lv] || "-"}</td>
                 ))}
-                <td className="text-center px-3 py-1.5 font-semibold text-neutral-700">{r.total}</td>
+                <td className="text-center px-3 py-1.5 font-semibold text-slate-700">{r.total}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-neutral-200 bg-neutral-50/70 font-semibold text-neutral-800">
+            <tr className="border-t border-slate-200 bg-slate-50/70 font-semibold text-slate-800">
               <td className="px-4 py-2">รวมทั้งหมด</td>
               {BANK_LEVELS.map((lv) => <td key={lv} className="text-center px-3 py-2">{totals[lv] || "-"}</td>)}
               <td className="text-center px-3 py-2">{totals.total}</td>
@@ -1498,25 +1500,25 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   // เลือกว่าชุดนี้จะใช้กับรอบไหนบ้าง — อธิบายเหตุผลละเอียดหน่อยเพราะเป็นการตัดสินใจที่กระทบ
   // การวัดพัฒนาการก่อน-หลังโดยตรง ใช้ร่วมกันทั้งโหมดสุ่มและโหมดเลือกเอง
   const applyToBox = (
-    <div className="border border-neutral-200 rounded-xl p-4 space-y-2.5">
-      <p className="text-sm font-semibold text-neutral-700">ใช้ชุดนี้กับ</p>
+    <div className="border border-slate-200 rounded-xl p-4 space-y-2.5">
+      <p className="text-sm font-semibold text-slate-700">ใช้ชุดนี้กับ</p>
 
-      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "all" ? "bg-orange-50" : "hover:bg-neutral-50"}`}>
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "all" ? "bg-orange-50" : "hover:bg-slate-50"}`}>
         <input type="radio" name="applyTo" checked={applyTo === "all"} onChange={() => setApplyTo("all")} className="mt-1 accent-orange-500" />
         <span>
-          <span className="text-sm font-medium text-neutral-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
-          <span className="block text-xs text-neutral-500 mt-0.5">
+          <span className="text-sm font-medium text-slate-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
+          <span className="block text-xs text-slate-500 mt-0.5">
             ใช้ข้อสอบชุดเดียวกันทุกรอบ — เทียบคะแนนก่อนเรียนกับหลังเรียนได้ตรงตามจริง เพราะไม่มีตัวแปร
             "ข้อสอบยากง่ายไม่เท่ากัน" มาปนกับพัฒนาการที่เกิดจากการเรียนจริง ๆ เห็นทั้งภาพรวมทั้งห้องและรายบุคคลชัดเจน
           </span>
         </span>
       </label>
 
-      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "this" ? "bg-orange-50" : "hover:bg-neutral-50"}`}>
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "this" ? "bg-orange-50" : "hover:bg-slate-50"}`}>
         <input type="radio" name="applyTo" checked={applyTo === "this"} onChange={() => setApplyTo("this")} className="mt-1 accent-orange-500" />
         <span>
-          <span className="text-sm font-medium text-neutral-800">เฉพาะรอบนี้</span>
-          <span className="block text-xs text-neutral-500 mt-0.5">
+          <span className="text-sm font-medium text-slate-800">เฉพาะรอบนี้</span>
+          <span className="block text-xs text-slate-500 mt-0.5">
             ใช้เมื่อต้องการให้รอบนี้ต่างจากรอบอื่นโดยตั้งใจ (เช่น เปลี่ยนเนื้อหาที่สอนระหว่างเทอม) —
             แต่หลังจากนี้จะเทียบผลก่อน-หลังของรอบนี้กับรอบอื่นแบบตรงไปตรงมาไม่ได้อีก เพราะข้อสอบไม่ใช่ชุดเดียวกันแล้ว
           </span>
@@ -1526,24 +1528,24 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-neutral-100">
-          <div>
-            <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-amber-500" /> จัดชุดข้อสอบ
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Zap className="h-4 w-4 text-white" /> จัดชุดข้อสอบ
             </h3>
-            <p className="text-xs text-neutral-500 mt-1">หยิบข้อจากคลังของคุณมาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
+            <p className="text-xs text-white/80 mt-1">หยิบข้อจากคลังของคุณมาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
           </div>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400 flex-shrink-0"><X className="h-4 w-4" /></button>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="flex gap-1 px-4 sm:px-6 pt-3 border-b border-neutral-100">
+        <div className="flex gap-1 px-4 sm:px-6 pt-3 border-b border-slate-100">
           {[["auto", "ให้ระบบสุ่มให้"], ["manual", "เลือกเอง"]].map(([k, label]) => (
             <button
               key={k}
               onClick={() => { setTab(k); setError(""); }}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${tab === k ? "border-orange-500 text-orange-600" : "border-transparent text-neutral-500 hover:text-neutral-700"}`}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${tab === k ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
             >
               {label}
             </button>
@@ -1572,28 +1574,28 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
           {loading ? (
-            <p className="text-sm text-neutral-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
+            <p className="text-sm text-slate-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
           ) : !bank.length ? (
-            <div className="border border-dashed border-neutral-200 rounded-xl py-10 text-center">
-              <FileQuestion className="h-9 w-9 text-neutral-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-neutral-600">คลังของคุณยังไม่มีข้อสอบในวิชานี้</p>
-              <p className="text-xs text-neutral-400 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
+            <div className="border border-dashed border-slate-200 rounded-xl py-10 text-center">
+              <FileQuestion className="h-9 w-9 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-600">คลังของคุณยังไม่มีข้อสอบในวิชานี้</p>
+              <p className="text-xs text-slate-400 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
             </div>
           ) : tab === "auto" && !working ? (
             <>
-              <div className="overflow-x-auto border border-neutral-200 rounded-xl">
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
                 <table className="w-full min-w-[480px] text-sm">
                   <thead>
-                    <tr className="bg-neutral-50 text-neutral-500 text-xs">
-                      <th className="text-left font-semibold px-4 py-2.5">หมวดเนื้อหา</th>
+                    <tr className="bg-slate-50 text-slate-500 text-xs">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
                       {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2.5 w-28">{lv}</th>)}
-                      <th className="text-center font-semibold px-3 py-2.5 w-16">รวม</th>
+                      <th className="text-center px-3 py-2.5 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
                     </tr>
                   </thead>
                   <tbody>
                     {categories.map((cat) => (
-                      <tr key={cat} className="border-t border-neutral-100">
-                        <td className="px-4 py-2.5 font-medium text-neutral-800">{cat}</td>
+                      <tr key={cat} className="border-t border-slate-100">
+                        <td className="px-4 py-2.5 font-medium text-slate-800">{cat}</td>
                         {BANK_LEVELS.map((lv) => {
                           const max = availableOf(cat, lv);
                           return (
@@ -1602,13 +1604,13 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                                 type="number" min={0} max={max} disabled={max === 0}
                                 value={counts[key(cat, lv)] ?? ""} placeholder="0"
                                 onChange={(e) => setCount(cat, lv, e.target.value)}
-                                className="w-16 border border-neutral-200 rounded-lg px-2 py-1.5 text-sm text-center disabled:bg-neutral-50 disabled:text-neutral-300 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                                className="w-16 border border-slate-200 rounded-xl px-2 h-10 text-sm text-center disabled:bg-slate-50 disabled:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                               />
-                              <p className="text-[10px] text-neutral-400 mt-1">มี {max} ข้อ</p>
+                              <p className="text-[11px] text-slate-400 mt-1">มี {max} ข้อ</p>
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2.5 text-center font-semibold text-neutral-700">
+                        <td className="px-3 py-2.5 text-center font-semibold text-slate-700">
                           {BANK_LEVELS.reduce((s, lv) => s + countOf(cat, lv), 0) || "-"}
                         </td>
                       </tr>
@@ -1619,11 +1621,11 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-neutral-600">คะแนนเต็ม</span>
-                  <span className="w-20 border border-neutral-200 bg-neutral-50 rounded-lg px-2 py-1.5 text-sm text-center font-semibold text-neutral-700">{totalScore}</span>
-                  <span className="text-[11px] text-neutral-400">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
+                  <span className="text-sm text-slate-600">คะแนนเต็ม</span>
+                  <span className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-center font-semibold text-slate-700">{totalScore}</span>
+                  <span className="text-[11px] text-slate-400">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
                 </div>
-                <p className="text-sm text-neutral-600">รวม <span className="font-bold text-neutral-900">{totalQuestions}</span> ข้อ</p>
+                <p className="text-sm text-slate-600">รวม <span className="font-bold text-slate-900">{totalQuestions}</span> ข้อ</p>
               </div>
 
               {applyToBox}
@@ -1640,57 +1642,57 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           ) : tab === "auto" && working ? (
             <>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-neutral-600">เลือกชุด</span>
+                <span className="text-sm text-slate-600">เลือกชุด</span>
                 {(sets || []).map((s, i) => (
                   <button key={s.label} onClick={() => chooseSet(i)}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${i === activeSet ? "bg-orange-500 text-white border-orange-500" : "border-neutral-200 text-neutral-600 hover:border-orange-300"}`}>
+                    className={`px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${i === activeSet ? "bg-orange-500 text-white border-orange-500" : "border-slate-200 text-slate-600 hover:border-orange-300"}`}>
                     ชุด {s.label}
                   </button>
                 ))}
               </div>
 
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 text-sm">
-                <span className="font-semibold text-neutral-800">{scored.length} ข้อ</span>
-                <span className="text-neutral-600">รวม {fmtScore(scored.reduce((s, it) => s + it.score, 0))} คะแนน</span>
-                <span className="text-neutral-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm">
+                <span className="font-semibold text-slate-800">{scored.length} ข้อ</span>
+                <span className="text-slate-600">รวม {fmtScore(scored.reduce((s, it) => s + it.score, 0))} คะแนน</span>
+                <span className="text-slate-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
               </div>
 
               {notes.map((n, i) => (
                 <p key={i} className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">{n}</p>
               ))}
 
-              <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
                 {scored.map((it, idx) => (
                   <div key={`${it.bankQuestionId}-${idx}`} className="px-4 py-3">
                     <div className="flex items-start gap-3">
                       <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-neutral-800 line-clamp-2">{it.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{it.category}</span>
-                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-neutral-600"}`}>{it.level}</span>
-                          <span className="text-[11px] text-neutral-500">{fmtScore(it.score)} คะแนน</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
+                          <span className="text-[11px] text-slate-500">{fmtScore(it.score)} คะแนน</span>
                           {it.reused && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">เคยใช้แล้ว</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button onClick={() => setSwapIndex(swapIndex === idx ? null : idx)} className="text-xs font-semibold text-neutral-500 hover:text-orange-600 px-2 py-1">เปลี่ยนข้อ</button>
-                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-neutral-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => setSwapIndex(swapIndex === idx ? null : idx)} className="text-xs font-semibold text-slate-500 hover:text-orange-600 px-2 py-1">เปลี่ยนข้อ</button>
+                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
 
                     {swapIndex === idx && (
                       <div className="mt-3 ml-9 border border-orange-200 bg-orange-50/40 rounded-xl p-3 max-h-56 overflow-y-auto space-y-1">
-                        <p className="text-xs text-neutral-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
+                        <p className="text-xs text-slate-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
                         {gradeFilteredBank
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
-                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-neutral-700 hover:bg-white rounded-lg px-2 py-1.5 line-clamp-2">
+                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5 line-clamp-2">
                               {b.text}
                             </button>
                           ))}
                         {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
-                          <p className="text-xs text-neutral-400 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
+                          <p className="text-xs text-slate-400 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
                         )}
                       </div>
                     )}
@@ -1703,14 +1705,14 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
             </>
           ) : (
             <>
-              <p className="text-xs text-neutral-500">ติ๊กข้อที่ต้องการจากคลัง ระบบจะหารคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
+              <p className="text-xs text-slate-500">ติ๊กข้อที่ต้องการจากคลัง ระบบจะหารคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
 
-              <div className="flex flex-wrap items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5">
-                <span className="text-xs font-semibold text-neutral-500">ทางลัด:</span>
+              <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                <span className="text-xs font-semibold text-slate-500">ทางลัด:</span>
                 <button
                   type="button"
                   onClick={() => setPicked(gradeFilteredBank.map((b) => b.id))}
-                  className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
+                  className="text-xs font-semibold border border-slate-200 bg-white hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-2.5 py-1 transition"
                 >
                   เอาทั้งหมด ({gradeFilteredBank.length})
                 </button>
@@ -1719,7 +1721,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     key={n}
                     type="button"
                     onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, n))}
-                    className="text-xs font-semibold border border-neutral-200 bg-white hover:border-orange-300 hover:text-orange-600 text-neutral-600 rounded-lg px-2.5 py-1 transition"
+                    className="text-xs font-semibold border border-slate-200 bg-white hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-2.5 py-1 transition"
                   >
                     สุ่มเอา {n} ข้อ
                   </button>
@@ -1730,13 +1732,13 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     value={quickCount}
                     onChange={(e) => setQuickCount(e.target.value)}
                     placeholder="จำนวน"
-                    className="w-16 border border-neutral-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    className="w-16 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400"
                   />
                   <button
                     type="button"
                     disabled={!Number(quickCount) || Number(quickCount) <= 0}
                     onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, Math.min(Number(quickCount), gradeFilteredBank.length)))}
-                    className="text-xs font-semibold bg-orange-50 hover:bg-orange-100 disabled:opacity-40 text-orange-700 rounded-lg px-2.5 py-1 transition"
+                    className="text-xs font-semibold bg-orange-50 hover:bg-orange-100 disabled:opacity-40 text-orange-700 rounded-xl px-2.5 py-1 transition"
                   >
                     สุ่มเอาตามจำนวน
                   </button>
@@ -1745,34 +1747,34 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                   <button
                     type="button"
                     onClick={() => setPicked([])}
-                    className="text-xs font-semibold text-neutral-600 hover:text-red-600 border border-neutral-200 hover:border-red-300 bg-white rounded-lg px-2.5 py-1 ml-auto transition"
+                    className="text-xs font-semibold text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-300 bg-white rounded-xl px-2.5 py-1 ml-auto transition"
                   >
                     ล้างที่เลือกไว้
                   </button>
                 )}
               </div>
 
-              <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100 max-h-[46vh] overflow-y-auto">
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-[46vh] overflow-y-auto">
                 {gradeFilteredBank.map((b) => {
                   const on = picked.includes(b.id);
                   return (
-                    <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-neutral-50">
+                    <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
                       <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-neutral-800 line-clamp-2">{b.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{b.text}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-neutral-100 text-neutral-600">{b.category}</span>
-                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-neutral-600"}`}>{b.level}</span>
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
                           {b.gradeDetail && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{b.gradeDetail}</span>}
-                          <span className="text-[11px] text-neutral-400">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
+                          <span className="text-[11px] text-slate-400">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
                         </div>
                       </div>
                     </label>
                   );
                 })}
               </div>
-              <p className="text-sm text-neutral-600">
-                เลือกแล้ว <span className="font-bold text-neutral-900">{picked.length}</span> ข้อ
+              <p className="text-sm text-slate-600">
+                เลือกแล้ว <span className="font-bold text-slate-900">{picked.length}</span> ข้อ
                 {picked.length > 0 && ` · ข้อละประมาณ ${fmtScore(pickedScored[0]?.score || 0)} คะแนน`}
               </p>
 
@@ -1789,15 +1791,15 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
           )}
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-neutral-100">
-          <p className="text-xs text-neutral-400">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
+          <p className="text-xs text-slate-400">
             {applyTo === "all" ? "จะใส่ลงทั้ง Pre / Mid / Post และแทนที่ข้อสอบเดิมของรอบเหล่านั้น" : "จะใส่ลงเฉพาะรอบนี้และแทนที่ข้อสอบเดิม"}
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 rounded-xl">ยกเลิก</button>
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">ยกเลิก</button>
             {tab === "auto" && working ? (
               <>
-                <button onClick={runAssemble} disabled={busy} className="px-4 py-2 text-sm font-semibold border border-neutral-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40">สุ่มใหม่</button>
+                <button onClick={runAssemble} disabled={busy} className="px-4 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40">สุ่มใหม่</button>
                 <button onClick={() => apply(scored.map((it) => it.bankQuestionId))} disabled={busy || !scored.length}
                   className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
                   {busy ? "กำลังบันทึก…" : `ใช้ชุด ${sets?.[activeSet]?.label || ""}`}
@@ -1832,9 +1834,9 @@ function PreviewTab({ exam, goToAssemble }) {
 
   if (questions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-        <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">รอบนี้ยังไม่มีชุดข้อสอบ</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+        <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
+        <p className="text-sm font-semibold text-slate-500">รอบนี้ยังไม่มีชุดข้อสอบ</p>
         <button onClick={goToAssemble} className="mt-4 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
           <Zap className="h-4 w-4" /> ไปจัดชุดข้อสอบ
         </button>
@@ -1860,28 +1862,28 @@ function PreviewTab({ exam, goToAssemble }) {
         </div>
       )}
 
-      <div className="border border-neutral-200 rounded-2xl p-4 sm:p-6">
+      <div className="border border-slate-200 rounded-2xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-neutral-200 flex items-center justify-center text-neutral-500 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="text-sm font-semibold text-neutral-700">ข้อที่ {activeIdx + 1} / {questions.length}</span>
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-neutral-200 flex items-center justify-center text-neutral-500 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-sm font-semibold text-slate-700">ข้อที่ {activeIdx + 1} / {questions.length}</span>
+            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
           </div>
           {current.level && <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${LEVEL_COLOR[current.level]?.pill}`}>{current.level}</span>}
         </div>
 
         <div className="flex items-baseline gap-3 mb-5">
-          <span className="text-xl font-black text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text || <span className="text-neutral-300 italic">ยังไม่มีโจทย์</span>}</p>
+          <span className="text-xl font-bold text-orange-500">{activeIdx + 1}.</span>
+          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
         </div>
 
         <div className="space-y-2.5">
           {OPTION_LABELS.map((label, optIdx) => {
             const isCorrect = current.correct === optIdx;
             return (
-              <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200"}`}>
-                <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                <span className="text-sm text-neutral-800">{current.options?.[optIdx] || <span className="text-neutral-300 italic">ว่าง</span>}</span>
+              <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200"}`}>
+                <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+                <span className="text-sm text-slate-800">{current.options?.[optIdx] || <span className="text-slate-300 italic">ว่าง</span>}</span>
                 {isCorrect && <Check className="h-4 w-4 text-green-600 ml-auto" />}
               </div>
             );
@@ -1890,16 +1892,16 @@ function PreviewTab({ exam, goToAssemble }) {
 
         {current.explanation?.trim() ? (
           <div className="mt-4 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
-            <span className="text-sm flex-shrink-0">💡</span>
+            <LuLightbulb className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
               <p className="text-xs text-blue-700/90 leading-relaxed">{current.explanation}</p>
             </div>
           </div>
         ) : (
-          <div className="mt-4 flex gap-2 bg-neutral-50 border border-neutral-100 rounded-lg p-3">
-            <AlertCircle className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-neutral-400">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
+          <div className="mt-4 flex gap-2 bg-slate-50 border border-slate-100 rounded-lg p-3">
+            <AlertCircle className="h-4 w-4 text-slate-300 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-400">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
           </div>
         )}
       </div>
@@ -2057,18 +2059,18 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
       {/* ── ข้อสอบของรอบนี้ — จุดเริ่มต้นก่อนเปิดสอบ ── */}
-      <div className="lg:col-span-2 bg-white rounded-2xl border border-neutral-200 p-5">
+      <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
-              <FileQuestion className="h-4 w-4 text-neutral-400" /> ข้อสอบของรอบนี้
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <FileQuestion className="h-4 w-4 text-slate-400" /> ข้อสอบของรอบนี้
             </h3>
-            <p className="text-sm text-neutral-700 mt-1">
+            <p className="text-sm text-slate-700 mt-1">
               {setQuestions.length > 0
                 ? `${setQuestions.length} ข้อ · รวม ${fmtScore(setScoreSum)} คะแนน`
                 : "ยังไม่มีข้อสอบในรอบนี้"}
             </p>
-            <p className="text-xs text-neutral-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               หยิบข้อจากคลังของคุณ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
             </p>
             {setQuestions.length > 0 && (
@@ -2105,9 +2107,9 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
       )}
 
       {/* ── ตั้งค่าข้อสอบ ── */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
-        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
-          <SettingsIcon className="h-4 w-4 text-neutral-400" /> ตั้งค่าข้อสอบ
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-5">
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <SettingsIcon className="h-4 w-4 text-slate-400" /> ตั้งค่าข้อสอบ
         </h3>
 
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
@@ -2118,24 +2120,24 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
         {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
             ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
-          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสอบ (นาที)</label>
+          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
           <div className="grid grid-cols-2 gap-3">
-            <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-            <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+            <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วิธีเปิดสอบ</label>
-          <div className={`flex rounded-xl overflow-hidden border border-neutral-200 ${isClosed ? "opacity-50" : ""}`}>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">วิธีเปิดสอบ</label>
+          <div className={`flex rounded-xl overflow-hidden border border-slate-200 ${isClosed ? "opacity-50" : ""}`}>
             <button
               type="button"
               onClick={() => setForm({ ...form, openMode: "manual" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               เปิดเอง
             </button>
@@ -2143,7 +2145,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               type="button"
               disabled={isClosed}
               onClick={() => setForm({ ...form, openMode: "auto" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-neutral-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-slate-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               เปิดอัตโนมัติตามวันเวลา
             </button>
@@ -2156,7 +2158,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               </p>
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
               {form.openMode === "auto"
                 ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
                 : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
@@ -2180,20 +2182,20 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
       </div>
 
       {/* ── เปิด/ปิดสอบ ── */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2 mb-5">
-          <Play className="h-4 w-4 text-neutral-400" /> เปิด/ปิดสอบ
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-5">
+          <Play className="h-4 w-4 text-slate-400" /> เปิด/ปิดสอบ
         </h3>
 
         {/* ── closed: offer "เปิดสอบใหม่" (reset + reopen), with a clear warning ── */}
         {status === "closed" && (
           <div className="text-center py-6 space-y-4">
-            <div className="h-14 w-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto">
-              <StopCircle className="h-6 w-6 text-neutral-400" />
+            <div className="h-14 w-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+              <StopCircle className="h-6 w-6 text-slate-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
-              <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
+              <p className="text-sm font-semibold text-slate-800">การสอบนี้ปิดแล้ว</p>
+              <p className="text-xs text-slate-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
             </div>
 
             <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -2212,17 +2214,17 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmReopen && (
-              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmReopen(false)}>
-                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmReopen(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
-                    <p className="text-sm text-neutral-500">
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">เปิดสอบใหม่?</h3>
+                    <p className="text-sm text-slate-500">
                       ข้อมูลผลสอบของนักเรียนทั้งหมดจากรอบก่อนจะถูกลบ และนักเรียนทุกคนจะต้องเริ่มสอบใหม่
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
                       disabled={reopening}
@@ -2244,10 +2246,10 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               <Clock className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">
+              <p className="text-sm font-semibold text-slate-800">
                 ตั้งเปิดอัตโนมัติวันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น.
               </p>
-              <p className="text-xs text-neutral-500 mt-1">{formatCountdown(scheduleRemainingSec)}</p>
+              <p className="text-xs text-slate-500 mt-1">{formatCountdown(scheduleRemainingSec)}</p>
             </div>
             {!ready && (
               <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -2264,17 +2266,17 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmOverride && (
-              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmOverride(false)}>
-                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmOverride(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
-                    <p className="text-sm text-neutral-500">
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
+                    <p className="text-sm text-slate-500">
                       ตั้งเปิดอัตโนมัติไว้วันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น. — ถ้ากดเปิดตอนนี้ นักเรียนจะเข้าสอบได้ทันที ก่อนถึงเวลาที่ตั้งไว้
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmOverride(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmOverride(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setOverriding(true); try { await onOpen(); setConfirmOverride(false); } finally { setOverriding(false); } }}
                       disabled={overriding}
@@ -2296,8 +2298,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               <Play className="h-6 w-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
-              <p className="text-xs text-neutral-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
+              <p className="text-sm font-semibold text-slate-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
+              <p className="text-xs text-slate-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
             </div>
             {!ready && (
               <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -2323,20 +2325,20 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
             </div>
 
-            <div className="border border-neutral-200 rounded-2xl p-5">
+            <div className="border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-neutral-700">ความคืบหน้าการเข้าสอบ</p>
+                <p className="text-sm font-semibold text-slate-700">ความคืบหน้าการเข้าสอบ</p>
                 <p className="text-sm font-bold text-orange-600">{joined}/{enrolled} คน</p>
               </div>
-              <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
             </div>
 
             {remainingSec != null && (
-              <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
-                <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
-                <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
+              <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-slate-200"}`}>
+                <p className="text-sm font-semibold text-slate-700 mb-1">เวลาที่เหลือของการสอบ</p>
+                <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-slate-800"}`}>
                   <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
                 </div>
               </div>
@@ -2347,15 +2349,15 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             </button>
 
             {confirmClose && (
-              <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setConfirmClose(false)}>
-                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmClose(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
-                    <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันการปิดสอบ?</h3>
+                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmClose(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setClosing(true); try { await onClose(); } finally { setClosing(false); setConfirmClose(false); } }}
                       disabled={closing}
@@ -2397,14 +2399,14 @@ function QuestionPeriods({ periods }) {
     <div className="pl-5 mt-1">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="text-[11px] text-neutral-400 hover:text-neutral-600 transition font-medium"
+        className="text-[11px] text-slate-400 hover:text-slate-600 transition font-medium"
       >
         {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({shown.length} ครั้ง) {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="mt-1 space-y-0.5">
           {shown.map((p, pi) => (
-            <p key={pi} className="text-[11px] text-neutral-400">
+            <p key={pi} className="text-[11px] text-slate-400">
               ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
             </p>
           ))}
@@ -2470,13 +2472,13 @@ function StudentDetailModal({
   const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 sticky top-0 z-10">
+          <h3 className="text-base font-bold text-white">รายละเอียดผลสอบ</h3>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition"><X className="h-5 w-5" /></button>
+        </div>
         <div className="p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-neutral-800">รายละเอียดผลสอบ</p>
-            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          </div>
 
           {/* Header / summary card — สไตล์เดียวกับ StudentModal ของ Analytics */}
           <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
@@ -2490,46 +2492,46 @@ function StudentDetailModal({
             <div className="flex gap-3 flex-shrink-0">
               {passed != null && (
                 <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                  <p className="text-xl font-black">{passed ? "✓" : "✗"}</p>
-                  <p className="text-[10px] text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
+                  <p className="text-xl font-bold">{passed ? "✓" : "✗"}</p>
+                  <p className="text-[11px] text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
                 </div>
               )}
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-xl font-black">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}</p>
-                <p className="text-[10px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
+                <p className="text-xl font-bold">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}</p>
+                <p className="text-[11px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
               <p className="text-lg font-bold text-green-600">{correctCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบถูก</p>
+              <p className="text-xs text-slate-500">ตอบถูก</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
               <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบผิด</p>
+              <p className="text-xs text-slate-500">ตอบผิด</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{student?.answeredCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบแล้ว</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-slate-700">{student?.answeredCount ?? "—"}</p>
+              <p className="text-xs text-slate-500">ตอบแล้ว</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{student?.unansweredCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ไม่ตอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-slate-700">{student?.unansweredCount ?? "—"}</p>
+              <p className="text-xs text-slate-500">ไม่ตอบ</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-neutral-500">เริ่มสอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-slate-700">{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className="text-xs text-slate-500">เริ่มสอบ</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-neutral-500">ส่งข้อสอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className="text-lg font-bold text-slate-700">{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className="text-xs text-slate-500">ส่งข้อสอบ</p>
             </div>
           </div>
 
           {/* แท็บในโมดัล: ภาพรวม (สถิติ/ธง/รายหัวข้อ) กับ รายข้อ (คำตอบทีละข้อ) */}
-          <div className="flex gap-1.5 mb-5 border-b border-neutral-200">
+          <div className="flex gap-1.5 mb-5 border-b border-slate-200">
             {[
               ["overview", "ภาพรวม"],
               ["items", `รายข้อ${enrichedQuestions.length ? ` (${enrichedQuestions.length})` : ""}`],
@@ -2540,7 +2542,7 @@ function StudentDetailModal({
                 className={`px-3.5 py-2 text-xs font-bold transition border-b-2 -mb-px ${
                   modalTab === key
                     ? "border-orange-500 text-orange-600"
-                    : "border-transparent text-neutral-400 hover:text-neutral-600"
+                    : "border-transparent text-slate-400 hover:text-slate-600"
                 }`}
               >
                 {label}
@@ -2565,9 +2567,9 @@ function StudentDetailModal({
                     </span>
                   )}
                 </p>
-                {aiSummary.model && <span className="hidden sm:inline text-[10px] text-neutral-400 flex-shrink-0">โดย {aiSummary.model}</span>}
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-400 flex-shrink-0">โดย {aiSummary.model}</span>}
               </div>
-              <p className="text-sm text-neutral-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
+              <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
                 <Link
                   to={`/tutor/exam-analytics?${new URLSearchParams({
@@ -2594,7 +2596,7 @@ function StudentDetailModal({
                         setTimeout(() => setCopiedMsg(false), 2000);
                       } catch (err) { console.error("Copy failed:", err); }
                     }}
-                    className="flex items-center gap-1 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-lg px-2.5 py-1 transition"
+                    className="flex items-center gap-1 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl px-2.5 py-1 transition"
                   >
                     {copiedMsg ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedMsg ? "คัดลอกแล้ว" : "คัดลอกข้อความถึงผู้ปกครอง"}
@@ -2660,8 +2662,8 @@ function StudentDetailModal({
           ) : modalTab === "overview" && student?.examBehaviorConsent === false ? (
             // PDPA: นักเรียนไม่ยินยอมให้เก็บพฤติกรรมสอบรอบนี้ — ต้องแยกให้ชัดจาก "เก็บแล้วไม่พบอะไร"
             // ไม่งั้นติวเตอร์จะเข้าใจผิดว่านักเรียนคนนี้ "สะอาด" ทั้งที่จริง ๆ คือไม่มีการเก็บข้อมูลเลย
-            <div className="mb-6 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-              <p className="text-xs text-neutral-500">
+            <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs text-slate-500">
                 ไม่มีข้อมูลส่วนนี้ — นักเรียนไม่ได้ยินยอมให้บันทึกพฤติกรรมระหว่างสอบรอบนี้ (ไม่ใช่ "ตรวจแล้วไม่พบความผิดปกติ")
                 คะแนนสอบยังใช้อ้างอิงได้ตามปกติ
               </p>
@@ -2676,44 +2678,44 @@ function StudentDetailModal({
 
           {modalTab === "overview" && topicBreakdown && (
             <div className="mb-6">
-              <p className="text-sm font-bold text-neutral-800 mb-3">คะแนนรายหัวข้อ</p>
+              <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหัวข้อ</p>
               <div className="space-y-2.5">
                 {topicBreakdown.map((t) => (
                   <div key={t.category} className="flex items-center gap-3">
-                    <p className="text-xs text-neutral-500 w-24 sm:w-32 flex-shrink-0 truncate">{t.category}</p>
-                    <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <p className="text-xs text-slate-500 w-24 sm:w-32 flex-shrink-0 truncate">{t.category}</p>
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-orange-400" style={{ width: `${t.pct * 100}%` }} />
                     </div>
-                    <p className="text-xs font-semibold text-neutral-700 w-24 text-right">{fmtScore(t.sc)}/{fmtScore(t.maxSc)} ({Math.round(t.pct * 100)}%)</p>
+                    <p className="text-xs font-semibold text-slate-700 w-24 text-right">{fmtScore(t.sc)}/{fmtScore(t.maxSc)} ({Math.round(t.pct * 100)}%)</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
+          {loading && <p className="text-sm text-slate-400 text-center py-8">กำลังโหลด...</p>}
           {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
 
           {modalTab === "items" && detail && !loading && (
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-bold text-neutral-800">รายข้อ</p>
-                <p className="text-[11px] text-neutral-400">เขียว = ตอบถูก · แดง = ตอบผิด</p>
+                <p className="text-sm font-bold text-slate-800">รายข้อ</p>
+                <p className="text-[11px] text-slate-400">เขียว = ตอบถูก · แดง = ตอบผิด</p>
               </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
-                      <p className="text-sm font-medium text-neutral-900 flex-1 leading-relaxed">
+                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed">
                         <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
                         {q.text}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-                        {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                        {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
+                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
-                        <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
+                        <span className="text-xs font-mono text-slate-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
                     <QuestionPeriods periods={q.periods} />
@@ -2820,8 +2822,8 @@ function QuestionFlagsCard({ flags, submittedCount }) {
       <div className="flex items-start gap-2.5">
         <Flag className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-base font-bold text-neutral-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
-          <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
+          <p className="text-base font-bold text-slate-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
+          <p className="text-sm text-slate-500 mt-1 leading-relaxed">
             รวมพฤติกรรมระหว่างสอบตามข้อ เพื่อดูว่าปัญหาอยู่ที่โจทย์หรือที่การหาคำตอบ — ไม่ใช่ข้อสรุปว่าใครทุจริต
           </p>
         </div>
@@ -2843,21 +2845,21 @@ function QuestionFlagsCard({ flags, submittedCount }) {
             tone = "text-orange-600";
           } else {
             verdict = "อัตราตอบถูกอยู่กลาง ๆ ยังสรุปสาเหตุไม่ได้ชัด ลองถามความเข้าใจในคาบ";
-            tone = "text-neutral-500";
+            tone = "text-slate-500";
           }
           return (
-            <div key={f.questionId} className="border border-neutral-100 bg-neutral-50/60 rounded-xl p-4">
+            <div key={f.questionId} className="border border-slate-100 bg-slate-50/60 rounded-xl p-4">
               <div className="flex flex-col sm:flex-row items-start justify-between gap-1 sm:gap-3">
-                <p className="text-sm font-semibold text-neutral-800 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 min-w-0">
                   <span className="text-amber-600">ข้อ {f.no}</span>
-                  {f.category ? <span className="text-neutral-400 font-medium"> · {f.category}</span> : null}
-                  <span className="block text-neutral-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
+                  {f.category ? <span className="text-slate-400 font-medium"> · {f.category}</span> : null}
+                  <span className="block text-slate-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
                 </p>
-                <p className="text-sm font-semibold text-neutral-600 whitespace-nowrap flex-shrink-0 text-left sm:text-right">
+                <p className="text-sm font-semibold text-slate-600 whitespace-nowrap flex-shrink-0 text-left sm:text-right">
                   {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีคนส่ง"}
                 </p>
               </div>
-              <p className="text-sm text-neutral-600 mt-2">
+              <p className="text-sm text-slate-600 mt-2">
                 {f.leaveStudents > 0 && (
                   <>ออกจากหน้าสอบ {f.leaveStudents} คน{submittedCount ? ` จาก ${submittedCount}` : ""} (รวม {formatTime(f.leaveSeconds)})</>
                 )}
@@ -2903,9 +2905,9 @@ function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }
   if (examStatus !== "closed") return null;
 
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl px-5 py-3.5 flex items-center gap-2">
+    <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 flex items-center gap-2">
       <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
-      <p className="text-xs text-neutral-500 min-w-0 lg:truncate">
+      <p className="text-xs text-slate-500 min-w-0 lg:truncate">
         {loading
           ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
           : summaries.length > 0
@@ -3053,15 +3055,15 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   if (status !== "closed" && status !== "active") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-        <BarChart2 className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">ยังไม่มีผลสอบ</p>
-        <p className="text-xs text-neutral-400 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+        <BarChart2 className="h-10 w-10 text-slate-300 mb-3" />
+        <p className="text-sm font-semibold text-slate-500">ยังไม่มีผลสอบ</p>
+        <p className="text-xs text-slate-400 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
       </div>
     );
   }
 
-  if (loading) return <p className="text-sm text-neutral-400">กำลังโหลดผลสอบ...</p>;
+  if (loading) return <p className="text-sm text-slate-400">กำลังโหลดผลสอบ...</p>;
   if (error) return <p className="text-sm text-red-500">{error}</p>;
   if (!results) return null;
 
@@ -3110,23 +3112,23 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
       <AiStatusStrip examId={exam.id} examStatus={status} submittedCount={results.submittedCount} onSummariesChange={setAiSummaries} />
 
       {/* Search & Filter */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหานักเรียน..."
-              className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          <div className="flex rounded-xl overflow-hidden border border-neutral-200 flex-shrink-0">
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
             {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน", "ขาดสอบ"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPass(f)}
-                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
               >
                 {f}{f === "ขาดสอบ" && results.absentStudents?.length ? ` (${results.absentStudents.length})` : ""}
               </button>
@@ -3140,7 +3142,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             <Download className="h-3.5 w-3.5" /> Export PDF
           </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-2 pl-1">
+        <p className="text-xs text-slate-400 mt-2 pl-1">
           {filterPass === "ขาดสอบ"
             ? <>แสดง {filteredAbsent.length} จาก {results.absentStudents?.length ?? 0} คน</>
             : <>แสดง {displayedStudents.length} จาก {results.students.length} คน</>}
@@ -3150,25 +3152,25 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
       {/* Table */}
       {filterPass === "ขาดสอบ" ? (
         filteredAbsent.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
-            <p className="text-sm text-neutral-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+            <p className="text-sm text-slate-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
           </div>
         ) : (
-          <div className="border border-neutral-100 rounded-xl overflow-hidden bg-white divide-y divide-neutral-50">
+          <div className="border border-slate-100 rounded-xl overflow-hidden bg-white divide-y divide-slate-50">
             {filteredAbsent.map((s) => (
               <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
                 <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                   <UserX className="h-4 w-4 text-red-400" />
                 </div>
-                <p className="text-sm font-medium text-neutral-700 flex-1 min-w-0 break-words">{s.name}</p>
+                <p className="text-sm font-medium text-slate-700 flex-1 min-w-0 break-words">{s.name}</p>
                 <span className="text-xs font-medium text-red-500">ขาดสอบ</span>
               </div>
             ))}
           </div>
         )
       ) : displayedStudents.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
-          <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+          <p className="text-sm text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
         <>
@@ -3178,37 +3180,37 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
             const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
             return (
-              <div key={s.examJoinId} className="min-w-0 rounded-xl border border-neutral-100 bg-white p-3.5">
+              <div key={s.examJoinId} className="min-w-0 rounded-xl border border-slate-100 bg-white p-3.5">
                 <div className="flex items-center gap-3">
-                  <span className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
+                  <span className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-neutral-800 text-sm truncate">{s.name}</p>
-                    <p className="text-[11px] text-neutral-400 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
+                    <p className="font-medium text-slate-800 text-sm truncate">{s.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
                   </div>
                   {passed != null && (
-                    <span className={`shrink-0 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                    <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
                       {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
                     </span>
                   )}
                 </div>
                 {pct != null && (
                   <div className="mt-3 flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
                     </div>
-                    <span className="text-sm font-semibold text-neutral-700">{pct}%</span>
-                    <span className="text-xs text-neutral-400">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
+                    <span className="text-sm font-semibold text-slate-700">{pct}%</span>
+                    <span className="text-xs text-slate-400">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
-                  <span className="inline-flex items-center gap-1 text-neutral-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
-                  <span className={`font-mono ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                  <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                  <span className={`font-mono ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                     {s.submittedAt ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—") : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                   </span>
-                  <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                  <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
                   {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"><Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"><Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ</span>
                   )}
                 </div>
                 {s.submittedAt && (
@@ -3221,11 +3223,11 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             );
           })}
         </div>
-        <div className="hidden lg:block border border-neutral-100 rounded-xl overflow-hidden">
+        <div className="hidden lg:block border border-slate-100 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
               <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-100">
+                <tr className="bg-slate-50 border-b border-slate-100">
                   {[
                     ["rank", "อันดับ"],
                     ["name", "ชื่อนักเรียน"],
@@ -3240,7 +3242,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                     <th
                       key={label}
                       onClick={k ? () => handleSort(k) : undefined}
-                      className={`text-left text-xs font-semibold text-neutral-500 px-4 py-2.5 whitespace-nowrap last:sticky last:right-0 last:bg-neutral-50 lg:last:static lg:last:bg-transparent ${k ? "cursor-pointer hover:text-neutral-700 select-none" : ""}`}
+                      className={`text-left text-xs font-semibold text-slate-500 px-4 py-2.5 whitespace-nowrap last:sticky last:right-0 last:bg-slate-50 lg:last:static lg:last:bg-transparent ${k ? "cursor-pointer hover:text-slate-700 select-none" : ""}`}
                     >
                       {label}{k && <SortIcon k={k} />}
                     </th>
@@ -3252,53 +3254,53 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                   const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
                   const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
                   return (
-                    <tr key={s.examJoinId} className="group border-b border-neutral-50 hover:bg-neutral-50 transition">
+                    <tr key={s.examJoinId} className="group border-b border-slate-50 hover:bg-slate-50 transition">
                       <td className="px-4 py-3">
-                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800">
+                      <td className="px-4 py-3 font-medium text-slate-800">
                         <span className="inline-flex items-center gap-1.5">
                           {s.name}
                           {status === "closed" && s.submittedAt && (
                             aiByUserId.get(s.userId) ? (
                               <span title="วิเคราะห์ AI แล้ว — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
                             ) : (
-                              <span title="กำลังวิเคราะห์ AI" className="text-neutral-300 text-xs leading-none">⏳</span>
+                              <span title="กำลังวิเคราะห์ AI" className="text-slate-300 text-xs leading-none">⏳</span>
                             )
                           )}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+                      <td className="px-4 py-3 text-slate-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
                       <td className="px-4 py-3">
                         {pct != null ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
                               </div>
-                              <span className="font-semibold text-neutral-700">{pct}%</span>
+                              <span className="font-semibold text-slate-700">{pct}%</span>
                             </div>
-                            <p className="text-neutral-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
+                            <p className="text-slate-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
                           </>
                         ) : "—"}
                       </td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
-                        <span className="text-neutral-300 mx-1">/</span>
-                        <span className="inline-flex items-center gap-1 text-neutral-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                        <span className="text-slate-300 mx-1">/</span>
+                        <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
                       </td>
-                      <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                      <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                         {s.submittedAt
                           ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
                           : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium whitespace-nowrap lg:whitespace-normal ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                        <span className={`text-xs font-medium whitespace-nowrap lg:whitespace-normal ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
                         {/* ธงคุณภาพข้อมูล — เตือนให้ตรวจสอบก่อนเชื่อตัวเลข ไม่ใช่การกล่าวหา (ดูรายละเอียดในหน้า "ดูผล") */}
                         {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
                           <span
                             title="มีพฤติกรรมที่ควรตรวจสอบก่อนใช้คะแนนนี้ — กด 'ดูผล' เพื่อดูรายละเอียด"
-                            className="ml-1.5 inline-flex items-center gap-1 align-middle text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"
+                            className="ml-1.5 inline-flex items-center gap-1 align-middle text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"
                           >
                             <Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ
                           </span>
@@ -3306,14 +3308,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       </td>
                       <td className="px-4 py-3">
                         {passed == null ? (
-                          <span className="text-xs text-neutral-300">—</span>
+                          <span className="text-xs text-slate-300">—</span>
                         ) : (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap lg:whitespace-normal ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap lg:whitespace-normal ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
                             {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right sticky right-0 bg-white group-hover:bg-neutral-50 lg:static lg:bg-transparent">
+                      <td className="px-4 py-3 text-right sticky right-0 bg-white group-hover:bg-slate-50 lg:static lg:bg-transparent">
                         {s.submittedAt && (
                           <button
                             onClick={() => setSelectedStudent(s)}
@@ -3412,13 +3414,13 @@ export default function TutorExamDetail() {
   };
 
   if (loading) {
-    return <div className="mt-[90px] px-4 lg:px-0 text-center py-16 text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</div>;
+    return <div className="px-4 lg:px-0 text-center py-16 text-sm text-slate-400">กำลังโหลดข้อมูลการสอบ...</div>;
   }
 
   if (loadError || !exam) {
     return (
-      <div className="mt-[90px] px-4 lg:px-0 text-center py-16">
-        <p className="text-sm text-neutral-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
+      <div className="px-4 lg:px-0 text-center py-16">
+        <p className="text-sm text-slate-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
         <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
       </div>
     );
@@ -3429,18 +3431,18 @@ export default function TutorExamDetail() {
   const sb = STATUS_BADGE[status];
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* Breadcrumb */}
       <div className="flex items-center text-sm flex-wrap gap-y-1">
-        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">คอร์ส</Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <button onClick={backToExamList} className="font-medium text-gray-500 hover:text-orange-600 transition">{subjectName || "จัดการการสอบ"}</button>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <span className="font-medium text-gray-800">{exam.name}</span>
+        <Link to="/tutor/courses" className="font-medium text-slate-500 hover:text-orange-600 transition">คอร์ส</Link>
+        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
+        <button onClick={backToExamList} className="font-medium text-slate-500 hover:text-orange-600 transition">{subjectName || "จัดการการสอบ"}</button>
+        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
+        <span className="font-medium text-slate-800">{exam.name}</span>
       </div>
 
       {/* Exam header */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-5">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -3450,19 +3452,19 @@ export default function TutorExamDetail() {
                 {sb.label}
               </Badge>
             </div>
-            <h1 className="text-xl font-bold text-neutral-900">{exam.name}</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
+            <h1 className={PAGE_TITLE}>{exam.name}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <div className="flex items-center gap-2 text-sm text-neutral-600"><FileQuestion className="h-4 w-4 text-neutral-400" />{exam.questions?.length || 0} ข้อ</div>
-            <div className="flex items-center gap-2 text-sm text-neutral-600"><Clock className="h-4 w-4 text-neutral-400" />{exam.settings?.duration || 0} นาที</div>
-            {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-neutral-600"><Calendar className="h-4 w-4 text-neutral-400" />{exam.settings.date}</div>}
+            <div className="flex items-center gap-2 text-sm text-slate-600"><FileQuestion className="h-4 w-4 text-slate-400" />{exam.questions?.length || 0} ข้อ</div>
+            <div className="flex items-center gap-2 text-sm text-slate-600"><Clock className="h-4 w-4 text-slate-400" />{exam.settings?.duration || 0} นาที</div>
+            {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-slate-600"><Calendar className="h-4 w-4 text-slate-400" />{exam.settings.date}</div>}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
+      <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -3470,7 +3472,7 @@ export default function TutorExamDetail() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-600" : "border-transparent text-neutral-500 hover:text-neutral-700"}`}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
             >
               <Icon className="h-4 w-4" /> {t.label}
             </button>

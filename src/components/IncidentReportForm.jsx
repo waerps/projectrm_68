@@ -146,7 +146,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         )}
 
         <button onClick={onClose}
-          className="w-full py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition text-sm">
+          className="w-full py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition text-sm">
           ปิดหน้าต่าง
         </button>
       </div>
@@ -200,7 +200,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         <div className="flex flex-wrap gap-1.5">
           {selectedCategory.types.map(t => (
             <button key={t.id} onClick={() => setIncidentTypeId(t.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${incidentTypeId === t.id
+              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition ${incidentTypeId === t.id
                 ? "bg-orange-600 text-white border-orange-600"
                 : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"
                 }`}>
@@ -219,7 +219,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder="อธิบายเหตุการณ์ที่เกิดขึ้น วันเวลา และรายละเอียดที่เกี่ยวข้อง..."
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition resize-none"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition resize-none"
         />
         <p className="text-[11px] text-slate-400 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
       </div>
@@ -232,7 +232,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         {role === "student" && (
           <>
             <select value={relatedCourseId} onChange={e => setRelatedCourseId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุคอร์ส</option>
               {myCourses.map(c => {
                 const id = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
@@ -242,7 +242,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
             </select>
             {relatedCourseId && (
               <select value={relatedTutorId} onChange={e => setRelatedTutorId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+                className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
                 <option value="">ไม่ระบุติวเตอร์</option>
                 {courseTutors.map(t => (
                   <option key={t.AdminId} value={t.AdminId}>
@@ -257,14 +257,14 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         {role === "tutor" && (
           <>
             <select value={relatedCourseId} onChange={e => { setRelatedCourseId(e.target.value); setRelatedStudentId(""); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุคอร์ส</option>
               {tutorData.courses.map(c => (
                 <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
               ))}
             </select>
             <select value={relatedStudentId} onChange={e => setRelatedStudentId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุนักเรียน</option>
               {tutorData.students
                 .filter(s => !relatedCourseId || String(s.CourseID) === String(relatedCourseId))
@@ -311,11 +311,11 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} disabled={submitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
           ยกเลิก
         </button>
         <button onClick={submit} disabled={submitting || !incidentTypeId}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 disabled:opacity-50 transition text-sm shadow-sm">
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ส่งเรื่อง</>}
         </button>
       </div>

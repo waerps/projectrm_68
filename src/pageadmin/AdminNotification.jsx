@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound } from 'lucide-react';
+import { PAGE_TITLE } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin/notifications`;
 const auth = () => {
@@ -126,11 +127,11 @@ export default function AdminNotifications() {
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+          <h1 className={`${PAGE_TITLE} flex items-center gap-2.5`}>
             <Bell className="h-6 w-6 text-orange-600" /> การแจ้งเตือนและกิจกรรม
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -153,13 +154,13 @@ export default function AdminNotifications() {
           { label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500', Icon: Filter },
           { label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500', Icon: AlertTriangle },
         ].map(({ label, value, color, Icon }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
             </div>
           </div>
         ))}
@@ -179,19 +180,19 @@ export default function AdminNotifications() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none">
             <option value="all">ทุกประเภท ({items.length})</option>
             {availableTypes.map(type => <option key={type} value={type}>{typeMeta[type]?.label || type}</option>)}
           </select>
           <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none">
             <option value="all">ทุกระดับความสำคัญ</option>
             <option value="high">สำคัญมาก</option>
             <option value="normal">ปกติ</option>
             <option value="low">ไม่เร่งด่วน</option>
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none">
             <option value="all">ทุกสถานะ</option>
             <option value="unread">ยังไม่ได้อ่าน ({unreadCount})</option>
             <option value="read">อ่านแล้ว</option>
@@ -212,7 +213,7 @@ export default function AdminNotifications() {
           <p className="text-sm font-medium text-slate-500">กำลังรวมข้อมูลจากระบบ...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
           <p className="text-sm text-slate-400 mt-1">ถ้าทุกอย่างเรียบร้อย หน้านี้ว่างได้เป็นปกติ</p>
@@ -260,14 +261,14 @@ export default function AdminNotifications() {
                               {item.title}
                               {!item.isRead && <span className="ml-1.5 inline-block w-1.5 h-1.5 bg-orange-500 rounded-full align-middle" />}
                             </h3>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${meta.bg} ${meta.text}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${meta.bg} ${meta.text}`}>
                               {meta.label}
                             </span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${priority.cls}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${priority.cls}`}>
                               {priority.label}
                             </span>
                             {item.actionRequired && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-yellow-50 text-yellow-700 border border-yellow-200">
                                 ต้องดำเนินการ
                               </span>
                             )}

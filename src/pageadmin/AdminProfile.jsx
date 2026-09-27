@@ -54,18 +54,18 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <KeyRound className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">เปลี่ยนรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">เปลี่ยนรหัสผ่าน</h3>
+            <p className="text-xs text-white/80 truncate">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -96,7 +96,7 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -112,10 +112,10 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
 // ─── Section Card (เหมือน TutorProfile.jsx) ────────────────────────────────
 function SectionCard({ title, icon, children, isEditing }) {
   return (
-    <div className={`rounded-2xl bg-white shadow-sm overflow-hidden border-2 transition-all duration-200 ${isEditing ? "border-orange-200 shadow-md" : "border-neutral-100"}`}>
-      <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
+    <div className={`rounded-2xl bg-white shadow-sm overflow-hidden border transition-all duration-200 ${isEditing ? "border-orange-300 shadow-md" : "border-slate-200"}`}>
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
         {icon}
-        <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
+        <h2 className="text-sm font-bold text-slate-800">{title}</h2>
       </div>
       <div className="p-5 space-y-0.5">{children}</div>
     </div>
@@ -125,8 +125,8 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ─── Info Row (เหมือน TutorProfile.jsx) ────────────────────────────────────
 function InfoRow({ label, value, name, isEditing, onChange, editable = true, type = "text" }) {
   return (
-    <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">{label}</span>
+    <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">{label}</span>
       <div className="flex-1 min-w-0 text-right">
         {isEditing && editable ? (
           <input
@@ -134,11 +134,11 @@ function InfoRow({ label, value, name, isEditing, onChange, editable = true, typ
             name={name}
             value={value}
             onChange={onChange}
-            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-right text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
           />
         ) : (
-          <span className="text-sm font-semibold text-neutral-800 break-words">
-            {value || <span className="text-neutral-300 font-normal">-</span>}
+          <span className="text-sm font-semibold text-slate-800 break-words">
+            {value || <span className="text-slate-300 font-normal">-</span>}
           </span>
         )}
       </div>
@@ -251,14 +251,14 @@ export default function AdminProfile() {
   };
 
   if (isLoading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
+    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
     </div>
   );
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Edit Mode Banner */}
@@ -313,13 +313,13 @@ export default function AdminProfile() {
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                     <input name="firstname" value={formData.firstname} onChange={handleChange}
                       placeholder="ชื่อ"
-                      className="rounded-xl px-3 py-2 text-neutral-800 text-lg font-semibold w-36 outline-none border-2 border-transparent focus:border-orange-300 bg-white shadow-sm transition" />
+                      className="rounded-xl px-3 h-10 text-slate-800 text-lg font-semibold w-36 outline-none border border-transparent focus:border-orange-400 bg-white shadow-sm transition" />
                     <input name="lastname" value={formData.lastname} onChange={handleChange}
                       placeholder="นามสกุล"
-                      className="rounded-xl px-3 py-2 text-neutral-800 text-lg font-semibold w-40 outline-none border-2 border-transparent focus:border-orange-300 bg-white shadow-sm transition" />
+                      className="rounded-xl px-3 h-10 text-slate-800 text-lg font-semibold w-40 outline-none border border-transparent focus:border-orange-400 bg-white shadow-sm transition" />
                   </div>
                 ) : (
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight break-words">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">
                     {formData.firstname} {formData.lastname}
                   </h1>
                 )}
@@ -377,7 +377,7 @@ export default function AdminProfile() {
 
         {/* หมายเหตุสิทธิ์ */}
         <SectionCard title="สิทธิ์การใช้งาน" icon={<AlertTriangle className="h-4.5 w-4.5 text-amber-500" />}>
-          <p className="text-xs text-neutral-500 leading-relaxed py-2">
+          <p className="text-xs text-slate-500 leading-relaxed py-2">
             บัญชีผู้ดูแลระบบทุกคนมีสิทธิ์การใช้งานเท่ากัน หากต้องการจัดการบัญชีผู้ดูแลระบบคนอื่น
             หรือเปิด/ปิดการใช้งานบัญชี สามารถไปที่เมนู "จัดการผู้ดูแลระบบ"
           </p>

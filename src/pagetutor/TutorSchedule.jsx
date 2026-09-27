@@ -5,6 +5,8 @@ import axios from 'axios'
 import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
 import { useToast } from '../components/useToast'
 import { ToastContainer } from '../components/Toast'
+import { confirmDialog } from "../components/ui/dialogs";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -108,8 +110,8 @@ const STATUS_STYLE = {
     Icon: AlertTriangle,
   },
   upcoming: {
-    card: 'bg-neutral-50 border-neutral-200 opacity-60 cursor-not-allowed',
-    badge: 'bg-neutral-100 text-neutral-400 border-neutral-200',
+    card: 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed',
+    badge: 'bg-slate-100 text-slate-400 border-slate-200',
     label: 'รอถึงช่วงเช็กอิน',
     Icon: null,
   },
@@ -132,17 +134,17 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
           const n = count(d)
           return (
             <button key={d} type="button" onClick={() => setDay(d)}
-              className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-neutral-200 text-neutral-700'}`}>
+              className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
               <div className="text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</div>
-              <div className={`text-[10px] ${active ? 'text-orange-100' : 'text-neutral-400'}`}>{weekDates[d]?.display}</div>
+              <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</div>
               <div className={`mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
             </button>
           )
         })}
       </div>
-      <p className="mt-2 mb-3 text-sm font-bold text-neutral-800">วัน{day} <span className="font-normal text-neutral-400">· {items.length} คาบ</span></p>
+      <p className="mt-2 mb-3 text-sm font-bold text-slate-800">วัน{day} <span className="font-normal text-slate-400">· {items.length} คาบ</span></p>
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white py-10 text-center text-sm text-neutral-400">ไม่มีคาบสอนในวันนี้</div>
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-400">ไม่มีคาบสอนในวันนี้</div>
       ) : (
         <div className="space-y-2.5">
           {items.map(sl => {
@@ -151,20 +153,20 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
             const style = status ? STATUS_STYLE[status] : null
             return (
               <button key={sl.label} type="button" onClick={() => onPick(day, sl.label, cls)}
-                className={`w-full text-left flex gap-3 rounded-2xl border-2 p-3 ${style ? style.card : 'bg-white border-neutral-200'}`}>
+                className={`w-full text-left flex gap-3 rounded-2xl border-2 p-3 ${style ? style.card : 'bg-white border-slate-200'}`}>
                 <div className="w-16 shrink-0 text-center">
-                  <p className="text-xs font-bold text-neutral-700 leading-tight">{sl.label}</p>
+                  <p className="text-xs font-bold text-slate-700 leading-tight">{sl.label}</p>
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
-                  <p className="mt-1 text-sm text-neutral-700 leading-snug line-clamp-2">{cls.courseName}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
+                  <p className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
                   </div>
                   {style && (
-                    <div className={`mt-2 inline-flex text-[11px] font-bold py-1 px-2 rounded-md border items-center gap-1 ${style.badge}`}>
-                      {style.Icon ? <style.Icon className="w-3.5 h-3.5 shrink-0" /> : <span className="h-2 w-2 rounded-full bg-neutral-300 inline-block shrink-0" />}
+                    <div className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
+                      {style.Icon ? <style.Icon className="w-3.5 h-3.5 shrink-0" /> : <span className="h-2 w-2 rounded-full bg-slate-300 inline-block shrink-0" />}
                       <span>{style.label}</span>
                     </div>
                   )}
@@ -371,7 +373,7 @@ export default function TutorSchedule() {
     }
 
     if (status === 'released') {
-      if (!window.confirm('คาบนี้กำลังรอติวเตอร์รับ ต้องการยกเลิกการปล่อยคลาสหรือไม่?')) return
+      if (!await confirmDialog('คาบนี้กำลังรอติวเตอร์รับ ต้องการยกเลิกการปล่อยคลาสหรือไม่?')) return
       try {
         await axios.delete(`${API_URL}/api/tutor/releases/${data.releaseId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -557,8 +559,8 @@ export default function TutorSchedule() {
     setAttendance({})
   }
 
-  if (!tutorId) return <div className="mt-[90px] text-center p-10 text-red-500">ไม่พบข้อมูลผู้ใช้</div>
-  if (loading) return <div className="mt-[90px] text-center p-10 text-neutral-500">กำลังโหลดตารางสอน...</div>
+  if (!tutorId) return <div className="text-center p-10 text-red-500">ไม่พบข้อมูลผู้ใช้</div>
+  if (loading) return <div className="text-center p-10 text-slate-500">กำลังโหลดตารางสอน...</div>
 
   // ── วันนี้ (สำหรับ label หัวข้อ) คำนวณจาก todayDate ของ backend เท่านั้น ──
   const todayLabel = todayDate
@@ -571,15 +573,15 @@ export default function TutorSchedule() {
     : ''
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0 max-w-[1384px] mx-auto pb-10">
+    <div className="space-y-6 px-4 lg:px-0 max-w-[1384px] mx-auto pb-10">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="bg-white rounded-2xl border border-neutral-200 p-4 sm:p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm">
 
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">ตารางสอนของฉัน</h1>
-            <p className="text-sm text-neutral-500 mt-1">บันทึกชั่วโมงการสอน</p>
+            <h1 className={PAGE_TITLE}>ตารางสอนของฉัน</h1>
+            <p className={PAGE_SUBTITLE}>บันทึกชั่วโมงการสอน</p>
           </div>
           <div className="bg-orange-500 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md self-start md:self-center">
             วัน{todayLabel}ที่ {formattedDate}
@@ -587,12 +589,12 @@ export default function TutorSchedule() {
         </div>
 
         {weekStart && (
-          <div className="mb-5 flex items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+          <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <button type="button" onClick={() => moveWeek(-7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ก่อน">
               <ChevronLeft className="h-5 w-5" />
             </button>
             <div className="text-center">
-              <p className="text-sm font-bold text-neutral-900">
+              <p className="text-sm font-bold text-slate-900">
                 {new Date(`${weekStart}T00:00:00`).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
                 {' – '}
                 {addDays(`${weekStart}T00:00:00`, 6).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -622,8 +624,8 @@ export default function TutorSchedule() {
           <span className="flex items-center gap-1.5 text-red-600">
             <AlertTriangle className="h-3.5 w-3.5" /> เลยเวลา/ไม่มีเช็กอิน
           </span>
-          <span className="flex items-center gap-1.5 text-neutral-400">
-            <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 inline-block" /> รอถึงช่วงเช็กอิน
+          <span className="flex items-center gap-1.5 text-slate-400">
+            <span className="h-2.5 w-2.5 rounded-full bg-slate-300 inline-block" /> รอถึงช่วงเช็กอิน
           </span>
         </div>
 
@@ -632,18 +634,18 @@ export default function TutorSchedule() {
           slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
 
         {/* Grid ตาราง (แท็บเล็ตขึ้นไป) */}
-        <div className="hidden md:block bg-neutral-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-neutral-100">
+        <div className="hidden md:block bg-slate-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-slate-100">
           <div className="grid grid-cols-8 gap-2 min-w-[760px] lg:min-w-[1000px]">
-            <div className="text-center font-bold text-neutral-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-neutral-50 lg:static lg:bg-transparent">เวลา</div>
+            <div className="text-center font-bold text-slate-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-slate-50 lg:static lg:bg-transparent">เวลา</div>
 
             {/* หัวคอลัมน์วัน — เพิ่มวันที่ใต้ชื่อวัน (เอามาจาก AdminSchedule) */}
             {DAYS_GRID.map(d => {
               const isTodayCol = weekDates[d]?.iso === todayDate
               return (
                 <div key={d} className={`text-center font-bold py-2 rounded-xl text-sm transition-colors
-                  ${isTodayCol ? 'bg-orange-500 text-white shadow-sm' : 'text-neutral-700 bg-orange-50/60'}`}>
+                  ${isTodayCol ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-700 bg-orange-50/60'}`}>
                   <div>{d}</div>
-                  <div className={`text-[10px] font-normal mt-0.5 ${isTodayCol ? 'text-orange-100' : 'text-neutral-400'}`}>
+                  <div className={`text-[11px] font-normal mt-0.5 ${isTodayCol ? 'text-orange-100' : 'text-slate-400'}`}>
                     {weekDates[d]?.display}
                   </div>
                 </div>
@@ -653,15 +655,15 @@ export default function TutorSchedule() {
             {/* แถวเวลา — ใช้ derivedTimeSlots แทนการ derive จาก data อย่างเดียว */}
             {derivedTimeSlots.map(slot => (
               <React.Fragment key={slot.label}>
-                <div className="text-center text-xs text-neutral-500 py-4 font-bold flex items-center justify-center border-r border-neutral-200/50 sticky left-0 z-10 bg-neutral-50 lg:static lg:bg-transparent">
+                <div className="text-center text-xs text-slate-500 py-4 font-bold flex items-center justify-center border-r border-slate-200/50 sticky left-0 z-10 bg-slate-50 lg:static lg:bg-transparent">
                   {slot.label}
                 </div>
 
                 {slot.isBreak ? (
                   // ── แถวพักเที่ยง (เอามาจาก AdminSchedule) ──
                   DAYS_GRID.map(d => (
-                    <div key={d + slot.label} className="min-h-[70px] rounded-xl bg-neutral-50 border border-dashed border-neutral-200 flex items-center justify-center">
-                      <span className="text-[10px] text-neutral-300">พักเที่ยง</span>
+                    <div key={d + slot.label} className="min-h-[70px] rounded-xl bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center">
+                      <span className="text-[11px] text-slate-300">พักเที่ยง</span>
                     </div>
                   ))
                 ) : (
@@ -682,17 +684,17 @@ export default function TutorSchedule() {
                             <div className="mb-1 space-y-1"> {/* <-- เพิ่ม space-y-1 เพื่อให้ป้ายสีกับชื่อคอร์สไม่ชิดกันเกินไป */}
 
                               {/* 👇 แก้ไขบล็อกนี้: เปลี่ยนให้เป็นป้ายสีแบบแอดมิน */}
-                              <div className={`text-[10px] font-bold text-white px-1.5 py-0.5 rounded w-fit line-clamp-1 ${SUBJECT_COLOR(cls.subjectName)}`}>
+                              <div className={`text-[11px] font-bold text-white px-1.5 py-0.5 rounded w-fit line-clamp-1 ${SUBJECT_COLOR(cls.subjectName)}`}>
                                 {cls.subjectName}
                               </div>
 
-                              <div className="text-[10px] text-neutral-500 line-clamp-1 leading-tight mt-0.5">
+                              <div className="text-[11px] text-slate-500 line-clamp-1 leading-tight mt-0.5">
                                 {cls.courseName}
                               </div>
                             </div>
 
                             {/* ส่วนข้อมูลล่าง: ห้องเรียน และ ไอคอนจำนวนนักเรียน */}
-                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-inherit border-opacity-50 text-[10px] text-neutral-600">
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-dashed border-inherit border-opacity-50 text-[11px] text-slate-600">
                               <div className="flex items-center gap-1">
                                 <MapPin className="h-3 w-3 opacity-70" />
                                 <span className="truncate max-w-[60px]">{cls.room}</span>
@@ -707,11 +709,11 @@ export default function TutorSchedule() {
 
                             {/* ป้ายสถานะ */}
                             {style && (
-                              <div className={`mt-2 text-[9px] font-black py-1 px-1.5 rounded-md border flex items-center justify-center gap-1 uppercase tracking-tighter ${style.badge}`}>
+                              <div className={`mt-2 px-2.5 py-0.5 rounded-full border text-xs font-semibold flex items-center justify-center gap-1 leading-tight ${style.badge}`}>
                                 {style.Icon ? (
                                   <style.Icon className="w-3 h-3 shrink-0" />
                                 ) : (
-                                  <span className="h-2 w-2 rounded-full bg-neutral-300 inline-block shrink-0" />
+                                  <span className="h-2 w-2 rounded-full bg-slate-300 inline-block shrink-0" />
                                 )}
                                 <span className="truncate">{style.label}</span>
                               </div>
@@ -736,10 +738,10 @@ export default function TutorSchedule() {
               <MessageCircle className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-bold text-neutral-900">
+              <h2 className="font-bold text-slate-900">
                 {lineLinked ? 'เชื่อมบัญชี LINE แล้ว' : 'เชื่อม LINE เพื่อรับคลาสสอน'}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">
+              <p className="mt-1 text-sm leading-6 text-slate-600">
                 หากต้องการรับคลาสสอนที่ติวเตอร์ท่านอื่นปล่อย กรุณาเชื่อมบัญชี LINE ก่อน
                 ระบบจะแจ้งคาบสอนที่มีผู้ปล่อยผ่าน LINE นี้ และสามารถกดรับคลาสได้จากข้อความแจ้งเตือน
               </p>
@@ -765,14 +767,14 @@ export default function TutorSchedule() {
 
       {/* ════════════════ MODAL ════════════════ */}
       {releaseModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-neutral-900/60 p-0 sm:p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg max-h-[90vh] lg:max-h-none overflow-y-auto lg:overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 lg:gap-0 border-b p-4 sm:p-6">
-              <div>
-                <h2 className="text-xl font-bold">ปล่อยคลาสสอน</h2>
-                <p className="mt-1 text-sm text-neutral-500">{releaseModal.courseName} · {releaseModal.subjectName} · {releaseModal.time}</p>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          <div className="w-full max-w-lg max-h-[90vh] lg:max-h-none overflow-y-auto lg:overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-white">ปล่อยคลาสสอน</h2>
+                <p className="mt-0.5 text-xs text-white/80">{releaseModal.courseName} · {releaseModal.subjectName} · {releaseModal.time}</p>
               </div>
-              <button type="button" onClick={() => setReleaseModal(null)} className="shrink-0 rounded-full bg-neutral-100 p-2"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setReleaseModal(null)} aria-label="ปิด" className="shrink-0 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4 p-4 sm:p-6">
               <div>
@@ -780,25 +782,25 @@ export default function TutorSchedule() {
                 <textarea rows="4" value={releaseForm.teachingInstructions}
                   onChange={event => setReleaseForm(value => ({ ...value, teachingInstructions: event.target.value }))}
                   placeholder="เช่น ทบทวนสมการเชิงเส้น หน้า 20–28 และทำแบบฝึกหัดท้ายบท"
-                  className="w-full resize-none rounded-xl border-2 border-neutral-200 p-3 text-sm outline-none focus:border-orange-500" />
+                  className="w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
               </div>
               <div>
                 <label className="mb-2 block text-sm font-bold">เอกสารประกอบการสอน</label>
                 <select value={releaseForm.attachmentFileId}
                   onChange={event => setReleaseForm(value => ({ ...value, attachmentFileId: event.target.value }))}
-                  className="w-full rounded-xl border-2 border-neutral-200 bg-white p-3 text-sm outline-none focus:border-orange-500">
+                  className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent">
                   <option value="">ไม่แนบเอกสาร</option>
                   {releaseFiles.map(file => <option key={file.fileId} value={file.fileId}>{file.fileName}</option>)}
                 </select>
-                {!releaseFiles.length && <p className="mt-1 text-xs text-neutral-400">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
+                {!releaseFiles.length && <p className="mt-1 text-xs text-slate-400">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
               </div>
               <div>
-                <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-neutral-400">(ไม่บังคับ)</span></label>
+                <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-slate-400">(ไม่บังคับ)</span></label>
                 <input value={releaseForm.reason} onChange={event => setReleaseForm(value => ({ ...value, reason: event.target.value }))}
-                  placeholder="เช่น ติดธุระด่วน" className="w-full rounded-xl border-2 border-neutral-200 p-3 text-sm outline-none focus:border-orange-500" />
+                  placeholder="เช่น ติดธุระด่วน" className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
               </div>
             </div>
-            <div className="flex gap-3 border-t bg-neutral-50 p-4 sm:p-5">
+            <div className="flex gap-3 border-t bg-slate-50 p-4 sm:p-5">
               <button type="button" onClick={() => setReleaseModal(null)} className="flex-1 rounded-xl border bg-white py-3 text-sm font-bold">ยกเลิก</button>
               <button type="button" onClick={submitRelease} disabled={releaseSaving} className="flex-1 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white disabled:opacity-50">
                 {releaseSaving ? 'กำลังปล่อยคลาส...' : 'ยืนยันปล่อยคลาส'}
@@ -809,31 +811,31 @@ export default function TutorSchedule() {
       )}
       {
         showModal && selectedClass && (
-          <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-            <div className="bg-white rounded-t-[28px] sm:rounded-[32px] max-w-xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col">
 
               {/* Header */}
-              <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-white sticky top-0">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-neutral-900">
+              <div className="px-4 sm:px-6 py-4 flex justify-between items-center gap-3 bg-gradient-to-r from-orange-500 to-amber-500 sticky top-0 z-10">
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-white">
                     {modalPhase === 1 ? 'บันทึกต้นคาบ' : 'ถ่ายรูปปิดคาบ'}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-0.5">คาบเรียนเวลา {selectedClass.time}</p>
+                  <p className="text-xs text-white/80 mt-0.5">คาบเรียนเวลา {selectedClass.time}</p>
                 </div>
 
                 {/* Step indicator */}
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black
-                  ${modalPhase === 1 ? 'bg-orange-500 text-white' : 'bg-green-500 text-white'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                  ${modalPhase === 1 ? 'bg-white text-orange-600' : 'bg-green-500 text-white'}`}>
                     {modalPhase === 1 ? '1' : '✓'}
                   </div>
-                  <div className="w-6 h-0.5 bg-neutral-200" />
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black
-                  ${modalPhase === 2 ? 'bg-orange-500 text-white' : 'bg-neutral-200 text-neutral-400'}`}>
+                  <div className="w-6 h-0.5 bg-white/40" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold
+                  ${modalPhase === 2 ? 'bg-white text-orange-600' : 'bg-white/25 text-white/80'}`}>
                     2
                   </div>
-                  <button onClick={closeModal} className="ml-1 sm:ml-3 w-10 h-10 flex items-center justify-center rounded-full bg-neutral-100 text-neutral-500 hover:bg-red-50 hover:text-red-500 transition-colors">
-                    <X className="w-4 h-4" />
+                  <button onClick={closeModal} aria-label="ปิด" className="ml-1 sm:ml-3 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
@@ -850,7 +852,7 @@ export default function TutorSchedule() {
 
                   {/* ถ่ายรูปต้นคาบ — บังคับ */}
                   <div>
-                    <label className="text-xs font-bold text-neutral-600 uppercase tracking-wider flex items-center gap-1 mb-2">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายต้นคาบ
                       <span className="text-red-500 ml-1">*</span>
                     </label>
@@ -859,8 +861,8 @@ export default function TutorSchedule() {
                         onChange={e => setStartPhoto(e.target.files[0])}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-24 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors
-                      ${startPhoto ? 'border-green-500 bg-green-50' : 'border-neutral-200 group-hover:border-orange-400'}`}>
-                        <span className="text-sm font-bold text-neutral-500">
+                      ${startPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
+                        <span className="text-sm font-bold text-slate-500">
                           {startPhoto ? `${startPhoto.name}` : 'กดเพื่อถ่ายรูปต้นคาบ'}
                         </span>
                       </div>
@@ -869,31 +871,31 @@ export default function TutorSchedule() {
 
                   {/* สรุปเนื้อหา */}
                   <div>
-                    <label className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-2 block">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 block">
                       สรุปเนื้อหาที่จะสอน
                     </label>
                     <textarea rows="2"
                       placeholder="วันนี้จะสอนหัวข้ออะไร..."
-                      className="w-full border-2 border-neutral-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all resize-none"
+                      className="w-full border border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-400 outline-none transition-all resize-none"
                       value={remark} onChange={e => setRemark(e.target.value)} />
                   </div>
 
                   {/* เช็กชื่อ */}
-                  <div className="space-y-4 pt-4 border-t border-neutral-100">
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-orange-500" />
-                        <h3 className="font-bold text-neutral-800">เช็กชื่อนักเรียน</h3>
+                        <h3 className="font-bold text-slate-800">เช็กชื่อนักเรียน</h3>
                       </div>
                       <label className="flex items-center gap-2 text-xs cursor-pointer select-none bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100">
                         <input type="checkbox" checked={isAllChecked} onChange={e => markAllPresent(e.target.checked)} className="accent-orange-500 w-4 h-4" />
-                        <span className="text-orange-600 font-black uppercase">มาครบทุกคน</span>
+                        <span className="text-orange-600 font-bold uppercase">มาครบทุกคน</span>
                       </label>
                     </div>
 
                     <div className="grid grid-cols-1 gap-2">
                       {studentsList.length === 0 ? (
-                        <div className="text-center py-8 bg-neutral-50 rounded-2xl border border-dashed border-neutral-200 text-neutral-400 text-sm">
+                        <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-sm">
                           ไม่มีข้อมูลรายชื่อนักเรียน
                         </div>
                       ) : studentsList.map(student => {
@@ -901,13 +903,13 @@ export default function TutorSchedule() {
                         const isPresent = attendance[sId]
                         return (
                           <label key={sId} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer
-                          ${isPresent ? 'border-green-500 bg-green-50/50' : 'border-neutral-100 bg-neutral-50 hover:border-neutral-200'}`}>
+                          ${isPresent ? 'border-green-500 bg-green-50/50' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
                             <div className="flex items-center gap-3">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                              ${isPresent ? 'bg-green-500 text-white' : 'bg-neutral-200 text-neutral-500'}`}>
+                              ${isPresent ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
                                 {student.name?.charAt(0) || 'S'}
                               </div>
-                              <span className={`font-bold text-sm ${isPresent ? 'text-green-700' : 'text-neutral-600'}`}>
+                              <span className={`font-bold text-sm ${isPresent ? 'text-green-700' : 'text-slate-600'}`}>
                                 {student.name}
                               </span>
                             </div>
@@ -941,7 +943,7 @@ export default function TutorSchedule() {
 
                   {/* ถ่ายรูปท้ายคาบ */}
                   <div>
-                    <label className="text-xs font-bold text-neutral-600 uppercase tracking-wider flex items-center gap-1 mb-2">
+                    <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายท้ายคาบ
                       <span className="text-red-500 ml-1">*</span>
                     </label>
@@ -950,9 +952,9 @@ export default function TutorSchedule() {
                         onChange={e => setEndPhoto(e.target.files[0])}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors
-                      ${endPhoto ? 'border-green-500 bg-green-50' : 'border-neutral-200 group-hover:border-orange-400'}`}>
-                        <Camera className={`w-8 h-8 ${endPhoto ? 'text-green-500' : 'text-neutral-300'}`} />
-                        <span className="text-sm font-bold text-neutral-500">
+                      ${endPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
+                        <Camera className={`w-8 h-8 ${endPhoto ? 'text-green-500' : 'text-slate-300'}`} />
+                        <span className="text-sm font-bold text-slate-500">
                           {endPhoto ? `${endPhoto.name}` : 'กดเพื่อถ่ายรูปท้ายคาบ'}
                         </span>
                       </div>
@@ -976,20 +978,20 @@ export default function TutorSchedule() {
                 {modalPhase === 1 ? (
                   <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-neutral-400 uppercase">มาเรียนแล้ว</span>
-                      <span className="text-2xl font-black text-green-600">{presentCount}</span>
-                      <span className="text-sm font-bold text-neutral-400">/ {studentsList.length}</span>
+                      <span className="text-xs font-bold text-slate-400 uppercase">มาเรียนแล้ว</span>
+                      <span className="text-2xl font-bold text-green-600">{presentCount}</span>
+                      <span className="text-sm font-bold text-slate-400">/ {studentsList.length}</span>
                     </div>
                     <button onClick={handleSavePhase1} disabled={isSaving}
-                      className={`w-full md:w-auto px-10 py-3.5 text-white font-black rounded-2xl transition-all shadow-lg active:scale-95
-                      ${isSaving ? 'bg-neutral-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
+                      className={`w-full md:w-auto px-10 py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95
+                      ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
                       {isSaving ? 'กำลังบันทึก...' : 'บันทึกต้นคาบ'}
                     </button>
                   </div>
                 ) : (
                   <button onClick={handleSavePhase2} disabled={isSaving || !endPhoto}
-                    className={`w-full py-3.5 text-white font-black rounded-2xl transition-all shadow-lg active:scale-95
-                    ${(isSaving || !endPhoto) ? 'bg-neutral-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`}>
+                    className={`w-full py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95
+                    ${(isSaving || !endPhoto) ? 'bg-slate-300 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-green-200'}`}>
                     {isSaving ? 'กำลังบันทึก...' : 'ปิดคาบเรียบร้อย'}
                   </button>
                 )}

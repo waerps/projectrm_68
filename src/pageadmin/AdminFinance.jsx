@@ -14,6 +14,11 @@ import {
     LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
+import SegmentedControl from "../components/ui/SegmentedControl";
+import UIPagination from "../components/ui/Pagination";
+import Badge from "../components/ui/Badge";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import UIEmptyState from "../components/ui/EmptyState";
 
 const FINANCE_API = `${API_URL}/api/admin/finance`;
 const ITEMS_PER_PAGE = 10;
@@ -82,9 +87,7 @@ function getStatusStyle(name = '') {
 function StatusBadge({ name }) {
     const { bg, text, border, icon: Icon } = getStatusStyle(name || '');
     return (
-        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-xs font-semibold border ${bg} ${text} ${border}`}>
-            <Icon className="h-3 w-3" />{name || 'ไม่ระบุสถานะ'}
-        </span>
+        <Badge colorClass={`${bg} ${text} ${border}`} icon={Icon}>{name || 'ไม่ระบุสถานะ'}</Badge>
     );
 }
 
@@ -121,16 +124,9 @@ function ErrorState({ message, onRetry, minHeight }) {
 }
 
 /* ─── Shared: Empty state — icon + message + suggestion, never fake data ── */
-function EmptyState({ icon: Icon = Inbox, message, suggestion }) {
-    return (
-        <div className={`flex flex-col items-center justify-center text-center py-16 px-4`}>
-            <div className="h-12 w-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mb-3">
-                <Icon className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="text-sm font-semibold text-slate-600">{message}</p>
-            {suggestion && <p className={`${T.caption} mt-1 max-w-xs`}>{suggestion}</p>}
-        </div>
-    );
+function EmptyState({ icon = Inbox, message, suggestion }) {
+    // ใช้หน้าว่างกลางของระบบ (components/ui/EmptyState)
+    return <UIEmptyState icon={icon} title={message} description={suggestion} className="border-0" />;
 }
 
 /* ─── Reusable Loading / Error wrapper for each API-backed section ──────── */
@@ -181,7 +177,7 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
             )}
             <div className="min-w-0 flex-1">
                 <p className={`${T.label} leading-snug`}>{label}</p>
-                <p className="text-lg font-black text-slate-900 tracking-tight truncate mt-0.5">{value}</p>
+                <p className="text-lg font-bold text-slate-900 tracking-tight truncate mt-0.5">{value}</p>
                 {sub && <p className={`${T.caption} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
             </div>
         </div>
@@ -233,7 +229,7 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                     </RePieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <p className="text-xl font-black text-slate-900">{centerValue}</p>
+                    <p className="text-xl font-bold text-slate-900">{centerValue}</p>
                     <p className="text-[11px] text-slate-400">{centerLabel}</p>
                 </div>
             </div>
@@ -248,25 +244,6 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                     </div>
                 ))}
             </div>
-        </div>
-    );
-}
-
-/* ─── Shared: SegmentedControl — แถวปุ่มแบบเดียวกับแท็บใน AdminTutorsPage
-   (bg-orange-500 ตอน active / border ตอน inactive) ให้แท็บทั้งแอปหน้าตาเดียวกัน ── */
-function SegmentedControl({ options, value, onChange }) {
-    return (
-        <div className="flex gap-2 flex-wrap">
-            {options.map(({ id, label, icon: Icon }) => (
-                <button
-                    key={id}
-                    onClick={() => onChange(id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium ${T.transition} ${value === id ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                >
-                    <Icon className="h-4 w-4" />{label}
-                </button>
-            ))}
         </div>
     );
 }
@@ -592,12 +569,12 @@ export default function AdminFinance() {
     const totalTx = txPagination.total || 0;
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
 
             {/* ── Page header ── */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">การเงินสถาบัน</h1>
+                    <h1 className={`${PAGE_TITLE}`}>การเงินสถาบัน</h1>
                     <p className={`${T.subtitle} mt-1`}>ภาพรวมรายรับ-รายจ่าย และจัดการธุรกรรมทั้งหมด</p>
                 </div>
                 <SegmentedControl
@@ -700,7 +677,7 @@ export default function AdminFinance() {
                         </SectionCard>
                     </div>
 
-                    <SectionCard title="🏆 5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
+                    <SectionCard title="5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
                         <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
                             {topCourseData.length === 0 ? (
                                 <EmptyState message="ยังไม่มีข้อมูลรายรับรายคอร์ส" suggestion="จะแสดงเมื่อมีรายการชำระที่ตรวจสอบสำเร็จ" />
@@ -756,34 +733,34 @@ export default function AdminFinance() {
                                     value={searchInput}
                                     onChange={e => setSearchInput(e.target.value)}
                                     placeholder={transactionKind === 'student' ? 'ค้นหานักเรียน, Order, เลขอ้างอิง, คอร์ส...' : 'ค้นหาติวเตอร์หรือคอร์ส...'}
-                                    className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
+                                    className={`pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none ${T.transition}`}
                                 />
                             </div>
                             <input
                                 type="month"
                                 value={monthFilter}
                                 onChange={e => setMonthFilter(e.target.value)}
-                                className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
+                                className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}
                             />
                             {transactionKind === 'student' ? <>
-                                <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
+                                <select value={paymentPlanFilter} onChange={e => setPaymentPlanFilter(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">เต็มและผ่อน</option><option value="full">เต็มจำนวน</option><option value="installment">ผ่อนชำระ</option>
                                 </select>
-                                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
+                                <select value={orderStatus} onChange={e => setOrderStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                     <option value="all">ทุกสถานะชำระ</option><option value="paid">ชำระครบ</option><option value="partially_paid">กำลังผ่อน</option>
                                 </select>
                                 <select
                                     value={courseId}
                                     onChange={e => setCourseId(e.target.value)}
                                     disabled={filtersLoading}
-                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 lg:max-w-[180px] ${T.transition}`}
+                                    className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50 lg:max-w-[180px] ${T.transition}`}
                                 >
                                     <option value="all">ทุกคอร์ส</option>
                                     {filtersMeta.courses.map(c => (
                                         <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
                                     ))}
                                 </select>
-                            </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
+                            </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
                                 <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
                             </select>}
                         </div>
@@ -827,7 +804,7 @@ export default function AdminFinance() {
                                                 </div>
                                                 <p className="mt-2 text-sm font-semibold text-slate-800 line-clamp-2">{txn.CourseName}</p>
                                                 <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+                                                    <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
                                                         {isFull ? 'เต็มจำนวน' : `ผ่อน งวด ${txn.InstallmentNo}/${txn.InstallmentCount}`}
                                                     </span>
                                                     <span className={T.caption}>{formatDate(txn.TransDate || txn.Created_at)} · #{txn.TransactionId}</span>
@@ -944,33 +921,8 @@ export default function AdminFinance() {
                     )}
 
                     {/* Pagination */}
-                    {transactionKind === 'student' && totalPages > 1 && (
-                        <div className="flex items-center justify-between flex-wrap gap-3">
-                            <p className={T.subtitle}>
-                                หน้า <span className="font-semibold text-slate-700">{currentPageNum}</span> จาก <span className="font-semibold text-slate-700">{totalPages}</span> · ทั้งหมด <span className="font-semibold text-slate-700">{totalTx.toLocaleString()}</span> รายการ
-                            </p>
-                            <div className="flex items-center gap-1.5">
-                                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPageNum === 1}
-                                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
-                                    <ChevronLeft className="h-4 w-4" />
-                                </button>
-                                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPageNum) <= 1)
-                                    .reduce((acc, p, idx, arr) => { if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...'); acc.push(p); return acc; }, [])
-                                    .map((p, idx) => p === '...' ? (
-                                        <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                                    ) : (
-                                        <button key={p} onClick={() => setCurrentPage(p)}
-                                            className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium ${T.transition} ${currentPageNum === p ? 'bg-orange-500 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600'}`}>
-                                            {p}
-                                        </button>
-                                    ))}
-                                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPageNum === totalPages}
-                                    className={`flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 ${T.transition}`}>
-                                    <ChevronRight className="h-4 w-4" />
-                                </button>
-                            </div>
-                        </div>
+                    {transactionKind === 'student' && (
+                        <UIPagination page={currentPageNum} totalPages={totalPages} total={totalTx} pageSize={ITEMS_PER_PAGE} onChange={setCurrentPage} />
                     )}
                 </>
             )}
@@ -1000,7 +952,7 @@ function StudentPaymentRow({ txn, onView }) {
                 <p className={T.caption}>Order {String(txn.OrderCode || '').slice(0, 8)}</p>
             </td>
             <td className="px-4 py-3">
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${isFull ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
                     {isFull ? 'เต็มจำนวน' : `ผ่อน งวด ${txn.InstallmentNo}/${txn.InstallmentCount}`}
                 </span>
             </td>
@@ -1025,8 +977,8 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
             .finally(() => setLoading(false));
     }, [transactionId]);
     return (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
                 <div className="sticky top-0 z-10 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 flex justify-between items-center">
                     <div>
                         <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
@@ -1053,7 +1005,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>นักเรียน</p><p className="font-bold">{studentDisplayName(data)}</p><p>{data.PhoneNo || '—'}</p><p className="text-slate-500">{data.CourseName}</p></div>
                                 <div className={`${T.card} p-4 space-y-2`}><p className={T.label}>ข้อมูลการโอน</p><p>วันที่ {formatDate(data.TransDate || data.Created_at)}</p><p>เลขอ้างอิง {data.TransRef}</p><p>{data.SendingBank || 'ไม่ระบุธนาคารต้นทาง'} → {data.ReceivingBank || 'บัญชีสถาบัน'}</p></div>
                             </div>
-                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full sm:min-w-[480px] text-sm"><thead className="bg-slate-50"><tr><th className="p-2 sm:p-3 text-left">งวด</th><th className="p-2 sm:p-3 text-right">ยอด</th><th className="p-2 sm:p-3 text-left">กำหนด</th><th className="p-2 sm:p-3 text-left">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-2 sm:p-3">งวด {i.InstallmentNo}</td><td className="p-2 sm:p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-2 sm:p-3">{formatDate(i.DueDate)}</td><td className="p-2 sm:p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
+                            <div><p className="font-bold mb-3">ตารางงวดของ Order นี้</p><div className="overflow-x-auto border border-slate-200 rounded-xl"><table className="w-full sm:min-w-[480px] text-sm"><thead className="bg-slate-50"><tr><th className="p-2 sm:p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">งวด</th><th className="p-2 sm:p-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">ยอด</th><th className="p-2 sm:p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">กำหนด</th><th className="p-2 sm:p-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th></tr></thead><tbody>{data.installments?.map(i => <tr key={i.InstallmentId} className={`border-t border-slate-100 hover:bg-orange-50/40 ${T.transition}`}><td className="p-2 sm:p-3">งวด {i.InstallmentNo}</td><td className="p-2 sm:p-3 text-right font-semibold">{formatMoney(i.Amount)}</td><td className="p-2 sm:p-3">{formatDate(i.DueDate)}</td><td className="p-2 sm:p-3"><StatusBadge name={i.Status === 'paid' ? 'ชำระแล้ว' : i.Status === 'scheduled' ? 'ยังไม่ถึงกำหนด' : i.Status === 'due' ? 'ถึงกำหนด' : 'ค้างชำระ'} /></td></tr>)}</tbody></table></div></div>
                             <div><p className="font-bold mb-3">สลิปการชำระ</p>{data.SlipUrl ? <a href={getFileUrl(data.SlipUrl)} target="_blank" rel="noreferrer"><img src={getFileUrl(data.SlipUrl)} className="max-h-96 mx-auto rounded-xl border border-slate-200 object-contain" alt="สลิปนักเรียน" /></a> : <EmptyState icon={FileText} message="ไม่มีรูปสลิป" />}</div>
                         </div>}
                     </ApiState>
@@ -1067,8 +1019,8 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
 function TutorPaymentDetailModal({ item, onClose }) {
     const sessions = Array.isArray(item.sessions) ? item.sessions : [];
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 px-4 sm:px-6 py-4">
                     <div>
                         <h3 className="flex items-center gap-2 text-base font-bold text-white">
@@ -1102,21 +1054,21 @@ function TutorPaymentDetailModal({ item, onClose }) {
                         <table className="w-full min-w-[900px] text-sm">
                             <thead className="bg-slate-50 text-xs text-slate-500">
                                 <tr>
-                                    <th className="px-4 py-3 text-left">ประเภท</th>
-                                    <th className="px-4 py-3 text-left">วันที่/คอร์ส</th>
-                                    <th className="px-4 py-3 text-left">วิชา</th>
-                                    <th className="px-4 py-3 text-center">ผู้เรียนมา</th>
-                                    <th className="px-4 py-3 text-center">ชั่วโมง</th>
-                                    <th className="px-4 py-3 text-center">ขั้นเรท</th>
-                                    <th className="px-4 py-3 text-left">สูตร</th>
-                                    <th className="px-4 py-3 text-right">ยอด</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">ประเภท</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่/คอร์ส</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">วิชา</th>
+                                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้เรียนมา</th>
+                                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">ชั่วโมง</th>
+                                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">ขั้นเรท</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">สูตร</th>
+                                    <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">ยอด</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {sessions.map(session => (
                                     <tr key={session.tutorCheckinId} className="hover:bg-orange-50/30">
                                         <td className="px-4 py-3">
-                                            <span className={`whitespace-nowrap lg:whitespace-normal rounded-full px-2.5 py-1 text-xs font-semibold ${session.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            <span className={`whitespace-nowrap lg:whitespace-normal rounded-full px-2.5 py-0.5 text-xs font-semibold ${session.classType === 'substitute' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
                                                 {session.classType === 'substitute' ? 'รับสอนแทน' : 'คอร์สหลัก'}
                                             </span>
                                         </td>
@@ -1166,9 +1118,9 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
         finally { setSaving(false); }
     };
     const bankReady = item.bankName && item.bankAccountNumber && item.bankAccountName;
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
-    return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <form onSubmit={submit} className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto lg:max-h-none lg:overflow-hidden">
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    return <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+        <form onSubmit={submit} className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto lg:max-h-none lg:overflow-hidden">
             <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500">
                 <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
@@ -1198,7 +1150,7 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
             </div>
             <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex gap-3">
                 <button type="button" onClick={onClose} disabled={saving}
-                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                    className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
                     ยกเลิก
                 </button>
                 <button disabled={saving || !bankReady}

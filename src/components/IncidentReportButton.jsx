@@ -27,9 +27,9 @@ export default function IncidentReportButton({ role }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-red-500 to-orange-500 shrink-0">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
               <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
                   <AlertOctagon className="h-4 w-4 text-white" />

@@ -10,6 +10,9 @@ import {
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText, GraduationCap as LuGraduationCap, School as LuSchool } from "lucide-react";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -213,7 +216,7 @@ export default function TutorStudents() {
     };
 
     const getAttendanceColor = (rate) => {
-        if (rate === null) return 'text-neutral-400';
+        if (rate === null) return 'text-slate-400';
         if (rate >= 80) return 'text-green-600';
         if (rate >= 60) return 'text-orange-500';
         return 'text-red-500';
@@ -252,66 +255,52 @@ export default function TutorStudents() {
     const getLowAttendanceStudents = () =>
         filteredStudents.filter(s => { const r = getAttendanceRate(s); return r !== null && r < 60; });
 
-    const getPageNumbers = () => {
-        const pages = [];
-        for (let i = 1; i <= totalPages; i++) {
-            if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
-                pages.push(i);
-            } else if (i === 2 && currentPage > 3) {
-                pages.push('...');
-            } else if (i === totalPages - 1 && currentPage < totalPages - 2) {
-                pages.push('...');
-            }
-        }
-        return pages.filter((p, idx) => pages.indexOf(p) === idx);
-    };
-
     if (loading) return (
-        <div className="mt-[90px] text-center p-10 font-medium text-orange-600">
+        <div className="text-center p-10 font-medium text-orange-600">
             กำลังโหลดข้อมูลนักเรียน...
         </div>
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
             <div className="">
                 {/* Header */}
                 <div className="mb-6">
                     <div className="mb-6 flex flex-wrap items-center text-sm">
-                        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">คอร์ส</Link>
-                        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-                        <span className="font-medium text-gray-800">ข้อมูลนักเรียน</span>
+                        <Link to="/tutor/courses" className="font-medium text-slate-500 hover:text-orange-600 transition">คอร์ส</Link>
+                        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
+                        <span className="font-medium text-slate-800">ข้อมูลนักเรียน</span>
                     </div>
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-neutral-900">ข้อมูลนักเรียน</h1>
-                            <p className="text-sm text-neutral-500 mt-1">
+                            <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
+                            <p className={PAGE_SUBTITLE}>
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
                         </div>
                         <div className="relative group self-start md:self-auto">
-                            <button className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:shadow-lg hover:scale-105 transition font-medium">
+                            <button className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 shadow-sm transition font-medium">
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
-                            <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-neutral-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
-                                <button onClick={downloadExcel} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-neutral-700 hover:bg-orange-50 hover:text-orange-600 rounded-t-xl transition font-medium">📊 ดาวน์โหลด Excel</button>
-                                <button onClick={downloadPDF} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-neutral-700 hover:bg-orange-50 hover:text-orange-600 rounded-b-xl transition font-medium">📄 ดาวน์โหลด PDF</button>
+                            <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
+                                <button onClick={downloadExcel} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-t-xl transition font-medium"><LuFileSpreadsheet className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด Excel</button>
+                                <button onClick={downloadPDF} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-b-xl transition font-medium"><LuFileText className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด PDF</button>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Search & Sort */}
-                <div className="bg-white border border-neutral-200 rounded-xl p-3 mb-6">
+                <div className="bg-white border border-slate-200 rounded-xl p-3 mb-6">
                     <div className="flex flex-col md:flex-row gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input type="text" placeholder="ค้นหานักเรียน (ชื่อ, Line ID, โรงเรียน, เบอร์โทร)..."
                                 value={search} onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition" />
+                                className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" />
                         </div>
                         <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-                            className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent md:min-w-[200px]">
+                            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px]">
                             <option value="name">เรียงตามชื่อ</option>
                             <option value="attendance">เรียงตามการเข้าเรียน</option>
                             <option value="gpa">เรียงตามเกรด</option>
@@ -326,7 +315,7 @@ export default function TutorStudents() {
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                                <span className="text-lg">⚠️</span>
+                                <LuAlertTriangle className="h-5 w-5 text-red-500" />
                             </div>
                             <div>
                                 <p className="font-bold text-red-700 text-sm">มีนักเรียน {getLowAttendanceStudents().length} คน ที่เข้าเรียนต่ำกว่า 60%</p>
@@ -347,12 +336,12 @@ export default function TutorStudents() {
                 {/* Students List */}
                 <div className="space-y-4">
                     {filteredStudents.length === 0 ? (
-                        <div className="text-center py-12 bg-white rounded-xl border border-neutral-200">
-                            <div className="text-5xl mb-3">👨‍🎓</div>
-                            <p className="text-neutral-500 text-sm">ไม่พบนักเรียนในคอร์สนี้</p>
+                        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+                          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuGraduationCap className="h-7 w-7 text-orange-400" /></div>
+                          <p className="text-base font-semibold text-slate-700">ไม่พบนักเรียนในคอร์สนี้</p>
                         </div>
                     ) : paginatedStudents.map((student) => (
-                        <div key={student.id} className="bg-white rounded-2xl border-2 border-neutral-200 hover:border-orange-300 transition overflow-hidden">
+                        <div key={student.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-orange-300 transition overflow-hidden">
 
                             {/* Student Header */}
                             <div className="p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 border-b border-orange-100">
@@ -362,16 +351,16 @@ export default function TutorStudents() {
                                             <StudentAvatar student={student} />
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-bold text-neutral-900 break-words">{student.name}</h3>
+                                            <h3 className="text-lg font-bold text-slate-900 break-words">{student.name}</h3>
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-bold border border-red-200 mt-1">
-                                                    ⚠️ เข้าเรียนต่ำกว่า 60%
+                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold border border-red-200 mt-1">
+                                                    <LuAlertTriangle className="h-3 w-3" /> เข้าเรียนต่ำกว่า 60%
                                                 </span>
                                             )}
-                                            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs text-neutral-600 mt-1">
+                                            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs text-slate-600 mt-1">
                                                 <div className="flex items-center gap-1"><span className="text-green-500 font-bold text-xs">LINE</span><span>{student.lineId}</span></div>
                                                 <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{student.phone}</span></div>
-                                                <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border">🏫 {student.school}</div>
+                                                <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">{student.gradeLevel}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">อายุ {calculateAge(student.birthDate)} ปี</div>
                                                 {/* GPA เป็นเกรดจากโรงเรียนของนักเรียน ไม่ใช่ผลจากระบบเรา จึงย้ายมาอยู่กับข้อมูลโปรไฟล์
@@ -396,7 +385,7 @@ export default function TutorStudents() {
                                         )}
                                         <button
                                             onClick={() => navigate(`/tutor/students/detail?courseId=${courseId}&studentId=${student.id}`)}
-                                            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-lg transition"
+                                            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition"
                                         >
                                             ดูรายละเอียด <ChevronRight className="h-3.5 w-3.5" />
                                         </button>
@@ -405,49 +394,49 @@ export default function TutorStudents() {
                             </div>
 
                             {/* Quick Overview (stats cards ยังคงอยู่) */}
-                            <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-neutral-50">
-                                <div className="bg-white rounded-xl p-3 border border-neutral-200">
-                                    <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">การเข้าเรียน</span></div>
-                                    {getAttendanceRate(student) === null ? <p className="text-xs text-neutral-400">ยังไม่มีข้อมูล</p> : (
+                            <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-slate-50">
+                                <div className="bg-white rounded-xl p-3 border border-slate-200">
+                                    <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">การเข้าเรียน</span></div>
+                                    {getAttendanceRate(student) === null ? <p className="text-xs text-slate-400">ยังไม่มีข้อมูล</p> : (
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between text-xs">
-                                                <span className="text-neutral-600">{student.totalAttended}/{student.totalClassHeld} คาบ</span>
+                                                <span className="text-slate-600">{student.totalAttended}/{student.totalClassHeld} คาบ</span>
                                                 <span className={`font-bold ${getAttendanceColor(getAttendanceRate(student))}`}>{getAttendanceRate(student)}%</span>
                                             </div>
-                                            <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                                                 <div className={`h-full rounded-full ${getAttendanceBarColor(getAttendanceRate(student))}`} style={{ width: `${getAttendanceRate(student)}%` }} />
                                             </div>
                                         </div>
                                     )}
                                 </div>
-                                <div className="bg-white rounded-xl p-3 border border-neutral-200">
-                                    <div className="flex items-center gap-2 mb-2"><Video className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">การดูคลิป</span></div>
+                                <div className="bg-white rounded-xl p-3 border border-slate-200">
+                                    <div className="flex items-center gap-2 mb-2"><Video className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">การดูคลิป</span></div>
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between text-xs">
-                                            <span className="text-neutral-600">{student.videoViews}/{student.totalVideos}</span>
+                                            <span className="text-slate-600">{student.videoViews}/{student.totalVideos}</span>
                                             <span className="font-bold text-orange-600">{student.totalVideos ? `${Math.round((student.videoViews / student.totalVideos) * 100)}%` : "—"}</span>
                                         </div>
-                                        <div className="h-2 bg-neutral-200 rounded-full overflow-hidden">
+                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                                             <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600" style={{ width: `${student.totalVideos ? (student.videoViews / student.totalVideos) * 100 : 0}%` }} />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-white rounded-xl p-3 border border-neutral-200">
-                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-neutral-700">พัฒนาการรวม</span></div>
+                                <div className="bg-white rounded-xl p-3 border border-slate-200">
+                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
                                     {student.exam?.improvement ? (
                                         <>
-                                            <p className="text-sm font-bold text-neutral-800 leading-relaxed">
+                                            <p className="text-sm font-bold text-slate-800 leading-relaxed">
                                                 ก่อนเรียน {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} {fmtScoreNum(student.exam.improvement.to)}
                                             </p>
                                             <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
                                                 {getAverageImprovement(student)} คะแนน
-                                                <span className="font-medium text-neutral-400">
+                                                <span className="font-medium text-slate-400">
                                                     {" "}· เต็ม {student.exam.improvement.max} (นับ {student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา)
                                                 </span>
                                             </p>
                                             {student.exam.improvement.growth != null && (
-                                                <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-                                                    พัฒนาการ <span className="font-bold text-neutral-700">{getGrowthText(student)}</span> ของช่องว่างที่เหลือ
+                                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                                    พัฒนาการ <span className="font-bold text-slate-700">{getGrowthText(student)}</span> ของช่องว่างที่เหลือ
                                                     {student.exam.improvement.growthCapped
                                                         ? " · พื้นฐานสูงอยู่แล้ว ตัวเลขนี้เทียบกับเด็กพื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
                                                         : ""}
@@ -456,15 +445,15 @@ export default function TutorStudents() {
                                         </>
                                     ) : student.exam?.latest ? (
                                         <>
-                                            <p className="text-sm font-bold text-neutral-800 leading-relaxed">
+                                            <p className="text-sm font-bold text-slate-800 leading-relaxed">
                                                 ได้ {fmtScoreNum(student.exam.latest.score)} จากเต็ม {student.exam.latest.max} คะแนน
                                             </p>
-                                            <p className="text-xs text-neutral-400 mt-1">
+                                            <p className="text-xs text-slate-400 mt-1">
                                                 สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้ เพราะมีแค่รอบเดียว
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="text-lg font-bold text-neutral-300">ยังไม่มีข้อมูลสอบ</p>
+                                        <p className="text-lg font-bold text-slate-300">ยังไม่มีข้อมูลสอบ</p>
                                     )}
                                 </div>
                             </div>
@@ -474,34 +463,7 @@ export default function TutorStudents() {
                 </div>
 
                 {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-neutral-500">
-                            แสดง <span className="font-semibold text-neutral-700">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredStudents.length)}</span>
-                            {' '}จาก <span className="font-semibold text-neutral-700">{filteredStudents.length}</span> คน
-                        </p>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                                <ChevronLeft className="h-4 w-4" />
-                            </button>
-                            {getPageNumbers().map((page, idx) =>
-                                page === '...' ? (
-                                    <span key={`dots-${idx}`} className="flex h-9 w-9 items-center justify-center text-neutral-400 text-sm">…</span>
-                                ) : (
-                                    <button key={page} onClick={() => setCurrentPage(page)}
-                                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === page ? 'bg-orange-500 text-white shadow-sm' : 'border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600'}`}>
-                                        {page}
-                                    </button>
-                                )
-                            )}
-                            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                                className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-white text-neutral-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 disabled:cursor-not-allowed transition">
-                                <ChevronRight className="h-4 w-4" />
-                            </button>
-                        </div>
-                    </div>
-                )}
+                <UIPagination page={currentPage} totalPages={totalPages} total={filteredStudents.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} className="mt-6" />
             </div>
         </div>
     );

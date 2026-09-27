@@ -9,12 +9,13 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart as RPieChart, Pie, Cell,
 } from "recharts";
+import { PAGE_TITLE } from "../components/ui/tokens";
 
 const API_BASE = `${API_URL}/api/admin/dashboard`;
 
 /* ─── Design tokens (อิงจาก AdminStudent.jsx / AdminTutors.jsx เพื่อให้เป็นระบบเดียวกัน) ─── */
 const T = {
-  card: "bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition",
+  card: "bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition",
   cardPad: "p-4 sm:p-5",
   transition: "transition duration-200 ease-out",
   title: "text-base font-bold text-slate-900",
@@ -121,7 +122,7 @@ function MiniPersonRow({ photo, name, sub, tone = "slate", LeadIcon }) {
         {LeadIcon && <LeadIcon className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
         <p className="text-sm font-semibold text-slate-800 truncate">{name}</p>
       </div>
-      <span className={`text-xs font-bold px-2.5 py-1 rounded-full border shrink-0 max-w-[55%] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible ${toneCls}`}>{sub}</span>
+      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border shrink-0 max-w-[55%] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible ${toneCls}`}>{sub}</span>
     </div>
   );
 }
@@ -136,7 +137,7 @@ function InlineStat({ label, value, tone = "slate" }) {
   return (
     <div className="flex-1 text-center">
       <p className={`text-lg font-bold ${toneCls}`}>{value}</p>
-      <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
+      <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -147,13 +148,13 @@ function InlineStat({ label, value, tone = "slate" }) {
 function StatCard({ label, value, sub, icon, color }) {
   const Icon = icon;
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition h-full">
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition h-full">
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-black text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900">{value}</p>
         {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
       </div>
     </div>
@@ -171,7 +172,7 @@ function MetricBox({ label, value, tone = "slate" }) {
   }[tone];
   return (
     <div className={`rounded-xl px-3 py-2 border flex-1 text-center ${toneCls}`}>
-      <p className="text-[10px] opacity-70">{label}</p>
+      <p className="text-[11px] opacity-70">{label}</p>
       <p className="text-lg font-bold">{value}</p>
     </div>
   );
@@ -210,7 +211,7 @@ function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
 
   if (chips.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 flex items-center gap-2.5">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex items-center gap-2.5">
         <Sparkles className="h-4 w-4 text-emerald-500 shrink-0" />
         <p className="text-xs font-semibold text-slate-500">ไม่มีรายการที่ต้องจัดการตอนนี้ — ทุกอย่างเรียบร้อยดี</p>
       </div>
@@ -218,7 +219,7 @@ function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3">
       <div className="flex items-center gap-2.5 flex-wrap">
         <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 shrink-0 pr-2.5 border-r border-slate-100 whitespace-nowrap">
           <Bell className="h-3.5 w-3.5 text-orange-500" /> ต้องจัดการ {chips.length} รายการ
@@ -300,7 +301,7 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
                   </RPieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <p className="text-3xl font-black text-slate-900">{total}</p>
+                  <p className="text-3xl font-bold text-slate-900">{total}</p>
                   <p className="text-xs text-slate-400">คอร์สทั้งหมด</p>
               </div>
           </div>
@@ -356,7 +357,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+      <div className="space-y-6 px-4 lg:px-0">
         <Skeleton className="h-14 w-full" />
         <SkeletonGrid count={3} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -369,7 +370,7 @@ export default function AdminDashboard() {
 
   if (error && !data) {
     return (
-      <div className="mt-[90px] px-4 lg:px-0">
+      <div className="px-4 lg:px-0">
         <ErrorState message={error} onRetry={() => fetchData()} />
       </div>
     );
@@ -428,10 +429,10 @@ export default function AdminDashboard() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">ภาพรวมสถาบัน</h1>
+        <h1 className={`${PAGE_TITLE}`}>ภาพรวมสถาบัน</h1>
         <p className={`${T.subtitle} mt-1`}>
           สรุปสถานะและสิ่งที่ต้องจัดการ ณ ตอนนี้
           {data?.generatedAt && (

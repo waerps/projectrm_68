@@ -9,6 +9,8 @@ import {
   Phone, KeyRound, Loader2, AlertTriangle, ImagePlus,
   UserCheck, UserX, ShieldCheck, Info,
 } from "lucide-react";
+import UIModal from "../components/ui/Modal";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 
@@ -26,27 +28,9 @@ function getCurrentAdminId() {
 }
 
 // ─── Modal wrapper (โครงเดียวกับหน้าอื่นในระบบ) ────────────────────────────
-function Modal({ title, icon: Icon, onClose, children }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={'lg'}>{children}</UIModal>;
 }
 
 // ─── ImageUpload (pattern เดียวกับ TutorForm/StudentForm) ──────────────────
@@ -91,7 +75,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -138,7 +122,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
     onSave(form);
   };
 
-  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
   return (
@@ -216,7 +200,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
           ยกเลิก
         </button>
         <button onClick={submit} disabled={isSubmitting}
@@ -248,18 +232,18 @@ function ResetPasswordModal({ admin, onClose, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-5 sm:-mx-6 -mt-5 sm:-mt-6 px-5 sm:px-6 sticky -top-5 sm:-top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <KeyRound className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">รีเซ็ตรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">{admin.Nickname || `${admin.Firstname} ${admin.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
+            <p className="text-xs text-white/80 truncate">{admin.Nickname || `${admin.Firstname} ${admin.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="relative mb-4">
@@ -272,7 +256,7 @@ function ResetPasswordModal({ admin, onClose, showToast }) {
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -289,18 +273,12 @@ function ResetPasswordModal({ admin, onClose, showToast }) {
 function ConfirmStatusModal({ admin, nextIsActive, onConfirm, onCancel, isSubmitting }) {
   const displayName = admin.Nickname || `${admin.Firstname} ${admin.Lastname}`;
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${nextIsActive ? "bg-emerald-100" : "bg-red-100"}`}>
-            {nextIsActive ? <UserCheck className="h-6 w-6 text-emerald-500" /> : <UserX className="h-6 w-6 text-red-500" />}
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">
-              {nextIsActive ? "เปิดใช้งานบัญชี" : "ปิดใช้งานบัญชี"}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">{displayName}</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full ${nextIsActive ? "bg-emerald-100" : "bg-red-100"}`}>{nextIsActive ? <UserCheck className="h-7 w-7 text-emerald-600" /> : <UserX className="h-7 w-7 text-red-600" />}</div>
+          <h3 className="text-lg font-bold text-slate-900">{nextIsActive ? "เปิดใช้งานบัญชี" : "ปิดใช้งานบัญชี"}</h3>
+          <p className="text-sm text-slate-500 mt-1">{displayName}</p>
         </div>
         {!nextIsActive && (
           <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 mb-5 flex items-start gap-2">
@@ -310,9 +288,9 @@ function ConfirmStatusModal({ admin, nextIsActive, onConfirm, onCancel, isSubmit
             </p>
           </div>
         )}
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isSubmitting}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
             ยกเลิก
           </button>
           <button onClick={onConfirm} disabled={isSubmitting}
@@ -421,21 +399,21 @@ export default function AdminManagement() {
   const inactiveCount = admins.length - activeCount;
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
+    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลผู้ดูแลระบบ...</p>
     </div>
   );
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">จัดการผู้ดูแลระบบ</h1>
-          <p className="text-sm text-slate-500 mt-1">ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน แต่ละคนมีบัญชีของตัวเอง</p>
+          <h1 className={PAGE_TITLE}>จัดการผู้ดูแลระบบ</h1>
+          <p className={PAGE_SUBTITLE}>ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน แต่ละคนมีบัญชีของตัวเอง</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
@@ -450,13 +428,13 @@ export default function AdminManagement() {
           { label: "ใช้งานอยู่", value: activeCount, color: "bg-emerald-500" },
           { label: "ปิดใช้งาน", value: inactiveCount, color: "bg-slate-500" },
         ].map(({ label, value, color }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Users className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value}</p>
+              <p className="text-xl font-bold text-slate-900">{value}</p>
             </div>
           </div>
         ))}
@@ -468,7 +446,7 @@ export default function AdminManagement() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, Username..."
-            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+            className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
           />
         </div>
         <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {admins.length} คน</p>
@@ -476,7 +454,7 @@ export default function AdminManagement() {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <p className="text-slate-500 font-medium">ไม่พบผู้ดูแลระบบที่ค้นหา</p>
         </div>
       ) : (
@@ -493,7 +471,7 @@ export default function AdminManagement() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
                       <span className="truncate">{displayName}</span>
-                      {isSelf && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[10px] font-bold">คุณ</span>}
+                      {isSelf && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[11px] font-bold">คุณ</span>}
                     </p>
                     {a.Nickname && <p className="text-xs text-slate-400 truncate">{a.Firstname} {a.Lastname}</p>}
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
@@ -501,7 +479,7 @@ export default function AdminManagement() {
                       <span className="font-mono break-all">{a.Username}</span>
                     </div>
                   </div>
-                  <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${a.IsActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
+                  <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${a.IsActive ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-slate-200 text-slate-600 border-slate-300"}`}>
                     {a.IsActive ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}
                     {a.IsActive ? "ใช้งานอยู่" : "ปิดใช้งาน"}
                   </span>
@@ -551,7 +529,7 @@ export default function AdminManagement() {
                             <p className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 whitespace-nowrap lg:whitespace-normal">
                               {displayName}
                               {isSelf && (
-                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[10px] font-bold">
+                                <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[11px] font-bold">
                                   คุณ
                                 </span>
                               )}
@@ -574,7 +552,7 @@ export default function AdminManagement() {
                         <span className="text-xs text-slate-600 font-mono">{a.Username}</span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${a.IsActive
+                        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 rounded-full text-xs font-semibold border ${a.IsActive
                           ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                           : "bg-slate-200 text-slate-600 border-slate-300"}`}>
                           {a.IsActive ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}

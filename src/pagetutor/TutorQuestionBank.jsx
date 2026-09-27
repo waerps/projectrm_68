@@ -7,6 +7,8 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects } from "../utils/examShared";
 import { BankTab } from "./TutorExamDetail.jsx";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BookOpen as LuBookOpen } from "lucide-react";
 
 // ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
 // เดิมกว่าจะเข้าถึงคลังได้ต้องไล่ คอร์ส → วิชา → รอบสอบ → แท็บคลัง ทั้งที่คลังข้อสอบ
@@ -71,7 +73,7 @@ export default function TutorQuestionBank() {
   // ── เลือกวิชาแล้ว: แสดงตัวจัดการคลังตัวเดียวกับหน้าจัดการการสอบ ──
   if (subjectId) {
     return (
-      <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+      <div className="space-y-6 px-4 lg:px-0">
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
         <div className="flex items-center text-sm flex-wrap gap-y-1">
@@ -88,14 +90,14 @@ export default function TutorQuestionBank() {
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 break-words">
+            <h1 className={`${PAGE_TITLE} break-words`}>
               คลังข้อสอบ{selected?.subjectName ? ` — ${selected.subjectName}` : ""}
             </h1>
             <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดหมวดหมู่ข้อสอบของคุณในวิชานี้</p>
           </div>
           <button
             onClick={backToList}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:border-orange-300 hover:text-orange-600 transition shrink-0 self-start md:self-auto"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-600 transition shrink-0 self-start md:self-auto"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนวิชา
           </button>
@@ -111,7 +113,7 @@ export default function TutorQuestionBank() {
   }
 
   if (loading) return (
-    <div className="mt-[90px] px-4 lg:px-0 flex flex-col items-center justify-center h-64 text-orange-600">
+    <div className="px-4 lg:px-0 flex flex-col items-center justify-center h-64 text-orange-600">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคลังข้อสอบ...</p>
     </div>
@@ -119,7 +121,7 @@ export default function TutorQuestionBank() {
 
   // ── ยังไม่เลือกวิชา: ให้เลือกก่อน ──
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
@@ -131,8 +133,8 @@ export default function TutorQuestionBank() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">คลังข้อสอบของฉัน</h1>
-          <p className="text-sm text-slate-500 mt-1">เลือกวิชาที่ต้องการจัดการข้อสอบ</p>
+          <h1 className={PAGE_TITLE}>คลังข้อสอบของฉัน</h1>
+          <p className={PAGE_SUBTITLE}>เลือกวิชาที่ต้องการจัดการข้อสอบ</p>
         </div>
       </div>
 
@@ -145,13 +147,13 @@ export default function TutorQuestionBank() {
         ].map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-black text-slate-900">{card.value.toLocaleString()}</p>
+                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()}</p>
               </div>
             </div>
           );
@@ -167,7 +169,7 @@ export default function TutorQuestionBank() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อวิชา..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
         </div>
@@ -177,9 +179,9 @@ export default function TutorQuestionBank() {
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!error && filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="text-6xl mb-3">📚</div>
-          <p className="text-slate-500 font-medium">
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
+          <p className="text-base font-semibold text-slate-700">
             {search.trim() ? "ไม่พบวิชาที่ค้นหา" : "ยังไม่มีวิชาที่คุณสอน"}
           </p>
           {!search.trim() && (
@@ -202,9 +204,9 @@ export default function TutorQuestionBank() {
                     <p className="text-[11px] text-slate-400">#{s.subjectId}{fmtDate(s.lastUpdatedAt) ? ` · ${fmtDate(s.lastUpdatedAt)}` : ""}</p>
                   </div>
                   {s.total > 0 ? (
-                    <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
+                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
                   ) : (
-                    <span className="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-50 text-amber-700 border-amber-200">ยังไม่มีข้อสอบ</span>
+                    <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">ยังไม่มีข้อสอบ</span>
                   )}
                 </div>
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
@@ -232,7 +234,7 @@ export default function TutorQuestionBank() {
                     <tr key={s.subjectId} className="hover:bg-orange-50/40 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-semibold text-slate-900 text-sm">{s.subjectName || `วิชา #${s.subjectId}`}</p>
-                        <p className="text-[10px] text-slate-400">#{s.subjectId}</p>
+                        <p className="text-[11px] text-slate-400">#{s.subjectId}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm font-bold text-slate-900">{s.total}</span>
@@ -240,7 +242,7 @@ export default function TutorQuestionBank() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {s.categories > 0 ? (
-                          <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+                          <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
                             {s.categories}
                           </span>
                         ) : (
@@ -256,11 +258,11 @@ export default function TutorQuestionBank() {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {s.total > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">
                             มีข้อสอบแล้ว
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-50 text-amber-700 border-amber-200">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">
                             ยังไม่มีข้อสอบ
                           </span>
                         )}

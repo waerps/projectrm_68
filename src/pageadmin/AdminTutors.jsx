@@ -13,6 +13,12 @@ import {
   UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2, Download,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
+import UIModal from "../components/ui/Modal";
+import { confirmDialog } from "../components/ui/dialogs";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { Users as LuUsers } from "lucide-react";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -107,11 +113,11 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
     <div className="flex items-center gap-1.5">
       <input type="number" min="0" step="1" value={hours}
         onChange={e => /^\d*$/.test(e.target.value) && setHours(e.target.value)}
-        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" autoFocus />
       <span className="text-[11px] text-slate-400">ชม.</span>
       <input type="number" min="0" max="59" step="1" value={minutes}
         onChange={e => /^\d*$/.test(e.target.value) && Number(e.target.value) < 60 && setMinutes(e.target.value)}
-        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" />
       <span className="text-[11px] text-slate-400">นาที</span>
       <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -206,18 +212,18 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
   const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-            <UserX className="h-5 w-5 text-red-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <UserX className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ปฏิเสธใบสมัคร</h3>
-            <p className="text-xs text-slate-400">{displayName}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">ปฏิเสธใบสมัคร</h3>
+            <p className="text-xs text-white/80 truncate">{displayName}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -226,7 +232,7 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
         </label>
         <textarea
           rows={3}
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition mb-4"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition mb-4"
           value={reason}
           onChange={e => setReason(e.target.value)}
           placeholder="เช่น คุณสมบัติไม่ตรงตามที่ต้องการ / เอกสารไม่ครบ..."
@@ -234,7 +240,7 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose} disabled={loading}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 disabled:opacity-50 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 disabled:opacity-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -365,7 +371,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
         <div className="flex-1 min-w-0">
           <p className="font-bold text-lg">{displayName}</p>
           <p className="text-sm text-orange-100">{application.Firstname} {application.Lastname}</p>
-          <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/20">
+          <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20">
             {status.label}
           </span>
         </div>
@@ -405,7 +411,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
               <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
                 <span className="text-xs font-semibold text-slate-500">ตัวอย่างไฟล์ Resume</span>
                 <button onClick={handleDownloadFromPreview}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition">
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition">
                   <Download className="h-3.5 w-3.5" />
                   ดาวน์โหลด
                 </button>
@@ -508,8 +514,8 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h1>
-        <p className="text-sm text-slate-500 mt-1">ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
+        <h1 className={PAGE_TITLE}>ผู้สมัครเป็นติวเตอร์</h1>
+        <p className={PAGE_SUBTITLE}>ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
       </div>
 
       {/* ★ เพิ่ม: Stats cards เหมือนหน้ารายชื่อติวเตอร์ */}
@@ -520,13 +526,13 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
           { label: "อนุมัติแล้ว", value: countOf("2"), color: "bg-emerald-500" },
           { label: "ปฏิเสธ", value: countOf("3"), color: "bg-red-500" },
         ].map(({ label, value, color }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Users className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
             </div>
           </div>
         ))}
@@ -540,13 +546,13 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อ, เบอร์โทร, อาชีพ..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           <div className="flex gap-2 flex-wrap">
             {FILTERS.map(f => (
               <button key={f.key} onClick={() => setFilterStatus(f.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition border
                   ${filterStatus === f.key
                     ? "bg-slate-900 text-white border-slate-900 shadow-sm"
                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
@@ -559,7 +565,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
 
       {/* ★ แก้: Table แทน list การ์ด — เหมือนหน้ารายชื่อติวเตอร์ */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <p className="text-slate-500 font-medium">ไม่พบใบสมัครในสถานะนี้</p>
         </div>
       ) : (
@@ -601,7 +607,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
                       </td>
                       <td className="whitespace-nowrap lg:whitespace-normal px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
                           {status.label}
                         </span>
                       </td>
@@ -667,27 +673,9 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
 }
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className={`bg-white rounded-t-2xl sm:rounded-2xl w-full shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white min-w-0">
-            {Icon && (
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? '2xl' : 'lg'}>{children}</UIModal>;
 }
 
 // ─── ImageUpload (เหมือนหน้าคอร์สทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
@@ -732,7 +720,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -764,7 +752,7 @@ function SubjectMultiSelect({ allSubjects, selectedIds, onChange }) {
       {selectedItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedItems.map(s => (
-            <span key={s.SubjectId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+            <span key={s.SubjectId} className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
               {s.SubjectName}
               <button type="button" onClick={() => toggle(s.SubjectId)} className="text-orange-400 hover:text-red-500 transition">
                 <X className="h-3 w-3" />
@@ -779,7 +767,7 @@ function SubjectMultiSelect({ allSubjects, selectedIds, onChange }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="ค้นหาวิชา..."
-          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          className="w-full pl-9 pr-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
         />
       </div>
       <div className="mt-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
@@ -825,7 +813,7 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
   return (
     <div className="relative">
       <input
-        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+        className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
         value={query}
         onChange={e => { onSelectName(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -842,7 +830,7 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
               onMouseDown={() => pick(t)}
               className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition"
             >
-              <TutorAvatar tutor={t} className="h-6 w-6 rounded-full text-[10px]" />
+              <TutorAvatar tutor={t} className="h-6 w-6 rounded-full text-[11px]" />
               <span className="flex-1 truncate">{displayNameOf(t)}</span>
               {t.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{t.PhoneNo}</span>}
             </button>
@@ -944,7 +932,7 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
                 <select
                   value={SubjectId}
                   onChange={e => setSubjectFor(localId, e.target.value)}
-                  className="flex-1 min-w-0 sm:flex-initial sm:min-w-auto px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-orange-400"
+                  className="flex-1 min-w-0 sm:flex-initial sm:min-w-auto px-2 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-400"
                 >
                   <option value="">เลือกวิชา...</option>
                   {subjectOptions.map(s => (
@@ -963,7 +951,7 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
 
       <div className="flex items-center gap-2 p-3">
         <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+          className="flex-1 px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
       </div>
 
       <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">
@@ -982,12 +970,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
               type="button"
               key={id}
               onClick={() => addRow(id)}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition hover:bg-white text-left"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm transition hover:bg-white text-left"
             >
               <Plus className="h-3.5 w-3.5 text-orange-400 shrink-0" />
               <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
               {(dbCount + pendingCount) > 0 && (
-                <span className="text-[10px] text-orange-500 font-semibold shrink-0">
+                <span className="text-[11px] text-orange-500 font-semibold shrink-0">
                   {dbCount} วิชาแล้ว{pendingCount ? ` +${pendingCount}` : ""}
                 </span>
               )}
@@ -998,11 +986,11 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
       <div className="flex items-center gap-2 p-3 border-t border-orange-100">
         <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selected.length} รายการ</span>
         <button onClick={handleAdd} disabled={saving || !selected.length}
-          className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+          className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
         </button>
         <button onClick={() => { setAdding(false); setSelected([]); setSearch(""); }}
-          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -1057,7 +1045,7 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
           <div className="flex flex-col gap-1.5 mt-2">
             {g.subjects.map(s => (
               <div key={s.TutorCourseDetailId} className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                   {s.SubjectName || "ไม่ระบุวิชา"}
                   <button
                     type="button"
@@ -1145,7 +1133,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
     onSave(form);   // ← ต้องอยู่บรรทัดสุดท้าย
   };
 
-  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
   return (
@@ -1348,7 +1336,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
           ยกเลิก
         </button>
         <button onClick={submit} disabled={isSubmitting}
@@ -1380,18 +1368,18 @@ function ResetPasswordModal({ tutor, onClose, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <KeyRound className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">รีเซ็ตรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
+            <p className="text-xs text-white/80 truncate">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="relative mb-4">
@@ -1404,7 +1392,7 @@ function ResetPasswordModal({ tutor, onClose, showToast }) {
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -1443,18 +1431,18 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <UserCog className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <UserCog className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">เปลี่ยนสถานะติวเตอร์</h3>
-            <p className="text-xs text-slate-400">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">เปลี่ยนสถานะติวเตอร์</h3>
+            <p className="text-xs text-white/80 truncate">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -1482,7 +1470,7 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
             </label>
             <textarea
               rows={3}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="เช่น ย้ายที่อยู่ / ปรับตารางเรียน / ลาออก..."
@@ -1495,7 +1483,7 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -1511,16 +1499,12 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ยืนยันการลบติวเตอร์</h3>
-            <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบติวเตอร์</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
           <p className="text-sm font-semibold text-red-800">
@@ -1528,9 +1512,9 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
           </p>
           <p className="text-xs text-red-400 mt-0.5">ID: #{tutor.AdminId}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
             ยกเลิก
           </button>
           <button onClick={onConfirm} disabled={isDeleting}
@@ -1561,7 +1545,7 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
           {t.Nickname && displayName !== fullName && <p className="text-xs text-slate-400 truncate">{fullName}</p>}
           <p className="text-[11px] text-slate-400">#{t.AdminId} · {t.ExperienceYear} ปี</p>
         </div>
-        <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+        <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}
         </span>
@@ -1571,8 +1555,8 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
         {(t.TeachingSubjects || t.Subjects) && <p className="flex items-start gap-1.5 text-slate-500"><BookOpen className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" /><span className="line-clamp-2">{t.TeachingSubjects || t.Subjects}</span></p>}
         {t.PhoneNo && t.PhoneNo !== "000-000-0000" && <p className="flex items-center gap-1.5 text-slate-600"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{t.PhoneNo}</p>}
         <div className="flex flex-wrap gap-1.5 pt-0.5">
-          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-[11px] font-bold">นักเรียน {t.StudentCount || 0}</span>
-          {t.RatePerTutors ? <span className="px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-bold">{Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
+          <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">นักเรียน {t.StudentCount || 0}</span>
+          {t.RatePerTutors ? <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
         </div>
       </div>
       <div className="mt-auto pt-3">
@@ -1608,7 +1592,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
             {t.Nickname && displayName !== fullName && (
               <p className="text-xs text-slate-400">{fullName}</p>
             )}
-            <p className="text-[10px] text-slate-400">#{t.AdminId} · {t.ExperienceYear} ปี</p>
+            <p className="text-[11px] text-slate-400">#{t.AdminId} · {t.ExperienceYear} ปี</p>
           </div>
         </div>
       </td>
@@ -1637,19 +1621,19 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       {/* ★ เพิ่ม: คอลัมน์สถานะ */}
       <td className="px-4 py-3 text-center">
-        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+        <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
           {t.StudentCount || 0}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
         {t.RatePerTutors ? (
-          <span className="inline-block px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-bold">
+          <span className="inline-block px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
             {Number(t.RatePerTutors).toLocaleString()}
           </span>
         ) : (
@@ -1785,7 +1769,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500 w-28 sm:w-36 shrink-0">
                 {m.name}
-                <span className="text-[10px] ml-1">(×{m.weight}%)</span>
+                <span className="text-[11px] ml-1">(×{m.weight}%)</span>
               </span>
               <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                 <div className={`h-full rounded-full ${barColor}`}
@@ -1795,7 +1779,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
                 {contrib}
               </span>
             </div>
-            <p className={`text-[10px] ml-[7.5rem] sm:ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+            <p className={`text-[11px] ml-[7.5rem] sm:ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
               {m.warn && <Info className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}{m.sub}
             </p>
           </div>
@@ -1831,16 +1815,16 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-900 truncate">{tutor.Nickname}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
             {/* ★ เพิ่ม: badge เตือนข้อมูลยังไม่พอ — ยังโชว์ในลิสต์ได้ แต่ไม่ขึ้นโพเดียม */}
             {tutor.LowDataWarning && (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
+              <span className="flex items-center gap-0.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
                 <Info className="h-2.5 w-2.5" /> ข้อมูลยังไม่พอ
               </span>
             )}
-            <span className="text-[10px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
+            <span className="text-[11px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
           </div>
         </div>
         {/* score ring */}
@@ -1969,7 +1953,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1984,7 +1968,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1999,7 +1983,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <button
             onClick={() => { setFilterSubject('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
-                 text-slate-500 bg-white border border-slate-200 rounded-lg
+                 text-slate-500 bg-white border border-slate-200 rounded-xl
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
           >
             <X className="h-3.5 w-3.5" /> ล้างตัวกรอง
@@ -2036,8 +2020,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             <Users className="h-4 w-4 text-slate-400" />
                           </div>
                           <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                          <p className="text-lg font-bold text-slate-300 mt-1">—</p>
+                          <p className="text-[11px] text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
@@ -2059,7 +2043,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             </button>
                           ))}
                           {group.members.length > 4 && (
-                            <span className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            <span className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-600 shadow-sm">
                               +{group.members.length - 4}
                             </span>
                           )}
@@ -2069,8 +2053,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             ? group.members[0].Nickname
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-[10px] text-slate-400">คะแนน</p>
+                        <p className="text-lg font-bold text-slate-900 mt-1">{group.score}</p>
+                        <p className="text-[11px] text-slate-400">คะแนน</p>
                       </div>
                     );
                   })}
@@ -2108,7 +2092,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                   <button onClick={() => setShowLimit(v => v + DEFAULT_TUTOR_LIMIT)}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
                                text-orange-600 bg-orange-50 border border-orange-200
-                               rounded-lg hover:bg-orange-100 transition">
+                               rounded-xl hover:bg-orange-100 transition">
                     <ChevronDown className="h-3.5 w-3.5" />
                     แสดงเพิ่มอีก {Math.min(DEFAULT_TUTOR_LIMIT, filtered.length - showLimit)} คน
                   </button>
@@ -2198,25 +2182,19 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         </div>
         <div className="flex gap-3 shrink-0 w-full sm:w-auto">
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-black">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
-            <p className="text-[10px] text-orange-100">นักเรียน</p>
+            <p className="text-xl font-bold">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
+            <p className="text-[11px] text-orange-100">นักเรียน</p>
           </div>
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-black">{tutor.TotalSessions ?? 0}</p>
-            <p className="text-[10px] text-orange-100">คาบสะสม</p>
+            <p className="text-xl font-bold">{tutor.TotalSessions ?? 0}</p>
+            <p className="text-[11px] text-orange-100">คาบสะสม</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit max-w-full overflow-x-auto mb-5">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap shrink-0 transition ${tab === t.key ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}>
-            {t.label}{t.count !== undefined && ` (${t.count})`}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl className="mb-5" value={tab} onChange={setTab}
+        options={TABS.map(t => ({ id: t.key, label: t.label, count: t.count }))} />
 
       {loading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
@@ -2234,7 +2212,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               <GroupedTutorCourseList
                 courses={data.courses}
                 onRemoveSubject={async (tutorCourseDetailId, label) => {
-                  if (!confirm(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
+                  if (!await confirmDialog(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
                   try {
                     await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
                     loadDetail();
@@ -2430,39 +2408,15 @@ export default function AdminTutorsPage() {
   const inactiveTutorCount = tutors.length - activeTutorCount;
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── Tab Bar ── */}
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setActiveTab('list')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'list'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          รายชื่อติวเตอร์
-        </button>
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'attendance'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          บันทึกชั่วโมงการสอน
-        </button>
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'applications'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          สมัครเป็นติวเตอร์
-        </button>
-      </div>
+      <SegmentedControl value={activeTab} onChange={setActiveTab} options={[
+        { id: 'list', label: 'รายชื่อติวเตอร์' },
+        { id: 'attendance', label: 'บันทึกชั่วโมงการสอน' },
+        { id: 'applications', label: 'สมัครเป็นติวเตอร์' },
+      ]} />
 
       {/* ── Attendance Tab ── */}
       {activeTab === 'attendance' && <AdminAttendanceDashboard />}
@@ -2482,8 +2436,8 @@ export default function AdminTutorsPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">จัดการติวเตอร์</h1>
-            <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
+            <h1 className={PAGE_TITLE}>จัดการติวเตอร์</h1>
+            <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
           </div>
           <button onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
@@ -2498,7 +2452,7 @@ export default function AdminTutorsPage() {
             { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500" },
             { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500" },
           ].map(({ label, value, color, hint }, i) => (
-            <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+            <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                 <Users className="h-5 w-5 text-white" />
               </div>
@@ -2507,7 +2461,7 @@ export default function AdminTutorsPage() {
                   {label}
                   {hint && <Info className="h-3 w-3 text-slate-300" />}
                 </p>
-                <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
+                <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
               </div>
             </div>
           ))}
@@ -2524,13 +2478,13 @@ export default function AdminTutorsPage() {
               <input
                 value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, วิชา, ID..."
-                className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+                className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
               />
             </div>
             <select
               value={filterSubject}
               onChange={e => setFilterSubject(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
             >
               <option value="all">ทุกวิชา ({allSubjectCount})</option>
               {allSubjectNames.map(sub => (
@@ -2541,7 +2495,7 @@ export default function AdminTutorsPage() {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]"
             >
               <option value="all">ทุกสถานะ ({allStatusCount})</option>
               <option value="1">กำลังสอน ({activeStatusCount})</option>
@@ -2551,7 +2505,7 @@ export default function AdminTutorsPage() {
             <select
               value={filterHasStudents}
               onChange={e => setFilterHasStudents(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px]"
             >
               <option value="all">นักเรียนทั้งหมด ({hasStudentsCount + noStudentsCount})</option>
               <option value="has">มีนักเรียน ({hasStudentsCount})</option>
@@ -2565,9 +2519,9 @@ export default function AdminTutorsPage() {
 
         {/* Table */}
         {paginated.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-            <div className="text-6xl mb-3">👩‍🏫</div>
-            <p className="text-slate-500 font-medium">
+          <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuUsers className="h-7 w-7 text-orange-400" /></div>
+            <p className="text-base font-semibold text-slate-700">
               {filterSubject !== "all"
                 ? `ไม่พบติวเตอร์ที่สอนวิชา "${filterSubject}"`
                 : "ไม่พบติวเตอร์ที่ค้นหา"}
@@ -2622,38 +2576,7 @@ export default function AdminTutorsPage() {
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-500">
-              แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                .reduce((acc, p, idx, arr) => {
-                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, idx) => p === "..." ? (
-                  <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                ) : (
-                  <button key={p} onClick={() => setCurrentPage(p)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                    {p}
-                  </button>
-                ))}
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} />
 
         {/* Modals */}
         {showAddModal && (

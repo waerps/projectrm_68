@@ -7,6 +7,10 @@ import {
   Percent, Users, BookOpen, Camera,
   EyeIcon, CalendarX
 } from 'lucide-react';
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import { MapPin as LuMapPin } from "lucide-react";
 const API_BASE = `${API_URL}/api/admin`;
 
 // ── Avatar สีวน ──────────────────────────────────────────────
@@ -61,22 +65,22 @@ function RateBar({ rate }) {
 // ── Status Badge ─────────────────────────────────────────────
 // function StatusBadge({ rate }) {
 //   if (rate === null || rate === undefined) return (
-//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-400 border border-slate-200">
+//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200">
 //       <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
 //     </span>
 //   );
 //   if (rate < 50) return (
-//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
 //       <span className="w-1.5 h-1.5 rounded-full bg-red-500" />น่าเป็นห่วง
 //     </span>
 //   );
 //   if (rate < 80) return (
-//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
 //       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />ควรติดตาม
 //     </span>
 //   );
 //   return (
-//     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
+//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
 //       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />ปกติ
 //     </span>
 //   );
@@ -89,7 +93,7 @@ function PhotoWarningBadge({ totalCheckin, incompleteCount }) {
   return (
     <span
       title={`รูปไม่ครบ ${incompleteCount} จาก ${totalCheckin} คาบที่เช็กอิน`}
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${allIncomplete
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${allIncomplete
         ? 'bg-red-50 text-red-600 border-red-100'
         : 'bg-amber-50 text-amber-600 border-amber-100'
         }`}
@@ -228,8 +232,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
   );
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Modal Header */}
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -259,14 +263,14 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                 placeholder="ค้นหาวิชา/คอร์ส..."
                 value={modalSearch}
                 onChange={e => setModalSearch(e.target.value)}
-                className="pl-8 pr-3 py-1.5 w-full bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none transition"
+                className="pl-8 pr-3 h-10 w-full bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 outline-none transition"
               />
             </div>
             {monthOptions.length > 1 && (
               <select
                 value={modalMonthFilter}
                 onChange={e => setModalMonthFilter(e.target.value)}
-                className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+                className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
               >
                 <option value="all">ทุกเดือน</option>
                 {monthOptions.map(([key, label]) => (
@@ -277,7 +281,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
             <select
               value={modalPhotoFilter}
               onChange={e => setModalPhotoFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+              className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
             >
               <option value="all">ทุกสถานะรูป</option>
               <option value="complete">รูปครบ</option>
@@ -287,7 +291,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
             {(modalSearch || modalPhotoFilter !== 'all' || modalMonthFilter !== 'all') && (
               <button
                 onClick={() => { setModalSearch(''); setModalPhotoFilter('all'); setModalMonthFilter('all'); }}
-                className="px-2.5 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-lg transition shrink-0"
+                className="px-2.5 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-xl transition shrink-0"
               >
                 ล้างตัวกรอง
               </button>
@@ -305,7 +309,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
           {sessionsLoading ? (
             <div className="flex items-center justify-center py-16 text-slate-400">
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <Spinner size="lg" className="mx-auto mb-3" />
                 <p className="text-sm">กำลังโหลด...</p>
               </div>
             </div>
@@ -333,28 +337,28 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   {/* Date */}
                   <div className="w-20 sm:w-24 shrink-0">
                     <p className="text-xs font-semibold text-slate-800">{formatDate(session.ClassDate)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{session.StartTime} – {session.EndTime}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">{session.StartTime} – {session.EndTime}</p>
                   </div>
 
                   {/* Subject */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{session.SubjectName || session.CourseName}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{session.CourseName} · {session.RoomDetail || 'ไม่ระบุห้อง'}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{session.CourseName} · {session.RoomDetail || 'ไม่ระบุห้อง'}</p>
                   </div>
 
                   {/* Photo pill */}
                   <div className="shrink-0 order-last basis-full pl-[88px] sm:order-none sm:basis-auto sm:pl-0">
                     {session.PhotoStart && session.PhotoEnd ? (
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${isValid ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${isValid ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
                         <Camera className="w-3 h-3" />
-                        {isValid ? `✓ ${diffMin} นาที` : `⚠ ${diffMin ?? '?'} นาที`}
+                        {diffMin ?? "?"} นาที
                       </span>
                     ) : session.PhotoStart ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                         <Clock className="w-3 h-3" />รอปิดคาบ
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100">
                         <Camera className="w-3 h-3" />ไม่มีรูป
                       </span>
                     )}
@@ -363,7 +367,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   {/* Students */}
                   <div className="w-12 sm:w-14 text-right shrink-0">
                     <p className="text-sm font-bold text-slate-700">{totalCount > 0 ? `${presentCount}/${totalCount}` : '—'}</p>
-                    <p className="text-[10px] text-slate-400">นักเรียน</p>
+                    <p className="text-[11px] text-slate-400">นักเรียน</p>
                   </div>
 
                   {isExpanded
@@ -382,7 +386,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                         { label: 'รูปท้ายคาบ', photo: session.PhotoEnd, time: endAt, placeholder: 'ยังไม่ปิดคาบ' },
                       ].map(({ label, photo, time, placeholder }) => (
                         <div key={label}>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
+                          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">{label}</p>
                           {photo ? (
                             <div className="relative">
                               <a href={getFileUrl(photo)} target="_blank" rel="noreferrer">
@@ -390,7 +394,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                                   className="w-full h-28 object-cover rounded-xl border border-slate-200 hover:opacity-90 transition" />
                               </a>
                               {time && (
-                                <span className="absolute bottom-2 left-2 text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-md backdrop-blur-sm">
+                                <span className="absolute bottom-2 left-2 text-[11px] bg-black/50 text-white px-2 py-0.5 rounded-md backdrop-blur-sm">
                                   {formatTime(time)}
                                 </span>
                               )}
@@ -425,12 +429,12 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                     {/* Students */}
                     {session.students?.length > 0 && (
                       <div>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
                           นักเรียน ({presentCount}/{totalCount} คน)
                         </p>
                         <div className="flex flex-wrap gap-1.5">
                           {session.students.map(s => (
-                            <span key={s.UserId} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${s.Status == 1 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                            <span key={s.UserId} className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${s.Status == 1 ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
                               {s.Status == 1 ? '✓' : '✗'} {s.Nickname || s.Firstname}
                             </span>
                           ))}
@@ -719,8 +723,8 @@ export default function TutorAttendanceDashboard() {
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className={PAGE_TITLE}>ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
+          <p className={PAGE_SUBTITLE}>
             ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน ·{' '}
             {selectedMonth.start ? `${selectedMonth.start} ถึง ${selectedMonth.end}` : selectedMonth.label}
           </p>
@@ -729,7 +733,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={selectedMonthNum}
             onChange={e => setSelectedMonthNum(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
           >
             <option value="all">ทุกเดือน</option>          {/* ★ */}
             {MONTH_NAMES_TH.map((name, i) => (
@@ -739,7 +743,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
           >
             <option value="all">ทุกปี</option>              {/* ★ */}
             {YEAR_OPTIONS.map(y => (
@@ -761,14 +765,14 @@ export default function TutorAttendanceDashboard() {
       {/* ── Stats Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
-          <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+          <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900 mt-0.5 truncate">{value}</p>
-              {sub && <p className="text-[10px] text-slate-400 mt-0.5">{sub}</p>}
+              <p className="text-xl font-bold text-slate-900 mt-0.5 truncate">{value}</p>
+              {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
             </div>
           </div>
         ))}
@@ -793,14 +797,14 @@ export default function TutorAttendanceDashboard() {
               placeholder="ค้นหาชื่อติวเตอร์..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              className="pl-9 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           {/* Subject filter */}
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[170px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[170px]"
           >
             <option value="all">ทุกวิชา ({allSubjectCount})</option>
             {allSubjectNames.map(sub => (
@@ -812,7 +816,7 @@ export default function TutorAttendanceDashboard() {
           {/* <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
           >
             <option value="all">ทุกระดับสถานะ ({baseForStatusCount.length})</option>
             <option value="normal">ปกติ ({normalCount})</option>
@@ -825,7 +829,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={filterPhotoIssue}
             onChange={e => setFilterPhotoIssue(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
           >
             <option value="all">ทั้งหมด ({baseForPhotoCount.length})</option>
             <option value="complete">มีรูปครบ ({completePhotoCount})</option>
@@ -846,7 +850,7 @@ export default function TutorAttendanceDashboard() {
       <div className="lg:hidden">
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-            <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" />
             <p className="text-sm">กำลังโหลด...</p>
           </div>
         ) : processed.length === 0 ? (
@@ -872,9 +876,9 @@ export default function TutorAttendanceDashboard() {
                     </button>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                    <div className="rounded-xl bg-slate-50 py-2"><p className="text-base font-bold text-slate-800">{t.TotalScheduled}</p><p className="text-[10px] text-slate-500">คาบทั้งหมด</p></div>
-                    <div className="rounded-xl bg-emerald-50 py-2"><p className="text-base font-bold text-emerald-700">{t.TotalCheckin}</p><p className="text-[10px] text-slate-500">เช็กอิน (ครั้ง)</p></div>
-                    <div className={`rounded-xl py-2 ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50' : 'bg-slate-50'}`}><p className={`text-base font-bold ${(t.MissedCount ?? 0) > 0 ? 'text-red-700' : 'text-slate-400'}`}>{t.MissedCount ?? 0}</p><p className="text-[10px] text-slate-500">ขาด (ครั้ง)</p></div>
+                    <div className="rounded-xl bg-slate-50 py-2"><p className="text-base font-bold text-slate-800">{t.TotalScheduled}</p><p className="text-[11px] text-slate-500">คาบทั้งหมด</p></div>
+                    <div className="rounded-xl bg-emerald-50 py-2"><p className="text-base font-bold text-emerald-700">{t.TotalCheckin}</p><p className="text-[11px] text-slate-500">เช็กอิน (ครั้ง)</p></div>
+                    <div className={`rounded-xl py-2 ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50' : 'bg-slate-50'}`}><p className={`text-base font-bold ${(t.MissedCount ?? 0) > 0 ? 'text-red-700' : 'text-slate-400'}`}>{t.MissedCount ?? 0}</p><p className="text-[11px] text-slate-500">ขาด (ครั้ง)</p></div>
                   </div>
                   <div className="mt-3">
                     {t.AttendanceRate !== null && t.AttendanceRate !== undefined
@@ -935,7 +939,7 @@ export default function TutorAttendanceDashboard() {
                 <tr>
                   <td colSpan={9} className="text-center py-16 text-slate-400">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                      <Spinner size="lg" />
                       <p className="text-sm">กำลังโหลด...</p>
                     </div>
                   </td>
@@ -951,14 +955,14 @@ export default function TutorAttendanceDashboard() {
                           {selectedYear !== 'all' && (
                             <button
                               onClick={() => setSelectedMonthNum('all')}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                             >
                               ดูทั้งปี {selectedYear + 543}
                             </button>
                           )}
                           <button
                             onClick={() => setSelectedYear('all')}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                           >
                             ดูข้อมูลทั้งหมดทุกช่วงเวลา
                           </button>
@@ -969,7 +973,7 @@ export default function TutorAttendanceDashboard() {
                         <p className="text-sm mb-3">ไม่พบติวเตอร์ที่ตรงกับตัวกรองที่เลือก</p>
                         <button
                           onClick={() => { setSearch(''); setFilterSubject('all'); setFilterStatus('all'); setFilterPhotoIssue('all'); }}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold border border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 transition"
                         >
                           ล้างตัวกรองทั้งหมด
                         </button>
@@ -990,25 +994,25 @@ export default function TutorAttendanceDashboard() {
                         <TutorAvatar tutor={t} idx={idx} />
                         <div>
                           <p className="font-semibold text-slate-900 text-sm">{t.Nickname}</p>
-                          <p className="text-[10px] text-slate-400">{t.Firstname} {t.Lastname}</p>
+                          <p className="text-[11px] text-slate-400">{t.Firstname} {t.Lastname}</p>
                         </div>
                       </div>
                     </td>
                     {/* Total */}
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 rounded-full text-xs font-bold">
+                      <span className="inline-block px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-semibold">
                         {t.TotalScheduled}
                       </span>
                     </td>
                     {/* Checkin */}
                     <td className="px-4 py-3 text-center">
-                      <span className="inline-block px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
+                      <span className="inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold">
                         {t.TotalCheckin}
                       </span>
                     </td>
                     {/* Missed */}
                     <td className="px-4 py-3 text-center">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-400'}`}>
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold ${(t.MissedCount ?? 0) > 0 ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-400'}`}>
                         {t.MissedCount ?? 0}
                       </span>
                     </td>
@@ -1031,7 +1035,7 @@ export default function TutorAttendanceDashboard() {
                       {(t.TotalCheckin ?? 0) === 0 ? (
                         <span className="text-xs text-slate-300">ยังไม่มีข้อมูล</span>
                       ) : (t.IncompletePhotoCount ?? 0) > 0 ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-100">
                           <Camera className="w-3 h-3" />{t.IncompletePhotoCount}
                         </span>
                       ) : (
@@ -1049,7 +1053,7 @@ export default function TutorAttendanceDashboard() {
                     <td className="px-4 py-3 text-center sticky right-0 bg-white lg:static lg:bg-transparent">
                       <button
                         onClick={(e) => handleViewDetail(t, e)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition"
                       >
                         <EyeIcon className="w-3.5 h-3.5" /> ดูประวัติ
                       </button>
@@ -1063,40 +1067,7 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Pagination ─────────────────────────────────── */}
-      {
-        totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-sm text-slate-500">
-              แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, processed.length)}</span> จาก <span className="font-semibold">{processed.length}</span> คน
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                .reduce((acc, p, idx, arr) => {
-                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, idx) => p === "..." ? (
-                  <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                ) : (
-                  <button key={p} onClick={() => setCurrentPage(p)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                    {p}
-                  </button>
-                ))}
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )
-      }
+      <UIPagination page={currentPage} totalPages={totalPages} total={processed.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} />
 
       {/* ── Legend ─────────────────────────────────────── */}
       {/* <div className="flex flex-wrap gap-4 px-1">
@@ -1185,12 +1156,12 @@ function HeatmapTooltip({ tooltip }) {
         <p className="text-slate-300 text-[11px]">{tooltip.dateRange}</p>
         <div className="mt-2 pt-2 border-t border-slate-700 flex items-center justify-between gap-2">
           <span className="text-slate-400">วัน{tooltip.dayLabel}</span>
-          <span className={`font-black text-sm ${tooltip.count >= 8 ? 'text-red-400' :
+          <span className={`font-bold text-sm ${tooltip.count >= 8 ? 'text-red-400' :
             tooltip.count >= 5 ? 'text-orange-400' :
               tooltip.count >= 3 ? 'text-amber-400' : 'text-yellow-300'
             }`}>ขาด {tooltip.count} ครั้ง</span>
         </div>
-        <p className="text-slate-500 text-[10px] mt-1.5">คลิกเพื่อดูรายละเอียด</p>
+        <p className="text-slate-500 text-[11px] mt-1.5">คลิกเพื่อดูรายละเอียด</p>
       </div>
     </div>
   );
@@ -1217,13 +1188,13 @@ function DrillDownModal({ info, onClose }) {
   }, [info]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
         {/* header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 flex items-center justify-between gap-3 shrink-0">
           <div>
-            <p className="text-white font-bold">{info.nickname} · วัน{DAY_FULL[info.dayOfWeek]}</p>
-            <p className="text-white/70 text-xs mt-0.5">
+            <p className="text-base text-white font-bold">{info.nickname} · วัน{DAY_FULL[info.dayOfWeek]}</p>
+            <p className="text-white/80 text-xs mt-0.5">
               {info.weekLabel} · {shortDate(info.weekStart)}–{shortDate(info.weekEnd)}
               · ขาด {info.count} ครั้ง
             </p>
@@ -1237,7 +1208,7 @@ function DrillDownModal({ info, onClose }) {
         <div className="overflow-y-auto flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-400">
-              <div className="w-7 h-7 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-3" />
+              <Spinner size="lg" className="mr-3" />
               กำลังโหลด...
             </div>
           ) : sessions.length === 0 ? (
@@ -1249,7 +1220,7 @@ function DrillDownModal({ info, onClose }) {
             <div className="divide-y divide-slate-100">
               {sessions.map((s, i) => (
                 <div key={i} className="px-4 sm:px-5 py-4 flex items-start gap-3 sm:gap-4 hover:bg-slate-50">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
                     {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1272,7 +1243,7 @@ function DrillDownModal({ info, onClose }) {
                       </span>
                       {s.RoomDetail && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                          📍 {s.RoomDetail}
+                          <LuMapPin className="inline h-3.5 w-3.5 shrink-0" /> {s.RoomDetail}
                         </span>
                       )}
                     </div>
@@ -1320,12 +1291,12 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
   }, [tutor, selectedMonth]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
-        <div className="px-5 py-4 bg-gradient-to-r from-amber-500 to-orange-500 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+        <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 flex items-center justify-between gap-3 shrink-0">
           <div>
-            <p className="text-white font-bold">{tutor.Nickname}</p>
-            <p className="text-white/70 text-xs mt-0.5">ปล่อยคลาสทั้งหมด {tutor.ReleaseCount} ครั้ง</p>
+            <p className="text-base text-white font-bold">{tutor.Nickname}</p>
+            <p className="text-white/80 text-xs mt-0.5">ปล่อยคลาสทั้งหมด {tutor.ReleaseCount} ครั้ง</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition">
             <X className="w-5 h-5" />
@@ -1334,7 +1305,7 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
         <div className="overflow-y-auto flex-1">
           {loading ? (
             <div className="flex items-center justify-center py-16 text-slate-400">
-              <div className="w-7 h-7 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-3" />
+              <Spinner size="lg" className="mr-3" />
               กำลังโหลด...
             </div>
           ) : rows.length === 0 ? (
@@ -1345,7 +1316,7 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
                 <div key={r.ReleaseId} className="px-5 py-4">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-slate-800 text-sm min-w-0 break-words">{r.SubjectName || r.CourseName}</p>
-                    <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${r.Status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
+                    <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold ${r.Status === 'accepted' ? 'bg-emerald-50 text-emerald-700'
                         : r.Status === 'open' ? 'bg-amber-50 text-amber-700'
                           : r.Status === 'expired' ? 'bg-red-50 text-red-700'
                             : 'bg-slate-100 text-slate-500'
@@ -1399,7 +1370,7 @@ function TutorReleaseRanking({ selectedMonth }) {
     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
       <CheckCircle className="w-10 h-10 text-emerald-500 shrink-0" />
       <div>
-        <p className="font-bold text-emerald-800">ช่วงนี้ไม่มีการปล่อยคลาสเลย 🎉</p>
+        <p className="font-bold text-emerald-800">ช่วงนี้ไม่มีการปล่อยคลาสเลย</p>
         <p className="text-sm text-emerald-600 mt-0.5">ติวเตอร์ทุกคนสอนตามตารางปกติ</p>
       </div>
     </div>
@@ -1411,8 +1382,8 @@ function TutorReleaseRanking({ selectedMonth }) {
     <div className="space-y-3">
       <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl px-5 py-4">
         <p className="text-sm text-amber-800 font-medium">
-          <span className="font-black">สรุปการปล่อยคลาส —&nbsp;</span>
-          <span className="font-black text-amber-700">{top.Nickname}</span> ปล่อยคลาสบ่อยที่สุด {top.ReleaseCount} ครั้ง
+          <span className="font-bold">สรุปการปล่อยคลาส —&nbsp;</span>
+          <span className="font-bold text-amber-700">{top.Nickname}</span> ปล่อยคลาสบ่อยที่สุด {top.ReleaseCount} ครั้ง
           จากทั้งหมด {data.totalReleases} ครั้งในช่วงนี้
         </p>
       </div>
@@ -1434,7 +1405,7 @@ function TutorReleaseRanking({ selectedMonth }) {
                   รับคืนแล้ว {t.AcceptedCount} · ไม่มีคนรับ {t.UnfilledCount}
                 </p>
               </div>
-              <span className="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-700">
+              <span className="shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
                 {t.ReleaseCount} ครั้ง
               </span>
               <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
@@ -1468,7 +1439,7 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
       <CheckCircle className="w-10 h-10 text-emerald-500 shrink-0" />
       <div>
-        <p className="font-bold text-emerald-800">เดือนนี้ไม่มีการขาดสอนเลย 🎉</p>
+        <p className="font-bold text-emerald-800">เดือนนี้ไม่มีการขาดสอนเลย</p>
         <p className="text-sm text-emerald-600 mt-0.5">ติวเตอร์ทุกคนเช็กอินครบทุกคาบ</p>
       </div>
     </div>
@@ -1517,10 +1488,10 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
       <div className="bg-gradient-to-r from-red-50 to-orange-50 border border-red-100 rounded-2xl px-5 py-4 flex flex-wrap items-center gap-3">
         <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
         <p className="text-sm text-red-800 font-medium flex-1">
-          <span className="font-black">สรุปเดือนนี้ —&nbsp;</span>
-          วัน<span className="font-black text-red-600">{DAY_FULL[worstDayNum]}</span>มีการขาดสอนบ่อยที่สุด ({daySummary[worstDayNum]} ครั้ง)
-          {worstTutor && <>, และ <span className="font-black text-red-600">{worstTutor.Nickname}</span> ขาดมากที่สุด {worstTutor.totalMissed} ครั้ง</>}
-          {worstWeek && <>, ช่วงที่หนักสุดคือ<span className="font-black"> สัปดาห์ที่ {worstWeek.weekIndex}</span> ({shortDate(worstWeek.WeekStart)}–{shortDate(worstWeek.WeekEnd)})</>}
+          <span className="font-bold">สรุปเดือนนี้ —&nbsp;</span>
+          วัน<span className="font-bold text-red-600">{DAY_FULL[worstDayNum]}</span>มีการขาดสอนบ่อยที่สุด ({daySummary[worstDayNum]} ครั้ง)
+          {worstTutor && <>, และ <span className="font-bold text-red-600">{worstTutor.Nickname}</span> ขาดมากที่สุด {worstTutor.totalMissed} ครั้ง</>}
+          {worstWeek && <>, ช่วงที่หนักสุดคือ<span className="font-bold"> สัปดาห์ที่ {worstWeek.weekIndex}</span> ({shortDate(worstWeek.WeekStart)}–{shortDate(worstWeek.WeekEnd)})</>}
         </p>
       </div>
 
@@ -1530,9 +1501,9 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
           <div key={label} className={`flex items-start gap-3 p-4 rounded-2xl border ${color}`}>
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`} />
             <div className="min-w-0">
-              <p className="text-[10px] text-slate-500 font-medium">{label}</p>
-              <p className="text-base font-black text-slate-900 mt-0.5 truncate">{value}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate">{sub}</p>
+              <p className="text-[11px] text-slate-500 font-medium">{label}</p>
+              <p className="text-base font-bold text-slate-900 mt-0.5 truncate">{value}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>
             </div>
           </div>
         ))}
@@ -1549,13 +1520,13 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
             const isWorst = d === worstDayNum && cnt > 0;
             return (
               <div key={d} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold text-slate-600">{cnt > 0 ? cnt : ''}</span>
+                <span className="text-[11px] font-bold text-slate-600">{cnt > 0 ? cnt : ''}</span>
                 <div className="w-full rounded-t-md transition-all"
                   style={{
                     height: `${Math.max(pct * 0.48, cnt > 0 ? 4 : 2)}px`,
                     background: isWorst ? '#ef4444' : cnt >= 3 ? '#fb923c' : cnt > 0 ? '#fcd34d' : '#f1f5f9',
                   }} />
-                <span className={`text-[10px] font-semibold ${d === 1 ? 'text-red-400' : d === 7 ? 'text-blue-400' : 'text-slate-400'
+                <span className={`text-[11px] font-semibold ${d === 1 ? 'text-red-400' : d === 7 ? 'text-blue-400' : 'text-slate-400'
                   }`}>{DAY_LABELS[d]}</span>
               </div>
             );
@@ -1647,7 +1618,7 @@ function AbsenceHeatmap({ selectedMonth }) {
   if (loading) return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex items-center justify-center">
       <div className="text-center text-slate-400">
-        <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <Spinner size="lg" className="mx-auto mb-3" />
         <p className="text-sm">กำลังโหลด Heatmap...</p>
       </div>
     </div>
@@ -1676,7 +1647,7 @@ function AbsenceHeatmap({ selectedMonth }) {
               {selectedMonth ? ` · ${selectedMonth.label}` : ' · ทุกช่วงเวลา'}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 shrink-0">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
             <span>น้อย</span>
             {['bg-amber-100', 'bg-amber-300', 'bg-orange-400', 'bg-red-500'].map(c => (
               <span key={c} className={`w-4 h-4 rounded ${c} inline-block border border-white`} />
@@ -1706,20 +1677,20 @@ function AbsenceHeatmap({ selectedMonth }) {
                     return (
                       <th key={w.YearWeek} colSpan={7} className="text-center px-2 py-2 bg-slate-50 border-l border-slate-200">
                         <div className="flex flex-col items-center gap-1">
-                          <span className="text-[10px] font-black text-slate-600 uppercase tracking-wide">
+                          <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
                             สัปดาห์ที่ {w.weekIndex}
                             {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>}
                           </span>
                           {allFuture ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-400">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-400">
                               ยังไม่ถึง
                             </span>
                           ) : wTotal > 0 ? (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${cellColor(wTotal)}`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${cellColor(wTotal)}`}>
                               {wTotal} ครั้ง
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-600">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600">
                               ✓ ไม่มีขาด
                             </span>
                           )}
@@ -1734,18 +1705,18 @@ function AbsenceHeatmap({ selectedMonth }) {
 
                 {/* Row 2: วัน จ-อา */}
                 <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="px-5 py-1.5 sticky left-0 z-10 bg-slate-50 border-r border-slate-200" />
+                  <th className="px-5 py-1.5 sticky left-0 z-10 bg-slate-50 border-r border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                   {weeks.map(w =>
                     DAY_ORDER.map(day => (
                       <th key={`${w.YearWeek}-${day}`}
-                        className={`text-center px-1 py-1.5 text-[10px] font-semibold w-8
+                        className={`text-center px-1 py-1.5 text-[11px] font-semibold w-8
                           ${day === 1 ? 'text-red-400' : day === 7 ? 'text-blue-400' : 'text-slate-400'}
                           ${day === DAY_ORDER[0] ? 'border-l border-slate-200' : ''}`}>
                         {DAY_LABELS[day]}
                       </th>
                     ))
                   )}
-                  <th className="border-l border-slate-200" />
+                  <th className="border-l border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                 </tr>
               </thead>
 
@@ -1754,7 +1725,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                   <tr>
                     <td colSpan={weeks.length * 7 + 2}
                       className="text-center py-10 text-slate-400 text-sm">
-                      ไม่มีการขาดสอนในช่วงนี้ 🎉
+                      ไม่มีการขาดสอนในช่วงนี้
                     </td>
                   </tr>
                 ) : tutors.map((t, idx) => {
@@ -1765,7 +1736,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                           <TutorAvatar tutor={t} idx={idx} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-800 truncate max-w-[80px] sm:max-w-none">{t.Nickname}</p>
-                            <p className="text-[10px] text-slate-400 truncate max-w-[80px] sm:max-w-none">{t.Firstname}</p>
+                            <p className="text-[11px] text-slate-400 truncate max-w-[80px] sm:max-w-none">{t.Firstname}</p>
                           </div>
                         </div>
                       </td>
@@ -1804,7 +1775,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                               className={`text-center px-1 py-3 ${day === DAY_ORDER[0] ? 'border-l border-slate-100' : ''}`}>
                               {count > 0 ? (
                                 <div
-                                  className={`mx-auto w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black cursor-pointer transition hover:scale-110 hover:ring-2 hover:ring-offset-1 hover:ring-slate-400 ${color}`}
+                                  className={`mx-auto w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer transition hover:scale-110 hover:ring-2 hover:ring-offset-1 hover:ring-slate-400 ${color}`}
                                   onMouseEnter={e => handleMouseEnter(e, t, w, day, count)}
                                   onMouseMove={handleMouseMove}
                                   onMouseLeave={() => setTooltip(null)}
@@ -1823,7 +1794,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                       )}
 
                       <td className="px-3 py-3 text-center border-l border-slate-100">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-black
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold
                           ${t.totalMissed >= 5 ? 'bg-red-100 text-red-700' :
                             t.totalMissed >= 3 ? 'bg-orange-100 text-orange-700' :
                               t.totalMissed >= 1 ? 'bg-amber-100 text-amber-700' :
@@ -1849,7 +1820,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                         <td key={`foot-${w.YearWeek}-${day}`}
                           className={`text-center px-1 py-2.5 ${day === DAY_ORDER[0] ? 'border-l border-slate-200' : ''}`}>
                           {total > 0 ? (
-                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-black ${cellColor(total)}`}>
+                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-[11px] font-bold ${cellColor(total)}`}>
                               {total}
                             </span>
                           ) : (
@@ -1860,7 +1831,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                     })
                   )}
                   <td className="px-3 py-2.5 text-center border-l border-slate-200">
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-200 text-slate-700 text-xs font-bold">
                       {tutors.reduce((s, t) => s + t.totalMissed, 0) || '—'}
                     </span>
                   </td>
@@ -1880,13 +1851,13 @@ function AbsenceHeatmap({ selectedMonth }) {
               { dot: 'bg-orange-400', text: '5–7 ครั้ง' },
               { dot: 'bg-red-500', text: '8+ ครั้ง' },
             ].map(({ dot, text }) => (
-              <div key={text} className="flex items-center gap-1.5 text-[10px] text-slate-500">
+              <div key={text} className="flex items-center gap-1.5 text-[11px] text-slate-500">
                 <span className={`w-3 h-3 rounded ${dot} inline-block`} />
                 {text}
               </div>
             ))}
           </div>
-          <span className="text-[10px] text-slate-400">* คลิกที่ช่องสีเพื่อดูรายละเอียดคาบ</span>
+          <span className="text-[11px] text-slate-400">* คลิกที่ช่องสีเพื่อดูรายละเอียดคาบ</span>
         </div>
       </div>
 

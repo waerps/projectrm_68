@@ -3,6 +3,8 @@ import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
+import { toast } from "../components/ui/dialogs";
+import Spinner from "../components/ui/Spinner";
 
 
 export default function TutorProfile() {
@@ -72,10 +74,10 @@ export default function TutorProfile() {
                 headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
-            alert("อัปโหลดสำเร็จ!");
+            toast("อัปโหลดสำเร็จ!");
         } catch (error) {
             console.error(error);
-            alert("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || "Check Backend"));
+            toast("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || "Check Backend"));
         }
     };
 
@@ -114,7 +116,7 @@ export default function TutorProfile() {
             setOriginalData(formData);
             setIsEditing(false);
         } catch (error) {
-            alert("เกิดข้อผิดพลาดในการบันทึก");
+            toast("เกิดข้อผิดพลาดในการบันทึก");
         } finally {
             setIsSaving(false)
         }
@@ -128,14 +130,14 @@ export default function TutorProfile() {
     if (isLoading) return (
         <div className="min-h-screen flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-                <div className="h-10 w-10 rounded-full border-4 border-orange-200 border-t-orange-500 animate-spin" />
+                <Spinner size="lg" />
                 <p className="text-orange-600 font-medium text-sm">กำลังโหลด...</p>
             </div>
         </div>
     );
 
     return (
-        <div className="space-y-6 mt-[100px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
             <div className="">
 
                 {/* ── Edit Mode Banner ── */}
@@ -173,7 +175,7 @@ export default function TutorProfile() {
 
                             {/* รูปโปรไฟล์ */}
                             <div className="relative shrink-0 mx-auto md:mx-0">
-                                <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-gray-100">
+                                <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-slate-100">
                                     <img
                                         src={getFileUrl(formData.photo) || "/tutor.jpeg"}
                                         className="h-full w-full object-cover"
@@ -199,18 +201,18 @@ export default function TutorProfile() {
                                                 value={formData.firstname}
                                                 onChange={handleChange}
                                                 placeholder="ชื่อ"
-                                                className="rounded-xl px-3 py-2 text-neutral-800 text-lg font-semibold w-36 outline-none border-2 border-transparent focus:border-orange-300 bg-white shadow-sm transition"
+                                                className="rounded-xl px-3 h-10 text-slate-800 text-lg font-semibold w-36 outline-none border border-transparent focus:border-orange-400 bg-white shadow-sm transition"
                                             />
                                             <input
                                                 name="lastname"
                                                 value={formData.lastname}
                                                 onChange={handleChange}
                                                 placeholder="นามสกุล"
-                                                className="rounded-xl px-3 py-2 text-neutral-800 text-lg font-semibold w-40 outline-none border-2 border-transparent focus:border-orange-300 bg-white shadow-sm transition"
+                                                className="rounded-xl px-3 h-10 text-slate-800 text-lg font-semibold w-40 outline-none border border-transparent focus:border-orange-400 bg-white shadow-sm transition"
                                             />
                                         </div>
                                     ) : (
-                                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight break-words">
+                                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words">
                                             {formData.firstname} {formData.lastname}
                                         </h1>
                                     )}
@@ -284,26 +286,26 @@ export default function TutorProfile() {
                         {/* ส่วนโชว์เรทค่าสอน */}
                         <div className="flex flex-wrap gap-3 justify-between items-center rounded-xl border border-orange-200 p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
                             <div>
-                                <p className="text-xs text-neutral-500 mb-1">ค่าตอบแทนต่อคาบ</p>
+                                <p className="text-xs text-slate-500 mb-1">ค่าตอบแทนต่อคาบ</p>
                                 <p className="text-2xl font-bold text-orange-600">
                                     {Number(formData.ratePerTutors).toLocaleString()}
-                                    <span className="text-base font-normal text-neutral-500 ml-1">บาท</span>
+                                    <span className="text-base font-normal text-slate-500 ml-1">บาท</span>
                                 </p>
                             </div>
-                            <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full border border-orange-200">
+                            <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">
                                 ต่อ 1.5 ชม.
                             </span>
                         </div>
 
                         {/* ส่วนข้อมูลบัญชีธนาคาร */}
-                        <div className="border-t border-neutral-100 pt-2 space-y-0.5">
+                        <div className="border-t border-slate-100 pt-2 space-y-0.5">
                             <InfoRow label="ธนาคาร" name="bankName" value={formData.bankName} isEditing={isEditing} onChange={handleChange} />
                             <InfoRow label="เลขที่บัญชี" name="bankAccount" value={formData.bankAccount} isEditing={isEditing} onChange={handleChange} />
                             <InfoRow label="ชื่อบัญชี" name="bankAccountName" value={formData.bankAccountName} isEditing={isEditing} onChange={handleChange} />
                         </div>
 
                         {/* หมายเหตุ */}
-                        <p className="mt-4 text-xs text-neutral-400 text-center">
+                        <p className="mt-4 text-xs text-slate-400 text-center">
                             * เรทค่าสอนถูกกำหนดโดยฝ่ายบริหาร
                         </p>
                     </SectionCard>
@@ -333,10 +335,10 @@ export default function TutorProfile() {
 // ── Section Card ──────────────────────────────────────────────
 function SectionCard({ title, icon, children, isEditing }) {
     return (
-        <div className={`rounded-2xl bg-white shadow-sm overflow-hidden border-2 transition-all duration-200 ${isEditing ? 'border-orange-200 shadow-md' : 'border-neutral-100'}`}>
-            <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
+        <div className={`rounded-2xl bg-white shadow-sm overflow-hidden border transition-all duration-200 ${isEditing ? 'border-orange-300 shadow-md' : 'border-slate-200'}`}>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                 {icon}
-                <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
+                <h2 className="text-sm font-bold text-slate-800">{title}</h2>
             </div>
             <div className="p-5 space-y-0.5">
                 {children}
@@ -348,8 +350,8 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ── Info Row ──────────────────────────────────────────────────
 function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
     return (
-        <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
-            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">{label}</span>
+        <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">{label}</span>
             <div className="flex-1 min-w-0 text-right">
                 {isEditing ? (
                     <input
@@ -357,10 +359,10 @@ function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
                         name={name}
                         value={value}
                         onChange={onChange}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-right text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
                     />
                 ) : (
-                    <span className="text-sm font-semibold text-neutral-800 break-words">{value || <span className="text-neutral-300 font-normal">-</span>}</span>
+                    <span className="text-sm font-semibold text-slate-800 break-words">{value || <span className="text-slate-300 font-normal">-</span>}</span>
                 )}
             </div>
         </div>
@@ -369,26 +371,23 @@ function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
 
 function ValidationModal({ fields, onClose }) {
     return (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                className="absolute inset-0"
                 onClick={onClose}
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in">
-                {/* Top accent */}
-                <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 to-amber-400" />
-
+            <div className="relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
                 <div className="p-6">
                     {/* Icon + Title */}
                     <div className="flex flex-col items-center text-center mb-5">
-                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100">
-                            <AlertTriangle className="h-7 w-7 text-orange-500" />
+                        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-100">
+                            <AlertTriangle className="h-7 w-7 text-orange-600" />
                         </div>
-                        <h3 className="text-lg font-bold text-neutral-800">กรอกข้อมูลไม่ครบ</h3>
-                        <p className="text-sm text-neutral-400 mt-1">กรุณากรอกข้อมูลในฟิลต่อไปนี้ให้ครบก่อนบันทึก</p>
+                        <h3 className="text-lg font-bold text-slate-900">กรอกข้อมูลไม่ครบ</h3>
+                        <p className="text-sm text-slate-500 mt-1">กรุณากรอกข้อมูลในฟิลต่อไปนี้ให้ครบก่อนบันทึก</p>
                     </div>
 
                     {/* Field list */}

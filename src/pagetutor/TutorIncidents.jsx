@@ -5,6 +5,10 @@ import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import { Paperclip, FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import UIEmptyState from "../components/ui/EmptyState";
+import { Inbox as LuInbox } from "lucide-react";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -40,7 +44,7 @@ function IncidentCard({ incident, showReporter, onClick }) {
                         <p className="font-semibold text-sm text-slate-900">
                             {type?.label || incident.IncidentTypeId}
                         </p>
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
                             {statusMeta.label}
                         </span>
                     </div>
@@ -99,12 +103,8 @@ function IncidentCard({ incident, showReporter, onClick }) {
 }
 
 function EmptyState({ text }) {
-    return (
-        <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
-            <Inbox className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">{text}</p>
-        </div>
-    );
+    // ใช้หน้าว่างกลางของระบบ (components/ui/EmptyState)
+    return <UIEmptyState icon={LuInbox} title={text} />;
 }
 
 export default function TutorIncidents() {
@@ -130,7 +130,7 @@ export default function TutorIncidents() {
 
     if (loading) {
         return (
-            <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
+            <div className="flex flex-col items-center justify-center h-64 text-orange-600">
                 <Loader2 className="w-8 h-8 animate-spin mb-3" />
                 <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
             </div>
@@ -138,32 +138,22 @@ export default function TutorIncidents() {
     }
 
     if (error) {
-        return <div className="mt-[90px] rounded-xl bg-red-50 p-6 sm:p-10 text-center font-medium text-red-600">{error}</div>;
+        return <div className="rounded-xl bg-red-50 p-6 sm:p-10 text-center font-medium text-red-600">{error}</div>;
     }
 
     const list = tab === "mine" ? mine : against;
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
             <div>
-                <h1 className="text-2xl font-bold text-slate-900">รายการแจ้งเหตุการณ์</h1>
-                <p className="text-sm text-slate-500 mt-1">เรื่องที่คุณแจ้งไป และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>
+                <h1 className={PAGE_TITLE}>รายการแจ้งเหตุการณ์</h1>
+                <p className={PAGE_SUBTITLE}>เรื่องที่คุณแจ้งไป และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>
             </div>
 
-            <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-full sm:w-fit">
-                {[
-                    { key: "mine", label: "เรื่องที่ฉันแจ้ง", count: mine.length },
-                    { key: "against", label: "เรื่องที่ถูกแจ้งเกี่ยวกับฉัน", count: against.length },
-                ].map((t) => (
-                    <button key={t.key} onClick={() => setTab(t.key)}
-                        className={`flex flex-1 sm:flex-none items-center justify-center gap-1.5 px-2 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
-                        {t.label}
-                        <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-                            {t.count}
-                        </span>
-                    </button>
-                ))}
-            </div>
+            <SegmentedControl className="w-full sm:w-fit" value={tab} onChange={setTab} options={[
+                { id: "mine", label: "เรื่องที่ฉันแจ้ง", count: mine.length },
+                { id: "against", label: "เรื่องที่ถูกแจ้งเกี่ยวกับฉัน", count: against.length },
+            ]} />
 
             {list.length === 0 ? (
                 <EmptyState text={tab === "mine" ? "ยังไม่มีเรื่องที่แจ้งไป" : "ยังไม่มีเรื่องที่ถูกแจ้งเกี่ยวกับคุณ"} />

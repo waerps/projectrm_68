@@ -8,6 +8,8 @@ import {
     AlertTriangle, Users, DoorOpen, ChevronDown,
     Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package,
 } from "lucide-react";
+import UIModal from "../components/ui/Modal";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 
@@ -86,7 +88,7 @@ function RoomIsoPreview({ statusId, seed = 0 }) {
             </svg>
             {isInactive && (
                 <span className="absolute inset-0 flex items-center justify-center bg-slate-500/10 backdrop-blur-[1px]">
-                    <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-full">ไม่ใช้งาน</span>
+                    <span className="text-xs font-semibold text-slate-500 bg-white/80 px-2.5 py-0.5 rounded-full">ไม่ใช้งาน</span>
                 </span>
             )}
         </div>
@@ -172,13 +174,13 @@ function FacilityPicker({ items, facilityList, onAdd, onUpdateQty, onRemove, bus
                     onKeyDown={e => e.key === "Enter" && handleAdd()}
                     placeholder="พิมพ์ชื่ออุปกรณ์ เช่น เครื่องปรับอากาศ..."
                     disabled={busy}
-                    className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50"
+                    className="flex-1 px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 outline-none disabled:opacity-50"
                 />
                 <datalist id="facility-suggestions">
                     {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
                 </datalist>
                 <button onClick={handleAdd} disabled={busy}
-                    className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
+                    className="px-3 py-1.5 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
                     {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "เพิ่ม"}
                 </button>
             </div>
@@ -252,7 +254,7 @@ function FacilityEditor({ roomId, showToast }) {
         persist(items.filter((_, i) => i !== idx));
     };
 
-    if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>;
+    if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>;
 
     return (
         <FacilityPicker
@@ -267,27 +269,9 @@ function FacilityEditor({ roomId, showToast }) {
 }
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-[fadeIn_0.15s_ease-out]">
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-                    <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-                        {Icon && (
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                                <Icon className="h-4 w-4 text-white" />
-                            </span>
-                        )}
-                        {title}
-                    </h3>
-                    <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-                <div className="overflow-y-auto flex-1 p-4 sm:p-6">{children}</div>
-            </div>
-        </div>
-    );
+function Modal({ title, icon, onClose, children }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={'md'}>{children}</UIModal>;
 }
 
 function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel, isSubmitting, showToast }) {
@@ -326,7 +310,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
         });
     };
 
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const errInp = "border-red-300 focus:ring-red-300";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
@@ -385,7 +369,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
-                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                    className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
                     ยกเลิก
                 </button>
                 <button onClick={submit} disabled={isSubmitting}
@@ -400,24 +384,20 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────
 function ConfirmDelete({ room, onConfirm, onCancel, isDeleting }) {
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                        <AlertTriangle className="h-6 w-6 text-red-500" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900">ยืนยันการลบห้องเรียน</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-                    </div>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+                <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบห้องเรียน</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
                     <p className="text-sm font-semibold text-red-800">{room.RoomDetail}</p>
                     <p className="text-xs text-red-400 mt-0.5">ชั้น {room.Floor} · ID: #{room.RoomId}</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-2">
                     <button onClick={onCancel} disabled={isDeleting}
-                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
                         ยกเลิก
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
@@ -464,7 +444,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
         } finally { setLoading(false); }
     };
 
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
     // หน้าจอ warning เมื่อมีคาบเรียนชน
@@ -491,7 +471,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setConflicts(null)} disabled={loading}
-                            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
                             ย้อนกลับ
                         </button>
                         <button onClick={() => submit(true)} disabled={loading}
@@ -542,7 +522,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
 
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
                         ยกเลิก
                     </button>
                     <button onClick={() => submit(false)} disabled={loading}
@@ -637,7 +617,7 @@ function RoomDetailModal({ room, onClose }) {
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
                     <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ</p>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                         {room.Status_Room_Name || "ไม่ระบุสถานะ"}
                     </span>
@@ -661,7 +641,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">สิ่งอำนวยความสะดวก</p>
                 {loadingFacilities ? (
-                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-orange-400" /></div>
+                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>
                 ) : facilities.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีสิ่งอำนวยความสะดวก
@@ -674,7 +654,7 @@ function RoomDetailModal({ room, onClose }) {
                                 <div key={f.Room_Facilities_Id} className="flex items-center gap-1.5 pl-2.5 pr-3 py-1 bg-orange-50 border border-orange-100 rounded-full">
                                     <FIcon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
                                     <span className="text-xs font-semibold text-orange-700">{f.Facilities_Name}</span>
-                                    <span className="text-[10px] font-bold text-orange-400">×{f.Quantity}</span>
+                                    <span className="text-[11px] font-bold text-orange-400">×{f.Quantity}</span>
                                 </div>
                             );
                         })}
@@ -702,7 +682,7 @@ function RoomDetailModal({ room, onClose }) {
                                             style={{ backgroundColor: `rgba(8,145,178,${0.1 + intensity * 0.8})` }}
                                             title={`${DAY_NAMES[d]}: ${hrs.toFixed(1)} ชม.`}
                                         />
-                                        <span className="text-[9px] text-slate-400">{DAY_NAMES[d].slice(0, 3)}</span>
+                                        <span className="text-[11px] text-slate-400">{DAY_NAMES[d].slice(0, 3)}</span>
                                     </div>
                                 );
                             })}
@@ -713,7 +693,7 @@ function RoomDetailModal({ room, onClose }) {
 
             {!loadingUtil && utilDetail?.byCourse?.length > 0 && (
                 <div className="mt-3">
-                    <p className="text-[10px] text-slate-400 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
+                    <p className="text-[11px] text-slate-400 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
                     <div className="space-y-2">
                         {utilDetail.byCourse.map(c => (
                             <div key={c.CourseID} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
@@ -732,7 +712,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ตารางการใช้ห้อง (คาบที่กำลังจะถึง)</p>
                 {loadingSchedule ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-400" /></div>
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : schedule.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีคาบสอนที่จองห้องนี้
@@ -742,7 +722,7 @@ function RoomDetailModal({ room, onClose }) {
                         {schedule.map(item => (
                             <div key={item.CourseScheduleDetailId} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="text-center shrink-0 w-14">
-                                    <p className="text-[10px] text-slate-400">{DAY_NAMES[item.DayOfWeek]}</p>
+                                    <p className="text-[11px] text-slate-400">{DAY_NAMES[item.DayOfWeek]}</p>
                                     <p className="text-xs font-bold text-slate-700">{item.ClassDate?.slice(5).replace("-", "/")}</p>
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -763,7 +743,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ประวัติการเปลี่ยนสถานะ</p>
                 {loadingLogs ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-400" /></div>
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : statusLogs.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนสถานะ
@@ -776,7 +756,7 @@ function RoomDetailModal({ room, onClose }) {
                                     <p className="text-xs font-semibold text-slate-700">
                                         {log.OldStatusName || "—"} → {log.NewStatusName}
                                     </p>
-                                    <span className="text-[10px] text-slate-400">
+                                    <span className="text-[11px] text-slate-400">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
@@ -879,20 +859,20 @@ export default function AdminRooms() {
     const availableCount = rooms.filter(r => Number(r.Status_Room_Id) === 1).length;
 
     if (loading) return (
-        <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
+        <div className="flex flex-col items-center justify-center h-64 text-orange-500">
             <Loader2 className="w-8 h-8 animate-spin mb-3" />
             <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลห้องเรียน...</p>
         </div>
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">จัดการห้องเรียน</h1>
-                    <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
+                    <h1 className={PAGE_TITLE}>จัดการห้องเรียน</h1>
+                    <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
                 </div>
                 <button onClick={() => setShowAddModal(true)}
                     className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
@@ -906,13 +886,13 @@ export default function AdminRooms() {
                     { label: "ห้องพร้อมใช้งาน", value: availableCount, color: "bg-emerald-500", icon: Check },
                     { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()}`, color: "bg-amber-500", icon: Users },
                 ].map(({ label, value, color, icon: Icon }, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                             <Icon className="h-5 w-5 text-white" />
                         </div>
                         <div>
                             <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-black text-slate-900">{value}</p>
+                            <p className="text-xl font-bold text-slate-900">{value}</p>
                         </div>
                     </div>
                 ))}
@@ -925,12 +905,12 @@ export default function AdminRooms() {
                         <input
                             value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="ค้นหาชื่อห้อง, ID..."
-                            className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+                            className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
                         />
                     </div>
                     <div className="relative">
                         <select value={filterFloor} onChange={e => setFilterFloor(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[140px]">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[140px]">
                             <option value="all">ทุกชั้น</option>
                             {floors.map(f => <option key={f} value={f}>ชั้น {f}</option>)}
                         </select>
@@ -938,7 +918,7 @@ export default function AdminRooms() {
                     </div>
                     <div className="relative">
                         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[150px]">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[150px]">
                             <option value="all">ทุกสถานะ</option>
                             {statuses.map(s => <option key={s.Status_Room_Id} value={s.Status_Room_Id}>{s.Status_Room_Name}</option>)}
                         </select>
@@ -949,7 +929,7 @@ export default function AdminRooms() {
             </div>
 
             {filtered.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <svg viewBox="0 0 200 150" className="h-28 w-28 mx-auto opacity-70">
                         <polygon points="100,25 180,65 100,105 20,65" fill="#E2E8F0" opacity="0.6" />
                         <polygon points="20,65 100,105 100,130 20,90" fill="#CBD5E1" />

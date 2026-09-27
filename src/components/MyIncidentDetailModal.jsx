@@ -3,6 +3,7 @@ import { X, Loader2, Clock, AlertTriangle, Paperclip, FileText } from "lucide-re
 import { getIncidentDetail, cancelIncident } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
+import { confirmDialog, toast } from "./ui/dialogs";
 
 const STATUS_META = {
   new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -35,22 +36,22 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
   }, [incidentId]);
 
   const handleCancel = async () => {
-    if (!confirm("ยืนยันยกเลิกเรื่องที่แจ้งนี้?")) return;
+    if (!await confirmDialog("ยืนยันยกเลิกเรื่องที่แจ้งนี้?")) return;
     setCancelling(true);
     try {
       await cancelIncident(token, incidentId);
       onCancelled?.();
       onClose();
     } catch (err) {
-      alert(typeof err === "string" ? err : "ยกเลิกไม่สำเร็จ");
+      toast(typeof err === "string" ? err : "ยกเลิกไม่สำเร็จ");
     } finally {
       setCancelling(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="text-base font-bold text-white">รายละเอียดที่แจ้ง</h3>
           <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
@@ -59,7 +60,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
         </div>
         <div className="overflow-y-auto flex-1 p-6">
           {loading ? (
-            <div className="flex items-center justify-center h-32"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
+            <div className="flex items-center justify-center h-32"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
           ) : error ? (
             <p className="text-sm text-red-500">{error}</p>
           ) : (() => {
@@ -70,7 +71,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
             return (
               <div className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
                     {statusMeta.label}
                   </span>
                   <span className="text-xs text-slate-400 flex items-center gap-1">

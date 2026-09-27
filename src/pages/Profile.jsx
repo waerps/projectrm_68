@@ -21,6 +21,7 @@ import {
 } from "../callapi/callusers_student";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
+import Spinner from "../components/ui/Spinner";
 
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
@@ -241,7 +242,7 @@ export default function StudentProfile() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-orange-200 border-t-orange-500 animate-spin" />
+          <Spinner size="lg" />
           <p className="text-orange-600 font-medium text-sm">กำลังโหลด...</p>
         </div>
       </div>
@@ -285,7 +286,7 @@ export default function StudentProfile() {
             <div className="flex flex-col gap-8 md:flex-row md:items-center">
               {/* รูปโปรไฟล์ */}
               <div className="relative shrink-0 mx-auto md:mx-0">
-                <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-gray-100">
+                <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-slate-100">
                   <img
                     src={getFileUrl(formData.photo) || "/placeholder-user.jpg"}
                     onError={(event) => { event.currentTarget.src = "/placeholder-user.jpg"; }}
@@ -305,14 +306,14 @@ export default function StudentProfile() {
                   disabled={isUploading}
                   className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100 disabled:cursor-wait disabled:opacity-70"
                 >
-                  {isUploading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-500" /> : <ImagePlus className="h-4.5 w-4.5" />}
+                  {isUploading ? <Spinner size="sm" /> : <ImagePlus className="h-4.5 w-4.5" />}
                 </button>
               </div>
 
               {/* ชื่อ + สถิติ */}
               <div className="flex-1 space-y-3 text-center md:text-left text-white">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                     {formData.firstname} {formData.lastname}
                   </h1>
                   {formData.nickname && (
@@ -428,7 +429,7 @@ export default function StudentProfile() {
               onChange={handleChange}
             />
             <div className="py-3">
-              <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
                 หมายเหตุ
               </span>
               {isEditing ? (
@@ -437,11 +438,11 @@ export default function StudentProfile() {
                   rows={3}
                   value={formData.remark}
                   onChange={handleChange}
-                  className="mt-2 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm text-neutral-800 outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-800 outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
                 />
               ) : (
-                <p className="mt-1 text-sm font-medium text-neutral-800">
-                  {formData.remark || <span className="text-neutral-300 font-normal">ไม่มีหมายเหตุ</span>}
+                <p className="mt-1 text-sm font-medium text-slate-800">
+                  {formData.remark || <span className="text-slate-300 font-normal">ไม่มีหมายเหตุ</span>}
                 </p>
               )}
             </div>
@@ -456,7 +457,7 @@ export default function StudentProfile() {
             <InfoRow label="ชื่อผู้ปกครอง" value={formData.parentName} isEditing={false} />
             <InfoRow label="ความสัมพันธ์" value={formData.parentRelationship} isEditing={false} />
             <InfoRow label="เบอร์โทร" value={formData.parentPhone} isEditing={false} />
-            <p className="mt-4 text-xs text-neutral-400 text-center">
+            <p className="mt-4 text-xs text-slate-400 text-center">
               * ข้อมูลผู้ปกครองแก้ไขได้จากฝ่ายบริหารเท่านั้น
             </p>
           </SectionCard>
@@ -478,13 +479,13 @@ export default function StudentProfile() {
 function SectionCard({ title, icon, children, isEditing }) {
   return (
     <div
-      className={`rounded-2xl bg-white shadow-sm overflow-hidden border-2 transition-all duration-200 ${
-        isEditing ? "border-orange-200 shadow-md" : "border-neutral-100"
+      className={`rounded-2xl bg-white shadow-sm overflow-hidden border transition-all duration-200 ${
+        isEditing ? "border-orange-300 shadow-md" : "border-slate-200"
       }`}
     >
-      <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
         {icon}
-        <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
+        <h2 className="text-sm font-bold text-slate-800">{title}</h2>
       </div>
       <div className="p-5 space-y-0.5">{children}</div>
     </div>
@@ -494,8 +495,8 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ── Info Row ──────────────────────────────────────────────────
 function InfoRow({ label, value, displayValue, name, isEditing, onChange, type = "text" }) {
   return (
-    <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">
+    <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">
         {label}
       </span>
       <div className="flex-1 text-right">
@@ -506,11 +507,11 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
             value={value ?? ""}
             step={type === "number" ? "0.01" : undefined}
             onChange={onChange}
-            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-right text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
           />
         ) : (
-          <span className="text-sm font-semibold text-neutral-800">
-            {displayValue || value || <span className="text-neutral-300 font-normal">-</span>}
+          <span className="text-sm font-semibold text-slate-800">
+            {displayValue || value || <span className="text-slate-300 font-normal">-</span>}
           </span>
         )}
       </div>
@@ -521,17 +522,16 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
 
 function ValidationModal({ fields, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden animate-in">
-        <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 to-amber-400" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex flex-col items-center text-center mb-5">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100">
-              <AlertTriangle className="h-7 w-7 text-orange-500" />
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-7 w-7 text-orange-600" />
             </div>
-            <h3 className="text-lg font-bold text-neutral-800">กรอกข้อมูลไม่ครบ</h3>
-            <p className="text-sm text-neutral-400 mt-1">
+            <h3 className="text-lg font-bold text-slate-900">กรอกข้อมูลไม่ครบ</h3>
+            <p className="text-sm text-slate-500 mt-1">
               กรุณากรอกข้อมูลในฟิลต่อไปนี้ให้ครบก่อนบันทึก
             </p>
           </div>

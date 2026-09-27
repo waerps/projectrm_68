@@ -5,6 +5,9 @@ import axios from "axios";
 import {
   BarChart2, BookOpen, Users, Search, Loader2, Calendar, ChevronRight, ChevronLeft,
 } from "lucide-react";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { TrendingUp as LuTrendingUp } from "lucide-react";
 
 // ─── ภาพรวมพัฒนาการ — ทางลัดจากเมนู ──────────────────────────────────────────
 // หน้าวิเคราะห์ผูกกับ "คอร์ส + วิชา" โดยธรรมชาติ (TutorExamAnalytics ต้องมีทั้งสองค่า
@@ -148,14 +151,14 @@ export default function TutorProgressOverview() {
   };
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
+    <div className="flex flex-col items-center justify-center h-64 text-orange-600">
       <Loader2 className="w-8 h-8 animate-spin mb-3" />
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</p>
     </div>
   );
 
   return (
-    <div className="space-y-6 mt-[90px] px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0">
       <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
         <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
         <ChevronRight className="h-4 w-4" />
@@ -165,8 +168,8 @@ export default function TutorProgressOverview() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">ภาพรวมพัฒนาการ</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className={PAGE_TITLE}>ภาพรวมพัฒนาการ</h1>
+          <p className={PAGE_SUBTITLE}>
             เลือกคอร์สและวิชาที่ต้องการดูพัฒนาการของนักเรียน
             {stats.subjects > 0 && ` · คุณสอนอยู่ ${stats.subjects} วิชา ใน ${stats.courses} คอร์ส`}
           </p>
@@ -182,13 +185,13 @@ export default function TutorProgressOverview() {
         ].map((card, i) => {
           const Icon = card.icon;
           return (
-            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+            <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
               <div className={`h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-black text-slate-900">{card.value.toLocaleString()}</p>
+                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()}</p>
               </div>
             </div>
           );
@@ -204,7 +207,7 @@ export default function TutorProgressOverview() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="ค้นหาชื่อคอร์สหรือวิชา..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
         </div>
@@ -216,9 +219,9 @@ export default function TutorProgressOverview() {
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {!error && courseCards.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="text-6xl mb-3">📈</div>
-          <p className="text-slate-500 font-medium">
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuTrendingUp className="h-7 w-7 text-orange-400" /></div>
+          <p className="text-base font-semibold text-slate-700">
             {search.trim() ? "ไม่พบคอร์สหรือวิชาที่ค้นหา" : "ยังไม่มีคอร์สที่คุณสอน"}
           </p>
           {!search.trim() && (
@@ -273,49 +276,7 @@ export default function TutorProgressOverview() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-slate-500">
-                  แสดง <span className="font-semibold">{(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, courseCards.length)}</span> จาก <span className="font-semibold">{courseCards.length}</span> คอร์ส
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-                    .reduce((acc, p, idx, arr) => {
-                      if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                      acc.push(p);
-                      return acc;
-                    }, [])
-                    .map((p, idx) => p === "..." ? (
-                      <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                    ) : (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${
-                          page === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
+            <UIPagination page={page} totalPages={totalPages} total={courseCards.length} pageSize={ITEMS_PER_PAGE} unit="คอร์ส" onChange={setPage} />
           </>
         )
       )}
