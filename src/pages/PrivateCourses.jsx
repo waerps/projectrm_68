@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   UserRoundCheck, UserRound, ClipboardCheck, HeartHandshake, LineChart, PhoneCall, UsersRound, Rocket,
   Phone, Copy, MessageCircle, MessageCircleQuestion, ExternalLink, MessageSquareText, ChevronDown, X,
-  Calculator, Languages, FlaskConical, BookOpenText, Atom, TestTubes, Leaf, Landmark, BookOpen,
+  BookOpen,
 } from "lucide-react";
+import axios from "axios";
+import { API_URL } from "../config";
 import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
 import PrivateSubjectStack from "../components/PrivateSubjectStack";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import {
-  PRIVATE_CONTACT as C, PRIVATE_STARTING_PRICE, PRIVATE_LEVELS, PRIVATE_SUBJECTS, privateInquiryMessage,
+  PRIVATE_CONTACT as C, PRIVATE_STARTING_PRICE, PRIVATE_LEVELS, privateIconOf, privateInquiryMessage,
 } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -22,11 +24,29 @@ const TILE_GRAD = "linear-gradient(135deg,#FDBA74,#F97316)";
 const CREAM = "linear-gradient(160deg,#ffffff 0%,#FFF3E8 100%)";
 const SOFT_CARD = { border: "1px solid rgba(20,33,61,.07)", background: "linear-gradient(160deg,#ffffff,#FFFBF6)" };
 
-const SUBJECT_ICONS = {
-  math: Calculator, english: Languages, science: FlaskConical, thai: BookOpenText,
-  physics: Atom, chemistry: TestTubes, biology: Leaf, social: Landmark,
-};
-const iconOf = (s) => SUBJECT_ICONS[s.icon] || BookOpen;
+const iconOf = (s) => privateIconOf(s?.icon);
+
+// รายวิชาที่แอดมินเพิ่มไว้ (private_course_offers) → รูปแบบที่หน้านี้ใช้
+const toSubject = (o) => ({
+  key: o.OfferId,
+  name: o.Title,
+  icon: o.IconKey,
+  levels: Array.isArray(o.Levels) ? o.Levels : [],
+  price: o.StartingPrice ?? null,
+  note: o.Note || "",
+});
+
+function usePrivateOffers() {
+  const [state, setState] = useState({ loading: true, error: false, subjects: [] });
+  useEffect(() => {
+    let alive = true;
+    axios.get(`${API_URL}/api/private-courses/offers`)
+      .then((res) => { if (alive) setState({ loading: false, error: false, subjects: (Array.isArray(res.data) ? res.data : []).map(toSubject) }); })
+      .catch(() => { if (alive) setState({ loading: false, error: true, subjects: [] }); });
+    return () => { alive = false; };
+  }, []);
+  return state;
+}
 
 const FEATURES = [
   { icon: UserRound, t: "ครู 1 : นักเรียน 1", d: "ครูโฟกัสน้องคนเดียวตลอดคาบ ถามได้ทุกจุดที่ไม่เข้าใจ" },
@@ -123,7 +143,7 @@ export function PrivateContactButtons({ className = "", compact = false }) {
 
 /* ─── Modal ติดต่อ ─── */
 function ContactModal({ subject, onClose }) {
-  const [msg, setMsg] = useState(() => privateInquiryMessage(subject?.name));
+  const [msg, setMsg] = useState(() => privateInquiryMessage(subject?.generic ? "" : subject?.name));
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -201,7 +221,10 @@ function ContactModal({ subject, onClose }) {
 export default function PrivateCourses() {
   const [level, setLevel] = useState("ทั้งหมด");
   const [selected, setSelected] = useState(null);
-  const list = PRIVATE_SUBJECTS.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
+  const { loading, error, subjects } = usePrivateOffers();
+  const list = subjects.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
+  // แสดงเฉพาะระดับชั้นที่มีรายวิชาจริง
+  const levels = PRIVATE_LEVELS.filter((l) => subjects.some((s) => s.levels.includes(l)));
 
   return (
     <div className="pb-28 lg:pb-16">
@@ -233,7 +256,7 @@ export default function PrivateCourses() {
               <PrivateContactButtons className="mt-6" />
             </div>
             <PrivateCourseOrbit variant="hero" orbitCoin>
-              <PrivateSubjectStack iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
+              <PrivateSubjectStack subjects={subjects} iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
             </PrivateCourseOrbit>
           </div>
         </section>
@@ -290,16 +313,27 @@ export default function PrivateCourses() {
               <Eyebrow>วิชาที่เปิดสอน</Eyebrow>
               <h2 className="text-[24px] font-extrabold md:text-[30px]" style={{ color: NAVY }}>เลือกวิชาที่สนใจ</h2>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {["ทั้งหมด", ...PRIVATE_LEVELS].map((l) => (
+            {levels.length > 1 && <div className="flex flex-wrap gap-2">
+              {["ทั้งหมด", ...levels].map((l) => (
                 <button key={l} type="button" onClick={() => setLevel(l)}
                   className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${l === level ? "border-[#14213D] bg-[#14213D] text-white" : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-500"}`}>
                   {l}
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
+          {!loading && !list.length && (
+            <div className="flex flex-col items-center gap-3 rounded-3xl px-6 py-10 text-center" style={SOFT_CARD}>
+              <span className="grid h-12 w-12 place-items-center rounded-2xl text-white" style={{ background: TILE_GRAD }}><BookOpen className="h-6 w-6" /></span>
+              <p className="font-bold" style={{ color: NAVY }}>{error ? "โหลดรายวิชาไม่สำเร็จ" : "สอนได้ทุกวิชาตามที่น้องต้องการ"}</p>
+              <p className="max-w-md text-[13px] leading-relaxed text-gray-500">
+                บอกวิชา ระดับชั้น และเป้าหมายของน้องกับ{C.name}ได้เลย แล้วเราจะหาครูที่เหมาะให้
+              </p>
+              <PrivateContactButtons compact className="justify-center" />
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {loading && [0, 1, 2, 3].map((i) => <div key={i} className="h-[260px] animate-pulse rounded-2xl bg-gray-100" />)}
             {list.map((s, i) => {
               const Icon = iconOf(s);
               return (
@@ -314,7 +348,7 @@ export default function PrivateCourses() {
                   </div>
                   <div className="flex flex-1 flex-col p-3.5">
                     <h3 className="text-[13.5px] font-bold leading-snug text-neutral-800">คอร์สเดี่ยว · {s.name}</h3>
-                    <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{s.note}</p>
+                    {s.note && <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{s.note}</p>}
                     <div className="mt-2"><PriceLine price={s.price} /></div>
                     <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
                       {s.levels.map((l) => <span key={l} className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{l}</span>)}

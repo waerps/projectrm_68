@@ -1073,7 +1073,7 @@ export default function Home() {
       Number(c.Discount || 0) > 0,
     courseType:
       getOptionLabel(c.Course_Type ?? c.CourseType, ["Course_Type", "courseType", "Type_Name"]) ||
-      ((Array.isArray(c.Subjects) ? c.Subjects.length : 0) > 1 ? "bundle" : "single"),
+      "bundle", // หน้าเว็บแสดงเฉพาะคอร์สรวม (คอร์สเดี่ยวไม่ขายผ่านเว็บ)
     availabilityName:
       getOptionLabel(c.Course_Availability_Name ?? c.CourseAvailability, ["Course_Availability_Name", "availabilityName"]) ||
       AVAILABILITY_LABELS[Number(c.Course_Availability_Id ?? c.courseAvailabilityId)] ||

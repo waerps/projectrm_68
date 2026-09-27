@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { PRIVATE_SUBJECTS } from "../config/privateCourses";
+import { PRIVATE_STARTING_PRICE } from "../config/privateCourses";
+
+// การ์ดสำรองตอนยังไม่มีรายวิชา (หรือกำลังโหลด)
+const FALLBACK = [{ key: "all", generic: true, name: "ทุกวิชาที่น้องต้องการ", icon: "other", levels: [], price: PRIVATE_STARTING_PRICE, note: "ประเมินก่อนเรียน · เลือกครูได้" }];
 
 /* การ์ดวิชาคอร์สเดี่ยวซ้อนกัน เลื่อนเปลี่ยนเองทุก 3.8 วินาที
    (ภาษาเดียวกับ AboutFlashcard ในหน้าแรก) — ใช้ในแบนเนอร์หน้าคอร์สเดี่ยว */
-export default function PrivateSubjectStack({ iconOf, onSelect, className = "relative mx-auto h-[230px] w-full max-w-[320px] md:ml-auto md:mr-4" }) {
+export default function PrivateSubjectStack({ subjects, iconOf, onSelect, className = "relative mx-auto h-[230px] w-full max-w-[320px] md:ml-auto md:mr-4" }) {
+  const items = subjects?.length ? subjects : FALLBACK;
   const [idx, setIdx] = useState(0);
-  const n = PRIVATE_SUBJECTS.length;
+  const n = items.length;
   useEffect(() => {
     if (n < 2 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
     const t = setInterval(() => setIdx((i) => (i + 1) % n), 3800);
@@ -14,8 +18,8 @@ export default function PrivateSubjectStack({ iconOf, onSelect, className = "rel
 
   return (
     <div className={className}>
-      {PRIVATE_SUBJECTS.map((s, i) => {
-        const off = (i - idx + n) % n;
+      {items.map((s, i) => {
+        const off = (i - (idx % n) + n) % n;
         const Icon = iconOf(s);
         const top = off === 0;
         return (
@@ -37,9 +41,9 @@ export default function PrivateSubjectStack({ iconOf, onSelect, className = "rel
             </div>
             <p className="relative mt-4 text-[11px] font-semibold text-gray-400">คอร์สเดี่ยว</p>
             <p className="relative text-[20px] font-extrabold" style={{ color: "#14213D" }}>{s.name}</p>
-            <p className="relative mt-0.5 line-clamp-1 text-xs text-gray-500">{s.note}</p>
+            {s.note && <p className="relative mt-0.5 line-clamp-1 text-xs text-gray-500">{s.note}</p>}
             <div className="relative mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "rgba(20,33,61,.07)" }}>
-              <span className="truncate text-[11px] text-gray-500">{s.levels.join(" · ")}</span>
+              <span className="truncate text-[11px] text-gray-500">{s.levels.length ? s.levels.join(" · ") : "ทุกระดับชั้น"}</span>
               {s.price
                 ? <span className="shrink-0 text-sm font-bold text-green-700">เริ่มต้น {s.price}/ชม.</span>
                 : <span className="shrink-0 text-sm font-bold text-orange-500">สอบถามราคา</span>}

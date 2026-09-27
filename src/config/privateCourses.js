@@ -1,8 +1,10 @@
 /* ─────────────────────────────────────────────────────────────────────────
-   คอร์สเดี่ยว (เรียนตัวต่อตัว 1:1) — ข้อมูลที่แสดงบนหน้าเว็บ
-   คอร์สเดี่ยวไม่ขายผ่านระบบ ผู้สนใจต้องติดต่อพี่กวางเพื่อประเมินน้องและเลือกครูก่อน
-   แก้ข้อมูลติดต่อ ราคาเริ่มต้น และรายวิชาได้ที่ไฟล์นี้ไฟล์เดียว
+   คอร์สเดี่ยว (เรียนตัวต่อตัว 1 วิชา 1 นักเรียน) — ค่าคงที่ที่ใช้ร่วมกันทั้งหน้าเว็บและหน้าแอดมิน
+   รายวิชาที่โชว์หน้าเว็บเก็บในฐานข้อมูล (private_course_offers) แอดมินจัดการที่ /admin/private-courses
    ───────────────────────────────────────────────────────────────────────── */
+import {
+  Calculator, Languages, FlaskConical, BookOpenText, Atom, TestTubes, Leaf, Landmark, Cpu, BookOpen,
+} from "lucide-react";
 
 export const PRIVATE_CONTACT = {
   name: "พี่กวาง",
@@ -13,23 +15,26 @@ export const PRIVATE_CONTACT = {
   facebookUrl: "https://www.facebook.com/SornSerm.tutor",
 };
 
-// ราคาเริ่มต้นต่อชั่วโมง (ราคาจริงพี่กวางกำหนดตามวิชา ความยาก และจำนวนชั่วโมง)
+// ราคาเริ่มต้น/ชม. ที่แสดงบนแบนเนอร์ (ราคาจริงพี่กวางกำหนดตามวิชา ความยาก และจำนวนชั่วโมง)
 export const PRIVATE_STARTING_PRICE = 350;
 
-export const PRIVATE_LEVELS = ["ม.ต้น", "ม.ปลาย"];
+// ระดับชั้นที่เลือกได้ในหน้าแอดมิน และใช้เป็นตัวกรองในหน้าเว็บ
+export const PRIVATE_LEVELS = ["ประถม", "ม.ต้น", "ม.ปลาย"];
 
-// icon = ชื่อไอคอนใน PrivateCourses.jsx (SUBJECT_ICONS)
-// price = ราคาเริ่มต้น/ชม. ของวิชานั้น, ใส่ null ถ้าต้องการให้ขึ้น "สอบถามราคา"
-export const PRIVATE_SUBJECTS = [
-  { key: "math", name: "คณิตศาสตร์", icon: "math", levels: ["ม.ต้น", "ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "ปูพื้นฐาน · เพิ่มเกรด · เตรียมสอบ" },
-  { key: "english", name: "ภาษาอังกฤษ", icon: "english", levels: ["ม.ต้น", "ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "Grammar · Reading · สอบเข้า" },
-  { key: "science", name: "วิทยาศาสตร์", icon: "science", levels: ["ม.ต้น"], price: PRIVATE_STARTING_PRICE, note: "สรุปเนื้อหา · ฝึกทำโจทย์" },
-  { key: "thai", name: "ภาษาไทย", icon: "thai", levels: ["ม.ต้น", "ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "หลักภาษา · อ่านจับใจความ" },
-  { key: "physics", name: "ฟิสิกส์", icon: "physics", levels: ["ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "กลศาสตร์ · ไฟฟ้า · สอบเข้า" },
-  { key: "chemistry", name: "เคมี", icon: "chemistry", levels: ["ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "ปริมาณสัมพันธ์ · สมดุลเคมี" },
-  { key: "biology", name: "ชีววิทยา", icon: "biology", levels: ["ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "สรุปเข้มข้น · ติวรายบท" },
-  { key: "social", name: "สังคมศึกษา", icon: "social", levels: ["ม.ต้น", "ม.ปลาย"], price: PRIVATE_STARTING_PRICE, note: "ประวัติศาสตร์ · หน้าที่พลเมือง" },
-];
+// ไอคอนวิชา: key ที่เก็บใน private_course_offers.IconKey → ไอคอนที่แสดง
+export const PRIVATE_ICONS = {
+  math: { label: "คณิตศาสตร์", Icon: Calculator },
+  english: { label: "ภาษาอังกฤษ", Icon: Languages },
+  science: { label: "วิทยาศาสตร์", Icon: FlaskConical },
+  thai: { label: "ภาษาไทย", Icon: BookOpenText },
+  physics: { label: "ฟิสิกส์", Icon: Atom },
+  chemistry: { label: "เคมี", Icon: TestTubes },
+  biology: { label: "ชีววิทยา", Icon: Leaf },
+  social: { label: "สังคมศึกษา", Icon: Landmark },
+  tech: { label: "เทคโนโลยี", Icon: Cpu },
+  other: { label: "อื่นๆ", Icon: BookOpen },
+};
+export const privateIconOf = (key) => (PRIVATE_ICONS[key] || PRIVATE_ICONS.other).Icon;
 
 // ข้อความสำเร็จรูปสำหรับทักพี่กวาง
 export const privateInquiryMessage = (subjectName) =>

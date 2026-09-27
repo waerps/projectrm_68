@@ -268,7 +268,7 @@ export default function StudentSubjectDetail() {
       try {
         setError("");
         const [course, subjectList, videoList, fileList] = await Promise.all([
-          getCourseBasic(courseId).catch(() => null),
+          getCourseBasic(courseId, token).catch(() => null),
           getStudentSubjectsProgress(token, courseId),
           getStudentSubjectVideos(token, courseId, subjectId),
           getStudentSubjectFiles(token, courseId, subjectId),

@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   BookOpen, Plus, Search, Trash2, X, Check,
@@ -22,6 +22,9 @@ import UIErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import { UsersRound as LuUsersRound, UserRoundCheck as LuUserRoundCheck } from "lucide-react";
+import PrivateCoursesPanel from "./AdminPrivateCourses";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -40,12 +43,6 @@ const TERM_FILTERS = [
   { key: "term2", label: "เปิดเทอม 2", termId: 3 },
   { key: "smallbreak", label: "ปิดเทอม 1", termId: 2 },
   { key: "bigbreak", label: "ปิดเทอม 2", termId: 4 },
-];
-
-const COURSE_TYPE_FILTERS = [
-  { key: "all", label: "ทุกประเภทคอร์ส" },
-  { key: "single", label: "คอร์สเดี่ยว" },
-  { key: "bundle", label: "คอร์สรวม" },
 ];
 
 const formatDate = (d) => {
@@ -1772,7 +1769,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     Remark: "",
     Status_Course_Id: 1,
     Term_Id: 1,
-    Course_Type: "single",
+    Course_Type: "bundle",
     Course_Availability_Id: "",
     CourseImage: "",
     YearId: "",
@@ -2004,8 +2001,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             <label className={labelCls}>ประเภทคอร์ส</label>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { value: "single", label: "คอร์สเดี่ยว" },
                 { value: "bundle", label: "คอร์สรวม" },
+                { value: "single", label: "คอร์สเดี่ยว" },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -2020,6 +2017,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 </button>
               ))}
             </div>
+            <p className="text-[11px] text-slate-500 mt-1">คอร์สเดี่ยว = ตัวต่อตัว 1 คน ไม่แสดงหน้าเว็บ · แนะนำให้สร้างจากแท็บ “คอร์สเดี่ยว”</p>
           </div>
           <div>
             <label className={labelCls}>คอร์สโปรโมชัน</label>
@@ -2866,7 +2864,6 @@ export default function AdminCoursesPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTerm, setFilterTerm] = useState("all");
   const [filterAvailability, setFilterAvailability] = useState("all");
-  const [filterCourseType, setFilterCourseType] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -2875,6 +2872,12 @@ export default function AdminCoursesPage() {
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState([]);
   const [duplicatingCourse, setDuplicatingCourse] = useState(null);
+
+  // แท็บบนสุด: คอร์สรวม (เรียนกลุ่ม) | คอร์สเดี่ยว (ตัวต่อตัว) — จำไว้ใน URL (?type=single)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const courseTab = searchParams.get("type") === "single" ? "single" : "bundle";
+  const setCourseTab = (t) => setSearchParams(t === "single" ? { type: "single" } : {}, { replace: true });
+  const [dataVersion, setDataVersion] = useState(0);
 
   const fetchAll = async () => {
     try {
@@ -2893,6 +2896,7 @@ export default function AdminCoursesPage() {
       setAvailabilityOptions(aRes.data);
       setGradeLevelOptions(gRes.data);
       setLoadError(false);
+      setDataVersion((v) => v + 1);
     } catch (e) {
       console.error("Fetch error:", e);
       setLoadError(true);
@@ -2902,7 +2906,7 @@ export default function AdminCoursesPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterAvailability, filterCourseType]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterAvailability]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -2993,9 +2997,18 @@ export default function AdminCoursesPage() {
     }
   };
 
+  // แท็บคอร์สรวมแสดงเฉพาะคอร์สเรียนกลุ่ม (คอร์สเดี่ยวอยู่อีกแท็บ)
+  const groupCourses = courses.filter((c) => c.Course_Type !== "single");
+  const singleCount = courses.length - groupCourses.length;
+  const openManageCourse = (id) => {
+    const c = courses.find((x) => Number(x.CourseID) === Number(id));
+    if (c) setEditingCourse(c);
+    else showToast("error", "ไม่พบคอร์สนี้", "ลองรีเฟรชหน้าอีกครั้ง");
+  };
+
   const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
 
-  const baseForStatusCount = courses.filter((c) => {
+  const baseForStatusCount = groupCourses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
     return matchSearch && matchTerm;
@@ -3008,7 +3021,7 @@ export default function AdminCoursesPage() {
     return acc;
   }, {});
 
-  const baseForTermCount = courses.filter((c) => {
+  const baseForTermCount = groupCourses.filter((c) => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
     return matchSearch && matchStatus;
@@ -3020,28 +3033,27 @@ export default function AdminCoursesPage() {
     return acc;
   }, {});
 
-  const filtered = courses.filter((c) => {
+  const filtered = groupCourses.filter((c) => {
     const matchSearch =
       search === "" ||
       c.CourseName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
     const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
     const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
-    const matchCourseType = filterCourseType === "all" || c.Course_Type === filterCourseType;
-    return matchSearch && matchStatus && matchTerm && matchAvailability && matchCourseType;
+    return matchSearch && matchStatus && matchTerm && matchAvailability;
   });
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const totalStudents = [...new Map(courses.map((c) => [c.CourseID, c])).values()]
+  const totalStudents = [...new Map(groupCourses.map((c) => [c.CourseID, c])).values()]
     .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
 
   const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
   const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;
 
-  const activeCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(activeStatusId)).length;
-  const closedCourses = courses.filter((c) => Number(c.Status_Course_Id) === Number(closedStatusId)).length;
+  const activeCourses = groupCourses.filter((c) => Number(c.Status_Course_Id) === Number(activeStatusId)).length;
+  const closedCourses = groupCourses.filter((c) => Number(c.Status_Course_Id) === Number(closedStatusId)).length;
 
   if (loading)
     return (
@@ -3055,19 +3067,34 @@ export default function AdminCoursesPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className={PAGE_TITLE}>จัดการคอร์สเรียน</h1>
-          <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการคอร์สทั้งหมดในสถาบัน</p>
+          <p className={PAGE_SUBTITLE}>
+            {courseTab === "single"
+              ? "คอร์สเดี่ยว · เรียนตัวต่อตัว 1 วิชา 1 นักเรียน ไม่ขายหน้าเว็บ ผู้สนใจติดต่อพี่กวางเพื่อประเมินก่อน"
+              : "คอร์สรวม · คอร์สเรียนกลุ่มที่ขายบนหน้าเว็บ เพิ่ม แก้ไข และจัดการได้ที่นี่"}
+          </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className={`${BTN.primary} flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}
-        >
-          <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
-        </button>
+        {courseTab === "bundle" && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}
+          >
+            <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
+          </button>
+        )}
       </div>
+
+      <SegmentedControl stretchMobile value={courseTab} onChange={setCourseTab} options={[
+        { id: "bundle", label: "คอร์สรวม", icon: LuUsersRound, count: groupCourses.length },
+        { id: "single", label: "คอร์สเดี่ยว", icon: LuUserRoundCheck, count: singleCount },
+      ]} />
+
+      {courseTab === "single" ? (
+        <PrivateCoursesPanel onManageCourse={openManageCourse} version={dataVersion} onDataChanged={fetchAll} />
+      ) : (<>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         {[
-          { label: "คอร์สทั้งหมด", value: courses.length, icon: BookOpen, color: "bg-orange-500" },
+          { label: "คอร์สรวมทั้งหมด", value: groupCourses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
           { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-slate-400" },
         ].map(({ label, value, icon: Icon, color }, i) => (
@@ -3110,20 +3137,11 @@ export default function AdminCoursesPage() {
               </option>
             ))}
           </select>
-          <select
-            value={filterCourseType}
-            onChange={(e) => setFilterCourseType(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
-          >
-            {COURSE_TYPE_FILTERS.map((t) => (
-              <option key={t.key} value={t.key}>{t.label}</option>
-            ))}
-          </select>
         </div>
         <div className="mt-2 pl-1 flex items-center justify-between gap-2">
-          <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {courses.length} คอร์ส</p>
-          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterAvailability !== "all" || filterCourseType !== "all"}
-            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterAvailability("all"); setFilterCourseType("all"); }} />
+          <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {groupCourses.length} คอร์ส</p>
+          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterAvailability !== "all"}
+            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterAvailability("all"); }} />
         </div>
       </div>
 
@@ -3150,6 +3168,7 @@ export default function AdminCoursesPage() {
       )}
 
       <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คอร์ส" onChange={setCurrentPage} />
+      </>)}
 
       {showAddModal && (
         <Modal title="เพิ่มคอร์สใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>

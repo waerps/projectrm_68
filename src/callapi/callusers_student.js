@@ -159,9 +159,10 @@ export async function getStudentFiles(token, courseId) {
 
 // ─── Subjects (course + subject scoped) ───────────────────────────────────────
 
-export async function getCourseBasic(courseId) {
+// ส่ง token ด้วย เพื่อให้เปิดคอร์สเดี่ยว (ซ่อนจากหน้าเว็บ) ของตัวเองได้
+export async function getCourseBasic(courseId, token) {
   try {
-    const res = await apiClient.get(`/courses/${courseId}`);
+    const res = await apiClient.get(`/courses/${courseId}`, withAuth(token));
     return res.data;
   } catch (error) {
     throwNiceError(error);

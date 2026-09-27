@@ -22,8 +22,12 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 })();
 
 import React from "react"
+import { installAdminApiAuth } from "./utils/adminApiAuth.js"
+
+// แนบ token ให้คำขอ /api/admin ทั้งหมด (backend ตรวจสิทธิ์แอดมินแล้ว)
+installAdminApiAuth()
 import ReactDOM from "react-dom/client"
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 
 import AppShell from "./layouts/AppShell.jsx"
 import ProfileLayout from "./layouts/ProfileLayout.jsx"
@@ -184,6 +188,7 @@ const router = createBrowserRouter(
             { index: true, element: <AdminDashboard /> },
             { path: "dashboard", element: <AdminDashboard /> },
             { path: "courses", element: <AdminCourses /> },
+            { path: "private-courses", element: <Navigate to="/admin/courses?type=single" replace /> }, // ย้ายไปเป็นแท็บในหน้าคอร์สแล้ว
             { path: "schedule", element: <AdminSchedule /> },
             { path: "students", element: <AdminStudents /> },
             { path: "tutors", element: <AdminTutors /> },

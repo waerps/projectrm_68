@@ -49,7 +49,7 @@ export const toCardItem = (course) => {
     dateRange: formatDateRange(course.StartDate, course.LastDate),
     status: course.Status_Course_Id,
     img: resolveCourseImg(course),
-    courseType: (Array.isArray(course.Subjects) ? course.Subjects.length : 0) > 1 ? "คอร์สรวม" : "คอร์สเดี่ยว",
+    courseType: course.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม",
     availabilityName: AVAILABILITY_LABELS[Number(course.Course_Availability_Id)] || "ยังไม่ระบุรูปแบบ",
   }
 }
