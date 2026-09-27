@@ -5,7 +5,7 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, GraduationCap, School,
   CheckCircle, XCircle, Video, Calendar, BarChart2,
@@ -519,7 +519,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
                       toast(err.response?.data?.message || "ลบไม่สำเร็จ");
                     }
                   }}
-                  className="text-orange-400 hover:text-red-500 transition"
+                  className="text-red-400 hover:text-red-600 transition"
                   title="นำออกจากคอร์ส"
                 >
                   <X className="h-3 w-3" />
@@ -2380,7 +2380,7 @@ export default function AdminStudentsPage() {
                       className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
                       <Eye className="h-4 w-4" /> ดูข้อมูล
                     </button>
-                    <button onClick={() => setEditingStudent(s)} title="แก้ไขข้อมูล" className="w-10 h-10 flex items-center justify-center text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => setEditingStudent(s)} title="แก้ไขข้อมูล" className="w-10 h-10 flex items-center justify-center text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Pencil className="h-4 w-4" /></button>
                     <button onClick={() => setResetPwdStudent(s)} title="รีเซ็ตรหัสผ่าน" className="w-10 h-10 flex items-center justify-center text-slate-500 bg-slate-50 border border-slate-200 rounded-xl"><KeyRound className="h-4 w-4" /></button>
                     <button onClick={() => setDeletingStudent(s)} title="ลบ" className="w-10 h-10 flex items-center justify-center text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
                   </div>
@@ -2490,7 +2490,7 @@ export default function AdminStudentsPage() {
                             className="p-1.5 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="แก้ไขข้อมูล"
                           >
-                            <Edit2 className="h-3.5 w-3.5" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setResetPwdStudent(s)}
@@ -2530,7 +2530,7 @@ export default function AdminStudentsPage() {
         </Modal>
       )}
       {editingStudent && (
-        <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Edit2} onClose={() => setEditingStudent(null)}>
+        <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Pencil} onClose={() => setEditingStudent(null)}>
           <StudentForm initial={editingStudent} onSave={handleUpdate} onCancel={() => setEditingStudent(null)}
             isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders}
             parentProfileTypes={parentProfileTypes} showToast={showToast} />

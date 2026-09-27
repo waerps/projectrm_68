@@ -2172,7 +2172,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="text-base font-bold text-white min-w-0 truncate">พรีวิวก่อน Export Excel · {examLabel}</h3>
+          <h3 className="text-base font-bold text-white min-w-0 truncate">พรีวิวก่อน ส่งออก Excel · {examLabel}</h3>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
@@ -2206,7 +2206,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
           </button>
           <button onClick={onConfirm}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition">
-            <Download className="h-4 w-4" /> Export Excel
+            <Download className="h-4 w-4" /> ส่งออก Excel
           </button>
         </div>
       </div>
@@ -2777,12 +2777,12 @@ export function ExamAnalyticsView({
               <button onClick={() => setExcelPreviewRows(buildExcelRows(examResults[examId]))}
                 disabled={!examResults[examId]?.students?.length}
                 className="flex items-center justify-center gap-2 whitespace-nowrap border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-                <Download className="h-4 w-4" /> Export Excel
+                <Download className="h-4 w-4" /> ส่งออก Excel
               </button>
               <button onClick={() => exportToPdf(examResults[examId], examLabel, courseName, subjectName, topicResults[examId])}
                 disabled={!examResults[examId]?.students?.length}
                 className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-                <Download className="h-4 w-4" /> Export PDF
+                <Download className="h-4 w-4" /> ส่งออก PDF
               </button>
             </div>
           )}
@@ -2800,7 +2800,7 @@ export function ExamAnalyticsView({
             onClick={() => exportComparisonToPdf(comparisonForExport, courseName, subjectName)}
             disabled={dataLoading || comparisonForExport.rounds.length < 2}
             className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-            <Download className="h-4 w-4" /> Export PDF
+            <Download className="h-4 w-4" /> ส่งออก PDF
           </button>
         )}
         {activeTab === "progress" && (
@@ -2808,7 +2808,7 @@ export function ExamAnalyticsView({
             onClick={() => exportProgressToPdf(progressRowsForExport, courseName, subjectName)}
             disabled={dataLoading || !progressRowsForExport.length}
             className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-            <Download className="h-4 w-4" /> Export PDF
+            <Download className="h-4 w-4" /> ส่งออก PDF
           </button>
         )}
       </div>

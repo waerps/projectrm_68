@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import { useNavigate } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import {
-  BookOpen, Plus, Search, Edit2, Trash2, X, Check,
+  BookOpen, Plus, Search, Trash2, X, Check,
   Calendar, DollarSign, Users, Tag, Filter,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
   ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
@@ -29,7 +29,7 @@ const ITEMS_PER_PAGE = 12;
 
 const STATUS_MAP = {
   1: { label: "เปิดรับสมัคร", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  2: { label: "กำลังสอน", color: "bg-green-100 text-green-700 border-green-200" },
+  2: { label: "กำลังสอน", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
   3: { label: "ปิดรับสมัคร", color: "bg-amber-100 text-amber-700 border-amber-200" },
   4: { label: "ปิดคอร์ส", color: "bg-slate-100 text-slate-500 border-slate-200" },
 };
@@ -2821,7 +2821,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
             onClick={() => onEdit(course)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
           >
-            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+            <Pencil className="h-3.5 w-3.5" /> แก้ไข
           </button>
           <button
             onClick={() => setShowPreview(true)}
@@ -3168,7 +3168,7 @@ export default function AdminCoursesPage() {
       )}
 
       {editingCourse && (
-        <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Edit2} onClose={() => setEditingCourse(null)}>
+        <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Pencil} onClose={() => setEditingCourse(null)}>
           <CourseForm
             initial={editingCourse}
             onSave={handleUpdate}

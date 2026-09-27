@@ -7,7 +7,7 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
   UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2, Download,
@@ -1073,7 +1073,7 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
                     className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-orange-600 transition"
                     title="แก้ไขชั่วโมงสอน"
                   >
-                    {formatHoursLabel(s.TotalHours)} <Edit2 className="h-3 w-3" />
+                    {formatHoursLabel(s.TotalHours)} <Pencil className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -1565,7 +1565,7 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
       <div className="mt-auto pt-3">
         <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
           <button onClick={() => setEditingTutor(t)} className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
-            <Edit2 className="h-4 w-4" /> แก้ไข
+            <Pencil className="h-4 w-4" /> แก้ไข
           </button>
           <button onClick={() => setViewTutor(t)} title="ดูข้อมูลติวเตอร์" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><Eye className="h-4 w-4" /></button>
           <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}&from=tutors`)} title="ดูภาพรวมพัฒนาการ" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><BarChart2 className="h-4 w-4" /></button>
@@ -1657,7 +1657,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
           </button>
           <button onClick={() => setEditingTutor(t)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
-            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+            <Pencil className="h-3.5 w-3.5" /> แก้ไข
           </button>
           <button onClick={() => setStatusTutor(t)}
             className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="เปลี่ยนสถานะ">
@@ -2594,7 +2594,7 @@ export default function AdminTutorsPage() {
           </Modal>
         )}
         {editingTutor && (
-          <Modal title={`แก้ไขติวเตอร์ #${editingTutor.AdminId}`} icon={Edit2} onClose={() => setEditingTutor(null)}>
+          <Modal title={`แก้ไขติวเตอร์ #${editingTutor.AdminId}`} icon={Pencil} onClose={() => setEditingTutor(null)}>
             <TutorForm
               initial={editingTutor}
               onSave={handleUpdate}

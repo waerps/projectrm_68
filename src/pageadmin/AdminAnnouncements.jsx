@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import UIModal from "../components/ui/Modal";
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Megaphone, Plus, Search, Filter, Edit2, Trash2, Eye,
+    Megaphone, Plus, Search, Filter, Pencil, Trash2, Eye,
     Image as ImageIcon, Calendar, Users, X, Save,
     TrendingUp, Bell, BookOpen, PartyPopper, AlertCircle,
     ChevronLeft, ChevronRight, Loader2, Inbox, Images,
@@ -559,7 +559,7 @@ export default function AdminAnnouncements() {
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 <button onClick={() => openEditModal(item)}
                                                     className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
-                                                    <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                                                    <Pencil className="h-3.5 w-3.5" /> แก้ไข
                                                 </button>
                                                 <button onClick={() => { setSelectedNews(item); setShowDeleteModal(true); }}
                                                     className="p-1.5 rounded-lg border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">

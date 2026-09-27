@@ -1,7 +1,7 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Plus, Edit, Trash2, Search, X, Save, UserCheck, BookOpen,
+  Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen,
   Users, MapPin, RefreshCw, AlertCircle, Loader2, ChevronLeft,
   ChevronRight, CheckCircle, Clock, AlertTriangle, Layers, Info,
 } from 'lucide-react';
@@ -415,8 +415,8 @@ export default function AdminSchedule() {
         {/* ── Header ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
-            <h1 className={PAGE_TITLE}>จัดการตารางเรียน</h1>
-            <p className={PAGE_SUBTITLE}>ตารางเรียนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
+            <h1 className={PAGE_TITLE}>จัดการตารางสอน</h1>
+            <p className={PAGE_SUBTITLE}>ตารางสอนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             {/* <button
@@ -587,7 +587,7 @@ export default function AdminSchedule() {
                 const holiday = holidayMap[dateStr];
                 const addAt = async (slot) => {
                   if (holiday) {
-                    const ok = await confirmDialog(`วันที่เลือกเป็นวันหยุดของสถาบัน (${holiday}) ต้องการเพิ่มคาบเรียนในวันนี้หรือไม่?`);
+                    const ok = await confirmDialog(`วันที่เลือกเป็นวันหยุดของสถาบัน (${holiday}) ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`);
                     if (!ok) return;
                   }
                   openAdd(dow, slot.start, slot.end);
@@ -682,13 +682,13 @@ export default function AdminSchedule() {
                         const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
                         const hasEntries = entries.length > 0;
 
-                        // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบเรียนได้
+                        // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบสอนได้
                         // แต่ถ้าเลือกวันหยุด ให้ยืนยันก่อนเสมอ
                         const confirmHolidayThenAdd = async () => {
                           if (isHoliday) {
                             const holidayName = holidayMap[dateStr];
                             const ok = await confirmDialog(
-                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบเรียนในวันนี้หรือไม่?`
+                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`
                             );
                             if (!ok) return;
                           }
@@ -777,7 +777,7 @@ export default function AdminSchedule() {
         />
       )}
 
-      {/* Edit */}
+      {/* Pencil */}
       {showEdit && selected && (
         <ScheduleModal
           title="แก้ไขคาบสอน"
@@ -972,7 +972,7 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
           }}
           className={`${BTN.primary} p-1.5 lg:p-1 rounded min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}
         >
-          <Edit className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
+          <Pencil className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
         </button>
         <button aria-label="ลบ"
           onClick={e => {
@@ -1095,7 +1095,7 @@ function ScheduleModal({
 
     const todayStr = isoDate(new Date());
     if (formData.TermStartDate < todayStr) {
-      return 'ไม่สามารถเพิ่มตารางเรียนย้อนหลังได้';
+      return 'ไม่สามารถเพิ่มตารางสอนย้อนหลังได้';
     }
 
     if (selectedCourse?.StartDate && selectedCourse?.LastDate) {

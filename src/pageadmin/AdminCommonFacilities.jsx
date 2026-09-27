@@ -4,7 +4,7 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-    Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
+    Plus, Search, Pencil, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, ChevronDown, Package, Cpu, Printer, Sofa,
     Refrigerator, PenTool, FileText, MapPin, History, Minus,
     TrendingDown, TrendingUp, Boxes, AlertCircle, Info,
@@ -636,7 +636,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 </button>
                 <button onClick={() => onEdit(item)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
-                    <Edit2 className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
+                    <Pencil className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
                 </button>
             </div>
 
@@ -709,7 +709,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                             </span>
                             <div className="flex shrink-0 items-center gap-1.5">
                                 <button onClick={() => onView(item)} title="ดูรายละเอียด" className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-50 border border-orange-100 rounded-xl"><Eye className="h-4 w-4" /></button>
-                                <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป" className="flex items-center justify-center w-10 h-10 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Edit2 className="h-4 w-4" /></button>
+                                <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป" className="flex items-center justify-center w-10 h-10 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Pencil className="h-4 w-4" /></button>
                                 <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ" className="flex items-center justify-center w-10 h-10 text-slate-600 bg-slate-50 border border-slate-200 rounded-xl"><AlertTriangle className="h-4 w-4" /></button>
                                 <button onClick={() => onDelete(item)} title="นำออกจากรายการ" className="flex items-center justify-center w-10 h-10 text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
                             </div>
@@ -795,7 +795,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             </button>
                                             <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป"
                                                 className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
-                                                <Edit2 className="h-3.5 w-3.5" />
+                                                <Pencil className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ"
                                                 className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
@@ -1079,7 +1079,7 @@ export default function AdminCommonFacilities() {
                 </Modal>
             )}
             {editingItem && (
-                <Modal title={`แก้ไขอุปกรณ์: ${editingItem.Name}`} icon={Edit2} onClose={() => setEditingItem(null)}>
+                <Modal title={`แก้ไขอุปกรณ์: ${editingItem.Name}`} icon={Pencil} onClose={() => setEditingItem(null)}>
                     <CommonFacilityForm initial={editingItem} categories={categories} statuses={statuses} onSave={handleUpdate} onCancel={() => setEditingItem(null)} isSubmitting={isSubmitting} />
                 </Modal>
             )}

@@ -5,7 +5,7 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
   Phone, KeyRound, Loader2, AlertTriangle, ImagePlus,
   UserCheck, UserX, ShieldCheck, Info,
 } from "lucide-react";
@@ -486,7 +486,7 @@ export default function AdminManagement() {
                 <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2">
                   <button onClick={() => setEditingAdmin(a)}
                     className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
-                    <Edit2 className="h-4 w-4" /> แก้ไข
+                    <Pencil className="h-4 w-4" /> แก้ไข
                   </button>
                   <button onClick={() => setResetPwdAdmin(a)}
                     className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl">
@@ -563,7 +563,7 @@ export default function AdminManagement() {
                           <button
                             onClick={() => setEditingAdmin(a)}
                             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
-                            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                            <Pencil className="h-3.5 w-3.5" /> แก้ไข
                           </button>
                           <button
                             onClick={() => setResetPwdAdmin(a)}
@@ -600,7 +600,7 @@ export default function AdminManagement() {
         </Modal>
       )}
       {editingAdmin && (
-        <Modal title={`แก้ไขข้อมูล #${editingAdmin.AdminId}`} icon={Edit2} onClose={() => setEditingAdmin(null)}>
+        <Modal title={`แก้ไขข้อมูล #${editingAdmin.AdminId}`} icon={Pencil} onClose={() => setEditingAdmin(null)}>
           <AdminForm initial={editingAdmin} onSave={handleUpdate} onCancel={() => setEditingAdmin(null)}
             isSubmitting={isSubmitting} showToast={showToast} />
         </Modal>

@@ -4,7 +4,7 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-    Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
+    Plus, Search, Pencil, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, Users, DoorOpen, ChevronDown,
     Wind, Fan, Tv, Presentation, Monitor, Wifi, Volume2, Package,
 } from "lucide-react";
@@ -571,7 +571,7 @@ function RoomCard({ room, index, onEdit, onDelete, onView, onStatusChange }) {
                     </button>
                     <button onClick={() => onEdit(room)}
                         className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
-                        <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+                        <Pencil className="h-3.5 w-3.5" /> แก้ไข
                     </button>
                     <button onClick={() => onDelete(room)}
                         className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
@@ -974,7 +974,7 @@ export default function AdminRooms() {
                 </Modal>
             )}
             {editingRoom && (
-                <Modal title={`แก้ไขห้องเรียน: ${editingRoom.RoomDetail}`} icon={Edit2} onClose={() => setEditingRoom(null)}>
+                <Modal title={`แก้ไขห้องเรียน: ${editingRoom.RoomDetail}`} icon={Pencil} onClose={() => setEditingRoom(null)}>
                     <RoomForm initial={editingRoom} statuses={statuses} onSave={handleUpdate} onCancel={() => setEditingRoom(null)} isSubmitting={isSubmitting} showToast={showToast} />
                 </Modal>
             )}

@@ -10,6 +10,7 @@ import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { ClipboardList } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 export default function CoursesPage() {
   console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
@@ -52,11 +53,16 @@ export default function CoursesPage() {
     const start = new Date(startDate);
     const end = new Date(lastDate);
 
-    if (Number(statusId) === 3 || Number(statusId) === 4 || today > end) {
+    // ★ แก้ตาม audit: id 3 (ปิดรับสมัคร แต่ยังสอนอยู่) กับ id 4 (ปิดคอร์สจริง) ความหมายต่างกัน
+    // เดิมรวมเป็น "สอนจบแล้ว" เหมือนกันหมด ทำให้ติวเตอร์เข้าใจผิดว่าคอร์สจบแล้วทั้งที่จริงแค่ปิดรับสมัคร
+    if (Number(statusId) === 3) {
+      return { id: "closed-registration", text: "ปิดรับสมัคร", colorClass: "bg-amber-100 text-amber-700" };
+    }
+    if (Number(statusId) === 4 || today > end) {
       return { id: "completed", text: "สอนจบแล้ว", colorClass: "bg-slate-200 text-slate-700" };
     }
     if (today >= start && today <= end) {
-      return { id: "active", text: "กำลังสอน", colorClass: "bg-green-100 text-green-700" };
+      return { id: "active", text: "กำลังสอน", colorClass: "bg-emerald-100 text-emerald-700" };
     }
     return { id: "upcoming", text: "ยังไม่เริ่มสอน", colorClass: "bg-blue-100 text-blue-700" };
   };
@@ -223,9 +229,14 @@ export default function CoursesPage() {
             >
               <option value="all">ทั้งหมด</option>
               <option value="active">กำลังสอน</option>
+              <option value="closed-registration">ปิดรับสมัคร</option>
               <option value="completed">สอนจบแล้ว</option>
               <option value="upcoming">ยังไม่เริ่มสอน</option>
             </select>
+            <ClearFiltersButton
+              show={Boolean(search) || filterStatus !== 'all'}
+              onClick={() => { setSearch(''); setFilterStatus('all'); }}
+            />
           </div>
         </div>}
 

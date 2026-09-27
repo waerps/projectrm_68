@@ -18,6 +18,7 @@ import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import { FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 
@@ -1187,12 +1188,10 @@ export default function TutorIncome() {
                     <option value="all">ทุกเดือน</option>
                     {monthsInYear.map(m => <option key={m} value={m}>{THAI_MONTHS[m]}</option>)}
                   </select>
-                  {isFiltered && (
-                    <button
-                      onClick={() => { setHistoryYear('all'); setHistoryMonth('all'); }}
-                      className="text-xs text-orange-600 hover:underline px-1"
-                    >รีเซ็ต</button>
-                  )}
+                  <ClearFiltersButton
+                    show={isFiltered}
+                    onClick={() => { setHistoryYear('all'); setHistoryMonth('all'); }}
+                  />
                 </div>
               </div>
 
