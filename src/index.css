@@ -76,3 +76,23 @@ html, body {
   .sa-ring, .sa-stripes, .sa-hourglass, .sa-pop { animation: none !important; }
   .sa-flow, .sa-flowY { display: none; }
 }
+
+/* ── หน้าภาพรวมสถาบัน (AdminDashboard): ไฟกะพริบ / ลูกบาศก์ในฮีโร่ / โผล่ตามการเลื่อน / แถบซ้อน 3D ── */
+@keyframes sa-blink { 50% { opacity: .25; } }
+@keyframes sa-cube { to { transform: rotateX(360deg) rotateY(720deg); } }
+.sa-blink { animation: sa-blink 1.2s ease-in-out infinite; }
+.sa-cube-scene { perspective: 700px; }
+.sa-cube { position: relative; transform-style: preserve-3d; animation: sa-cube 22s linear infinite; }
+.sa-cube > i { position: absolute; inset: 0; border-radius: 14px; border: 1px solid rgba(253,186,116,.45); background: linear-gradient(135deg, rgba(249,115,22,.28), rgba(251,191,36,.06)); }
+.sa-reveal { opacity: 0; transform: translateY(22px) scale(.985); transition: opacity .7s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+.sa-reveal.is-in { opacity: 1; transform: none; }
+.sa-reveal:not(.is-in) * { animation-play-state: paused !important; }
+.sa-b3 { position: relative; height: var(--h, 10px); margin-top: var(--d, 5px); margin-right: var(--d, 5px); }
+.sa-b3 > span { position: absolute; top: 0; bottom: 0; left: 0; }
+.sa-b3 .fc { position: absolute; inset: 0; background: linear-gradient(180deg, var(--c1), var(--c2)); }
+.sa-b3 .tp { position: absolute; left: 0; right: 0; bottom: 100%; height: var(--d, 5px); background: var(--ct); transform: skewX(-45deg); transform-origin: bottom left; }
+.sa-b3 .sd { position: absolute; left: 100%; top: 0; bottom: 0; width: var(--d, 5px); background: var(--cs); transform: skewY(-45deg); transform-origin: top left; }
+@media (prefers-reduced-motion: reduce) {
+  .sa-blink, .sa-cube { animation: none !important; }
+  .sa-reveal { opacity: 1; transform: none; transition: none; }
+}

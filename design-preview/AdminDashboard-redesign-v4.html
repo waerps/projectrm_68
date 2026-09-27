@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Admin Dashboard v4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.548.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { font-family: "Kanit", sans-serif; }
+  body { background: #f8fafc; }
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  /* ── ชุด sa-* เดิมจาก src/index.css ── */
+  @keyframes sa-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes sa-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes sa-growY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  @keyframes sa-pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 70% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); } }
+  @keyframes sa-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  @keyframes sa-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes sa-ring { 0% { box-shadow: 0 0 0 0 rgba(249,115,22,.35); } 100% { box-shadow: 0 0 0 12px rgba(249,115,22,0); } }
+  @keyframes sa-stripes { from { background-position: 0 0; } to { background-position: 24px 0; } }
+  @keyframes sa-pop { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  .sa-rise { animation: sa-rise .5s ease both; }
+  .sa-grow { transform-origin: left; transform-box: fill-box; animation: sa-grow 1s cubic-bezier(.2,.8,.2,1) both; }
+  .sa-growY { transform-origin: bottom; transform-box: fill-box; animation: sa-growY .9s cubic-bezier(.2,.8,.2,1) both; }
+  .sa-pulse-red { animation: sa-pulse-red 1.8s infinite; }
+  .sa-shine { background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); background-size: 200% 100%; animation: sa-shimmer 3.5s linear infinite; }
+  .sa-float { animation: sa-float 3.2s ease-in-out infinite; }
+  .sa-ring { animation: sa-ring 1.6s ease-out infinite; }
+  .sa-stripes { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 6px, transparent 6px 12px) !important; background-size: 24px 24px !important; animation: sa-stripes 1.2s linear infinite; }
+  .sa-pop { animation: sa-pop .45s cubic-bezier(.2,.8,.2,1) both; }
+  .sa-grain { background-image: radial-gradient(rgba(255,255,255,.18) 1px, transparent 1px); background-size: 14px 14px; }
+  .sa-tilt { transform-style: preserve-3d; transition: transform .15s ease, box-shadow .2s, border-color .2s; will-change: transform; }
+  .sa-glow { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s; background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(251,146,60,.22), transparent 60%); }
+  .sa-tilt:hover .sa-glow { opacity: 1; }
+  .sa-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+  .sa-scroll::-webkit-scrollbar-thumb { background: #fed7aa; border-radius: 9px; }
+
+  /* ── ใหม่: ภาษา 3D ของหน้านี้ ── */
+  @keyframes sa-blink { 50% { opacity: .25; } }
+  @keyframes sa-cube { to { transform: rotateX(360deg) rotateY(720deg); } }
+  .sa-blink { animation: sa-blink 1.2s ease-in-out infinite; }
+  @keyframes sa-draw { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+  .sa-draw { stroke-dasharray: var(--len); animation: sa-draw 1.4s cubic-bezier(.2,.8,.2,1) both; }
+
+  /* ไอคอนไทล์นูน: ขอบล่างทึบ + ไฮไลต์ด้านบน */
+  .sa-tile3d { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -2px 0 rgba(0,0,0,.10), 0 3px 0 var(--edge, #c2410c), 0 10px 16px -8px var(--glow, rgba(249,115,22,.7)); transform: translateY(-2px); }
+
+  /* แท่ง 3D แนวนอน (หน้า + บน + ข้าง) ใช้ได้ทุกที่ */
+  .b3 { position: relative; height: var(--h, 10px); margin-top: var(--d, 5px); margin-right: var(--d, 5px); }
+  .b3 > .trk, .b3 > .fil { position: absolute; top: 0; bottom: 0; left: 0; }
+  .b3 .fc { position: absolute; inset: 0; background: linear-gradient(180deg, var(--c1), var(--c2)); }
+  .b3 .tp { position: absolute; left: 0; right: 0; bottom: 100%; height: var(--d, 5px); background: var(--ct); transform: skewX(-45deg); transform-origin: bottom left; }
+  .b3 .sd { position: absolute; left: 100%; top: 0; bottom: 0; width: var(--d, 5px); background: var(--cs); transform: skewY(-45deg); transform-origin: top left; }
+  .b3 .mark { position: absolute; top: calc(-1 * var(--d, 5px) - 3px); bottom: -3px; width: 2px; border-radius: 2px; background: #334155; opacity: .35; z-index: 2; }
+
+  /* คิวบ์โปร่งในฮีโร่ */
+  .cube-scene { perspective: 700px; }
+  .cube { position: relative; transform-style: preserve-3d; animation: sa-cube 22s linear infinite; }
+  .cube > i { position: absolute; inset: 0; border-radius: 14px; border: 1px solid rgba(253,186,116,.45); background: linear-gradient(135deg, rgba(249,115,22,.28), rgba(251,191,36,.06)); }
+
+  /* โผล่ตามการเลื่อน */
+  .reveal { opacity: 0; transform: translateY(22px) scale(.985); transition: opacity .7s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .reveal:not(.in) * { animation-play-state: paused !important; }
+
+  .pod-top { clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body class="text-slate-800 antialiased">
+
+<!-- defs กลางของกราฟ 3D ทั้งหน้า (สร้างด้วย JS) -->
+<svg id="defs" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
+
+<!-- ═══════════ Navbar (เหมือน AdminNavbar.jsx) ═══════════ -->
+<div class="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4 bg-white lg:bg-transparent">
+  <nav class="relative mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-4 rounded-2xl bg-white/90 backdrop-blur px-4 md:px-8 shadow-lg">
+    <div class="flex items-center gap-2">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center font-bold">S</div>
+      <div class="hidden md:flex flex-col leading-tight">
+        <span class="font-bold text-xs text-orange-500">SORNSERM</span>
+        <span class="font-bold text-xs text-orange-500">TUTOR</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button class="relative h-10 w-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-500 transition">
+        <i data-lucide="bell" class="h-5 w-5"></i>
+        <span class="absolute -top-0.5 -right-0.5 h-5 min-w-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center sa-pulse-red">7</span>
+      </button>
+      <div class="flex items-center gap-2">
+        <div class="h-8 w-8 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-white text-xs font-bold flex items-center justify-center">ก</div>
+        <span class="hidden md:block text-sm font-medium text-orange-500">กมลทิพย์</span>
+        <i data-lucide="chevron-down" class="hidden md:block h-4 w-4 text-slate-400"></i>
+      </div>
+    </div>
+  </nav>
+</div>
+
+<main class="mx-auto max-w-[1384px] px-4 md:px-12 lg:px-0 pt-28 pb-16 space-y-6 overflow-x-clip">
+
+  <!-- ═══════════ HERO ═══════════ -->
+  <section id="hero" class="reveal relative overflow-hidden rounded-3xl bg-slate-900 text-white p-5 sm:p-8">
+    <div class="absolute inset-0 sa-grain opacity-30"></div>
+    <div data-px="18" class="absolute -right-16 -top-24 h-80 w-80 rounded-full bg-orange-500/40 blur-3xl"></div>
+    <div data-px="-12" class="absolute left-1/3 -bottom-32 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl"></div>
+    <div data-px="26" class="cube-scene absolute right-[38%] top-8 hidden lg:block"><div class="cube h-16 w-16"><i style="transform:translateZ(32px)"></i><i style="transform:rotateY(180deg) translateZ(32px)"></i><i style="transform:rotateY(90deg) translateZ(32px)"></i><i style="transform:rotateY(-90deg) translateZ(32px)"></i><i style="transform:rotateX(90deg) translateZ(32px)"></i><i style="transform:rotateX(-90deg) translateZ(32px)"></i></div></div>
+    <div data-px="-20" class="cube-scene absolute left-[46%] bottom-6 hidden lg:block opacity-60"><div class="cube h-8 w-8" style="animation-duration:16s;animation-direction:reverse"><i style="transform:translateZ(16px)"></i><i style="transform:rotateY(180deg) translateZ(16px)"></i><i style="transform:rotateY(90deg) translateZ(16px)"></i><i style="transform:rotateY(-90deg) translateZ(16px)"></i><i style="transform:rotateX(90deg) translateZ(16px)"></i><i style="transform:rotateX(-90deg) translateZ(16px)"></i></div></div>
+
+    <div class="relative flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-8">
+      <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 text-emerald-300 px-2.5 py-1 font-semibold"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400 sa-blink"></span> ข้อมูลสด</span>
+          <span class="text-slate-400">อาทิตย์ 27 ก.ย. 2569 · อัปเดตล่าสุด 14:20 น.</span>
+        </div>
+        <h1 class="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">ภาพรวม<span class="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">สถาบัน</span></h1>
+        <p class="mt-2 text-sm sm:text-base text-slate-400">สวัสดีคุณกมลทิพย์ — วันนี้มี <b class="text-white">12 คาบ</b> และมี <b class="text-amber-300">7 เรื่อง</b> ที่รอคุณจัดการ</p>
+        <div class="mt-6 grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
+          <div class="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
+            <p class="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><i data-lucide="calendar-clock" class="h-3.5 w-3.5"></i> คาบวันนี้</p>
+            <p class="tabular text-2xl sm:text-3xl font-bold mt-1" data-count="12">0</p>
+          </div>
+          <div class="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
+            <p class="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><i data-lucide="radio" class="h-3.5 w-3.5"></i> กำลังสอน</p>
+            <p class="tabular text-2xl sm:text-3xl font-bold mt-1 text-orange-300"><span data-count="3">0</span> <span class="text-xs font-medium text-slate-400">ห้อง</span></p>
+          </div>
+          <div class="rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 p-3 sm:p-4 relative overflow-hidden shadow-lg shadow-orange-500/30">
+            <span class="absolute inset-0 sa-shine"></span>
+            <p class="relative text-[11px] sm:text-xs text-orange-50 flex items-center gap-1"><i data-lucide="bell-ring" class="h-3.5 w-3.5"></i> ต้องจัดการ</p>
+            <p class="relative tabular text-2xl sm:text-3xl font-bold mt-1" data-count="7">0</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- วงแหวน 3D สุขภาพสถาบัน -->
+      <div class="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 shrink-0">
+        <div class="relative w-[230px] shrink-0 sa-float" style="animation-duration:5s">
+          <svg id="healthRing" viewBox="0 0 220 150" class="w-full overflow-visible"></svg>
+          <p class="text-center text-[11px] text-slate-400 -mt-1">สุขภาพสถาบัน · จาก 100</p>
+        </div>
+        <div id="heroBars" class="space-y-3 text-xs w-full sm:w-[170px]"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ต้องจัดการ ═══════════ -->
+  <section class="reveal">
+    <div class="flex items-end justify-between mb-3">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <i data-lucide="list-checks" class="h-4 w-4 text-orange-500"></i>
+        ต้องจัดการ <span class="text-orange-600">7</span> รายการ
+      </h2>
+      <span class="text-xs text-slate-400 hidden sm:block">เรียงจากเร่งด่วนที่สุด</span>
+    </div>
+    <div id="actions" class="sa-scroll flex lg:grid lg:grid-cols-4 gap-3 overflow-x-auto pb-3 pt-1 -mx-4 px-4 lg:mx-0 lg:px-0 snap-x"></div>
+  </section>
+
+  <!-- ═══════════ KPI ═══════════ -->
+  <section id="kpis" class="reveal grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></section>
+
+  <!-- ═══════════ คอร์ส 3D pie + การเงิน 3D bars ═══════════ -->
+  <section class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+    <div class="reveal lg:col-span-2 relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5 flex flex-col">
+      <div class="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-orange-50 to-transparent pointer-events-none"></div>
+      <div class="relative flex items-center justify-between mb-1">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="pie-chart" class="h-4 w-4 text-orange-500"></i>สัดส่วนคอร์สตามสถานะ</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ดูทั้งหมด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+      <p class="relative text-xs text-slate-500 mb-2">ชี้ที่ชิ้นเพื่อดูรายละเอียด · หมุนช้าๆ อัตโนมัติ</p>
+      <div class="relative">
+        <svg id="pie" viewBox="0 0 280 200" class="w-full max-w-[380px] mx-auto overflow-visible cursor-pointer"></svg>
+        <div id="pieTip" class="pointer-events-none absolute z-10 opacity-0 transition-opacity rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg w-max"></div>
+      </div>
+      <div id="pieLegend" class="relative mt-3 grid sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-x-5 gap-y-1"></div>
+    </div>
+
+    <!-- Finance -->
+    <div class="reveal lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5 flex flex-col" style="animation-delay:.08s">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="wallet" class="h-4 w-4 text-orange-500"></i> รายรับ vs รายจ่าย</h3>
+          <p class="text-xs text-slate-500 mt-0.5">6 เดือนล่าสุด · แตะกราฟเพื่อดูรายเดือน</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button data-series="revenue" class="series-btn inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border transition bg-emerald-50 border-emerald-200 text-emerald-700"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>รายรับ</button>
+          <button data-series="expense" class="series-btn inline-flex items-center gap-1.5 h-8 px-3 rounded-xl text-xs font-semibold border transition bg-red-50 border-red-200 text-red-700"><span class="h-2 w-2 rounded-full bg-red-500"></span>รายจ่าย</button>
+          <a class="hidden sm:flex text-xs font-semibold text-orange-600 hover:underline items-center gap-1 cursor-pointer ml-1">รายละเอียด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+        </div>
+      </div>
+
+      <!-- ตัวเลขสรุปเหนือกราฟ -->
+      <div class="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+        <div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+          <p class="text-[11px] text-slate-500">รายรับเดือนนี้</p>
+          <p class="tabular text-base sm:text-lg font-bold text-slate-900">฿<span data-count="287500">0</span></p>
+        </div>
+        <div class="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+          <p class="text-[11px] text-slate-500">รายจ่ายเดือนนี้</p>
+          <p class="tabular text-base sm:text-lg font-bold text-slate-900">฿<span data-count="158200">0</span></p>
+        </div>
+        <div class="rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-2 relative overflow-hidden">
+          <span class="absolute inset-0 sa-shine opacity-60"></span>
+          <p class="relative text-[11px] text-emerald-50">กำไรสุทธิ</p>
+          <p class="relative tabular text-base sm:text-lg font-bold">฿<span data-count="129300">0</span></p>
+        </div>
+      </div>
+
+      <div class="relative flex-1 min-h-[240px]" id="chartWrap">
+        <svg id="finChart" class="absolute inset-0 h-full w-full overflow-visible"></svg>
+        <div id="finTip" class="pointer-events-none absolute z-10 opacity-0 transition-opacity rounded-xl border border-slate-200 bg-white text-slate-700 text-xs px-3 py-2 shadow-lg w-max"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 5) นักเรียน + ติวเตอร์ ═══════════ -->
+  <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- นักเรียน -->
+    <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="graduation-cap" class="h-4 w-4 text-orange-500"></i> ภาพรวมนักเรียน</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ดูทั้งหมด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+
+      <!-- โพเดียม "ความสามารถโดดเด่น" บนพื้นมืด -->
+      <div class="relative overflow-hidden rounded-2xl bg-slate-900 text-white p-4 pb-0">
+        <div class="absolute inset-0 sa-grain opacity-30"></div>
+        <div class="absolute -left-10 -top-16 h-48 w-48 rounded-full bg-orange-500/30 blur-3xl"></div>
+        <div class="relative flex items-center justify-between">
+          <p class="text-xs font-bold text-amber-300 flex items-center gap-1.5"><i data-lucide="award" class="h-4 w-4"></i> ความสามารถโดดเด่น</p>
+          <div class="flex gap-4 text-right">
+            <div><p class="tabular text-lg font-bold leading-none" data-count="486">0</p><p class="text-[10px] text-slate-400">ทั้งหมด</p></div>
+            <div><p class="tabular text-lg font-bold leading-none text-emerald-300" data-count="412">0</p><p class="text-[10px] text-slate-400">ลงทะเบียน</p></div>
+          </div>
+        </div>
+        <div id="podium" class="relative mt-4 grid grid-cols-3 items-end gap-2"></div>
+      </div>
+
+      <div class="grid sm:grid-cols-2 gap-4 mt-4">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <p class="flex items-center gap-1.5 text-xs font-semibold text-slate-500"><i data-lucide="trending-up" class="h-3.5 w-3.5 text-orange-500"></i> พัฒนาการโดดเด่น</p>
+            <a class="text-[11px] font-semibold text-orange-600 hover:underline cursor-pointer">ดูภาพรวม</a>
+          </div>
+          <div id="improvers" class="space-y-1.5"></div>
+        </div>
+        <div>
+          <p class="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-1.5"><i data-lucide="alert-triangle" class="h-3.5 w-3.5 text-red-400"></i> ควรติดตามเป็นพิเศษ</p>
+          <div id="stuAttn" class="space-y-1.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ติวเตอร์ -->
+    <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5" style="animation-delay:.08s">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="user-check" class="h-4 w-4 text-orange-500"></i> ภาพรวมติวเตอร์</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ดูทั้งหมด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-center gap-4 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 p-4">
+        <!-- เกจครึ่งวง -->
+        <div class="relative w-36 shrink-0">
+          <svg viewBox="0 0 120 70" class="w-full">
+            <defs><linearGradient id="gg" x1="0" x2="1"><stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#10b981"/></linearGradient></defs>
+            <path d="M10 62 A50 50 0 0 1 110 62" fill="none" stroke="#fed7aa" stroke-width="10" stroke-linecap="round"/>
+            <path d="M10 62 A50 50 0 0 1 110 62" fill="none" stroke="url(#gg)" stroke-width="10" stroke-linecap="round" class="sa-draw" style="--len:157.08; stroke-dasharray:142.9 157.08;"/>
+          </svg>
+          <div class="absolute inset-x-0 bottom-0 text-center">
+            <p class="tabular text-2xl font-bold text-slate-900 leading-none"><span data-count="91">0</span>%</p>
+            <p class="text-[10px] text-slate-500">เช็กอินเฉลี่ย</p>
+          </div>
+        </div>
+        <div class="flex-1 w-full grid grid-cols-2 gap-3">
+          <div class="rounded-xl bg-white/80 border border-orange-100 p-3 text-center">
+            <p class="tabular text-2xl font-bold text-slate-900" data-count="28">0</p>
+            <p class="text-[11px] text-slate-500">ทั้งหมด</p>
+          </div>
+          <div class="rounded-xl bg-white/80 border border-orange-100 p-3 text-center">
+            <p class="tabular text-2xl font-bold text-emerald-600" data-count="24">0</p>
+            <p class="text-[11px] text-slate-500">กำลังสอน</p>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-xs font-bold text-slate-500 mt-4 mb-2">ทำได้ดี <span class="font-medium text-slate-400">· เช็กอิน ≥ 90%</span></p>
+      <div id="tutorTop" class="space-y-2.5"></div>
+
+      <p class="text-xs font-bold text-slate-500 mt-4 mb-2">ควรติดตาม <span class="font-medium text-slate-400">· เช็กอิน &lt; 50% (จาก ≥ 3 คาบ)</span></p>
+      <div id="tutorAttn" class="space-y-2.5"></div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ตาราง / ห้อง 3D / คลัง 3D ═══════════ -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="calendar" class="h-4 w-4 text-orange-500"></i>ตารางเรียนวันนี้</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ตารางเต็ม <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3">
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold bg-emerald-50 text-emerald-700 border-emerald-200"><i data-lucide="check-circle" class="h-3 w-3"></i>เช็กอินแล้ว 6</span>
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold bg-orange-50 text-orange-700 border-orange-200"><span class="h-1.5 w-1.5 rounded-full bg-orange-500 sa-blink"></span>กำลังสอน 3</span>
+        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold bg-red-50 text-red-700 border-red-200">ยังไม่เช็กอิน 1</span>
+      </div>
+      <ol id="timeline" class="sa-scroll relative space-y-2 max-h-[360px] overflow-y-auto pr-1 pl-6 before:absolute before:left-[9px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-emerald-300 before:via-orange-300 before:to-slate-200"></ol>
+    </div>
+
+    <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-1">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="door-open" class="h-4 w-4 text-orange-500"></i>ห้องเรียน</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ดูทั้งหมด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+      <div class="flex items-baseline gap-2"><p class="tabular text-3xl font-bold text-slate-900" data-count="12">0</p><p class="text-sm text-slate-500">ห้อง · 3 ชั้น</p></div>
+      <div class="relative flex-1 flex items-center" id="roomsWrap">
+        <svg id="rooms" class="w-full overflow-visible"></svg>
+        <div id="roomTip" class="pointer-events-none absolute z-10 opacity-0 transition-opacity rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg w-max"></div>
+      </div>
+      <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+        <div class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-gradient-to-br from-orange-300 to-orange-500"></span>กำลังใช้ <b class="ml-auto tabular">3</b></div>
+        <div class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-emerald-200 border border-emerald-300"></span>ว่าง <b class="ml-auto tabular">7</b></div>
+        <div class="flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm bg-slate-200 border border-slate-300"></span>ปิดปรับปรุง <b class="ml-auto tabular">2</b></div>
+      </div>
+    </div>
+
+    <div class="reveal bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 sm:p-5 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2"><i data-lucide="boxes" class="h-4 w-4 text-orange-500"></i>คลังอุปกรณ์</h3>
+        <a class="text-xs font-semibold text-orange-600 hover:underline flex items-center gap-1 cursor-pointer">ดูทั้งหมด <i data-lucide="chevron-right" class="h-3 w-3"></i></a>
+      </div>
+      <div class="flex items-baseline gap-2 mb-2"><p class="tabular text-3xl font-bold text-slate-900" data-count="64">0</p><p class="text-sm text-slate-500">อุปกรณ์ทั้งหมด</p></div>
+      <div id="stockBar"></div>
+      <div class="mt-4 grid grid-cols-3 gap-2">
+        <div class="rounded-xl px-2 py-2 border text-center bg-emerald-50 border-emerald-100 text-emerald-700"><p class="text-[11px] opacity-70">พร้อมใช้</p><p class="tabular text-lg font-bold">52</p></div>
+        <div class="rounded-xl px-2 py-2 border text-center bg-amber-50 border-amber-100 text-amber-700"><p class="text-[11px] opacity-70">ใกล้หมด</p><p class="tabular text-lg font-bold">8</p></div>
+        <div class="rounded-xl px-2 py-2 border text-center bg-red-50 border-red-100 text-red-600 sa-pulse-red"><p class="text-[11px] opacity-70">หมดสต๊อก</p><p class="tabular text-lg font-bold">4</p></div>
+      </div>
+      <p class="text-xs font-bold text-slate-500 mt-5 mb-2">ต้องเติมก่อน</p>
+      <div id="stock" class="space-y-3"></div>
+    </div>
+  </section>
+
+  <p class="text-center text-[11px] text-slate-400">ตัวอย่างดีไซน์ v4 · ข้อมูลในหน้านี้เป็นข้อมูลสมมติ</p>
+</main>
+
+<script>
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (s) => document.querySelector(s);
+const fmt = (v) => Number(v).toLocaleString("th-TH");
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = (t) => 1 - Math.pow(1 - clamp(t), 3);
+const initial = (s) => { const t = s.replace(/^ครู(พี่)?/, ""); return /^[เแโใไ]/.test(t) ? t.charAt(1) : t.charAt(0); };
+
+/* ───── พาเลตต์ระบบ (base/light เหมือน DONUT_COLORS ใน AdminFinance.jsx) ───── */
+const PAL = {
+  orange: { b: "#f97316", l: "#fdba74" }, emerald: { b: "#10b981", l: "#6ee7b7" },
+  blue: { b: "#3b82f6", l: "#93c5fd" }, amber: { b: "#f59e0b", l: "#fcd34d" },
+  slate: { b: "#94a3b8", l: "#cbd5e1" }, red: { b: "#ef4444", l: "#fca5a5" },
+  rose: { b: "#f43f5e", l: "#fda4af" }, violet: { b: "#8b5cf6", l: "#c4b5fd" },
+};
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const shade = (h, a) => { const t = Math.abs(a), f = a < 0 ? 0 : 255; return `rgb(${rgb(h).map((c) => Math.round(c + (f - c) * t)).join(",")})`; };
+
+/* defs กลาง: หน้า/บน/ข้าง ของลูกบาศก์ + radial แบบ Donut3D เดิม */
+$("#defs").innerHTML = "<defs>" + Object.entries(PAL).map(([k, p]) => `
+  <linearGradient id="fr-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(p.b, .1)}"/><stop offset="1" stop-color="${shade(p.b, -.12)}"/></linearGradient>
+  <linearGradient id="tp-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${shade(p.l, .35)}"/><stop offset="1" stop-color="${p.l}"/></linearGradient>
+  <linearGradient id="sd-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(p.b, -.25)}"/><stop offset="1" stop-color="${shade(p.b, -.4)}"/></linearGradient>
+  <radialGradient id="rg-${k}" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="${p.l}"/><stop offset="1" stop-color="${p.b}"/></radialGradient>`).join("") + `
+  <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#f1f5f9"/><rect width="3" height="6" fill="#e2e8f0"/></pattern>
+  <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7ed"/><stop offset="1" stop-color="#f8fafc"/></linearGradient>
+</defs>`;
+
+/* ───── helper 3D ───── */
+// ลูกบาศก์แบบ oblique (ใช้กับกราฟแท่ง)
+const OX = .75, OY = .55;
+function cuboid(x, yb, w, h, d, k, attr = "") {
+  h = Math.max(h, .6);
+  const dx = d * OX, dy = d * OY, yt = yb - h;
+  return `<g ${attr}>
+    <polygon points="${x + w},${yb} ${x + w + dx},${yb - dy} ${x + w + dx},${yt - dy} ${x + w},${yt}" fill="url(#sd-${k})"/>
+    <rect x="${x}" y="${yt}" width="${w}" height="${h}" fill="url(#fr-${k})"/>
+    <polygon points="${x},${yt} ${x + w},${yt} ${x + w + dx},${yt - dy} ${x + dx},${yt - dy}" fill="url(#tp-${k})"/>
+    <line x1="${x}" y1="${yt}" x2="${x + w}" y2="${yt}" stroke="rgba(255,255,255,.7)"/>
+  </g>`;
+}
+// วงแหวน/ชิ้นพายบนระนาบเอียง
+function band(cx, cy, rO, rI, a0, a1, t) {
+  const P = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a) * t).toFixed(2)}`;
+  const lg = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${P(rO, a0)}A${rO} ${rO * t} 0 ${lg} 1 ${P(rO, a1)}L${P(rI, a1)}A${rI} ${rI * t} 0 ${lg} 0 ${P(rI, a0)}Z`;
+}
+// แท่ง 3D แนวนอน (HTML)
+const b3vars = (k) => { const p = PAL[k]; return `--c1:${shade(p.b, .12)};--c2:${shade(p.b, -.1)};--ct:${shade(p.l, .2)};--cs:${shade(p.b, -.35)}`; };
+function bar3d(to, k, o = {}) {
+  const { from = 0, h = 10, d = 5, delay = 0, stripes = false, dark = false, mark = null } = o;
+  const trk = dark ? "--c1:rgba(255,255,255,.10);--c2:rgba(255,255,255,.06);--ct:rgba(255,255,255,.16);--cs:rgba(255,255,255,.04)"
+                   : "--c1:#f1f5f9;--c2:#e2e8f0;--ct:#f8fafc;--cs:#cbd5e1";
+  return `<div class="b3" style="--h:${h}px;--d:${d}px">
+    <div class="trk" style="right:0;${trk}"><div class="fc"></div><div class="tp"></div><div class="sd"></div></div>
+    ${to - from > 0 ? `<div class="fil sa-grow" style="left:${from}%;width:${to - from}%;${b3vars(k)};animation-delay:${delay}s"><div class="fc ${stripes ? "sa-stripes" : ""}"></div><div class="tp"></div><div class="sd"></div></div>` : ""}
+    ${mark !== null ? `<span class="mark" style="left:${mark}%"></span>` : ""}
+  </div>`;
+}
+const tile = (k, icon, size = "h-11 w-11", ic = "h-5 w-5") => `<span class="sa-tile3d ${size} shrink-0 rounded-xl text-white flex items-center justify-center" style="background:linear-gradient(135deg, ${shade(PAL[k].b, .12)}, ${shade(PAL[k].b, -.12)});--edge:${shade(PAL[k].b, -.38)};--glow:${PAL[k].b}99"><i data-lucide="${icon}" class="${ic}"></i></span>`;
+
+/* ───── ข้อมูลตัวอย่าง ───── */
+const ACTIONS = [
+  { icon: "clock", title: "คาบวันนี้ยังไม่เช็กอิน", msg: "ฟิสิกส์ ม.5 · 13:00", count: 1, k: "red", urgent: true },
+  { icon: "wallet", title: "รอตรวจสลิปชำระเงิน", msg: "ยอดรวม ฿18,400", count: 5, k: "orange" },
+  { icon: "user-check", title: "ใบสมัครติวเตอร์ใหม่", msg: "รออนุมัติ", count: 2, k: "blue" },
+  { icon: "boxes", title: "อุปกรณ์ต้องเติมสต๊อก", msg: "ใกล้หมด 8 · หมด 4", count: 12, k: "amber" },
+  { icon: "alert-triangle", title: "นักเรียนที่ต้องดูแล", msg: "คะแนนถดถอย / เข้าเรียนต่ำ", count: 4, k: "rose" },
+  { icon: "user-x", title: "ติวเตอร์เช็กอินต่ำ", msg: "ต่ำกว่า 50% เดือนนี้", count: 2, k: "violet" },
+  { icon: "door-open", title: "ห้องปิดปรับปรุง", msg: "ห้อง 204, 303", count: 2, k: "slate" },
+];
+const KPIS = [
+  { label: "คอร์สที่เปิดสอนอยู่", value: 22, sub: "ทั้งหมด 39 คอร์ส", icon: "book-open", k: "blue", spark: [14, 16, 15, 18, 19, 22] },
+  { label: "นักเรียนทั้งหมด", value: 486, sub: "ลงทะเบียนแล้ว 412 คน", icon: "graduation-cap", k: "orange", spark: [380, 402, 421, 440, 468, 486] },
+  { label: "ติวเตอร์ทั้งหมด", value: 28, sub: "กำลังสอน 24 คน", icon: "users", k: "emerald", spark: [21, 22, 24, 25, 27, 28] },
+  { label: "รายรับเดือนนี้", value: 287500, money: true, sub: "+9.2% จากเดือนก่อน", up: true, icon: "wallet", k: "amber", spark: [182, 205, 198, 241, 263, 287.5] },
+];
+const COURSES = [
+  { name: "กำลังสอน", value: 14, k: "orange" }, { name: "ปิดคอร์สแล้ว", value: 9, k: "slate" },
+  { name: "เปิดรับสมัคร", value: 8, k: "emerald" }, { name: "ที่นั่งเต็ม", value: 5, k: "blue" }, { name: "ฉบับร่าง", value: 3, k: "amber" },
+];
+const FIN = { labels: ["เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย."], revenue: [182000, 205000, 198000, 241000, 263000, 287500], expense: [121000, 134000, 129000, 142000, 150500, 158200] };
+FIN.profit = FIN.revenue.map((v, i) => v - FIN.expense[i]);
+const PODIUM = [{ n: "มายด์", full: "ณัฐธิดา", s: 96, rank: 2 }, { n: "ปั้น", full: "ธนภัทร", s: 99, rank: 1 }, { n: "ข้าวหอม", full: "ภัทรา", s: 94, rank: 3 }];
+const IMPROVERS = [{ n: "ต้นกล้า", from: 48, to: 81 }, { n: "เฟิร์น", from: 55, to: 83 }, { n: "โอ๊ต", from: 60, to: 84 }];
+const STU_ATTN = [{ n: "บอส", flag: "คะแนนลดลง 18", tone: "red" }, { n: "แพรวา", flag: "เข้าเรียน 52%", tone: "red" }, { n: "จูเนียร์", flag: "Post-test 38/100", tone: "amber" }, { n: "ใบเตย", flag: "ขาด 3 คาบติด", tone: "red" }];
+const TUT_TOP = [{ n: "ครูพี่เบียร์", sub: "คณิต ม.ปลาย", r: 100 }, { n: "ครูแนน", sub: "อังกฤษ ป.6", r: 98 }, { n: "ครูพี่ต้า", sub: "ฟิสิกส์ ม.4-6", r: 95 }];
+const TUT_ATTN = [{ n: "ครูกอล์ฟ", sub: "เคมี ม.5 · 7 คาบ", r: 43 }, { n: "ครูพี่มิ้นท์", sub: "ชีวะ ม.6 · 4 คาบ", r: 25 }];
+const SESSIONS = [
+  { t: "09:00–10:30", c: "คณิต ม.3 (เข้มข้น)", room: "101", tutor: "ครูพี่เบียร์", st: "done" },
+  { t: "09:00–11:00", c: "อังกฤษ ป.6 สอบเข้า", room: "102", tutor: "ครูแนน", st: "done" },
+  { t: "10:30–12:00", c: "วิทย์ ม.1", room: "201", tutor: "ครูพี่โอ", st: "done" },
+  { t: "11:00–12:30", c: "เคมี ม.5", room: "202", tutor: "ครูกอล์ฟ", st: "done" },
+  { t: "13:00–14:30", c: "ภาษาไทย ป.5", room: "103", tutor: "ครูอิ๋ว", st: "done" },
+  { t: "13:00–15:00", c: "ฟิสิกส์ ม.5", room: "203", tutor: "ครูพี่ต้า", st: "missed" },
+  { t: "13:30–15:30", c: "คณิต ม.6 TGAT/A-Level", room: "101", tutor: "ครูพี่เบียร์", st: "done" },
+  { t: "14:00–15:30", c: "อังกฤษ ม.2", room: "102", tutor: "ครูแนน", st: "live" },
+  { t: "14:00–16:00", c: "ชีวะ ม.6", room: "301", tutor: "ครูพี่มิ้นท์", st: "live" },
+  { t: "14:15–15:45", c: "คณิต ป.4", room: "104", tutor: "ครูฝน", st: "live" },
+  { t: "16:00–17:30", c: "วิทย์ ม.2", room: "201", tutor: "ครูพี่โอ", st: "next" },
+  { t: "17:30–19:00", c: "สังคม ม.3", room: "103", tutor: "ครูบี", st: "next" },
+];
+// ชั้น 3 อยู่ด้านหลัง ชั้น 1 อยู่ด้านหน้า
+const FLOORS = [
+  [["301", "busy", "ชีวะ ม.6 · ครูพี่มิ้นท์"], ["302", "free"], ["303", "fix"], ["304", "free"]],
+  [["201", "free"], ["202", "free"], ["203", "free"], ["204", "fix"]],
+  [["101", "free"], ["102", "busy", "อังกฤษ ม.2 · ครูแนน"], ["103", "free"], ["104", "busy", "คณิต ป.4 · ครูฝน"]],
+];
+const STOCK = [{ n: "ปากกาไวท์บอร์ด", left: 0, max: 40 }, { n: "กระดาษ A4", left: 0, max: 20 }, { n: "หมึกพิมพ์ HP 682", left: 1, max: 8 }, { n: "ถ่าน AA (รีโมต)", left: 3, max: 24 }];
+
+/* ───── แอนิเมชัน intro กลาง ───── */
+function animate(dur, fn, done) {
+  if (RM) { fn(1); done && done(); return; }
+  const t0 = performance.now();
+  const step = (t) => { const p = clamp((t - t0) / dur); fn(p); if (p < 1) requestAnimationFrame(step); else done && done(); };
+  requestAnimationFrame(step);
+}
+
+/* ═════ HERO: วงแหวน 3D ═════ */
+function drawHealth(p) {
+  const cx = 110, cy = 62, rO = 96, rI = 70, t = .42, depth = 14, val = .86 * ease(p);
+  const a0 = -Math.PI / 2, a1 = a0 + Math.max(val * 2 * Math.PI, .001);
+  const trackA = band(cx, cy, rO, rI, a1, a0 + 2 * Math.PI - .0001, t);
+  const prog = band(cx, cy, rO, rI, a0, a1, t);
+  let g = `<ellipse cx="${cx}" cy="${cy + depth + 10}" rx="${rO * .95}" ry="${rO * t * .75}" fill="rgba(0,0,0,.35)" filter="blur(6px)"/>`;
+  for (let k = depth; k >= 1; k--) {
+    g += `<path d="${trackA}" transform="translate(0 ${k})" fill="rgba(255,255,255,${.03 + (1 - k / depth) * .03})"/>`;
+    g += `<path d="${prog}" transform="translate(0 ${k})" fill="${shade("#f97316", -.25 - (k / depth) * .2)}"/>`;
+  }
+  g += `<path d="${trackA}" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>`;
+  g += `<path d="${prog}" fill="url(#rg-amber)" stroke="rgba(255,255,255,.55)" stroke-width="1"/>`;
+  g += `<text x="${cx}" y="${cy + 11}" text-anchor="middle" font-size="34" font-weight="700" fill="#fff" font-family="Kanit">${Math.round(86 * ease(p))}</text>`;
+  $("#healthRing").innerHTML = g;
+}
+$("#heroBars").innerHTML = [["เช็กอินติวเตอร์", 91, "emerald"], ["ที่นั่งถูกจอง", 85, "orange"], ["ชำระตรงเวลา", 78, "blue"]].map(([l, v, k], i) => `
+  <div><div class="flex justify-between text-slate-400 mb-0.5"><span>${l}</span><b class="text-white tabular">${v}%</b></div><div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="sa-grow h-full rounded-full" style="width:${v}%;background:linear-gradient(90deg, ${PAL[k].b}, ${PAL[k].l});animation-delay:${.2 + i * .15}s"></div></div></div>`).join("") +
+  `<p class="text-[10px] text-slate-500">คะแนนสุขภาพคำนวณจาก 3 ตัวชี้วัดนี้</p>`;
+
+// parallax
+const hero = $("#hero");
+hero.addEventListener("mousemove", (e) => {
+  const r = hero.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5;
+  hero.querySelectorAll("[data-px]").forEach((el) => { const s = +el.dataset.px; el.style.transform = `translate(${px * s}px, ${py * s}px)`; });
+});
+
+/* ═════ ACTIONS ═════ */
+$("#actions").innerHTML = ACTIONS.map((a, i) => `
+  <button class="sa-rise group snap-start shrink-0 w-[240px] lg:w-auto text-left relative overflow-hidden bg-white rounded-2xl border ${a.urgent ? "border-red-200" : "border-slate-200"} shadow-sm hover:shadow-lg hover:-translate-y-0.5 hover:border-orange-300 transition p-4 flex items-center gap-3" style="animation-delay:${.05 + i * .05}s">
+    ${a.urgent ? '<span class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-rose-400 to-red-500 sa-stripes"></span>' : ""}
+    <span class="${a.urgent ? "sa-pulse-red rounded-xl" : ""}">${tile(a.k, a.icon)}</span>
+    <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-slate-800 truncate">${a.title}</span><span class="block text-[11px] text-slate-500 truncate">${a.msg}</span></span>
+    <span class="flex flex-col items-end"><span class="tabular text-2xl font-bold ${a.urgent ? "text-red-600" : "text-slate-900"} leading-none">${a.count}</span><i data-lucide="arrow-up-right" class="h-4 w-4 text-slate-300 group-hover:text-orange-500 transition mt-1"></i></span>
+  </button>`).join("") + `
+  <button class="sa-rise hidden lg:flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 text-sm font-semibold text-orange-600 hover:bg-orange-50 hover:border-orange-300 transition" style="animation-delay:.4s"><i data-lucide="bell" class="h-4 w-4"></i> ดูการแจ้งเตือนทั้งหมด <i data-lucide="arrow-right" class="h-4 w-4"></i></button>`;
+
+/* ═════ KPI + แท่ง 3D จิ๋ว ═════ */
+function spark(vals, k) {
+  const w = 120, h = 36, c = PAL[k].b, min = Math.min(...vals), max = Math.max(...vals);
+  const pts = vals.map((v, i) => [i * (w / (vals.length - 1)), h - 4 - ((v - min) / (max - min || 1)) * (h - 8)]);
+  const d = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" "), [lx, ly] = pts[pts.length - 1];
+  return `<svg viewBox="0 0 ${w} ${h}" class="w-full h-9 overflow-visible">
+    <defs><linearGradient id="sp-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".25"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+    <path d="${d} L${w} ${h} L0 ${h} Z" fill="url(#sp-${k})"/>
+    <path d="${d}" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sa-draw" style="--len:200"/>
+    <circle cx="${lx}" cy="${ly}" r="3.5" fill="#fff" stroke="${c}" stroke-width="2" class="sa-pop" style="animation-delay:1.2s"/>
+  </svg>`;
+}
+$("#kpis").innerHTML = KPIS.map((k, i) => `
+  <div class="sa-tilt sa-rise relative overflow-hidden bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-orange-200 p-3.5 sm:p-5" style="animation-delay:${.1 + i * .06}s">
+    <span class="sa-glow"></span>
+    <i data-lucide="${k.icon}" class="absolute -right-4 -top-4 h-24 w-24 text-slate-100"></i>
+    <div class="relative flex items-center gap-3">${tile(k.k, k.icon)}<p class="text-xs text-slate-500 font-medium">${k.label}</p></div>
+    <p class="relative tabular text-2xl sm:text-3xl font-bold text-slate-900 mt-3">${k.money ? "฿" : ""}<span data-count="${k.value}">0</span></p>
+    <div class="relative flex items-end justify-between gap-3 mt-1">
+      <p class="text-[11px] ${k.up ? "text-emerald-600 font-semibold flex items-center gap-0.5" : "text-slate-500"} sm:whitespace-nowrap">${k.up ? '<i data-lucide="trending-up" class="h-3.5 w-3.5 shrink-0"></i>' : ""}${k.sub}</p>
+      <div class="hidden sm:block w-24 shrink-0">${spark(k.spark, k.k)}</div>
+    </div>
+  </div>`).join("");
+
+/* ═════ PIE 3D ═════ */
+const pie = { rot: 0, prog: 0, hover: null, hv: COURSES.map(() => 0), total: COURSES.reduce((s, c) => s + c.value, 0) };
+function drawPie() {
+  const cx = 140, cy = 88, rO = 118, rI = 58, t = .52, depth = 24, pad = .035;
+  let a = -Math.PI / 2 + pie.rot;
+  const sl = COURSES.map((c, i) => {
+    const sw = c.value / pie.total * 2 * Math.PI * ease(pie.prog);
+    const a0 = a + pad / 2, a1 = a + Math.max(sw - pad / 2, pad / 2 + .001); a += sw;
+    const m = (a0 + a1) / 2, h = pie.hv[i];
+    return { ...c, i, a0, a1, m, ex: Math.cos(m) * 12 * h, ey: Math.sin(m) * 12 * t * h - 10 * h };
+  });
+  const dz = depth * ease(pie.prog * 1.2);
+  let g = `<ellipse cx="${cx}" cy="${cy + depth + 12}" rx="${rO * .92}" ry="${rO * t * .7}" fill="rgba(15,23,42,.18)" filter="blur(8px)"/>`;
+  for (let k = Math.round(dz); k >= 1; k--) {
+    sl.forEach((s) => { g += `<path d="${band(cx, cy, rO, rI, s.a0, s.a1, t)}" transform="translate(${s.ex.toFixed(2)} ${(s.ey + k).toFixed(2)})" fill="${shade(PAL[s.k].b, -.22 - (k / depth) * .22)}" data-i="${s.i}"/>`; });
+  }
+  sl.forEach((s) => {
+    g += `<path d="${band(cx, cy, rO, rI, s.a0, s.a1, t)}" transform="translate(${s.ex.toFixed(2)} ${s.ey.toFixed(2)})" fill="url(#rg-${s.k})" stroke="#fff" stroke-width="1.5" stroke-linejoin="round" data-i="${s.i}" opacity="${pie.hover === null || pie.hover === s.i ? 1 : .55}"/>`;
+    if (s.value / pie.total > .1 && pie.prog > .9) {
+      const r = (rO + rI) / 2, x = cx + Math.cos(s.m) * r + s.ex, y = cy + Math.sin(s.m) * r * t + s.ey + 4;
+      g += `<text x="${x}" y="${y}" text-anchor="middle" font-size="11" font-weight="600" fill="#fff" pointer-events="none">${Math.round(s.value / pie.total * 100)}%</text>`;
+    }
+  });
+  const cur = pie.hover === null ? { v: pie.total, l: "คอร์สทั้งหมด" } : { v: COURSES[pie.hover].value, l: COURSES[pie.hover].name };
+  g += `<text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a" pointer-events="none">${cur.v}</text>
+        <text x="${cx}" y="${cy + 18}" text-anchor="middle" font-size="9" fill="#64748b" pointer-events="none">${cur.l}</text>`;
+  $("#pie").innerHTML = g;
+}
+let pieLast = performance.now(), pieRun = false;
+function pieLoop(t) {
+  const dt = Math.min((t - pieLast) / 1000, .05); pieLast = t;
+  if (pie.prog < 1) pie.prog = clamp(pie.prog + dt / 1.3);
+  if (!RM && pie.hover === null) pie.rot += dt * .12;
+  pie.hv = pie.hv.map((h, i) => h + ((pie.hover === i ? 1 : 0) - h) * .18);
+  drawPie(); requestAnimationFrame(pieLoop);
+}
+$("#pieLegend").innerHTML = COURSES.map((c, i) => `
+  <div data-i="${i}" class="legend-row rounded-xl px-2 py-1.5 transition hover:bg-orange-50/60 cursor-pointer">
+    <div class="flex items-center justify-between text-sm mb-0.5">
+      <span class="flex items-center gap-2 text-slate-600"><span class="h-2.5 w-2.5 rounded-full" style="background:${PAL[c.k].b}"></span>${c.name}</span>
+      <span class="flex items-baseline gap-1.5"><b class="tabular text-slate-800">${c.value}</b><span class="tabular text-[11px] text-slate-400 w-8 text-right">${Math.round(c.value / pie.total * 100)}%</span></span>
+    </div><div class="mt-1 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="sa-grow h-full rounded-full" style="width:${c.value / COURSES[0].value * 100}%;background:linear-gradient(90deg, ${PAL[c.k].l}, ${PAL[c.k].b});animation-delay:${.3 + i * .1}s"></div></div>
+  </div>`).join("");
+const setPieHover = (i) => {
+  pie.hover = i;
+  document.querySelectorAll(".legend-row").forEach((r) => r.classList.toggle("bg-orange-50", +r.dataset.i === i));
+};
+$("#pie").addEventListener("mousemove", (e) => {
+  const i = e.target.dataset?.i; setPieHover(i === undefined ? null : +i);
+  const tip = $("#pieTip");
+  if (i === undefined) { tip.style.opacity = 0; return; }
+  const c = COURSES[+i], wr = $("#pie").parentElement.getBoundingClientRect();
+  tip.innerHTML = `<p class="font-semibold text-slate-900">${c.name}</p><p class="tabular text-slate-600"><b class="text-orange-600">${c.value}</b> คอร์ส · ${Math.round(c.value / pie.total * 100)}%</p>`;
+  tip.style.left = Math.min(e.clientX - wr.left + 14, wr.width - 130) + "px"; tip.style.top = (e.clientY - wr.top - 52) + "px"; tip.style.opacity = 1;
+});
+$("#pie").addEventListener("mouseleave", () => { setPieHover(null); $("#pieTip").style.opacity = 0; });
+document.querySelectorAll(".legend-row").forEach((el) => { el.addEventListener("mouseenter", () => setPieHover(+el.dataset.i)); el.addEventListener("mouseleave", () => setPieHover(null)); });
+
+/* ── กราฟการเงิน (SVG area + crosshair tooltip) ── */
+const visible = { revenue: true, expense: true };
+function drawFinance(animate = true) {
+  const wrap = $("#chartWrap"), svg = $("#finChart");
+  const W = wrap.clientWidth, H = wrap.clientHeight, pl = 40, pr = 12, pt = 10, pb = 26;
+  const max = 320000, n = FIN.labels.length;
+  const x = (i) => pl + i * ((W - pl - pr) / (n - 1));
+  const y = (v) => pt + (1 - v / max) * (H - pt - pb);
+  const smooth = (arr) => arr.map((v, i) => {
+    if (!i) return `M${x(0)} ${y(v)}`;
+    const cx = (x(i - 1) + x(i)) / 2;
+    return `C${cx} ${y(arr[i - 1])} ${cx} ${y(v)} ${x(i)} ${y(v)}`;
+  }).join(" ");
+  let g = `<defs>
+    <linearGradient id="fr" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22c55e" stop-opacity=".28"/><stop offset="100%" stop-color="#22c55e" stop-opacity="0"/></linearGradient>
+    <linearGradient id="fe" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity=".18"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0"/></linearGradient>
+  </defs>`;
+  [0, 100000, 200000, 300000].forEach((v) => {
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="#f1f5f9" stroke-dasharray="4 4"/>
+          <text x="${pl - 8}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#94a3b8">${v / 1000}k</text>`;
+  });
+  FIN.labels.forEach((l, i) => g += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle" font-size="11" fill="${i === n - 1 ? "#ea580c" : "#94a3b8"}" font-weight="${i === n - 1 ? 700 : 400}">${l}</text>`);
+  // แถบไฮไลต์เดือนปัจจุบัน
+  g += `<rect x="${x(n - 1) - 18}" y="${pt}" width="36" height="${H - pt - pb}" rx="10" fill="#fff7ed"/>`;
+  const series = [["expense", "#ef4444", "fe"], ["revenue", "#22c55e", "fr"]];
+  series.forEach(([k, col, grad]) => {
+    if (!visible[k]) return;
+    const d = smooth(FIN[k]);
+    g += `<path d="${d} L${x(n - 1)} ${y(0)} L${x(0)} ${y(0)} Z" fill="url(#${grad})" class="sa-rise"/>`;
+    g += `<path d="${d}" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" class="sa-draw" style="--len:1400"/>`;
+    FIN[k].forEach((v, i) => g += `<circle cx="${x(i)}" cy="${y(v)}" r="${i === n - 1 ? 5 : 3}" fill="#fff" stroke="${col}" stroke-width="2" class="sa-pop" style="animation-delay:${.5 + i * .1}s"/>`);
+  });
+  const lx = x(n - 1), ly = y(FIN.revenue[n - 1]);
+  if (visible.revenue) g += `<circle cx="${lx}" cy="${ly}" r="11" fill="#22c55e" opacity=".2" class="sa-blink"/>`;
+  g += `<line id="cross" x1="0" x2="0" y1="${pt}" y2="${H - pb}" stroke="#fdba74" stroke-width="1.5" stroke-dasharray="4 3" opacity="0"/>`;
+  g += `<rect id="hit" x="${pl}" y="0" width="${W - pl - pr}" height="${H}" fill="transparent"/>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = animate ? g : g.replace(/sa-draw|sa-pop|sa-rise|sa-blink/g, "");
+
+  const tip = $("#finTip"), cross = $("#cross");
+  $("#hit").addEventListener("mousemove", (e) => {
+    const r = svg.getBoundingClientRect();
+    const i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left - pl) / ((W - pl - pr) / (n - 1)))));
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("opacity", 1);
+    const p = FIN.revenue[i] - FIN.expense[i];
+    tip.innerHTML = `<p class="font-bold text-slate-900 mb-1">${FIN.labels[i]} 2569</p>
+      <p class="flex justify-between gap-4"><span class="text-emerald-600">รายรับ</span><b class="tabular">฿${fmt(FIN.revenue[i])}</b></p>
+      <p class="flex justify-between gap-4"><span class="text-red-600">รายจ่าย</span><b class="tabular">฿${fmt(FIN.expense[i])}</b></p>
+      <p class="flex justify-between gap-4 border-t border-slate-100 mt-1 pt-1"><span class="text-orange-600">กำไร</span><b class="tabular">฿${fmt(p)}</b></p>`;
+    tip.style.opacity = 1;
+    const left = Math.min(x(i) + 12, W - tip.offsetWidth - 4);
+    tip.style.left = (x(i) + 12 + tip.offsetWidth > W ? x(i) - tip.offsetWidth - 12 : left) + "px";
+    tip.style.top = "8px";
+  });
+  $("#hit").addEventListener("mouseleave", () => { tip.style.opacity = 0; cross.setAttribute("opacity", 0); });
+}
+document.querySelectorAll(".series-btn").forEach((b) => b.addEventListener("click", () => {
+  const k = b.dataset.series; visible[k] = !visible[k];
+  b.classList.toggle("opacity-40", !visible[k]); drawFinance(true);
+}));
+
+/* ── โพเดียม ── */
+const podGrad = { 1: "from-amber-300 to-orange-500", 2: "from-slate-200 to-slate-400", 3: "from-orange-300 to-rose-400" };
+const podH = { 1: "h-24", 2: "h-16", 3: "h-12" };
+$("#podium").innerHTML = PODIUM.map((p) => `
+  <div class="flex flex-col items-center">
+    <span class="relative ${p.rank === 1 ? "sa-float" : ""}">
+      <span class="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-gradient-to-br ${podGrad[p.rank]} text-slate-900 flex items-center justify-center text-xl font-bold shadow-lg">${initial(p.n)}</span>
+      ${p.rank === 1 ? '<span class="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-white text-orange-600 flex items-center justify-center shadow"><i data-lucide="crown" class="h-3.5 w-3.5"></i></span>' : ""}
+    </span>
+    <p class="mt-1.5 text-sm font-bold truncate max-w-full">${p.n}</p>
+    <p class="text-[10px] text-slate-400 -mt-0.5">${p.full}</p>
+    <div class="sa-growY mt-2 w-full ${podH[p.rank]} rounded-t-xl bg-gradient-to-b ${p.rank === 1 ? "from-orange-500/80 to-orange-500/20" : "from-white/20 to-white/5"} border-t border-x border-white/10 flex flex-col items-center justify-start pt-1.5" style="animation-delay:${.2 + (3 - p.rank) * .1}s">
+      <span class="tabular text-lg font-bold ${p.rank === 1 ? "text-white" : "text-amber-200"}">${p.s}</span>
+      <span class="text-[10px] text-white/60">#${p.rank}</span>
+    </div>
+  </div>`).join("");
+
+$("#improvers").innerHTML = IMPROVERS.map((s, i) => `
+  <div class="flex items-center gap-2.5 rounded-xl bg-emerald-50/60 border border-emerald-100 px-2.5 py-2">
+    <span class="h-8 w-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-[11px] font-bold text-orange-600 shrink-0">${initial(s.n)}</span>
+    <div class="min-w-0 flex-1">
+      <p class="text-sm font-semibold text-slate-800 truncate">${s.n}</p>
+      <div class="flex items-center gap-1.5 text-[11px] text-slate-500 tabular">${s.from}
+        <span class="relative h-1.5 flex-1 rounded-full bg-emerald-100"><span class="sa-grow absolute inset-y-0 rounded-full bg-gradient-to-r from-emerald-300 to-emerald-500" style="left:${s.from}%;width:${s.to - s.from}%;animation-delay:${.2 + i * .12}s"></span><span class="absolute top-1/2 -mt-1 h-2 w-2 rounded-full bg-white border-2 border-emerald-500" style="left:calc(${s.to}% - 4px)"></span></span>${s.to}</div>
+    </div>
+    <span class="tabular text-sm font-bold text-emerald-600">+${s.to - s.from}</span>
+  </div>`).join("");
+
+$("#stuAttn").innerHTML = STU_ATTN.map((s) => `
+  <div class="flex items-center gap-2.5 py-1">
+    <span class="relative h-8 w-8 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center text-[11px] font-bold text-orange-600 shrink-0">${initial(s.n)}
+      ${s.tone === "red" ? '<span class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white sa-pulse-red"></span>' : ""}</span>
+    <p class="text-sm font-semibold text-slate-800 truncate flex-1">${s.n}</p>
+    <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full border shrink-0 ${s.tone === "red" ? "bg-red-50 text-red-600 border-red-100" : "bg-amber-50 text-amber-600 border-amber-100"}">${s.flag}</span>
+  </div>`).join("");
+
+/* ── ติวเตอร์ ── */
+const tutorRow = (t, good, i) => `
+  <div class="flex items-center gap-3">
+    <span class="h-9 w-9 rounded-xl ${good ? "bg-gradient-to-br from-orange-400 to-amber-500 text-white" : "bg-amber-50 border border-amber-200 text-amber-700"} flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">${initial(t.n)}</span>
+    <div class="min-w-0 flex-1">
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-sm font-semibold text-slate-800 truncate">${t.n} <span class="font-normal text-[11px] text-slate-400">${t.sub}</span></p>
+        <span class="tabular text-sm font-bold ${good ? "text-emerald-600" : "text-amber-600"}">${t.r}%</span>
+      </div>
+      <div class="mt-1 h-2 rounded-full bg-slate-100 overflow-hidden relative">
+        <div class="sa-grow h-full rounded-full ${good ? "bg-gradient-to-r from-emerald-400 to-emerald-500" : "bg-amber-400 sa-stripes"}" style="width:${t.r}%; animation-delay:${.2 + i * .12}s"></div>
+        <span class="absolute inset-y-0 left-1/2 w-px bg-slate-300" title="เกณฑ์ 50%"></span>
+      </div>
+    </div>
+  </div>`;
+$("#tutorTop").innerHTML = TUT_TOP.map((t, i) => tutorRow(t, true, i)).join("");
+$("#tutorAttn").innerHTML = TUT_ATTN.map((t, i) => tutorRow(t, false, i)).join("");
+
+/* ═════ ไทม์ไลน์ ═════ */
+const stMeta = {
+  done: { dot: "bg-emerald-500", ico: "check", card: "bg-white border-slate-200", badge: "" },
+  live: { dot: "bg-orange-500 sa-ring", ico: "radio", card: "bg-orange-50 border-orange-200", badge: '<span class="text-[10px] font-bold text-white bg-orange-500 rounded-full px-1.5 py-0.5">LIVE</span>' },
+  missed: { dot: "bg-red-500 sa-pulse-red", ico: "x", card: "bg-red-50 border-red-200", badge: '<span class="text-[10px] font-bold text-red-600 bg-white border border-red-200 rounded-full px-1.5 py-0.5">ยังไม่เช็กอิน</span>' },
+  next: { dot: "bg-slate-300", ico: "clock", card: "bg-white border-dashed border-slate-200 opacity-70", badge: "" },
+};
+let tl = "", nowPlaced = false;
+SESSIONS.forEach((s, i) => {
+  if (!nowPlaced && s.st === "next") {
+    tl += `<li data-now class="relative -ml-6 flex items-center gap-2 py-1"><span class="h-5 w-5 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center shadow ring-4 ring-orange-100 shrink-0">▶</span><span class="h-0.5 flex-1 bg-gradient-to-r from-orange-500 to-transparent"></span><span class="text-[11px] font-bold text-orange-600">ตอนนี้ 14:20</span></li>`;
+    nowPlaced = true;
+  }
+  const m = stMeta[s.st];
+  tl += `<li class="relative"><span class="absolute -left-6 top-3 h-5 w-5 rounded-full ${m.dot} text-white flex items-center justify-center ring-4 ring-white"><i data-lucide="${m.ico}" class="h-3 w-3"></i></span>
+    <div class="rounded-xl border ${m.card} px-3 py-2 transition hover:-translate-y-0.5"><div class="flex items-center justify-between gap-2"><span class="tabular text-[11px] font-mono text-slate-500">${s.t}</span>${m.badge}</div>
+    <p class="text-sm font-semibold text-slate-800 truncate">${s.c}</p><p class="text-[11px] text-slate-500 truncate">ห้อง ${s.room} · ${s.tutor}</p></div></li>`;
+});
+$("#timeline").innerHTML = tl;
+
+/* ═════ ห้องเรียน: ตึก isometric ═════ */
+const room = { prog: 0, hover: null };
+function drawRooms() {
+  const wrap = $("#roomsWrap"), W = wrap.clientWidth, cols = 4, rows = 3, C = .866, S = .5;
+  const unit = (W - 60) / ((cols + rows) * C), s = unit * .74, g = unit - s;
+  const hMax = unit * .85, HT = { busy: hMax, free: unit * .34, fix: unit * .14 };
+  const ox = rows * unit * C + 36, oy = hMax + 26;
+  const P = (x, y, z) => `${((x - y) * C + ox).toFixed(1)},${((x + y) * S - z + oy).toFixed(1)}`;
+  const box = (x, y, z, sx, sy, h, top, left, right, attr = "") => `<g ${attr}>
+    <polygon points="${P(x, y + sy, z)} ${P(x + sx, y + sy, z)} ${P(x + sx, y + sy, z + h)} ${P(x, y + sy, z + h)}" fill="${left}"/>
+    <polygon points="${P(x + sx, y, z)} ${P(x + sx, y + sy, z)} ${P(x + sx, y + sy, z + h)} ${P(x + sx, y, z + h)}" fill="${right}"/>
+    <polygon points="${P(x, y, z + h)} ${P(x + sx, y, z + h)} ${P(x + sx, y + sy, z + h)} ${P(x, y + sy, z + h)}" fill="${top}" stroke="rgba(255,255,255,.7)" stroke-width=".8"/></g>`;
+  const H = (cols + rows) * unit * S + oy + 14;
+  let out = `<ellipse cx="${W / 2}" cy="${H - 14}" rx="${W * .4}" ry="10" fill="rgba(15,23,42,.10)" filter="blur(6px)"/>`;
+  out += box(-g, -g, -9, cols * unit + g, rows * unit + g, 9, "#f8fafc", "#e2e8f0", "#cbd5e1");
+  const CL = {
+    busy: [shade("#fdba74", .15), "#fb923c", "#ea580c", "#9a3412"],
+    free: ["#d1fae5", "#6ee7b7", "#34d399", "#047857"],
+    fix: ["url(#hatch)", "#e2e8f0", "#cbd5e1", "#94a3b8"],
+  };
+  const tiles = [];
+  FLOORS.forEach((row, gy) => row.forEach((rm, gx) => tiles.push({ rm, gx, gy })));
+  tiles.sort((a, b) => a.gx + a.gy - (b.gx + b.gy));
+  tiles.forEach(({ rm: [no, st], gx, gy }) => {
+    const x = gx * unit, y = gy * unit, p = ease(room.prog * 1.7 - (gx + gy) * .12);
+    const lift = room.hover === no ? unit * .18 : 0, h = HT[st] * p, [t, l, r, tx] = CL[st];
+    out += box(x, y, lift, s, s, h, t, l, r, `data-room="${no}" style="cursor:pointer"`);
+    const [cx, cy] = P(x + s / 2, y + s / 2, h + lift).split(",").map(Number);
+    if (p > .6) out += `<text x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="${Math.max(9, unit * .2)}" font-weight="700" fill="${tx}" pointer-events="none">${no}</text>`;
+    if (st === "busy" && p > .9) out += `<circle cx="${cx}" cy="${cy - unit * .28}" r="3" fill="#f97316" class="sa-blink" pointer-events="none"/>`;
+  });
+  ["ชั้น 3", "ชั้น 2", "ชั้น 1"].forEach((f, gy) => {
+    const [fx, fy] = P(-g - unit * .45, gy * unit + s / 2, 0).split(",").map(Number);
+    out += `<text x="${fx - 6}" y="${fy + 4}" text-anchor="end" font-size="10" fill="#94a3b8">${f}</text>`;
+  });
+  const svg = $("#rooms"); svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.innerHTML = out;
+}
+$("#rooms").addEventListener("mousemove", (e) => {
+  const g = e.target.closest("[data-room]"), no = g?.dataset.room ?? null, tip = $("#roomTip");
+  if (no !== room.hover) { room.hover = no; drawRooms(); }
+  if (!no) { tip.style.opacity = 0; return; }
+  const rm = FLOORS.flat().find((r) => r[0] === no), wr = $("#roomsWrap").getBoundingClientRect();
+  const lbl = { busy: '<span class="text-orange-600 font-semibold">กำลังใช้</span>', free: '<span class="text-emerald-600 font-semibold">ว่าง</span>', fix: '<span class="text-slate-500 font-semibold">ปิดปรับปรุง</span>' }[rm[1]];
+  tip.innerHTML = `<p class="font-bold text-slate-900">ห้อง ${no} · ${lbl}</p>${rm[2] ? `<p class="text-slate-500">${rm[2]}</p>` : ""}`;
+  tip.style.left = clamp(e.clientX - wr.left + 12, 0, wr.width - 170) + "px"; tip.style.top = (e.clientY - wr.top - 48) + "px"; tip.style.opacity = 1;
+});
+$("#rooms").addEventListener("mouseleave", () => { room.hover = null; drawRooms(); $("#roomTip").style.opacity = 0; });
+
+/* ═════ คลังอุปกรณ์: แท่งซ้อน 3D ═════ */
+$("#stockBar").innerHTML = `<div class="b3" style="--h:22px;--d:10px">
+  <div class="trk" style="right:0;--c1:#f1f5f9;--c2:#e2e8f0;--ct:#f8fafc;--cs:#cbd5e1"><div class="fc"></div><div class="tp"></div><div class="sd"></div></div>
+  <div class="fil sa-grow" style="left:0;width:81.25%;${b3vars("emerald")}"><div class="fc"></div><div class="tp"></div><div class="sd"></div></div>
+  <div class="fil sa-grow" style="left:81.25%;width:12.5%;${b3vars("amber")};animation-delay:.25s"><div class="fc sa-stripes"></div><div class="tp"></div><div class="sd"></div></div>
+  <div class="fil sa-grow" style="left:93.75%;width:6.25%;${b3vars("red")};animation-delay:.45s"><div class="fc"></div><div class="tp"></div><div class="sd"></div></div>
+</div>`;
+$("#stock").innerHTML = STOCK.map((s, i) => {
+  const pct = (s.left / s.max) * 100, out = s.left === 0;
+  return `<div>
+    <div class="flex items-center justify-between text-xs"><span class="font-semibold text-slate-700">${s.n}</span>
+      <span class="tabular font-bold ${out ? "text-red-600" : "text-amber-600"}">${out ? "หมดแล้ว" : `เหลือ ${s.left}/${s.max}`}</span></div>
+    <div class="mt-1 h-1.5 rounded-full ${out ? "bg-red-100" : "bg-slate-100"} overflow-hidden">
+      <div class="sa-grow h-full rounded-full bg-amber-400" style="width:${pct}%; animation-delay:${.2 + i * .1}s"></div></div>
+  </div>`;
+}).join("");
+
+/* ═════ เคาต์อัป / tilt ═════ */
+function countUp(scope) {
+  scope.querySelectorAll("[data-count]").forEach((el) => {
+    if (el.dataset.done) return; el.dataset.done = 1;
+    const end = +el.dataset.count;
+    animate(1200, (p) => { el.textContent = fmt(Math.round(end * ease(p))); });
+  });
+}
+function bindTilt() {
+  document.querySelectorAll(".sa-tilt").forEach((el) => {
+    el.addEventListener("mousemove", (e) => {
+      const r = el.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+      el.style.setProperty("--gx", `${px * 100}%`); el.style.setProperty("--gy", `${py * 100}%`);
+      el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 7}deg) rotateY(${(px - 0.5) * 9}deg) translateY(-2px)`;
+    });
+    el.addEventListener("mouseleave", () => (el.style.transform = ""));
+  });
+}
+
+/* ═════ เริ่มแต่ละส่วนเมื่อเลื่อนมาถึง ═════ */
+const starters = new Map([
+  [$("#hero"), () => animate(1500, drawHealth)],
+  [$("#pie").closest(".reveal"), () => { if (!pieRun) { pieRun = true; pieLast = performance.now(); requestAnimationFrame(pieLoop); } }],
+  [$("#finChart").closest(".reveal"), () => drawFinance(true)],
+  [$("#rooms").closest(".reveal"), () => animate(1500, (p) => { room.prog = p; drawRooms(); })],
+]);
+drawHealth(0); drawPie(); drawRooms();
+lucide.createIcons(); bindTilt();
+const io = new IntersectionObserver((ents) => ents.forEach((en) => {
+  if (!en.isIntersecting) return;
+  en.target.classList.add("in"); countUp(en.target); starters.get(en.target)?.(); io.unobserve(en.target);
+}), { threshold: .15 });
+document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { drawFinance(false); drawRooms(); }, 120); });
+// ไทม์ไลน์เลื่อนไปที่ "ตอนนี้"
+requestAnimationFrame(() => { const t = $("#timeline"), n = t.querySelector("[data-now]"); t.scrollTop = n.offsetTop - t.clientHeight / 2; });
+</script>
+</body>
+</html>
