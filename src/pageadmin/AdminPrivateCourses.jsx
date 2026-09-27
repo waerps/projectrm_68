@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   UserRoundCheck, Plus, Search, Wallet, UserPlus, Settings2, Pencil, Trash2, Eye, EyeOff,
@@ -321,17 +321,48 @@ function OffersTab({ offers, subjects, onAdd, onEdit, onChanged }) {
 }
 
 /* ═════════ Modal · สร้างคอร์สให้นักเรียน ═════════ */
-function PersonPicker({ label, people, value, onChange, idKey, placeholder }) {
+// กล่องค้นหาแบบ autocomplete: พิมพ์แล้วเห็นผลลัพธ์โผล่ทันทีใต้ช่อง ไม่ต้องไปกด select แยก
+function Combobox({ label, required, options, value, onChange, idKey, labelOf, placeholder, emptyLabel = "— เลือก —" }) {
   const [q, setQ] = useState("");
-  const filtered = people.filter((p) => !q || fullName(p).toLowerCase().includes(q.toLowerCase())).slice(0, 200);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const selected = options.find((o) => String(o[idKey]) === String(value));
+
+  useEffect(() => {
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const filtered = options.filter((o) => !q || labelOf(o).toLowerCase().includes(q.toLowerCase())).slice(0, 100);
+
+  const pick = (o) => { onChange(o ? String(o[idKey]) : ""); setQ(""); setOpen(false); };
+
   return (
-    <div>
-      <label className={labelCls}>{label}</label>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className={`${INPUT} mb-1.5`} />
-      <select value={value || ""} onChange={(e) => onChange(e.target.value)} className={INPUT}>
-        <option value="">— เลือก —</option>
-        {filtered.map((p) => <option key={p[idKey]} value={p[idKey]}>{fullName(p) || `#${p[idKey]}`}</option>)}
-      </select>
+    <div ref={wrapRef} className="relative">
+      {label && <label className={labelCls}>{label}</label>}
+      <input
+        value={open ? q : (selected ? labelOf(selected) : "")}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); if (value) onChange(""); }}
+        onFocus={() => { setQ(""); setOpen(true); }}
+        placeholder={placeholder}
+        className={INPUT}
+      />
+      {open && (
+        <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg">
+          {!required && (
+            <button type="button" onClick={() => pick(null)} className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-400 hover:bg-orange-50">{emptyLabel}</button>
+          )}
+          {filtered.length
+            ? filtered.map((o) => (
+              <button key={o[idKey]} type="button" onClick={() => pick(o)}
+                className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-orange-50">
+                {labelOf(o) || `#${o[idKey]}`}
+              </button>
+            ))
+            : <p className="px-3 py-2 text-sm text-slate-400">ไม่พบรายการที่ตรงกัน</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -407,11 +438,8 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
             </select>
           </div>
           <div>
-            <label className={labelCls}>วิชา *</label>
-            <select value={f.SubjectId} onChange={(e) => set("SubjectId", e.target.value)} className={INPUT}>
-              <option value="">— เลือกวิชา —</option>
-              {lookups.subjects.map((s) => <option key={s.SubjectId} value={s.SubjectId}>{s.SubjectName}</option>)}
-            </select>
+            <Combobox required label="วิชา *" options={lookups.subjects} idKey="SubjectId" labelOf={(s) => s.SubjectName}
+              value={f.SubjectId} onChange={(v) => set("SubjectId", v)} placeholder="พิมพ์ชื่อวิชาเพื่อค้นหา" />
           </div>
           <div>
             <label className={labelCls}>รูปแบบการเรียน</label>
@@ -420,8 +448,8 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
               {lookups.availability.map((a) => <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>{a.Course_Availability_Name}</option>)}
             </select>
           </div>
-          <PersonPicker label="นักเรียน *" people={lookups.students} idKey="UserId" value={f.UserId} onChange={(v) => set("UserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
-          <PersonPicker label="ติวเตอร์ *" people={lookups.tutors} idKey="AdminId" value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          <Combobox required label="นักเรียน *" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => set("UserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          <Combobox required label="ติวเตอร์ *" options={lookups.tutors} idKey="AdminId" labelOf={fullName} value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
         </section>
 
         <section className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
@@ -514,7 +542,7 @@ function EnrollModal({ course, students, onClose, onDone }) {
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "ลงทะเบียน"}</button>
       </>}>
-      <PersonPicker label="นักเรียน" people={students} idKey="UserId" value={userId} onChange={setUserId} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+      <Combobox required label="นักเรียน" options={students} idKey="UserId" labelOf={fullName} value={userId} onChange={setUserId} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
     </Modal>
   );
 }
