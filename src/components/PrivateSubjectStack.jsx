@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { UserRound } from "lucide-react";
 import { PRIVATE_SUBJECTS } from "../config/privateCourses";
 
 /* การ์ดวิชาคอร์สเดี่ยวซ้อนกัน เลื่อนเปลี่ยนเองทุก 3.8 วินาที
@@ -34,9 +33,6 @@ export default function PrivateSubjectStack({ iconOf, onSelect, className = "rel
             <div className="relative flex items-center justify-between">
               <span className="grid h-12 w-12 place-items-center rounded-2xl text-white" style={{ background: "linear-gradient(135deg,#FDBA74,#F97316)" }}>
                 <Icon className="h-6 w-6" />
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-orange-100 bg-white px-2.5 py-1 text-[10px] font-bold text-orange-600">
-                <UserRound className="h-3 w-3" />1 : 1
               </span>
             </div>
             <p className="relative mt-4 text-[11px] font-semibold text-gray-400">คอร์สเดี่ยว</p>

@@ -4,7 +4,7 @@ import {
   Phone, Copy, MessageCircle, MessageCircleQuestion, ExternalLink, MessageSquareText, ChevronDown, X,
   Calculator, Languages, FlaskConical, BookOpenText, Atom, TestTubes, Leaf, Landmark, BookOpen,
 } from "lucide-react";
-import PrivateCourseOrbit, { Coin3D } from "../components/PrivateCourseOrbit";
+import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
 import PrivateSubjectStack from "../components/PrivateSubjectStack";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import {
@@ -232,11 +232,8 @@ export default function PrivateCourses() {
               </div>
               <PrivateContactButtons className="mt-6" />
             </div>
-            <PrivateCourseOrbit variant="hero">
-              <div className="relative">
-                <PrivateSubjectStack iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
-                <div className="pointer-events-none absolute -left-6 -top-7 z-20 sa-float"><Coin3D size={64} /></div>
-              </div>
+            <PrivateCourseOrbit variant="hero" orbitCoin>
+              <PrivateSubjectStack iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
             </PrivateCourseOrbit>
           </div>
         </section>
@@ -335,22 +332,44 @@ export default function PrivateCourses() {
         </Reveal>
 
         {/* ═══ FAQ ═══ */}
-        <Reveal className="mt-12 grid gap-6 lg:grid-cols-[1fr_1.5fr]">
-          <div>
-            <Eyebrow>คำถามที่พบบ่อย</Eyebrow>
-            <h2 className="text-[24px] font-extrabold md:text-[30px]" style={{ color: NAVY }}>สงสัยตรงไหน ถามได้</h2>
-            <div className="mt-5 rounded-3xl p-5" style={SOFT_CARD}>
-              <div className="flex items-center gap-3">
+        <Reveal className="mt-12">
+          <Eyebrow>คำถามที่พบบ่อย</Eyebrow>
+          <h2 className="text-[24px] font-extrabold md:text-[30px]" style={{ color: NAVY }}>สงสัยตรงไหน ถามได้</h2>
+          {/* การ์ดติดต่อ (ซ้าย) สูงเท่ารายการคำถาม (ขวา) เสมอ */}
+          <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)]">
+          <div className="flex min-w-0 flex-col">
+            <div className="relative flex flex-1 flex-col overflow-hidden rounded-3xl p-5" style={SOFT_CARD}>
+              <MessageCircle className="pointer-events-none absolute -bottom-8 -right-8 h-40 w-40 text-orange-100/70" />
+              <div className="relative flex items-center gap-3">
                 <span className="grid h-12 w-12 place-items-center rounded-2xl text-lg font-bold text-white" style={{ background: TILE_GRAD }}>{C.name.replace(/^พี่/, "").charAt(0)}</span>
                 <div className="leading-tight">
                   <p className="font-bold" style={{ color: NAVY }}>{C.name}</p>
                   <p className="text-xs text-gray-500">{C.role} · ดูแลคอร์สเดี่ยว</p>
                 </div>
               </div>
-              <PrivateContactButtons compact className="mt-4 [&>a]:flex-1" />
+              <div className="relative mt-4 space-y-2">
+                <a href={C.tel} className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-white/80 px-3 py-2.5 transition hover:border-orange-300">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-500"><Phone className="h-4 w-4" /></span>
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-[11px] text-gray-500">โทรศัพท์</span>
+                    <span className="font-bold tabular-nums" style={{ color: NAVY }}>{C.phone}</span>
+                  </span>
+                </a>
+                <a href={C.facebookUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-orange-100 bg-white/80 px-3 py-2.5 transition hover:border-blue-300">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-[#1877F2]"><FacebookIcon className="h-4 w-4" /></span>
+                  <span className="min-w-0 leading-tight">
+                    <span className="block text-[11px] text-gray-500">แฟนเพจ Facebook</span>
+                    <span className="block truncate font-bold" style={{ color: NAVY }}>{C.facebookName}</span>
+                  </span>
+                </a>
+              </div>
+              <p className="relative mt-4 text-[13px] leading-relaxed text-gray-500">
+                บอกวิชา ระดับชั้น และเป้าหมายของน้องมาได้เลย {C.name}จะช่วยประเมินและแนะนำครูที่เหมาะให้
+              </p>
+              <PrivateContactButtons compact className="relative mt-auto pt-5 [&>a]:flex-1" />
             </div>
           </div>
-          <div className="space-y-3">
+          <div className="flex min-w-0 flex-col justify-between gap-3">
             {FAQS.map((f, i) => (
               <details key={f.q} className="group rounded-2xl px-5 py-4 transition open:shadow-md" style={SOFT_CARD} open={i === 0}>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold" style={{ color: NAVY }}>
@@ -362,6 +381,7 @@ export default function PrivateCourses() {
                 <p className="mt-3 pl-9 text-sm leading-relaxed text-gray-600">{f.a}</p>
               </details>
             ))}
+          </div>
           </div>
         </Reveal>
       </div>

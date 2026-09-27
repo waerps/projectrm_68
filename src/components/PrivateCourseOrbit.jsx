@@ -41,11 +41,12 @@ const VARIANTS = {
   compact: { box: "h-[210px] max-w-[360px]", maxR: 118, ratio: 0.375, card: () => 128, speed: 0.45, lift: 0 },
 };
 
-export default function PrivateCourseOrbit({ variant = "compact", children }) {
+export default function PrivateCourseOrbit({ variant = "compact", orbitCoin = false, children }) {
   const v = VARIANTS[variant] || VARIANTS.compact;
   const wrapRef = useRef(null);
   const teacherRef = useRef(null);
   const studentRef = useRef(null);
+  const coinRef = useRef(null);
   const [W, setW] = useState(0);
   const [inView, setInView] = useState(false);
 
@@ -68,7 +69,10 @@ export default function PrivateCourseOrbit({ variant = "compact", children }) {
   useEffect(() => {
     if (!W) return undefined;
     const place = (t) => {
-      [[teacherRef.current, t + Math.PI], [studentRef.current, t]].forEach(([el, a]) => {
+      const bodies = orbitCoin
+        ? [[teacherRef.current, t + (2 * Math.PI) / 3], [studentRef.current, t], [coinRef.current, t + (4 * Math.PI) / 3]]
+        : [[teacherRef.current, t + Math.PI], [studentRef.current, t]];
+      bodies.forEach(([el, a]) => {
         if (!el) return;
         const depth = (Math.sin(a) + 1) / 2; // 0 = ด้านหลัง, 1 = ด้านหน้า
         el.style.transform = `translate(calc(-50% + ${Math.cos(a) * R}px), calc(-50% + ${Math.sin(a) * r}px)) scale(${0.74 + depth * 0.3})`;
@@ -89,7 +93,7 @@ export default function PrivateCourseOrbit({ variant = "compact", children }) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [W, R, r, inView, v.speed]);
+  }, [W, R, r, inView, v.speed, orbitCoin]);
 
   const card = "absolute left-1/2 top-1/2 rounded-2xl bg-white p-2.5 text-[#14213D] shadow-xl will-change-transform pointer-events-none";
   return (
@@ -108,6 +112,13 @@ export default function PrivateCourseOrbit({ variant = "compact", children }) {
       <div className="absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ top: `calc(50% - ${v.lift}px)` }}>
         {children || <div className="sa-float"><Coin3D size={72} /></div>}
       </div>
+
+      {/* เหรียญ 1:1 โคจรเป็นดวงที่ 3 */}
+      {orbitCoin && (
+        <div ref={coinRef} className="pointer-events-none absolute left-1/2 top-1/2 will-change-transform" aria-hidden="true">
+          <Coin3D size={W < 440 ? 56 : 68} />
+        </div>
+      )}
 
       {/* ครู */}
       <div ref={teacherRef} className={card} style={{ width: cardW }} aria-hidden="true">
