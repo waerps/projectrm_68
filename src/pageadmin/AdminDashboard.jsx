@@ -335,7 +335,6 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
           <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 shrink-0">
             <div className="relative w-[230px] shrink-0 sa-float" style={{ animationDuration: "5s" }}>
               <HealthRing score={score} active={inView} />
-              <p className="text-center text-[11px] text-slate-400 -mt-1">สุขภาพสถาบัน · จาก 100</p>
             </div>
             <div className="space-y-3 text-xs w-full sm:w-[180px]">
               {metrics.map((m, i) => (
@@ -356,7 +355,13 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
 }
 
 /* ═════════ สิ่งที่ต้องจัดการ ═════════ */
+// จอใหญ่แสดงแถวเดียวเสมอ: คอลัมน์ = จำนวนการ์ด (สูงสุด 5) ถ้าเกินให้ช่องสุดท้ายรวมเป็น "อีก N เรื่อง"
+const ACTION_COLS = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5" };
+const ACTION_MAX = 5;
 function ActionSection({ chips, onNavigate }) {
+  const overflow = chips.length > ACTION_MAX;
+  const shown = overflow ? chips.slice(0, ACTION_MAX - 1) : chips;
+  const hidden = chips.length - shown.length;
   return (
     <Reveal>
       <div className="flex items-end justify-between mb-3">
@@ -372,8 +377,8 @@ function ActionSection({ chips, onNavigate }) {
           <p className="text-xs font-semibold text-slate-500">ไม่มีรายการที่ต้องจัดการตอนนี้ — ทุกอย่างเรียบร้อยดี</p>
         </div>
       ) : (
-        <div className="sa-scroll flex lg:grid lg:grid-cols-4 gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 snap-x">
-          {chips.map((a, i) => {
+        <div className={`sa-scroll flex lg:grid ${ACTION_COLS[Math.min(chips.length, ACTION_MAX)]} gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 snap-x`}>
+          {shown.map((a, i) => {
             const meta = ACTION_META[a.id] || { icon: Info, color: "bg-orange-500" };
             const Icon = meta.icon;
             return (
@@ -395,11 +400,13 @@ function ActionSection({ chips, onNavigate }) {
               </button>
             );
           })}
-          <button onClick={() => onNavigate("/admin/notification")}
-            className="sa-rise hidden lg:flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-orange-200 text-sm font-semibold text-orange-600 hover:bg-orange-50 hover:border-orange-300 transition min-h-[80px]"
-            style={{ animationDelay: `${0.05 + chips.length * 0.05}s` }}>
-            <Bell className="h-4 w-4" /> ดูการแจ้งเตือนทั้งหมด <ArrowRight className="h-4 w-4" />
-          </button>
+          {overflow && (
+            <button onClick={() => onNavigate("/admin/notification")}
+              className="sa-rise snap-start shrink-0 w-[200px] lg:w-auto flex items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition p-4"
+              style={{ animationDelay: `${0.05 + shown.length * 0.05}s` }}>
+              <Bell className="h-4 w-4" /> อีก {hidden} เรื่อง <ArrowRight className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
     </Reveal>
@@ -1117,10 +1124,8 @@ export default function AdminDashboard() {
   const roomMaintenance = (rooms.byStatus || []).find((s) => s.Status_Room_Id === 2);
   const chips = useMemo(() => buildActionChips(data?.actionCenter?.items || [], [
     counts.missed > 0 && { id: "missed-checkins", title: "คาบวันนี้ยังไม่เช็กอิน", message: `${counts.missed} คาบยังไม่เช็กอิน`, count: counts.missed, link: "/admin/schedule" },
-    students.needsAttention?.length > 0 && { id: "students-attention", title: "นักเรียนที่ต้องดูแล", message: "คะแนนถดถอย / เข้าเรียนต่ำ / Post-test ต่ำ", count: students.needsAttention.length, link: "/admin/students" },
-    tutors.needsAttention?.length > 0 && { id: "tutors-attention", title: "ติวเตอร์เช็กอินต่ำ", message: "เช็กอินต่ำกว่า 50% เดือนนี้", count: tutors.needsAttention.length, link: "/admin/tutors" },
     roomMaintenance?.cnt > 0 && { id: "rooms-maintenance", title: "ห้องปิดปรับปรุง", message: `${roomMaintenance.cnt} ห้องปิดปรับปรุง`, count: roomMaintenance.cnt, link: "/admin/rooms" },
-  ].filter(Boolean)), [data, counts.missed, students.needsAttention, tutors.needsAttention, roomMaintenance]);
+  ].filter(Boolean)), [data, counts.missed, roomMaintenance]);
 
   // คะแนนสุขภาพ = ค่าเฉลี่ยของตัวชี้วัดที่มีข้อมูลจริงเท่านั้น
   const facTotal = Math.max(Number(facilities.total ?? 0), Number(facilities.ready ?? 0) + Number(facilities.lowStock ?? 0) + Number(facilities.outOfStock ?? 0));
