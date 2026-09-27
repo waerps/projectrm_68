@@ -4,7 +4,7 @@ import {
   Phone, Copy, MessageCircle, MessageCircleQuestion, ExternalLink, MessageSquareText, ChevronDown, X,
   Calculator, Languages, FlaskConical, BookOpenText, Atom, TestTubes, Leaf, Landmark, BookOpen,
 } from "lucide-react";
-import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
+import PrivateCourseOrbit, { Coin3D } from "../components/PrivateCourseOrbit";
 import PrivateSubjectStack from "../components/PrivateSubjectStack";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import {
@@ -144,7 +144,7 @@ function ContactModal({ subject, onClose }) {
       <div className="sa-rise relative max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="relative overflow-hidden px-6 pb-5 pt-6" style={{ background: CREAM }}>
           <Icon className="absolute -bottom-8 -right-6 h-32 w-32 text-orange-100" />
-          <button type="button" onClick={onClose} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="ปิด">
+          <button type="button" onClick={onClose} className="absolute right-4 top-4 z-20 grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="ปิด">
             <X className="h-5 w-5" />
           </button>
           <div className="relative flex items-center gap-3">
@@ -204,14 +204,14 @@ export default function PrivateCourses() {
   const list = PRIVATE_SUBJECTS.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
 
   return (
-    <div className="pb-28 lg:pb-16" style={{ fontFamily: "'Kanit', sans-serif" }}>
+    <div className="pb-28 lg:pb-16">
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
 
         {/* ═══ HERO ═══ */}
         <section className="sa-rise relative mt-[108px] overflow-hidden rounded-[28px] border shadow-sm" style={{ borderColor: "rgba(20,33,61,.06)", background: CREAM }}>
           <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl animate-pulse" />
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-amber-200/30 blur-3xl animate-pulse" style={{ animationDelay: "1.5s" }} />
-          <div className="relative grid items-center gap-6 px-5 py-8 sm:px-8 md:grid-cols-[1.15fr_1fr] md:gap-8 md:px-10 md:py-10">
+          <div className="relative grid items-center gap-4 px-5 py-8 sm:px-8 md:grid-cols-[1fr_1.05fr] md:gap-6 md:px-10 md:py-8">
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
                 <UserRoundCheck className="h-3.5 w-3.5" /> เรียนตัวต่อตัว 1 : 1
@@ -232,7 +232,12 @@ export default function PrivateCourses() {
               </div>
               <PrivateContactButtons className="mt-6" />
             </div>
-            <PrivateSubjectStack iconOf={iconOf} onSelect={setSelected} />
+            <PrivateCourseOrbit variant="hero">
+              <div className="relative">
+                <PrivateSubjectStack iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
+                <div className="pointer-events-none absolute -left-6 -top-7 z-20 sa-float"><Coin3D size={64} /></div>
+              </div>
+            </PrivateCourseOrbit>
           </div>
         </section>
 
@@ -242,9 +247,7 @@ export default function PrivateCourses() {
           <h2 className="text-[24px] font-extrabold leading-tight md:text-[30px]" style={{ color: NAVY }}>
             ออกแบบการเรียนเฉพาะน้อง<br className="sm:hidden" /> ตั้งแต่วันแรก
           </h2>
-          <div className="mt-7 grid items-center gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-            <PrivateCourseOrbit />
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
               <div key={f.t} className="group h-full rounded-3xl p-5 transition-all duration-300 hover:-translate-y-1.5" style={SOFT_CARD}>
                 <div className="grid h-11 w-11 place-items-center rounded-2xl text-white transition-transform duration-300 group-hover:rotate-3 group-hover:scale-110" style={{ background: TILE_GRAD }}>
@@ -254,7 +257,6 @@ export default function PrivateCourses() {
                 <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">{f.d}</p>
               </div>
             ))}
-            </div>
           </div>
         </Reveal>
 

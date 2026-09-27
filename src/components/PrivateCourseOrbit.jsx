@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Presentation, GraduationCap, UserRoundCheck } from "lucide-react";
 
-/* ภาพประกอบ "ครู ↔ 1:1 ↔ นักเรียน" (หน้าคอร์สเดี่ยว + แถบแนะนำหน้าแรก)
-   - วงโคจรเอียงแบบ 3D: การ์ดครูกับนักเรียนโคจรรอบกลาง ใบที่อยู่ด้านหลังเล็ก จาง และเบลอลง
-   - ตรงกลางเป็นเหรียญ 1:1 มีความหนา หมุนพลิกด้านหลังเป็น "ตัวต่อตัว"
-   - รัศมีวงคำนวณจากความกว้างจริง การ์ดจึงไม่ล้นจอมือถือ
-   compact = ขนาดเล็กสำหรับแถบในหน้าแรก */
+/* วงโคจรเอียงแบบ 3D: การ์ด "ครูที่ใช่" กับ "น้อง 1 คน" โคจรรอบของที่อยู่ตรงกลาง
+   ใบที่อยู่ด้านหลังจะเล็ก จาง เบลอ และลอดหลังของตรงกลาง ใบด้านหน้าจะลอยทับ
+   - variant="hero"    : ใช้ในแบนเนอร์หน้าคอร์สเดี่ยว (ตรงกลาง = การ์ดวิชาซ้อน ส่งมาทาง children)
+   - variant="compact" : แถบแนะนำในหน้าแรก (ตรงกลาง = เหรียญ 1:1)
+   รัศมีคำนวณจากความกว้างจริง การ์ดจึงไม่ล้นจอมือถือ */
 
 const REDUCED = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -35,7 +35,14 @@ export function Coin3D({ size = 96 }) {
   );
 }
 
-export default function PrivateCourseOrbit({ compact = false }) {
+const VARIANTS = {
+  // lift = ยกของตรงกลางขึ้นจากจุดศูนย์กลางวง ให้การ์ดที่ผ่านด้านหน้าลอดใต้ขอบล่างการ์ดวิชาแทนที่จะทับชื่อวิชา
+  hero: { box: "h-[330px] max-w-[560px] sm:h-[370px]", maxR: 250, ratio: 0.3, card: (W) => (W < 440 ? 124 : 152), speed: 0.35, lift: 36 },
+  compact: { box: "h-[210px] max-w-[360px]", maxR: 118, ratio: 0.375, card: () => 128, speed: 0.45, lift: 0 },
+};
+
+export default function PrivateCourseOrbit({ variant = "compact", children }) {
+  const v = VARIANTS[variant] || VARIANTS.compact;
   const wrapRef = useRef(null);
   const teacherRef = useRef(null);
   const studentRef = useRef(null);
@@ -53,10 +60,10 @@ export default function PrivateCourseOrbit({ compact = false }) {
     return () => { ro.disconnect(); io.disconnect(); };
   }, []);
 
-  const cardW = compact ? 128 : W < 420 ? 132 : 156;
-  const R = Math.max(70, Math.min(compact ? 118 : 140, (W - cardW) / 2 - 4)); // รัศมีแนวนอน
-  const r = R * 0.375; // รัศมีแนวตั้ง = มองวงจากมุมเอียง ~68°
-  const coin = compact ? 72 : W < 420 ? 80 : 92;
+  const cardW = v.card(W);
+  const R = Math.max(70, Math.min(v.maxR, (W - cardW) / 2 - 2)); // รัศมีแนวนอน
+  const r = R * v.ratio; // รัศมีแนวตั้ง (มองวงจากมุมเอียง)
+  const showDetail = variant === "hero" && cardW >= 150;
 
   useEffect(() => {
     if (!W) return undefined;
@@ -65,44 +72,45 @@ export default function PrivateCourseOrbit({ compact = false }) {
         if (!el) return;
         const depth = (Math.sin(a) + 1) / 2; // 0 = ด้านหลัง, 1 = ด้านหน้า
         el.style.transform = `translate(calc(-50% + ${Math.cos(a) * R}px), calc(-50% + ${Math.sin(a) * r}px)) scale(${0.74 + depth * 0.3})`;
-        el.style.zIndex = depth > 0.5 ? 10 : 1;
-        el.style.opacity = String(0.55 + depth * 0.45);
-        el.style.filter = `blur(${((1 - depth) * 1.1).toFixed(2)}px)`;
+        el.style.zIndex = depth > 0.5 ? 30 : 1; // ตรงกลางอยู่ที่ z 10
+        el.style.opacity = String(0.5 + depth * 0.5);
+        el.style.filter = `blur(${((1 - depth) * 1.2).toFixed(2)}px)`;
       });
     };
-    let angle = -0.35;
+    let angle = 0.25;
     place(angle);
     if (REDUCED || !inView) return undefined;
     let raf, last = performance.now();
     const loop = (now) => {
-      angle += Math.min((now - last) / 1000, 0.05) * 0.45;
+      angle += Math.min((now - last) / 1000, 0.05) * v.speed;
       last = now;
       place(angle);
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [W, R, r, inView]);
+  }, [W, R, r, inView, v.speed]);
 
-  const card = "absolute left-1/2 top-1/2 rounded-2xl bg-white p-2.5 text-[#14213D] shadow-xl will-change-transform";
+  const card = "absolute left-1/2 top-1/2 rounded-2xl bg-white p-2.5 text-[#14213D] shadow-xl will-change-transform pointer-events-none";
   return (
-    <div ref={wrapRef} className={`relative mx-auto w-full ${compact ? "h-[210px] max-w-[360px]" : "h-[210px] max-w-[440px] sm:h-[290px]"}`} aria-hidden="true">
+    <div ref={wrapRef} className={`relative mx-auto w-full ${v.box}`}>
       {/* วงเอียง */}
-      <div className="sa-orbit-scene absolute inset-0">
+      <div className="sa-orbit-scene pointer-events-none absolute inset-0" aria-hidden="true">
         <div className="absolute left-1/2 top-1/2 rounded-full border-2 border-dashed border-orange-200"
-          style={{ width: R * 2, height: R * 2, marginLeft: -R, marginTop: -R, transform: "rotateX(68deg)" }}>
+          style={{ width: R * 2, height: R * 2, marginLeft: -R, marginTop: -R, transform: `rotateX(${Math.round(Math.acos(v.ratio) * 180 / Math.PI)}deg)` }}>
           <span className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-300" />
           <span className="absolute left-0 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-300" />
+          <span className="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-200" />
         </div>
       </div>
 
-      {/* เหรียญ 1:1 */}
-      <div className="absolute left-1/2 top-1/2 z-[5] -translate-x-1/2 -translate-y-1/2">
-        <div className="sa-float"><Coin3D size={coin} /></div>
+      {/* ตรงกลาง */}
+      <div className="absolute left-1/2 z-10 -translate-x-1/2 -translate-y-1/2" style={{ top: `calc(50% - ${v.lift}px)` }}>
+        {children || <div className="sa-float"><Coin3D size={72} /></div>}
       </div>
 
       {/* ครู */}
-      <div ref={teacherRef} className={card} style={{ width: cardW }}>
+      <div ref={teacherRef} className={card} style={{ width: cardW }} aria-hidden="true">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white"><Presentation className="h-4 w-4" /></span>
           <div className="min-w-0 leading-tight">
@@ -110,7 +118,7 @@ export default function PrivateCourseOrbit({ compact = false }) {
             <p className="text-sm font-bold">ครูที่ใช่</p>
           </div>
         </div>
-        {!compact && cardW >= 150 && (
+        {showDetail && (
           <div className="mt-2 flex gap-1">
             <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-600">ตรงวิชา</span>
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">ตรงสไตล์</span>
@@ -119,7 +127,7 @@ export default function PrivateCourseOrbit({ compact = false }) {
       </div>
 
       {/* นักเรียน */}
-      <div ref={studentRef} className={card} style={{ width: cardW }}>
+      <div ref={studentRef} className={card} style={{ width: cardW }} aria-hidden="true">
         <div className="flex items-center gap-2">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 text-white"><GraduationCap className="h-4 w-4" /></span>
           <div className="min-w-0 leading-tight">
@@ -127,7 +135,7 @@ export default function PrivateCourseOrbit({ compact = false }) {
             <p className="text-sm font-bold">น้อง 1 คน</p>
           </div>
         </div>
-        {!compact && (
+        {showDetail && (
           <>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100"><div className="h-full w-4/5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400" /></div>
             <p className="mt-1 text-[10px] text-gray-400">ติดตามพัฒนาการในระบบ</p>

@@ -4,7 +4,7 @@ import { PRIVATE_SUBJECTS } from "../config/privateCourses";
 
 /* การ์ดวิชาคอร์สเดี่ยวซ้อนกัน เลื่อนเปลี่ยนเองทุก 3.8 วินาที
    (ภาษาเดียวกับ AboutFlashcard ในหน้าแรก) — ใช้ในแบนเนอร์หน้าคอร์สเดี่ยว */
-export default function PrivateSubjectStack({ iconOf, onSelect }) {
+export default function PrivateSubjectStack({ iconOf, onSelect, className = "relative mx-auto h-[230px] w-full max-w-[320px] md:ml-auto md:mr-4" }) {
   const [idx, setIdx] = useState(0);
   const n = PRIVATE_SUBJECTS.length;
   useEffect(() => {
@@ -14,14 +14,14 @@ export default function PrivateSubjectStack({ iconOf, onSelect }) {
   }, [n]);
 
   return (
-    <div className="relative mx-auto h-[230px] w-full max-w-[320px] md:ml-auto md:mr-4">
+    <div className={className}>
       {PRIVATE_SUBJECTS.map((s, i) => {
         const off = (i - idx + n) % n;
         const Icon = iconOf(s);
         const top = off === 0;
         return (
           <button key={s.key} type="button" tabIndex={top ? 0 : -1} onClick={() => top && onSelect?.(s)}
-            className={`absolute inset-0 overflow-hidden rounded-3xl p-5 text-left shadow-xl transition-all duration-700 ease-[cubic-bezier(.16,1,.3,1)] ${top ? "cursor-pointer" : "pointer-events-none"}`}
+            className={`absolute inset-0 overflow-hidden rounded-3xl p-5 text-left shadow-xl transition-all duration-700 ease-[cubic-bezier(.16,1,.3,1)] [&>*]:transition-opacity [&>*]:duration-500 ${top ? "cursor-pointer" : "pointer-events-none [&>*]:opacity-0"}`}
             style={{
               background: "linear-gradient(160deg,#ffffff 0%,#FFF3E8 100%)",
               transform: `translateY(${off * 12}px) scale(${Math.max(1 - off * 0.05, 0.8)}) rotate(${top ? 0 : off * 2}deg)`,

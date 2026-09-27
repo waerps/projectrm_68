@@ -35,7 +35,7 @@ export default function PrivateCourseTeaser() {
           </div>
         </div>
         <div className="relative hidden sm:block">
-          <PrivateCourseOrbit compact />
+          <PrivateCourseOrbit variant="compact" />
         </div>
       </div>
     </section>
