@@ -124,12 +124,6 @@ export default function TutorQuestionBank() {
     <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
-        <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="font-semibold text-slate-700">คลังข้อสอบของฉัน</span>
-      </div>
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

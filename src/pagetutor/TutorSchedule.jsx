@@ -322,6 +322,7 @@ export default function TutorSchedule() {
   useEffect(() => {
     if (!tutorId) return
     const fetchSchedule = async () => {
+      setLoadError(false)
       try {
         const query = referenceDate ? `?date=${referenceDate}` : ''
         const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule${query}`)

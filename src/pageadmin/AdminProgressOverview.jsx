@@ -293,19 +293,12 @@ export default function AdminProgressOverview() {
 // จะถูกโยนไปหน้าอื่นที่ไม่ได้ตั้งใจไป จึงอ่านจาก ?from= ที่ต้นทางติดมาให้
 function Breadcrumb({ cameFrom }) {
   const origin = PROGRESS_ORIGINS[cameFrom];
+  // ★ เข้าตรงจาก navbar (ไม่มี ?from=) = หน้าระดับบนสุด ไม่ต้องมี breadcrumb
+  if (!origin) return null;
   return (
     <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
-      {origin ? (
-        <>
-          <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
-          <ChevronRight className="h-4 w-4" />
-        </>
-      ) : (
-        <>
-          <Link to="/admin/dashboard" className="hover:text-orange-600 transition font-medium">แดชบอร์ด</Link>
-          <ChevronRight className="h-4 w-4" />
-        </>
-      )}
+      <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
+      <ChevronRight className="h-4 w-4" />
       <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการ</span>
     </div>
   );

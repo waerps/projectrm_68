@@ -76,6 +76,7 @@ export default function CoursesPage() {
   // 3. ดึงข้อมูลจาก API (แบบส่ง adminId ไปด้วย)
   useEffect(() => {
     const fetchCourses = async () => {
+      setLoadError(false);
       try {
         // ยิง API พร้อมพารามิเตอร์ adminId
         // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว

@@ -4,7 +4,6 @@ import axios from "axios";
 import { X, ChevronLeft, ChevronRight, Calendar, Tag, Newspaper } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import EmptyState from "../components/ui/EmptyState";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 
 const SERVER_URL = API_URL;
@@ -23,9 +22,9 @@ const SafeImg = ({ src, className, alt }) => {
 };
 
 const SectionTitle = ({ children, sub }) => (
-  <div className="mb-4">
-    <h2 className="text-lg font-bold text-slate-900">{children}</h2>
-    {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
+  <div className="text-center mb-6 md:mb-8">
+    <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{children}</h2>
+    {sub && <p className="mt-1 text-sm text-slate-500">{sub}</p>}
   </div>
 );
 
@@ -245,6 +244,7 @@ export default function TutorMain() {
   const [selectedId, setSelectedId] = useState(null); // id ที่เปิด modal
 
   useEffect(() => {
+    setLoadError(false);
     axios.get(`${SERVER_URL}/api/news?role=tutor`)
       .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
       .catch((err) => { console.error(err); setLoadError(true); })
@@ -260,11 +260,6 @@ export default function TutorMain() {
   return (
     <div>
       <div className="px-4 lg:px-0 space-y-2">
-        <div className="mb-6">
-          <h1 className={PAGE_TITLE}>หน้าหลัก</h1>
-          <p className={PAGE_SUBTITLE}>ข่าวสาร ประกาศ และกิจกรรมล่าสุดของสถาบัน</p>
-        </div>
-
         {publicNews.length > 0 && (
           <>
             <SectionTitle sub="ข่าวสารและกิจกรรมล่าสุดของสถาบัน">ข่าวประชาสัมพันธ์</SectionTitle>

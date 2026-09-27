@@ -87,7 +87,6 @@ import AdminStudents from "./pageadmin/AdminStudents.jsx"
 import AdminTutors from "./pageadmin/AdminTutors.jsx"
 import AdminFinance from "./pageadmin/AdminFinance.jsx"
 import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
-import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import AdminPasswordResets from "./pageadmin/AdminPasswordResets.jsx"
 import AdminRooms from "./pageadmin/AdminRooms.jsx"
@@ -188,7 +187,6 @@ const router = createBrowserRouter(
             { path: "tutors", element: <AdminTutors /> },
             { path: "finance", element: <AdminFinance /> },
             { path: "announcements", element: <AdminAnnouncements /> },
-            { path: "media", element: <AdminMedia /> },
             { path: "notification", element: <AdminNotification /> },
             { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
             { path: "create-tutor", element: <CreateTutorForm /> },

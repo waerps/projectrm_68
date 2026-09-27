@@ -864,6 +864,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
   const load = useCallback(() => {
     if (!subjectId) return;
     setLoading(true);
+    setLoadError("");
     fetchBank(subjectId)
       .then((rows) => setItems(Array.isArray(rows) ? rows : []))
       .catch((err) => { console.error("Fetch bank failed:", err); setLoadError("โหลดคลังข้อสอบไม่สำเร็จ"); })

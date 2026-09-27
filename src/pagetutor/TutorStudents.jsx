@@ -110,6 +110,7 @@ export default function TutorStudents() {
     useEffect(() => {
         const fetchData = async () => {
             if (!courseId || courseId === "undefined") { setLoading(false); return; }
+            setLoadError(false);
             try {
                 // ดึงรายชื่อนักเรียน + สรุปคะแนนสอบข้ามวิชาพร้อมกัน (สรุปคะแนนพลาดได้ ไม่ทำให้หน้าพัง)
                 // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว

@@ -32,6 +32,7 @@ export default function TutorProfile() {
 
     useEffect(() => {
         const fetchTutorData = async () => {
+            setLoadError(false);
             try {
                 const response = await axios.get(`${API_URL}/api/tutor/${TUTOR_ID}`, {
                     headers: { Authorization: `Bearer ${token}` },

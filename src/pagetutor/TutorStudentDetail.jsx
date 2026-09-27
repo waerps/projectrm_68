@@ -76,6 +76,7 @@ export default function TutorStudentDetail() {
             // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
             const token = localStorage.getItem("student_token");
             const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+            setLoadError(false);
             try {
                 const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders);
                 const found = res.data.students.find(
