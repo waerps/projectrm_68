@@ -42,7 +42,7 @@ export default function Footer() {
             <div>
               <div className="font-bold mb-3">เมนู</div>
               <ul className="space-y-2 text-orange-50">
-                <li><a href="#" className="hover:underline">โปรโมชั่น</a></li>
+                <li><a href="#" className="hover:underline">โปรโมชัน</a></li>
                 <li><a href="#" className="hover:underline">ผลลัพธ์ยอดครูเสริม</a></li>
                 <li><a href="#" className="hover:underline">ข่าวประชาสัมพันธ์</a></li>
               </ul>

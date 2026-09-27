@@ -236,6 +236,16 @@ const cartTotal = cart.reduce((sum, item) => {
               หน้าแรก
             </Link>
             <Link
+              to="/private-courses"
+              className={`font-medium transition-colors text-xs ${
+                isActive("/private-courses")
+                  ? "text-orange-500 pb-1"
+                  : "text-gray-700 hover:text-orange-500"
+              }`}
+            >
+              คอร์สเดี่ยว
+            </Link>
+            <Link
               to="/apply-tutor"
               className={`font-medium transition-colors text-xs ${
                 isActive("/apply-tutor")
@@ -263,7 +273,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   : "text-gray-700 hover:text-orange-500"
               }`}
             >
-              โปรโมชั่น
+              โปรโมชัน
             </Link>
             <Link
               to="/about"
@@ -309,7 +319,7 @@ const cartTotal = cart.reduce((sum, item) => {
                 <ul className="py-2 text-xs text-gray-700">
                   <li>
                     <Link to="/promotion" className={`block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition ${isActive("/promotion") ? "text-orange-500 font-semibold" : ""}`}>
-                      โปรโมชั่น
+                      โปรโมชัน
                     </Link>
                   </li>
                   <li>

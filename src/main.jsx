@@ -49,6 +49,7 @@ import ThaiExam from "./pages/thai_exam.jsx"
 import About from "./pages/About.jsx"
 import Promotion from "./pages/Promotion.jsx"
 import CourseSearch from "./pages/CourseSearch.jsx"
+import PrivateCourses from "./pages/PrivateCourses.jsx"
 import StudentCourseContent from "./pages/StudentCourseContent.jsx"
 import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
 import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
@@ -120,6 +121,7 @@ const router = createBrowserRouter(
         { path: "schedule", element: <Schedule /> },
         { path: "courses", element: <CourseSearch /> },
         { path: "courses/:id", element: <CourseDetail /> },
+        { path: "private-courses", element: <PrivateCourses /> },
         { path: "performance", element: <Performance /> },
         { path: "salary", element: <Salary /> },
         { path: "new", element: <New /> },

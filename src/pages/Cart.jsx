@@ -220,7 +220,7 @@ function CourseCard({ item, onRemove }) {
           </div>
 
           <div className="mt-4 flex flex-wrap gap-1.5">
-            {item.isPromotion && <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm"><Sparkles className="h-3 w-3" />โปรโมชั่น</span>}
+            {item.isPromotion && <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm"><Sparkles className="h-3 w-3" />โปรโมชัน</span>}
             {item.termName && <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-700">{item.termName}</span>}
             {item.courseType && <span className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">{item.courseType === "bundle" ? "คอร์สรวม" : "คอร์สเดี่ยว"}</span>}
             {item.availabilityName && <span className="rounded-full border border-purple-200 bg-purple-50 px-2.5 py-1 text-[10px] font-semibold text-purple-700">{item.availabilityName}</span>}

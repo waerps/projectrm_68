@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>คอร์สเดี่ยว · SornSerm Tutor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.548.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { font-family: "Kanit", sans-serif; }
+  body { background: #fff; }
+  .tabular { font-variant-numeric: tabular-nums; }
+  /* ชุด sa-* เดิมจาก index.css */
+  @keyframes sa-rise { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes sa-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes sa-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  @keyframes sa-ring { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.55); } 100% { box-shadow: 0 0 0 14px rgba(255,255,255,0); } }
+  @keyframes sa-flow { from { left: -6px; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { left: calc(100% - 2px); opacity: 0; } }
+  @keyframes sa-pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+  @keyframes sa-blink { 50% { opacity: .3; } }
+  @keyframes sa-spin { to { transform: rotate(360deg); } }
+  .sa-rise { animation: sa-rise .55s ease both; }
+  .sa-float { animation: sa-float 4s ease-in-out infinite; }
+  .sa-shine { background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.55) 50%, transparent 70%); background-size: 200% 100%; animation: sa-shimmer 3.5s linear infinite; }
+  .sa-ring { animation: sa-ring 1.8s ease-out infinite; }
+  .sa-flow { position: absolute; top: 50%; margin-top: -3px; width: 6px; height: 6px; border-radius: 9999px; animation: sa-flow 2.4s linear infinite; }
+  .sa-pop { animation: sa-pop .5s cubic-bezier(.2,.8,.2,1) both; }
+  .sa-blink { animation: sa-blink 1.4s ease-in-out infinite; }
+  .sa-spin-slow { animation: sa-spin 26s linear infinite; }
+  .sa-grain { background-image: radial-gradient(rgba(255,255,255,.22) 1px, transparent 1px); background-size: 14px 14px; }
+  .sa-tilt { transform-style: preserve-3d; transition: transform .15s ease, box-shadow .2s, border-color .2s; }
+  .sa-glow { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .2s; background: radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(251,146,60,.18), transparent 60%); }
+  .sa-tilt:hover .sa-glow { opacity: 1; }
+  .sa-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+  .sa-reveal.is-in { opacity: 1; transform: none; }
+  .modal-in { animation: sa-rise .3s ease both; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    .sa-reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+</head>
+<body class="text-gray-800 antialiased">
+
+<!-- ═══ Navbar (เหมือน components/Navbar.jsx) ═══ -->
+<div class="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
+  <nav class="mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-6 rounded-2xl bg-white px-5 md:px-8 shadow-lg">
+    <a class="flex items-center gap-2 shrink-0">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 text-white grid place-items-center font-bold">S</div>
+      <div class="hidden md:flex flex-col leading-tight"><span class="font-bold text-xs text-gray-800">SORNSERM</span><span class="font-bold text-xs text-gray-800">TUTOR</span></div>
+    </a>
+    <div class="hidden lg:flex items-center gap-7 text-xs font-medium">
+      <a class="text-gray-700 hover:text-orange-500">หน้าแรก</a>
+      <a class="text-orange-500 pb-1 border-b-2 border-orange-500">คอร์สเดี่ยว</a>
+      <a class="text-gray-700 hover:text-orange-500">สมัครติวเตอร์</a>
+      <a class="text-gray-700 hover:text-orange-500">ข่าวประชาสัมพันธ์</a>
+      <a class="text-gray-700 hover:text-orange-500">โปรโมชั่น</a>
+      <a class="text-gray-700 hover:text-orange-500">เกี่ยวกับเรา</a>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="relative hidden md:block w-56"><i data-lucide="search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"></i><input class="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-xs" placeholder="ค้นหาคอร์สเรียน" /></div>
+      <a class="h-10 flex items-center rounded-lg bg-orange-500 px-5 text-white text-sm font-bold hover:bg-orange-600 transition">เข้าสู่ระบบ</a>
+    </div>
+  </nav>
+</div>
+
+<main class="mx-auto mt-[110px] max-w-[1200px] px-4 pb-24 md:px-6">
+
+  <!-- ═══ HERO (โครงเดียวกับหน้าโปรโมชัน แต่เวอร์ขึ้น) ═══ -->
+  <section id="hero" class="sa-rise relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-500 via-orange-500 to-amber-500 px-6 py-10 sm:px-10 sm:py-12 text-white">
+    <div class="absolute inset-0 sa-grain opacity-40"></div>
+    <div data-px="16" class="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber-300/40 blur-3xl"></div>
+    <div data-px="-10" class="absolute -left-20 -bottom-32 h-80 w-80 rounded-full bg-orange-700/40 blur-3xl"></div>
+    <i data-lucide="sparkles" class="absolute right-6 bottom-6 h-24 w-24 text-white/10"></i>
+
+    <div class="relative grid lg:grid-cols-[1.15fr_1fr] gap-10 items-center">
+      <div>
+        <div class="flex items-center gap-2 mb-3">
+          <i data-lucide="user-round-check" class="h-5 w-5"></i>
+          <span class="text-sm font-semibold uppercase tracking-widest text-orange-100">Private · 1 : 1</span>
+        </div>
+        <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight">คอร์สเดี่ยว<br /><span class="text-amber-100">เรียนตัวต่อตัวกับครูที่ใช่</span></h1>
+        <p class="mt-4 max-w-lg text-sm sm:text-base leading-relaxed text-orange-50">
+          ครู 1 คน ดูแลนักเรียน 1 คน ก่อนเริ่มเรียนพี่กวางจะช่วยประเมินระดับของน้อง และแนะนำครูที่เหมาะที่สุด หรือจะเลือกครูที่อยากเรียนด้วยก็ได้
+        </p>
+
+        <div class="mt-6 inline-flex items-center gap-3 rounded-2xl bg-white/15 border border-white/25 backdrop-blur px-4 py-3">
+          <span class="grid h-10 w-10 place-items-center rounded-xl bg-white text-orange-500"><i data-lucide="badge-dollar-sign" class="h-5 w-5"></i></span>
+          <div class="leading-tight">
+            <p class="text-[11px] text-orange-100">ราคาเริ่มต้น</p>
+            <p class="text-2xl font-extrabold tabular">350 <span class="text-sm font-semibold">บาท / ชม.</span></p>
+          </div>
+          <span class="ml-2 hidden sm:block text-[11px] text-orange-50/90 max-w-[150px] leading-snug">ราคาจริงขึ้นกับวิชา ระดับ และจำนวนชั่วโมง · สอบถามพี่กวาง</span>
+        </div>
+
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a href="tel:0826646551" class="group relative inline-flex items-center gap-2.5 rounded-xl bg-white px-5 py-3 font-bold text-orange-600 shadow-lg shadow-orange-900/20 transition hover:-translate-y-0.5 hover:shadow-xl">
+            <span class="grid h-8 w-8 place-items-center rounded-lg bg-orange-500 text-white sa-ring"><i data-lucide="phone" class="h-4 w-4"></i></span>
+            <span class="text-left leading-tight"><span class="block text-[11px] font-medium text-gray-500">โทรหาพี่กวาง</span><span class="tabular">082-664-6551</span></span>
+          </a>
+          <a href="https://www.facebook.com/search/top?q=ศรเสริม%20ติวเตอร์%20-%20SornSerm%20Tutor" target="_blank" rel="noopener" class="inline-flex items-center gap-2.5 rounded-xl bg-[#1877F2] px-5 py-3 font-bold text-white shadow-lg shadow-blue-900/20 transition hover:-translate-y-0.5 hover:bg-[#166fe5]">
+            <span class="grid h-8 w-8 place-items-center rounded-lg bg-white/20"><i data-lucide="facebook" class="h-4 w-4"></i></span>
+            <span class="text-left leading-tight"><span class="block text-[11px] font-medium text-blue-100">ทักแฟนเพจ</span>ศรเสริม ติวเตอร์</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- ภาพประกอบ 1:1 -->
+      <div class="relative h-[300px] sm:h-[340px] hidden sm:block">
+        <div class="absolute inset-0 m-auto h-[280px] w-[280px] rounded-full border-2 border-dashed border-white/30 sa-spin-slow">
+          <span class="absolute -top-1.5 left-1/2 h-3 w-3 rounded-full bg-white"></span>
+          <span class="absolute top-1/2 -right-1.5 h-2.5 w-2.5 rounded-full bg-amber-200"></span>
+        </div>
+        <!-- ครู -->
+        <div data-px="-14" class="absolute left-[6%] top-[18%] sa-float">
+          <div class="w-40 rounded-2xl bg-white p-3 text-gray-800 shadow-2xl">
+            <div class="flex items-center gap-2.5">
+              <span class="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white"><i data-lucide="presentation" class="h-5 w-5"></i></span>
+              <div class="leading-tight"><p class="text-[10px] text-gray-400">ครูที่จับคู่ให้</p><p class="text-sm font-bold">ครูที่ใช่</p></div>
+            </div>
+            <div class="mt-2.5 flex gap-1"><span class="rounded-full bg-orange-50 border border-orange-200 px-2 py-0.5 text-[10px] font-semibold text-orange-600">ตรงวิชา</span><span class="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">ตรงสไตล์</span></div>
+          </div>
+        </div>
+        <!-- นักเรียน -->
+        <div data-px="14" class="absolute right-[4%] bottom-[14%] sa-float" style="animation-delay:1.2s">
+          <div class="w-40 rounded-2xl bg-white p-3 text-gray-800 shadow-2xl">
+            <div class="flex items-center gap-2.5">
+              <span class="grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-500 text-white"><i data-lucide="graduation-cap" class="h-5 w-5"></i></span>
+              <div class="leading-tight"><p class="text-[10px] text-gray-400">นักเรียน</p><p class="text-sm font-bold">น้อง 1 คน</p></div>
+            </div>
+            <div class="mt-2.5 h-1.5 rounded-full bg-gray-100 overflow-hidden"><div class="h-full w-4/5 rounded-full bg-gradient-to-r from-sky-400 to-emerald-400"></div></div>
+            <p class="mt-1 text-[10px] text-gray-400">ติดตามพัฒนาการในระบบ</p>
+          </div>
+        </div>
+        <!-- 1:1 -->
+        <div class="absolute inset-0 m-auto h-24 w-24 grid place-items-center rounded-full bg-white text-orange-500 shadow-2xl sa-pop" style="animation-delay:.4s">
+          <div class="text-center leading-none"><p class="text-3xl font-extrabold">1:1</p><p class="text-[10px] font-semibold text-gray-400 mt-1">ตัวต่อตัว</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ แถบจุดเด่น ═══ -->
+  <section class="sa-reveal mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div class="rounded-2xl border-2 border-gray-100 bg-white p-4 transition hover:border-orange-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <span class="grid h-10 w-10 place-items-center rounded-xl bg-orange-50 text-orange-500"><i data-lucide="user-round" class="h-5 w-5"></i></span>
+      <p class="mt-3 font-bold text-[#14213D]">ครู 1 : นักเรียน 1</p><p class="text-xs text-gray-500 mt-0.5">ครูโฟกัสน้องคนเดียวตลอดคาบ</p>
+    </div>
+    <div class="rounded-2xl border-2 border-gray-100 bg-white p-4 transition hover:border-orange-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <span class="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-500"><i data-lucide="clipboard-check" class="h-5 w-5"></i></span>
+      <p class="mt-3 font-bold text-[#14213D]">ประเมินก่อนเรียน</p><p class="text-xs text-gray-500 mt-0.5">รู้ระดับน้อง ก่อนวางแผนการสอน</p>
+    </div>
+    <div class="rounded-2xl border-2 border-gray-100 bg-white p-4 transition hover:border-orange-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <span class="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-500"><i data-lucide="heart-handshake" class="h-5 w-5"></i></span>
+      <p class="mt-3 font-bold text-[#14213D]">เลือกครูได้</p><p class="text-xs text-gray-500 mt-0.5">ให้พี่กวางแนะนำ หรือระบุครูที่อยากเรียนด้วย</p>
+    </div>
+    <div class="rounded-2xl border-2 border-gray-100 bg-white p-4 transition hover:border-orange-300 hover:-translate-y-0.5 hover:shadow-lg">
+      <span class="grid h-10 w-10 place-items-center rounded-xl bg-purple-50 text-purple-500"><i data-lucide="line-chart" class="h-5 w-5"></i></span>
+      <p class="mt-3 font-bold text-[#14213D]">ดูผลในระบบ</p><p class="text-xs text-gray-500 mt-0.5">ตารางเรียน การเข้าเรียน และคะแนนสอบ</p>
+    </div>
+  </section>
+
+  <!-- ═══ ขั้นตอน ═══ -->
+  <section class="sa-reveal mt-12">
+    <div class="text-center mb-8">
+      <p class="text-xs font-semibold uppercase tracking-widest text-orange-500">How it works</p>
+      <h2 class="mt-1 text-2xl sm:text-3xl font-bold text-[#14213D]">เริ่มเรียนคอร์สเดี่ยวใน 4 ขั้นตอน</h2>
+      <p class="mt-2 text-sm text-gray-500">คอร์สเดี่ยวไม่มีปุ่มซื้อในเว็บ เพราะต้องคุยและประเมินน้องก่อนทุกครั้ง</p>
+    </div>
+    <ol id="steps" class="relative grid gap-4 md:grid-cols-4"></ol>
+  </section>
+
+  <!-- ═══ รายวิชาที่เปิดสอน ═══ -->
+  <section class="sa-reveal mt-14">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-5">
+      <div>
+        <h2 class="text-2xl font-bold text-gray-900">วิชาที่เปิดสอนแบบคอร์สเดี่ยว</h2>
+        <p class="text-sm text-gray-500 mt-1">กดที่วิชาเพื่อดูช่องทางติดต่อ พร้อมข้อความที่คัดลอกไปส่งได้ทันที</p>
+      </div>
+      <div id="levelFilter" class="flex flex-wrap gap-2"></div>
+    </div>
+    <div id="grid" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"></div>
+  </section>
+
+  <!-- ═══ ตัวอย่างการแสดงในหน้าค้นหาคอร์ส ═══ -->
+  <section class="sa-reveal mt-14 rounded-3xl border border-dashed border-orange-200 bg-orange-50/40 p-5 sm:p-7">
+    <div class="flex items-center gap-2 mb-1"><i data-lucide="eye" class="h-4 w-4 text-orange-500"></i><p class="text-sm font-bold text-gray-800">ตัวอย่าง: การ์ดคอร์สเดี่ยว เมื่อไปอยู่ในหน้าค้นหาคอร์ส / หน้าแรก</p></div>
+    <p class="text-xs text-gray-500 mb-5">วางเทียบกับการ์ดคอร์สปกติ ใช้โครงการ์ดเดียวกัน แต่เปลี่ยนราคาเป็น "เริ่มต้น…/ชม." และเปลี่ยนปุ่มซื้อเป็นปุ่มติดต่อ</p>
+    <div id="compare" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"></div>
+  </section>
+
+  <!-- ═══ FAQ ═══ -->
+  <section class="sa-reveal mt-14 grid lg:grid-cols-[1fr_1.4fr] gap-8">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-widest text-orange-500">FAQ</p>
+      <h2 class="mt-1 text-2xl sm:text-3xl font-bold text-[#14213D]">คำถามที่พบบ่อย</h2>
+      <p class="mt-2 text-sm text-gray-500">มีคำถามอื่นเพิ่มเติม ทักพี่กวางได้เลย ยินดีให้คำแนะนำ</p>
+      <div class="mt-5 rounded-2xl bg-[#14213D] p-5 text-white relative overflow-hidden">
+        <div class="absolute inset-0 sa-grain opacity-20"></div>
+        <div class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-500/40 blur-2xl"></div>
+        <div class="relative flex items-center gap-3">
+          <span class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-lg font-bold">ก</span>
+          <div class="leading-tight"><p class="font-bold">พี่กวาง</p><p class="text-xs text-slate-300">เจ้าของสถาบัน · ดูแลคอร์สเดี่ยว</p></div>
+        </div>
+        <div class="relative mt-4 grid grid-cols-2 gap-2">
+          <a href="tel:0826646551" class="flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-xs font-bold hover:bg-orange-600 transition"><i data-lucide="phone" class="h-4 w-4"></i>โทรหาพี่กวาง</a>
+          <a href="https://www.facebook.com/search/top?q=ศรเสริม%20ติวเตอร์%20-%20SornSerm%20Tutor" target="_blank" rel="noopener" class="flex items-center justify-center gap-1.5 rounded-xl bg-[#1877F2] py-2.5 text-xs font-bold hover:bg-[#166fe5] transition"><i data-lucide="facebook" class="h-4 w-4"></i>ทักแฟนเพจ</a>
+        </div>
+      </div>
+    </div>
+    <div id="faq" class="space-y-3"></div>
+  </section>
+</main>
+
+<!-- ═══ แถบติดต่อลอยบนมือถือ ═══ -->
+<div class="fixed inset-x-3 bottom-3 z-40 lg:hidden">
+  <div class="flex gap-2 rounded-2xl bg-white/95 backdrop-blur p-2 shadow-2xl border border-gray-100">
+    <a href="tel:0826646551" class="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-3 text-sm font-bold text-white"><i data-lucide="phone" class="h-4 w-4"></i>โทรหาพี่กวาง</a>
+    <a href="https://www.facebook.com/search/top?q=ศรเสริม%20ติวเตอร์%20-%20SornSerm%20Tutor" target="_blank" rel="noopener" class="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-[#1877F2] py-3 text-sm font-bold text-white"><i data-lucide="facebook" class="h-4 w-4"></i>ทักแฟนเพจ</a>
+  </div>
+</div>
+
+<!-- ═══ Footer (โทนเดียวกับ footer.jsx) ═══ -->
+<footer class="bg-orange-500/95 text-white">
+  <div class="mx-auto max-w-[1200px] px-4 md:px-6 py-10 pb-28 lg:pb-10 text-center text-sm text-orange-50">ศรเสริม ติวเตอร์ · SornSerm Tutor</div>
+</footer>
+
+<!-- ═══ Modal ติดต่อ ═══ -->
+<div id="modal" class="fixed inset-0 z-[80] hidden place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+  <div id="modalCard" class="modal-in relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl"></div>
+</div>
+
+<div id="toast" class="fixed left-1/2 top-24 z-[90] -translate-x-1/2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg opacity-0 transition-opacity pointer-events-none">คัดลอกแล้ว</div>
+
+<script>
+const PHONE = "082-664-6551", TEL = "tel:0826646551";
+const FB = "https://www.facebook.com/search/top?q=ศรเสริม%20ติวเตอร์%20-%20SornSerm%20Tutor";
+const $ = (s) => document.querySelector(s);
+
+/* ข้อมูลตัวอย่าง: ในระบบจริงแอดมินจะเพิ่ม/แก้รายการนี้เองได้ */
+const SUBJECTS = [
+  { name: "คณิตศาสตร์", icon: "calculator", levels: ["ประถม", "ม.ต้น", "ม.ปลาย"], price: 350, grad: "from-orange-50 to-amber-100", ic: "text-orange-500", note: "ปูพื้นฐาน · ทำการบ้าน · เตรียมสอบ" },
+  { name: "ภาษาอังกฤษ", icon: "languages", levels: ["ประถม", "ม.ต้น", "ม.ปลาย"], price: 350, grad: "from-sky-50 to-blue-100", ic: "text-blue-500", note: "Grammar · Reading · Speaking" },
+  { name: "วิทยาศาสตร์", icon: "flask-conical", levels: ["ประถม", "ม.ต้น"], price: 350, grad: "from-emerald-50 to-teal-100", ic: "text-emerald-500", note: "สรุปเนื้อหา · ทดลองคิด · ทำโจทย์" },
+  { name: "ภาษาไทย", icon: "book-open-text", levels: ["ประถม", "ม.ต้น", "ม.ปลาย"], price: 350, grad: "from-rose-50 to-pink-100", ic: "text-rose-500", note: "หลักภาษา · การอ่านจับใจความ" },
+  { name: "ฟิสิกส์", icon: "atom", levels: ["ม.ปลาย"], price: null, grad: "from-indigo-50 to-violet-100", ic: "text-indigo-500", note: "กลศาสตร์ · ไฟฟ้า · เตรียมสอบเข้า" },
+  { name: "เคมี", icon: "test-tubes", levels: ["ม.ปลาย"], price: null, grad: "from-purple-50 to-fuchsia-100", ic: "text-purple-500", note: "ปริมาณสัมพันธ์ · สมดุลเคมี" },
+  { name: "ชีววิทยา", icon: "leaf", levels: ["ม.ปลาย"], price: 350, grad: "from-lime-50 to-green-100", ic: "text-green-600", note: "สรุปเข้มข้น · ติวสอบรายบท" },
+  { name: "สังคมศึกษา", icon: "landmark", levels: ["ม.ต้น", "ม.ปลาย"], price: 350, grad: "from-amber-50 to-yellow-100", ic: "text-amber-600", note: "ประวัติศาสตร์ · หน้าที่พลเมือง" },
+];
+const LEVELS = ["ทั้งหมด", "ประถม", "ม.ต้น", "ม.ปลาย"];
+let level = "ทั้งหมด";
+
+const STEPS = [
+  { icon: "phone-call", t: "ติดต่อพี่กวาง", d: "โทรหรือทักแฟนเพจ บอกวิชา ระดับชั้น และเป้าหมายของน้อง" },
+  { icon: "clipboard-check", t: "ประเมินระดับ", d: "คุยและประเมินพื้นฐานน้อง เพื่อวางแผนการเรียนให้ตรงจุด" },
+  { icon: "users-round", t: "จับคู่ครู", d: "พี่กวางแนะนำครูที่เหมาะ หรือเลือกครูที่อยากเรียนด้วย" },
+  { icon: "rocket", t: "เริ่มเรียน", d: "ตกลงราคาและเวลา โอนชำระ แล้วคอร์สจะขึ้นในบัญชีของน้อง" },
+];
+
+const FAQS = [
+  { q: "ราคาคอร์สเดี่ยวคิดอย่างไร?", a: "ราคาเริ่มต้น 350 บาท/ชั่วโมง ราคาจริงขึ้นกับวิชา ระดับความยาก และจำนวนชั่วโมงที่เรียน พี่กวางจะแจ้งราคาให้หลังประเมินน้องแล้ว วิชาที่ขึ้นว่า \"สอบถามราคา\" ให้ติดต่อพี่กวางโดยตรง" },
+  { q: "ทำไมกดซื้อคอร์สเดี่ยวในเว็บไม่ได้?", a: "เพราะต้องประเมินน้องและเลือกครูที่เหมาะกันก่อน ราคาและเวลาเรียนจึงตกลงกันเป็นรายคน หลังตกลงแล้วสถาบันจะเปิดคอร์สเข้าบัญชีของน้องให้" },
+  { q: "ชำระเงินอย่างไร?", a: "โอนเข้าบัญชีของสถาบัน บัญชีเดียวกับคอร์สปกติ พี่กวางจะแจ้งยอดและรายละเอียดให้หลังตกลงรายละเอียดกันเรียบร้อย" },
+  { q: "เลือกครูเองได้ไหม?", a: "ได้ บอกชื่อครูที่อยากเรียนด้วยได้เลย หรือให้พี่กวางช่วยแนะนำครูที่เหมาะกับพื้นฐานและสไตล์การเรียนของน้องก็ได้" },
+  { q: "เรียนแล้วดูผลการเรียนได้ที่ไหน?", a: "หลังเปิดคอร์สแล้ว น้องจะเห็นคอร์สในหน้า \"คอร์สเรียนของฉัน\" พร้อมตารางเรียน การเข้าเรียน และคะแนนสอบ เหมือนคอร์สปกติทุกอย่าง" },
+];
+
+/* ── ขั้นตอน ── */
+$("#steps").innerHTML = STEPS.map((s, i) => `
+  <li class="relative rounded-2xl border-2 border-gray-100 bg-white p-5 transition hover:border-orange-300 hover:shadow-lg">
+    ${i < STEPS.length - 1 ? `<span class="hidden md:block absolute top-11 -right-4 w-4 h-0.5 bg-orange-200 z-10"><span class="sa-flow bg-orange-500" style="animation-delay:${i * .5}s"></span></span>` : ""}
+    <div class="flex items-center justify-between">
+      <span class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 text-white shadow-md shadow-orange-500/30"><i data-lucide="${s.icon}" class="h-6 w-6"></i></span>
+      <span class="text-4xl font-extrabold text-orange-100">0${i + 1}</span>
+    </div>
+    <p class="mt-4 font-bold text-[#14213D]">${s.t}</p>
+    <p class="mt-1 text-xs leading-relaxed text-gray-500">${s.d}</p>
+  </li>`).join("");
+
+/* ── การ์ดวิชา (โครงเดียวกับ CourseCard) ── */
+const priceHTML = (s, small = false) => s.price
+  ? `<div class="flex items-baseline gap-1"><span class="text-[11px] text-gray-500">เริ่มต้น</span><span class="${small ? "text-sm" : "text-base"} font-bold text-green-700 tabular">${s.price}</span><span class="text-[11px] font-semibold text-green-700">บาท/ชม.</span></div>`
+  : `<div class="flex items-center gap-1 text-sm font-bold text-orange-600"><i data-lucide="message-circle-question" class="h-4 w-4"></i>สอบถามราคา</div>`;
+
+function privateCard(s, i, { compare = false } = {}) {
+  return `
+  <button type="button" data-i="${SUBJECTS.indexOf(s)}" onmousemove="tilt(event)" onmouseleave="untilt(event)"
+    class="open-contact sa-tilt sa-rise group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white text-left shadow-sm transition-all duration-300 hover:border-orange-300 hover:shadow-xl" style="animation-delay:${i * .05}s">
+    <span class="sa-glow"></span>
+    <div class="relative h-36 overflow-hidden bg-gradient-to-br ${s.grad}">
+      <i data-lucide="${s.icon}" class="absolute -right-5 -bottom-5 h-32 w-32 ${s.ic} opacity-15 transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-6"></i>
+      <span class="absolute left-4 top-1/2 -translate-y-1/2 grid h-14 w-14 place-items-center rounded-2xl bg-white/90 ${s.ic} shadow-md transition-transform group-hover:-translate-y-[60%]"><i data-lucide="${s.icon}" class="h-7 w-7"></i></span>
+      <span class="absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-white/95 border border-orange-100 px-2.5 py-1 text-[10px] font-bold text-orange-600 backdrop-blur"><i data-lucide="user-round" class="h-3 w-3"></i>1 : 1</span>
+    </div>
+    <div class="flex flex-1 flex-col p-3.5">
+      <h3 class="text-[13.5px] font-bold leading-snug text-neutral-800">คอร์สเดี่ยว · ${s.name}</h3>
+      <p class="mt-1 text-[11px] text-neutral-500 line-clamp-1">${s.note}</p>
+      <div class="mt-2">${priceHTML(s, true)}</div>
+      <div class="mb-3 mt-2.5 flex flex-wrap gap-1.5">
+        <span class="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"><i data-lucide="sparkles" class="h-3 w-3"></i> คอร์สเดี่ยว</span>
+        ${s.levels.map((l) => `<span class="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">${l}</span>`).join("")}
+      </div>
+      <div class="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
+        <span class="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition group-hover:bg-orange-600"><i data-lucide="phone" class="h-3.5 w-3.5"></i>ติดต่อสอบถาม</span>
+        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-blue-200 bg-blue-50 text-[#1877F2]" title="ทักแฟนเพจ"><i data-lucide="facebook" class="h-4 w-4"></i></span>
+      </div>
+    </div>
+  </button>`;
+}
+
+function renderGrid() {
+  $("#levelFilter").innerHTML = LEVELS.map((l) => `<button data-l="${l}" class="lvl rounded-full px-3.5 py-1.5 text-xs font-semibold border transition ${l === level ? "bg-orange-500 border-orange-500 text-white shadow-sm" : "bg-white border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-500"}">${l}</button>`).join("");
+  const list = SUBJECTS.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
+  $("#grid").innerHTML = list.map((s, i) => privateCard(s, i)).join("");
+  document.querySelectorAll(".lvl").forEach((b) => b.onclick = () => { level = b.dataset.l; renderGrid(); });
+  bindOpen(); lucide.createIcons();
+}
+
+/* ── การ์ดเทียบในหน้าค้นหา: คอร์สปกติ vs คอร์สเดี่ยว ── */
+const normalCard = (title, date, price, tag) => `
+  <div class="flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm">
+    <div class="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 grid place-items-center"><i data-lucide="image" class="h-10 w-10 text-orange-200"></i>
+      <span class="absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold bg-blue-50/95 text-blue-600 border border-blue-100">เปิดรับสมัคร</span></div>
+    <div class="flex flex-1 flex-col p-3.5">
+      <h3 class="line-clamp-2 min-h-[2.6rem] text-[13.5px] font-bold leading-snug text-neutral-800">${title}</h3>
+      <div class="mt-2 flex items-center gap-1.5 text-[11px] text-neutral-500"><i data-lucide="calendar" class="h-3.5 w-3.5 text-orange-400"></i>${date}</div>
+      <div class="mt-2 flex items-center gap-1.5"><span class="text-sm font-bold text-green-500">฿</span><span class="text-sm font-bold text-green-700">${price} บาท</span></div>
+      <div class="mb-3 mt-2.5 flex flex-wrap gap-1.5"><span class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">${tag}</span><span class="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">เรียนออนไซต์</span></div>
+      <div class="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
+        <span class="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white"><i data-lucide="badge-check" class="h-3.5 w-3.5"></i>ซื้อคอร์สเรียน</span>
+        <span class="grid h-9 w-9 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500"><i data-lucide="shopping-cart" class="h-4 w-4"></i></span>
+        <span class="grid h-9 w-9 place-items-center rounded-xl border border-gray-200 text-gray-400"><i data-lucide="heart" class="h-4 w-4"></i></span>
+      </div>
+    </div>
+  </div>`;
+$("#compare").innerHTML =
+  normalCard("คอร์สเตรียมสอบเข้า ม.1 คณิต-วิทย์", "1 ต.ค. 69 - 31 ม.ค. 70", "4,500", "คอร์สรวม") +
+  privateCard(SUBJECTS[0], 0, { compare: true }) +
+  normalCard("อังกฤษ ป.6 ปิดเทอมเล็ก", "5 ต.ค. 69 - 30 ต.ค. 69", "2,900", "คอร์สรวม") +
+  privateCard(SUBJECTS[4], 1, { compare: true });
+
+/* ── FAQ ── */
+$("#faq").innerHTML = FAQS.map((f, i) => `
+  <details class="group rounded-2xl border-2 border-gray-100 bg-white px-5 py-4 transition open:border-orange-200 open:shadow-md" ${i === 0 ? "open" : ""}>
+    <summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold text-[#14213D]">
+      <span class="flex items-center gap-2.5"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-orange-50 text-xs font-bold text-orange-500">Q</span>${f.q}</span>
+      <i data-lucide="chevron-down" class="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"></i>
+    </summary>
+    <p class="mt-3 pl-9 text-sm leading-relaxed text-gray-600">${f.a}</p>
+  </details>`).join("");
+
+/* ── Modal ติดต่อ + ข้อความสำเร็จรูป ── */
+function openContact(s) {
+  const msg = `สวัสดีค่ะพี่กวาง สนใจคอร์สเดี่ยววิชา${s.name} สำหรับน้องชั้น ____ อยากปรึกษาเรื่องการประเมินและเลือกครูค่ะ`;
+  $("#modalCard").innerHTML = `
+    <div class="relative bg-gradient-to-br from-orange-500 to-amber-500 px-6 pt-6 pb-10 text-white overflow-hidden">
+      <div class="absolute inset-0 sa-grain opacity-40"></div>
+      <i data-lucide="${s.icon}" class="absolute -right-6 -bottom-8 h-36 w-36 text-white/15"></i>
+      <button onclick="closeModal()" class="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25" aria-label="ปิด"><i data-lucide="x" class="h-5 w-5"></i></button>
+      <p class="relative text-xs font-semibold uppercase tracking-widest text-orange-100">คอร์สเดี่ยว · 1 : 1</p>
+      <h3 class="relative mt-1 text-2xl font-extrabold">${s.name}</h3>
+      <p class="relative mt-1 text-sm text-orange-50">${s.levels.join(" · ")}</p>
+    </div>
+    <div class="-mt-6 relative mx-5 rounded-2xl border border-orange-100 bg-white p-4 shadow-lg">
+      <div class="flex items-center justify-between gap-3">
+        ${priceHTML(s)}
+        <span class="rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-orange-600">ประเมินก่อนเรียน</span>
+      </div>
+      <p class="mt-1.5 text-[11px] text-gray-500">ราคาจริงขึ้นกับระดับความยากและจำนวนชั่วโมง พี่กวางจะแจ้งหลังประเมินน้อง</p>
+    </div>
+    <div class="p-5 pt-4 space-y-3">
+      <a href="${TEL}" class="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-orange-300 hover:bg-orange-50/40">
+        <span class="grid h-11 w-11 place-items-center rounded-xl bg-orange-500 text-white"><i data-lucide="phone" class="h-5 w-5"></i></span>
+        <span class="flex-1 leading-tight"><span class="block text-[11px] text-gray-500">โทรหาพี่กวาง (เจ้าของสถาบัน)</span><span class="text-lg font-bold text-[#14213D] tabular">${PHONE}</span></span>
+        <span onclick="event.preventDefault();copy('${PHONE.replace(/-/g, "")}')" class="grid h-9 w-9 place-items-center rounded-xl border border-gray-200 text-gray-400 hover:text-orange-500 hover:border-orange-300" title="คัดลอกเบอร์"><i data-lucide="copy" class="h-4 w-4"></i></span>
+      </a>
+      <a href="${FB}" target="_blank" rel="noopener" class="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-blue-300 hover:bg-blue-50/40">
+        <span class="grid h-11 w-11 place-items-center rounded-xl bg-[#1877F2] text-white"><i data-lucide="facebook" class="h-5 w-5"></i></span>
+        <span class="flex-1 leading-tight"><span class="block text-[11px] text-gray-500">ทักแฟนเพจ Facebook</span><span class="font-bold text-[#14213D]">ศรเสริม ติวเตอร์ - SornSerm Tutor</span></span>
+        <i data-lucide="external-link" class="h-4 w-4 text-gray-300"></i>
+      </a>
+      <div class="rounded-2xl bg-gray-50 border border-gray-100 p-3">
+        <div class="flex items-center justify-between mb-1.5"><p class="text-[11px] font-semibold text-gray-500 flex items-center gap-1"><i data-lucide="message-square-text" class="h-3.5 w-3.5 text-orange-400"></i>ข้อความสำเร็จรูป (แก้ได้ก่อนส่ง)</p>
+          <button onclick="copy(document.getElementById('msg').value)" class="flex items-center gap-1 rounded-lg bg-white border border-gray-200 px-2 py-1 text-[11px] font-semibold text-gray-600 hover:border-orange-300 hover:text-orange-500"><i data-lucide="copy" class="h-3 w-3"></i>คัดลอก</button></div>
+        <textarea id="msg" rows="3" class="w-full resize-none rounded-xl border border-gray-200 bg-white p-2.5 text-xs leading-relaxed text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400">${msg}</textarea>
+      </div>
+    </div>`;
+  $("#modal").classList.remove("hidden"); $("#modal").classList.add("grid");
+  lucide.createIcons();
+}
+function closeModal() { $("#modal").classList.add("hidden"); $("#modal").classList.remove("grid"); }
+$("#modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
+addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+function copy(t) {
+  try { navigator.clipboard.writeText(t); } catch (e) {}
+  const el = $("#toast"); el.style.opacity = 1; clearTimeout(window._tt); window._tt = setTimeout(() => (el.style.opacity = 0), 1400);
+}
+function bindOpen() { document.querySelectorAll(".open-contact").forEach((b) => b.onclick = () => openContact(SUBJECTS[+b.dataset.i])); }
+
+/* ── tilt + glow ── */
+function tilt(e) {
+  const el = e.currentTarget, r = el.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  el.style.setProperty("--gx", `${px * 100}%`); el.style.setProperty("--gy", `${py * 100}%`);
+  el.style.transform = `perspective(800px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-4px)`;
+}
+function untilt(e) { e.currentTarget.style.transform = ""; }
+
+/* ── parallax ฮีโร่ + reveal ── */
+$("#hero").addEventListener("mousemove", (e) => {
+  const r = e.currentTarget.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5;
+  e.currentTarget.querySelectorAll("[data-px]").forEach((n) => { const k = +n.dataset.px; n.style.translate = `${px * k}px ${py * k}px`; });
+});
+const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("is-in"); io.unobserve(en.target); } }), { threshold: .12 });
+document.querySelectorAll(".sa-reveal").forEach((el) => io.observe(el));
+
+renderGrid(); bindOpen(); lucide.createIcons();
+</script>
+</body>
+</html>

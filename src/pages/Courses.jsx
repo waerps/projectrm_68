@@ -305,7 +305,7 @@ export default function CourseDetail() {
   // Real, dynamically-pulled highlight badges — every value here comes
   // straight from `course`, nothing is hardcoded.
   const highlightBadges = [
-    course.discount > 0 && { key: "promo", label: "โปรโมชั่น", icon: Sparkles, solid: true },
+    course.discount > 0 && { key: "promo", label: "โปรโมชัน", icon: Sparkles, solid: true },
     course.termName && { key: "term", label: course.termName, icon: BadgeCheck, tone: "text-blue-100" },
     course.availabilityName && { key: "avail", label: course.availabilityName, icon: BadgeCheck, tone: "text-blue-100" },
     course.discount > 0 && { key: "discount", label: `ลด ${formatPrice(course.discount)} บาท`, icon: Tag, tone: "text-red-200" },
