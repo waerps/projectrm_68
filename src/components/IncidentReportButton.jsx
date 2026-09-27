@@ -17,7 +17,7 @@ export default function IncidentReportButton({ role }) {
 
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 left-6 z-40 flex items-center gap-2 pl-3.5 pr-4 py-3 rounded-full
+        className="fixed bottom-4 left-4 sm:bottom-6 sm:left-6 z-40 flex items-center gap-2 p-3 sm:pl-3.5 sm:pr-4 rounded-full
                    bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/20
                    hover:shadow-xl hover:scale-[1.03] transition-all"
         title="แจ้งปัญหา / ร้องเรียน"

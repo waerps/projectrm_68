@@ -177,7 +177,7 @@ export default function TutorProgressOverview() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "คอร์สที่สอน", value: stats.courses, color: "bg-orange-600", icon: BookOpen },
           { label: "วิชาที่สอน", value: stats.subjects, color: "bg-blue-500", icon: BarChart2 },

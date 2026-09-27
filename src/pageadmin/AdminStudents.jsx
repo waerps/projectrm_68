@@ -2292,7 +2292,7 @@ export default function AdminStudentsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "นักเรียนทั้งหมด", value: students.length, color: "bg-orange-600" },
           { label: "ลงทะเบียนแล้ว", value: students.filter(s => s.EnrolledCourses > 0).length, color: "bg-emerald-500" },

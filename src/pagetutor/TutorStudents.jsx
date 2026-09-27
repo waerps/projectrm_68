@@ -13,6 +13,8 @@ import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText, GraduationCap as LuGraduationCap, School as LuSchool } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import Spinner from "../components/ui/Spinner";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -43,6 +45,7 @@ export default function TutorStudents() {
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState("name");
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [courseInfo, setCourseInfo] = useState({ name: "กำลังโหลด...", studentCount: 0 });
     const [students, setStudents] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -149,6 +152,7 @@ export default function TutorStudents() {
             } catch (error) {
                 console.error("Error fetching students:", error);
                 setStudents([]);
+                setLoadError(true);
             } finally {
                 setLoading(false);
             }
@@ -255,11 +259,8 @@ export default function TutorStudents() {
     const getLowAttendanceStudents = () =>
         filteredStudents.filter(s => { const r = getAttendanceRate(s); return r !== null && r < 60; });
 
-    if (loading) return (
-        <div className="text-center p-10 font-medium text-orange-600">
-            กำลังโหลดข้อมูลนักเรียน...
-        </div>
-    );
+    if (loading) return <Spinner block label="กำลังโหลดข้อมูลนักเรียน..." />;
+    if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>;
 
     return (
         <div className="space-y-6 px-4 lg:px-0">
@@ -279,7 +280,7 @@ export default function TutorStudents() {
                             </p>
                         </div>
                         <div className="relative group self-start md:self-auto">
-                            <button className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 shadow-sm transition font-medium">
+                            <button className="flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 shadow-sm transition font-medium">
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
                             <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">

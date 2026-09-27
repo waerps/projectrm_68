@@ -26,6 +26,7 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { Lightbulb as LuLightbulb } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -146,7 +147,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
           {loading ? (
-            <p className="text-sm text-slate-500 py-6 text-center">กำลังโหลด…</p>
+            <Spinner block label="กำลังโหลด…" />
           ) : error ? (
             <p className="text-sm text-red-600 py-6 text-center">{error}</p>
           ) : !categories.length ? (
@@ -1574,7 +1575,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
           {loading ? (
-            <p className="text-sm text-slate-500 py-8 text-center">กำลังโหลดคลังข้อสอบ…</p>
+            <Spinner block label="กำลังโหลดคลังข้อสอบ…" />
           ) : !bank.length ? (
             <div className="border border-dashed border-slate-200 rounded-xl py-10 text-center">
               <FileQuestion className="h-9 w-9 text-slate-300 mx-auto mb-2" />
@@ -2693,7 +2694,7 @@ function StudentDetailModal({
             </div>
           )}
 
-          {loading && <p className="text-sm text-slate-400 text-center py-8">กำลังโหลด...</p>}
+          {loading && <Spinner block label="กำลังโหลด..." />}
           {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
 
           {modalTab === "items" && detail && !loading && (
@@ -3063,7 +3064,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     );
   }
 
-  if (loading) return <p className="text-sm text-slate-400">กำลังโหลดผลสอบ...</p>;
+  if (loading) return <Spinner block label="กำลังโหลดผลสอบ..." />;
   if (error) return <p className="text-sm text-red-500">{error}</p>;
   if (!results) return null;
 
@@ -3414,7 +3415,7 @@ export default function TutorExamDetail() {
   };
 
   if (loading) {
-    return <div className="px-4 lg:px-0 text-center py-16 text-sm text-slate-400">กำลังโหลดข้อมูลการสอบ...</div>;
+    return <div className="px-4 lg:px-0"><Spinner block label="กำลังโหลดข้อมูลการสอบ..." /></div>;
   }
 
   if (loadError || !exam) {
@@ -3452,7 +3453,7 @@ export default function TutorExamDetail() {
                 {sb.label}
               </Badge>
             </div>
-            <h1 className={PAGE_TITLE}>{exam.name}</h1>
+            <h1 className={`${PAGE_TITLE} line-clamp-2 break-words`} title={exam.name}>{exam.name}</h1>
             <p className="text-sm text-slate-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-2">

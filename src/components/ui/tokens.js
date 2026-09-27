@@ -34,6 +34,6 @@ export const PAGE_SUBTITLE = "text-sm text-slate-500 mt-1";
 
 /* จุดเปลี่ยน layout (กติกาของระบบ)
    - ตารางข้อมูลหลัก (รายชื่อ/ธุรกรรม/เคส ฯลฯ): จอ < lg แสดงเป็นการ์ด  → `lg:hidden` / `hidden lg:block`
-   - ตารางสอนรายสัปดาห์ (ติวเตอร์/แอดมิน): จอ < md แสดงแบบรายวัน       → `md:hidden` / `hidden md:block`
+   - ตารางสอนรายสัปดาห์ (ติวเตอร์/แอดมิน): จอ < lg แสดงแบบรายวัน       → `lg:hidden` / `hidden lg:block`
    - Navbar: เมนูเต็มแสดงที่ md ขึ้นไป */
-export const BREAKPOINT = { table: "lg", schedule: "md", navbar: "md" };
+export const BREAKPOINT = { table: "lg", schedule: "lg", navbar: "md" };

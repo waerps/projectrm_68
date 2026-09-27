@@ -10,6 +10,7 @@ import {
   fetchExams,
 } from "../utils/examShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 function Badge({ className, children }) {
   return (
@@ -94,7 +95,7 @@ export default function TutorExam() {
         </button>
       </div>
 
-      {loading && <p className="text-sm text-slate-400">กำลังโหลดข้อมูลการสอบ...</p>}
+      {loading && <Spinner block label="กำลังโหลดข้อมูลการสอบ..." />}
       {error && <p className="text-sm text-red-500">{error}</p>}
 
       {/* Exam Cards — Pre / Mid / Post, always exist for this Subject */}

@@ -11,6 +11,7 @@ import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import { MapPin as LuMapPin } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
 const API_BASE = `${API_URL}/api/admin`;
 
 // ── Avatar สีวน ──────────────────────────────────────────────
@@ -496,6 +497,7 @@ export default function TutorAttendanceDashboard() {
     [selectedMonthNum, selectedYear]
   );
   const [tutors, setTutors] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sortBy, setSortBy] = useState('AttendanceRate');
   const [sortAsc, setSortAsc] = useState(true);
@@ -519,13 +521,22 @@ export default function TutorAttendanceDashboard() {
   // ★ แก้ fetchData ให้เช็ค start/end ตรงๆ ไม่ใช้ month เป็น truthy check
   const fetchData = async (month) => {
     setLoading(true);
+    setLoadError(false);
     const url = (month && month.start && month.end)
       ? `${API_BASE}/tutors/attendance?startDate=${month.start}&endDate=${month.end}`
       : `${API_BASE}/tutors/attendance`;
-    const r = await fetch(url);
-    const d = await r.json();
-    setTutors(d.tutors || []);
-    setLoading(false);
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      setTutors(d.tutors || []);
+    } catch (err) {
+      console.error('fetch attendance error:', err);
+      setTutors([]);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // auto-fetch เมื่อ selectedMonth เปลี่ยน
@@ -847,7 +858,8 @@ export default function TutorAttendanceDashboard() {
           เพิ่มคอลัมน์ "ขาด" และ "บันทึกล่าสุด"
           หัวคอลัมน์ระบุหน่วยชัดเจน (ครั้ง) vs (%) กันสับสน */}
       {/* มือถือ/แท็บเล็ต: การ์ดรายติวเตอร์ (ตารางแสดงบนจอใหญ่) */}
-      <div className="lg:hidden">
+      {loadError && !loading && <ErrorState className="mb-4" onRetry={() => fetchData(selectedMonth)} />}
+      <div className={`lg:hidden ${loadError && !loading ? "hidden" : ""}`}>
         {loading ? (
           <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
             <Spinner size="lg" />
@@ -899,7 +911,7 @@ export default function TutorAttendanceDashboard() {
           </div>
         )}
       </div>
-      <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className={`${loadError && !loading ? "hidden" : "hidden lg:block"} bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] lg:min-w-0 text-sm">
             <thead>

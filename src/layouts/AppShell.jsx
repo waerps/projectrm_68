@@ -81,9 +81,10 @@ export default function AppShell() {
 
   return (
     <>
-      <div className="min-h-screen ">
+      {/* flex แนวตั้งเต็มความสูงจอ → footer ติดล่างเสมอแม้หน้ามีเนื้อหาน้อย */}
+      <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className=" ">
+        <main className="flex-1 w-full">
           <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>

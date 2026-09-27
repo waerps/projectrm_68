@@ -19,6 +19,7 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { Users as LuUsers } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -2277,6 +2278,7 @@ export default function AdminTutorsPage() {
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [viewTutor, setViewTutor] = useState(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [loadError, setLoadError] = useState(false);
   const [applications, setApplications] = useState([]);
 
   const fetchTutors = async () => {
@@ -2286,6 +2288,7 @@ export default function AdminTutorsPage() {
     } catch (e) {
       console.error("fetch tutors error:", e);
       showToast("error", "โหลดข้อมูลติวเตอร์ไม่สำเร็จ");
+      setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -2403,6 +2406,7 @@ export default function AdminTutorsPage() {
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลติวเตอร์...</p>
     </div>
   );
+  if (loadError && tutors.length === 0) return <ErrorState onRetry={() => { setLoadError(false); setLoading(true); fetchTutors(); }} />;
 
   const activeTutorCount = tutors.filter(t => Number(t.Status_Tutor_Id || 1) === 1).length;
   const inactiveTutorCount = tutors.length - activeTutorCount;
@@ -2412,10 +2416,10 @@ export default function AdminTutorsPage() {
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── Tab Bar ── */}
-      <SegmentedControl value={activeTab} onChange={setActiveTab} options={[
-        { id: 'list', label: 'รายชื่อติวเตอร์' },
-        { id: 'attendance', label: 'บันทึกชั่วโมงการสอน' },
-        { id: 'applications', label: 'สมัครเป็นติวเตอร์' },
+      <SegmentedControl stretchMobile value={activeTab} onChange={setActiveTab} options={[
+        { id: 'list', label: 'รายชื่อติวเตอร์', short: 'รายชื่อ' },
+        { id: 'attendance', label: 'บันทึกชั่วโมงการสอน', short: 'ชั่วโมงสอน' },
+        { id: 'applications', label: 'สมัครเป็นติวเตอร์', short: 'ใบสมัคร' },
       ]} />
 
       {/* ── Attendance Tab ── */}
@@ -2446,7 +2450,7 @@ export default function AdminTutorsPage() {
         </div>
 
         {/* Stats — ★ เพิ่มคำอธิบายที่มาของตัวเลข + แยกนับเฉพาะติวเตอร์ที่ "กำลังสอน" สำหรับนักเรียนรวม/คาบสอนรวม */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
           {[
             { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)" },
             { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500" },

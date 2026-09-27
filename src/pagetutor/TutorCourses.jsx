@@ -6,6 +6,7 @@ import axios from "axios";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
 
 export default function CoursesPage() {
   console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
@@ -161,7 +162,7 @@ export default function CoursesPage() {
     return statusMatch && searchMatch;
   });
 
-  if (loading) return <div className="text-center p-10 font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</div>;
+  if (loading) return <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." />;
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -178,7 +179,7 @@ export default function CoursesPage() {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
           {visibleStats.map((stat, idx) => {
             const Icon = stat.icon;
             return (

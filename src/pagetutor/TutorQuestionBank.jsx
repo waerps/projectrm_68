@@ -139,7 +139,7 @@ export default function TutorQuestionBank() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "ข้อสอบทั้งหมด", value: stats.questions, color: "bg-orange-600", icon: FileQuestion },
           { label: "วิชาที่มีข้อสอบแล้ว", value: stats.ready, color: "bg-emerald-500", icon: BookOpen },

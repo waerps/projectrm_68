@@ -1,8 +1,10 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { X, ChevronLeft, ChevronRight, Calendar, Tag } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Calendar, Tag, Newspaper } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import EmptyState from "../components/ui/EmptyState";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 
 const SERVER_URL = API_URL;
 
@@ -24,9 +26,9 @@ const SafeImg = ({ src, className, alt }) => (
 );
 
 const SectionTitle = ({ children, sub }) => (
-  <div className="text-center mb-8 md:mb-10">
-    <h2 className="text-2xl md:text-[32px] font-extrabold text-orange-500">{children}</h2>
-    {sub && <p className="mt-2 text-slate-500">{sub}</p>}
+  <div className="mb-4">
+    <h2 className="text-lg font-bold text-slate-900">{children}</h2>
+    {sub && <p className="mt-0.5 text-sm text-slate-500">{sub}</p>}
   </div>
 );
 
@@ -34,33 +36,33 @@ const SectionTitle = ({ children, sub }) => (
 const NewsCard = ({ item, highlight, onClick }) => (
   <div
     onClick={onClick}
-    className="rounded-2xl border border-slate-100 bg-white p-4 md:p-5 shadow-sm
-               hover:shadow-md hover:border-orange-200 transition cursor-pointer"
+    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm
+               hover:shadow-md hover:border-orange-300 transition cursor-pointer"
   >
-    <div className="flex flex-col md:flex-row gap-4">
-      <div className="md:w-[36%]">
+    <div className="flex flex-col sm:flex-row gap-4">
+      <div className="sm:w-48 md:w-56 shrink-0">
         <SafeImg
           src={item.img}
           alt={item.title}
-          className="h-40 w-full rounded-2xl object-cover"
+          className="h-40 sm:h-32 w-full rounded-xl bg-slate-100 object-cover"
         />
       </div>
       <div className="flex-1 min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 font-semibold text-slate-600">
             {item.tag}
           </span>
           <span className="text-slate-400">{item.date}</span>
           {item.sub && (
-            <span className={`rounded-full px-2 py-0.5 ${
-              highlight ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
+            <span className={`rounded-full border px-2.5 py-0.5 font-semibold ${
+              highlight ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
             }`}>
               {item.sub.length > 50 ? item.sub.substring(0, 50) + "..." : item.sub}
             </span>
           )}
         </div>
-        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed break-words">{item.title}</h4>
-        <p className="mt-1 text-xs text-orange-500 font-medium">อ่านต่อ →</p>
+        <h4 className="text-base font-semibold leading-snug text-slate-900 break-words line-clamp-2">{item.title}</h4>
+        <p className="mt-2 text-xs text-orange-600 font-semibold">อ่านต่อ →</p>
       </div>
     </div>
   </div>
@@ -257,13 +259,17 @@ export default function TutorMain() {
   if (loading) return <Spinner block label="กำลังโหลดข่าวสาร..." />;
 
   return (
-    <div className="pb-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6">
+    <div>
+      <div className="px-4 lg:px-0 space-y-2">
+        <div className="mb-6">
+          <h1 className={PAGE_TITLE}>หน้าหลัก</h1>
+          <p className={PAGE_SUBTITLE}>ข่าวสาร ประกาศ และกิจกรรมล่าสุดของสถาบัน</p>
+        </div>
 
         {publicNews.length > 0 && (
           <>
             <SectionTitle sub="ข่าวสารและกิจกรรมล่าสุดของสถาบัน">ข่าวประชาสัมพันธ์</SectionTitle>
-            <div className="space-y-4 mb-16">
+            <div className="space-y-3 mb-10">
               {publicNews.map((n) => (
                 <NewsCard key={n.id} item={n} onClick={() => setSelectedId(n.id)} />
               ))}
@@ -274,7 +280,7 @@ export default function TutorMain() {
         {tutorNews.length > 0 && (
           <>
             <SectionTitle sub="ประกาศและข้อมูลสำคัญสำหรับติวเตอร์">ข่าวสำหรับติวเตอร์</SectionTitle>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {tutorNews.map((n) => (
                 <NewsCard key={n.id} item={n} highlight onClick={() => setSelectedId(n.id)} />
               ))}
@@ -283,7 +289,7 @@ export default function TutorMain() {
         )}
 
         {publicNews.length === 0 && tutorNews.length === 0 && (
-          <div className="text-center py-20 text-slate-400">ยังไม่มีข่าวในระบบ</div>
+          <EmptyState icon={Newspaper} title="ยังไม่มีข่าวในระบบ" description="ข่าวและประกาศใหม่จากสถาบันจะแสดงที่นี่" />
         )}
       </div>
 

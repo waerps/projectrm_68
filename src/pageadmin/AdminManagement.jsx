@@ -422,7 +422,7 @@ export default function AdminManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "ผู้ดูแลระบบทั้งหมด", value: admins.length, color: "bg-orange-500" },
           { label: "ใช้งานอยู่", value: activeCount, color: "bg-emerald-500" },

@@ -7,6 +7,8 @@ import { useToast } from '../components/useToast'
 import { ToastContainer } from '../components/Toast'
 import { confirmDialog } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import ErrorState from "../components/ui/ErrorState";
+import Spinner from "../components/ui/Spinner";
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -126,7 +128,7 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
   const count = (d) => slots.filter(sl => !sl.isBreak && scheduleMap[d]?.[sl.label]).length
   const items = slots.filter(sl => !sl.isBreak && scheduleMap[day]?.[sl.label])
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
         {DAYS_GRID.map(d => {
           const active = d === day
@@ -189,6 +191,7 @@ export default function TutorSchedule() {
   const [scheduleMap, setScheduleMap] = useState({})
   const [rawSchedule, setRawSchedule] = useState([])   // เก็บไว้คำนวณ derivedTimeSlots
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   // ── ความจริงเรื่อง "วันนี้" / "สัปดาห์นี้" มาจาก backend เท่านั้น ──
   // (ไม่ใช้ new Date() ของเบราว์เซอร์ เพื่อให้ mock วันที่ตอนเทสได้ตรงกันทั้งระบบ)
@@ -345,6 +348,7 @@ export default function TutorSchedule() {
         setWeekStart(serverWeekStart)
       } catch (err) {
         console.error('Error fetching schedule', err)
+        setLoadError(true)
       } finally {
         setLoading(false)
       }
@@ -560,7 +564,8 @@ export default function TutorSchedule() {
   }
 
   if (!tutorId) return <div className="text-center p-10 text-red-500">ไม่พบข้อมูลผู้ใช้</div>
-  if (loading) return <div className="text-center p-10 text-slate-500">กำลังโหลดตารางสอน...</div>
+  if (loading) return <Spinner block label="กำลังโหลดตารางสอน..." />
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดตารางสอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
 
   // ── วันนี้ (สำหรับ label หัวข้อ) คำนวณจาก todayDate ของ backend เท่านั้น ──
   const todayLabel = todayDate
@@ -634,7 +639,7 @@ export default function TutorSchedule() {
           slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
 
         {/* Grid ตาราง (แท็บเล็ตขึ้นไป) */}
-        <div className="hidden md:block bg-slate-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-slate-100">
+        <div className="hidden lg:block bg-slate-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-slate-100">
           <div className="grid grid-cols-8 gap-2 min-w-[760px] lg:min-w-[1000px]">
             <div className="text-center font-bold text-slate-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-slate-50 lg:static lg:bg-transparent">เวลา</div>
 

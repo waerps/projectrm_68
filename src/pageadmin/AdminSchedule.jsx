@@ -445,7 +445,7 @@ export default function AdminSchedule() {
         )}
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
           <StatCard
             icon={<BookOpen className="h-5 w-5 text-white" />}
             bg="bg-blue-500"
@@ -569,7 +569,7 @@ export default function AdminSchedule() {
           ) : (
             <>
             {/* มือถือ: มุมมองรายวัน */}
-            <div className="md:hidden">
+            <div className="lg:hidden">
               <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
                 {DAY_ORDER.map(dow => {
                   const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
@@ -626,7 +626,7 @@ export default function AdminSchedule() {
                 );
               })()}
             </div>
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto">
               <div className="min-w-[1100px]">
                 <div className="grid grid-cols-8 gap-1.5">
 

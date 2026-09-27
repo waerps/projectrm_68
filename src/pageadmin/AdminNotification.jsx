@@ -148,7 +148,7 @@ export default function AdminNotifications() {
       </div>
 
       {/* ★ ใหม่: Stat summary — เหมือนหน้า AdminTutors/AdminStudents */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: 'การแจ้งเตือนทั้งหมด', value: items.length, color: 'bg-orange-500', Icon: Bell },
           { label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500', Icon: Filter },

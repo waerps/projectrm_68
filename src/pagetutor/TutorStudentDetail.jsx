@@ -16,6 +16,8 @@ import {
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { Phone as LuPhone, School as LuSchool } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import Spinner from "../components/ui/Spinner";
 
 // สีประจำวิชา — วนตามลำดับวิชาที่มีจริงในคอร์ส (เดิมผูกกับชื่อวิชา 5 วิชาที่ hardcode ไว้)
 const SUBJECT_DOT_COLORS = [
@@ -56,6 +58,7 @@ export default function TutorStudentDetail() {
     const studentId = searchParams.get("studentId");
 
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [student, setStudent] = useState(null);
     const [attendance, setAttendance] = useState([]);
     const [videos, setVideos] = useState([]);
@@ -123,6 +126,7 @@ export default function TutorStudentDetail() {
                 }
             } catch (err) {
                 console.error(err);
+                setLoadError(true);
             } finally {
                 setLoading(false);
             }
@@ -197,9 +201,8 @@ export default function TutorStudentDetail() {
     const rateColor = attendanceRate >= 80 ? "bg-green-500" : attendanceRate >= 60 ? "bg-orange-500" : "bg-red-500";
     const rateText  = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
-    if (loading) return (
-        <div className="text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>
-    );
+    if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
+    if (loadError) return <div className="px-4 lg:px-0"><ErrorState /></div>;
     if (!student) return (
         <div className="text-center p-10 text-slate-500">ไม่พบข้อมูลนักเรียน</div>
     );
@@ -216,35 +219,37 @@ export default function TutorStudentDetail() {
                 <span className="text-slate-800 font-semibold break-words min-w-0">{student.name}</span>
             </div>
 
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-4 sm:p-5">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="h-20 w-20 rounded-xl border-2 border-orange-200 overflow-hidden shrink-0 bg-white">
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 shadow-sm rounded-2xl p-4 sm:p-5">
+                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-xl border-2 border-orange-200 overflow-hidden shrink-0 bg-white">
                         <StudentAvatar student={student} />
                     </div>
                     <div className="flex-1 min-w-0">
                         <h1 className={`${PAGE_TITLE} break-words`}>{student.name}</h1>
                         <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-600">
-                            <span className="inline-flex items-center gap-1 bg-white border rounded px-2 py-0.5"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</span>
-                            <span className="inline-flex items-center gap-1 bg-white border rounded px-2 py-0.5"><LuPhone className="h-3.5 w-3.5 text-slate-400" /> {student.phone}</span>
-                            <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{student.gradeLevel}</span>
+                            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</span>
+                            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuPhone className="h-3.5 w-3.5 text-slate-400" /> {student.phone}</span>
+                            <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">{student.gradeLevel}</span>
                             {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
                             {student.gpa && student.gpa !== '-' && (
-                                <span className="bg-white border rounded px-2 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</span>
+                                <span className="bg-white border border-slate-200 rounded-full px-2.5 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</span>
                             )}
                         </div>
                     </div>
-                    <div className="flex gap-3 flex-wrap">
-                        <div className="bg-white border border-green-200 rounded-xl px-4 py-2 text-center">
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:flex lg:flex-wrap lg:shrink-0">
+                        <div className="bg-white border border-green-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className="text-xs text-slate-500 mb-0.5">เข้าเรียน</p>
                             <p className={`text-lg font-bold ${rateText}`}>{attendanceRate}%</p>
                             <p className="text-xs text-slate-400">{attendedCount}/{attendance.length} คาบ</p>
                         </div>
-                        <div className="bg-white border border-orange-200 rounded-xl px-4 py-2 text-center">
+                        <div className="bg-white border border-orange-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className="text-xs text-slate-500 mb-0.5">ดูคลิป</p>
                             <p className="text-lg font-bold text-orange-600">{videoRate}%</p>
                             <p className="text-xs text-slate-400">{watchedCount}/{videos.length} คลิป</p>
                         </div>
-                        <div className={`bg-white border rounded-xl px-4 py-2 text-center ${getTrendColor(getOverallTrend())}`}>
+                        <div className={`bg-white border rounded-xl px-2 sm:px-4 py-2 text-center min-w-0 ${getTrendColor(getOverallTrend())}`}>
                             <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
                             <div className="flex items-center justify-center gap-1">
                                 {getTrendIcon(getOverallTrend())}

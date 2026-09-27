@@ -284,13 +284,13 @@ export default function AdminProfile() {
       )}
 
       {/* Profile Header Card */}
-      <div className="overflow-hidden rounded-2xl shadow-lg">
+      <div className="overflow-hidden rounded-2xl shadow-sm">
         <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-5 sm:p-8 md:p-10">
-          <div className="flex flex-col gap-8 md:flex-row md:items-center">
+          <div className="flex flex-col gap-4 sm:gap-8 md:flex-row md:items-center">
 
             {/* รูปโปรไฟล์ */}
             <div className="relative shrink-0 mx-auto md:mx-0">
-              <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-white/30 flex items-center justify-center">
+              <div className="relative h-24 w-24 sm:h-36 sm:w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-white/30 flex items-center justify-center">
                 {formData.photo ? (
                   <img src={getFileUrl(formData.photo)} className="h-full w-full object-cover" alt="Admin" />
                 ) : (

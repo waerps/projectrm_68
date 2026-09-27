@@ -2764,30 +2764,24 @@ export function ExamAnalyticsView({
           </p>
           {roleNote}
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
           {activeTab === "overview" && (
-            <div className="flex rounded-xl overflow-hidden border border-slate-200">
-              {EXAMS_META.map(e => (
-                <button key={e.id} onClick={() => setExamId(e.id)}
-                  className={`px-3 py-2 text-xs font-bold transition ${examId === e.id ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
-                  {e.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl size="sm" stretchMobile value={examId} onChange={setExamId}
+              options={EXAMS_META.map(e => ({ id: e.id, label: e.label }))} />
           )}
           {activeTab === "overview" && (
-            <>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
               <button onClick={() => setExcelPreviewRows(buildExcelRows(examResults[examId]))}
                 disabled={!examResults[examId]?.students?.length}
-                className="flex items-center gap-2 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+                className="flex items-center justify-center gap-2 whitespace-nowrap border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
                 <Download className="h-4 w-4" /> Export Excel
               </button>
               <button onClick={() => exportToPdf(examResults[examId], examLabel, courseName, subjectName, topicResults[examId])}
                 disabled={!examResults[examId]?.students?.length}
-                className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+                className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
                 <Download className="h-4 w-4" /> Export PDF
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -2800,7 +2794,7 @@ export function ExamAnalyticsView({
           <button
             onClick={() => exportComparisonToPdf(comparisonForExport, courseName, subjectName)}
             disabled={dataLoading || comparisonForExport.rounds.length < 2}
-            className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+            className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
             <Download className="h-4 w-4" /> Export PDF
           </button>
         )}
@@ -2808,7 +2802,7 @@ export function ExamAnalyticsView({
           <button
             onClick={() => exportProgressToPdf(progressRowsForExport, courseName, subjectName)}
             disabled={dataLoading || !progressRowsForExport.length}
-            className="flex items-center gap-2 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+            className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
             <Download className="h-4 w-4" /> Export PDF
           </button>
         )}
