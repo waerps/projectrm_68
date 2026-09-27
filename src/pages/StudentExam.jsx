@@ -12,6 +12,7 @@ import {
 } from "../utils/studentExamShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { Sprout as LuSprout } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
@@ -118,7 +119,7 @@ function LandingCard({ status, exam, onStart, starting }) {
       <button
         onClick={onStart}
         disabled={startDisabled}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-2xl py-4 text-base font-semibold transition"
+        className={`${BTN.primary} w-full disabled:opacity-50 rounded-2xl py-4 text-base font-semibold transition`}
       >
         {starting
           ? "กำลังเข้าสู่ห้องสอบ…"
@@ -137,7 +138,7 @@ function NoQuestionsNotice() {
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-3">
       <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
       <p className="text-sm font-semibold text-slate-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
-      <p className="text-xs text-slate-400">กรุณาติดต่อผู้สอนของคุณ</p>
+      <p className="text-xs text-slate-500">กรุณาติดต่อผู้สอนของคุณ</p>
     </div>
   );
 }
@@ -280,7 +281,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
               <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
               <p className="text-lg font-medium text-slate-900 leading-relaxed">{current.text}</p>
             </div>
-            <span className="flex-shrink-0 text-sm font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
+            <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
             </span>
           </div>
@@ -288,7 +289,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
             {OPTION_LABELS.map((label, optIdx) => {
               const isSelected = current.selected === optIdx;
               return (
-                <button
+                <button aria-label="ยืนยัน"
                   key={label}
                   onClick={() => pickAnswer(optIdx)}
                   className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
@@ -311,7 +312,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
               ข้อถัดไป <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
-            <button onClick={() => setConfirmSubmit(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-6 py-2.5 text-base font-semibold">
+            <button onClick={() => setConfirmSubmit(true)} className={`${BTN.primary} rounded-xl px-6 py-2.5 text-base font-semibold`}>
               ส่งข้อสอบ
             </button>
           )}
@@ -383,7 +384,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
             </div>
             <div className="flex gap-3">
               <button onClick={() => setConfirmSubmit(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ตรวจทานอีกครั้ง</button>
-              <button onClick={doSubmit} disabled={submitting} className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold">
+              <button onClick={doSubmit} disabled={submitting} className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}>
                 {submitting ? "กำลังส่ง…" : "ยืนยันส่ง"}
               </button>
             </div>

@@ -19,6 +19,7 @@ import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import UIEmptyState from "../components/ui/EmptyState";
+import { BTN } from "../components/ui/tokens";
 
 const FINANCE_API = `${API_URL}/api/admin/finance`;
 const ITEMS_PER_PAGE = 10;
@@ -141,7 +142,7 @@ function ApiState({ loading, error, onRetry, minHeight = 'h-40', skeletonHeight,
    icon+title header keeps every section's hierarchy identical. */
 function SectionCard({ title, icon: Icon, action, children, className = '', bodyClassName = '' }) {
     return (
-        <div className={`${T.card} ${T.cardPad} flex flex-col h-full ${className}`}>
+        <div className={`${T.card} ${T.cardPad} flex flex-col h-full min-w-0 overflow-x-clip ${className}`}>
             {title && (
                 <div className="flex items-center justify-between mb-4 shrink-0">
                     <h3 className={`${T.title} flex items-center gap-2`}>
@@ -230,7 +231,7 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <p className="text-xl font-bold text-slate-900">{centerValue}</p>
-                    <p className="text-[11px] text-slate-400">{centerLabel}</p>
+                    <p className="text-[11px] text-slate-500">{centerLabel}</p>
                 </div>
             </div>
             <div className="w-full max-w-xs space-y-1">
@@ -328,7 +329,7 @@ function TransactionRow({ txn, onView }) {
             <td className="px-4 py-3">
                 <button
                     onClick={() => onView(txn.StudentPaymentId)}
-                    className={`p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 ${T.transition}`}
+                    className={`p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}
                     title="ดูรายละเอียด"
                 >
                     <Eye className="h-3.5 w-3.5" />
@@ -989,7 +990,7 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                         </h3>
                         <p className="text-xs text-orange-100 mt-0.5 ml-[42px]">Transaction #{transactionId}</p>
                     </div>
-                    <button onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
+                    <button aria-label="ปิด" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}>
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -1031,7 +1032,7 @@ function TutorPaymentDetailModal({ item, onClose }) {
                         </h3>
                         <p className="mt-0.5 text-xs text-orange-100 ml-[42px]">{item.tutorName} · รอบ {item.period}</p>
                     </div>
-                    <button onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
+                    <button aria-label="ปิด" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}>
                         <X className="h-5 w-5" />
                     </button>
                 </div>
@@ -1128,11 +1129,11 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
                     </span>
                     บันทึกโอนค่าติวเตอร์
                 </h3>
-                <button type="button" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition}`}>
+                <button aria-label="ปิด" type="button" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}>
                     <X className="h-5 w-5" />
                 </button>
             </div>
-            <p className="px-4 sm:px-6 pt-3 text-xs text-slate-400">{item.tutorName} · รอบ {item.period}</p>
+            <p className="px-4 sm:px-6 pt-3 text-xs text-slate-500">{item.tutorName} · รอบ {item.period}</p>
             <div className="p-4 sm:p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
                     <p className={T.label}>ยอดที่ต้องโอน</p>
@@ -1150,11 +1151,11 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
             </div>
             <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex gap-3">
                 <button type="button" onClick={onClose} disabled={saving}
-                    className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                    className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
                 <button disabled={saving || !bankReady}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm">
+                    className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันว่าโอนแล้ว"}
                 </button>
             </div>

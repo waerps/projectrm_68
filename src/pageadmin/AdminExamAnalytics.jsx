@@ -64,7 +64,7 @@ export default function AdminExamAnalytics() {
       subjectName={subjectName}
       api={api}
       breadcrumb={() => (
-        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
           {origin && (
             <>
               <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>

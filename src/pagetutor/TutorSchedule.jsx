@@ -146,7 +146,7 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
       </div>
       <p className="mt-2 mb-3 text-sm font-bold text-slate-800">วัน{day} <span className="font-normal text-slate-400">· {items.length} คาบ</span></p>
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-400">ไม่มีคาบสอนในวันนี้</div>
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-500">ไม่มีคาบสอนในวันนี้</div>
       ) : (
         <div className="space-y-2.5">
           {items.map(sl => {
@@ -641,7 +641,7 @@ export default function TutorSchedule() {
         {/* Grid ตาราง (แท็บเล็ตขึ้นไป) */}
         <div className="hidden lg:block bg-slate-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-slate-100">
           <div className="grid grid-cols-8 gap-2 min-w-[760px] lg:min-w-[1000px]">
-            <div className="text-center font-bold text-slate-400 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-slate-50 lg:static lg:bg-transparent">เวลา</div>
+            <div className="text-center font-bold text-slate-500 py-2 text-sm uppercase tracking-wider sticky left-0 z-10 bg-slate-50 lg:static lg:bg-transparent">เวลา</div>
 
             {/* หัวคอลัมน์วัน — เพิ่มวันที่ใต้ชื่อวัน (เอามาจาก AdminSchedule) */}
             {DAYS_GRID.map(d => {
@@ -755,13 +755,13 @@ export default function TutorSchedule() {
           </div>
 
           {lineLinked ? (
-            <button type="button" onClick={disconnectTutorLine} disabled={lineLoading}
+            <button aria-label="ยกเลิกการเชื่อมต่อ" type="button" onClick={disconnectTutorLine} disabled={lineLoading}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 text-sm font-bold text-red-600 transition hover:bg-red-50 disabled:opacity-50">
               <Unlink className="h-4 w-4" />
               {lineLoading ? 'กำลังดำเนินการ...' : 'ยกเลิกการเชื่อม'}
             </button>
           ) : (
-            <button type="button" onClick={connectTutorLine} disabled={lineLoading || !token}
+            <button aria-label="ส่งข้อความ" type="button" onClick={connectTutorLine} disabled={lineLoading || !token}
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#06C755] px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#05ad49] disabled:opacity-50">
               <MessageCircle className="h-4 w-4" />
               {lineLoading ? 'กำลังตรวจสอบ...' : 'เชื่อมบัญชีกับ LINE'}
@@ -779,7 +779,7 @@ export default function TutorSchedule() {
                 <h2 className="text-base font-bold text-white">ปล่อยคลาสสอน</h2>
                 <p className="mt-0.5 text-xs text-white/80">{releaseModal.courseName} · {releaseModal.subjectName} · {releaseModal.time}</p>
               </div>
-              <button type="button" onClick={() => setReleaseModal(null)} aria-label="ปิด" className="shrink-0 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setReleaseModal(null)} aria-label="ปิด" className="shrink-0 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-4 p-4 sm:p-6">
               <div>
@@ -797,7 +797,7 @@ export default function TutorSchedule() {
                   <option value="">ไม่แนบเอกสาร</option>
                   {releaseFiles.map(file => <option key={file.fileId} value={file.fileId}>{file.fileName}</option>)}
                 </select>
-                {!releaseFiles.length && <p className="mt-1 text-xs text-slate-400">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
+                {!releaseFiles.length && <p className="mt-1 text-xs text-slate-500">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
               </div>
               <div>
                 <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-slate-400">(ไม่บังคับ)</span></label>
@@ -839,7 +839,7 @@ export default function TutorSchedule() {
                   ${modalPhase === 2 ? 'bg-white text-orange-600' : 'bg-white/25 text-white/80'}`}>
                     2
                   </div>
-                  <button onClick={closeModal} aria-label="ปิด" className="ml-1 sm:ml-3 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+                  <button onClick={closeModal} aria-label="ปิด" className="ml-1 sm:ml-3 p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -900,7 +900,7 @@ export default function TutorSchedule() {
 
                     <div className="grid grid-cols-1 gap-2">
                       {studentsList.length === 0 ? (
-                        <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-sm">
+                        <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-sm">
                           ไม่มีข้อมูลรายชื่อนักเรียน
                         </div>
                       ) : studentsList.map(student => {
@@ -983,9 +983,9 @@ export default function TutorSchedule() {
                 {modalPhase === 1 ? (
                   <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-400 uppercase">มาเรียนแล้ว</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase">มาเรียนแล้ว</span>
                       <span className="text-2xl font-bold text-green-600">{presentCount}</span>
-                      <span className="text-sm font-bold text-slate-400">/ {studentsList.length}</span>
+                      <span className="text-sm font-bold text-slate-500">/ {studentsList.length}</span>
                     </div>
                     <button onClick={handleSavePhase1} disabled={isSaving}
                       className={`w-full md:w-auto px-10 py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95

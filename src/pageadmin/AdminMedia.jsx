@@ -2,6 +2,7 @@ import { ChevronRight, Video, FileText, Eye, Trash2, Calendar, BarChart3, Edit, 
 import { useState } from "react";
 import { confirmDialog } from "../components/ui/dialogs";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 export default function CourseManagePage() {
   const [isUploadVideoOpen, setIsUploadVideoOpen] = useState(false);
@@ -249,7 +250,7 @@ export default function CourseManagePage() {
                 </button>
                 <button
                   onClick={() => setIsUploadVideoOpen(false)}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
+                  className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl transition font-medium`}
                 >
                   อัปโหลด
                 </button>
@@ -290,7 +291,7 @@ export default function CourseManagePage() {
                 </button>
                 <button
                   onClick={() => setIsUploadDocOpen(false)}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
+                  className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl transition font-medium`}
                 >
                   อัปโหลด
                 </button>
@@ -324,7 +325,7 @@ export default function CourseManagePage() {
                 </button>
                 <button
                   onClick={handleSaveVideo}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
+                  className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl transition font-medium`}
                 >
                   บันทึก
                 </button>
@@ -358,7 +359,7 @@ export default function CourseManagePage() {
                 </button>
                 <button
                   onClick={handleSaveDoc}
-                  className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium"
+                  className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl transition font-medium`}
                 >
                   บันทึก
                 </button>

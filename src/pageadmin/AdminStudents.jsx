@@ -21,6 +21,8 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { GraduationCap as LuGraduationCap } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -130,7 +132,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-500">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -139,7 +141,7 @@ function ImageUpload({ value, onChange, showToast }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-500 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -181,9 +183,9 @@ function ParentSearchSelect({ onSelect }) {
       {open && (
         <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
           {loading ? (
-            <p className="text-xs text-slate-400 text-center py-3">กำลังค้นหา...</p>
+            <p className="text-xs text-slate-500 text-center py-3">กำลังค้นหา...</p>
           ) : results.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-3">ไม่พบ — กรอกข้อมูลใหม่ด้านล่างได้เลย</p>
+            <p className="text-xs text-slate-500 text-center py-3">ไม่พบ — กรอกข้อมูลใหม่ด้านล่างได้เลย</p>
           ) : results.map(p => (
             <button type="button" key={p.ParentId}
               onMouseDown={() => { onSelect(p); setOpen(false); }}
@@ -192,7 +194,7 @@ function ParentSearchSelect({ onSelect }) {
                 {displayNameOf(p)}
                 {p.ParentProfilesType_Name && <span className="text-slate-400"> · {p.ParentProfilesType_Name}</span>}
               </span>
-              {p.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{p.PhoneNo}</span>}
+              {p.PhoneNo && <span className="text-[11px] text-slate-500 shrink-0">{p.PhoneNo}</span>}
             </button>
           ))}
         </div>
@@ -418,7 +420,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           parentProfilesTypeId: p.ParentProfilesType_Id || "",
           removeParent: false,
         }))} />
-        <p className="text-[11px] text-slate-400">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
+        <p className="text-[11px] text-slate-500">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input className={inp} placeholder="ชื่อผู้ปกครอง"
@@ -463,7 +465,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
             {form.username || "—"}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
+          <p className="text-[11px] text-slate-500 mt-1">ไม่สามารถแก้ไข Username ได้</p>
         </div>
       )}
 
@@ -482,7 +484,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
               <div className="relative">
                 <input type={showPwd ? "text" : "password"} className={inp + " pr-10"}
                   value={form.password} onChange={e => set("password", e.target.value)} autoComplete="new-password" />
-                <button type="button" onClick={() => setShowPwd(v => !v)}
+                <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -529,11 +531,11 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button onClick={submit} disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+        <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
@@ -571,7 +573,7 @@ function ResetPasswordModal({ student, onClose }) {
             <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
             <p className="text-xs text-white/80 truncate">{student.Nickname || `${student.Firstname} ${student.Lastname}`}</p>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -579,18 +581,18 @@ function ResetPasswordModal({ student, onClose }) {
           <input type={show ? "text" : "password"} value={pwd}
             onChange={e => setPwd(e.target.value)}
             className={inp + " pr-10"} placeholder="รหัสผ่านใหม่" autoComplete="new-password" />
-          <button type="button" onClick={() => setShow(v => !v)}
+          <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShow(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
           </button>
         </div>
@@ -681,11 +683,11 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
       </div>
 
       {/* ★ เพิ่ม: บอกให้รู้ว่ากรองอะไรอยู่ */}
-      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่</p>
+      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-500">แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่</p>
 
       <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+          <p className="text-xs text-slate-500 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
         ) : filtered.map(c => {
           const id = String(c.CourseID);
           const checked = selectedIds.includes(id);
@@ -700,10 +702,10 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
       <div className="flex items-center gap-2 p-3 border-t border-orange-100">
         <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คอร์ส</span>
         <button onClick={handleAdd} disabled={saving || !selectedIds.length}
-          className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+          className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition flex items-center gap-1.5`}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
         </button>
-        <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+        <button aria-label="ปิด" onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
           className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
           <X className="h-3.5 w-3.5" />
         </button>
@@ -819,7 +821,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   // ── ข้อความเตือนเมื่อยังไม่เลือกคอร์ส ────────────────────────────────
   const NeedCourseNotice = () => (
     <div className="text-center py-10">
-      <p className="text-slate-400 text-sm mb-3">กรุณาเลือกคอร์สก่อน เพื่อดูรายละเอียดของคอร์สนั้น</p>
+      <p className="text-slate-500 text-sm mb-3">กรุณาเลือกคอร์สก่อน เพื่อดูรายละเอียดของคอร์สนั้น</p>
       <button onClick={() => setTab("courses")}
         className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
         <BookOpen className="h-3.5 w-3.5" /> ไปเลือกคอร์ส
@@ -915,7 +917,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       <p className={`text-sm font-bold ${rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-500" : "text-red-500"}`}>
                         {rate}%
                       </p>
-                      <p className="text-[11px] text-slate-400">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
+                      <p className="text-[11px] text-slate-500">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
                     </div>
                     <div className="h-10 w-2 bg-slate-200 rounded-full overflow-hidden flex items-end">
                       <div className={`w-full rounded-full ${rColor}`} style={{ height: `${rate}%` }} />
@@ -934,7 +936,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       showToast("error", err.response?.data?.message || "ลบไม่สำเร็จ");
                     }
                   }}
-                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                   title="นำออกจากคอร์ส"
                 >
                   <X className="h-4 w-4" />
@@ -983,7 +985,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                           <span className="font-medium">{a.CourseName}</span>
                           {a.SubjectName && <span className="text-slate-400"> · {a.SubjectName}</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap lg:whitespace-normal">{a.StartTime} – {a.EndTime} น.</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap lg:whitespace-normal">{a.StartTime} – {a.EndTime} น.</td>
                         <td className="px-4 py-3 text-center">
                           {a.Status === "1" ? (
                             <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
@@ -1022,7 +1024,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
-                        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-400">
+                        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-500">
                           <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
                           {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
                         </div>
@@ -1082,7 +1084,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       { label: "หลังเรียน", value: sub.post },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
-                        <p className="text-[11px] text-slate-400 mb-1">{label}</p>
+                        <p className="text-[11px] text-slate-500 mb-1">{label}</p>
                         <p className="text-sm font-bold text-slate-800">{value !== null ? `${value}%` : "—"}</p>
                       </div>
                     ))}
@@ -1137,7 +1139,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         !parent ? (
           <div className="text-center py-10">
             <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-400 text-sm">ยังไม่มีข้อมูลผู้ปกครอง — เพิ่มได้ผ่านปุ่มแก้ไขข้อมูลนักเรียน</p>
+            <p className="text-slate-500 text-sm">ยังไม่มีข้อมูลผู้ปกครอง — เพิ่มได้ผ่านปุ่มแก้ไขข้อมูลนักเรียน</p>
           </div>
         ) : (
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
@@ -1153,20 +1155,20 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-[11px] text-slate-400">ชื่อ-นามสกุล</p>
+                <p className="text-[11px] text-slate-500">ชื่อ-นามสกุล</p>
                 <p className="text-slate-700">{parent.Firstname} {parent.Lastname}</p>
               </div>
               <div>
-                <p className="text-[11px] text-slate-400">เบอร์โทร</p>
+                <p className="text-[11px] text-slate-500">เบอร์โทร</p>
                 <p className="text-slate-700">{parent.PhoneNo || "—"}</p>
               </div>
               <div>
-                <p className="text-[11px] text-slate-400">Line ID</p>
+                <p className="text-[11px] text-slate-500">Line ID</p>
                 <p className="text-slate-700">{parent.LineID || "—"}</p>
               </div>
               {parent.Relationship && (
                 <div className="col-span-2">
-                  <p className="text-[11px] text-slate-400">หมายเหตุความสัมพันธ์</p>
+                  <p className="text-[11px] text-slate-500">หมายเหตุความสัมพันธ์</p>
                   <p className="text-slate-700">{parent.Relationship}</p>
                 </div>
               )}
@@ -1356,12 +1358,12 @@ function ConsentTab({ studentId, showToast }) {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <p className="text-xs font-semibold text-slate-700">{item.label}</p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">{item.summary}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{item.summary}</p>
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.text}</span>
                     {latest && (
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-500">
                         {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
                       </span>
                     )}
@@ -1407,7 +1409,7 @@ function ConsentTab({ studentId, showToast }) {
               type="button"
               disabled={saving || !answeredCount}
               onClick={handleSavePaper}
-              className="mt-4 flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
+              className={`${BTN.primary} mt-4 flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:opacity-50`}
             >
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               {saving ? "กำลังบันทึก..." : "บันทึกคำตอบแทนนักเรียน"}
@@ -1437,7 +1439,7 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
         </div>
         <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
           {/* FIX #7: ปุ่ม disable + loading ระหว่าง request */}
@@ -1547,7 +1549,7 @@ function InfoNote({ label, detail }) {
           onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
           onMouseEnter={() => setOpen(true)}
           onMouseLeave={() => setOpen(false)}
-          className="shrink-0 h-4 w-4 rounded-full border border-slate-300 text-slate-400 text-[10px] font-bold flex items-center justify-center hover:border-orange-400 hover:text-orange-500 transition"
+          className="shrink-0 h-4 w-4 rounded-full border border-slate-300 text-slate-500 text-[10px] font-bold flex items-center justify-center hover:border-orange-400 hover:text-orange-500 transition"
           aria-label="ดูรายละเอียดเพิ่มเติม"
         >
           i
@@ -1641,7 +1643,7 @@ function ScoreBar({ label, value, sub, weight }) {
       <div className="flex items-center gap-2.5">
         <span className="text-sm text-slate-600 w-28 sm:w-44 shrink-0">
           {label}
-          {weight != null && <span className="text-xs ml-1 text-slate-400">(×{weight}%)</span>}
+          {weight != null && <span className="text-xs ml-1 text-slate-500">(×{weight}%)</span>}
         </span>
         <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, v)}%` }} />
@@ -1650,7 +1652,7 @@ function ScoreBar({ label, value, sub, weight }) {
           {value == null ? '—' : Math.round(value)}
         </span>
       </div>
-      {sub && <p className="text-xs text-slate-400 ml-[7.75rem] sm:ml-[11.75rem] mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-slate-500 ml-[7.75rem] sm:ml-[11.75rem] mt-1">{sub}</p>}
     </div>
   );
 }
@@ -1703,19 +1705,19 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
               <BoardIcon className="h-4 w-4 text-orange-500" />
               {board.heading}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">{board.formula}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{board.formula}</p>
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold text-slate-900 leading-none">
               {board.score(s) ?? '—'}
-              {board.score(s) != null && <span className="text-sm font-semibold text-slate-400"> / 100</span>}
+              {board.score(s) != null && <span className="text-sm font-semibold text-slate-500"> / 100</span>}
             </p>
             {/* อันดับบนกระดานนี้ — ตอบตรง ๆ ว่าเขาขึ้นโพเดียมเรื่องอะไร */}
             {student._rank
               ? <p className="text-xs font-semibold text-orange-600 mt-1">
                   อันดับที่ {student._rank} จาก {totalEligible} คน
                 </p>
-              : <p className="text-xs text-slate-400 mt-1">ยังไม่ติดอันดับ</p>}
+              : <p className="text-xs text-slate-500 mt-1">ยังไม่ติดอันดับ</p>}
           </div>
         </div>
 
@@ -1728,7 +1730,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
                 sub={`ตัวชี้ว่าสูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
             </>
           ) : (
-            <p className="text-sm text-slate-400">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
+            <p className="text-sm text-slate-500">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
           )
         ) : (
           s.ImprovementScore != null ? (
@@ -1745,7 +1747,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
               )}
             </>
           ) : (
-            <p className="text-sm text-slate-400">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
+            <p className="text-sm text-slate-500">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
           )
         )}
       </div>
@@ -1762,7 +1764,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
           <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
           <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
           <span className="text-sm font-bold text-slate-700 ml-auto">{otherScore}/100</span>
-          {otherRank && <span className="text-xs text-slate-400">อันดับ {otherRank}</span>}
+          {otherRank && <span className="text-xs text-slate-500">อันดับ {otherRank}</span>}
           <span className="text-xs font-semibold text-orange-600 group-hover:underline shrink-0">
             ดูรายละเอียด
           </span>
@@ -1771,7 +1773,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
       )}
 
       {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
-      <p className="text-xs text-slate-400 pt-3 border-t border-slate-200">
+      <p className="text-xs text-slate-500 pt-3 border-t border-slate-200">
         เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
         {s.PreTestScore != null ? ` · Pre ${s.PreTestScore}%` : ''}
         {s.MidTestScore != null ? ` · Mid ${s.MidTestScore}%` : ''}
@@ -1795,7 +1797,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
         <span className="text-lg w-6 text-center shrink-0">
           {MEDAL[rank]
             ? MEDAL[rank]
-            : <span className="text-sm font-semibold text-slate-400">{rank}</span>}
+            : <span className="text-sm font-semibold text-slate-500">{rank}</span>}
         </span>
 
         {/* Avatar — ★ เปลี่ยนมาใช้ StudentAvatar */}
@@ -1810,9 +1812,9 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
               {badge.label}
             </span>
             {student.GradeDetail && (
-              <span className="text-xs text-slate-400">{student.GradeDetail}</span>
+              <span className="text-xs text-slate-500">{student.GradeDetail}</span>
             )}
-            <span className="text-xs text-slate-400">{student.TotalClasses} คาบ</span>
+            <span className="text-xs text-slate-500">{student.TotalClasses} คาบ</span>
             {student.Flags?.slice(0, 1).map((f) => (
               <span key={f.key}
                 className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border ${
@@ -1835,7 +1837,7 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, to
         <button
           onClick={e => { e.stopPropagation(); onView(student.UserId); }}
           className="shrink-0 p-1.5 rounded-lg bg-orange-50 border border-orange-100
-                     text-orange-600 hover:bg-orange-100 transition"
+                     text-orange-600 hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
           title="ดูข้อมูลนักเรียน"
         >
           <Eye className="h-3.5 w-3.5" />
@@ -2032,7 +2034,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-slate-400 text-sm">ไม่มีนักเรียนในระดับชั้นนี้</p>
+            <p className="text-slate-500 text-sm">ไม่มีนักเรียนในระดับชั้นนี้</p>
           </div>
         ) : (
           <>
@@ -2056,7 +2058,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                               <Users className="h-4 w-4 text-slate-400" />
                             </span>
                           </div>
-                          <p className="text-sm font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
+                          <p className="text-sm font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
                           <p className="text-2xl font-bold text-slate-300 mt-1">—</p>
                           <p className="text-xs text-slate-300">คะแนน</p>
                         </div>
@@ -2090,7 +2092,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
                         <p className="text-2xl font-bold text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-xs text-slate-400">คะแนน</p>
+                        <p className="text-xs text-slate-500">คะแนน</p>
                       </div>
                     );
                   })}
@@ -2118,7 +2120,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
             {/* ── Show More / Show Less ───────────────────────────── */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-500">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
               </p>
@@ -2171,6 +2173,7 @@ export default function AdminStudentsPage() {
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [viewStudentId, setViewStudentId] = useState(null);
   const [resetPwdStudent, setResetPwdStudent] = useState(null); // FIX #11
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -2184,8 +2187,10 @@ export default function AdminStudentsPage() {
       setGradeLevels(gRes.data);
       setGenders(genRes.data);
       setParentProfileTypes(pptRes.data); // ★ เพิ่ม
+      setLoadError(false);
     } catch (e) {
       console.error("fetch error:", e);
+      setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -2268,6 +2273,7 @@ export default function AdminStudentsPage() {
       <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลนักเรียน...</p>
     </div>
   );
+  if (loadError && students.length === 0) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 
   // FIX #10: GPA เฉลี่ย คำนวณจากทุก student ที่โหลดมา (client-side ยังโอเคตราบที่ไม่มี server pagination)
   const avgGpa = (() => {
@@ -2286,13 +2292,13 @@ export default function AdminStudentsPage() {
           <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
+          className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}>
           <Plus className="h-4 w-4" /> เพิ่มนักเรียนใหม่
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "นักเรียนทั้งหมด", value: students.length, color: "bg-orange-600" },
           { label: "ลงทะเบียนแล้ว", value: students.filter(s => s.EnrolledCourses > 0).length, color: "bg-emerald-500" },
@@ -2328,7 +2334,7 @@ export default function AdminStudentsPage() {
             />
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate">
             <option value="all">ทุกระดับชั้น ({allGradeCount})</option>
             {gradeLevels.map(g => (
               <option key={g.GradeLevelId} value={g.GradeLevelId}>
@@ -2337,13 +2343,13 @@ export default function AdminStudentsPage() {
             ))}
           </select>
           <select value={filterEnrolled} onChange={e => setFilterEnrolled(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px] max-w-full md:max-w-[240px] truncate">
             <option value="all">สถานะลงทะเบียนทั้งหมด ({enrolledCount + notEnrolledCount})</option>
             <option value="enrolled">ลงทะเบียนแล้ว ({enrolledCount})</option>
             <option value="not_enrolled">ยังไม่ลงทะเบียน ({notEnrolledCount})</option>
           </select>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
       </div>
 
       {/* Table */}
@@ -2364,8 +2370,8 @@ export default function AdminStudentsPage() {
                   <StudentAvatar student={s} className="h-11 w-11 rounded-xl shrink-0" />
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
-                    {s.Nickname && <p className="text-xs text-slate-400 truncate">{s.Firstname} {s.Lastname}</p>}
-                    <p className="text-[11px] text-slate-400">#{s.UserId}</p>
+                    {s.Nickname && <p className="text-xs text-slate-500 truncate">{s.Firstname} {s.Lastname}</p>}
+                    <p className="text-[11px] text-slate-500">#{s.UserId}</p>
                   </div>
                   {s.GPA ? (
                     <span className="shrink-0 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">GPA {s.GPA}</span>
@@ -2427,9 +2433,9 @@ export default function AdminStudentsPage() {
                           <div>
                             <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
                             {s.Nickname && (
-                              <p className="text-xs text-slate-400">{s.Firstname} {s.Lastname}</p>
+                              <p className="text-xs text-slate-500">{s.Firstname} {s.Lastname}</p>
                             )}
-                            <p className="text-[11px] text-slate-400">#{s.UserId}</p>
+                            <p className="text-[11px] text-slate-500">#{s.UserId}</p>
                           </div>
                         </div>
                       </td>
@@ -2499,21 +2505,21 @@ export default function AdminStudentsPage() {
                           </button>
                           <button
                             onClick={() => setEditingStudent(s)}
-                            className="p-1.5 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition"
+                            className="p-1.5 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="แก้ไขข้อมูล"
                           >
                             <Edit2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setResetPwdStudent(s)}
-                            className="p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition"
+                            className="p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="รีเซ็ตรหัสผ่าน"
                           >
                             <KeyRound className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setDeletingStudent(s)}
-                            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition"
+                            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="ลบ"
                           >
                             <Trash2 className="h-3.5 w-3.5" />

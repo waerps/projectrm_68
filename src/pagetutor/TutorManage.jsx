@@ -11,6 +11,9 @@ import TutorVideoQuestionEditor from "../components/TutorVideoQuestionEditor";
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { Folder as LuFolder } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
 
 export default function TutorCourseManagePage() {
   const [searchParams] = useSearchParams();
@@ -23,6 +26,7 @@ export default function TutorCourseManagePage() {
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
@@ -66,8 +70,10 @@ export default function TutorCourseManagePage() {
       const res = await axios.get(`${API_URL}/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`);
       setVideos(res.data.videos || []);
       setDocuments(res.data.files || []);
+      setLoadError(false);
     } catch (e) {
       console.error("Error fetching content:", e);
+      setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -178,12 +184,8 @@ export default function TutorCourseManagePage() {
     } catch { toast("ลบไฟล์ไม่สำเร็จ"); }
   };
 
-  if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-slate-500">
-      <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-      กำลังดึงข้อมูล...
-    </div>
-  );
+  if (loading) return <Spinner block label="กำลังดึงข้อมูล..." />;
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดคลิปและเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchContent(); }} /></div>;
 
   return (
     <div className="min-h-screen pb-12 px-4 lg:px-0">
@@ -215,10 +217,10 @@ export default function TutorCourseManagePage() {
               <h2 className="flex items-center gap-2 font-bold text-slate-800">
                 <span className="p-1.5 bg-orange-100 rounded-lg"><Video className="h-4 w-4 text-orange-500" /></span>
                 คลิปวิดีโอ
-                <span className="ml-1 text-sm font-medium text-slate-400">({videos.length})</span>
+                <span className="ml-1 text-sm font-medium text-slate-500">({videos.length})</span>
               </h2>
               <button onClick={() => setIsAddVideoOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition shadow-sm">
+                className={`${BTN.primary} flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold transition`}>
                 <Plus className="h-4 w-4" /> เพิ่มวิดีโอ
               </button>
             </div>
@@ -249,8 +251,8 @@ export default function TutorCourseManagePage() {
                           className="flex-1 flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-200 transition">
                           <X className="h-4 w-4" /> ยกเลิก
                         </button>
-                        <button onClick={() => handleSaveEditVideo(video.VideoId)} disabled={isSubmitting}
-                          className="flex-1 flex items-center justify-center gap-1 py-2 bg-orange-500 text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition">
+                        <button aria-label="ยืนยัน" onClick={() => handleSaveEditVideo(video.VideoId)} disabled={isSubmitting}
+                          className={`${BTN.primary} flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-sm font-bold transition`}>
                           {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                         </button>
                       </div>
@@ -279,12 +281,12 @@ export default function TutorCourseManagePage() {
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl, video.VideoType) === 'upload' ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
                               {getVideoType(video.VideoUrl, video.VideoType) === 'upload' ? 'วิดีโอระบบ' : 'คลิปเดิม'}
                             </span>
-                            {video.Duration && <span className="text-[11px] text-slate-400">{video.Duration}</span>}
+                            {video.Duration && <span className="text-[11px] text-slate-500">{video.Duration}</span>}
                           </div>
                           <p className="text-sm font-semibold text-slate-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
                         </div>
                         <div className="flex items-center justify-between mt-2">
-                          <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <span className="flex items-center gap-1 text-[11px] text-slate-500">
                             <Calendar className="h-3 w-3" />{video.date}
                           </span>
                           <div className="flex items-center gap-0.5">
@@ -292,11 +294,11 @@ export default function TutorCourseManagePage() {
                               className="p-2 lg:p-1.5 text-slate-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50">
                               <CircleHelp className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, type: video.VideoType || getVideoType(video.VideoUrl), duration: video.Duration || "" }); }}
+                            <button aria-label="แก้ไข" onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, type: video.VideoType || getVideoType(video.VideoUrl), duration: video.Duration || "" }); }}
                               className="p-2 lg:p-1.5 text-slate-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => handleDeleteVideo(video.VideoId)}
+                            <button aria-label="ลบ" onClick={() => handleDeleteVideo(video.VideoId)}
                               className="p-2 lg:p-1.5 text-slate-300 hover:text-red-500 transition rounded-lg hover:bg-red-50">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -309,7 +311,7 @@ export default function TutorCourseManagePage() {
               )) : (
                 <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
                   <Video className="h-10 w-10 text-slate-300 mb-2" />
-                  <p className="text-sm text-slate-400">ยังไม่มีวิดีโอในวิชานี้</p>
+                  <p className="text-sm text-slate-500">ยังไม่มีวิดีโอในวิชานี้</p>
                 </div>
               )}
             </div>
@@ -322,10 +324,10 @@ export default function TutorCourseManagePage() {
               <h2 className="flex items-center gap-2 font-bold text-slate-800">
                 <span className="p-1.5 bg-blue-100 rounded-lg"><FileText className="h-4 w-4 text-blue-500" /></span>
                 เอกสาร
-                <span className="ml-1 text-sm font-medium text-slate-400">({documents.length})</span>
+                <span className="ml-1 text-sm font-medium text-slate-500">({documents.length})</span>
               </h2>
               <button onClick={() => setIsUploadDocOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-bold transition shadow-sm">
+                className={`${BTN.primary} flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-bold transition`}>
                 <UploadCloud className="h-4 w-4" /> อัปโหลด
               </button>
             </div>
@@ -342,7 +344,7 @@ export default function TutorCourseManagePage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-900 truncate">{doc.FileName}</p>
-                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-slate-500">
                       <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{doc.date}</span>
                       <span>{doc.FileSize}</span>
                     </div>
@@ -367,7 +369,7 @@ export default function TutorCourseManagePage() {
               )) : (
                 <div className="flex flex-col items-center justify-center h-40 text-center opacity-50">
                   <FileText className="h-10 w-10 text-slate-300 mb-2" />
-                  <p className="text-sm text-slate-400">ยังไม่มีเอกสารในวิชานี้</p>
+                  <p className="text-sm text-slate-500">ยังไม่มีเอกสารในวิชานี้</p>
                 </div>
               )}
             </div>
@@ -402,14 +404,14 @@ export default function TutorCourseManagePage() {
                 <input type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
                   onChange={event => setNewVideoFile(event.target.files?.[0] || null)} disabled={isSubmitting}
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100" />
-                <p className="mt-1.5 text-xs text-slate-400">รองรับ MP4, MOV และ WEBM ขนาดไม่เกิน 500 MB ไม่รองรับลิงก์ YouTube/Drive</p>
+                <p className="mt-1.5 text-xs text-slate-500">รองรับ MP4, MOV และ WEBM ขนาดไม่เกิน 500 MB ไม่รองรับลิงก์ YouTube/Drive</p>
                 {newVideoFile && <p className="mt-1 text-xs font-medium text-orange-600">ไฟล์: {newVideoFile.name}</p>}
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setIsAddVideoOpen(false); setNewVideo({ title: "", duration: "" }); setNewVideoFile(null); }} disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition">ยกเลิก</button>
+                  className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>ยกเลิก</button>
                 <button onClick={handleSaveNewVideo} disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+                  className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "บันทึก"}
                 </button>
               </div>
@@ -430,11 +432,11 @@ export default function TutorCourseManagePage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์ (PDF, DOCX, DOC)</label>
                 <input type="file" onChange={handleUploadFileChange} accept=".pdf,.doc,.docx" disabled={isSubmitting}
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition cursor-pointer" />
-                {uploadFile && <p className="mt-1.5 text-xs text-slate-400">ไฟล์: {uploadFile.name}</p>}
+                {uploadFile && <p className="mt-1.5 text-xs text-slate-500">ไฟล์: {uploadFile.name}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  ชื่อที่แสดงในระบบ <span className="text-slate-400 font-normal text-xs">(แก้ได้)</span>
+                  ชื่อที่แสดงในระบบ <span className="text-slate-500 font-normal text-xs">(แก้ได้)</span>
                 </label>
                 <input type="text" value={uploadDisplayName} onChange={e => setUploadDisplayName(e.target.value)}
                   className="w-full px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm transition"
@@ -442,9 +444,9 @@ export default function TutorCourseManagePage() {
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setIsUploadDocOpen(false); setUploadFile(null); setUploadDisplayName(""); }} disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition">ยกเลิก</button>
+                  className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>ยกเลิก</button>
                 <button onClick={handleSaveDoc} disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+                  className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "อัปโหลด"}
                 </button>
               </div>
@@ -469,7 +471,7 @@ export default function TutorCourseManagePage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  เปลี่ยนไฟล์ใหม่ <span className="text-slate-400 font-normal text-xs">(ไม่บังคับ)</span>
+                  เปลี่ยนไฟล์ใหม่ <span className="text-slate-500 font-normal text-xs">(ไม่บังคับ)</span>
                 </label>
                 <input ref={editFileInputRef} type="file" onChange={e => {
                   const file = e.target.files[0];
@@ -480,14 +482,14 @@ export default function TutorCourseManagePage() {
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-100 file:text-slate-600 hover:file:bg-slate-200 transition cursor-pointer" />
                 {editDocFile
                   ? <p className="mt-1.5 text-xs text-blue-600">ไฟล์ใหม่: {editDocFile.name}</p>
-                  : <p className="mt-1.5 text-xs text-slate-400">ใช้ไฟล์เดิม: {editingDoc.FileName}</p>
+                  : <p className="mt-1.5 text-xs text-slate-500">ใช้ไฟล์เดิม: {editingDoc.FileName}</p>
                 }
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setEditingDoc(null)} disabled={isSubmitting}
-                  className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition">ยกเลิก</button>
-                <button onClick={handleSaveEditDoc} disabled={isSubmitting}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+                  className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>ยกเลิก</button>
+                <button aria-label="ยืนยัน" onClick={handleSaveEditDoc} disabled={isSubmitting}
+                  className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
               </div>

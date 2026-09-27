@@ -8,6 +8,7 @@ import {
   Pencil, Save, X, Camera, ImagePlus, Phone, User, ShieldCheck,
   KeyRound, Eye, EyeOff, Loader2, CalendarDays, AlertTriangle,
 } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin/profile`;
 
@@ -64,7 +65,7 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
             <h3 className="text-base font-bold text-white truncate">เปลี่ยนรหัสผ่าน</h3>
             <p className="text-xs text-white/80 truncate">ตั้งรหัสผ่านใหม่สำหรับบัญชีของคุณ</p>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -79,7 +80,7 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
               placeholder="รหัสผ่านใหม่"
               autoComplete="new-password"
             />
-            <button type="button" onClick={() => setShow(v => !v)}
+            <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShow(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
               {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
@@ -96,11 +97,11 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
           </button>
         </div>
@@ -126,7 +127,7 @@ function SectionCard({ title, icon, children, isEditing }) {
 function InfoRow({ label, value, name, isEditing, onChange, editable = true, type = "text" }) {
   return (
     <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">{label}</span>
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide shrink-0">{label}</span>
       <div className="flex-1 min-w-0 text-right">
         {isEditing && editable ? (
           <input
@@ -274,7 +275,7 @@ export default function AdminProfile() {
               className="flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-4 py-1.5 text-sm text-white font-medium hover:bg-white/20 transition">
               <X className="h-3.5 w-3.5" /> ยกเลิก
             </button>
-            <button onClick={handleSave} disabled={isSaving}
+            <button aria-label="บันทึก" onClick={handleSave} disabled={isSaving}
               className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60">
               <Save className="h-3.5 w-3.5" />
               {isSaving ? "กำลังบันทึก..." : "บันทึก"}
@@ -300,7 +301,7 @@ export default function AdminProfile() {
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
               </div>
-              <button onClick={() => fileInputRef.current.click()}
+              <button aria-label="เปลี่ยนรูป" onClick={() => fileInputRef.current.click()}
                 className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100">
                 <ImagePlus className="h-4.5 w-4.5" />
               </button>

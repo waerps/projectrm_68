@@ -6,6 +6,7 @@ import { getFileUrl } from "../utils/fileUrl";
 import { Paperclip, FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import ErrorState from "../components/ui/ErrorState";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -77,7 +78,7 @@ function IncidentCard({ incident, onClick }) {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
                         </span>
@@ -117,7 +118,7 @@ export default function MyIncidents() {
     }
 
     if (error) {
-        return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+        return <ErrorState />;
     }
 
     return (

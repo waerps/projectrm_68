@@ -228,7 +228,7 @@ export default function TutorStudentDetail() {
                     <div className="flex-1 min-w-0">
                         <h1 className={`${PAGE_TITLE} break-words`}>{student.name}</h1>
                         <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-600">
-                            <span className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</span>
+                            <span className="inline-flex max-w-full min-w-0 items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuSchool className="h-3.5 w-3.5 shrink-0 text-slate-400" /> <span className="truncate">{student.school}</span></span>
                             <span className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuPhone className="h-3.5 w-3.5 text-slate-400" /> {student.phone}</span>
                             <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">{student.gradeLevel}</span>
                             {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
@@ -238,16 +238,16 @@ export default function TutorStudentDetail() {
                         </div>
                     </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:flex lg:flex-wrap lg:shrink-0">
+                    <div className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-2 sm:gap-3 lg:flex lg:flex-wrap lg:shrink-0 [&>*:last-child]:col-span-2 min-[480px]:[&>*:last-child]:col-span-1">
                         <div className="bg-white border border-green-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className="text-xs text-slate-500 mb-0.5">เข้าเรียน</p>
                             <p className={`text-lg font-bold ${rateText}`}>{attendanceRate}%</p>
-                            <p className="text-xs text-slate-400">{attendedCount}/{attendance.length} คาบ</p>
+                            <p className="text-xs text-slate-500">{attendedCount}/{attendance.length} คาบ</p>
                         </div>
                         <div className="bg-white border border-orange-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className="text-xs text-slate-500 mb-0.5">ดูคลิป</p>
                             <p className="text-lg font-bold text-orange-600">{videoRate}%</p>
-                            <p className="text-xs text-slate-400">{watchedCount}/{videos.length} คลิป</p>
+                            <p className="text-xs text-slate-500">{watchedCount}/{videos.length} คลิป</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-2 sm:px-4 py-2 text-center min-w-0 ${getTrendColor(getOverallTrend())}`}>
                             <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
@@ -255,7 +255,7 @@ export default function TutorStudentDetail() {
                                 {getTrendIcon(getOverallTrend())}
                                 <p className="text-lg font-bold">{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
                             </div>
-                            <div className="text-xs text-slate-400">
+                            <div className="text-xs text-slate-500">
                                 {improvement
                                     ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
                                     : "ยังไม่มีข้อมูลสอบ"}
@@ -382,7 +382,7 @@ export default function TutorStudentDetail() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className={`text-sm font-semibold truncate ${vid.watched ? "text-slate-900" : "text-slate-400"}`}>{vid.title}</p>
-                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                                    <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
                                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vid.duration}</span>
                                         {vid.watchedAt && (
                                             <span>ดูเมื่อ {new Date(vid.watchedAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</span>
@@ -480,7 +480,7 @@ export default function TutorStudentDetail() {
                                 <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังสอบแค่รอบเดียว ต้องมีทั้งก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
                             </p>
                         ) : (
-                            <p className="text-sm text-slate-400">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
+                            <p className="text-sm text-slate-500">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
                         )}
 
                         {examSummary?.hasNonStandardMax && (
@@ -508,9 +508,9 @@ export default function TutorStudentDetail() {
                                             )}
                                         </div>
                                         {untested ? (
-                                            <span className="text-xs text-slate-400 font-medium">ยังไม่ได้สอบวิชานี้</span>
+                                            <span className="text-xs text-slate-500 font-medium">ยังไม่ได้สอบวิชานี้</span>
                                         ) : delta == null ? (
-                                            <span className="text-xs text-slate-400 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
+                                            <span className="text-xs text-slate-500 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
                                         ) : (
                                             <div className={`px-2 py-1 rounded-full flex items-center gap-1 text-xs border ${getTrendColor(trend)}`}>
                                                 {getTrendIcon(trend)}
@@ -528,7 +528,7 @@ export default function TutorStudentDetail() {
                                                 <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-slate-500"}`}>{cell.label}</p>
                                                 <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-slate-300" : cell.hi ? "text-orange-600" : "text-slate-900"}`}>
                                                     {cell.val == null ? "—" : fmtScoreNum(cell.val)}
-                                                    {cell.val != null && <span className="text-xs font-semibold text-slate-400">/{s.cap}</span>}
+                                                    {cell.val != null && <span className="text-xs font-semibold text-slate-500">/{s.cap}</span>}
                                                 </p>
                                             </div>
                                         ))}
@@ -546,8 +546,8 @@ export default function TutorStudentDetail() {
                         {!examData && (
                             <div className="text-center py-10">
                                 <Award className="h-10 w-10 text-slate-200 mx-auto mb-2" />
-                                <p className="text-sm text-slate-400">ยังไม่มีข้อมูลการสอบ</p>
-                                <p className="text-xs text-slate-400 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
+                                <p className="text-sm text-slate-500">ยังไม่มีข้อมูลการสอบ</p>
+                                <p className="text-xs text-slate-500 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
                             </div>
                         )}
                     </div>

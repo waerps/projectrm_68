@@ -18,6 +18,8 @@ import { confirmDialog, toast } from "../components/ui/dialogs";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
+import UIErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -182,7 +184,7 @@ function AvatarSelect({ options, value, onChange, placeholder }) {
       {open && (
         <div className="absolute z-30 mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg py-1">
           {options.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">ไม่พบข้อมูล</p>
+            <p className="px-3 py-2 text-xs text-slate-500">ไม่พบข้อมูล</p>
           ) : (
             options.map(o => (
               <button
@@ -224,7 +226,7 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
         <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button
             onClick={onCancel}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 transition text-sm"
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold transition text-sm`}
           >
             ยกเลิก
           </button>
@@ -280,11 +282,11 @@ function DuplicateCourseModal({ course, onConfirm, onCancel, isSubmitting }) {
 
         <div className="flex gap-3">
           <button onClick={onCancel} disabled={isSubmitting}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
-          <button onClick={handleConfirm} disabled={isSubmitting}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm">
+          <button aria-label="ยืนยัน" onClick={handleConfirm} disabled={isSubmitting}
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Check className="h-4 w-4" /> ยืนยันทำสำเนา</>}
           </button>
         </div>
@@ -349,7 +351,7 @@ function VideoPlayerModal({ video, onClose }) {
       <div className="bg-black rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 bg-slate-900">
           <p className="text-sm font-bold text-white truncate pr-4">{VideoTitle}</p>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition shrink-0">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-slate-400 hover:bg-white/10 hover:text-white transition shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -364,7 +366,7 @@ function VideoPlayerModal({ video, onClose }) {
 function ErrorState({ message }) {
   return (
     <div className="w-full h-full flex items-center justify-center bg-slate-900">
-      <p className="text-sm text-slate-400">{message}</p>
+      <p className="text-sm text-slate-500">{message}</p>
     </div>
   );
 }
@@ -423,7 +425,7 @@ function StudentPreviewModal({ course, onClose }) {
               <p className="text-xs text-white/80 leading-tight">แสดงตัวอย่างเท่านั้น ปุ่มบางส่วนใช้งานไม่ได้จริง</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -529,7 +531,7 @@ function StudentPreviewModal({ course, onClose }) {
             ) : (
               videos.map((v, i) => (
                 <div key={v.VideoId}>
-                  <button
+                  <button aria-label="ย่อ"
                     onClick={() => setOpenIdx(openIdx === i ? null : i)}
                     className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                   >
@@ -601,7 +603,7 @@ function ImageUpload({ value, onChange }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-500">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -610,7 +612,7 @@ function ImageUpload({ value, onChange }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-500 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -648,17 +650,17 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
         className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
         autoFocus
       />
-      <span className="text-xs text-slate-400">ชม.</span>
+      <span className="text-xs text-slate-500">ชม.</span>
       <input
         type="number" min="0" max="59" step="1" value={minutes}
         onChange={handleMinutesChange} onKeyDown={blockNegativeKeys}
         className="w-14 px-2 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right focus:ring-2 focus:ring-orange-400 outline-none"
       />
-      <span className="text-xs text-slate-400">นาที</span>
-      <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700 transition">
+      <span className="text-xs text-slate-500">นาที</span>
+      <button aria-label="ยืนยัน" onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
       </button>
-      <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500 transition">
+      <button aria-label="ปิด" onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -693,15 +695,15 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
         <input type="number" min="0" value={t} onChange={e => setT(e.target.value)}
           onFocus={e => e.target.select()}
           placeholder="เรทปัจจุบัน" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" autoFocus />
-        <span className="text-[11px] text-slate-400">/ชม.</span>
+        <span className="text-[11px] text-slate-500">/ชม.</span>
         <input type="number" min="0" value={st} onChange={e => setSt(e.target.value)}
           onFocus={e => e.target.select()}
           placeholder="ใหม่" className="w-20 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" />
-        <span className="text-[11px] text-slate-400">/ชม.</span>
-        <button onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30">
+        <span className="text-[11px] text-slate-500">/ชม.</span>
+        <button aria-label="ยืนยัน" onClick={save} disabled={saving || invalid} className="p-1 text-green-500 hover:text-green-700 disabled:opacity-30 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
         </button>
-        <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500">
+        <button aria-label="ปิด" onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -896,14 +898,14 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
             วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerSubject)}</span>
           </p>
           <button onClick={applySuggestedToAll} disabled={applyingAll}
-            className="shrink-0 px-3 py-1.5 bg-orange-500 text-white rounded-xl text-[11px] font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1">
+            className={`${BTN.primary} shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold disabled:opacity-50 transition flex items-center gap-1`}>
             {applyingAll ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />} ใช้ค่าที่แนะนำทั้งหมด
           </button>
         </div>
       )}
 
       {subjects.length === 0 && !adding && (
-        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
+        <p className="text-xs text-slate-500 text-center py-6">ยังไม่มีวิชาในคอร์สนี้</p>
       )}
 
       {subjects.map((s) => {
@@ -924,12 +926,12 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                 {/* ทางลัดดูพัฒนาการของวิชานี้ในคอร์สนี้ — อ่านอย่างเดียว */}
                 <button type="button"
                   onClick={() => navigate(`/admin/progress?courseId=${courseId}&subjectId=${s.SubjectId}&from=courses`)}
-                  className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                  className="p-1.5 text-orange-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                   title="ดูภาพรวมพัฒนาการของวิชานี้">
                   <TrendingUp className="h-4 w-4" />
                 </button>
                 <button onClick={() => handleDelete(s.TutorCourseDetailId)}
-                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                  className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -964,10 +966,10 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                       <span className="text-xs text-slate-500 block">
                         {formatHoursLabel(s.TotalHours)} {!isManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
                       </span>
-                      {avgPerMonthLabel && <span className="text-[11px] text-slate-400 block">{avgPerMonthLabel}</span>}
+                      {avgPerMonthLabel && <span className="text-[11px] text-slate-500 block">{avgPerMonthLabel}</span>}
                     </div>
                     <button onClick={() => setEditingId(s.TutorCourseDetailId)}
-                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="แก้ไขชั่วโมง">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -1022,11 +1024,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               onKeyDown={blockNegativeKeys}
               onChange={e => setNewRow(r => ({ ...r, StudentRatePerHourOverride: e.target.value }))}
               className={inp + " w-28"} />
-            <button onClick={handleAdd}
-              className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition">
+            <button aria-label="ยืนยัน" onClick={handleAdd}
+              className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold transition`}>
               <Check className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => setAdding(false)}
+            <button aria-label="ปิด" onClick={() => setAdding(false)}
               className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -1124,7 +1126,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
       )}
 
       {students.length === 0 && !adding && (
-        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
+        <p className="text-xs text-slate-500 text-center py-6">ยังไม่มีนักเรียนในคอร์สนี้</p>
       )}
 
       {students.map(s => (
@@ -1144,7 +1146,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
                 showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ");
               }
             }}
-            className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition"
+            className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
             title="นำออกจากคอร์ส"
           >
             <X className="h-3.5 w-3.5" />
@@ -1163,7 +1165,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
           </div>
           <div className="max-h-48 overflow-y-auto px-4 space-y-1 pb-2">
             {filtered.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-3">ไม่พบนักเรียนที่สามารถเพิ่มได้</p>
+              <p className="text-xs text-slate-500 text-center py-3">ไม่พบนักเรียนที่สามารถเพิ่มได้</p>
             ) : filtered.map(s => {
               const id = String(s.UserId);
               const checked = selectedIds.includes(id);
@@ -1180,10 +1182,10 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
           <div className="flex items-center gap-2 px-4 py-3 border-t border-orange-100">
             <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คน</span>
             <button onClick={handleAdd} disabled={saving || !selectedIds.length}
-              className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+              className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition flex items-center gap-1.5`}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
             </button>
-            <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+            <button aria-label="ปิด" onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
               className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
               <X className="h-3.5 w-3.5" />
             </button>
@@ -1320,7 +1322,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
       {loading ? (
         <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
       ) : videos.length === 0 && !adding ? (
-        <p className="text-xs text-slate-400 text-center py-6">ยังไม่มีคลิปตัวอย่าง</p>
+        <p className="text-xs text-slate-500 text-center py-6">ยังไม่มีคลิปตัวอย่าง</p>
       ) : (
         videos.map(v => (
           <div key={v.VideoId} className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-100 last:border-0">
@@ -1346,10 +1348,10 @@ function CoursePreviewVideos({ courseId, showToast }) {
                 {v.VideoType === "youtube" ? <><Youtube className="h-3 w-3" /> YouTube</> : v.VideoType === "drive" ? <><FolderOpen className="h-3 w-3" /> Drive</> : <><Video className="h-3 w-3" /> ไฟล์อัปโหลด</>}
               </span>
             </div>
-            <button onClick={() => startEdit(v)} className="p-1.5 lg:p-0 text-slate-300 hover:text-orange-500 transition shrink-0" title="แก้ไข">
+            <button onClick={() => startEdit(v)} className="p-1.5 lg:p-0 text-slate-300 hover:text-orange-500 transition shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="แก้ไข">
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            <button onClick={() => handleDelete(v.VideoId)} className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition shrink-0" title="ลบ">
+            <button onClick={() => handleDelete(v.VideoId)} className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -1412,7 +1414,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
             <label className="block text-xs font-bold text-slate-500 mb-1.5">
               ภาพปกคลิป (ไม่บังคับ)
             </label>
-            <p className="text-[11px] text-slate-400 mb-2">
+            <p className="text-[11px] text-slate-500 mb-2">
               หากไม่เลือกภาพ ระบบจะดึงภาพหน้าปกจากเนื้อหาในวิดีโอให้อัตโนมัติ
             </p>
             <ImageUpload value={form.thumbnail} onChange={(path) => setForm(f => ({ ...f, thumbnail: path }))} />
@@ -1423,8 +1425,8 @@ function CoursePreviewVideos({ courseId, showToast }) {
               className="flex-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition">
               ยกเลิก
             </button>
-            <button onClick={handleSave} disabled={saving || uploading}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition">
+            <button aria-label="ยืนยัน" onClick={handleSave} disabled={saving || uploading}
+              className={`${BTN.primary} flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition`}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Check className="h-3.5 w-3.5" /> บันทึก</>}
             </button>
           </div>
@@ -1486,7 +1488,7 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-slate-500 leading-relaxed">
           กรอกกำไรเป้าหมาย, % กำไร หรือราคาขายต่อคน — ระบบจะคำนวณให้ครบทั้ง 3 อย่างพร้อมกัน โดยอิงต้นทุนติวเตอร์รวม <span className="font-semibold text-slate-500">฿{formatPrice(cost)}</span> {maxCount > 0
             ? <>และจำนวนที่รับสูงสุด <span className="font-semibold text-slate-500">{capacityCount} คน</span> (คำนวณจากกรณีนักเรียนสมัครครบตามจำนวนที่รับสูงสุดเท่านั้น)</>
             : <>และนักเรียนปัจจุบัน <span className="font-semibold text-slate-500">{capacityCount} คน</span></>}
@@ -1541,26 +1543,26 @@ function PricingCalculator({ tutorCost, currentPrice, currentStudentCount, maxSt
         <div className="rounded-2xl border border-black/5 overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-y md:divide-y-0 divide-black/5">
             <div className="p-3 text-center bg-slate-50">
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wide">ราคาสุทธิคอร์สต่อคน</p>
               <p className="text-base font-bold text-slate-800 mt-0.5">฿{formatPrice(pricePerStudent)}</p>
             </div>
             <div className="p-3 text-center bg-slate-50">
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide">รายได้รวม</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wide">รายได้รวม</p>
               <p className="text-base font-bold text-slate-800 mt-0.5">฿{formatPrice(totalRevenue)}</p>
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wide">กำไร/ขาดทุน</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>฿{formatPrice(totalProfit)}</p>
             </div>
             <div className={`p-3 text-center ${isLoss ? "bg-red-50" : "bg-emerald-50"}`}>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wide">อัตรากำไร (%)</p>
+              <p className="text-[11px] text-slate-500 uppercase tracking-wide">อัตรากำไร (%)</p>
               <p className={`text-base font-bold mt-0.5 ${isLoss ? "text-red-600" : "text-emerald-700"}`}>{resultMargin.toFixed(1)}%</p>
             </div>
           </div>
         </div>
 
         <button type="button" onClick={() => onApplyPrice(Math.round(pricePerStudent))} disabled={pricePerStudent <= 0}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-40 transition text-sm shadow-sm">
+          className={`${BTN.primary} w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-40 transition text-sm`}>
           <Check className="h-4 w-4" /> ใช้ราคานี้
         </button>
       </div>
@@ -1593,21 +1595,21 @@ function BreakEvenAnalysis({ tutorCost, fullCost, currentStudentCount, maxStuden
       </div>
 
       <div className="p-4 space-y-3 bg-white">
-        <p className="text-[11px] text-slate-400 leading-relaxed">
+        <p className="text-[11px] text-slate-500 leading-relaxed">
           ต้องมีนักเรียนกี่คนจึงจะคุ้มทุน โดยอิงราคาสุทธิคอร์สต่อคน <span className="font-semibold text-slate-500">฿{formatPrice(pricePerStudent)}</span>
         </p>
 
         <div className="grid grid-cols-3 divide-x divide-black/5 rounded-2xl border border-black/5 overflow-hidden">
           <div className="p-2 sm:p-3 text-center bg-slate-50">
-            <p className="text-[11px] text-slate-400 uppercase tracking-wide">จุดคุ้มทุน</p>
+            <p className="text-[11px] text-slate-500 uppercase tracking-wide">จุดคุ้มทุน</p>
             <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">≥ {breakEvenStudents} คน</p>
           </div>
           <div className="p-2 sm:p-3 text-center bg-slate-50">
-            <p className="text-[11px] text-slate-400 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
+            <p className="text-[11px] text-slate-500 uppercase tracking-wide">นักเรียนปัจจุบัน</p>
             <p className="text-sm sm:text-base font-bold text-slate-800 mt-0.5">{currentStudentCount || 0} คน</p>
           </div>
           <div className={`p-2 sm:p-3 text-center ${isProfitable ? "bg-emerald-50" : "bg-red-50"}`}>
-            <p className="text-[11px] text-slate-400 uppercase tracking-wide">กำไร/ขาดทุน</p>
+            <p className="text-[11px] text-slate-500 uppercase tracking-wide">กำไร/ขาดทุน</p>
             <p className={`text-sm sm:text-base font-bold mt-0.5 ${isProfitable ? "text-emerald-700" : "text-red-600"}`}>
               {isProfitable ? "+" : ""}฿{formatPrice(currentProfit)}
             </p>
@@ -1737,7 +1739,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
           <div key={idx} className="flex items-center gap-2">
             <span className="w-14 sm:w-16 text-xs text-slate-500 shrink-0">งวดที่ {idx + 1}</span>
             <InstallmentAmountInput value={amt} onChange={(v) => updateAt(idx, v)} />
-            <span className="text-xs text-slate-400 shrink-0">บาท</span>
+            <span className="text-xs text-slate-500 shrink-0">บาท</span>
           </div>
         ))}
         <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
@@ -1992,7 +1994,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>
             ))}
           </select>
-          <p className="text-[11px] text-slate-400 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
+          <p className="text-[11px] text-slate-500 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2019,7 +2021,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           </div>
           <div>
             <label className={labelCls}>คอร์สโปรโมชัน</label>
-            <button
+            <button aria-label="เปิด/ปิด"
               type="button"
               onClick={() => set("Is_Promotion", !form.Is_Promotion)}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
@@ -2045,7 +2047,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
         <div>
           <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
-          <p className="text-[11px] text-slate-400 mb-2 normal-case">
+          <p className="text-[11px] text-slate-500 mb-2 normal-case">
             ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
           </p>
           <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
@@ -2149,7 +2151,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 onChange={(v) => set("InstallmentAmounts", v)}
               />
             ) : (
-              <div className="px-3 py-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-400 text-center">
+              <div className="px-3 py-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-500 text-center">
                 เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
               </div>
             )}
@@ -2200,7 +2202,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             className={inputCls} placeholder="เช่น 120"
           />
           {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
-          <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
             {!monthsSpanned
               ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
               : !form.TotalCourseHours
@@ -2259,18 +2261,18 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
             <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
               <div className="pr-3 py-1.5">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
                 <p className="text-sm font-bold text-slate-700">฿{formatPrice(totalTutorCost)}</p>
               </div>
               <div className="pl-3 py-1.5">
-                <p className="text-[11px] text-slate-400 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+                <p className="text-[11px] text-slate-500 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
                 <p className="text-sm font-bold text-slate-700">
                   ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
                 </p>
               </div>
             </div>
 
-            <p className="px-4 py-2 text-[11px] text-slate-400 border-t border-slate-200/60 leading-relaxed">
+            <p className="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-200/60 leading-relaxed">
               ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
             </p>
           </div>
@@ -2297,7 +2299,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
           ) : (
             <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center">
-              <p className="text-xs text-slate-400">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
+              <p className="text-xs text-slate-500">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
             </div>
           )}
         </div>
@@ -2309,14 +2311,14 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <button
           onClick={onCancel}
           disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm"
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}
         >
           ยกเลิก
         </button>
-        <button
+        <button aria-label="ยืนยัน"
           onClick={handleSubmit}
           disabled={isSubmitting || hoursMismatch || installmentMismatch}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm"
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}
         >
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
@@ -2406,7 +2408,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
               <button
                 type="button"
                 onClick={() => remove(String(s.UserId))}
-                className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition"
+                className="p-1.5 lg:p-0 text-red-400 hover:text-red-600 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                 title="เอาออก"
               >
                 <X className="h-3.5 w-3.5" />
@@ -2436,7 +2438,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 
       <div className="max-h-48 overflow-y-auto px-4 space-y-1 py-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ไม่พบนักเรียน</p>
+          <p className="text-xs text-slate-500 text-center py-3">ไม่พบนักเรียน</p>
         ) : (
           filtered.map(s => {
             const id = String(s.UserId);
@@ -2568,7 +2570,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
             วิชาละ <span className="font-bold">{formatHoursLabel(suggestedPerItem)}</span>
           </p>
           <button onClick={applySuggestedToAll}
-            className="shrink-0 px-3 py-1.5 bg-orange-500 text-white rounded-xl text-[11px] font-bold hover:bg-orange-600 transition flex items-center gap-1">
+            className={`${BTN.primary} shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-bold transition flex items-center gap-1`}>
             <Check className="h-3 w-3" /> ใช้ค่าที่แนะนำทั้งหมด
           </button>
         </div>
@@ -2594,7 +2596,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
                 </div>
               </div>
               <button onClick={() => remove(idx)}
-                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="ลบ">
+                className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -2627,10 +2629,10 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
                       <span className="text-xs text-slate-500 block">
                         {formatHoursLabel(it.TotalHours || 0)} {!it.HoursIsManual && totalCourseHours ? <span className="text-blue-400">(ค่าเริ่มต้น)</span> : null}
                       </span>
-                      {avgPerMonthLabel && <span className="text-[11px] text-slate-400 block">{avgPerMonthLabel}</span>}
+                      {avgPerMonthLabel && <span className="text-[11px] text-slate-500 block">{avgPerMonthLabel}</span>}
                     </div>
                     <button onClick={() => setEditingIndex(idx)}
-                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition" title="แก้ไขชั่วโมง">
+                      className="p-1.5 text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="แก้ไขชั่วโมง">
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -2694,7 +2696,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
           className={inp + " w-24"}
         />
 
-        <button onClick={add} className="px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 transition">
+        <button aria-label="เพิ่ม" onClick={add} className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold transition`}>
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -2826,7 +2828,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           >
             <Eye className="h-3.5 w-3.5" />
           </button>
-          <button
+          <button aria-label="ลบ"
             onClick={() => onDelete(course)}
             className="flex items-center justify-center px-3 py-2 text-xs font-bold text-red-500 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 hover:border-red-200 transition"
           >
@@ -2855,6 +2857,7 @@ export default function AdminCoursesPage() {
   const [termOptions, setTermOptions] = useState([]);
   const [yearOptions, setYearOptions] = useState([]);
 
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
@@ -2887,8 +2890,10 @@ export default function AdminCoursesPage() {
       setYearOptions(yRes.data);
       setAvailabilityOptions(aRes.data);
       setGradeLevelOptions(gRes.data);
+      setLoadError(false);
     } catch (e) {
       console.error("Fetch error:", e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -3043,6 +3048,7 @@ export default function AdminCoursesPage() {
         <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคอร์ส...</p>
       </div>
     );
+  if (loadError && courses.length === 0) return <div className="px-4 lg:px-0"><UIErrorState description="โหลดข้อมูลคอร์สไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -3054,7 +3060,7 @@ export default function AdminCoursesPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm"
+          className={`${BTN.primary} flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}
         >
           <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
         </button>
@@ -3096,7 +3102,7 @@ export default function AdminCoursesPage() {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">สถานะทั้งหมด ({allStatusCount})</option>
             {statusOptions.map((s) => (
@@ -3108,14 +3114,14 @@ export default function AdminCoursesPage() {
           <select
             value={filterCourseType}
             onChange={(e) => setFilterCourseType(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
           >
             {COURSE_TYPE_FILTERS.map((t) => (
               <option key={t.key} value={t.key}>{t.label}</option>
             ))}
           </select>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           แสดง {filtered.length} จาก {courses.length} คอร์ส
         </p>
       </div>

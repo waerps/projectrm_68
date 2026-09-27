@@ -36,7 +36,7 @@ export default function IncidentReportButton({ role }) {
                 </span>
                 แจ้งปัญหา / ร้องเรียน
               </h3>
-              <button onClick={() => setOpen(false)} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+              <button aria-label="ปิด" onClick={() => setOpen(false)} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
                 <X className="h-5 w-5" />
               </button>
             </div>

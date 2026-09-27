@@ -89,7 +89,7 @@ export default function TutorQuestionBank() {
         </div>
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <h1 className={`${PAGE_TITLE} break-words`}>
               คลังข้อสอบ{selected?.subjectName ? ` — ${selected.subjectName}` : ""}
             </h1>
@@ -124,7 +124,7 @@ export default function TutorQuestionBank() {
     <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
         <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
         <ChevronRight className="h-4 w-4" />
         <span className="font-semibold text-slate-700">คลังข้อสอบของฉัน</span>
@@ -139,7 +139,7 @@ export default function TutorQuestionBank() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "ข้อสอบทั้งหมด", value: stats.questions, color: "bg-orange-600", icon: FileQuestion },
           { label: "วิชาที่มีข้อสอบแล้ว", value: stats.ready, color: "bg-emerald-500", icon: BookOpen },
@@ -173,7 +173,7 @@ export default function TutorQuestionBank() {
             />
           </div>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {subjects.length} วิชา</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {subjects.length} วิชา</p>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -185,7 +185,7 @@ export default function TutorQuestionBank() {
             {search.trim() ? "ไม่พบวิชาที่ค้นหา" : "ยังไม่มีวิชาที่คุณสอน"}
           </p>
           {!search.trim() && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               วิชาจะขึ้นที่นี่เมื่อแอดมินมอบหมายให้คุณสอนวิชานั้นในคอร์สแล้ว
             </p>
           )}
@@ -201,7 +201,7 @@ export default function TutorQuestionBank() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || `วิชา #${s.subjectId}`}</p>
-                    <p className="text-[11px] text-slate-400">#{s.subjectId}{fmtDate(s.lastUpdatedAt) ? ` · ${fmtDate(s.lastUpdatedAt)}` : ""}</p>
+                    <p className="text-[11px] text-slate-500">#{s.subjectId}{fmtDate(s.lastUpdatedAt) ? ` · ${fmtDate(s.lastUpdatedAt)}` : ""}</p>
                   </div>
                   {s.total > 0 ? (
                     <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
@@ -234,11 +234,11 @@ export default function TutorQuestionBank() {
                     <tr key={s.subjectId} className="hover:bg-orange-50/40 transition-colors">
                       <td className="px-4 py-3">
                         <p className="font-semibold text-slate-900 text-sm">{s.subjectName || `วิชา #${s.subjectId}`}</p>
-                        <p className="text-[11px] text-slate-400">#{s.subjectId}</p>
+                        <p className="text-[11px] text-slate-500">#{s.subjectId}</p>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm font-bold text-slate-900">{s.total}</span>
-                        <span className="text-xs text-slate-400"> ข้อ</span>
+                        <span className="text-xs text-slate-500"> ข้อ</span>
                       </td>
                       <td className="px-4 py-3 text-center">
                         {s.categories > 0 ? (

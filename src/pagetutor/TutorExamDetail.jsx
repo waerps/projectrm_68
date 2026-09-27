@@ -27,6 +27,7 @@ import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -57,7 +58,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", onClick })
       <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500 font-medium">{label}</p>
         <p className="text-lg sm:text-xl font-bold text-slate-900 whitespace-nowrap lg:whitespace-normal">{value}</p>
-        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+        {sub && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>}
       </div>
     </Wrapper>
   );
@@ -142,7 +143,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
             </h3>
             <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
@@ -151,7 +152,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
           ) : error ? (
             <p className="text-sm text-red-600 py-6 text-center">{error}</p>
           ) : !categories.length ? (
-            <p className="text-sm text-slate-400 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
+            <p className="text-sm text-slate-500 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
           ) : (
             <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
               {categories.map((c) => (
@@ -169,7 +170,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
                         <p className="text-[11px] text-amber-700">จะถูกรวมเข้ากับหมวด "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={confirmRename} disabled={saving} className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-3 py-1.5">
+                        <button onClick={confirmRename} disabled={saving} className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}>
                           {saving ? "กำลังบันทึก…" : "บันทึก"}
                         </button>
                         <button onClick={() => { setRenamingFrom(null); setSaveError(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
@@ -180,7 +181,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm text-slate-800 truncate">{c.category}</p>
-                        <p className="text-[11px] text-slate-400">{c.count} ข้อ</p>
+                        <p className="text-[11px] text-slate-500">{c.count} ข้อ</p>
                       </div>
                       <button
                         onClick={() => { setRenamingFrom(c.category); setRenameTo(c.category); setSaveError(""); }}
@@ -199,7 +200,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
             <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} className="mt-0.5 accent-orange-500" />
             <span>
               <span className="text-sm text-slate-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
-              <span className="block text-xs text-slate-400 mt-0.5">
+              <span className="block text-xs text-slate-500 mt-0.5">
                 กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง ถ้าไม่ติ๊กจะแก้เฉพาะในคลัง
               </span>
             </span>
@@ -283,7 +284,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
     <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
-        <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
+        <button aria-label="ปิด" onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-4 w-4" /></button>
       </div>
 
       <div>
@@ -296,7 +297,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           const isCorrect = q.correct === optIdx;
           return (
             <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200 bg-white"}`}>
-              <button onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-slate-300 hover:border-green-400"}`}>
+              <button aria-label="ยืนยัน" onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-slate-300 hover:border-green-400"} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0`}>
                 {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
               <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
@@ -308,7 +309,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
 
       <div>
         <label className="block text-sm font-semibold text-slate-800 mb-2">
-          <LuLightbulb className="inline h-4 w-4 -mt-0.5 text-amber-500" /> คำอธิบายเฉลย <span className="text-xs font-normal text-slate-400">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
+          <LuLightbulb className="inline h-4 w-4 -mt-0.5 text-amber-500" /> คำอธิบายเฉลย <span className="text-xs font-normal text-slate-500">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
         </label>
         <textarea
           value={q.explanation || ""}
@@ -402,7 +403,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                   type="button"
                   disabled={!newCategory.trim()}
                   onClick={() => { patch({ category: newCategory.trim() }); setAddingCategory(false); setNewCategory(""); }}
-                  className="text-xs font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-3 py-1.5"
+                  className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}
                 >
                   ใช้หมวดนี้
                 </button>
@@ -414,7 +415,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
               <select
                 value={q.category || ""}
                 onChange={(e) => patch({ category: e.target.value })}
-                className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
               >
                 <option value="">เลือกหมวด</option>
                 {(categoryOptions || []).map((c) => (
@@ -436,7 +437,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         </div>
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-            ระดับชั้น <span className="text-[11px] font-normal text-slate-400">(ไม่บังคับ)</span>
+            ระดับชั้น <span className="text-[11px] font-normal text-slate-500">(ไม่บังคับ)</span>
           </label>
           {/* แท็กไว้ให้ตอนจัดชุดข้อสอบกรองตามระดับชั้นของคอร์สได้ ปล่อย "ไม่ระบุ" ได้ถ้ายังไม่แน่ใจ —
               ข้อที่ไม่ระบุจะไม่ถูกกรองออกไม่ว่าจะเลือกระดับชั้นไหนตอนจัดชุด */}
@@ -465,7 +466,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         <button
           onClick={() => onSave(q)}
           disabled={!complete || saving}
-          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2 text-sm font-semibold transition"
+          className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-4 py-2 text-sm font-semibold transition`}
         >
           {saving ? "กำลังบันทึก…" : (saveLabel || "บันทึก")}
         </button>
@@ -625,7 +626,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-800">นำเข้าข้อสอบจาก Excel</p>
-        <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
+        <button aria-label="ปิด" onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-4 w-4" /></button>
       </div>
 
       {step === 1 && (
@@ -638,7 +639,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               <>
                 <FileSpreadsheet className="h-7 w-7 text-slate-300 mx-auto mb-1.5" />
                 <p className="text-xs text-slate-500">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
-                <p className="text-[11px] text-slate-400 mt-1">รองรับ .xlsx, .xls, .csv</p>
+                <p className="text-[11px] text-slate-500 mt-1">รองรับ .xlsx, .xls, .csv</p>
               </>
             )}
           </div>
@@ -665,7 +666,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               <select
                 value={bulkGrade}
                 onChange={(e) => setBulkGrade(e.target.value)}
-                className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
               >
                 <option value="">ไม่ระบุ</option>
                 {(gradeLevelOptions || []).map((g) => (
@@ -674,7 +675,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               </select>
             </div>
           </div>
-          <p className="text-[11px] text-slate-400 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
+          <p className="text-[11px] text-slate-500 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
 
           {dupCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
@@ -703,7 +704,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                     <select
                       value={catMap[cat] ?? ""}
                       onChange={(e) => setCatMap((m) => ({ ...m, [cat]: e.target.value }))}
-                      className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
                     >
                       <option value="">สร้างเป็นหมวดใหม่</option>
                       {(categoryOptions || []).map((c) => (
@@ -750,7 +751,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                         {skipped ? " — จะไม่ถูกนำเข้า" : ""}
                       </p>
                     )}
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-500">
                       {q.level} {q.category && `· ${q.category}`}
                       {q.explanation?.trim() ? (
                         <span className="text-blue-500"> · มีคำอธิบายเฉลย</span>
@@ -777,7 +778,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                     value={rowGradeOverrides[i] ?? ""}
                     onChange={(e) => setRowGradeOverrides((m) => ({ ...m, [i]: e.target.value }))}
                     title="ระดับชั้นของข้อนี้ (ว่าง = ใช้ค่าเริ่มต้นของทั้งไฟล์ด้านบน)"
-                    className="flex-shrink-0 border border-slate-200 rounded-xl px-1.5 py-1 text-[11px] bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 w-20 self-start"
+                    className="flex-shrink-0 border border-slate-200 rounded-xl px-1.5 py-1 text-[11px] bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 w-20 self-start max-w-full md:max-w-[240px] truncate"
                   >
                     <option value="">ค่าเริ่มต้น</option>
                     {(gradeLevelOptions || []).map((g) => (
@@ -796,7 +797,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           )}
           <div className="flex flex-wrap justify-between gap-2">
             <button onClick={() => setStep(1)} className="text-sm text-slate-500 hover:text-slate-700 font-medium">← อัปโหลดไฟล์อื่น</button>
-            <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
+            <button onClick={handleConfirm} disabled={confirming} className={`${BTN.primary} disabled:opacity-40 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}>
               {confirming
                 ? "กำลังบันทึก…"
                 : updateCount > 0
@@ -1026,7 +1027,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                 <Tags className="h-4 w-4" /> จัดการหมวดหมู่
               </button>
             )}
-            <button onClick={() => setMode("picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+            <button onClick={() => setMode("picker")} className={`${BTN.primary} flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition`}>
               <Plus className="h-4 w-4" /> เพิ่มข้อสอบเข้าคลัง
             </button>
           </div>
@@ -1044,7 +1045,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
       <div ref={panelRef}>
         {mode === "picker" && (
           <div className="border border-slate-200 rounded-2xl p-5 relative">
-            <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
+            <button aria-label="ปิด" onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
             <p className="text-sm font-semibold text-slate-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
             <AddMethodPicker onPick={setMode} />
           </div>
@@ -1117,11 +1118,11 @@ export function BankTab({ subjectId, showToast, subjectName }) {
               className="w-full border border-slate-200 rounded-xl pl-9 pr-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
-          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm">
+          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
             <option value="">ทุกหมวด</option>
             {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
           </select>
-          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm">
+          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
             <option value="">ทุกระดับ</option>
             {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
           </select>
@@ -1194,7 +1195,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                   if (!v) return;
                   setBulkPending({ type: "category", value: v });
                 }}
-                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs disabled:opacity-40"
+                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs disabled:opacity-40 max-w-full md:max-w-[240px] truncate"
               >
                 <option value="">เปลี่ยนหมวดหมู่…</option>
                 {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
@@ -1220,7 +1221,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
-          <p className="text-xs text-slate-400 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
+          <p className="text-xs text-slate-500 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
         </div>
       ) : (
         <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100">
@@ -1251,7 +1252,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                       {it.gradeDetail && (
                         <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{it.gradeDetail}</span>
                       )}
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[11px] text-slate-500">
                         {it.usedCount > 0
                           ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
                           : "ยังไม่เคยใช้"}
@@ -1259,10 +1260,10 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700">
+                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500">
+                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
@@ -1271,7 +1272,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
             </div>
           ))}
           {filtered.length === 0 && (
-            <p className="px-4 py-8 text-center text-sm text-slate-400">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
+            <p className="px-4 py-8 text-center text-sm text-slate-500">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
           )}
         </div>
       ))}
@@ -1538,7 +1539,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
             </h3>
             <p className="text-xs text-white/80 mt-1">หยิบข้อจากคลังของคุณมาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
         </div>
 
         <div className="flex gap-1 px-4 sm:px-6 pt-3 border-b border-slate-100">
@@ -1580,7 +1581,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
             <div className="border border-dashed border-slate-200 rounded-xl py-10 text-center">
               <FileQuestion className="h-9 w-9 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-600">คลังของคุณยังไม่มีข้อสอบในวิชานี้</p>
-              <p className="text-xs text-slate-400 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
+              <p className="text-xs text-slate-500 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
             </div>
           ) : tab === "auto" && !working ? (
             <>
@@ -1607,7 +1608,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                                 onChange={(e) => setCount(cat, lv, e.target.value)}
                                 className="w-16 border border-slate-200 rounded-xl px-2 h-10 text-sm text-center disabled:bg-slate-50 disabled:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
                               />
-                              <p className="text-[11px] text-slate-400 mt-1">มี {max} ข้อ</p>
+                              <p className="text-[11px] text-slate-500 mt-1">มี {max} ข้อ</p>
                             </td>
                           );
                         })}
@@ -1624,7 +1625,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-slate-600">คะแนนเต็ม</span>
                   <span className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-center font-semibold text-slate-700">{totalScore}</span>
-                  <span className="text-[11px] text-slate-400">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
+                  <span className="text-[11px] text-slate-500">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
                 </div>
                 <p className="text-sm text-slate-600">รวม <span className="font-bold text-slate-900">{totalQuestions}</span> ข้อ</p>
               </div>
@@ -1678,7 +1679,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button onClick={() => setSwapIndex(swapIndex === idx ? null : idx)} className="text-xs font-semibold text-slate-500 hover:text-orange-600 px-2 py-1">เปลี่ยนข้อ</button>
-                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-3.5 w-3.5" /></button>
                       </div>
                     </div>
 
@@ -1693,7 +1694,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                             </button>
                           ))}
                         {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
-                          <p className="text-xs text-slate-400 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
+                          <p className="text-xs text-slate-500 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
                         )}
                       </div>
                     )}
@@ -1767,7 +1768,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
                           {b.gradeDetail && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{b.gradeDetail}</span>}
-                          <span className="text-[11px] text-slate-400">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
+                          <span className="text-[11px] text-slate-500">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
                         </div>
                       </div>
                     </label>
@@ -1793,7 +1794,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500">
             {applyTo === "all" ? "จะใส่ลงทั้ง Pre / Mid / Post และแทนที่ข้อสอบเดิมของรอบเหล่านั้น" : "จะใส่ลงเฉพาะรอบนี้และแทนที่ข้อสอบเดิม"}
           </p>
           <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
@@ -1802,18 +1803,18 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
               <>
                 <button onClick={runAssemble} disabled={busy} className="px-4 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40">สุ่มใหม่</button>
                 <button onClick={() => apply(scored.map((it) => it.bankQuestionId))} disabled={busy || !scored.length}
-                  className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
+                  className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
                   {busy ? "กำลังบันทึก…" : `ใช้ชุด ${sets?.[activeSet]?.label || ""}`}
                 </button>
               </>
             ) : tab === "auto" ? (
               <button onClick={runAssemble} disabled={busy || totalQuestions === 0 || loading}
-                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
+                className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
                 {busy ? "กำลังสุ่ม…" : "สุ่มชุดข้อสอบ"}
               </button>
             ) : (
               <button onClick={() => apply(picked)} disabled={busy || !picked.length}
-                className="px-4 py-2 text-sm font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-xl disabled:opacity-40">
+                className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
                 {busy ? "กำลังบันทึก…" : "ใช้ข้อที่เลือก"}
               </button>
             )}
@@ -1838,7 +1839,7 @@ function PreviewTab({ exam, goToAssemble }) {
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
         <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
         <p className="text-sm font-semibold text-slate-500">รอบนี้ยังไม่มีชุดข้อสอบ</p>
-        <button onClick={goToAssemble} className="mt-4 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
+        <button onClick={goToAssemble} className={`${BTN.primary} mt-4 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition`}>
           <Zap className="h-4 w-4" /> ไปจัดชุดข้อสอบ
         </button>
       </div>
@@ -1866,9 +1867,9 @@ function PreviewTab({ exam, goToAssemble }) {
       <div className="border border-slate-200 rounded-2xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+            <button aria-label="ก่อนหน้า" onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><ChevronLeft className="h-4 w-4" /></button>
             <span className="text-sm font-semibold text-slate-700">ข้อที่ {activeIdx + 1} / {questions.length}</span>
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            <button aria-label="ถัดไป" onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><ChevronRight className="h-4 w-4" /></button>
           </div>
           {current.level && <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${LEVEL_COLOR[current.level]?.pill}`}>{current.level}</span>}
         </div>
@@ -1902,7 +1903,7 @@ function PreviewTab({ exam, goToAssemble }) {
         ) : (
           <div className="mt-4 flex gap-2 bg-slate-50 border border-slate-100 rounded-lg p-3">
             <AlertCircle className="h-4 w-4 text-slate-300 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-400">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
+            <p className="text-xs text-slate-500">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
           </div>
         )}
       </div>
@@ -2071,7 +2072,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                 ? `${setQuestions.length} ข้อ · รวม ${fmtScore(setScoreSum)} คะแนน`
                 : "ยังไม่มีข้อสอบในรอบนี้"}
             </p>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               หยิบข้อจากคลังของคุณ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
             </p>
             {setQuestions.length > 0 && (
@@ -2080,10 +2081,10 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               </button>
             )}
           </div>
-          <button
+          <button aria-label="จัดชุดข้อสอบอัตโนมัติ"
             onClick={() => setShowAssemble(true)}
             disabled={status === "active"}
-            className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+            className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 rounded-xl px-4 py-2.5 text-sm font-semibold transition`}
           >
             <Zap className="h-4 w-4" /> {setQuestions.length > 0 ? "จัดชุดข้อสอบใหม่" : "จัดชุดข้อสอบ"}
           </button>
@@ -2159,7 +2160,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               </p>
             </div>
           ) : (
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
               {form.openMode === "auto"
                 ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
                 : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
@@ -2177,7 +2178,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
 
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+        <button aria-label="ยืนยัน" onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
           {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
         </button>
       </div>
@@ -2209,7 +2210,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
 
             <button
               onClick={() => setConfirmReopen(true)}
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+              className={`${BTN.primary} inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}
             >
               <Play className="h-4 w-4" /> เปิดสอบใหม่
             </button>
@@ -2229,7 +2230,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                     <button
                       onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
                       disabled={reopening}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                      className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}
                     >
                       {reopening ? "กำลังเปิด…" : "เปิดสอบใหม่"}
                     </button>
@@ -2281,7 +2282,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                     <button
                       onClick={async () => { setOverriding(true); try { await onOpen(); setConfirmOverride(false); } finally { setOverriding(false); } }}
                       disabled={overriding}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                      className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}
                     >
                       {overriding ? "กำลังเปิด…" : "เปิดเลยตอนนี้"}
                     </button>
@@ -2308,10 +2309,10 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                 <p className="text-xs text-amber-700">ข้อสอบยังไม่พร้อม — ตรวจสอบที่แท็บ ดูตัวอย่างข้อสอบ ก่อนเปิดสอบ</p>
               </div>
             )}
-            <button
+            <button aria-label="เล่น"
               onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
               disabled={!ready || opening}
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+              className={`${BTN.primary} inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-5 py-2.5 text-sm font-semibold transition`}
             >
               <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิดสอบ"}
             </button>
@@ -2400,14 +2401,14 @@ function QuestionPeriods({ periods }) {
     <div className="pl-5 mt-1">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="text-[11px] text-slate-400 hover:text-slate-600 transition font-medium"
+        className="text-[11px] text-slate-500 hover:text-slate-600 transition font-medium"
       >
         {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({shown.length} ครั้ง) {open ? "▲" : "▼"}
       </button>
       {open && (
         <div className="mt-1 space-y-0.5">
           {shown.map((p, pi) => (
-            <p key={pi} className="text-[11px] text-slate-400">
+            <p key={pi} className="text-[11px] text-slate-500">
               ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
             </p>
           ))}
@@ -2477,7 +2478,7 @@ function StudentDetailModal({
       <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 sticky top-0 z-10">
           <h3 className="text-base font-bold text-white">รายละเอียดผลสอบ</h3>
-          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"><X className="h-5 w-5" /></button>
         </div>
         <div className="p-4 sm:p-6">
 
@@ -2568,7 +2569,7 @@ function StudentDetailModal({
                     </span>
                   )}
                 </p>
-                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-400 flex-shrink-0">โดย {aiSummary.model}</span>}
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โดย {aiSummary.model}</span>}
               </div>
               <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
@@ -2588,7 +2589,7 @@ function StudentDetailModal({
                   ดูพัฒนาการเต็มของคนนี้ <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
                 {aiSummary.parentMessage && (
-                  <button
+                  <button aria-label="ยืนยัน"
                     type="button"
                     onClick={async () => {
                       try {
@@ -2597,7 +2598,7 @@ function StudentDetailModal({
                         setTimeout(() => setCopiedMsg(false), 2000);
                       } catch (err) { console.error("Copy failed:", err); }
                     }}
-                    className="flex items-center gap-1 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-xl px-2.5 py-1 transition"
+                    className={`${BTN.primary} flex items-center gap-1 text-xs font-bold rounded-xl px-2.5 py-1 transition`}
                   >
                     {copiedMsg ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                     {copiedMsg ? "คัดลอกแล้ว" : "คัดลอกข้อความถึงผู้ปกครอง"}
@@ -2701,7 +2702,7 @@ function StudentDetailModal({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-slate-800">รายข้อ</p>
-                <p className="text-[11px] text-slate-400">เขียว = ตอบถูก · แดง = ตอบผิด</p>
+                <p className="text-[11px] text-slate-500">เขียว = ตอบถูก · แดง = ตอบผิด</p>
               </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => (
@@ -3059,7 +3060,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
       <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
         <BarChart2 className="h-10 w-10 text-slate-300 mb-3" />
         <p className="text-sm font-semibold text-slate-500">ยังไม่มีผลสอบ</p>
-        <p className="text-xs text-slate-400 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
+        <p className="text-xs text-slate-500 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
       </div>
     );
   }
@@ -3143,7 +3144,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             <Download className="h-3.5 w-3.5" /> Export PDF
           </button>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           {filterPass === "ขาดสอบ"
             ? <>แสดง {filteredAbsent.length} จาก {results.absentStudents?.length ?? 0} คน</>
             : <>แสดง {displayedStudents.length} จาก {results.students.length} คน</>}
@@ -3186,7 +3187,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                   <span className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-slate-800 text-sm truncate">{s.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
                   </div>
                   {passed != null && (
                     <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
@@ -3200,7 +3201,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
                     </div>
                     <span className="text-sm font-semibold text-slate-700">{pct}%</span>
-                    <span className="text-xs text-slate-400">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
+                    <span className="text-xs text-slate-500">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -3281,7 +3282,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                               </div>
                               <span className="font-semibold text-slate-700">{pct}%</span>
                             </div>
-                            <p className="text-slate-400 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
+                            <p className="text-slate-500 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
                           </>
                         ) : "—"}
                       </td>

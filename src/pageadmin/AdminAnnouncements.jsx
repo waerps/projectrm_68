@@ -10,6 +10,8 @@ import {
 import { toast } from "../components/ui/dialogs";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import ErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
 
 const API_BASE = `${API_URL}/api/admin/news`;
 const SERVER_URL = API_URL;
@@ -185,7 +187,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                     <span className="flex items-center gap-1.5">
                         <ImageIcon className="h-4 w-4 text-orange-500" />
                         รูปหน้าปก
-                        <span className="text-xs text-slate-400 font-normal">(1 รูป)</span>
+                        <span className="text-xs text-slate-500 font-normal">(1 รูป)</span>
                     </span>
                 </label>
 
@@ -193,7 +195,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                     <div className="relative mt-1">
                         <img src={formData.coverPreview} alt="cover"
                             className="h-44 w-full object-cover rounded-xl border border-slate-200" />
-                        <button onClick={removeCover}
+                        <button aria-label="ปิด" onClick={removeCover}
                             className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-red-50 transition">
                             <X className="h-4 w-4 text-red-500" />
                         </button>
@@ -206,7 +208,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                         className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-orange-400 transition cursor-pointer mt-1">
                         <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
                         <p className="text-sm text-slate-500">คลิกเพื่ออัปโหลดรูปหน้าปก</p>
-                        <p className="text-xs text-slate-400 mt-0.5">PNG, JPG ขนาดไม่เกิน 5MB</p>
+                        <p className="text-xs text-slate-500 mt-0.5">PNG, JPG ขนาดไม่เกิน 5MB</p>
                     </div>
                 )}
                 <input id="coverImageInput" type="file" accept="image/*"
@@ -220,7 +222,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                         <span className="flex items-center gap-1.5">
                             <Images className="h-4 w-4 text-orange-500" />
                             รูปภาพอื่นๆ
-                            <span className="text-xs text-slate-400 font-normal">(เพิ่มได้หลายรูป สูงสุด 10 รูป)</span>
+                            <span className="text-xs text-slate-500 font-normal">(เพิ่มได้หลายรูป สูงสุด 10 รูป)</span>
                         </span>
                         {totalExtras > 0 && (
                             <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-0.5 rounded-full">
@@ -237,7 +239,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                             <div key={img.ImageId} className="relative group">
                                 <img src={imgSrc(img.ImagePath)} alt=""
                                     className="h-24 w-full object-cover rounded-xl border border-slate-200" />
-                                <button
+                                <button aria-label="ปิด"
                                     onClick={() => removeExistingExtra(img.ImageId)}
                                     className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow
                                                opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition hover:bg-red-50">
@@ -255,7 +257,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                             <div key={idx} className="relative group">
                                 <img src={url} alt=""
                                     className="h-24 w-full object-cover rounded-xl border border-orange-200" />
-                                <button onClick={() => removeNewExtra(idx)}
+                                <button aria-label="ปิด" onClick={() => removeNewExtra(idx)}
                                     className="absolute top-1 right-1 bg-white rounded-full p-0.5 shadow
                                                opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition hover:bg-red-50">
                                     <X className="h-3.5 w-3.5 text-red-500" />
@@ -276,7 +278,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                                    hover:border-orange-400 transition cursor-pointer mt-1">
                         <Plus className="h-5 w-5 text-slate-400 mx-auto mb-1" />
                         <p className="text-sm text-slate-500">เพิ่มรูปภาพ</p>
-                        <p className="text-xs text-slate-400 mt-0.5">เลือกได้หลายรูปพร้อมกัน</p>
+                        <p className="text-xs text-slate-500 mt-0.5">เลือกได้หลายรูปพร้อมกัน</p>
                     </div>
                 )}
                 <input id="extraImagesInput" type="file" accept="image/*"
@@ -289,7 +291,7 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                     className="px-4 py-2 rounded-xl border border-slate-300 text-sm hover:bg-slate-50 transition">
                     ยกเลิก
                 </button>
-                <button onClick={onSubmit}
+                <button aria-label="บันทึก" onClick={onSubmit}
                     className={`px-4 py-2 rounded-xl text-white text-sm font-medium transition flex items-center gap-2 ${submitClass}`}>
                     <Save className="h-4 w-4" />{submitLabel}
                 </button>
@@ -315,6 +317,7 @@ export default function AdminAnnouncements() {
     const [totalCount, setTotalCount] = useState(0);
     const [stats, setStats] = useState({ total: 0, tutorCount: 0, studentCount: 0 });
     const [isLoading, setIsLoading] = useState(false);
+    const [loadError, setLoadError] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
     const [showAddModal, setShowAddModal] = useState(false);
@@ -341,12 +344,16 @@ export default function AdminAnnouncements() {
             if (searchQuery) params.set('search', searchQuery);
             if (categoryFilter !== 'all') params.set('category', categoryFilter);
             if (targetFilter !== 'all') params.set('target', targetFilter);
-            const json = await (await fetch(`${API_BASE}?${params}`)).json();
+            const res = await fetch(`${API_BASE}?${params}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
             setAnnouncements(json.data ?? []);
             setTotalCount(json.pagination?.total ?? 0);
+            setLoadError(false);
         } catch (err) {
             console.error(err);
             setAnnouncements([]);
+            setLoadError(true);
         } finally { setIsLoading(false); }
     }, [searchQuery, categoryFilter, targetFilter]);
 
@@ -453,7 +460,7 @@ export default function AdminAnnouncements() {
                     <p className={PAGE_SUBTITLE}>จัดการข่าวสารและประกาศทั้งหมดในระบบ</p>
                 </div>
                 <button onClick={() => { resetForm(); setShowAddModal(true); }}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium">
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition font-medium`}>
                     <Plus className="h-4 w-4" /> เพิ่มข่าวใหม่
                 </button>
             </div>
@@ -490,12 +497,12 @@ export default function AdminAnnouncements() {
                             className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
                     </div>
                     <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
                         <option value="all">ทุกหมวดหมู่</option>
                         {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
                     </select>
                     <select value={targetFilter} onChange={e => setTargetFilter(e.target.value)}
-                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400">
+                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
                         <option value="all">ทุกกลุ่มเป้าหมาย</option>
                         {TARGETS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
@@ -511,11 +518,13 @@ export default function AdminAnnouncements() {
                 <div className="flex justify-center items-center py-24">
                     <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
+            ) : loadError ? (
+                <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" />
             ) : displayed.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
                     <Inbox className="h-14 w-14 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500 font-medium">ยังไม่มีข่าวในระบบ</p>
-                    <p className="text-sm text-slate-400 mt-1">กด "เพิ่มข่าวใหม่" เพื่อเริ่มต้น</p>
+                    <p className="text-sm text-slate-500 mt-1">กด "เพิ่มข่าวใหม่" เพื่อเริ่มต้น</p>
                 </div>
             ) : (
                 <div className="space-y-4">
@@ -557,7 +566,7 @@ export default function AdminAnnouncements() {
                                                     <Edit2 className="h-3.5 w-3.5" /> แก้ไข
                                                 </button>
                                                 <button onClick={() => { setSelectedNews(item); setShowDeleteModal(true); }}
-                                                    className="p-1.5 rounded-lg border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 transition" title="ลบ">
+                                                    className="p-1.5 rounded-lg border border-red-200 text-red-500 bg-red-50 hover:bg-red-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
                                             </div>
@@ -644,10 +653,10 @@ export default function AdminAnnouncements() {
                         <div className="flex flex-col-reverse sm:flex-row gap-2">
                             <button onClick={() => { setShowDeleteModal(false); setSelectedNews(null); }}
                                 disabled={submitting}
-                                className="flex-1 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-sm font-bold hover:bg-slate-50 transition disabled:opacity-50">
+                                className={`${BTN.secondary} flex-1 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50`}>
                                 ยกเลิก
                             </button>
-                            <button onClick={handleDelete} disabled={submitting}
+                            <button aria-label="ลบ" onClick={handleDelete} disabled={submitting}
                                 className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition flex items-center gap-2 disabled:opacity-50">
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 {submitting ? 'กำลังลบ...' : 'ลบข่าว'}

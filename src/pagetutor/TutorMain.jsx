@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight, Calendar, Tag, Newspaper } from "lucide-r
 import Spinner from "../components/ui/Spinner";
 import EmptyState from "../components/ui/EmptyState";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import ErrorState from "../components/ui/ErrorState";
 
 const SERVER_URL = API_URL;
 
@@ -101,7 +102,7 @@ function ImageGallery({ images }) {
           className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <button
+          <button aria-label="ก่อนหน้า"
             onClick={(e) => { e.stopPropagation(); prev(); }}
             className="absolute left-2 sm:left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
@@ -115,14 +116,14 @@ function ImageGallery({ images }) {
             className="max-h-[85vh] max-w-full rounded-2xl object-contain"
           />
 
-          <button
+          <button aria-label="ถัดไป"
             onClick={(e) => { e.stopPropagation(); next(); }}
             className="absolute right-2 sm:right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
             <ChevronRight className="h-6 w-6 text-white" />
           </button>
 
-          <button
+          <button aria-label="ปิด"
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
@@ -229,7 +230,7 @@ function NewsDetailModal({ newsId, onClose }) {
         )}
 
         {/* X button */}
-        <button
+        <button aria-label="ปิด"
           onClick={onClose}
           className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-full p-1.5 shadow hover:bg-white transition"
         >
@@ -244,12 +245,13 @@ function NewsDetailModal({ newsId, onClose }) {
 export default function TutorMain() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState(null); // id ที่เปิด modal
 
   useEffect(() => {
     axios.get(`${SERVER_URL}/api/news?role=tutor`)
       .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
-      .catch(console.error)
+      .catch((err) => { console.error(err); setLoadError(true); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -257,6 +259,7 @@ export default function TutorMain() {
   const tutorNews  = news.filter((n) => n.type === "tutor");
 
   if (loading) return <Spinner block label="กำลังโหลดข่าวสาร..." />;
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข่าวสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>;
 
   return (
     <div>

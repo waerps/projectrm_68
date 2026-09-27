@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 
@@ -157,14 +158,14 @@ function FacilityPicker({ items, facilityList, onAdd, onUpdateQty, onRemove, bus
                             <span className="text-xs font-bold text-orange-800 w-4 text-center">{it.quantity}</span>
                             <button onClick={() => onUpdateQty(idx, 1)} disabled={busy}
                                 className="w-5 h-5 flex items-center justify-center rounded-full bg-white text-orange-500 text-xs font-bold hover:bg-orange-100 disabled:opacity-50">+</button>
-                            <button onClick={() => onRemove(idx)} disabled={busy}
-                                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50">
+                            <button aria-label="ปิด" onClick={() => onRemove(idx)} disabled={busy}
+                                className="w-5 h-5 flex items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                 <X className="h-3 w-3" />
                             </button>
                         </div>
                     );
                 })}
-                {items.length === 0 && <p className="text-xs text-slate-400">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
+                {items.length === 0 && <p className="text-xs text-slate-500">ยังไม่มีสิ่งอำนวยความสะดวก</p>}
             </div>
             <div className="flex gap-2">
                 <input
@@ -180,7 +181,7 @@ function FacilityPicker({ items, facilityList, onAdd, onUpdateQty, onRemove, bus
                     {facilityList.map(t => <option key={t.FacilitiesId} value={t.Facilities_Name} />)}
                 </datalist>
                 <button onClick={handleAdd} disabled={busy}
-                    className="px-3 py-1.5 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center">
+                    className={`${BTN.primary} px-3 py-1.5 rounded-xl text-xs font-bold disabled:opacity-50 shrink-0 flex items-center gap-1.5 min-w-[52px] justify-center`}>
                     {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "เพิ่ม"}
                 </button>
             </div>
@@ -369,11 +370,11 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
-                    className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                    className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
-                <button onClick={submit} disabled={isSubmitting}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+                    className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
             </div>
@@ -397,7 +398,7 @@ function ConfirmDelete({ room, onConfirm, onCancel, isDeleting }) {
                 </div>
                 <div className="flex flex-col-reverse sm:flex-row gap-2">
                     <button onClick={onCancel} disabled={isDeleting}
-                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
@@ -471,7 +472,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
                     </div>
                     <div className="flex gap-3 pt-2">
                         <button onClick={() => setConflicts(null)} disabled={loading}
-                            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                             ย้อนกลับ
                         </button>
                         <button onClick={() => submit(true)} disabled={loading}
@@ -522,11 +523,11 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
 
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button onClick={() => submit(false)} disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                    <button aria-label="ยืนยัน" onClick={() => submit(false)} disabled={loading}
+                        className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
                 </div>
@@ -571,11 +572,11 @@ function RoomCard({ room, index, onEdit, onDelete, onView, onStatusChange }) {
                         <Edit2 className="h-3.5 w-3.5" /> แก้ไข
                     </button>
                     <button onClick={() => onDelete(room)}
-                        className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all" title="ลบ">
+                        className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
                         <Trash2 className="h-3.5 w-3.5" />
                     </button>
                     <button onClick={() => onStatusChange(room)}
-                        className="p-1.5 text-slate-500 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 active:scale-95 transition-all" title="เปลี่ยนสถานะ">
+                        className="p-1.5 text-slate-500 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="เปลี่ยนสถานะ">
                         <AlertTriangle className="h-3.5 w-3.5" />
                     </button>
                 </div>
@@ -608,15 +609,15 @@ function RoomDetailModal({ room, onClose }) {
             <RoomIsoPreview statusId={room.Status_Room_Id} seed={room.RoomId} />
             <div className="grid grid-cols-2 gap-3 mt-4">
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">ชั้น</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">ชั้น</p>
                     <p className="text-sm text-slate-800 font-semibold">{room.Floor}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">ความจุ</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">ความจุ</p>
                     <p className="text-sm text-slate-800 font-semibold">{room.Capacity ? `${room.Capacity} ที่นั่ง` : "ไม่ระบุ"}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">สถานะ</p>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                         {room.Status_Room_Name || "ไม่ระบุสถานะ"}
@@ -643,7 +644,7 @@ function RoomDetailModal({ room, onClose }) {
                 {loadingFacilities ? (
                     <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>
                 ) : facilities.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีสิ่งอำนวยความสะดวก
                     </p>
                 ) : (
@@ -682,7 +683,7 @@ function RoomDetailModal({ room, onClose }) {
                                             style={{ backgroundColor: `rgba(8,145,178,${0.1 + intensity * 0.8})` }}
                                             title={`${DAY_NAMES[d]}: ${hrs.toFixed(1)} ชม.`}
                                         />
-                                        <span className="text-[11px] text-slate-400">{DAY_NAMES[d].slice(0, 3)}</span>
+                                        <span className="text-[11px] text-slate-500">{DAY_NAMES[d].slice(0, 3)}</span>
                                     </div>
                                 );
                             })}
@@ -693,7 +694,7 @@ function RoomDetailModal({ room, onClose }) {
 
             {!loadingUtil && utilDetail?.byCourse?.length > 0 && (
                 <div className="mt-3">
-                    <p className="text-[11px] text-slate-400 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
+                    <p className="text-[11px] text-slate-500 mb-1.5">ประสิทธิภาพการใช้ที่นั่งรายคอร์ส (ความจุห้อง {utilDetail.capacity} ที่นั่ง)</p>
                     <div className="space-y-2">
                         {utilDetail.byCourse.map(c => (
                             <div key={c.CourseID} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
@@ -714,7 +715,7 @@ function RoomDetailModal({ room, onClose }) {
                 {loadingSchedule ? (
                     <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : schedule.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีคาบสอนที่จองห้องนี้
                     </p>
                 ) : (
@@ -722,7 +723,7 @@ function RoomDetailModal({ room, onClose }) {
                         {schedule.map(item => (
                             <div key={item.CourseScheduleDetailId} className="flex items-center gap-3 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
                                 <div className="text-center shrink-0 w-14">
-                                    <p className="text-[11px] text-slate-400">{DAY_NAMES[item.DayOfWeek]}</p>
+                                    <p className="text-[11px] text-slate-500">{DAY_NAMES[item.DayOfWeek]}</p>
                                     <p className="text-xs font-bold text-slate-700">{item.ClassDate?.slice(5).replace("-", "/")}</p>
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -745,7 +746,7 @@ function RoomDetailModal({ room, onClose }) {
                 {loadingLogs ? (
                     <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : statusLogs.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนสถานะ
                     </p>
                 ) : (
@@ -756,7 +757,7 @@ function RoomDetailModal({ room, onClose }) {
                                     <p className="text-xs font-semibold text-slate-700">
                                         {log.OldStatusName || "—"} → {log.NewStatusName}
                                     </p>
-                                    <span className="text-[11px] text-slate-400">
+                                    <span className="text-[11px] text-slate-500">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
@@ -875,7 +876,7 @@ export default function AdminRooms() {
                     <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
                 </div>
                 <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
                     <Plus className="h-4 w-4" /> เพิ่มห้องเรียน
                 </button>
             </div>
@@ -910,7 +911,7 @@ export default function AdminRooms() {
                     </div>
                     <div className="relative">
                         <select value={filterFloor} onChange={e => setFilterFloor(e.target.value)}
-                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[140px]">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[140px] max-w-full md:max-w-[240px] truncate">
                             <option value="all">ทุกชั้น</option>
                             {floors.map(f => <option key={f} value={f}>ชั้น {f}</option>)}
                         </select>
@@ -918,14 +919,14 @@ export default function AdminRooms() {
                     </div>
                     <div className="relative">
                         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[150px]">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none w-full md:w-auto md:min-w-[150px] max-w-full md:max-w-[240px] truncate">
                             <option value="all">ทุกสถานะ</option>
                             {statuses.map(s => <option key={s.Status_Room_Id} value={s.Status_Room_Id}>{s.Status_Room_Name}</option>)}
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {rooms.length} ห้อง</p>
+                <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {rooms.length} ห้อง</p>
             </div>
 
             {filtered.length === 0 ? (

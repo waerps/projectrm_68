@@ -22,6 +22,7 @@ import {
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
 
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
@@ -268,7 +269,7 @@ export default function StudentProfile() {
                 <X className="h-3.5 w-3.5" />
                 ยกเลิก
               </button>
-              <button
+              <button aria-label="บันทึก"
                 onClick={handleSave}
                 disabled={isSaving}
                 className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
@@ -301,7 +302,7 @@ export default function StudentProfile() {
                     onChange={handleFileChange}
                   />
                 </div>
-                <button
+                <button aria-label="เปลี่ยนรูป"
                   onClick={() => fileInputRef.current.click()}
                   disabled={isUploading}
                   className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100 disabled:cursor-wait disabled:opacity-70"
@@ -429,7 +430,7 @@ export default function StudentProfile() {
               onChange={handleChange}
             />
             <div className="py-3">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 หมายเหตุ
               </span>
               {isEditing ? (
@@ -457,7 +458,7 @@ export default function StudentProfile() {
             <InfoRow label="ชื่อผู้ปกครอง" value={formData.parentName} isEditing={false} />
             <InfoRow label="ความสัมพันธ์" value={formData.parentRelationship} isEditing={false} />
             <InfoRow label="เบอร์โทร" value={formData.parentPhone} isEditing={false} />
-            <p className="mt-4 text-xs text-slate-400 text-center">
+            <p className="mt-4 text-xs text-slate-500 text-center">
               * ข้อมูลผู้ปกครองแก้ไขได้จากฝ่ายบริหารเท่านั้น
             </p>
           </SectionCard>
@@ -496,7 +497,7 @@ function SectionCard({ title, icon, children, isEditing }) {
 function InfoRow({ label, value, displayValue, name, isEditing, onChange, type = "text" }) {
   return (
     <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide shrink-0">
         {label}
       </span>
       <div className="flex-1 text-right">
@@ -549,7 +550,7 @@ function ValidationModal({ fields, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-bold text-white hover:bg-orange-600 active:scale-95 transition-all shadow-sm"
+            className={`${BTN.primary} w-full rounded-xl py-2.5 text-sm font-bold active:scale-95 transition-all`}
           >
             รับทราบ แก้ไขต่อ
           </button>

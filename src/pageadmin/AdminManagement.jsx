@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 
@@ -75,7 +76,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-500">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -84,7 +85,7 @@ function ImageUpload({ value, onChange, showToast }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-500 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -165,7 +166,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
           <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
             {form.username || "—"}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้ · เปลี่ยนรหัสผ่านได้จากปุ่ม "รีเซ็ตรหัสผ่าน" ในตาราง</p>
+          <p className="text-[11px] text-slate-500 mt-1">ไม่สามารถแก้ไข Username ได้ · เปลี่ยนรหัสผ่านได้จากปุ่ม "รีเซ็ตรหัสผ่าน" ในตาราง</p>
         </div>
       ) : (
         <div className="border border-orange-100 rounded-xl p-4 space-y-3 bg-orange-50/40">
@@ -188,7 +189,7 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
                   placeholder="รหัสผ่าน"
                   autoComplete="new-password"
                 />
-                <button type="button" onClick={() => setShowPwd(v => !v)}
+                <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -200,11 +201,11 @@ function AdminForm({ initial = {}, onSave, onCancel, isSubmitting, showToast }) 
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button onClick={submit} disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+        <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting}
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
@@ -242,25 +243,25 @@ function ResetPasswordModal({ admin, onClose, showToast }) {
             <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
             <p className="text-xs text-white/80 truncate">{admin.Nickname || `${admin.Firstname} ${admin.Lastname}`}</p>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="relative mb-4">
           <input type={show ? "text" : "password"} value={pwd} onChange={e => setPwd(e.target.value)}
             className={inp + " pr-10"} placeholder="รหัสผ่านใหม่" autoComplete="new-password" />
-          <button type="button" onClick={() => setShow(v => !v)}
+          <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShow(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
           </button>
         </div>
@@ -290,7 +291,7 @@ function ConfirmStatusModal({ admin, nextIsActive, onConfirm, onCancel, isSubmit
         )}
         <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isSubmitting}
-            className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
           <button onClick={onConfirm} disabled={isSubmitting}
@@ -416,13 +417,13 @@ export default function AdminManagement() {
           <p className={PAGE_SUBTITLE}>ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน แต่ละคนมีบัญชีของตัวเอง</p>
         </div>
         <button onClick={() => setShowAddModal(true)}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
+          className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}>
           <Plus className="h-4 w-4" /> เพิ่มผู้ดูแลระบบ
         </button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "ผู้ดูแลระบบทั้งหมด", value: admins.length, color: "bg-orange-500" },
           { label: "ใช้งานอยู่", value: activeCount, color: "bg-emerald-500" },
@@ -449,7 +450,7 @@ export default function AdminManagement() {
             className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
           />
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {admins.length} คน</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {admins.length} คน</p>
       </div>
 
       {/* Table */}
@@ -473,7 +474,7 @@ export default function AdminManagement() {
                       <span className="truncate">{displayName}</span>
                       {isSelf && <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-full text-[11px] font-bold">คุณ</span>}
                     </p>
-                    {a.Nickname && <p className="text-xs text-slate-400 truncate">{a.Firstname} {a.Lastname}</p>}
+                    {a.Nickname && <p className="text-xs text-slate-500 truncate">{a.Firstname} {a.Lastname}</p>}
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                       {a.PhoneNo && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-slate-400" />{a.PhoneNo}</span>}
                       <span className="font-mono break-all">{a.Username}</span>
@@ -493,7 +494,7 @@ export default function AdminManagement() {
                     className="min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl">
                     <KeyRound className="h-4 w-4" /> รีเซ็ตรหัสผ่าน
                   </button>
-                  <button onClick={() => setStatusChange({ admin: a, nextIsActive: !a.IsActive })}
+                  <button aria-label="ปฏิเสธ" onClick={() => setStatusChange({ admin: a, nextIsActive: !a.IsActive })}
                     disabled={isSelf && a.IsActive}
                     className={`min-w-0 min-h-10 py-1.5 px-1 flex items-center justify-center gap-1 text-[11px] leading-tight text-center font-bold rounded-xl border disabled:opacity-40 ${a.IsActive ? "text-red-500 bg-red-50 border-red-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>
                     {a.IsActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
@@ -535,7 +536,7 @@ export default function AdminManagement() {
                               )}
                             </p>
                             {a.Nickname && (
-                              <p className="text-xs text-slate-400">{a.Firstname} {a.Lastname}</p>
+                              <p className="text-xs text-slate-500">{a.Firstname} {a.Lastname}</p>
                             )}
                           </div>
                         </div>
@@ -568,7 +569,7 @@ export default function AdminManagement() {
                           </button>
                           <button
                             onClick={() => setResetPwdAdmin(a)}
-                            className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition"
+                            className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="รีเซ็ตรหัสผ่าน">
                             <KeyRound className="h-3.5 w-3.5" />
                           </button>
@@ -578,7 +579,7 @@ export default function AdminManagement() {
                             title={isSelf && a.IsActive ? "ไม่สามารถปิดบัญชีของตัวเองได้" : (a.IsActive ? "ปิดใช้งานบัญชี" : "เปิดใช้งานบัญชี")}
                             className={`p-1.5 rounded-lg border transition disabled:opacity-40 disabled:cursor-not-allowed ${a.IsActive
                               ? "text-red-500 bg-red-50 border-red-100 hover:bg-red-100"
-                              : "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"}`}>
+                              : "text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100"} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}>
                             {a.IsActive ? <UserX className="h-3.5 w-3.5" /> : <UserCheck className="h-3.5 w-3.5" />}
                           </button>
                         </div>

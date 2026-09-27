@@ -7,6 +7,7 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 
 export default function CoursesPage() {
   console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
@@ -19,6 +20,7 @@ export default function CoursesPage() {
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [viewMode, setViewMode] = useState('primary');
   const [acceptedClasses, setAcceptedClasses] = useState([]);
 
@@ -129,6 +131,7 @@ export default function CoursesPage() {
         }
       } catch (error) {
         console.error("Error fetching courses:", error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -145,8 +148,8 @@ export default function CoursesPage() {
 
   const stats = [
     { label: "คอร์สทั้งหมด", value: courses.length.toString(), icon: BookOpen, color: "bg-blue-500" },
-    { label: "นักเรียนรวม", value: totalStudents.toString(), icon: Users, color: "bg-emerald-500" },
-    { label: "ชั่วโมงสอน", value: totalHoursAllCourses.toString(), icon: Clock, color: "bg-amber-500" },
+    { label: "นักเรียนรวม", value: Number(totalStudents || 0).toLocaleString("th-TH"), icon: Users, color: "bg-emerald-500" },
+    { label: "ชั่วโมงสอน", value: Number(totalHoursAllCourses || 0).toLocaleString("th-TH", { maximumFractionDigits: 1 }), icon: Clock, color: "bg-amber-500" },
   ];
   
   const visibleStats = viewMode === 'primary' ? stats : [
@@ -163,6 +166,7 @@ export default function CoursesPage() {
   });
 
   if (loading) return <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." />;
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลคอร์สไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>;
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -179,17 +183,17 @@ export default function CoursesPage() {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+        <div className="mb-6 grid grid-cols-1 min-[360px]:grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
           {visibleStats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.color}`}>
+              <div key={idx} className="flex min-w-0 items-center gap-3 sm:gap-4 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+                <div className={`flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl ${stat.color}`}>
                   <Icon className="h-6 w-6 text-white" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-slate-600 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-2xl font-bold text-slate-900 truncate">{stat.value}</p>
                 </div>
               </div>
             );
@@ -210,7 +214,7 @@ export default function CoursesPage() {
               />
             </div>
             <select
-              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px] max-w-full md:max-w-[240px] truncate"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -256,7 +260,7 @@ export default function CoursesPage() {
                       <span className="flex min-w-0 items-center gap-2"><Paperclip className="h-4 w-4 shrink-0" /><span className="truncate">{item.attachmentFileName}</span></span>
                       <span>เปิดเอกสาร</span>
                     </a>
-                  ) : <p className="text-xs text-slate-400">ไม่มีเอกสารแนบสำหรับคลาสนี้</p>}
+                  ) : <p className="text-xs text-slate-500">ไม่มีเอกสารแนบสำหรับคลาสนี้</p>}
                 </div>
               </article>
             ))}
@@ -285,7 +289,7 @@ export default function CoursesPage() {
 
                       {course.subjects && course.subjects.length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <span className="text-[11px] text-slate-400 font-semibold">วิชาที่รับผิดชอบ:</span>
+                          <span className="text-[11px] text-slate-500 font-semibold">วิชาที่รับผิดชอบ:</span>
                           {course.subjects.map((s) => (
                             <span
                               key={s.subjectId}
@@ -416,7 +420,7 @@ export default function CoursesPage() {
                   {/* Close */}
                   <button
                     onClick={() => setSubjectModal(null)}
-                    aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition"
+                    aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                   >
                     <X size={20} />
                   </button>
@@ -469,7 +473,7 @@ export default function CoursesPage() {
                         <p className="text-sm font-semibold text-slate-800 group-hover:text-orange-700">
                           {subject.subjectName}
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-400">
+                        <p className="mt-0.5 text-xs text-slate-500">
                           คลิกเพื่อจัดการวิชานี้
                         </p>
                       </div>

@@ -66,7 +66,7 @@ function RateBar({ rate }) {
 // ── Status Badge ─────────────────────────────────────────────
 // function StatusBadge({ rate }) {
 //   if (rate === null || rate === undefined) return (
-//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200">
+//     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200">
 //       <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />ยังไม่มีข้อมูล
 //     </span>
 //   );
@@ -249,7 +249,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition shrink-0">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -271,7 +271,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
               <select
                 value={modalMonthFilter}
                 onChange={e => setModalMonthFilter(e.target.value)}
-                className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+                className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none min-w-0 max-w-full md:max-w-[240px] truncate"
               >
                 <option value="all">ทุกเดือน</option>
                 {monthOptions.map(([key, label]) => (
@@ -282,7 +282,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
             <select
               value={modalPhotoFilter}
               onChange={e => setModalPhotoFilter(e.target.value)}
-              className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0"
+              className="px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none min-w-0 max-w-full md:max-w-[240px] truncate"
             >
               <option value="all">ทุกสถานะรูป</option>
               <option value="complete">รูปครบ</option>
@@ -300,7 +300,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
           </div>
         )}
         {sessions.length > 0 && (
-          <p className="px-4 sm:px-6 pt-2 text-[11px] text-slate-400 shrink-0">
+          <p className="px-4 sm:px-6 pt-2 text-[11px] text-slate-500 shrink-0">
             แสดง {filteredSessions.length} จาก {sessions.length} คาบ
           </p>
         )}
@@ -338,13 +338,13 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   {/* Date */}
                   <div className="w-20 sm:w-24 shrink-0">
                     <p className="text-xs font-semibold text-slate-800">{formatDate(session.ClassDate)}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{session.StartTime} – {session.EndTime}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">{session.StartTime} – {session.EndTime}</p>
                   </div>
 
                   {/* Subject */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-slate-800 truncate">{session.SubjectName || session.CourseName}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{session.CourseName} · {session.RoomDetail || 'ไม่ระบุห้อง'}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{session.CourseName} · {session.RoomDetail || 'ไม่ระบุห้อง'}</p>
                   </div>
 
                   {/* Photo pill */}
@@ -368,7 +368,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                   {/* Students */}
                   <div className="w-12 sm:w-14 text-right shrink-0">
                     <p className="text-sm font-bold text-slate-700">{totalCount > 0 ? `${presentCount}/${totalCount}` : '—'}</p>
-                    <p className="text-[11px] text-slate-400">นักเรียน</p>
+                    <p className="text-[11px] text-slate-500">นักเรียน</p>
                   </div>
 
                   {isExpanded
@@ -403,7 +403,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                           ) : (
                             <div className="h-28 rounded-xl border-2 border-dashed border-slate-200 bg-white flex flex-col items-center justify-center gap-1.5">
                               <Camera className="w-6 h-6 text-slate-300" />
-                              <span className="text-xs text-slate-400">{placeholder}</span>
+                              <span className="text-xs text-slate-500">{placeholder}</span>
                             </div>
                           )}
                         </div>
@@ -463,18 +463,18 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
                 –{Math.min(modalPage * SESSIONS_PER_PAGE, filteredSessions.length)} จาก {filteredSessions.length} คาบ
               </p>
               <div className="flex items-center gap-1.5">
-                <button
+                <button aria-label="ก่อนหน้า"
                   onClick={() => setModalPage(p => Math.max(1, p - 1))}
                   disabled={modalPage === 1}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <span className="text-xs font-bold text-slate-600 px-2">{modalPage} / {totalModalPages}</span>
-                <button
+                <button aria-label="ถัดไป"
                   onClick={() => setModalPage(p => Math.min(totalModalPages, p + 1))}
                   disabled={modalPage === totalModalPages}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -744,7 +744,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={selectedMonthNum}
             onChange={e => setSelectedMonthNum(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">ทุกเดือน</option>          {/* ★ */}
             {MONTH_NAMES_TH.map((name, i) => (
@@ -754,7 +754,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm"
+            className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none transition shadow-sm max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">ทุกปี</option>              {/* ★ */}
             {YEAR_OPTIONS.map(y => (
@@ -774,7 +774,7 @@ export default function TutorAttendanceDashboard() {
       </div>
 
       {/* ── Stats Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -783,7 +783,7 @@ export default function TutorAttendanceDashboard() {
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
               <p className="text-xl font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-              {sub && <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>}
+              {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
             </div>
           </div>
         ))}
@@ -815,7 +815,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
-            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[170px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none min-w-0 md:min-w-[170px] max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">ทุกวิชา ({allSubjectCount})</option>
             {allSubjectNames.map(sub => (
@@ -827,7 +827,7 @@ export default function TutorAttendanceDashboard() {
           {/* <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[180px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none min-w-0 md:min-w-[180px] max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">ทุกระดับสถานะ ({baseForStatusCount.length})</option>
             <option value="normal">ปกติ ({normalCount})</option>
@@ -840,7 +840,7 @@ export default function TutorAttendanceDashboard() {
           <select
             value={filterPhotoIssue}
             onChange={e => setFilterPhotoIssue(e.target.value)}
-            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none shrink-0 md:min-w-[190px]"
+            className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-600 focus:ring-2 focus:ring-orange-400 outline-none min-w-0 md:min-w-[190px] max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">ทั้งหมด ({baseForPhotoCount.length})</option>
             <option value="complete">มีรูปครบ ({completePhotoCount})</option>
@@ -848,7 +848,7 @@ export default function TutorAttendanceDashboard() {
             <option value="no_data">ยังไม่มีข้อมูล ({noDataPhotoCount})</option>
           </select>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           แสดง {processed.length} จาก {tutors.length} คน
         </p>
       </div>
@@ -880,7 +880,7 @@ export default function TutorAttendanceDashboard() {
                     <TutorAvatar tutor={t} idx={idx} />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-slate-900 text-sm truncate">{t.Nickname}</p>
-                      <p className="text-[11px] text-slate-400 truncate">{t.Firstname} {t.Lastname}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{t.Firstname} {t.Lastname}</p>
                     </div>
                     <button onClick={(e) => handleViewDetail(t, e)}
                       className="shrink-0 inline-flex items-center gap-1.5 h-10 px-3 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
@@ -1006,7 +1006,7 @@ export default function TutorAttendanceDashboard() {
                         <TutorAvatar tutor={t} idx={idx} />
                         <div>
                           <p className="font-semibold text-slate-900 text-sm">{t.Nickname}</p>
-                          <p className="text-[11px] text-slate-400">{t.Firstname} {t.Lastname}</p>
+                          <p className="text-[11px] text-slate-500">{t.Firstname} {t.Lastname}</p>
                         </div>
                       </div>
                     </td>
@@ -1211,7 +1211,7 @@ function DrillDownModal({ info, onClose }) {
               · ขาด {info.count} ครั้ง
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1310,7 +1310,7 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
             <p className="text-base text-white font-bold">{tutor.Nickname}</p>
             <p className="text-white/80 text-xs mt-0.5">ปล่อยคลาสทั้งหมด {tutor.ReleaseCount} ครั้ง</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1321,7 +1321,7 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
               กำลังโหลด...
             </div>
           ) : rows.length === 0 ? (
-            <p className="text-center py-16 text-sm text-slate-400">ไม่พบรายการ</p>
+            <p className="text-center py-16 text-sm text-slate-500">ไม่พบรายการ</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {rows.map(r => (
@@ -1403,17 +1403,17 @@ function TutorReleaseRanking({ selectedMonth }) {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900">ติวเตอร์ที่ปล่อยคลาสบ่อยที่สุด</h2>
-          <p className="text-xs text-slate-400 mt-0.5">คลิกเพื่อดูรายละเอียดแต่ละครั้ง</p>
+          <p className="text-xs text-slate-500 mt-0.5">คลิกเพื่อดูรายละเอียดแต่ละครั้ง</p>
         </div>
         <div className="divide-y divide-slate-100">
           {data.tutors.slice(0, 5).map((t, i) => (
             <button key={t.AdminId} onClick={() => setDetailTutor(t)}
               className="w-full flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 hover:bg-amber-50/30 transition text-left">
-              <span className="text-xs font-bold text-slate-400 w-5">{i + 1}</span>
+              <span className="text-xs font-bold text-slate-500 w-5">{i + 1}</span>
               <TutorAvatar tutor={t} idx={i} className="w-9 h-9 rounded-xl" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{t.Nickname}</p>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-500">
                   รับคืนแล้ว {t.AcceptedCount} · ไม่มีคนรับ {t.UnfilledCount}
                 </p>
               </div>
@@ -1515,7 +1515,7 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
             <div className="min-w-0">
               <p className="text-[11px] text-slate-500 font-medium">{label}</p>
               <p className="text-base font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>
             </div>
           </div>
         ))}
@@ -1654,7 +1654,7 @@ function AbsenceHeatmap({ selectedMonth }) {
         <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-slate-900">Heatmap การขาดสอนรายสัปดาห์</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               คลิกที่ช่องเพื่อดูรายละเอียดคาบที่ขาด
               {selectedMonth ? ` · ${selectedMonth.label}` : ' · ทุกช่วงเวลา'}
             </p>
@@ -1694,7 +1694,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                             {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>}
                           </span>
                           {allFuture ? (
-                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-400">
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
                               ยังไม่ถึง
                             </span>
                           ) : wTotal > 0 ? (
@@ -1736,7 +1736,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                 {tutors.length === 0 ? (
                   <tr>
                     <td colSpan={weeks.length * 7 + 2}
-                      className="text-center py-10 text-slate-400 text-sm">
+                      className="text-center py-10 text-slate-500 text-sm">
                       ไม่มีการขาดสอนในช่วงนี้
                     </td>
                   </tr>
@@ -1748,7 +1748,7 @@ function AbsenceHeatmap({ selectedMonth }) {
                           <TutorAvatar tutor={t} idx={idx} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-slate-800 truncate max-w-[80px] sm:max-w-none">{t.Nickname}</p>
-                            <p className="text-[11px] text-slate-400 truncate max-w-[80px] sm:max-w-none">{t.Firstname}</p>
+                            <p className="text-[11px] text-slate-500 truncate max-w-[80px] sm:max-w-none">{t.Firstname}</p>
                           </div>
                         </div>
                       </td>
@@ -1869,7 +1869,7 @@ function AbsenceHeatmap({ selectedMonth }) {
               </div>
             ))}
           </div>
-          <span className="text-[11px] text-slate-400">* คลิกที่ช่องสีเพื่อดูรายละเอียดคาบ</span>
+          <span className="text-[11px] text-slate-500">* คลิกที่ช่องสีเพื่อดูรายละเอียดคาบ</span>
         </div>
       </div>
 

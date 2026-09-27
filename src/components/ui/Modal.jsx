@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -19,13 +19,41 @@ const SIZES = {
   "3xl": "sm:max-w-5xl",
 };
 
+const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function ModalShell({ onClose, size = "md", closeOnBackdrop = false, className = "", z = "z-50", children }) {
+  const panelRef = useRef(null);
+
+  // Esc เพื่อปิด + วน Tab อยู่ในกล่อง (focus trap)
   useEffect(() => {
-    if (!onClose) return undefined;
-    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e) => {
+      if (e.key === "Escape" && onClose) { onClose(); return; }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const items = [...panelRef.current.querySelectorAll(FOCUSABLE)].filter((el) => el.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // เปิดแล้ว: ย้ายโฟกัสเข้ากล่อง + ล็อกการเลื่อนหน้าหลัง · ปิดแล้ว: คืนโฟกัสเดิม
+  useEffect(() => {
+    const prevFocus = document.activeElement;
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) {
+      const target = panel.querySelector("[autofocus]") || panel.querySelector(FOCUSABLE) || panel;
+      target.focus({ preventScroll: true });
+    }
+    return () => {
+      document.documentElement.style.overflow = prevOverflow;
+      if (prevFocus && typeof prevFocus.focus === "function") prevFocus.focus({ preventScroll: true });
+    };
+  }, []);
 
   return (
     <div
@@ -33,7 +61,9 @@ export function ModalShell({ onClose, size = "md", closeOnBackdrop = false, clas
       onClick={closeOnBackdrop && onClose ? onClose : undefined}
     >
       <div
-        className={`w-full ${SIZES[size] || SIZES.md} max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl ${className}`}
+        className={`w-full ${SIZES[size] || SIZES.md} max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden outline-none overscroll-contain bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl ${className}`}
+        ref={panelRef}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

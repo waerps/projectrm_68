@@ -120,7 +120,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
             </Badge>
           </div>
           <p className="font-semibold text-slate-900">{typeMeta?.label || i.IncidentTypeId}</p>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
             <Clock className="h-3 w-3" /> {formatDateTime(i.Created_at)}
           </p>
         </div>
@@ -135,7 +135,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <p className="font-semibold text-slate-900 break-words">
               {i.IsAnonymous ? "ไม่เปิดเผยตัวตน" : (i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`)}
-              <span className="ml-2 text-xs font-normal text-slate-400">
+              <span className="ml-2 text-xs font-normal text-slate-500">
                 ({i.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"})
               </span>
             </p>
@@ -441,7 +441,7 @@ export default function AdminIncidents() {
             </button>
           )}
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {incidents.length} เคส</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {incidents.length} เคส</p>
       </div>
 
       {/* Table */}
@@ -472,7 +472,7 @@ export default function AdminIncidents() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900 text-sm leading-snug">{typeMeta?.label || inc.IncidentTypeId}</p>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                       #{String(inc.IncidentId).padStart(4, "0")} · <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
                     </p>
                   </div>
@@ -489,7 +489,7 @@ export default function AdminIncidents() {
                   <p className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-slate-400">ผู้แจ้ง</span>
                     <span className="font-medium text-slate-700">{reporterName}</span>
-                    <span className="text-[11px] text-slate-400">· {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}</span>
+                    <span className="text-[11px] text-slate-500">· {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}</span>
                   </p>
                   {(inc.TutorFirstname || inc.CourseName) && (
                     <div className="flex flex-wrap gap-1">
@@ -545,8 +545,8 @@ export default function AdminIncidents() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 text-sm truncate">{typeMeta?.label || inc.IncidentTypeId}</p>
-                            <p className="text-[11px] text-slate-400">#{String(inc.IncidentId).padStart(4, "0")}</p>
-                            <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <p className="text-[11px] text-slate-500">#{String(inc.IncidentId).padStart(4, "0")}</p>
+                            <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                               <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
                             </p>
                           </div>
@@ -557,7 +557,7 @@ export default function AdminIncidents() {
                       <td className="px-4 py-3">
                         <p className="text-sm text-slate-700 truncate max-w-[160px]">{reporterName}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[11px] text-slate-400">
+                          <span className="text-[11px] text-slate-500">
                             {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}
                           </span>
                           {!!inc.IsAnonymous && (

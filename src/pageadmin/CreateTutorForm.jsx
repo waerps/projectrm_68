@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 const val = (v) => (v === "" || v === undefined ? null : v);
 
@@ -258,7 +259,7 @@ export default function CreateTutorForm() {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-2xl bg-orange-500 px-8 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-200 transition hover:bg-orange-600 disabled:opacity-60"
+              className={`${BTN.primary} rounded-2xl px-8 py-2.5 text-sm font-bold shadow-md shadow-orange-200 transition disabled:opacity-60`}
             >
               {loading ? "กำลังสร้างบัญชี..." : "สร้างบัญชี Tutor"}
             </button>

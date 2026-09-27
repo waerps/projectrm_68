@@ -10,6 +10,7 @@ import {
 import {
   INCIDENT_CATEGORIES, getIncidentTypeById, getSeverityMeta, CRITICAL_SAFETY_NOTICE,
 } from "../config/incidentTypes";
+import { BTN } from "./ui/tokens";
 
 const API = `${API_URL}/api/incidents`;
 
@@ -146,7 +147,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         )}
 
         <button onClick={onClose}
-          className="w-full py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition text-sm">
+          className={`${BTN.primary} w-full py-2.5 rounded-xl font-bold transition text-sm`}>
           ปิดหน้าต่าง
         </button>
       </div>
@@ -169,7 +170,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${meta.text}`}>{cat.label}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   {cat.types.map(t => t.label).join(" · ")}
                 </p>
               </div>
@@ -184,7 +185,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
   return (
     <div className="space-y-5">
       <button onClick={() => setStep(1)}
-        className="flex items-center gap-1 text-xs text-slate-400 hover:text-orange-600 transition">
+        className="flex items-center gap-1 text-xs text-slate-500 hover:text-orange-600 transition">
         <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนหมวดหมู่
       </button>
 
@@ -221,7 +222,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           placeholder="อธิบายเหตุการณ์ที่เกิดขึ้น วันเวลา และรายละเอียดที่เกี่ยวข้อง..."
           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition resize-none"
         />
-        <p className="text-[11px] text-slate-400 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
+        <p className="text-[11px] text-slate-500 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
       </div>
 
       <div className="space-y-3">
@@ -286,7 +287,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
             {isAnonymous ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             แจ้งแบบไม่เปิดเผยตัวตน
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
             จะไม่มีใครเห็นว่าใครเป็นผู้แจ้ง ไม่ว่าจะเป็น{role === "tutor" ? "นักเรียน" : "ติวเตอร์/คู่กรณี"}
             หรือแม้แต่ทีมแอดมิน — แอดมินจะเห็นแค่เนื้อหาที่แจ้งเท่านั้น ไม่เห็นชื่อหรือช่องทางติดต่อของคุณเลย
           </p>
@@ -311,11 +312,11 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} disabled={submitting}
-          className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
-        <button onClick={submit} disabled={submitting || !incidentTypeId}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+        <button aria-label="ยืนยัน" onClick={submit} disabled={submitting || !incidentTypeId}
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ส่งเรื่อง</>}
         </button>
       </div>

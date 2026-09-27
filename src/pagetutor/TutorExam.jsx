@@ -11,6 +11,8 @@ import {
 } from "../utils/examShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
+import EmptyState from "../components/ui/EmptyState";
 
 function Badge({ className, children }) {
   return (
@@ -76,7 +78,7 @@ export default function TutorExam() {
       </div>
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
+        <div className="min-w-0">
           <h1 className={`${PAGE_TITLE} break-words`}>
             จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
           </h1>
@@ -96,10 +98,13 @@ export default function TutorExam() {
       </div>
 
       {loading && <Spinner block label="กำลังโหลดข้อมูลการสอบ..." />}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <ErrorState description={error} />}
 
       {/* Exam Cards — Pre / Mid / Post, always exist for this Subject */}
-      {!loading && !error && (
+      {!loading && !error && exams.length === 0 && (
+        <EmptyState icon={FileQuestion} title="ยังไม่มีชุดข้อสอบของวิชานี้" description="ชุดข้อสอบก่อนเรียน / กลางภาค / หลังเรียนจะแสดงที่นี่เมื่อถูกสร้าง" />
+      )}
+      {!loading && !error && exams.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {exams.map((exam) => {
             const meta = EXAM_TYPES.find((t) => t.value === exam.type);
@@ -121,7 +126,7 @@ export default function TutorExam() {
                   </Badge>
                 </div>
 
-                <p className="text-sm text-slate-400 mb-4">{meta?.sub}</p>
+                <p className="text-sm text-slate-500 mb-4">{meta?.sub}</p>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div className="flex items-center gap-2 text-sm text-slate-600">

@@ -15,6 +15,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText, GraduationCap as LuGraduationCap, School as LuSchool } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -280,7 +281,7 @@ export default function TutorStudents() {
                             </p>
                         </div>
                         <div className="relative group self-start md:self-auto">
-                            <button className="flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 shadow-sm transition font-medium">
+                            <button className={`${BTN.primary} flex items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
                             <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
@@ -301,7 +302,7 @@ export default function TutorStudents() {
                                 className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" />
                         </div>
                         <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
-                            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px]">
+                            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px] max-w-full md:max-w-[240px] truncate">
                             <option value="name">เรียงตามชื่อ</option>
                             <option value="attendance">เรียงตามการเข้าเรียน</option>
                             <option value="gpa">เรียงตามเกรด</option>
@@ -325,9 +326,9 @@ export default function TutorStudents() {
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {getLowAttendanceStudents().map(s => (
-                                <div key={s.id} className="flex items-center gap-2 bg-white border border-red-200 rounded-lg px-3 py-1.5">
-                                    <span className="text-xs font-bold text-red-700">{s.name}</span>
-                                    <span className="text-xs text-red-400">{s.totalAttended}/{s.totalClassHeld} คาบ ({getAttendanceRate(s)}%)</span>
+                                <div key={s.id} className="flex max-w-full min-w-0 items-center gap-2 bg-white border border-red-200 rounded-xl px-3 py-1.5">
+                                    <span className="min-w-0 truncate text-xs font-bold text-red-700">{s.name}</span>
+                                    <span className="shrink-0 whitespace-nowrap text-xs text-red-500">{s.totalAttended}/{s.totalClassHeld} คาบ ({getAttendanceRate(s)}%)</span>
                                 </div>
                             ))}
                         </div>
@@ -351,7 +352,7 @@ export default function TutorStudents() {
                                         <div className="h-14 w-14 sm:h-16 sm:w-16 overflow-hidden rounded-xl border-2 border-orange-200 shrink-0 bg-white">
                                             <StudentAvatar student={student} />
                                         </div>
-                                        <div>
+                                        <div className="min-w-0">
                                             <h3 className="text-lg font-bold text-slate-900 break-words">{student.name}</h3>
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold border border-red-200 mt-1">
@@ -386,7 +387,7 @@ export default function TutorStudents() {
                                         )}
                                         <button
                                             onClick={() => navigate(`/tutor/students/detail?courseId=${courseId}&studentId=${student.id}`)}
-                                            className="flex items-center gap-1.5 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold rounded-xl transition"
+                                            className={`${BTN.primary} flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition`}
                                         >
                                             ดูรายละเอียด <ChevronRight className="h-3.5 w-3.5" />
                                         </button>
@@ -398,7 +399,7 @@ export default function TutorStudents() {
                             <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-slate-50">
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
                                     <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">การเข้าเรียน</span></div>
-                                    {getAttendanceRate(student) === null ? <p className="text-xs text-slate-400">ยังไม่มีข้อมูล</p> : (
+                                    {getAttendanceRate(student) === null ? <p className="text-xs text-slate-500">ยังไม่มีข้อมูล</p> : (
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between text-xs">
                                                 <span className="text-slate-600">{student.totalAttended}/{student.totalClassHeld} คาบ</span>
@@ -449,7 +450,7 @@ export default function TutorStudents() {
                                             <p className="text-sm font-bold text-slate-800 leading-relaxed">
                                                 ได้ {fmtScoreNum(student.exam.latest.score)} จากเต็ม {student.exam.latest.max} คะแนน
                                             </p>
-                                            <p className="text-xs text-slate-400 mt-1">
+                                            <p className="text-xs text-slate-500 mt-1">
                                                 สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้ เพราะมีแค่รอบเดียว
                                             </p>
                                         </>

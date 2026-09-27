@@ -4,6 +4,7 @@ import {
   Calendar, Clock, AlertCircle, ChevronRight, Download, Eye, Banknote
 } from 'lucide-react';
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 export default function AdminDashboard() {
   const [dateFilter, setDateFilter] = useState('today');
@@ -66,13 +67,13 @@ export default function AdminDashboard() {
               <p className={PAGE_SUBTITLE}>ภาพรวมสถาบันติวศรเสริม ติวเตอร์</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="px-4 h-10 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400">
+              <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="px-4 h-10 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
                 <option value="today">วันนี้</option>
                 <option value="week">สัปดาห์นี้</option>
                 <option value="month">เดือนนี้</option>
                 <option value="year">ปีนี้</option>
               </select>
-              <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition font-medium">
+              <button className={`${BTN.primary} flex items-center gap-2 px-4 py-2 rounded-xl transition font-medium`}>
                 <Download className="h-4 w-4" />
                 ดาวน์โหลดรายงาน
               </button>
@@ -133,7 +134,7 @@ export default function AdminDashboard() {
                         <span>ครู: {cls.tutor}</span><span>นักเรียน: {cls.students} คน</span><span>{cls.room}</span>
                       </div>
                     </div>
-                    <button className="p-2 hover:bg-white rounded-lg transition"><Eye className="h-4 w-4 text-slate-600" /></button>
+                    <button aria-label="ดูรายละเอียด" className="p-2 hover:bg-white rounded-lg transition"><Eye className="h-4 w-4 text-slate-600" /></button>
                   </div>
                 </div>
               ))}

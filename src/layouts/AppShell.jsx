@@ -76,6 +76,21 @@ export default function AppShell() {
   // เผื่ออนาคตอยากเปิดให้ tutor/admin ด้วย ปรับตรงนี้:
   //   const canUseChat = !isExamPage && !examInProgress                            // เปิดทั้ง 4 บทบาท
   //   const canUseChat = currentRole !== "admin" && !isExamPage && !examInProgress  // เปิดทุกคนยกเว้นแอดมิน
+  // ล็อกการเลื่อนหน้าหลังเมื่อมี popup (พื้นหลังดำ) เปิดอยู่ — ครอบคลุม popup ที่ยังไม่ได้ใช้ ModalShell ด้วย
+  useEffect(() => {
+    const SELECTOR = '.fixed.inset-0[class*="bg-black/"], [aria-modal="true"]'
+    const sync = () => {
+      const open = !!document.querySelector(SELECTOR)
+      if (document.body.style.overflow !== (open ? "hidden" : "")) document.body.style.overflow = open ? "hidden" : ""
+    }
+    let raf = 0
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; sync() }) }
+    const mo = new MutationObserver(schedule)
+    mo.observe(document.body, { childList: true, subtree: true })
+    sync()
+    return () => { mo.disconnect(); cancelAnimationFrame(raf); document.body.style.overflow = "" }
+  }, [])
+
   const canUseChat =
     (currentRole === null || currentRole === "student") && !isExamPage && !examInProgress
 

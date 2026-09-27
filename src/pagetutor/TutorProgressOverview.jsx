@@ -159,7 +159,7 @@ export default function TutorProgressOverview() {
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
-      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+      <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
         <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
         <ChevronRight className="h-4 w-4" />
         <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการ</span>
@@ -177,7 +177,7 @@ export default function TutorProgressOverview() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "คอร์สที่สอน", value: stats.courses, color: "bg-orange-600", icon: BookOpen },
           { label: "วิชาที่สอน", value: stats.subjects, color: "bg-blue-500", icon: BarChart2 },
@@ -211,7 +211,7 @@ export default function TutorProgressOverview() {
             />
           </div>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           แสดง {matchedSubjectCount} จาก {rows.length} วิชา ({courseCards.length} คอร์ส)
         </p>
       </div>
@@ -225,7 +225,7 @@ export default function TutorProgressOverview() {
             {search.trim() ? "ไม่พบคอร์สหรือวิชาที่ค้นหา" : "ยังไม่มีคอร์สที่คุณสอน"}
           </p>
           {!search.trim() && (
-            <p className="text-xs text-slate-400 mt-1">คอร์สจะขึ้นที่นี่เมื่อแอดมินมอบหมายให้คุณสอนในคอร์สแล้ว</p>
+            <p className="text-xs text-slate-500 mt-1">คอร์สจะขึ้นที่นี่เมื่อแอดมินมอบหมายให้คุณสอนในคอร์สแล้ว</p>
           )}
         </div>
       ) : (
@@ -253,7 +253,7 @@ export default function TutorProgressOverview() {
                   </div>
 
                   {c.subjects.length === 0 ? (
-                    <p className="px-4 py-4 text-xs text-slate-400">ไม่มีวิชาที่ตรงกับคำค้นหาในคอร์สนี้</p>
+                    <p className="px-4 py-4 text-xs text-slate-500">ไม่มีวิชาที่ตรงกับคำค้นหาในคอร์สนี้</p>
                   ) : (
                     <div className="divide-y divide-slate-100">
                       {c.subjects.map((s) => (

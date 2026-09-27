@@ -9,6 +9,7 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import UIEmptyState from "../components/ui/EmptyState";
 import { Inbox as LuInbox } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
@@ -50,7 +51,7 @@ function IncidentCard({ incident, showReporter, onClick }) {
                     </div>
 
                     {showReporter && (
-                        <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                             {incident.IsAnonymous ? (
                                 <><EyeOff className="h-3 w-3" /> ไม่เปิดเผยผู้แจ้ง</>
                             ) : (
@@ -91,7 +92,7 @@ function IncidentCard({ incident, showReporter, onClick }) {
                         </div>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-400">
+                    <div className="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-slate-500">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
                         </span>
@@ -138,7 +139,7 @@ export default function TutorIncidents() {
     }
 
     if (error) {
-        return <div className="rounded-xl bg-red-50 p-6 sm:p-10 text-center font-medium text-red-600">{error}</div>;
+        return <ErrorState />;
     }
 
     const list = tab === "mine" ? mine : against;

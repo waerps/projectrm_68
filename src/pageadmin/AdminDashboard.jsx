@@ -96,7 +96,7 @@ function SectionCard({ title, icon: Icon, action, children, className = "" }) {
 function EmptyMini({ text, hint }) {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center py-8">
-      <p className="text-xs text-slate-400">{text}</p>
+      <p className="text-xs text-slate-500">{text}</p>
       {hint && <p className="text-[11px] text-slate-300 mt-1">{hint}</p>}
     </div>
   );
@@ -137,7 +137,7 @@ function InlineStat({ label, value, tone = "slate" }) {
   return (
     <div className="flex-1 text-center">
       <p className={`text-lg font-bold ${toneCls}`}>{value}</p>
-      <p className="text-[11px] text-slate-400 mt-0.5">{label}</p>
+      <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
     </div>
   );
 }
@@ -155,7 +155,7 @@ function StatCard({ label, value, sub, icon, color }) {
       <div className="min-w-0">
         <p className="text-xs text-slate-500 font-medium">{label}</p>
         <p className="text-xl font-bold text-slate-900">{value}</p>
-        {sub && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{sub}</p>}
+        {sub && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>}
       </div>
     </div>
   );
@@ -231,10 +231,10 @@ function ActionSummaryStrip({ items, extraItems = [], onNavigate }) {
               key={item.id}
               onClick={() => onNavigate(item.link)}
               title={item.message}
-              className={`flex items-center justify-between gap-2 pl-2.5 pr-2 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-300 hover:bg-orange-50 ${T.transition} flex-1 min-w-[180px] whitespace-nowrap`}
+              className={`flex items-center justify-between gap-2 pl-2.5 pr-2 py-1.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-300 hover:bg-orange-50 ${T.transition} flex-1 min-w-[180px] max-w-full whitespace-nowrap`}
             >
               <Icon className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-              <span className="text-xs font-semibold text-slate-700">{item.title}</span>
+              <span className="min-w-0 flex-1 truncate text-left text-xs font-semibold text-slate-700">{item.title}</span>
               <span className="text-[11px] font-bold text-orange-700 bg-orange-100 rounded-full px-1.5 py-0.5 shrink-0">
                 {item.count}
               </span>
@@ -302,7 +302,7 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <p className="text-3xl font-bold text-slate-900">{total}</p>
-                  <p className="text-xs text-slate-400">คอร์สทั้งหมด</p>
+                  <p className="text-xs text-slate-500">คอร์สทั้งหมด</p>
               </div>
           </div>
 
@@ -315,7 +315,7 @@ function CourseStatusDonut({ byStatus = [], total = 0 }) {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                           <span className="font-bold text-slate-800">{d.value}</span>
-                          <span className="text-[11px] text-slate-400 w-9 text-right">
+                          <span className="text-[11px] text-slate-500 w-9 text-right">
                               {total ? Math.round((d.value / total) * 100) : 0}%
                           </span>
                       </div>
@@ -429,7 +429,7 @@ export default function AdminDashboard() {
   ].filter(Boolean);
 
   return (
-    <div className="space-y-6 px-4 lg:px-0">
+    <div className="space-y-6 px-4 lg:px-0 overflow-x-clip">
       {/* ── Header ─────────────────────────────────────────────── */}
       <div>
         <h1 className={`${PAGE_TITLE}`}>ภาพรวมสถาบัน</h1>
@@ -595,7 +595,7 @@ export default function AdminDashboard() {
           {/* ── ควรติดตามเป็นพิเศษ — กล่องแยกออกจาก "ทำได้ดี" ชัดเจน ──────── */}
           {students.needsAttention && students.needsAttention.length > 0 ? (
             <div>
-              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                 <AlertTriangle className="h-3.5 w-3.5 text-red-400" /> ควรติดตามเป็นพิเศษ
               </p>
               {students.needsAttention.slice(0, 4).map((s) => (
@@ -623,7 +623,7 @@ export default function AdminDashboard() {
           </div>
           {tutors.topPerformers?.length > 0 && (
             <div className="mb-3">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                 ทำได้ดี <span className="normal-case font-medium text-slate-400">· เช็กอิน ≥ 90%</span>
               </p>
               {tutors.topPerformers.map((t) => (
@@ -639,7 +639,7 @@ export default function AdminDashboard() {
           )}
           {tutors.needsAttention && tutors.needsAttention.length > 0 ? (
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1.5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                 ควรติดตาม <span className="normal-case font-medium text-slate-400">· เช็กอิน &lt; 50% (จาก ≥ 3 คาบ)</span>
               </p>
               {tutors.needsAttention.slice(0, 4).map((t) => (

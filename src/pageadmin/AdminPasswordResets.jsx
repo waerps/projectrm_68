@@ -5,6 +5,8 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { KeyRound, Loader2, Check, Clock, User, Phone } from "lucide-react";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import EmptyState from "../components/ui/EmptyState";
+import { BTN } from "../components/ui/tokens";
 
 // ─── หน้าคำขอ "ลืมรหัสผ่าน" ────────────────────────────────────────────────
 // ระบบนี้ไม่มี email/SMS ให้ผู้ใช้รีเซ็ตรหัสผ่านเอง (ดู routes/auth.routes.js POST
@@ -71,11 +73,9 @@ export default function AdminPasswordResets() {
       ) : (
         <>
           <div className="mb-8">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">รอดำเนินการ ({pending.length})</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">รอดำเนินการ ({pending.length})</p>
             {pending.length === 0 ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
-                ไม่มีคำขอที่รอดำเนินการ
-              </div>
+              <EmptyState icon={KeyRound} title="ไม่มีคำขอที่รอดำเนินการ" description="คำขอรีเซ็ตรหัสผ่านใหม่จะแสดงที่นี่" />
             ) : (
               <div className="space-y-3">
                 {pending.map((r) => (
@@ -95,7 +95,7 @@ export default function AdminPasswordResets() {
                     <button
                       onClick={() => handleResolve(r.RequestId)}
                       disabled={resolvingId === r.RequestId}
-                      className="flex items-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50"
+                      className={`${BTN.primary} flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50`}
                     >
                       {resolvingId === r.RequestId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                       ทำเสร็จแล้ว
@@ -108,14 +108,14 @@ export default function AdminPasswordResets() {
 
           {recentlyDone.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">ทำเสร็จแล้วล่าสุด</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ทำเสร็จแล้วล่าสุด</p>
               <div className="space-y-2">
                 {recentlyDone.map((r) => (
                   <div key={r.RequestId} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">
                     <span className="text-slate-600 break-all">
                       {r.UserType === "admin" ? "แอดมิน/ติวเตอร์" : "นักเรียน"} · {r.Username}
                     </span>
-                    <span className="text-xs text-slate-400">{new Date(r.ResolvedAt).toLocaleString("th-TH")}</span>
+                    <span className="text-xs text-slate-500">{new Date(r.ResolvedAt).toLocaleString("th-TH")}</span>
                   </div>
                 ))}
               </div>

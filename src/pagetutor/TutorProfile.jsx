@@ -5,12 +5,15 @@ import axios from "axios"
 import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
 import { toast } from "../components/ui/dialogs";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
 
 
 export default function TutorProfile() {
     const fileInputRef = useRef(null);
     const [isEditing, setIsEditing] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
+    const [loadError, setLoadError] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [alertModal, setAlertModal] = useState({ show: false, fields: [] })
     const TUTOR_ID = JSON.parse(localStorage.getItem("user"))?.id;
@@ -58,6 +61,7 @@ export default function TutorProfile() {
                 setIsLoading(false);
             } catch (error) {
                 console.error("Error:", error);
+                setLoadError(true);
                 setIsLoading(false);
             }
         };
@@ -135,6 +139,7 @@ export default function TutorProfile() {
             </div>
         </div>
     );
+    if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
 
     return (
         <div className="space-y-6 px-4 lg:px-0">
@@ -156,7 +161,7 @@ export default function TutorProfile() {
                                 <X className="h-3.5 w-3.5" />
                                 ยกเลิก
                             </button>
-                            <button
+                            <button aria-label="บันทึก"
                                 onClick={handleSave}
                                 disabled={isSaving}
                                 className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
@@ -183,7 +188,7 @@ export default function TutorProfile() {
                                     />
                                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                                 </div>
-                                <button
+                                <button aria-label="เปลี่ยนรูป"
                                     onClick={() => fileInputRef.current.click()}
                                     className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100"
                                 >
@@ -305,7 +310,7 @@ export default function TutorProfile() {
                         </div>
 
                         {/* หมายเหตุ */}
-                        <p className="mt-4 text-xs text-slate-400 text-center">
+                        <p className="mt-4 text-xs text-slate-500 text-center">
                             * เรทค่าสอนถูกกำหนดโดยฝ่ายบริหาร
                         </p>
                     </SectionCard>
@@ -351,7 +356,7 @@ function SectionCard({ title, icon, children, isEditing }) {
 function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
     return (
         <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">{label}</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide shrink-0">{label}</span>
             <div className="flex-1 min-w-0 text-right">
                 {isEditing ? (
                     <input
@@ -407,7 +412,7 @@ function ValidationModal({ fields, onClose }) {
                     {/* Button */}
                     <button
                         onClick={onClose}
-                        className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-bold text-white hover:bg-orange-600 active:scale-95 transition-all shadow-sm"
+                        className={`${BTN.primary} w-full rounded-xl py-2.5 text-sm font-bold active:scale-95 transition-all`}
                     >
                         รับทราบ แก้ไขต่อ
                     </button>

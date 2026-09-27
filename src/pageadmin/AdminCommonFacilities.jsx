@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 const API = `${API_URL}/api/admin`;
 
@@ -307,11 +308,11 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
-                    className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                    className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
-                <button onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                <button aria-label="ยืนยัน" onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
+                    className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
             </div>
@@ -378,7 +379,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                 <div>
                     <label className={lbl}>จำนวน ({item.Unit})</label>
                     <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => step(-1)}
+                        <button aria-label="ลด" type="button" onClick={() => step(-1)}
                             className="w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all shrink-0">
                             <Minus className="h-5 w-5" />
                         </button>
@@ -388,7 +389,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             value={targetQty}
                             onChange={e => handleInput(e.target.value)}
                         />
-                        <button type="button" onClick={() => step(1)}
+                        <button aria-label="เพิ่ม" type="button" onClick={() => step(1)}
                             className="w-11 h-11 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all shrink-0">
                             <Plus className="h-5 w-5" />
                         </button>
@@ -401,7 +402,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             <span className="font-bold">({isIncrease ? "+" : ""}{delta})</span>
                         </p>
                     ) : (
-                        <p className="text-xs text-slate-400 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
+                        <p className="text-xs text-slate-500 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
                     )}
                 </div>
 
@@ -440,10 +441,10 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
 
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button onClick={submit} disabled={loading || !hasChange}
+                    <button aria-label="ยืนยัน" onClick={submit} disabled={loading || !hasChange}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-white rounded-xl font-bold disabled:opacity-50 transition text-sm shadow-sm ${isDecrease ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"}`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
@@ -513,11 +514,11 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
                 </div>
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
-                    <button onClick={submit} disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                    <button aria-label="ยืนยัน" onClick={submit} disabled={loading}
+                        className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
                 </div>
@@ -542,7 +543,7 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
                 </div>
                 <div className="flex flex-col-reverse sm:flex-row gap-2">
                     <button onClick={onCancel} disabled={isDeleting}
-                        className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
@@ -573,28 +574,28 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
         <Modal title={item.Name} icon={CIcon} onClose={onClose}>
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">จำนวนคงเหลือ</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">จำนวนคงเหลือ</p>
                     <p className="text-sm text-slate-800 font-semibold">{item.Quantity} {item.Unit}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">หมวดหมู่</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">หมวดหมู่</p>
                     <p className="text-sm text-slate-800 font-semibold">{item.Category_Name}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ (สภาพอุปกรณ์)</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">สถานะ (สภาพอุปกรณ์)</p>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                         {item.Status_Name}
                     </span>
                     {isAssetMultiUnit && (
-                        <p className="text-[11px] text-slate-400 mt-1.5">
+                        <p className="text-[11px] text-slate-500 mt-1.5">
                             * เป็นสถานะภาพรวมของอุปกรณ์ทั้งหมด {item.Quantity} ชิ้น (ยังไม่รองรับสถานะรายชิ้น)
                         </p>
                     )}
                 </div>
                 {item.Location && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
                             <MapPin className="h-3 w-3" /> ตำแหน่ง
                         </p>
                         <p className="text-sm text-slate-800 font-semibold">{item.Location}</p>
@@ -602,7 +603,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 )}
                 {item.Detail && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">รายละเอียดอุปกรณ์</p>
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">รายละเอียดอุปกรณ์</p>
                         <p className="text-sm text-slate-700">{item.Detail}</p>
                     </div>
                 )}
@@ -644,7 +645,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 {loadingLogs ? (
                     <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : logs.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนแปลง
                     </p>
                 ) : (
@@ -657,7 +658,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                                             ? `จำนวน: ${log.Old_Value} → ${log.New_Value} ${item.Unit}`
                                             : `สถานะ: ${statusNameOf(log.Old_Value)} → ${statusNameOf(log.New_Value)}`}
                                     </p>
-                                    <span className="text-[11px] text-slate-400 shrink-0">
+                                    <span className="text-[11px] text-slate-500 shrink-0">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
@@ -690,7 +691,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                 <CIcon className="h-5 w-5 text-orange-500" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-900 leading-snug">{item.Name}</p>
+                                <p className="font-bold text-slate-900 leading-snug break-words">{item.Name}</p>
                                 <p className="text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</p>
                             </div>
                             <div className="text-right shrink-0">
@@ -700,11 +701,11 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                             </div>
                         </button>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
-                                {item.Status_Name}
+                            <span className={`inline-flex min-w-0 items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${st.dot}`} />
+                                <span className="truncate">{item.Status_Name}</span>
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex shrink-0 items-center gap-1.5">
                                 <button onClick={() => onView(item)} title="ดูรายละเอียด" className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-50 border border-orange-100 rounded-xl"><Eye className="h-4 w-4" /></button>
                                 <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป" className="flex items-center justify-center w-10 h-10 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Edit2 className="h-4 w-4" /></button>
                                 <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ" className="flex items-center justify-center w-10 h-10 text-slate-600 bg-slate-50 border border-slate-200 rounded-xl"><AlertTriangle className="h-4 w-4" /></button>
@@ -746,7 +747,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="font-bold text-slate-900 truncate max-w-[180px] sm:max-w-[240px] lg:max-w-none">{item.Name}</p>
-                                                {item.Detail && <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Detail}</p>}
+                                                {item.Detail && <p className="text-[11px] text-slate-500 truncate max-w-[220px]">{item.Detail}</p>}
                                             </div>
                                         </div>
                                     </td>
@@ -772,7 +773,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             {item.Status_Name}
                                         </span>
                                         {isAssetMultiUnit && (
-                                            <p className="text-[11px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
+                                            <p className="text-[11px] text-slate-500 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-slate-500 text-center min-w-[140px] lg:min-w-0">
@@ -787,19 +788,19 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                     <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                         <div className="flex items-center justify-end gap-1.5">
                                             <button onClick={() => onView(item)} title="ดูรายละเอียด"
-                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <Eye className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป"
-                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <Edit2 className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ"
-                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <AlertTriangle className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onDelete(item)} title="นำออกจากรายการ"
-                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
@@ -951,7 +952,7 @@ export default function AdminCommonFacilities() {
                     <p className={PAGE_SUBTITLE}>จัดการทรัพย์สินและวัสดุส่วนกลางที่ใช้ร่วมกันในสถาบัน</p>
                 </div>
                 <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
+                    className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
                     <Plus className="h-4 w-4" /> เพิ่มอุปกรณ์
                 </button>
             </div>
@@ -1020,7 +1021,7 @@ export default function AdminCommonFacilities() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
+                <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
             </div>
 
             {filtered.length === 0 ? (

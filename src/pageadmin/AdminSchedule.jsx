@@ -8,6 +8,7 @@ import {
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbulb as LuLightbulb } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
 
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -429,7 +430,7 @@ export default function AdminSchedule() {
                 setConflicts([]);
                 setShowAdd(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium"
+              className={`${BTN.primary} flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium`}
             >
               <Plus className="h-4 w-4" /> เพิ่มคาบสอน
             </button>
@@ -445,7 +446,7 @@ export default function AdminSchedule() {
         )}
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 gap-3 mb-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
           <StatCard
             icon={<BookOpen className="h-5 w-5 text-white" />}
             bg="bg-blue-500"
@@ -469,7 +470,7 @@ export default function AdminSchedule() {
 
         {/* ── Week Navigation ── */}
         <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3 flex items-center justify-between gap-3">
-          <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
+          <button aria-label="ก่อนหน้า" onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
             <ChevronLeft className="h-5 w-5 text-slate-600" />
           </button>
 
@@ -482,7 +483,7 @@ export default function AdminSchedule() {
             </button>
           </div>
 
-          <button onClick={goNextWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
+          <button aria-label="ถัดไป" onClick={goNextWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
             <ChevronRight className="h-5 w-5 text-slate-600" />
           </button>
         </div>
@@ -615,7 +616,7 @@ export default function AdminSchedule() {
                                 onDelete={() => { setSelected(e); setDeleteScope('this'); setShowDelete(true); }} />
                             ))}
                             <button type="button" onClick={() => addAt(slot)}
-                              className={`w-full ${entries.length ? 'h-8' : 'h-10'} rounded-xl text-xs font-semibold text-slate-400 hover:text-orange-500 flex items-center justify-center gap-1 border border-dashed border-slate-200 bg-white/60`}>
+                              className={`w-full ${entries.length ? 'h-8' : 'h-10'} rounded-xl text-xs font-semibold text-slate-500 hover:text-orange-500 flex items-center justify-center gap-1 border border-dashed border-slate-200 bg-white/60`}>
                               <Plus className="h-3.5 w-3.5" /> เพิ่มคาบ
                             </button>
                           </div>
@@ -747,7 +748,7 @@ export default function AdminSchedule() {
                                   e.stopPropagation();
                                   confirmHolidayThenAdd();
                                 }}
-                                className="w-full py-0.5 text-[11px] text-slate-400 lg:text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded transition flex items-center justify-center gap-0.5"
+                                className="w-full py-0.5 text-[11px] text-slate-500 lg:text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded transition flex items-center justify-center gap-0.5"
                               >
                                 <Plus className="h-2.5 w-2.5" /> เพิ่ม
                               </button>
@@ -851,7 +852,7 @@ export default function AdminSchedule() {
                   setShowDelete(false);
                   setSelected(null);
                 }}
-                className="flex-1 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 text-sm font-bold"
+                className={`${BTN.secondary} flex-1 py-2.5 rounded-xl text-sm font-bold`}
               >
                 ยกเลิก
               </button>
@@ -967,26 +968,26 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
       )}
 
       {entry.TotalOccurrences > 1 && (
-        <p className="text-[11px] text-slate-400">{entry.TotalOccurrences} คาบในเทอม</p>
+        <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบในเทอม</p>
       )}
 
       {/* Actions */}
       <div className="absolute top-1 right-1 opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition flex gap-1">
-        <button
+        <button aria-label="แก้ไข"
           onClick={e => {
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1.5 lg:p-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+          className={`${BTN.primary} p-1.5 lg:p-1 rounded min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}
         >
           <Edit className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
         </button>
-        <button
+        <button aria-label="ลบ"
           onClick={e => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1.5 lg:p-1 bg-red-500 text-white rounded hover:bg-red-600"
+          className="p-1.5 lg:p-1 bg-red-500 text-white rounded hover:bg-red-600 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
         >
           <Trash2 className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
         </button>
@@ -1137,7 +1138,7 @@ function ScheduleModal({
       <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between gap-3 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-4 px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 sticky -top-4 sm:-top-6 z-10">
           <h3 className="text-base font-bold text-white">{title}</h3>
-          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -1367,10 +1368,10 @@ function ScheduleModal({
             ยกเลิก
           </button>
 
-          <button
+          <button aria-label="บันทึก"
             onClick={onSave}
             disabled={saving || !canSave}
-            className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50`}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -1401,7 +1402,7 @@ function Select({ value, onChange, options, placeholder }) {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none"
+      className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none max-w-full md:max-w-[240px] truncate"
     >
       <option value="all">{placeholder}</option>
       {options.map(o => (
@@ -1414,7 +1415,7 @@ function Select({ value, onChange, options, placeholder }) {
 function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-slate-400 p-3 bg-slate-50 rounded-xl">
+      <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-slate-50 rounded-xl">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> กำลังหาห้องที่เหมาะสม...
       </div>
     );
@@ -1422,7 +1423,7 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
 
   if (!data) {
     return (
-      <div className="text-xs text-slate-400 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+      <div className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
         เลือกคอร์ส วัน และเวลาก่อน ระบบจะแนะนำห้องให้อัตโนมัติ
       </div>
     );

@@ -216,7 +216,7 @@ export default function AdminProgressOverview() {
             className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
           />
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           แสดง {filtered.length} จาก {rows.length} รายการ ({courseCards.length} คอร์ส)
         </p>
       </div>
@@ -250,7 +250,7 @@ export default function AdminProgressOverview() {
                         <Users className="h-3.5 w-3.5 text-slate-400" />
                         {c.studentsEnrolled} คน
                       </span>
-                      <span className="text-xs text-slate-400">· {c.items.length} วิชา/คอร์ส</span>
+                      <span className="text-xs text-slate-500">· {c.items.length} วิชา/คอร์ส</span>
                     </div>
                   </div>
 
@@ -295,7 +295,7 @@ export default function AdminProgressOverview() {
 function Breadcrumb({ cameFrom }) {
   const origin = PROGRESS_ORIGINS[cameFrom];
   return (
-    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-400">
+    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
       {origin ? (
         <>
           <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>

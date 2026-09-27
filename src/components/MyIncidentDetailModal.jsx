@@ -54,7 +54,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <h3 className="text-base font-bold text-white">รายละเอียดที่แจ้ง</h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
+          <button aria-label="ปิด" onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -74,7 +74,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
                     {statusMeta.label}
                   </span>
-                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                  <span className="text-xs text-slate-500 flex items-center gap-1">
                     <Clock className="h-3 w-3" /> {formatDate(i.Created_at)}
                   </span>
                 </div>
@@ -110,7 +110,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
                 )}
 
                 {i.Status === "resolved" || i.Status === "dismissed" ? (
-                  <p className="text-xs text-slate-400 italic">เรื่องนี้ปิดแล้ว ไม่สามารถยกเลิกได้</p>
+                  <p className="text-xs text-slate-500 italic">เรื่องนี้ปิดแล้ว ไม่สามารถยกเลิกได้</p>
                 ) : canCancel ? (
                   <button onClick={handleCancel} disabled={cancelling}
                     className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-100 disabled:opacity-50 transition text-sm">
@@ -118,7 +118,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
                     ยกเลิกเรื่องที่แจ้งนี้
                   </button>
                 ) : (
-                  <p className="text-xs text-slate-400 italic">ทีมงานเริ่มตรวจสอบแล้ว ไม่สามารถยกเลิกเองได้ — หากต้องการแก้ไข กรุณาติดต่อทีมงานโดยตรง</p>
+                  <p className="text-xs text-slate-500 italic">ทีมงานเริ่มตรวจสอบแล้ว ไม่สามารถยกเลิกเองได้ — หากต้องการแก้ไข กรุณาติดต่อทีมงานโดยตรง</p>
                 )}
               </div>
             );
