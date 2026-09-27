@@ -369,9 +369,9 @@ export default function CoursesPage() {
                 <div className="grid grid-cols-2 gap-2 p-4 bg-white border-t border-slate-100 lg:flex lg:gap-3">
                   <button
                     onClick={() => handleSubjectAction(course, "content")}
-                    className={`${BTN.base} ${BTN.primary} ${BTN.md} col-span-2 lg:order-3 lg:flex-1`}
+                    className={`${BTN.base} ${BTN.secondary} ${BTN.md} col-span-2 lg:order-3 lg:flex-1`}
                   >
-                    <FileText className="h-4 w-4" /> จัดการเนื้อหา
+                    <FileText className="h-4 w-4 text-slate-500" /> จัดการเนื้อหา
                   </button>
 
                   <Link
