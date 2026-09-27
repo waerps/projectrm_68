@@ -325,7 +325,12 @@ export default function TutorSchedule() {
       setLoadError(false)
       try {
         const query = referenceDate ? `?date=${referenceDate}` : ''
-        const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule${query}`)
+        // ★ แก้บั๊กจริง: เดิมไม่แนบ Authorization header เลย ทั้งที่ backend (authRequired)
+        // บังคับต้องมี token ทุก route ของ tutor.routes.js แล้ว ทำให้โดน 401 ทุกครั้ง
+        // → เป็นสาเหตุจริงที่หน้าตารางสอนฟ้อง "โหลดตารางสอนไม่สำเร็จ" ตลอด
+        const res = await axios.get(`${API_URL}/api/tutor/${tutorId}/schedule${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
         const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
 
@@ -356,7 +361,7 @@ export default function TutorSchedule() {
       }
     }
     fetchSchedule()
-  }, [tutorId, scheduleVersion, referenceDate])
+  }, [tutorId, scheduleVersion, referenceDate, token])
 
   // ── กดเปิด Modal ───────────────────────────────────────────────
   const handleClick = async (day, time, data) => {
