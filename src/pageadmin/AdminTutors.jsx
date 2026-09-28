@@ -16,6 +16,7 @@ import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 import UIModal from "../components/ui/Modal";
 import { confirmDialog } from "../components/ui/dialogs";
 import SegmentedControl from "../components/ui/SegmentedControl";
+import PageHeader from "../components/ui/PageHeader";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { Users as LuUsers } from "lucide-react";
@@ -56,7 +57,7 @@ const tutorTiltMove = (e) => {
 };
 const tutorTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
 
-function TutorStatTile({ label, value, color, hint, icon: Icon }) {
+function TutorStatTile({ label, value, color, hint, icon: Icon, unit = "คน" }) {
   return (
     <div
       title={hint}
@@ -74,7 +75,7 @@ function TutorStatTile({ label, value, color, hint, icon: Icon }) {
           {label}
           {hint && <Info className="h-3 w-3 text-slate-300" />}
         </p>
-        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
+        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
       </div>
     </div>
   );
@@ -518,11 +519,11 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
         data,
         getAdminAuthConfig(),
       );
-      showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ!");
+      showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ");
       setApprovingApp(null); setViewingApp(null);
       onRefresh();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -537,7 +538,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
       setViewingApp(null);
       onRefresh();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     }
   };
 
@@ -548,14 +549,45 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
     { key: "all", label: "ทั้งหมด", icon: Users },
   ];
 
+  // สถิติสำหรับแบนเนอร์ (ข้อมูลใบสมัครทั้งหมด ไม่ขึ้นกับคำค้นหา)
+  const pendingTotal = applications.filter(a => String(a.Status) === "1").length;
+  const approvedTotal = applications.filter(a => String(a.Status) === "2").length;
+  const rejectedTotal = applications.filter(a => String(a.Status) === "3").length;
+  const decidedTotal = approvedTotal + rejectedTotal;
+  const approvalRate = decidedTotal > 0 ? Math.round((approvedTotal / decidedTotal) * 100) : null;
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+  const newThisMonth = applications.filter(a => a.Created_at && new Date(a.Created_at) >= monthStart).length;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className={PAGE_TITLE}>ผู้สมัครเป็นติวเตอร์</h1>
-        <p className={PAGE_SUBTITLE}>ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
+      {/* แบนเนอร์โทนส้ม — รูปแบบเดียวกับหน้ารายชื่อติวเตอร์ */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
+        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+              <UserCheck className="h-3.5 w-3.5" /> ใบสมัครติวเตอร์
+            </span>
+            <h2 className="mt-2 text-lg font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h2>
+            <p className={PAGE_SUBTITLE}>ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:min-w-[420px]">
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
+              <p className="text-[11px] text-slate-500">รอตรวจสอบ</p>
+              <p className="text-lg font-bold text-amber-600">{pendingTotal.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
+              <p className="text-[11px] text-slate-500">สมัครเดือนนี้</p>
+              <p className="text-lg font-bold text-slate-900">{newThisMonth.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
+            </div>
+            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
+              <p className="text-[11px] text-slate-500">อัตราการอนุมัติ</p>
+              <p className="text-lg font-bold text-emerald-600">{approvalRate === null ? "—" : approvalRate}{approvalRate !== null && <span className="ml-0.5 text-xs font-medium text-slate-500">%</span>}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* ★ เพิ่ม: Stats cards เหมือนหน้ารายชื่อติวเตอร์ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "ทั้งหมด", value: countOf("all"), color: "bg-orange-500" },
@@ -569,7 +601,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
             </div>
           </div>
         ))}
@@ -1556,7 +1588,7 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
           </button>
           <button onClick={onConfirm} disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
           </button>
         </div>
       </div>
@@ -1778,7 +1810,7 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
     {
       name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 20,
       sub: isConsistencyDefault
-        ? `ข้อมูลมีแค่ ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
+        ? `มีข้อมูลเพียง ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
         : 'วัดจาก stddev การสอนต่อสัปดาห์',
       warn: isConsistencyDefault,
     },
@@ -1975,17 +2007,13 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         <span className="text-xs text-slate-500">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
       </div>
 
-      {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
-      <div className="px-4 sm:px-5 pt-3">
-        <p className="flex items-center gap-1 text-[11px] text-slate-500">
-          <Info className="h-3 w-3 shrink-0" />
-          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงตามช่วงวันที่ที่เลือกในหน้าบันทึกชั่วโมงการสอน)
-        </p>
-      </div>
-
-      {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
+      {/* แถวเดียว: หมายเหตุช่วงเวลา (ซ้าย) + ตัวกรองวิชา/ช่วงคะแนน (ขวา) */}
       <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative w-full sm:w-auto ml-auto">
+        <p className="flex w-full sm:w-auto sm:flex-1 min-w-0 items-center gap-1 text-[11px] text-slate-500">
+          <Info className="h-3 w-3 shrink-0" />
+          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงช่วงวันที่ในหน้าชั่วโมงการสอน)
+        </p>
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
@@ -2218,11 +2246,11 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         </div>
         <div className="flex gap-3 shrink-0 w-full sm:w-auto">
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-bold">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
+            <p className="text-xl font-bold">{data?.students.length ?? tutor.StudentCount ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คน</span></p>
             <p className="text-[11px] text-orange-100">นักเรียน</p>
           </div>
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-bold">{tutor.TotalSessions ?? 0}</p>
+            <p className="text-xl font-bold">{tutor.TotalSessions ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คาบ</span></p>
             <p className="text-[11px] text-orange-100">คาบสะสม</p>
           </div>
         </div>
@@ -2359,11 +2387,11 @@ export default function AdminTutorsPage() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/tutors`, data);
-      showToast("success", "เพิ่มข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "เพิ่มข้อมูลติวเตอร์สำเร็จ");
       setShowAddModal(false);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2371,11 +2399,11 @@ export default function AdminTutorsPage() {
     setIsSubmitting(true);
     try {
       await axios.put(`${API}/tutors/${editingTutor.AdminId}`, data);
-      showToast("success", "แก้ไขข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "แก้ไขข้อมูลติวเตอร์สำเร็จ");
       setEditingTutor(null);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2385,11 +2413,11 @@ export default function AdminTutorsPage() {
     setIsDeleting(true);
     try {
       await axios.delete(`${API}/tutors/${deletingTutor.AdminId}`);
-      showToast("success", "ลบข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "ลบข้อมูลติวเตอร์สำเร็จ");
       setDeletingTutor(null);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsDeleting(false); }
   };
 
@@ -2447,15 +2475,23 @@ export default function AdminTutorsPage() {
     <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* ── Tab Bar ── */}
-      <SegmentedControl stretchMobile value={activeTab} onChange={setActiveTab} options={[
-        { id: 'list', label: 'รายชื่อติวเตอร์', short: 'รายชื่อ' },
-        { id: 'attendance', label: 'บันทึกชั่วโมงการสอน', short: 'ชั่วโมงสอน' },
-        { id: 'applications', label: 'สมัครเป็นติวเตอร์', short: 'ใบสมัคร' },
-      ]} />
+      {/* ── Header: ชื่อหน้า (ซ้าย) + ตัวสลับมุมมอง/ปุ่มหลัก (ขวา) — รูปแบบเดียวกับหน้าการเงิน ── */}
+      <PageHeader title="จัดการติวเตอร์" subtitle="จัดการบัญชีติวเตอร์ ชั่วโมงการสอน และใบสมัคร">
+        <SegmentedControl stretchMobile value={activeTab} onChange={setActiveTab} options={[
+          { id: 'list', label: 'รายชื่อติวเตอร์', short: 'รายชื่อ' },
+          { id: 'attendance', label: 'ชั่วโมงการสอน', short: 'ชั่วโมงสอน' },
+          { id: 'applications', label: 'ใบสมัครติวเตอร์', short: 'ใบสมัคร' },
+        ]} />
+        {activeTab === 'list' && (
+          <button onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
+            <Plus className="h-4 w-4" /> เพิ่มติวเตอร์
+          </button>
+        )}
+      </PageHeader>
 
       {/* ── Attendance Tab ── */}
-      {activeTab === 'attendance' && <AdminAttendanceDashboard />}
+      {activeTab === 'attendance' && <AdminAttendanceDashboard embedded />}
 
       {activeTab === 'applications' && (
         <TutorApplicationList
@@ -2477,13 +2513,9 @@ export default function AdminTutorsPage() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
                 <Users className="h-3.5 w-3.5" /> ทีมผู้สอนทั้งหมด
               </span>
-              <h1 className={`${PAGE_TITLE} mt-2`}>จัดการติวเตอร์</h1>
+              <h2 className="mt-2 text-lg font-bold text-slate-900">รายชื่อติวเตอร์</h2>
               <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
             </div>
-            <button onClick={() => setShowAddModal(true)}
-              className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
-              <Plus className="h-4 w-4" /> เพิ่มติวเตอร์ใหม่
-            </button>
           </div>
         </div>
 

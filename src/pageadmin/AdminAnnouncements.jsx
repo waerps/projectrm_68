@@ -13,6 +13,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API_BASE = `${API_URL}/api/admin/news`;
 const SERVER_URL = API_URL;
@@ -454,24 +455,20 @@ export default function AdminAnnouncements() {
     return (
         <div className="space-y-6 px-4 lg:px-0">
 
-            {/* Header */}
-            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className={PAGE_TITLE}>จัดการข่าวประชาสัมพันธ์</h1>
-                    <p className={PAGE_SUBTITLE}>จัดการข่าวสารและประกาศทั้งหมดในระบบ</p>
-                </div>
+            {/* Header — ชื่อหน้า (ซ้าย) + ปุ่มหลัก (ขวา) รูปแบบเดียวกับหน้าการเงิน */}
+            <PageHeader title="จัดการข่าวประชาสัมพันธ์" subtitle="จัดการข่าวสารและประกาศทั้งหมดในระบบ">
                 <button onClick={() => { resetForm(); setShowAddModal(true); }}
-                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 py-2 rounded-xl transition font-medium`}>
-                    <Plus className="h-4 w-4" /> เพิ่มข่าวใหม่
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl transition text-sm font-bold`}>
+                    <Plus className="h-4 w-4" /> เพิ่มข่าว
                 </button>
-            </div>
+            </PageHeader>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                     { label: 'ข่าวทั้งหมด', value: stats.total, color: 'bg-blue-600', Icon: Megaphone },
-                    { label: 'ติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Eye },
-                    { label: 'นักเรียน', value: stats.studentCount ?? 0, color: 'bg-purple-500', Icon: TrendingUp },
+                    { label: 'ข่าวสำหรับติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Eye },
+                    { label: 'ข่าวสำหรับนักเรียน', value: stats.studentCount ?? 0, color: 'bg-purple-500', Icon: TrendingUp },
                 ].map(({ label, value, color, Icon }) => (
                     <div key={label} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 flex items-center gap-3">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
@@ -479,28 +476,28 @@ export default function AdminAnnouncements() {
                         </div>
                         <div>
                             <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-bold text-slate-900">{value}</p>
+                            <p className="text-xl font-bold text-slate-900">{value}<span className="ml-1 text-xs font-medium text-slate-500">เรื่อง</span></p>
                         </div>
                     </div>
                 ))}
             </div>
 
             {/* Filter Bar */}
-            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <div className="relative">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3">
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input type="text" placeholder="ค้นหาข่าว..." value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
                             className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
                     </div>
                     <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
+                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 md:min-w-[160px] max-w-full md:max-w-[240px] truncate">
                         <option value="all">ทุกหมวดหมู่</option>
                         {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
                     </select>
                     <select value={targetFilter} onChange={e => setTargetFilter(e.target.value)}
-                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
+                        className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 md:min-w-[170px] max-w-full md:max-w-[240px] truncate">
                         <option value="all">ทุกกลุ่มเป้าหมาย</option>
                         {TARGETS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>

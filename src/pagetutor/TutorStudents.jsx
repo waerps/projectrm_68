@@ -442,7 +442,7 @@ export default function TutorStudents() {
                                                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                                                     พัฒนาการ <span className="font-bold text-slate-700">{getGrowthText(student)}</span> ของช่องว่างที่เหลือ
                                                     {student.exam.improvement.growthCapped
-                                                        ? " · พื้นฐานสูงอยู่แล้ว ตัวเลขนี้เทียบกับเด็กพื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
+                                                        ? " · พื้นฐานสูงอยู่แล้ว จึงเทียบโดยตรงกับนักเรียนที่พื้นฐานต่ำกว่าไม่ได้"
                                                         : ""}
                                                 </p>
                                             )}
@@ -453,7 +453,7 @@ export default function TutorStudents() {
                                                 ได้ {fmtScoreNum(student.exam.latest.score)} จากเต็ม {student.exam.latest.max} คะแนน
                                             </p>
                                             <p className="text-xs text-slate-500 mt-1">
-                                                สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้ เพราะมีแค่รอบเดียว
+                                                สอบแล้ว {student.exam.latest.subjectsCounted} วิชา · ยังเทียบพัฒนาการไม่ได้ (มีผลสอบรอบเดียว)
                                             </p>
                                         </>
                                     ) : (

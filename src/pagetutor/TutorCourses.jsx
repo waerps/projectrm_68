@@ -154,15 +154,15 @@ export default function CoursesPage() {
   const totalHoursAllCourses = courses.reduce((sum, course) => sum + Number(course.totalHours), 0);
 
   const stats = [
-    { label: "คอร์สทั้งหมด", value: courses.length.toString(), icon: BookOpen, color: "bg-blue-500" },
-    { label: "นักเรียนรวม", value: Number(totalStudents || 0).toLocaleString("th-TH"), icon: Users, color: "bg-emerald-500" },
-    { label: "ชั่วโมงสอน", value: Number(totalHoursAllCourses || 0).toLocaleString("th-TH", { maximumFractionDigits: 1 }), icon: Clock, color: "bg-amber-500" },
+    { label: "คอร์สทั้งหมด", value: courses.length.toString(), unit: "คอร์ส", icon: BookOpen, color: "bg-blue-500" },
+    { label: "นักเรียนรวม", value: Number(totalStudents || 0).toLocaleString("th-TH"), unit: "คน", icon: Users, color: "bg-emerald-500" },
+    { label: "ชั่วโมงสอน", value: Number(totalHoursAllCourses || 0).toLocaleString("th-TH", { maximumFractionDigits: 1 }), unit: "ชม.", icon: Clock, color: "bg-amber-500" },
   ];
   
   const visibleStats = viewMode === 'primary' ? stats : [
-    { label: 'คลาสที่รับทั้งหมด', value: acceptedClasses.length.toString(), icon: BookOpen, color: "bg-blue-500" },
-    { label: 'คลาสที่กำลังจะมาถึง', value: acceptedClasses.filter(item => new Date(item.startDateTime) >= new Date()).length.toString(), icon: CalendarDays, color: "bg-violet-500" },
-    { label: 'เอกสารประกอบ', value: acceptedClasses.filter(item => item.attachmentFileId).length.toString(), icon: Paperclip, color: "bg-rose-500" },
+    { label: 'คลาสที่รับทั้งหมด', value: acceptedClasses.length.toString(), unit: 'คลาส', icon: BookOpen, color: "bg-blue-500" },
+    { label: 'คลาสที่กำลังจะมาถึง', value: acceptedClasses.filter(item => new Date(item.startDateTime) >= new Date()).length.toString(), unit: 'คลาส', icon: CalendarDays, color: "bg-violet-500" },
+    { label: 'เอกสารประกอบ', value: acceptedClasses.filter(item => item.attachmentFileId).length.toString(), unit: 'ไฟล์', icon: Paperclip, color: "bg-rose-500" },
   ];
 
   // 🔍 กรองข้อมูลตามการค้นหา
@@ -180,7 +180,7 @@ export default function CoursesPage() {
     <div className="space-y-6 px-4 lg:px-0">
       <div className="">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className={PAGE_TITLE}>คอร์สและวิชาที่รับผิดชอบ</h1>
             <p className={PAGE_SUBTITLE}>
@@ -201,7 +201,7 @@ export default function CoursesPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-slate-600 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 truncate">{stat.value}</p>
+                  <p className="text-2xl font-bold text-slate-900 truncate">{stat.value}{stat.unit && <> <span className="text-xs font-medium text-slate-500">{stat.unit}</span></>}</p>
                 </div>
               </div>
             );

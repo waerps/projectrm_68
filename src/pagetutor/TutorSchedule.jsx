@@ -109,7 +109,7 @@ const STATUS_STYLE = {
   missed: {
     card: 'bg-red-50 border-red-200 cursor-default',
     badge: 'bg-red-50 text-red-600 border-red-100',
-    label: 'เลยเวลา/ไม่มีเช็กอิน',
+    label: 'เกินเวลา/ไม่มีเช็กอิน',
     Icon: AlertTriangle,
   },
   upcoming: {
@@ -505,7 +505,7 @@ export default function TutorSchedule() {
       }))
 
       closeModal()
-      showToast('success', 'บันทึกต้นคาบแล้ว', 'อย่าลืมถ่ายรูปท้ายคาบเพื่อปิดคาบด้วยนะ')
+      showToast('success', 'บันทึกต้นคาบแล้ว', 'กรุณาถ่ายรูปท้ายคาบเพื่อปิดคาบ')
     } catch (err) {
       showToast('error', 'บันทึกต้นคาบไม่สำเร็จ', err.response?.data?.message || 'กรุณาลองใหม่')
     } finally {
@@ -636,7 +636,7 @@ export default function TutorSchedule() {
             <MessageCircle className="h-3.5 w-3.5" /> ปล่อยคลาสได้ก่อนคาบอย่างน้อย 2 วัน
           </span>
           <span className="flex items-center gap-1.5 text-red-600">
-            <AlertTriangle className="h-3.5 w-3.5" /> เลยเวลา/ไม่มีเช็กอิน
+            <AlertTriangle className="h-3.5 w-3.5" /> เกินเวลา/ไม่มีเช็กอิน
           </span>
           <span className="flex items-center gap-1.5 text-slate-400">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-300 inline-block" /> รอถึงช่วงเช็กอิน
@@ -806,7 +806,7 @@ export default function TutorSchedule() {
                   <option value="">ไม่แนบเอกสาร</option>
                   {releaseFiles.map(file => <option key={file.fileId} value={file.fileId}>{file.fileName}</option>)}
                 </select>
-                {!releaseFiles.length && <p className="mt-1 text-xs text-slate-500">คอร์สและวิชานี้ยังไม่มีเอกสารใหัเลือก</p>}
+                {!releaseFiles.length && <p className="mt-1 text-xs text-slate-500">คอร์สและวิชานี้ยังไม่มีเอกสารให้เลือก</p>}
               </div>
               <div>
                 <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-slate-400">(ไม่บังคับ)</span></label>
@@ -889,7 +889,7 @@ export default function TutorSchedule() {
                       สรุปเนื้อหาที่จะสอน
                     </label>
                     <textarea rows="2"
-                      placeholder="วันนี้จะสอนหัวข้ออะไร..."
+                      placeholder="หัวข้อที่สอนในคาบนี้"
                       className="w-full border border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-400 outline-none transition-all resize-none"
                       value={remark} onChange={e => setRemark(e.target.value)} />
                   </div>
@@ -945,7 +945,7 @@ export default function TutorSchedule() {
                     <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-green-800 text-sm">บันทึกต้นคาบแล้ว</p>
-                      <p className="text-xs text-green-600 mt-0.5">ข้อมูลเช็กชื่อนักเรียนถูกบันทึกเรียบร้อย ตอนนี้แค่ถ่ายรูปท้ายคาบเพื่อปิดคาบ</p>
+                      <p className="text-xs text-green-600 mt-0.5">บันทึกการเช็กชื่อนักเรียนแล้ว ขั้นตอนถัดไปคือถ่ายรูปท้ายคาบเพื่อปิดคาบ</p>
                     </div>
                   </div>
 
@@ -980,7 +980,7 @@ export default function TutorSchedule() {
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
                       <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <p className="text-xs text-amber-700">
-                        รูปท้ายคาบจำเป็นต้องมีเพื่อยืนยันว่าสอนครบชั่วโมง Admin จะตรวจสอบก่อนอนุมัติรายได้
+                        รูปท้ายคาบจำเป็นต้องมีเพื่อยืนยันว่าสอนครบชั่วโมง ผู้ดูแลระบบจะตรวจสอบก่อนอนุมัติรายได้
                       </p>
                     </div>
                   )}
@@ -994,7 +994,7 @@ export default function TutorSchedule() {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 uppercase">มาเรียนแล้ว</span>
                       <span className="text-2xl font-bold text-green-600">{presentCount}</span>
-                      <span className="text-sm font-bold text-slate-500">/ {studentsList.length}</span>
+                      <span className="text-sm font-bold text-slate-500">/ {studentsList.length} <span className="text-xs font-medium text-slate-500">คน</span></span>
                     </div>
                     <button onClick={handleSavePhase1} disabled={isSaving}
                       className={`w-full md:w-auto px-10 py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95

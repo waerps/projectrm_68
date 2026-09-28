@@ -51,11 +51,11 @@ export default function CreateTutorForm() {
     setAlert(null);
 
     if (form.password !== form.confirmPassword) {
-      setAlert({ type: "error", msg: "Password ไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง" });
+      setAlert({ type: "error", msg: "รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง" });
       return;
     }
     if (form.password.length < 6) {
-      setAlert({ type: "error", msg: "Password ต้องมีอย่างน้อย 6 ตัวอักษร" });
+      setAlert({ type: "error", msg: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" });
       return;
     }
 
@@ -86,7 +86,7 @@ export default function CreateTutorForm() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "เกิดข้อผิดพลาด");
 
-      setAlert({ type: "success", msg: "สร้างบัญชี Tutor สำเร็จแล้ว!" });
+      setAlert({ type: "success", msg: "สร้างบัญชีติวเตอร์สำเร็จ" });
       setForm(initialForm);
     } catch (err) {
       setAlert({ type: "error", msg: err.message });
@@ -110,8 +110,8 @@ export default function CreateTutorForm() {
             </svg>
           </div>
           <div>
-            <h1 className={PAGE_TITLE}>สร้างบัญชี Tutor</h1>
-            <p className={PAGE_SUBTITLE}>กรอกข้อมูลให้ครบเพื่อสร้างบัญชีผู้สอน</p>
+            <h1 className={PAGE_TITLE}>สร้างบัญชีติวเตอร์</h1>
+            <p className={PAGE_SUBTITLE}>กรอกข้อมูลเพื่อสร้างบัญชีติวเตอร์</p>
           </div>
         </div>
 
@@ -188,7 +188,7 @@ export default function CreateTutorForm() {
                   <option value="1">Superadmin</option>
                 </select>
               </Field>
-              <Field label="Password *">
+              <Field label="รหัสผ่าน *">
                 <div className="relative">
                   <input
                     required
@@ -216,7 +216,7 @@ export default function CreateTutorForm() {
                   </button>
                 </div>
               </Field>
-              <Field label="ยืนยัน Password *">
+              <Field label="ยืนยันรหัสผ่าน *">
                 <input
                   required
                   type={showPw ? "text" : "password"}
@@ -225,13 +225,13 @@ export default function CreateTutorForm() {
                       ? "border-red-300 bg-red-50 focus:border-red-400 focus:ring-red-100"
                       : ""
                   }`}
-                  placeholder="กรอก password อีกครั้ง"
+                  placeholder="กรอกรหัสผ่านอีกครั้ง"
                   value={form.confirmPassword}
                   onChange={set("confirmPassword")}
                   autoComplete="new-password"
                 />
                 {form.confirmPassword && form.confirmPassword !== form.password && (
-                  <p className="mt-1 text-xs text-red-500">Password ไม่ตรงกัน</p>
+                  <p className="mt-1 text-xs text-red-500">รหัสผ่านไม่ตรงกัน</p>
                 )}
               </Field>
             </div>
@@ -251,7 +251,7 @@ export default function CreateTutorForm() {
               disabled={loading}
               className={`${BTN.primary} rounded-2xl px-8 py-2.5 text-sm font-bold shadow-md shadow-orange-200 transition disabled:opacity-60`}
             >
-              {loading ? "กำลังสร้างบัญชี..." : "สร้างบัญชี Tutor"}
+              {loading ? "กำลังสร้างบัญชี..." : "สร้างบัญชีติวเตอร์"}
             </button>
           </div>
 

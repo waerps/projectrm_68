@@ -346,7 +346,7 @@ function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet,
                 <div className="flex items-center justify-between mb-1">
                     <div>
                         <h2 className={T.title}>ภาพรวมเดือนนี้</h2>
-                        <p className={T.subtitle}>สรุปสถานะการเงินล่าสุด ณ ตอนนี้</p>
+                        <p className={T.subtitle}>สรุปสถานะการเงินล่าสุด</p>
                     </div>
                     <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-600 px-2.5 py-1 text-xs font-semibold shrink-0">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />ข้อมูลสด
@@ -705,8 +705,8 @@ export default function AdminFinance() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     <KPICard label="รายรับสะสม" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
                     <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="blue" />
-                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} icon={Users} tone="purple" />
-                    <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : `${onTimePaymentRate}%`} icon={CheckCircle} tone="green" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={<>{paidEnrollCount} / {totalEnrollCount}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></>} icon={Users} tone="purple" />
+                    <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : <>{onTimePaymentRate}<span className="ml-0.5 text-xs font-medium text-slate-500">%</span></>} icon={CheckCircle} tone="green" />
                 </div>
             </ApiState>
 
@@ -919,7 +919,7 @@ export default function AdminFinance() {
                                     <EmptyState
                                         icon={Receipt}
                                         message="ไม่พบรายการที่ค้นหา"
-                                        suggestion="ลองปรับตัวกรองหรือคำค้นหา แล้วลองใหม่อีกครั้ง"
+                                        suggestion="โปรดปรับตัวกรองหรือคำค้นหา"
                                     />
                                 </div>
                             ) : (
@@ -1189,11 +1189,11 @@ function TutorPaymentDetailModal({ item, onClose }) {
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>จำนวนคาบ</p>
-                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.sessionCount} คาบ</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.sessionCount}<span className="ml-1 text-xs font-medium text-slate-500">คาบ</span></p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>เรทในโปรไฟล์ติวเตอร์</p>
-                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.profileRate != null ? `${Number(item.profileRate).toLocaleString('th-TH')} บาท/ชม.` : 'ไม่ได้ระบุ'}</p>
+                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.profileRate != null ? <>{Number(item.profileRate).toLocaleString('th-TH')}<span className="ml-1 text-xs font-medium text-slate-500">บาท/ชม.</span></> : 'ไม่ได้ระบุ'}</p>
                         </div>
                     </div>
                     <div className="overflow-x-auto rounded-2xl border border-slate-200">

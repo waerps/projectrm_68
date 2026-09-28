@@ -201,7 +201,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
             <span>
               <span className="text-sm text-slate-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
               <span className="block text-xs text-slate-500 mt-0.5">
-                กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง ถ้าไม่ติ๊กจะแก้เฉพาะในคลัง
+                กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง หากไม่เลือก จะแก้ไขเฉพาะในคลัง
               </span>
             </span>
           </label>
@@ -963,7 +963,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
   const handleExport = () => {
     if (!items.length) return;
     exportBankXlsx(items, subjectName);
-    showToast?.("success", "ส่งออกไฟล์แล้ว", `คลัง ${items.length} ข้อ — แก้ใน Excel แล้วนำเข้ากลับได้เลย`);
+    showToast?.("success", "ส่งออกไฟล์แล้ว", `คลัง ${items.length} ข้อ — แก้ไขใน Excel แล้วนำเข้ากลับได้`);
   };
 
   const handleAddOne = async (q) => {
@@ -972,7 +972,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
       await addBankQuestions(subjectId, [q]);
       load();
       setFormKey((k) => k + 1); // mount ฟอร์มใหม่ทั้งก้อน -> เคลียร์ทุกช่องแน่นอน ไม่ต้องเดา timing
-      showToast?.("success", "เพิ่มเข้าคลังแล้ว", "พิมพ์ข้อถัดไปได้เลย");
+      showToast?.("success", "เพิ่มเข้าคลังแล้ว", "เพิ่มข้อถัดไปได้");
     } catch (err) {
       console.error("Add to bank failed:", err);
       setFormError(err.response?.data?.message || "เพิ่มเข้าคลังไม่สำเร็จ");
@@ -1158,7 +1158,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                   bulkPending.type === "delete" ? "bg-red-600 hover:bg-red-700" : "bg-orange-500 hover:bg-orange-600"
                 }`}
               >
-                {bulkBusy ? "กำลังบันทึก…" : bulkPending.type === "delete" ? "ลบเลย" : "ยืนยัน"}
+                {bulkBusy ? "กำลังบันทึก…" : bulkPending.type === "delete" ? "ยืนยันลบ" : "ยืนยัน"}
               </button>
               <button
                 onClick={() => setBulkPending(null)}
@@ -1232,8 +1232,8 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                 <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
                   <p className="text-sm text-red-700 font-medium">ลบข้อนี้ออกจากคลังถาวร? (ข้อที่เคยใช้สอบไปแล้วจะไม่กระทบผลสอบเดิม)</p>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition">ลบเลย</button>
-                    <button onClick={() => setDeletingId(null)} className="text-xs text-slate-600 font-medium px-3 py-1.5 hover:bg-slate-100 rounded-xl transition">ไม่ลบ</button>
+                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition">ยืนยันลบ</button>
+                    <button onClick={() => setDeletingId(null)} className="text-xs text-slate-600 font-medium px-3 py-1.5 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
                   </div>
                 </div>
               ) : (
@@ -1320,7 +1320,7 @@ function SetSummaryTable({ items }) {
   );
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
-      <p className="text-xs font-semibold text-slate-600 px-4 pt-3 pb-1.5">สรุปชุดนี้ — ก่อนกดใช้ ลองดูว่าสัดส่วนพอใจไหม</p>
+      <p className="text-xs font-semibold text-slate-600 px-4 pt-3 pb-1.5">สรุปชุดข้อสอบ — ตรวจสอบสัดส่วนก่อนใช้งาน</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -1511,8 +1511,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
         <span>
           <span className="text-sm font-medium text-slate-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
           <span className="block text-xs text-slate-500 mt-0.5">
-            ใช้ข้อสอบชุดเดียวกันทุกรอบ — เทียบคะแนนก่อนเรียนกับหลังเรียนได้ตรงตามจริง เพราะไม่มีตัวแปร
-            "ข้อสอบยากง่ายไม่เท่ากัน" มาปนกับพัฒนาการที่เกิดจากการเรียนจริง ๆ เห็นทั้งภาพรวมทั้งห้องและรายบุคคลชัดเจน
+            ใช้ข้อสอบชุดเดียวกันทุกรอบ เพื่อให้เทียบคะแนนก่อนเรียนและหลังเรียนได้แม่นยำ
+            โดยไม่มีผลจากความยากง่ายของข้อสอบที่ต่างกัน
           </span>
         </span>
       </label>
@@ -1708,7 +1708,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
             </>
           ) : (
             <>
-              <p className="text-xs text-slate-500">ติ๊กข้อที่ต้องการจากคลัง ระบบจะหารคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
+              <p className="text-xs text-slate-500">เลือกข้อที่ต้องการจากคลัง ระบบจะแบ่งคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
 
               <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
                 <span className="text-xs font-semibold text-slate-500">ทางลัด:</span>
@@ -2074,7 +2074,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                 : "ยังไม่มีข้อสอบในรอบนี้"}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              หยิบข้อจากคลังของคุณ จะให้ระบบสุ่มมาให้เลือกหลายชุด หรือติ๊กเลือกเองก็ได้
+              เลือกข้อจากคลังข้อสอบ โดยให้ระบบสุ่มหลายชุด หรือเลือกเอง
             </p>
             {setQuestions.length > 0 && (
               <button onClick={goToPreview} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
@@ -2157,14 +2157,14 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-left">
               <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 leading-relaxed">
-                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลใดๆ จนกว่าจะกดปุ่ม "เปิดสอบใหม่" ด้วยตัวเองก่อน (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
+                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลจนกว่าจะกดปุ่ม "เปิดสอบใหม่" (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
               </p>
             </div>
           ) : (
             <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
               {form.openMode === "auto"
                 ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
-                : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
+                : "ติวเตอร์กดปุ่มเปิดสอบด้านล่างเอง — วันที่ที่ตั้งไว้จะแสดงให้นักเรียนเห็นเป็นกำหนดการเท่านั้น (อาจเปลี่ยนแปลงได้)"}
             </p>
           )}
           {isScheduledAuto && (
@@ -2265,7 +2265,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
               disabled={!ready}
               className="inline-flex items-center gap-1.5 border border-orange-200 hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed text-orange-600 rounded-xl px-4 py-2 text-xs font-semibold transition"
             >
-              <Play className="h-3.5 w-3.5" /> เปิดเลยตอนนี้ (ข้ามกำหนดเวลา)
+              <Play className="h-3.5 w-3.5" /> เปิดสอบทันที (ข้ามกำหนดเวลา)
             </button>
 
             {confirmOverride && (
@@ -2285,7 +2285,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                       disabled={overriding}
                       className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}
                     >
-                      {overriding ? "กำลังเปิด…" : "เปิดเลยตอนนี้"}
+                      {overriding ? "กำลังเปิด…" : "เปิดสอบทันที"}
                     </button>
                   </div>
                 </div>
@@ -2325,7 +2325,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           <div className="space-y-5">
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-              <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
+              <p className="text-sm text-green-700 font-medium">การสอบเปิดอยู่ — นักเรียนเข้าสอบได้จากหน้าคอร์สของตนเอง</p>
             </div>
 
             <div className="border border-slate-200 rounded-2xl p-5">
@@ -2500,7 +2500,7 @@ function StudentDetailModal({
                 </div>
               )}
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-xl font-bold">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}</p>
+                <p className="text-xl font-bold">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"} <span className="text-xs font-medium text-orange-100">คะแนน</span></p>
                 <p className="text-[11px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
               </div>
             </div>
@@ -2508,19 +2508,19 @@ function StudentDetailModal({
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-green-600">{correctCount ?? "—"}</p>
+              <p className="text-lg font-bold text-green-600">{correctCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
               <p className="text-xs text-slate-500">ตอบถูก</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"}</p>
+              <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
               <p className="text-xs text-slate-500">ตอบผิด</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{student?.answeredCount ?? "—"}</p>
+              <p className="text-lg font-bold text-slate-700">{student?.answeredCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
               <p className="text-xs text-slate-500">ตอบแล้ว</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{student?.unansweredCount ?? "—"}</p>
+              <p className="text-lg font-bold text-slate-700">{student?.unansweredCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
               <p className="text-xs text-slate-500">ไม่ตอบ</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
@@ -2658,8 +2658,8 @@ function StudentDetailModal({
               )}
 
               <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
-                นี่ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือนเด้ง สายเข้า หรือจอล็อกก็ได้
-                แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
+                ข้อมูลนี้ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือน สายเรียกเข้า หรือหน้าจอล็อก
+                ควรสอบถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจ
               </p>
             </div>
           ) : modalTab === "overview" && student?.examBehaviorConsent === false ? (
@@ -2841,13 +2841,13 @@ function QuestionFlagsCard({ flags, submittedCount }) {
             verdict = "มีการคัดลอกข้อความ ซึ่งข้อสอบปรนัยปกติไม่มีเหตุต้องคัดลอก — ควรดูเป็นรายคนต่อ";
             tone = "text-red-600";
           } else if (pct != null && pct <= 50) {
-            verdict = "ตอบผิดกันเกือบทั้งห้องด้วย — น่าจะเป็นที่โจทย์มากกว่าที่นักเรียน (กำกวม ยากเกินระดับ หรือรูปไม่ขึ้น)";
+            verdict = "ตอบผิดเกือบทั้งห้อง — อาจเป็นที่โจทย์ (กำกวม ยากเกินระดับ หรือรูปไม่แสดง)";
             tone = "text-amber-700";
           } else if (pct != null && pct >= 80) {
-            verdict = "แต่ตอบถูกกันเกือบทั้งห้อง — น่าสงสัยว่าไปหาคำตอบ ควรเปลี่ยนข้อนี้ในรอบถัดไป";
+            verdict = "แต่ตอบถูกเกือบทั้งห้อง — อาจมีการค้นหาคำตอบ ควรเปลี่ยนข้อนี้ในรอบถัดไป";
             tone = "text-orange-600";
           } else {
-            verdict = "อัตราตอบถูกอยู่กลาง ๆ ยังสรุปสาเหตุไม่ได้ชัด ลองถามความเข้าใจในคาบ";
+            verdict = "อัตราตอบถูกอยู่ในระดับกลาง ยังสรุปสาเหตุไม่ได้ ควรสอบถามความเข้าใจในคาบเรียน";
             tone = "text-slate-500";
           }
           return (
@@ -2859,7 +2859,7 @@ function QuestionFlagsCard({ flags, submittedCount }) {
                   <span className="block text-slate-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
                 </p>
                 <p className="text-sm font-semibold text-slate-600 whitespace-nowrap flex-shrink-0 text-left sm:text-right">
-                  {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีคนส่ง"}
+                  {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีผู้ส่ง"}
                 </p>
               </div>
               <p className="text-sm text-slate-600 mt-2">
@@ -3091,14 +3091,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           icon={Award}
           label="คะแนนเฉลี่ย"
           value={`${results.averageScorePct}%`}
-          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีคนส่ง"}
+          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีผู้ส่ง"}
           color="bg-orange-500"
         />
         <StatCard
           icon={CheckCircle}
           label="ผ่านเกณฑ์"
           value={passRatePct != null ? `${passRatePct}%` : "—"}
-          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีคนส่ง"}
+          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีผู้ส่ง"}
           color="bg-emerald-500"
         />
         <StatCard

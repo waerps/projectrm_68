@@ -144,18 +144,20 @@ export default function TutorIncidents() {
 
     return (
         <div className="space-y-6 px-4 lg:px-0">
-            <div>
-                <h1 className={PAGE_TITLE}>รายการแจ้งเหตุการณ์</h1>
-                <p className={PAGE_SUBTITLE}>เรื่องที่คุณแจ้งไป และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <h1 className={PAGE_TITLE}>รายการแจ้งเหตุการณ์</h1>
+                    <p className={PAGE_SUBTITLE}>เรื่องที่คุณแจ้ง และเรื่องที่ถูกแจ้งเกี่ยวกับคุณ</p>
+                </div>
+
+                <SegmentedControl className="w-full sm:w-fit shrink-0" value={tab} onChange={setTab} options={[
+                    { id: "mine", label: "เรื่องที่ฉันแจ้ง", count: mine.length },
+                    { id: "against", label: "เรื่องที่ถูกแจ้งเกี่ยวกับฉัน", count: against.length },
+                ]} />
             </div>
 
-            <SegmentedControl className="w-full sm:w-fit" value={tab} onChange={setTab} options={[
-                { id: "mine", label: "เรื่องที่ฉันแจ้ง", count: mine.length },
-                { id: "against", label: "เรื่องที่ถูกแจ้งเกี่ยวกับฉัน", count: against.length },
-            ]} />
-
             {list.length === 0 ? (
-                <EmptyState text={tab === "mine" ? "ยังไม่มีเรื่องที่แจ้งไป" : "ยังไม่มีเรื่องที่ถูกแจ้งเกี่ยวกับคุณ"} />
+                <EmptyState text={tab === "mine" ? "ยังไม่มีเรื่องที่แจ้ง" : "ยังไม่มีเรื่องที่ถูกแจ้งเกี่ยวกับคุณ"} />
             ) : (
                 <div className="space-y-3">
                     {list.map((i) => (

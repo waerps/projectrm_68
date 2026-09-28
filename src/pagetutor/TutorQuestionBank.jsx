@@ -135,9 +135,9 @@ export default function TutorQuestionBank() {
       {/* Stats */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
-          { label: "ข้อสอบทั้งหมด", value: stats.questions, color: "bg-orange-600", icon: FileQuestion },
-          { label: "วิชาที่มีข้อสอบแล้ว", value: stats.ready, color: "bg-emerald-500", icon: BookOpen },
-          { label: "วิชาที่ยังไม่มีข้อสอบ", value: stats.empty, color: "bg-amber-500", icon: AlertTriangle },
+          { label: "ข้อสอบทั้งหมด", value: stats.questions, unit: "ข้อ", color: "bg-orange-600", icon: FileQuestion },
+          { label: "วิชาที่มีข้อสอบแล้ว", value: stats.ready, unit: "วิชา", color: "bg-emerald-500", icon: BookOpen },
+          { label: "วิชาที่ยังไม่มีข้อสอบ", value: stats.empty, unit: "วิชา", color: "bg-amber-500", icon: AlertTriangle },
         ].map((card, i) => {
           const Icon = card.icon;
           return (
@@ -147,7 +147,7 @@ export default function TutorQuestionBank() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()}</p>
+                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()} <span className="text-xs font-medium text-slate-500">{card.unit}</span></p>
               </div>
             </div>
           );
@@ -180,7 +180,7 @@ export default function TutorQuestionBank() {
           </p>
           {!search.trim() && (
             <p className="text-xs text-slate-500 mt-1">
-              วิชาจะขึ้นที่นี่เมื่อแอดมินมอบหมายให้คุณสอนวิชานั้นในคอร์สแล้ว
+              วิชาจะแสดงที่นี่เมื่อผู้ดูแลระบบมอบหมายการสอน
             </p>
           )}
         </div>

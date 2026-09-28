@@ -79,10 +79,10 @@ export default function TutorProfile() {
                 headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
-            toast("อัปโหลดสำเร็จ!");
+            toast("อัปโหลดรูปสำเร็จ");
         } catch (error) {
             console.error(error);
-            toast("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || "Check Backend"));
+            toast("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"));
         }
     };
 
@@ -393,7 +393,7 @@ function ValidationModal({ fields, onClose }) {
                             <AlertTriangle className="h-7 w-7 text-orange-600" />
                         </div>
                         <h3 className="text-lg font-bold text-slate-900">กรอกข้อมูลไม่ครบ</h3>
-                        <p className="text-sm text-slate-500 mt-1">กรุณากรอกข้อมูลในฟิลต่อไปนี้ให้ครบก่อนบันทึก</p>
+                        <p className="text-sm text-slate-500 mt-1">กรุณากรอกข้อมูลต่อไปนี้ให้ครบก่อนบันทึก</p>
                     </div>
 
                     {/* Field list */}

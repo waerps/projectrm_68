@@ -10,7 +10,7 @@ import {
   X, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
   Target, Timer, MessageCircle, Copy, Pencil, Check, Flame,
   PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
-  Map as MapIcon,
+  Map as MapIcon, FileSpreadsheet, FileText,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore } from "../utils/examScore";
@@ -123,7 +123,7 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   const weak = Object.values(latest?.topicPcts || {}).filter((v) => v != null && v < 0.5).length;
   const below = latest?.pct != null && latest.pct * 100 < PASS_PCT;
   const reasons = [];
-  if (!latest) reasons.push("ยังไม่ได้สอบเลย");
+  if (!latest) reasons.push("ยังไม่ได้เข้าสอบ");
   if (below) reasons.push(`ต่ำกว่าเกณฑ์ ${PASS_PCT}%`);
   if (weak) reasons.push(`หมวดต่ำกว่า 50% ${weak} หมวด`);
   if (change != null && change < 0) reasons.push(`คะแนนลง ${Math.abs(change)}%`);
@@ -456,7 +456,11 @@ function buildProgressRows(crossExamData, aiSummaries) {
 const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
 
 
-function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip }) {
+// หน่วยตัวเล็กต่อท้ายตัวเลขบนการ์ดสรุป (มาตรฐานเดียวกันทั้งระบบ)
+const Unit = ({ children }) => <span className="text-xs font-medium text-slate-500 ml-0.5">{children}</span>;
+const pctNum = (v) => (v * 100).toFixed(1); // รูปแบบเดียวกับ fmtPct แต่ไม่มี % เพื่อแยกหน่วยไปแสดงตัวเล็ก
+
+function StatCard({ icon, label, value, unit, sub, color = "bg-orange-500", tooltip }) {
   const Icon = icon;
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition h-full">
@@ -477,7 +481,7 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", tooltip })
             </div>
           )}
         </div>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900 tabular-nums">{value}{unit && <Unit>{unit}</Unit>}</p>
         {sub && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate">{sub}</p>}
       </div>
     </div>
@@ -575,20 +579,22 @@ function OverviewTab({ results, topicBreakdown, loading }) {
         <StatCard
           icon={Award}
           label="คะแนนเฉลี่ย"
-          value={fmtPct(avgPct)}
+          value={pctNum(avgPct)}
+          unit="%"
           sub={`มัธยฐาน ${medianPct != null ? fmtPct(medianPct) : "—"} · ${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน`}
           color="bg-orange-500"
-          tooltip={`ค่าเฉลี่ย = เอาคะแนนทุกคนมาเฉลี่ย ส่วนมัธยฐาน = คะแนนของคนที่อยู่ตรงกลางห้อง ถ้าสองค่านี้ต่างกันมาก แปลว่ามีบางคนได้คะแนนสูงหรือต่ำผิดปกติดึงค่าเฉลี่ยไป · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ยิ่งมาก = คะแนนในห้องยิ่งห่างกัน มีทั้งกลุ่มเก่งและกลุ่มที่ต้องช่วยปนกัน)`}
+          tooltip={`ค่าเฉลี่ยคำนวณจากคะแนนของนักเรียนทุกคน ส่วนมัธยฐานคือคะแนนของผู้ที่อยู่ลำดับกึ่งกลาง หากสองค่านี้ต่างกันมาก แสดงว่ามีคะแนนที่สูงหรือต่ำผิดปกติ · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ค่ายิ่งมาก คะแนนในห้องยิ่งกระจายตัว)`}
         />
-        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={fmtPct(passRate)} sub={`${passCount} จาก ${stats.stat.length} คน (เกณฑ์ ${PASS_PCT}%)`} color="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={`${fmtPct(maxPct)} / ${fmtPct(minPct)}`} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
+        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={pctNum(passRate)} unit="%" sub={`${passCount} จาก ${stats.stat.length} คน (เกณฑ์ ${PASS_PCT}%)`} color="bg-emerald-500" />
+        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
         <StatCard
           icon={Users}
           label="การเข้าสอบ"
           value={stats.enrolledCount ? `${stats.submittedCount}/${stats.enrolledCount}` : `${stats.submittedCount}`}
+          unit="คน"
           sub={`ขาดสอบ ${stats.absentCount} คน${notSubmitted ? ` · ยังไม่ส่ง ${notSubmitted} คน` : ""}`}
           color="bg-slate-500"
-          tooltip="จำนวนคนที่ส่งข้อสอบ เทียบกับจำนวนคนที่ลงทะเบียนคอร์สนี้ — รายชื่อคนขาดสอบดูได้ที่หน้ารอบสอบ หรือแท็บ &quot;รายคน&quot;"
+          tooltip="จำนวนนักเรียนที่ส่งข้อสอบเทียบกับจำนวนผู้ลงทะเบียนคอร์ส ดูรายชื่อผู้ขาดสอบได้ที่หน้ารอบสอบหรือแท็บ &quot;รายคน&quot;"
         />
       </div>
 
@@ -772,8 +778,8 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-orange-500/30 blur-3xl" />
           <div className="relative flex flex-col lg:flex-row lg:items-center gap-5">
             <div className="lg:w-56 flex-shrink-0">
-              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> ดาวรุ่งของห้อง</p>
-              <p className="text-lg font-bold mt-1 leading-snug">พัฒนาจากตัวเองมากที่สุด</p>
+              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> นักเรียนที่พัฒนาสูงสุด</p>
+              <p className="text-lg font-bold mt-1 leading-snug">พัฒนาจากคะแนนเดิมของตนเองมากที่สุด</p>
               <p className="text-[11px] text-slate-500 mt-1">เทียบคะแนนรอบแรกกับรอบล่าสุดของแต่ละคน ไม่ได้เทียบกับเพื่อน</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 flex-1">
@@ -1206,8 +1212,8 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const headline = aiHeadline(aiRow?.overview);
   const hasMoreOverview = !!aiRow?.overview && aiRow.overview.trim() !== headline;
   const noAiNote = latest
-    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${latest.label} — ปกติจะขึ้นเองไม่นานหลังปิดสอบ หรือกด "วิเคราะห์ใหม่" ด้านบน`
-    : `น้อง${callName}ยังไม่ได้สอบรอบไหนเลย — ติดต่อผู้ปกครองเพื่อสอบถามก่อนรอบถัดไป`;
+    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${latest.label} ระบบจะวิเคราะห์อัตโนมัติหลังปิดสอบ หรือกด "วิเคราะห์ใหม่" ในแท็บรายคน`
+    : `${callName} ยังไม่ได้เข้าสอบรอบใด ควรติดต่อผู้ปกครองก่อนรอบถัดไป`;
 
   const jumpTo = (id) => {
     const box = scrollRef.current; const el = box?.querySelector(`#${id}`);
@@ -1252,7 +1258,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               <div className="min-w-0">
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
                 <h2 className="text-xl font-bold leading-tight break-words">{fullName}</h2>
-                <p className="text-sm text-white/90">{nick ? `น้อง${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
+                <p className="text-sm text-white/90">{nick ? `ชื่อเล่น ${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
                     <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
@@ -1341,7 +1347,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1"><span className="h-1 w-5 rounded bg-orange-500" />น้อง{callName}</span>
+                    <span className="flex items-center gap-1"><span className="h-1 w-5 rounded bg-orange-500" />{callName}</span>
                     <span className="flex items-center gap-1"><span className="h-0 w-5 border-t-2 border-dashed border-slate-400" />ค่าเฉลี่ยห้อง</span>
                   </div>
                 </div>
@@ -1400,7 +1406,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                           refColor={mode === "self" ? "#6366f1" : "#94a3b8"}
                         />
                         <div className="flex justify-center gap-3 text-[11px] text-slate-500 mt-1 flex-wrap">
-                          <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-400/60 border-2 border-orange-500" />น้อง{callName} ({latest.label})</span>
+                          <span className="flex items-center gap-1"><span className="h-3 w-3 rounded-sm bg-orange-400/60 border-2 border-orange-500" />{callName} ({latest.label})</span>
                           <span className="flex items-center gap-1"><span className={`h-3 w-3 rounded-sm border-2 border-dashed ${mode === "self" ? "border-indigo-500" : "border-slate-400"}`} />{mode === "self" ? `ตัวเองตอน ${first.label}` : "ค่าเฉลี่ยห้อง"}</span>
                         </div>
                       </div>
@@ -1736,7 +1742,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         <Confetti fire={cmp.avgGain > 0} />
         <div className="relative grid lg:grid-cols-[18rem_1fr] gap-4 lg:gap-6 p-4 sm:p-5">
           <div>
-            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "ห้องนี้เก่งขึ้นเฉลี่ย" : "คะแนนห้องนี้เปลี่ยนไปเฉลี่ย"}</p>
+            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "คะแนนเฉลี่ยของห้องเพิ่มขึ้น" : "คะแนนเฉลี่ยของห้องเปลี่ยนแปลง"}</p>
             <p className="tabular-nums text-3xl sm:text-4xl font-bold leading-none mt-2 drop-shadow-sm">
               <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
@@ -1772,7 +1778,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               })}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="tabular-nums text-2xl font-bold text-emerald-600">{cmp.improvedPct}%</p>
+              <p className="tabular-nums text-2xl font-bold text-emerald-600">{cmp.improvedPct}<Unit>%</Unit></p>
               <p className="text-xs text-slate-500 font-semibold">ของห้องดีขึ้น</p>
             </div>
           </div>
@@ -1784,8 +1790,8 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             ].map((item) => { const [n, l, c, b] = item; const CountIcon = item[4]; return (
               <div key={l} className={`${b} rounded-2xl py-2.5`}>
                 <CountIcon className={`h-4 w-4 mx-auto ${c}`} />
-                <p className={`tabular-nums text-xl font-bold ${c}`}>{n}</p>
-                <p className="text-[11px] text-slate-500">คน {l}</p>
+                <p className={`tabular-nums text-xl font-bold ${c}`}>{n}<Unit>คน</Unit></p>
+                <p className="text-[11px] text-slate-500">{l}</p>
               </div>
             ); })}
           </div>
@@ -1795,7 +1801,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         {/* ── ใครขยับไปเท่าไร ── */}
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 min-w-0 lg:min-w-auto" style={{ animationDelay: ".14s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> ใครขยับไปเท่าไร</h3>
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> การเปลี่ยนแปลงคะแนนรายคน</h3>
             <SegmentedControl size="sm" value={view} onChange={setView} options={[{ id: "swarm", label: "กลุ่มวงกลม" }, { id: "slope", label: "เส้นรายคน" }]} />
           </div>
           <p className="text-[11px] text-slate-500 mt-1">
@@ -1821,7 +1827,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการรายหมวด</h3>
-              <p className="text-xs text-slate-500 mt-0.5">เรียงจากหมวดที่ขยับน้อยที่สุด — แถวบนสุดคือที่ควรปรับวิธีสอนหรือเพิ่มเวลา</p>
+              <p className="text-xs text-slate-500 mt-0.5">เรียงจากหมวดที่เปลี่ยนแปลงน้อยที่สุด แถวบนสุดควรพิจารณาปรับวิธีสอนหรือเพิ่มเวลา</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-[11px] text-slate-500">
               <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-400" />70%+</span>
@@ -1920,7 +1926,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="text-base font-bold text-white min-w-0 truncate">พรีวิวก่อน ส่งออก Excel · {examLabel}</h3>
+          <h3 className="text-base font-bold text-white min-w-0 truncate">ตัวอย่างข้อมูลก่อนส่งออก Excel · {examLabel}</h3>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
@@ -2329,6 +2335,64 @@ const exportRoomAiReportPdf = (crossExamData, examId, aiSummariesForRound, cours
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+// ─── ปุ่ม "ส่งออกรายงาน" แบบเมนูเดียว (แพทเทิร์นเดียวกับปุ่มดาวน์โหลดรายงานของ TutorIncome) ──
+// เปิดได้ทั้งเมาส์ชี้/โฟกัส (CSS group) และการกด (state) เพื่อรองรับจอสัมผัส/คีย์บอร์ด
+// ปิดเมื่อกดนอกเมนู กด Escape หรือเลือกรายการ
+// items: [{ id, label, desc?, icon, onClick, disabled }]
+function ExportMenu({ items, label = "ส่งออกรายงาน" }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  const allDisabled = items.every((it) => it.disabled);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [open]);
+
+  // Escape ปิดได้ทั้งกรณีเปิดจากการกดและเปิดจากโฟกัสคีย์บอร์ด (ต้อง blur เพราะ focus-within ค้างเมนูไว้)
+  const onKeyDown = (e) => {
+    if (e.key !== "Escape") return;
+    setOpen(false);
+    const el = document.activeElement;
+    if (el && wrapRef.current?.contains(el)) el.blur();
+  };
+
+  const shown = open && !allDisabled;
+  return (
+    <div ref={wrapRef} onKeyDown={onKeyDown} className={`relative ${allDisabled ? "" : "group"}`}>
+      <button type="button" disabled={allDisabled}
+        onClick={(e) => { if (open) { e.currentTarget.blur(); setOpen(false); } else setOpen(true); }}
+        aria-haspopup="menu" aria-expanded={shown}
+        className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
+        <Download className="h-4 w-4" /> {label} <ChevronDown className="h-4 w-4" />
+      </button>
+      <div role="menu"
+        className={`absolute right-0 mt-2 w-64 max-w-[calc(100vw-2rem)] bg-white rounded-xl border border-slate-200 shadow-lg transition-all z-30 overflow-hidden ${shown ? "opacity-100 visible" : "opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible"}`}>
+        {items.map((it) => {
+          const Icon = it.icon;
+          return (
+            <button key={it.id} type="button" role="menuitem" disabled={it.disabled}
+              onClick={() => { setOpen(false); document.activeElement?.blur?.(); it.onClick(); }}
+              className="w-full flex items-start gap-2 px-4 py-3 text-left text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-700 transition font-medium">
+              {Icon && <Icon className="h-4 w-4 shrink-0 mt-0.5" />}
+              <span className="min-w-0">
+                <span className="block">{it.label}</span>
+                {it.desc && <span className="block text-[11px] font-normal text-slate-500 mt-0.5">{it.desc}</span>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: "overview", label: "ภาพรวม", icon: BarChart2 },
   { id: "compare", label: "เปรียบเทียบ", icon: TrendingUp },
@@ -2491,7 +2555,7 @@ export function ExamAnalyticsView({
       if (res?.failed > 0) setReanalyzeError(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
     } catch (err) {
       console.error("Analyze failed:", err);
-      setReanalyzeError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ ลองใหม่อีกครั้ง");
+      setReanalyzeError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setReanalyzing(false);
     }
@@ -2503,106 +2567,100 @@ export function ExamAnalyticsView({
         ? breadcrumb({ examId, examLabel, realExamId })
         : breadcrumb}
 
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
-            {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
-            {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
-              ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
-          </p>
-          {roleNote}
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full lg:w-auto">
-          {activeTab === "overview" && (
-            <SegmentedControl size="sm" stretchMobile value={examId} onChange={setExamId}
-              options={EXAMS_META.map(e => ({ id: e.id, label: e.label }))} />
-          )}
-          {activeTab === "overview" && (
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <button onClick={() => setExcelPreviewRows(buildExcelRows(examResults[examId]))}
-                disabled={!examResults[examId]?.students?.length}
-                className="flex items-center justify-center gap-2 whitespace-nowrap border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-40 disabled:cursor-not-allowed text-emerald-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-                <Download className="h-4 w-4" /> ส่งออก Excel
-              </button>
-              <button onClick={() => exportToPdf(examResults[examId], examLabel, courseName, subjectName, topicResults[examId])}
-                disabled={!examResults[examId]?.students?.length}
-                className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-                <Download className="h-4 w-4" /> ส่งออก PDF
-              </button>
-            </div>
-          )}
-        </div>
+      {/* Header — ชื่อหน้า + คำอธิบายเท่านั้น; ตัวเลือกรอบสอบและปุ่มส่งออกอยู่แถวเดียวกับแท็บด้านล่าง */}
+      <div className="min-w-0">
+        <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
+          {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
+          {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
+            ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
+        </p>
+        {roleNote}
       </div>
 
       {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" />}
 
-      {/* Tab Nav — Export PDF ของแท็บ "เปรียบเทียบ"/"รายคน" อยู่แถวเดียวกันนี้เลย (ไม่ใช่แถวแยก
-          ด้านล่างเหมือนเดิม จะได้ไม่มีช่องว่างเว้นเยอะระหว่างแท็บกับปุ่ม export) */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
+      {/* Tab Nav — แท็บอยู่ซ้าย ตัวเลือกรอบสอบ (เฉพาะแท็บที่ดูทีละรอบ) + ปุ่ม "ส่งออกรายงาน" อยู่ขวา
+          ปุ่มส่งออกมีปุ่มเดียวต่อแท็บ รายการในเมนูเปลี่ยนตามแท็บที่เลือก */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <SegmentedControl value={activeTab} onChange={setActiveTab} options={TABS.map(t => ({ id: t.id, label: t.label, icon: t.icon }))} />
-        {activeTab === "compare" && (
-          <button
-            onClick={() => exportComparisonToPdf(comparisonForExport, courseName, subjectName)}
-            disabled={dataLoading || comparisonForExport.rounds.length < 2}
-            className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-            <Download className="h-4 w-4" /> ส่งออก PDF
-          </button>
-        )}
-        {activeTab === "progress" && (
-          <button
-            onClick={() => exportProgressToPdf(progressRowsForExport, courseName, subjectName)}
-            disabled={dataLoading || !progressRowsForExport.length}
-            className="flex items-center justify-center gap-2 whitespace-nowrap border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-4 py-2 text-sm font-bold transition">
-            <Download className="h-4 w-4" /> ส่งออก PDF
-          </button>
-        )}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 w-full lg:w-auto">
+          {(activeTab === "overview" || activeTab === "progress") && (
+            <SegmentedControl size="sm" stretchMobile value={examId} onChange={setExamId}
+              options={EXAMS_META.map(e => ({ id: e.id, label: e.label }))} />
+          )}
+          {activeTab === "overview" && (
+            <ExportMenu items={[
+              {
+                id: "excel", icon: FileSpreadsheet, label: "Excel",
+                desc: `ผลสอบรายคน รอบ ${examLabel}`,
+                disabled: !examResults[examId]?.students?.length,
+                onClick: () => setExcelPreviewRows(buildExcelRows(examResults[examId])),
+              },
+              {
+                id: "pdf", icon: FileText, label: "PDF",
+                desc: `รายงานภาพรวมรอบ ${examLabel}`,
+                disabled: !examResults[examId]?.students?.length,
+                onClick: () => exportToPdf(examResults[examId], examLabel, courseName, subjectName, topicResults[examId]),
+              },
+            ]} />
+          )}
+          {activeTab === "compare" && (
+            <ExportMenu items={[
+              {
+                id: "pdf", icon: FileText, label: "PDF",
+                desc: "รายงานเปรียบเทียบพัฒนาการระหว่างรอบ",
+                disabled: dataLoading || comparisonForExport.rounds.length < 2,
+                onClick: () => exportComparisonToPdf(comparisonForExport, courseName, subjectName),
+              },
+            ]} />
+          )}
+          {activeTab === "progress" && (
+            <ExportMenu items={[
+              {
+                id: "progress-pdf", icon: FileText, label: "สรุปพัฒนาการรายคน (PDF)",
+                desc: "ตารางนักเรียนทั้งหมด ทุกรอบสอบ",
+                disabled: dataLoading || !progressRowsForExport.length,
+                onClick: () => exportProgressToPdf(progressRowsForExport, courseName, subjectName),
+              },
+              {
+                id: "parent-pdf", icon: FileText, label: "รายงานผู้ปกครองทั้งห้อง (PDF)",
+                desc: aiSummaries[examId]?.length
+                  ? `รอบ ${examLabel} · ${aiSummaries[examId].length} คนที่มีผลวิเคราะห์ AI`
+                  : `รอบ ${examLabel} · ยังไม่มีผลวิเคราะห์ AI`,
+                disabled: !(aiSummaries[examId]?.length),
+                onClick: () => exportRoomAiReportPdf(crossExamDataForExport, examId, aiSummaries[examId], courseName, subjectName, examLabel),
+              },
+            ]} />
+          )}
+        </div>
       </div>
 
-      {/* แถบ AI ของห้อง — สถานะ + ปุ่ม "วิเคราะห์ใหม่" + "ส่งออกรายงานผู้ปกครองทั้งห้อง (PDF)"
-          (ย้ายจากแท็บ "ภาพรวม" มาอยู่แท็บ "รายคน" อย่างเดียว) ปุ่มเลือกรอบเดิมอยู่แค่แท็บภาพรวม
-          จึงใส่ปุ่มเลือกรอบไว้ในแถบนี้เองด้วย (ใช้ state examId ร่วมกับแท็บภาพรวม) */}
+      {/* แถบ AI ของห้อง (เฉพาะแท็บ "รายคน") — สถานะการวิเคราะห์ของรอบที่เลือก + ปุ่ม "วิเคราะห์ใหม่"
+          ตัวเลือกรอบใช้ตัวเดียวกับแถวแท็บด้านบน และรายงานผู้ปกครองทั้งห้องย้ายไปอยู่ในเมนู "ส่งออกรายงาน" */}
       {activeTab === "progress" && (
-        <div className="bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm px-4 sm:px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
               {aiSummaries[examId] == null
-                ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
+                ? "กำลังตรวจสอบสถานะการวิเคราะห์ AI…"
                 : aiSummaries[examId].length > 0
                   ? `AI วิเคราะห์แล้ว ${aiSummaries[examId].length} จาก ${examResults[examId]?.submittedCount || 0} คน ของรอบ ${examLabel}`
                   : examResults[examId]?.submittedCount
-                    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${examLabel} — ปกติจะขึ้นเองไม่นานหลังปิดสอบ`
+                    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${examLabel} ระบบจะวิเคราะห์อัตโนมัติหลังปิดสอบ`
                     : `ยังไม่มีนักเรียนส่งคำตอบรอบ ${examLabel} จึงยังวิเคราะห์ไม่ได้`}
             </p>
-            <div className="flex rounded-lg overflow-hidden border border-slate-200 flex-shrink-0">
-              {EXAMS_META.map(e => (
-                <button key={e.id} onClick={() => setExamId(e.id)}
-                  className={`px-2.5 py-1 text-[11px] font-bold transition ${examId === e.id ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
-                  {e.label}
-                </button>
-              ))}
-            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap lg:flex-shrink-0">
-            <button
-              onClick={handleReanalyze}
-              disabled={reanalyzing || !examResults[examId]?.submittedCount}
-              className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {reanalyzing ? "กำลังวิเคราะห์…" : "วิเคราะห์ใหม่"}
-            </button>
-            <button
-              onClick={() => exportRoomAiReportPdf(crossExamDataForExport, examId, aiSummaries[examId], courseName, subjectName, examLabel)}
-              disabled={!(aiSummaries[examId]?.length)}
-              className="flex items-center gap-1.5 border border-orange-200 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed text-orange-700 rounded-xl px-3 py-1.5 text-xs font-bold transition"
-            >
-              <Download className="h-3.5 w-3.5" /> ส่งออกรายงานผู้ปกครองทั้งห้อง (PDF)
-            </button>
-          </div>
+          <button
+            onClick={handleReanalyze}
+            disabled={reanalyzing || !examResults[examId]?.submittedCount}
+            className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition flex-shrink-0"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            {reanalyzing ? "กำลังวิเคราะห์…" : "วิเคราะห์ใหม่"}
+          </button>
           {reanalyzeError && <p className="w-full text-[11px] text-amber-600">{reanalyzeError}</p>}
         </div>
       )}

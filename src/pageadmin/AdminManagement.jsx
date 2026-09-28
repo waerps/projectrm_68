@@ -13,6 +13,7 @@ import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin`;
 
@@ -354,11 +355,11 @@ export default function AdminManagement() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/admins`, data);
-      showToast("success", "เพิ่มผู้ดูแลระบบสำเร็จ!");
+      showToast("success", "เพิ่มผู้ดูแลระบบสำเร็จ");
       setShowAddModal(false);
       fetchAdmins();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -366,11 +367,11 @@ export default function AdminManagement() {
     setIsSubmitting(true);
     try {
       await axios.put(`${API}/admins/${editingAdmin.AdminId}`, data);
-      showToast("success", "แก้ไขข้อมูลสำเร็จ!");
+      showToast("success", "แก้ไขข้อมูลสำเร็จ");
       setEditingAdmin(null);
       fetchAdmins();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -386,7 +387,7 @@ export default function AdminManagement() {
       setStatusChange(null);
       fetchAdmins();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -409,16 +410,12 @@ export default function AdminManagement() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className={PAGE_TITLE}>จัดการผู้ดูแลระบบ</h1>
-          <p className={PAGE_SUBTITLE}>ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน แต่ละคนมีบัญชีของตัวเอง</p>
-        </div>
+      <PageHeader title="จัดการผู้ดูแลระบบ" subtitle="ผู้ดูแลระบบทุกคนมีสิทธิ์เท่ากัน และใช้บัญชีแยกรายบุคคล">
         <button onClick={() => setShowAddModal(true)}
-          className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}>
+          className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm`}>
           <Plus className="h-4 w-4" /> เพิ่มผู้ดูแลระบบ
         </button>
-      </div>
+      </PageHeader>
 
       {/* Stats */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
@@ -433,7 +430,7 @@ export default function AdminManagement() {
             </div>
             <div>
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900">{value}</p>
+              <p className="text-xl font-bold text-slate-900">{value}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
             </div>
           </div>
         ))}

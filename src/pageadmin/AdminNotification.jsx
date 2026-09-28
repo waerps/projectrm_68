@@ -137,7 +137,7 @@ export default function AdminNotifications() {
             <Bell className="h-6 w-6 text-orange-600" /> การแจ้งเตือนและกิจกรรม
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            ข้อมูลจริงจากส่วนต่าง ๆ ของระบบ · ยังไม่ได้อ่าน {unreadCount} รายการ
+            รวมการแจ้งเตือนจากทุกส่วนของระบบ · ยังไม่ได้อ่าน {unreadCount} รายการ
             {actionRequiredCount > 0 && <span className="text-red-600 font-semibold"> · ต้องดำเนินการ {actionRequiredCount} รายการ</span>}
           </p>
         </div>
@@ -165,7 +165,7 @@ export default function AdminNotifications() {
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
+              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()} <span className="text-xs font-medium text-slate-500">รายการ</span></p>
             </div>
           </button>
         ))}
@@ -174,7 +174,7 @@ export default function AdminNotifications() {
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={load} className="font-bold underline">ลองใหม่</button>
+          <button onClick={load} className="font-bold underline">โหลดใหม่</button>
         </div>
       )}
 
@@ -202,7 +202,7 @@ export default function AdminNotifications() {
           </select>
         </div>
         <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
-          <span>แสดง {filtered.length} จาก {items.length} รายการจริง</span>
+          <span>แสดง {filtered.length} จาก {items.length} รายการ</span>
           <ClearFiltersButton show={filterType !== 'all' || filterPriority !== 'all' || filterStatus !== 'all'}
             onClick={() => { setFilterType('all'); setFilterPriority('all'); setFilterStatus('all'); }} />
         </div>
@@ -212,13 +212,13 @@ export default function AdminNotifications() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
-          <p className="text-sm font-medium text-slate-500">กำลังรวมข้อมูลจากระบบ...</p>
+          <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
-          <p className="text-sm text-slate-500 mt-1">ถ้าทุกอย่างเรียบร้อย หน้านี้ว่างได้เป็นปกติ</p>
+          <p className="text-sm text-slate-500 mt-1">ปรับตัวกรองเพื่อดูรายการอื่น</p>
         </div>
       ) : (
         <div className="space-y-6">

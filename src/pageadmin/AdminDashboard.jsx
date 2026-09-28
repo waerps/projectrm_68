@@ -318,7 +318,7 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
               <div className="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
                 <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" /> คาบวันนี้</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1"><CountUp value={sessionsTotal} /></p>
+                <p className="text-2xl sm:text-3xl font-bold mt-1"><CountUp value={sessionsTotal} /> <span className="text-xs font-medium text-slate-400">คาบ</span></p>
               </div>
               <div className="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
                 <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> ห้องที่ใช้อยู่</p>
@@ -327,7 +327,7 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
               <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 p-3 sm:p-4 relative overflow-hidden shadow-lg shadow-orange-500/30">
                 <span className="absolute inset-0 sa-shine" />
                 <p className="relative text-[11px] sm:text-xs text-orange-50 flex items-center gap-1"><BellRing className="h-3.5 w-3.5" /> ต้องจัดการ</p>
-                <p className="relative text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionCount} /></p>
+                <p className="relative text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionCount} /> <span className="text-xs font-medium text-orange-50">เรื่อง</span></p>
               </div>
             </div>
           </div>
@@ -394,7 +394,7 @@ function ActionSection({ chips, onNavigate }) {
                   <span className="block text-[11px] text-slate-500 truncate">{a.message}</span>
                 </span>
                 <span className="flex flex-col items-end">
-                  <span className={`tabular-nums text-2xl font-bold leading-none ${meta.urgent ? "text-red-600" : "text-slate-900"}`}>{a.count}</span>
+                  <span className={`tabular-nums text-2xl font-bold leading-none ${meta.urgent ? "text-red-600" : "text-slate-900"}`}>{a.count} <span className="text-xs font-medium text-slate-500">รายการ</span></span>
                   <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-orange-500 transition mt-1" />
                 </span>
               </button>
@@ -436,7 +436,7 @@ function Sparkline({ values, color }) {
   );
 }
 
-function StatCard({ label, value, money, sub, subUp, icon, color, spark, sparkColor, delay }) {
+function StatCard({ label, value, unit, money, sub, subUp, icon, color, spark, sparkColor, delay }) {
   const Icon = icon;
   return (
     <div onMouseMove={tiltMove} onMouseLeave={tiltLeave}
@@ -448,7 +448,7 @@ function StatCard({ label, value, money, sub, subUp, icon, color, spark, sparkCo
         <span className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}><Icon className="h-5 w-5 text-white" /></span>
         <p className="text-xs text-slate-500 font-medium">{label}</p>
       </div>
-      <p className="relative text-2xl sm:text-3xl font-bold text-slate-900 mt-3"><CountUp value={value} prefix={money ? "฿" : ""} /></p>
+      <p className="relative text-2xl sm:text-3xl font-bold text-slate-900 mt-3"><CountUp value={value} prefix={money ? "฿" : ""} />{unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}</p>
       <div className="relative flex items-end justify-between gap-3 mt-1">
         {sub && (
           <p className={`text-[11px] sm:whitespace-nowrap ${subUp === undefined ? "text-slate-500" : subUp ? "text-emerald-600 font-semibold flex items-center gap-0.5" : "text-red-500 font-semibold flex items-center gap-0.5"}`}>
@@ -671,8 +671,8 @@ function StudentsCard({ students, onNavigate }) {
         <div className="relative flex items-center justify-between">
           <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Award className="h-4 w-4" /> ความสามารถโดดเด่น</p>
           <div className="flex gap-4 text-right">
-            <div><p className="text-lg font-bold leading-none"><CountUp value={students.total} /></p><p className="text-[10px] text-slate-400">ทั้งหมด</p></div>
-            <div><p className="text-lg font-bold leading-none text-emerald-300"><CountUp value={students.enrolled} /></p><p className="text-[10px] text-slate-400">ลงทะเบียน</p></div>
+            <div><p className="text-lg font-bold leading-none"><CountUp value={students.total} /> <span className="text-xs font-medium text-slate-400">คน</span></p><p className="text-[10px] text-slate-400">ทั้งหมด</p></div>
+            <div><p className="text-lg font-bold leading-none text-emerald-300"><CountUp value={students.enrolled} /> <span className="text-xs font-medium text-slate-400">คน</span></p><p className="text-[10px] text-slate-400">ลงทะเบียน</p></div>
           </div>
         </div>
         {podium.length === 0 ? (
@@ -797,8 +797,8 @@ function TutorsCard({ tutors, onNavigate }) {
           </div>
         </div>
         <div className="flex-1 w-full grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-slate-900"><CountUp value={tutors.total} /></p><p className="text-[11px] text-slate-500">ทั้งหมด</p></div>
-          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-emerald-600"><CountUp value={tutors.active} /></p><p className="text-[11px] text-slate-500">กำลังสอน</p></div>
+          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-slate-900"><CountUp value={tutors.total} /> <span className="text-xs font-medium text-slate-500">คน</span></p><p className="text-[11px] text-slate-500">ทั้งหมด</p></div>
+          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-emerald-600"><CountUp value={tutors.active} /> <span className="text-xs font-medium text-slate-500">คน</span></p><p className="text-[11px] text-slate-500">กำลังสอน</p></div>
         </div>
       </div>
 
@@ -1035,9 +1035,9 @@ function FacilitiesCard({ facilities, onNavigate }) {
         </div>
       )}
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-xl px-2 py-2 border text-center bg-emerald-50 border-emerald-100 text-emerald-700"><p className="text-[11px] opacity-70">พร้อมใช้</p><p className="text-lg font-bold tabular-nums">{ready}</p></div>
-        <div className="rounded-xl px-2 py-2 border text-center bg-amber-50 border-amber-100 text-amber-700"><p className="text-[11px] opacity-70">ใกล้หมด</p><p className="text-lg font-bold tabular-nums">{low}</p></div>
-        <div className={`rounded-xl px-2 py-2 border text-center bg-red-50 border-red-100 text-red-600 ${out > 0 ? "sa-pulse-red" : ""}`}><p className="text-[11px] opacity-70">หมดสต๊อก</p><p className="text-lg font-bold tabular-nums">{out}</p></div>
+        <div className="rounded-xl px-2 py-2 border text-center bg-emerald-50 border-emerald-100 text-emerald-700"><p className="text-[11px] opacity-70">พร้อมใช้</p><p className="text-lg font-bold tabular-nums">{ready} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
+        <div className="rounded-xl px-2 py-2 border text-center bg-amber-50 border-amber-100 text-amber-700"><p className="text-[11px] opacity-70">ใกล้หมด</p><p className="text-lg font-bold tabular-nums">{low} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
+        <div className={`rounded-xl px-2 py-2 border text-center bg-red-50 border-red-100 text-red-600 ${out > 0 ? "sa-pulse-red" : ""}`}><p className="text-[11px] opacity-70">หมดสต๊อก</p><p className="text-lg font-bold tabular-nums">{out} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
       </div>
       {items.length > 0 && (
         <>
@@ -1163,9 +1163,9 @@ export default function AdminDashboard() {
       <ActionSection chips={chips} onNavigate={goTo} />
 
       <Reveal className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="คอร์สที่เปิดสอนอยู่" value={kpi.activeCourses ?? 0} sub={`ทั้งหมด ${kpi.totalCourses ?? 0} คอร์ส`} icon={BookOpen} color="bg-blue-500" spark={series.courses} sparkColor="#3b82f6" delay={0.1} />
-        <StatCard label="นักเรียนทั้งหมด" value={kpi.totalStudents ?? 0} sub={`ลงทะเบียนแล้ว ${kpi.enrolledStudents ?? 0} คน`} icon={GraduationCap} color="bg-orange-600" spark={series.students} sparkColor="#f97316" delay={0.16} />
-        <StatCard label="ติวเตอร์ทั้งหมด" value={kpi.totalTutors ?? 0} sub={`กำลังสอน ${kpi.activeTutors ?? 0} คน`} icon={Users} color="bg-emerald-500" spark={series.tutors} sparkColor="#10b981" delay={0.22} />
+        <StatCard label="คอร์สที่เปิดสอนอยู่" value={kpi.activeCourses ?? 0} unit="คอร์ส" sub={`ทั้งหมด ${kpi.totalCourses ?? 0} คอร์ส`} icon={BookOpen} color="bg-blue-500" spark={series.courses} sparkColor="#3b82f6" delay={0.1} />
+        <StatCard label="นักเรียนทั้งหมด" value={kpi.totalStudents ?? 0} unit="คน" sub={`ลงทะเบียนแล้ว ${kpi.enrolledStudents ?? 0} คน`} icon={GraduationCap} color="bg-orange-600" spark={series.students} sparkColor="#f97316" delay={0.16} />
+        <StatCard label="ติวเตอร์ทั้งหมด" value={kpi.totalTutors ?? 0} unit="คน" sub={`กำลังสอน ${kpi.activeTutors ?? 0} คน`} icon={Users} color="bg-emerald-500" spark={series.tutors} sparkColor="#10b981" delay={0.22} />
         <StatCard label="รายรับเดือนนี้" value={kpi.monthlyRevenue ?? 0} money icon={Wallet} color="bg-amber-500"
           sub={growth !== undefined ? `${growth >= 0 ? "+" : ""}${growth}% จากเดือนก่อน` : undefined} subUp={growth !== undefined ? growth >= 0 : undefined}
           spark={(finance.trend || []).map((d) => d.revenue)} sparkColor="#f59e0b" delay={0.28} />

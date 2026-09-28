@@ -70,7 +70,7 @@ export default function TutorNotifications(){
           <h1 className={`${PAGE_TITLE} flex items-center gap-2.5`}>
             <Bell className="h-6 w-6 text-orange-600" /> การแจ้งเตือน
           </h1>
-          <p className="text-sm text-slate-500 mt-1">ข้อมูลจริงสำหรับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p>
+          <p className="text-sm text-slate-500 mt-1">การแจ้งเตือนเกี่ยวกับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p>
         </div>
         {unread>0 && (
           <button onClick={markAll} disabled={busy==='all'}
@@ -83,7 +83,7 @@ export default function TutorNotifications(){
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={load} className="font-bold underline">ลองใหม่</button>
+          <button onClick={load} className="font-bold underline">โหลดใหม่</button>
         </div>
       )}
 
@@ -104,13 +104,13 @@ export default function TutorNotifications(){
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
-          <p className="text-sm font-medium text-slate-500">กำลังโหลดงานของคุณ...</p>
+          <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
       ) : filtered.length===0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีการแจ้งเตือน</p>
-          <p className="text-sm text-slate-500 mt-1">หากไม่มีงานค้าง หน้านี้ว่างได้เป็นปกติ</p>
+          <p className="text-sm text-slate-500 mt-1">การแจ้งเตือนใหม่จะแสดงที่นี่</p>
         </div>
       ) : (
         <div className="space-y-6">

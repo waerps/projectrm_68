@@ -77,7 +77,7 @@ export default function TutorExam() {
         <span className="font-medium text-slate-800">{subjectName || "จัดการการสอบ"}</span>
       </div>
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 className={`${PAGE_TITLE} break-words`}>
             จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}

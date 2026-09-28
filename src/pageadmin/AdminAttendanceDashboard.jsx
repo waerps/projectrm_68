@@ -454,7 +454,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
           {filteredSessions.some(s => !s.PhotoStart) && (
             <div className="flex items-center gap-2 px-4 sm:px-6 py-3 bg-red-50/60 border-t border-red-100 text-xs text-red-700 font-medium">
               <AlertTriangle className="w-4 h-4 shrink-0" />
-              มีคาบที่ผ่านมา &gt; 4 ชั่วโมงแล้วแต่ยังไม่มีรูปบันทึก — อาจต้องติดตามติวเตอร์โดยตรง
+              มีคาบที่ผ่านมาเกิน 4 ชั่วโมงแต่ยังไม่มีรูปบันทึก ควรติดตามกับติวเตอร์
             </div>
           )}
 
@@ -490,7 +490,8 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 }
 
 // ── Main Dashboard ────────────────────────────────────────────
-export default function TutorAttendanceDashboard() {
+// embedded = แสดงเป็นแท็บในหน้าจัดการติวเตอร์ (หัวหน้าหลักอยู่ที่หน้านั้นแล้ว จึงใช้หัวข้อย่อยแทน h1)
+export default function TutorAttendanceDashboard({ embedded = false }) {
   const now = new Date();
   const [selectedMonthNum, setSelectedMonthNum] = useState('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -692,33 +693,38 @@ export default function TutorAttendanceDashboard() {
   //   เพื่อให้ stat ทั้งหมดเป็นเรื่อง attendance ล้วนๆ ไม่มีการเงินปน
   const STAT_CARDS = [
     {
-      label: 'อัตราเช็กอินเฉลี่ย (%)',
-      value: `${avgRate}%`,
+      label: 'อัตราเช็กอินเฉลี่ย',
+      value: avgRate,
+      unit: '%',
       icon: Percent,
       color: 'bg-emerald-500',
     },
     {
       label: 'คาบที่ยังไม่ได้เช็กอิน',
       value: missedTotal,
+      unit: 'คาบ',
       icon: Clock,
       color: missedTotal > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
       label: 'ติวเตอร์เช็กอินต่ำกว่า 50%',
       value: atRisk,
+      unit: 'คน',
       icon: AlertTriangle,
       color: atRisk > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
       label: 'ติวเตอร์เช็กอินครบ 100%',
       value: fullyRecorded,
+      unit: 'คน',
       icon: CheckCircle,
       color: fullyRecorded > 0 ? 'bg-emerald-500' : 'bg-slate-400',
     },
     // ★ เพิ่มตรงนี้
     {
-      label: 'ปล่อยคลาสบ่อยสุด',
+      label: 'ปล่อยคลาสมากที่สุด',
       value: topReleaser?.Nickname || '—',
+      unit: topReleaser ? `${topReleaser.ReleaseCount} ครั้ง` : '',
       icon: CalendarX,
       color: topReleaser ? 'bg-amber-500' : 'bg-slate-400',
     },
@@ -733,10 +739,18 @@ export default function TutorAttendanceDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ─────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* ── Header — แบนเนอร์ส้มชุดเดียวกับหน้าแอดมินอื่น ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
+        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
+        <div className="absolute left-1/3 -bottom-20 h-40 w-40 rounded-full bg-amber-200/25 blur-3xl" />
+      <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className={PAGE_TITLE}>ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+            <CheckCircle className="h-3.5 w-3.5" /> บันทึกการเข้าสอน
+          </span>
+          {embedded
+            ? <h2 className="mt-2 text-lg font-bold text-slate-900">ประวัติการเช็กอินและขาดสอน</h2>
+            : <h1 className={`${PAGE_TITLE} mt-2`}>ประวัติการเช็กอินและขาดสอนของติวเตอร์</h1>}
           <p className={PAGE_SUBTITLE}>
             ติดตามการเช็กอินและการขาดสอนของติวเตอร์แต่ละคน ·{' '}
             {selectedMonth.start ? `${selectedMonth.start} ถึง ${selectedMonth.end}` : selectedMonth.label}
@@ -774,17 +788,21 @@ export default function TutorAttendanceDashboard() {
           </button>
         </div>
       </div>
+      </div>
 
       {/* ── Stats Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        {STAT_CARDS.map(({ label, value, sub, icon: Icon, color }) => (
+        {STAT_CARDS.map(({ label, value, unit, sub, icon: Icon, color }) => (
           <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900 mt-0.5 truncate">{value}</p>
+              <p className="text-xl font-bold text-slate-900 mt-0.5 truncate">
+                {value}
+                {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+              </p>
               {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
             </div>
           </div>
@@ -1244,7 +1262,7 @@ function DrillDownModal({ info, onClose }) {
                     <p className="text-xs text-slate-500 mt-0.5">{s.CourseName}</p>
                     {Boolean(Number(s.WasReleasedUnfilled)) && (
                       <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2">
-                        <p className="text-[11px] font-bold text-orange-700">ปล่อยคลาสแล้วไม่มีติวเตอร์รับ</p>
+                        <p className="text-[11px] font-bold text-orange-700">ปล่อยคลาสแต่ไม่มีผู้รับสอน</p>
                         {s.ReleaseReason && (
                           <p className="mt-0.5 text-[11px] text-orange-600">เหตุผล: {s.ReleaseReason}</p>
                         )}
@@ -1335,9 +1353,9 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
                           : r.Status === 'expired' ? 'bg-red-50 text-red-700'
                             : 'bg-slate-100 text-slate-500'
                       }`}>
-                      {r.Status === 'accepted' ? 'มีคนรับแล้ว'
-                        : r.Status === 'open' ? 'กำลังรอคนรับ'
-                          : r.Status === 'expired' ? 'หมดเขตไม่มีคนรับ'
+                      {r.Status === 'accepted' ? 'มีผู้รับสอนแล้ว'
+                        : r.Status === 'open' ? 'รอผู้รับสอน'
+                          : r.Status === 'expired' ? 'หมดเวลา ไม่มีผู้รับสอน'
                             : 'ยกเลิกแล้ว'}
                     </span>
                   </div>
@@ -1384,7 +1402,7 @@ function TutorReleaseRanking({ selectedMonth }) {
     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
       <CheckCircle className="w-10 h-10 text-emerald-500 shrink-0" />
       <div>
-        <p className="font-bold text-emerald-800">ช่วงนี้ไม่มีการปล่อยคลาสเลย</p>
+        <p className="font-bold text-emerald-800">ไม่มีการปล่อยคลาสในช่วงเวลานี้</p>
         <p className="text-sm text-emerald-600 mt-0.5">ติวเตอร์ทุกคนสอนตามตารางปกติ</p>
       </div>
     </div>
@@ -1417,7 +1435,7 @@ function TutorReleaseRanking({ selectedMonth }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{t.Nickname}</p>
                 <p className="text-[11px] text-slate-500">
-                  รับคืนแล้ว {t.AcceptedCount} · ไม่มีคนรับ {t.UnfilledCount}
+                  มีผู้รับสอน {t.AcceptedCount} ครั้ง · ไม่มีผู้รับสอน {t.UnfilledCount} ครั้ง
                 </p>
               </div>
               <span className="shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
@@ -1454,7 +1472,7 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-center gap-4">
       <CheckCircle className="w-10 h-10 text-emerald-500 shrink-0" />
       <div>
-        <p className="font-bold text-emerald-800">เดือนนี้ไม่มีการขาดสอนเลย</p>
+        <p className="font-bold text-emerald-800">ไม่มีการขาดสอนในช่วงเวลานี้</p>
         <p className="text-sm text-emerald-600 mt-0.5">ติวเตอร์ทุกคนเช็กอินครบทุกคาบ</p>
       </div>
     </div>
@@ -1465,35 +1483,39 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
       icon: AlertTriangle,
       color: 'bg-red-50 border-red-100',
       iconColor: 'text-red-500',
-      label: 'ขาดรวมทั้งเดือน',
-      value: `${totalMissed} ครั้ง`,
-      sub: `จาก ${tutors.length} ติวเตอร์`,
+      label: 'การขาดสอนรวม',
+      value: totalMissed,
+      unit: 'ครั้ง',
+      sub: `จากติวเตอร์ ${tutors.length} คน`,
     },
     {
       icon: Users,
       color: 'bg-orange-50 border-orange-100',
       iconColor: 'text-orange-500',
-      label: 'ติวเตอร์ขาดบ่อยสุด',
+      label: 'ติวเตอร์ที่ขาดสอนมากที่สุด',
       value: worstTutor?.Nickname || '—',
-      sub: worstTutor ? `${worstTutor.totalMissed} ครั้ง` : '',
+      unit: worstTutor ? `${worstTutor.totalMissed} ครั้ง` : '',
+      sub: '',
     },
     {
       icon: Clock,
       color: 'bg-amber-50 border-amber-100',
       iconColor: 'text-amber-500',
-      label: 'วันที่ขาดบ่อยสุด',
+      label: 'วันที่ขาดสอนมากที่สุด',
       value: `วัน${DAY_FULL[worstDayNum]}`,
-      sub: `รวม ${daySummary[worstDayNum]} ครั้ง`,
+      unit: `${daySummary[worstDayNum]} ครั้ง`,
+      sub: '',
     },
     {
       icon: BookOpen,
       color: cleanWeeks.length > 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100',
       iconColor: cleanWeeks.length > 0 ? 'text-emerald-500' : 'text-slate-400',
-      label: 'สัปดาห์ไม่มีขาดเลย',
-      value: `${cleanWeeks.length} สัปดาห์`,
+      label: 'สัปดาห์ที่ไม่มีการขาดสอน',
+      value: cleanWeeks.length,
+      unit: 'สัปดาห์',
       sub: cleanWeeks.length > 0
         ? cleanWeeks.map(w => `สัปดาห์ที่ ${w.weekIndex}`).join(', ')
-        : 'ทุกสัปดาห์มีการขาด',
+        : 'มีการขาดสอนทุกสัปดาห์',
     },
   ];
 
@@ -1503,22 +1525,25 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
       <div className={`${CALLOUT.box} ${CALLOUT.danger}`}>
         <AlertTriangle className={`w-5 h-5 shrink-0 ${CALLOUT_ICON.danger}`} />
         <p className="font-medium flex-1">
-          <span className="font-bold">สรุปเดือนนี้ —&nbsp;</span>
-          วัน<span className="font-bold text-red-600">{DAY_FULL[worstDayNum]}</span>มีการขาดสอนบ่อยที่สุด ({daySummary[worstDayNum]} ครั้ง)
-          {worstTutor && <>, และ <span className="font-bold text-red-600">{worstTutor.Nickname}</span> ขาดมากที่สุด {worstTutor.totalMissed} ครั้ง</>}
-          {worstWeek && <>, ช่วงที่หนักสุดคือ<span className="font-bold"> สัปดาห์ที่ {worstWeek.weekIndex}</span> ({shortDate(worstWeek.WeekStart)}–{shortDate(worstWeek.WeekEnd)})</>}
+          <span className="font-bold">สรุป —&nbsp;</span>
+          วันที่ขาดสอนมากที่สุดคือวัน<span className="font-bold text-red-600">{DAY_FULL[worstDayNum]}</span> ({daySummary[worstDayNum]} ครั้ง)
+          {worstTutor && <> · ติวเตอร์ที่ขาดสอนมากที่สุดคือ <span className="font-bold text-red-600">{worstTutor.Nickname}</span> ({worstTutor.totalMissed} ครั้ง)</>}
+          {worstWeek && <> · สัปดาห์ที่ขาดสอนมากที่สุดคือ<span className="font-bold"> สัปดาห์ที่ {worstWeek.weekIndex}</span> ({shortDate(worstWeek.WeekStart)}–{shortDate(worstWeek.WeekEnd)})</>}
         </p>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-3">
-        {CARDS.map(({ icon: Icon, color, iconColor, label, value, sub }) => (
+        {CARDS.map(({ icon: Icon, color, iconColor, label, value, unit, sub }) => (
           <div key={label} className={`flex items-start gap-3 p-4 rounded-2xl border ${color}`}>
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`} />
             <div className="min-w-0">
               <p className="text-[11px] text-slate-500 font-medium">{label}</p>
-              <p className="text-base font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>
+              <p className="text-base font-bold text-slate-900 mt-0.5 truncate">
+                {value}
+                {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+              </p>
+              {sub && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>}
             </div>
           </div>
         ))}

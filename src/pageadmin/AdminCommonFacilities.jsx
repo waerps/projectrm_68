@@ -14,6 +14,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin`;
 
@@ -869,11 +870,11 @@ export default function AdminCommonFacilities() {
         setIsSubmitting(true);
         try {
             await axios.post(`${API}/common-facilities`, form);
-            showToast("success", "เพิ่มอุปกรณ์สำเร็จ!");
+            showToast("success", "เพิ่มอุปกรณ์สำเร็จ");
             setShowAddModal(false);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -881,11 +882,11 @@ export default function AdminCommonFacilities() {
         setIsSubmitting(true);
         try {
             await axios.put(`${API}/common-facilities/${editingItem.CommonFacilityId}`, form);
-            showToast("success", "แก้ไขอุปกรณ์สำเร็จ!");
+            showToast("success", "แก้ไขอุปกรณ์สำเร็จ");
             setEditingItem(null);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -894,11 +895,11 @@ export default function AdminCommonFacilities() {
         setIsDeleting(true);
         try {
             await axios.delete(`${API}/common-facilities/${deletingItem.CommonFacilityId}`);
-            showToast("success", "นำอุปกรณ์ออกจากรายการสำเร็จ!");
+            showToast("success", "นำอุปกรณ์ออกจากรายการสำเร็จ");
             setDeletingItem(null);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsDeleting(false); }
     };
 
@@ -945,16 +946,12 @@ export default function AdminCommonFacilities() {
         <div className="space-y-6 px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className={PAGE_TITLE}>จัดการคลังอุปกรณ์</h1>
-                    <p className={PAGE_SUBTITLE}>จัดการทรัพย์สินและวัสดุส่วนกลางที่ใช้ร่วมกันในสถาบัน</p>
-                </div>
+            <PageHeader title="จัดการคลังอุปกรณ์" subtitle="จัดการทรัพย์สินและวัสดุส่วนกลางของสถาบัน">
                 <button onClick={() => setShowAddModal(true)}
-                    className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
                     <Plus className="h-4 w-4" /> เพิ่มอุปกรณ์
                 </button>
-            </div>
+            </PageHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
@@ -968,7 +965,7 @@ export default function AdminCommonFacilities() {
                         </div>
                         <div>
                             <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-bold text-slate-900">{value}</p>
+                            <p className="text-xl font-bold text-slate-900">{value}<span className="ml-1 text-xs font-medium text-slate-500">รายการ</span></p>
                         </div>
                     </div>
                 ))}
@@ -982,7 +979,7 @@ export default function AdminCommonFacilities() {
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                placeholder="ชื่ออุปกรณ์, ตำแหน่ง..."
+                                placeholder="ค้นหาชื่ออุปกรณ์, ตำแหน่ง..."
                                 className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
                             />
                         </div>

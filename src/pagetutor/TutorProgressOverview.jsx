@@ -44,7 +44,7 @@ export default function TutorProgressOverview() {
 
   useEffect(() => {
     if (!tutorId) {
-      setError("ไม่พบข้อมูลผู้ใช้ ลองออกจากระบบแล้วเข้าใหม่");
+      setError("ไม่พบข้อมูลผู้ใช้ กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่");
       setLoading(false);
       return;
     }
@@ -163,7 +163,7 @@ export default function TutorProgressOverview() {
           <h1 className={PAGE_TITLE}>ภาพรวมพัฒนาการ</h1>
           <p className={PAGE_SUBTITLE}>
             เลือกคอร์สและวิชาที่ต้องการดูพัฒนาการของนักเรียน
-            {stats.subjects > 0 && ` · คุณสอนอยู่ ${stats.subjects} วิชา ใน ${stats.courses} คอร์ส`}
+            {stats.subjects > 0 && ` · สอน ${stats.subjects} วิชา ใน ${stats.courses} คอร์ส`}
           </p>
         </div>
       </div>
@@ -171,9 +171,9 @@ export default function TutorProgressOverview() {
       {/* Stats */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
-          { label: "คอร์สที่สอน", value: stats.courses, color: "bg-orange-600", icon: BookOpen },
-          { label: "วิชาที่สอน", value: stats.subjects, color: "bg-blue-500", icon: BarChart2 },
-          { label: "นักเรียนทั้งหมด", value: stats.students, color: "bg-emerald-500", icon: Users },
+          { label: "คอร์สที่สอน", value: stats.courses, unit: "คอร์ส", color: "bg-orange-600", icon: BookOpen },
+          { label: "วิชาที่สอน", value: stats.subjects, unit: "วิชา", color: "bg-blue-500", icon: BarChart2 },
+          { label: "นักเรียนทั้งหมด", value: stats.students, unit: "คน", color: "bg-emerald-500", icon: Users },
         ].map((card, i) => {
           const Icon = card.icon;
           return (
@@ -183,7 +183,7 @@ export default function TutorProgressOverview() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()}</p>
+                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()} <span className="text-xs font-medium text-slate-500">{card.unit}</span></p>
               </div>
             </div>
           );
@@ -217,7 +217,7 @@ export default function TutorProgressOverview() {
             {search.trim() ? "ไม่พบคอร์สหรือวิชาที่ค้นหา" : "ยังไม่มีคอร์สที่คุณสอน"}
           </p>
           {!search.trim() && (
-            <p className="text-xs text-slate-500 mt-1">คอร์สจะขึ้นที่นี่เมื่อแอดมินมอบหมายให้คุณสอนในคอร์สแล้ว</p>
+            <p className="text-xs text-slate-500 mt-1">คอร์สจะแสดงที่นี่เมื่อผู้ดูแลระบบมอบหมายการสอน</p>
           )}
         </div>
       ) : (

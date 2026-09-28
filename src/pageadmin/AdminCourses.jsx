@@ -23,6 +23,7 @@ import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import SegmentedControl from "../components/ui/SegmentedControl";
+import PageHeader from "../components/ui/PageHeader";
 import { UsersRound as LuUsersRound, UserRoundCheck as LuUserRoundCheck } from "lucide-react";
 import PrivateCoursesPanel from "./AdminPrivateCourses";
 
@@ -40,7 +41,7 @@ const tiltMove = (e) => {
 };
 const tiltLeave = (e) => { e.currentTarget.style.transform = ""; };
 
-function StatTile({ label, value, color, icon: Icon }) {
+function StatTile({ label, value, color, icon: Icon, unit }) {
   return (
     <div
       onMouseMove={tiltMove}
@@ -54,7 +55,7 @@ function StatTile({ label, value, color, icon: Icon }) {
       </div>
       <div className="relative min-w-0">
         <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900">{value}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
       </div>
     </div>
   );
@@ -263,7 +264,7 @@ function ConfirmDialog({ course, onConfirm, onCancel }) {
             onClick={onConfirm}
             className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition text-sm"
           >
-            ลบเลย
+            ยืนยันการลบ
           </button>
         </div>
       </div>
@@ -2972,12 +2973,12 @@ export default function AdminCoursesPage() {
           `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
         );
       } else {
-        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้!");
+        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้");
       }
       setShowAddModal(false);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -2988,11 +2989,11 @@ export default function AdminCoursesPage() {
     const { pendingSubjects, pendingStudents, ...courseData } = data;
     try {
       await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData)
-      showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ!");
+      showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ");
       setEditingCourse(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -3001,11 +3002,11 @@ export default function AdminCoursesPage() {
   const handleDelete = async () => {
     try {
       await axios.delete(`${API_BASE}/courses/${deletingCourse.CourseID}`);
-      showToast("success", "ลบข้อมูลคอร์สสำเร็จ!");
+      showToast("success", "ลบข้อมูลคอร์สสำเร็จ");
       setDeletingCourse(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     }
   };
 
@@ -3017,11 +3018,11 @@ export default function AdminCoursesPage() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API_BASE}/courses/${duplicatingCourse.CourseID}/duplicate`, { StartDate, LastDate });
-      showToast("success", "ทำสำเนาคอร์สสำเร็จ!");
+      showToast("success", "ทำสำเนาคอร์สสำเร็จ");
       setDuplicatingCourse(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -3094,35 +3095,36 @@ export default function AdminCoursesPage() {
   return (
     <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+      {/* ── Header: ชื่อหน้า (ซ้าย) + ตัวสลับประเภทคอร์ส/ปุ่มหลัก (ขวา) — รูปแบบเดียวกับหน้าการเงิน ── */}
+      <PageHeader title="จัดการคอร์สเรียน" subtitle="จัดการคอร์สรวมและคอร์สเดี่ยวของสถาบัน">
+        <SegmentedControl stretchMobile value={courseTab} onChange={setCourseTab} options={[
+          { id: "bundle", label: "คอร์สรวม", icon: LuUsersRound, count: groupCourses.length },
+          { id: "single", label: "คอร์สเดี่ยว", icon: LuUserRoundCheck, count: singleCount },
+        ]} />
+        {courseTab === "bundle" && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}
+          >
+            <Plus className="h-4 w-4" /> เพิ่มคอร์ส
+          </button>
+        )}
+      </PageHeader>
+
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
         <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
-              <BookOpen className="h-3.5 w-3.5" /> คลังคอร์สเรียน
-            </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>จัดการคอร์สเรียน</h1>
-            <p className={PAGE_SUBTITLE}>
-              {courseTab === "single"
-                ? "คอร์สเดี่ยว · เรียนตัวต่อตัว 1 วิชา 1 นักเรียน ไม่ขายหน้าเว็บ ผู้สนใจติดต่อพี่กวางเพื่อประเมินก่อน"
-                : "คอร์สรวม · คอร์สเรียนกลุ่มที่ขายบนหน้าเว็บ เพิ่ม แก้ไข และจัดการได้ที่นี่"}
-            </p>
-          </div>
-          {courseTab === "bundle" && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className={`${BTN.primary} relative flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}
-            >
-              <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
-            </button>
-          )}
+        <div className="relative">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+            <BookOpen className="h-3.5 w-3.5" /> คลังคอร์สเรียน
+          </span>
+          <h2 className="mt-2 text-lg font-bold text-slate-900">{courseTab === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}</h2>
+          <p className={PAGE_SUBTITLE}>
+            {courseTab === "single"
+              ? "เรียนตัวต่อตัว 1 วิชาต่อนักเรียน 1 คน ไม่เปิดจำหน่ายบนเว็บไซต์ ผู้สนใจต้องติดต่อสถาบันเพื่อประเมินก่อน"
+              : "คอร์สเรียนกลุ่มที่เปิดจำหน่ายบนเว็บไซต์ เพิ่ม แก้ไข และจัดการคอร์สได้ที่หน้านี้"}
+          </p>
         </div>
       </div>
-
-      <SegmentedControl stretchMobile value={courseTab} onChange={setCourseTab} options={[
-        { id: "bundle", label: "คอร์สรวม", icon: LuUsersRound, count: groupCourses.length },
-        { id: "single", label: "คอร์สเดี่ยว", icon: LuUserRoundCheck, count: singleCount },
-      ]} />
 
       {courseTab === "single" ? (
         <PrivateCoursesPanel onManageCourse={openManageCourse} version={dataVersion} onDataChanged={fetchAll} />
@@ -3134,7 +3136,7 @@ export default function AdminCoursesPage() {
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
           { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-slate-400" },
         ].map(({ label, value, icon, color }, i) => (
-          <StatTile key={i} label={label} value={value} icon={icon} color={color} />
+          <StatTile key={i} label={label} value={value} icon={icon} color={color} unit="คอร์ส" />
         ))}
       </div>
 
@@ -3174,7 +3176,7 @@ export default function AdminCoursesPage() {
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
           <p className="text-base font-semibold text-slate-700">ไม่พบคอร์สเรียนที่ค้นหา</p>
-          <p className="mt-1 text-sm text-slate-500">ลองเปลี่ยนคำค้นหาหรือตัวกรอง</p>
+          <p className="mt-1 text-sm text-slate-500">โปรดปรับคำค้นหาหรือตัวกรอง</p>
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">

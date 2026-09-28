@@ -11,7 +11,7 @@ import {
 import * as XLSX from 'xlsx';
 import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { PAGE_TITLE, PAGE_SUBTITLE, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import { FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText } from "lucide-react";
@@ -140,6 +140,22 @@ function MoneyCountUp({ value }) {
   return (shown ?? 0).toLocaleString();
 }
 
+// พ.ศ. — แปลงเฉพาะเมื่อยังเป็น ค.ศ.
+const toBE = (y) => { const n = Number(y); return n && n < 2400 ? n + 543 : n; };
+// รูปแบบตัวเลขแกนกราฟ: ต่ำกว่า 1,000 แสดงเต็ม, ตั้งแต่ 1,000 ใช้ k
+const fmtAxis = (v) => {
+  if (v < 1000) return Math.round(v).toLocaleString();
+  const k = v / 1000;
+  return `${Number.isInteger(k) ? k : Number(k.toFixed(1))}k`;
+};
+// หาช่วงแกนที่เป็นเลขกลม (1, 2, 2.5, 5 × 10^n) สำหรับ 4 ช่อง
+function niceAxis(maxV, steps = 4) {
+  const raw = Math.max(1, maxV) / steps;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 1.5, 2, 2.5, 3, 5, 10].map((m) => m * mag).find((c) => c >= raw);
+  return { top: step * steps, ticks: Array.from({ length: steps + 1 }, (_, k) => step * (steps - k)) };
+}
+
 const TH_MONTHS_FULL = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const TIER_MIN = [1, 5, 11, 16, 21];
 
@@ -165,49 +181,35 @@ function FlowConnector({ dotClass }) {
   );
 }
 
-// ─── ดีไซน์แบบไอโซเมตริก 3D (หน้าแรกของรายรับ) ─────────────────────────
-// การ์ดนูนมีขอบล่างหนา เอียงตามเมาส์ แท่งกราฟมีด้านข้าง/ด้านบน โดนัทเอียงให้เห็นความหนา
-// สไตล์อยู่ในไฟล์นี้ทั้งหมด (คลาส inc3d-*) ไม่กระทบหน้าอื่น
+// ─── สไตล์เฉพาะหน้ารายรับ (คลาส inc3d-*) ─────────────────────────────
+// การ์ดสรุปด้านบน + แท็บ ใช้ขอบนูนเล็กน้อย ส่วนการ์ดอื่นเป็นการ์ดมาตรฐานของระบบ
+// (bg-white rounded-2xl border border-slate-200 shadow-sm) — แอนิเมชันในการ์ดยังคงไว้
 const INC3D_CSS = `
 @property --inc3d-sweep { syntax: '<number>'; inherits: true; initial-value: 1; }
 .inc3d-card{position:relative;background:#fff;border:1px solid #E7E1D8;border-radius:20px;
   box-shadow:0 6px 0 #EDE6DC,0 8px 0 #DFD6CA,0 20px 30px -18px rgba(15,23,42,.25);
   transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px));
   transition:transform .35s cubic-bezier(.2,.8,.2,1),box-shadow .35s cubic-bezier(.2,.8,.2,1)}
-.inc3d-lift:hover{--ty:-4px;box-shadow:0 10px 0 #EDE6DC,0 12px 0 #DFD6CA,0 28px 36px -18px rgba(15,23,42,.28)}
-.inc3d-glare{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;
-  background:radial-gradient(420px circle at var(--gx,50%) var(--gy,0%),rgba(255,255,255,.6),transparent 45%)}
-.inc3d-lift:hover .inc3d-glare{opacity:1}
 .inc3d-chip{box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 3px 0 var(--chip-edge,#C2410C),0 8px 14px -6px var(--chip-glow,rgba(234,88,12,.5))}
-.inc3d-btn{background:linear-gradient(180deg,#F97316,#EA580C);color:#fff;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 #C2410C,0 10px 20px -8px rgba(234,88,12,.55);transition:transform .15s,box-shadow .15s}
-.inc3d-btn:hover{transform:translateY(-1px)}
-.inc3d-btn:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 1px 0 #C2410C,0 4px 10px -6px rgba(234,88,12,.55)}
 .inc3d-step{transition:transform .3s cubic-bezier(.2,.8,.2,1)}
 .inc3d-step:hover{transform:translateY(-3px)}
 .inc3d-track{box-shadow:inset 0 2px 3px rgba(15,23,42,.08)}
 .inc3d-bar{position:relative;transform-origin:bottom;animation:inc3d-grow 1s cubic-bezier(.2,.8,.2,1) both}
-.inc3d-bar .fc{position:absolute;inset:0;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#FED7AA,#FDBA74)}
-.inc3d-bar::before{content:"";position:absolute;top:0;right:-9px;width:9px;height:100%;background:linear-gradient(180deg,#F59E5B,#E3894A);transform:skewY(-45deg);transform-origin:left top}
-.inc3d-bar::after{content:"";position:absolute;left:0;top:-9px;width:100%;height:9px;background:#FFE3C7;transform:skewX(-45deg);transform-origin:left bottom}
-.inc3d-bar.now .fc{background:linear-gradient(180deg,#FBBF24,#EA580C)}
-.inc3d-bar.now::before{background:linear-gradient(180deg,#C2410C,#9A3412)}
-.inc3d-bar.now::after{background:#FCD34D}
+.inc3d-bar .fc{position:absolute;inset:0;border-radius:6px 6px 0 0;background:#FDBA74}
+.inc3d-bar.now .fc{background:linear-gradient(180deg,#FB923C,#EA580C)}
 .inc3d-bar.hov .fc{filter:brightness(1.05) saturate(1.1)}
 @keyframes inc3d-grow{from{transform:scaleY(0)}}
 .inc3d-line{animation:inc3d-reveal 1.3s .8s cubic-bezier(.2,.8,.2,1) both}
 @keyframes inc3d-reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
-.inc3d-dot{background:radial-gradient(circle at 35% 30%,#475569,#0F172A 70%);box-shadow:0 2px 0 #020617,0 4px 8px -2px rgba(2,6,23,.45)}
-.inc3d-ball{background:radial-gradient(circle at 35% 30%,#FDBA74,#EA580C 70%);box-shadow:0 2px 0 #C2410C,0 4px 8px -2px rgba(234,88,12,.6)}
-.inc3d-person{background:radial-gradient(circle at 35% 30%,#86EFAC,#22C55E 70%);box-shadow:0 2px 0 #15803D}
-.inc3d-mini{background:linear-gradient(180deg,#7DD3FC,#0EA5E9);box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
-.inc3d-mini.dim{background:linear-gradient(180deg,#E0F2FE,#BAE6FD)}
-.inc3d-donut{position:relative;width:188px;height:188px;transform-style:preserve-3d;transform:rotateX(56deg);
-  animation:inc3d-sweep 1.4s .2s cubic-bezier(.2,.8,.2,1) both,inc3d-spin 1.4s cubic-bezier(.2,.8,.2,1) both}
+.inc3d-dot{background:#1E293B;box-shadow:0 0 0 2px #fff}
+.inc3d-ball{background:#EA580C;box-shadow:0 0 0 3px #fff,0 1px 3px rgba(15,23,42,.3)}
+.inc3d-person{background:#22C55E}
+.inc3d-mini{background:#0EA5E9}
+.inc3d-mini.dim{background:#BAE6FD}
+.inc3d-donut{position:relative;width:176px;height:176px;animation:inc3d-sweep 1.2s .2s cubic-bezier(.2,.8,.2,1) both}
 @keyframes inc3d-sweep{from{--inc3d-sweep:0}}
-@keyframes inc3d-spin{from{transform:rotateX(56deg) rotateZ(-40deg)}}
-.inc3d-disc{position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(circle,transparent 54%,#000 55%);mask:radial-gradient(circle,transparent 54%,#000 55%)}
-.inc3d-center{position:absolute;inset:0;display:grid;place-items:center;transform:translateZ(2px) rotateX(-56deg)}
+.inc3d-disc{position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(circle,transparent 58%,#000 59%);mask:radial-gradient(circle,transparent 58%,#000 59%)}
+.inc3d-center{position:absolute;inset:0;display:grid;place-items:center}
 .inc3d-in{animation:inc3d-in .5s ease both}
 @keyframes inc3d-in{from{translate:0 10px;opacity:0}}
 .inc3d-tabs{box-shadow:inset 0 2px 4px rgba(15,23,42,.07)}
@@ -217,28 +219,6 @@ const INC3D_CSS = `
   .inc3d-card{transform:none!important;transition:none}
   .inc3d-pill{transition:none}
 }`;
-
-// การ์ดเอียงตามเมาส์ (ปิดเองเมื่อผู้ใช้ตั้งลดการเคลื่อนไหว หรือเป็นจอสัมผัส)
-const canTilt = () => {
-  try { return !prefersReducedMotion() && window.matchMedia('(hover: hover)').matches; } catch { return false; }
-};
-function tiltProps(max = 6) {
-  if (!canTilt()) return {};
-  return {
-    onMouseMove: (e) => {
-      const el = e.currentTarget; const r = el.getBoundingClientRect();
-      const px = (e.clientX - r.left) / r.width; const py = (e.clientY - r.top) / r.height;
-      el.style.setProperty('--ry', `${((px - 0.5) * max).toFixed(2)}deg`);
-      el.style.setProperty('--rx', `${((0.5 - py) * max).toFixed(2)}deg`);
-      el.style.setProperty('--gx', `${px * 100}%`);
-      el.style.setProperty('--gy', `${py * 100}%`);
-    },
-    onMouseLeave: (e) => {
-      e.currentTarget.style.setProperty('--rx', '0deg');
-      e.currentTarget.style.setProperty('--ry', '0deg');
-    },
-  };
-}
 
 // แท็บเต็มความกว้าง แคปซูลสีขาวเลื่อนตามแท็บที่เลือก
 function IsoTabs({ tabs, value, onChange }) {
@@ -265,23 +245,23 @@ function IsoTabs({ tabs, value, onChange }) {
   );
 }
 
-// กราฟรายรับรายเดือน: แท่ง 3D (รายรับ) + เส้นจุด (จำนวนคลาส) — วาดเองด้วย HTML/SVG
+// กราฟรายรับรายเดือน: แท่ง (รายรับ) + เส้นจุด (จำนวนคลาส) — วาดเองด้วย HTML/SVG
 function IsoMonthlyChart({ data }) {
   const [hover, setHover] = useState(null);
   const n = data.length;
   if (!n) return <p className="py-16 text-center text-sm text-slate-500">ยังไม่มีข้อมูลรายรับ</p>;
   const maxV = Math.max(1, ...data.map((d) => d.total || 0));
-  const top = Math.max(1000, Math.ceil((maxV * 1.15) / 1000) * 1000);
+  const { top, ticks } = niceAxis(maxV * 1.1);
   const sMax = Math.max(1, ...data.map((d) => d.sessions || 0)) * 1.6;
   const pts = data.map((d, i) => [((i + 0.5) / n) * 100, 100 - ((d.sessions || 0) / sMax) * 100]);
   const showAllValues = n <= 8;
-  const fmtK = (v) => `${(v / 1000).toFixed(1)}k`;
+  const fmtK = fmtAxis;
   const h = hover != null ? data[hover] : null;
   const tipLeft = hover != null ? Math.min(88, Math.max(12, pts[hover][0])) : 0;
   return (
     <div className="relative mt-4 h-[340px] pl-10 pb-10">
       <div className="absolute left-0 top-0 bottom-10 w-9 flex flex-col justify-between text-right text-[11px] text-slate-400 tabular-nums">
-        {[1, 0.75, 0.5, 0.25, 0].map((f) => <span key={f} className="-translate-y-1/2 first:translate-y-0 last:translate-y-0">{(top * f / 1000).toFixed(top >= 4000 ? 0 : 1)}k</span>)}
+        {ticks.map((t) => <span key={t} className="-translate-y-1/2 first:translate-y-0 last:translate-y-0">{fmtAxis(t)}</span>)}
       </div>
       <div className="relative h-full">
         {[0, 25, 50, 75].map((p) => <span key={p} className="absolute inset-x-0 h-px bg-slate-100" style={{ top: `${p}%` }} />)}
@@ -298,16 +278,16 @@ function IsoMonthlyChart({ data }) {
                   <span className="fc" />
                   {showVal && (
                     <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tabular-nums ${d.isCurrent ? 'text-orange-700' : 'text-slate-500'}`}
-                      style={{ bottom: 'calc(100% + 14px)' }}>{fmtK(d.total)}</span>
+                      style={{ bottom: 'calc(100% + 6px)' }}>{fmtK(d.total)}</span>
                   )}
                   {d.isBest && (
                     <span className="sa-pop absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-amber-300 shadow"
-                      style={{ bottom: 'calc(100% + 32px)', animationDelay: '1.1s' }}>สูงสุด</span>
+                      style={{ bottom: 'calc(100% + 24px)', animationDelay: '1.1s' }}>สูงสุด</span>
                   )}
                 </div>
                 <span className={`absolute -bottom-9 inset-x-0 text-center text-[11px] leading-tight ${d.isCurrent ? 'font-semibold text-orange-700' : 'text-slate-500'}`}>
                   {d.month}
-                  {showYear && <span className="block text-[10px] text-slate-400">{d.year}</span>}
+                  {showYear && <span className="block text-[10px] text-slate-400">{toBE(d.year)}</span>}
                 </span>
               </div>
             );
@@ -326,7 +306,7 @@ function IsoMonthlyChart({ data }) {
         {h && (
           <div className="pointer-events-none absolute z-20 -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs shadow-lg"
             style={{ left: `${tipLeft}%`, top: -8 }}>
-            <p className="font-semibold text-slate-900">{h.month} {h.year}</p>
+            <p className="font-semibold text-slate-900">{h.month} {toBE(h.year)}</p>
             <p className="tabular-nums text-slate-600"><b className="text-orange-600">{(h.total || 0).toLocaleString()}</b> บาท · {h.sessions || 0} คลาส</p>
           </div>
         )}
@@ -335,7 +315,7 @@ function IsoMonthlyChart({ data }) {
   );
 }
 
-// โดนัทเอียง 3D — ชิ้นกวาดขึ้นตอนโหลด ความหนาทำจากจานซ้อนกันด้านล่าง
+// โดนัทสัดส่วนรายได้ — ชิ้นกวาดขึ้นตอนโหลด
 function IsoDonut({ data, centerValue, centerLabel }) {
   const total = data.reduce((a, d) => a + d.value, 0);
   if (!total) return <p className="text-center text-sm text-slate-500 py-10">ยังไม่มีรายรับ</p>;
@@ -350,15 +330,12 @@ function IsoDonut({ data, centerValue, centerLabel }) {
   const pct = (v) => Math.round((v / total) * 100);
   return (
     <div className="flex flex-col items-center gap-2 mt-2">
-      <div className="grid h-[200px] w-full place-items-center" style={{ perspective: 900 }}>
+      <div className="grid h-[196px] w-full place-items-center">
         <div key={sig} className="inc3d-donut">
-          {[4, 3, 2, 1].map((k) => (
-            <span key={k} className="inc3d-disc" style={{ background: bg, transform: `translateZ(${-4 * k}px)`, filter: `brightness(${k === 4 ? 0.65 : 0.78})` }} />
-          ))}
           <span className="inc3d-disc" style={{ background: bg }} />
           <div className="inc3d-center">
             <div className="text-center">
-              <p className="tabular-nums text-2xl font-bold leading-none text-slate-900">{centerValue}</p>
+              <p className="tabular-nums text-2xl font-bold leading-none text-slate-900">{centerValue} <span className="text-xs font-medium text-slate-500">คอร์ส</span></p>
               <p className="text-[11px] text-slate-500">{centerLabel}</p>
             </div>
           </div>
@@ -395,12 +372,12 @@ function RateCalculator({ topTier, tierCounts }) {
     <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" style={{ animationDelay: '.1s' }}>
       <div className="px-4 sm:px-5 py-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><Coins className="h-4 w-4 text-orange-600" /> ค่าสอนของคุณคิดยังไง</h2>
-          <p className="text-[11px] text-slate-500">ต่อคาบ 1.5 ชม. คิดตามจำนวนนักเรียนที่มาเรียนจริง · ลองเลื่อนดูได้</p>
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><Coins className="h-4 w-4 text-orange-600" /> เกณฑ์การคิดค่าสอน</h2>
+          <p className="text-[11px] text-slate-500">อัตราต่อคาบ 1.5 ชม. คิดตามจำนวนนักเรียนที่มาเรียนจริง</p>
         </div>
         {topTier >= 0 && (
           <span className="self-start md:self-auto inline-flex items-center gap-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-semibold px-2.5 py-0.5">
-            <Users className="h-3.5 w-3.5" /> คลาสส่วนใหญ่ของคุณมีนักเรียน {RATE_TABLE.secondary[topTier].label} ({tierCounts[topTier]} คลาส)
+            <Users className="h-3.5 w-3.5" /> คลาสส่วนใหญ่มีนักเรียน {RATE_TABLE.secondary[topTier].label} ({tierCounts[topTier]} คลาส)
           </span>
         )}
       </div>
@@ -420,13 +397,13 @@ function RateCalculator({ topTier, tierCounts }) {
           </div>
           <div className="rounded-xl bg-slate-900 text-white p-4 relative overflow-hidden">
             <div className="absolute -right-8 -bottom-10 h-32 w-32 rounded-full bg-orange-500/30 blur-2xl" />
-            <p className="relative text-[11px] text-slate-500">ได้ต่อคาบ (1.5 ชม.)</p>
+            <p className="relative text-[11px] text-slate-400">ค่าสอนต่อคาบ (1.5 ชม.)</p>
             <p className="relative tabular-nums text-2xl font-bold"><span key={`${level}-${rate}`} className="sa-rise inline-block">{rate}</span> <span className="text-sm font-medium text-slate-500">บาท</span></p>
             <p className="relative text-[11px] text-slate-300 mt-1">สอน 3 ชม. (2 คาบ) = {(rate * 2).toLocaleString()} บาท</p>
             <p className="relative text-[11px] text-amber-300 mt-2 flex items-center gap-1">
               {tier < 4
-                ? <><Sparkles className="h-3.5 w-3.5 shrink-0" /> เพิ่มอีก {TIER_MIN[tier + 1] - students} คน เรตจะขึ้นเป็น {rates[tier + 1].rate} บาท (+{rates[tier + 1].rate - rate})</>
-                : <><Crown className="h-3.5 w-3.5 shrink-0" /> เรตสูงสุดแล้ว</>}
+                ? <><Sparkles className="h-3.5 w-3.5 shrink-0" /> เพิ่มอีก {TIER_MIN[tier + 1] - students} คน อัตราจะเป็น {rates[tier + 1].rate} บาท (+{rates[tier + 1].rate - rate} บาท)</>
+                : <><Crown className="h-3.5 w-3.5 shrink-0" /> อัตราสูงสุดแล้ว</>}
             </p>
           </div>
         </div>
@@ -459,7 +436,7 @@ function PayCumulativeChart({ payments }) {
   const pts = asc.map((q) => ({ ...q, v: (run += Number(q.p.paymentCost) || 0) }));
   const W = 1000; const H = 200; const L = 44; const R = 84; const T = 16; const B = 26;
   const t0 = pts[0].t - 864e5 * 20; const t1 = Math.max(Date.now(), pts[pts.length - 1].t + 864e5 * 5);
-  const top = run * 1.1 || 1;
+  const { top, ticks: cumTicks } = niceAxis(run * 1.05, 2);
   const x = (t) => L + ((t - t0) / (t1 - t0)) * (W - L - R);
   const y = (v) => T + (H - T - B) - (v / top) * (H - T - B);
   let d = `M${x(t0)},${y(0)}`;
@@ -475,10 +452,10 @@ function PayCumulativeChart({ payments }) {
           <stop offset="0" stopColor="#22c55e" stopOpacity=".22" /><stop offset="1" stopColor="#22c55e" stopOpacity="0" />
         </linearGradient>
       </defs>
-      {[0, 0.5, 1].map((f) => (
-        <g key={f}>
-          <line x1={L} x2={W - R} y1={y(run * f)} y2={y(run * f)} stroke="#f5f5f5" />
-          <text x={L - 8} y={y(run * f) + 4} textAnchor="end" fontSize={11} fill="#a3a3a3">{Math.round((run * f) / 1000)}k</text>
+      {cumTicks.map((v) => (
+        <g key={v}>
+          <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="#f5f5f5" />
+          <text x={L - 8} y={y(v) + 4} textAnchor="end" fontSize={11} fill="#a3a3a3">{fmtAxis(v)}</text>
         </g>
       ))}
       <path d={`${d} V${y(0)} Z`} fill="url(#incCum)" className="sa-rise" />
@@ -546,7 +523,7 @@ export default function TutorIncome() {
       'ชั่วโมง': Number(s.durationHours).toFixed(1),
       'Rate/คลาส (บาท)': s.ratePerSession,
       'รายได้ (บาท)': s.earnedAmount,
-      'สถานะ': s.isPaid ? 'รับแล้ว' : 'ค้างรับ',
+      'สถานะ': s.isPaid ? 'รับแล้ว' : s.isPartiallyPaid ? 'รับบางส่วน' : 'ค้างรับ',
     }));
     const wsSession = XLSX.utils.json_to_sheet(sessionData);
     wsSession['!cols'] = [{ wch: 14 }, { wch: 40 }, { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 10 }];
@@ -558,7 +535,8 @@ export default function TutorIncome() {
       { 'หัวข้อ': 'รายรับสะสมทั้งหมด', 'จำนวน (บาท)': summary.totalEarned },
       { 'หัวข้อ': 'รับแล้ว', 'จำนวน (บาท)': summary.totalPaid },
       { 'หัวข้อ': 'ค้างรับ', 'จำนวน (บาท)': summary.totalPending },
-      { 'หัวข้อ': 'คลาสทั้งหมด', 'จำนวน (บาท)': summary.totalSessions },
+      { 'หัวข้อ': 'ยอดโอนเกินค่าสอน', 'จำนวน (บาท)': summary.overpaid || 0 },
+      { 'หัวข้อ': 'คลาสทั้งหมด (คลาส)', 'จำนวน (บาท)': summary.totalSessions },
     ];
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     wsSummary['!cols'] = [{ wch: 24 }, { wch: 16 }];
@@ -598,7 +576,7 @@ export default function TutorIncome() {
         <td style="text-align:center">${s.actualStudents} คน</td>
         <td style="text-align:center">${Number(s.durationHours).toFixed(1)} ชม.</td>
         <td style="text-align:right">${s.earnedAmount.toLocaleString()}</td>
-        <td style="text-align:center;color:${s.isPaid ? '#16a34a' : '#ea580c'}">${s.isPaid ? 'รับแล้ว' : 'ค้างรับ'}</td>
+        <td style="text-align:center;color:${s.isPaid ? '#16a34a' : '#ea580c'}">${s.isPaid ? 'รับแล้ว' : s.isPartiallyPaid ? 'รับบางส่วน' : 'ค้างรับ'}</td>
       </tr>`).join('');
 
     printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>รายรับ - ${tutorName}</title>
@@ -679,7 +657,7 @@ export default function TutorIncome() {
           <p className="text-red-700 font-medium">โหลดข้อมูลไม่สำเร็จ</p>
           <p className="text-slate-500 text-sm">{error}</p>
           <button onClick={refetch} className={`${BTN.primary} px-5 py-2 rounded-xl text-sm font-medium transition`}>
-            ลองใหม่
+            ลองอีกครั้ง
           </button>
         </div>
       </div>
@@ -695,7 +673,8 @@ export default function TutorIncome() {
 
   // ── ค่าที่ใช้แสดงผลเท่านั้น (ไม่เปลี่ยนตรรกะเดิม) ─────────────────
   const totalHours = sessions.reduce((a, s) => a + Number(s.durationHours || 0), 0);
-  const paidPct = summary.totalEarned > 0 ? Math.round((summary.totalPaid / summary.totalEarned) * 100) : 0;
+  const paidPct = summary.totalEarned > 0 ? Math.min(100, Math.round((summary.totalPaid / summary.totalEarned) * 100)) : 0;
+  const overpaid = Number(summary.overpaid) || 0;
   const avgPerSession = summary.totalSessions > 0 ? Math.round(summary.totalEarned / summary.totalSessions) : 0;
   const thisMonthSessions = monthly.length ? monthly[monthly.length - 1].sessions : 0;
   const elementaryTotal = sessions.filter(s => s.levelType === 'elementary').reduce((a, s) => a + s.earnedAmount, 0);
@@ -754,7 +733,7 @@ export default function TutorIncome() {
               <p className={PAGE_SUBTITLE}>ติดตามรายได้และประวัติการรับเงินของคุณ</p>
             </div>
             <div className="relative group self-start md:self-auto">
-              <button className="inc3d-btn flex items-center gap-2 min-h-11 px-5 rounded-2xl font-medium text-sm">
+              <button type="button" className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>
                 <Download className="h-4 w-4" />
                 ดาวน์โหลดรายงาน
                 <ChevronDown className="h-4 w-4" />
@@ -774,8 +753,7 @@ export default function TutorIncome() {
         </div>
 
         {/* ── การ์ดสรุปด้านบน: เดือนนี้ + เส้นทางเงิน ─────────────────── */}
-        <div className="inc3d-card inc3d-lift inc3d-in overflow-hidden mb-8" {...tiltProps(2.5)}>
-          <span className="inc3d-glare" aria-hidden="true" />
+        <div className="inc3d-card inc3d-in overflow-hidden mb-8">
           <div className="sa-float pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full" style={{ background: 'radial-gradient(circle at 35% 35%, #FFF7F0, #FFE6D1 60%, #FFD7B5)', opacity: 0.75 }} />
           <div className="relative grid gap-6 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
             {/* เดือนนี้ */}
@@ -787,7 +765,7 @@ export default function TutorIncome() {
               <div className="flex items-end gap-3 flex-wrap mt-4">
                 <p className="tabular-nums text-4xl sm:text-5xl font-bold leading-none tracking-tight text-slate-900">
                   <MoneyCountUp value={summary.thisMonthEarned} />
-                  <span className="text-base font-medium text-slate-400 ml-1.5">บาท</span>
+                  <span className="text-base font-medium text-slate-500 ml-1.5">บาท</span>
                 </p>
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${summary.growth >= 0 ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
                   {summary.growth >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
@@ -799,22 +777,22 @@ export default function TutorIncome() {
               </p>
               <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-100 p-3.5">
                 <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="font-semibold text-slate-700 flex items-center gap-1.5"><Gauge className="h-3.5 w-3.5 text-orange-500" /> ถ้าสอนแบบนี้ต่อจนสิ้นเดือน</span>
-                  <span className="tabular-nums font-bold text-orange-600 shrink-0">≈ {projected.toLocaleString()} บาท</span>
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5"><Gauge className="h-3.5 w-3.5 text-orange-500" /> ประมาณการรายรับสิ้นเดือน</span>
+                  <span className="tabular-nums font-bold text-orange-600 shrink-0">≈ {projected.toLocaleString()} <span className="text-xs font-medium text-slate-500">บาท</span></span>
                 </div>
                 <div className="inc3d-track relative mt-7 mb-1 h-3 rounded-full bg-slate-200">
                   <div className="sa-stripes sa-grow absolute inset-y-0 left-0 rounded-full bg-orange-200" style={{ width: `${(projected / paceScale) * 100}%` }} />
                   <div className="sa-grow absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 shadow-[inset_0_1px_0_rgba(255,255,255,.4)]" style={{ width: `${(summary.thisMonthEarned / paceScale) * 100}%`, animationDelay: '.25s' }} />
                   <div className="absolute -top-6 -translate-x-1/2 flex flex-col items-center" style={{ left: `${(summary.lastMonthEarned / paceScale) * 100}%` }}>
-                    <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">{prevMonthShort} {summary.lastMonthEarned.toLocaleString()}</span>
+                    <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap">{prevMonthShort} {summary.lastMonthEarned.toLocaleString()} บาท</span>
                     <span className="mt-0.5 h-5 w-0.5 rounded bg-slate-800" />
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-2">
                   ผ่านไป {now.getDate()} จาก {daysInMonth} วัน ·{' '}
                   {paceDiff >= 0
-                    ? <b className="text-green-600">มากกว่าเดือนก่อน ~{paceDiff.toLocaleString()} บาท</b>
-                    : <b className="text-orange-600">ขาดอีก ~{(-paceDiff).toLocaleString()} บาท จะเท่าเดือนก่อน</b>}
+                    ? <b className="text-green-600">สูงกว่าเดือนก่อนประมาณ {paceDiff.toLocaleString()} บาท</b>
+                    : <b className="text-orange-600">ต่ำกว่าเดือนก่อนประมาณ {(-paceDiff).toLocaleString()} บาท</b>}
                 </p>
               </div>
             </div>
@@ -823,8 +801,8 @@ export default function TutorIncome() {
             <div className="min-w-0 rounded-2xl border border-orange-100 bg-white/80 p-4">
               <div className="flex items-start justify-between gap-2 flex-wrap">
                 <div>
-                  <p className="text-sm font-bold text-slate-900">เงินของคุณอยู่ตรงไหน</p>
-                  <p className="text-[11px] text-slate-500">ทุกคลาสที่สอนจะไหลจากซ้ายไปขวา เมื่อแอดมินโอนและแนบสลิป</p>
+                  <p className="text-sm font-bold text-slate-900">สถานะการรับเงิน</p>
+                  <p className="text-[11px] text-slate-500">ค่าสอนจะเปลี่ยนเป็น "รับแล้ว" เมื่อผู้ดูแลระบบบันทึกการโอนพร้อมแนบสลิป</p>
                 </div>
                 {latestPayment && (
                   <span className="text-[11px] text-slate-500">โอนล่าสุด {formatDate(latestPayment.paymentDate)} · {Number(latestPayment.paymentCost).toLocaleString()} บาท</span>
@@ -833,22 +811,22 @@ export default function TutorIncome() {
               <div className="mt-4 flex flex-col sm:flex-row items-stretch">
                 <div className="inc3d-step rounded-xl border border-slate-200 bg-slate-50 p-3 sm:flex-1 min-w-0">
                   <span className="inc3d-chip h-8 w-8 rounded-lg bg-gradient-to-br from-slate-600 to-slate-900 text-white flex items-center justify-center" style={{ '--chip-edge': '#020617', '--chip-glow': 'rgba(2,6,23,.35)' }}><Presentation className="h-4 w-4" /></span>
-                  <p className="text-[11px] text-slate-500 mt-2">สอนแล้วทั้งหมด</p>
-                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalEarned} /> บาท</p>
+                  <p className="text-[11px] text-slate-500 mt-2">ค่าสอนทั้งหมด</p>
+                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalEarned} /> <span className="text-xs font-medium text-slate-500">บาท</span></p>
                   <p className="text-[11px] text-slate-500">{summary.totalSessions} คลาส</p>
                 </div>
                 <FlowConnector dotClass="bg-orange-400" />
                 <div className="inc3d-step rounded-xl border border-orange-200 bg-orange-50 p-3 sm:flex-1 min-w-0">
                   <span className={`inc3d-chip h-8 w-8 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 text-white flex items-center justify-center ${summary.totalPending > 0 ? 'sa-ring' : ''}`}><Hourglass className={`h-4 w-4 ${summary.totalPending > 0 ? 'sa-hourglass' : ''}`} /></span>
-                  <p className="text-[11px] text-orange-700 mt-2">รอแอดมินโอน</p>
-                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalPending} /> บาท</p>
-                  <p className="text-[11px] text-orange-700/90">{summary.pendingSessionCount > 0 ? `${summary.pendingSessionCount} คลาสยังไม่โอน` : 'ไม่มีค้าง'}</p>
+                  <p className="text-[11px] text-orange-700 mt-2">รอการโอน</p>
+                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalPending} /> <span className="text-xs font-medium text-slate-500">บาท</span></p>
+                  <p className="text-[11px] text-orange-700/90">{summary.pendingSessionCount > 0 ? `${summary.pendingSessionCount} คลาสรอการโอน` : 'ไม่มียอดค้าง'}</p>
                 </div>
                 <FlowConnector dotClass="bg-green-500" />
                 <div className="inc3d-step rounded-xl border border-green-200 bg-green-50 p-3 sm:flex-1 min-w-0">
                   <span className="inc3d-chip h-8 w-8 rounded-lg bg-gradient-to-br from-green-400 to-green-700 text-white flex items-center justify-center" style={{ '--chip-edge': '#14532D', '--chip-glow': 'rgba(21,128,61,.4)' }}><BadgeCheck className="h-4 w-4" /></span>
-                  <p className="text-[11px] text-green-700 mt-2">เข้าบัญชีแล้ว</p>
-                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalPaid} /> บาท</p>
+                  <p className="text-[11px] text-green-700 mt-2">รับแล้ว</p>
+                  <p className="tabular-nums text-lg font-bold text-slate-900 leading-tight"><MoneyCountUp value={summary.totalPaid} /> <span className="text-xs font-medium text-slate-500">บาท</span></p>
                   <p className="text-[11px] text-green-700/90">โอนแล้ว {payments.length} ครั้ง</p>
                 </div>
               </div>
@@ -859,9 +837,19 @@ export default function TutorIncome() {
                 </div>
                 <div className="flex justify-between text-[11px] mt-1.5">
                   <span className="text-green-700 font-semibold">โอนแล้ว {paidPct}%</span>
-                  <span className="text-orange-600 font-semibold">ค้าง {summary.totalEarned > 0 ? 100 - paidPct : 0}%</span>
+                  <span className="text-orange-600 font-semibold">ค้างรับ {summary.totalEarned > 0 ? 100 - paidPct : 0}%</span>
                 </div>
               </div>
+              {overpaid > 0 && (
+                <div className={`${CALLOUT.box} ${CALLOUT.warning} mt-3 text-xs`}>
+                  <AlertCircle className={`h-4 w-4 shrink-0 ${CALLOUT_ICON.warning}`} />
+                  <p>
+                    ยอดโอนรวม {Number(summary.totalTransferred || 0).toLocaleString()} บาท สูงกว่าค่าสอนที่คำนวณจากคลาสที่บันทึกไว้{' '}
+                    <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b> (ยอดนี้ไม่นับรวมใน "รับแล้ว")
+                    กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -874,18 +862,16 @@ export default function TutorIncome() {
           <div className="space-y-6">
             {/* ตัวเลขสรุป 4 ช่อง */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="inc3d-card inc3d-lift inc3d-in p-4 min-w-0" {...tiltProps(8)}>
-                <span className="inc3d-glare" aria-hidden="true" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in p-4 min-w-0">
                 <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0"><Receipt className="h-4 w-4" /></span><p className="text-xs text-slate-600 font-medium leading-tight">เฉลี่ยต่อคลาส</p></div>
                 <p className="tabular-nums text-xl sm:text-2xl font-bold text-slate-900 mt-2"><MoneyCountUp value={avgPerSession} /> <span className="text-xs font-medium text-slate-500">บาท</span></p>
                 <div className="inc3d-track relative mt-4 h-2 rounded-full bg-gradient-to-r from-orange-100 to-orange-300">
                   <span className="inc3d-ball sa-pop absolute top-1/2 h-[18px] w-[18px] -mt-[9px] -ml-[9px] rounded-full" style={{ left: `${avgPos}%`, animationDelay: '.6s' }} />
                 </div>
-                <div className="flex justify-between text-[11px] text-slate-500 mt-1.5 tabular-nums"><span>ต่ำสุด {minEarned.toLocaleString()}</span><span>สูงสุด {maxEarned.toLocaleString()}</span></div>
+                <div className="flex justify-between text-[11px] text-slate-500 mt-1.5 tabular-nums"><span>ต่ำสุด {minEarned.toLocaleString()} บาท</span><span>สูงสุด {maxEarned.toLocaleString()} บาท</span></div>
               </div>
-              <div className="inc3d-card inc3d-lift inc3d-in p-4 min-w-0" style={{ animationDelay: '.05s' }} {...tiltProps(8)}>
-                <span className="inc3d-glare" aria-hidden="true" />
-                <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><Timer className="h-4 w-4" /></span><p className="text-xs text-slate-600 font-medium leading-tight">ได้ต่อชั่วโมง</p></div>
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in p-4 min-w-0" style={{ animationDelay: '.05s' }}>
+                <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><Timer className="h-4 w-4" /></span><p className="text-xs text-slate-600 font-medium leading-tight">รายได้ต่อชั่วโมง</p></div>
                 <p className="tabular-nums text-xl sm:text-2xl font-bold text-slate-900 mt-2"><MoneyCountUp value={perHour} /> <span className="text-xs font-medium text-slate-500">บาท/ชม.</span></p>
                 <svg viewBox="0 0 100 54" className="mt-1 h-12 w-full" aria-hidden="true">
                   <defs><linearGradient id="incGauge"><stop offset="0" stopColor="#fbbf24" /><stop offset="1" stopColor="#ea580c" /></linearGradient></defs>
@@ -893,22 +879,20 @@ export default function TutorIncome() {
                   <path d="M10 50 A40 40 0 0 1 90 50" fill="none" stroke="url(#incGauge)" strokeWidth="10" strokeLinecap="round" pathLength="100"
                     className="sa-draw" style={{ '--len': 100, strokeDasharray: `${Math.min(100, (perHour / Math.max(1, maxPerHour)) * 100)} 100` }} />
                 </svg>
-                <p className="text-[11px] text-slate-500 -mt-1 text-center">เต็มเกจ = {maxPerHour} บาท/ชม. (เรตสูงสุด)</p>
+                <p className="text-[11px] text-slate-500 -mt-1 text-center">อัตราสูงสุด {maxPerHour} บาท/ชม.</p>
               </div>
-              <div className="inc3d-card inc3d-lift inc3d-in p-4 min-w-0" style={{ animationDelay: '.1s' }} {...tiltProps(8)}>
-                <span className="inc3d-glare" aria-hidden="true" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in p-4 min-w-0" style={{ animationDelay: '.1s' }}>
                 <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center shrink-0"><Clock className="h-4 w-4" /></span><p className="text-xs text-slate-600 font-medium leading-tight">ชั่วโมงสอนรวม</p></div>
                 <p className="tabular-nums text-xl sm:text-2xl font-bold text-slate-900 mt-2">{Number(totalHours.toFixed(1)).toLocaleString()} <span className="text-xs font-medium text-slate-500">ชม.</span></p>
                 <div className="mt-3 flex items-end gap-[3px] h-9">
                   {hourBars.map((m, k) => (
-                    <span key={k} className={`inc3d-mini sa-growY flex-1 rounded-t-[4px] rounded-b-[2px] ${k < hourBars.length - 3 ? 'dim' : ''}`} title={`${m.month} ${m.year}: ${m.sessions} คลาส`}
+                    <span key={k} className={`inc3d-mini sa-growY flex-1 rounded-t-[4px] rounded-b-[2px] ${k < hourBars.length - 3 ? 'dim' : ''}`} title={`${m.month} ${toBE(m.year)}: ${m.sessions} คลาส`}
                       style={{ height: `${Math.max(8, ((m.sessions || 0) / maxMonthSessions) * 100)}%`, animationDelay: `${k * 0.04}s` }} />
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1.5">≈ {Math.round(totalHours / 8).toLocaleString()} วันทำงาน (วันละ 8 ชม.)</p>
+                <p className="text-[11px] text-slate-500 mt-1.5">เทียบเท่า {Math.round(totalHours / 8).toLocaleString()} วันทำงาน (8 ชม./วัน)</p>
               </div>
-              <div className="inc3d-card inc3d-lift inc3d-in p-4 min-w-0" style={{ animationDelay: '.15s' }} {...tiltProps(8)}>
-                <span className="inc3d-glare" aria-hidden="true" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in p-4 min-w-0" style={{ animationDelay: '.15s' }}>
                 <div className="flex items-center gap-2"><span className="h-8 w-8 rounded-lg bg-green-50 text-green-700 flex items-center justify-center shrink-0"><Users className="h-4 w-4" /></span><p className="text-xs text-slate-600 font-medium leading-tight">นักเรียนเฉลี่ยต่อคลาส</p></div>
                 <p className="tabular-nums text-xl sm:text-2xl font-bold text-slate-900 mt-2">{avgStudents.toFixed(1)} <span className="text-xs font-medium text-slate-500">คน</span></p>
                 <div className="mt-3 flex flex-wrap gap-[5px]">
@@ -916,13 +900,13 @@ export default function TutorIncome() {
                     <span key={k} className={`sa-pop h-3 w-3 rounded-full ${k < Math.round(avgStudents) ? 'inc3d-person' : 'bg-slate-200'}`} style={{ animationDelay: `${0.3 + k * 0.04}s` }} />
                   ))}
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1.5">มากสุด {maxStudents} คนในคลาสเดียว</p>
+                <p className="text-[11px] text-slate-500 mt-1.5">สูงสุด {maxStudents} คนต่อคลาส</p>
               </div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem]">
-              {/* กราฟแท่ง 3D รายรับ + เส้นจำนวนคลาส */}
-              <div className="inc3d-card inc3d-in min-w-0 p-4 sm:p-5">
+              {/* กราฟแท่งรายรับ + เส้นจำนวนคลาส */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in min-w-0 p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <h2 className="text-base font-bold text-slate-900">รายรับรายเดือน</h2>
@@ -933,9 +917,9 @@ export default function TutorIncome() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {[['all', 'ทั้งหมด'], ...availableYears.map(y => [y, String(y)])].map(([k, l]) => (
+                    {[['all', 'ทั้งหมด'], ...availableYears.map(y => [y, String(toBE(y))])].map(([k, l]) => (
                       <button key={k} onClick={() => setSelectedYear(k)}
-                        className={`px-3 min-h-8 rounded-xl text-xs font-medium border transition ${selectedYear === k ? 'bg-orange-500 text-white border-orange-500 shadow-[0_2px_0_#C2410C]' : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'}`}>
+                        className={`px-3 min-h-8 rounded-xl text-xs font-medium border transition ${selectedYear === k ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-slate-600 border-slate-200 hover:border-orange-300'}`}>
                         {l}
                       </button>
                     ))}
@@ -944,11 +928,11 @@ export default function TutorIncome() {
                 <IsoMonthlyChart key={selectedYear} data={chartData} />
               </div>
 
-              {/* รายได้มาจากคอร์สไหน — โดนัทเอียง 3D */}
-              <div className="inc3d-card inc3d-in p-4 sm:p-5" style={{ animationDelay: '.06s' }}>
-                <h2 className="text-base font-bold text-slate-900">รายได้มาจากคอร์สไหน</h2>
+              {/* สัดส่วนรายได้ตามคอร์ส */}
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow inc3d-in p-4 sm:p-5" style={{ animationDelay: '.06s' }}>
+                <h2 className="text-base font-bold text-slate-900">สัดส่วนรายได้ตามคอร์ส</h2>
                 <p className="text-[11px] text-slate-500">สัดส่วนจากรายรับสะสมทั้งหมด</p>
-                <IsoDonut data={donutData} centerValue={courses.length} centerLabel="คอร์สที่สอน" />
+                <IsoDonut data={donutData} centerValue={courses.length} centerLabel="ที่สอน" />
                 <div className="mt-4 pt-3 border-t border-slate-100">
                   <p className="text-[11px] text-slate-500 mb-1.5">แยกตามระดับชั้น</p>
                   <div className="inc3d-track flex h-2.5 rounded-full overflow-hidden bg-slate-100">
@@ -956,8 +940,8 @@ export default function TutorIncome() {
                     <span className="sa-grow h-full bg-gradient-to-r from-sky-400 to-blue-500" style={{ width: `${summary.totalEarned ? (elementaryTotal / summary.totalEarned) * 100 : 0}%`, animationDelay: '.8s' }} />
                   </div>
                   <div className="flex justify-between gap-2 text-[11px] mt-1 tabular-nums">
-                    <span className="text-orange-600 font-semibold">มัธยม {summary.totalEarned ? Math.round((secondaryTotal / summary.totalEarned) * 100) : 0}% · {secondaryTotal.toLocaleString()}</span>
-                    <span className="text-sky-700 font-semibold text-right">ประถม {summary.totalEarned ? Math.round((elementaryTotal / summary.totalEarned) * 100) : 0}% · {elementaryTotal.toLocaleString()}</span>
+                    <span className="text-orange-600 font-semibold">มัธยม {summary.totalEarned ? Math.round((secondaryTotal / summary.totalEarned) * 100) : 0}% · {secondaryTotal.toLocaleString()} บาท</span>
+                    <span className="text-sky-700 font-semibold text-right">ประถม {summary.totalEarned ? Math.round((elementaryTotal / summary.totalEarned) * 100) : 0}% · {elementaryTotal.toLocaleString()} บาท</span>
                   </div>
                 </div>
               </div>
@@ -1102,7 +1086,7 @@ export default function TutorIncome() {
                 <div>
                   <h2 className="text-base font-bold text-slate-900">รายละเอียดแต่ละคลาส</h2>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    ค่าสอนคิดจาก <span className="font-medium text-slate-700">rate ต่อคาบ (1.5 ชม.)</span> × จำนวนคาบที่สอนจริง
+                    ค่าสอนคิดจาก <span className="font-medium text-slate-700">อัตราต่อคาบ (1.5 ชม.)</span> × จำนวนคาบที่สอนจริง
                   </p>
                 </div>
                 {searchQuery && (
@@ -1137,13 +1121,15 @@ export default function TutorIncome() {
                             </span>
                             <span className="flex items-center gap-1"><Users className="h-3 w-3" />{s.actualStudents} คน</span>
                             <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{Number(s.durationHours).toFixed(1)} ชม.</span>
-                            <span className="text-slate-400" title="rate ต่อคาบ × (ชั่วโมง ÷ 1.5)">{s.ratePerSession} × ({Number(s.durationHours).toFixed(1)} ÷ 1.5)</span>
+                            <span className="text-slate-400" title="อัตราต่อคาบ × (ชั่วโมง ÷ 1.5)">{s.ratePerSession} × ({Number(s.durationHours).toFixed(1)} ÷ 1.5)</span>
                           </div>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="tabular-nums text-sm font-bold text-slate-900">{s.earnedAmount.toLocaleString()} <span className="text-[11px] font-normal text-slate-500">บาท</span></p>
                           {s.isPaid
                             ? <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border font-semibold bg-green-50 text-green-700 border-green-200"><Check className="h-3 w-3" />รับแล้ว</span>
+                            : s.isPartiallyPaid
+                            ? <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border font-semibold bg-blue-50 text-blue-700 border-blue-200" title={`รับแล้ว ${Number(s.paidAmount || 0).toLocaleString()} บาท`}><AlertCircle className="h-3 w-3" />รับบางส่วน</span>
                             : <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full border font-semibold bg-orange-50 text-orange-700 border-orange-200"><Clock className="h-3 w-3" />ค้างรับ</span>}
                         </div>
                       </div>
@@ -1238,7 +1224,7 @@ export default function TutorIncome() {
                     ประวัติการรับเงิน
                   </h2>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-                    {isFiltered ? 'ยอดรับในช่วงที่เลือก' : 'รับไปแล้วทั้งหมด'} <span className="tabular-nums font-bold">{filteredTotal.toLocaleString()} บาท</span> · {filteredPayments.length} ครั้ง
+                    {isFiltered ? 'ยอดโอนในช่วงที่เลือก' : 'ยอดโอนทั้งหมด'} <span className="tabular-nums font-bold">{filteredTotal.toLocaleString()} บาท</span> · {filteredPayments.length} ครั้ง
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -1248,7 +1234,7 @@ export default function TutorIncome() {
                     className="px-3 h-10 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
                   >
                     <option value="all">ทุกปี</option>
-                    {paymentYears.map(y => <option key={y} value={y}>{y}</option>)}
+                    {paymentYears.map(y => <option key={y} value={y}>{toBE(y)}</option>)}
                   </select>
                   <select
                     value={historyMonth}
@@ -1266,17 +1252,27 @@ export default function TutorIncome() {
                 </div>
               </div>
 
-              {/* ── เงินเข้าบัญชีสะสม ── */}
+              {overpaid > 0 && (
+                <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
+                  <AlertCircle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
+                  <p>
+                    ยอดโอนรวมสูงกว่าค่าสอนที่คำนวณจากคลาสที่บันทึกไว้ <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b>{' '}
+                    ระบบนับเป็น "รับแล้ว" ไม่เกินค่าสอนของคลาสที่เกี่ยวข้อง กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ
+                  </p>
+                </div>
+              )}
+
+              {/* ── ยอดโอนสะสม ── */}
               {filteredPayments.some(p => p.paymentDate) && (
                 <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="text-sm font-bold text-slate-900">เงินเข้าบัญชีสะสม</p>
-                      <p className="text-[11px] text-slate-500">แต่ละขั้น = การโอน 1 ครั้ง · ชี้ที่จุดเพื่อดูยอด</p>
+                      <p className="text-sm font-bold text-slate-900">ยอดโอนสะสม</p>
+                      <p className="text-[11px] text-slate-500">แต่ละขั้นคือการโอน 1 ครั้ง</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[11px] text-slate-500">โอนเฉลี่ยต่อครั้ง</p>
-                      <p className="tabular-nums text-base font-bold text-slate-900">{Math.round(filteredTotal / Math.max(1, filteredPayments.length)).toLocaleString()} บาท</p>
+                      <p className="tabular-nums text-base font-bold text-slate-900">{Math.round(filteredTotal / Math.max(1, filteredPayments.length)).toLocaleString()} <span className="text-xs font-medium text-slate-500">บาท</span></p>
                     </div>
                   </div>
                   <div className="overflow-x-auto sa-scroll"><div className="min-w-[640px]"><PayCumulativeChart payments={filteredPayments} /></div></div>
@@ -1307,6 +1303,11 @@ export default function TutorIncome() {
                               +{Number(payment.paymentCost).toLocaleString()} <span className="text-sm font-medium text-slate-500">บาท</span>
                             </p>
                             {payment.billNo && <p className="text-[11px] text-slate-500">เลขที่ใบจ่าย: {payment.billNo}</p>}
+                            {Number(payment.overpaidAmount) > 0 && (
+                              <p className="text-[11px] font-semibold text-amber-700 mt-0.5">
+                                โอนเกินค่าสอนของคลาสที่เกี่ยวข้อง {Number(payment.overpaidAmount).toLocaleString()} บาท (ค่าสอน {Number(payment.sessionEarned || 0).toLocaleString()} บาท · {payment.sessionCount || 0} คลาส)
+                              </p>
+                            )}
                           </div>
                           {payment.paymentPicture && (
                             <button

@@ -7,6 +7,7 @@ import { KeyRound, Loader2, Check, Clock, User, Phone } from "lucide-react";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import EmptyState from "../components/ui/EmptyState";
 import { BTN } from "../components/ui/tokens";
+import PageHeader from "../components/ui/PageHeader";
 
 // ─── หน้าคำขอ "ลืมรหัสผ่าน" ────────────────────────────────────────────────
 // ระบบนี้ไม่มี email/SMS ให้ผู้ใช้รีเซ็ตรหัสผ่านเอง (ดู routes/auth.routes.js POST
@@ -45,7 +46,7 @@ export default function AdminPasswordResets() {
     setResolvingId(id);
     try {
       await axios.patch(`${API}/password-reset-requests/${id}/resolve`, {}, auth());
-      showToast("success", "บันทึกแล้ว", "แจ้งกลับไปหาผู้ใช้แล้ว");
+      showToast("success", "บันทึกเรียบร้อย", "ระบบแจ้งผลไปยังผู้ใช้แล้ว");
       load();
     } catch (err) {
       showToast("error", "บันทึกไม่สำเร็จ", err.response?.data?.message || err.message);
@@ -57,14 +58,8 @@ export default function AdminPasswordResets() {
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="mb-6">
-        <h1 className={`${PAGE_TITLE} flex items-center gap-2`}>
-          <KeyRound className="h-6 w-6 text-orange-500" /> คำขอลืมรหัสผ่าน
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          ตรวจสอบตัวตนแล้วรีเซ็ตรหัสผ่านให้ผู้ใช้จากหน้าจัดการนักเรียน/จัดการแอดมินตามปกติ แล้วกด "ทำเสร็จแล้ว" เพื่อแจ้งกลับไปหาผู้ใช้
-        </p>
-      </div>
+      <PageHeader className="mb-6" icon={KeyRound} title="คำขอลืมรหัสผ่าน"
+        subtitle={'ตรวจสอบตัวตนผู้ใช้ รีเซ็ตรหัสผ่านที่หน้าจัดการนักเรียนหรือผู้ดูแลระบบ แล้วกด "ดำเนินการแล้ว" เพื่อแจ้งผู้ใช้'} />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
@@ -73,7 +68,7 @@ export default function AdminPasswordResets() {
       ) : (
         <>
           <div className="mb-8">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">รอดำเนินการ ({pending.length})</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">รอดำเนินการ ({pending.length} รายการ)</p>
             {pending.length === 0 ? (
               <EmptyState icon={KeyRound} title="ไม่มีคำขอที่รอดำเนินการ" description="คำขอรีเซ็ตรหัสผ่านใหม่จะแสดงที่นี่" />
             ) : (
@@ -98,7 +93,7 @@ export default function AdminPasswordResets() {
                       className={`${BTN.primary} flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold disabled:opacity-50`}
                     >
                       {resolvingId === r.RequestId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                      ทำเสร็จแล้ว
+                      ดำเนินการแล้ว
                     </button>
                   </div>
                 ))}
@@ -108,7 +103,7 @@ export default function AdminPasswordResets() {
 
           {recentlyDone.length > 0 && (
             <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ทำเสร็จแล้วล่าสุด</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">ดำเนินการแล้วล่าสุด</p>
               <div className="space-y-2">
                 {recentlyDone.map((r) => (
                   <div key={r.RequestId} className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-sm">

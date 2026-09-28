@@ -13,6 +13,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin`;
 
@@ -405,7 +406,7 @@ function ConfirmDelete({ room, onConfirm, onCancel, isDeleting }) {
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
                         className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+                        {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
                     </button>
                 </div>
             </div>
@@ -814,11 +815,11 @@ export default function AdminRooms() {
         setIsSubmitting(true);
         try {
             const res = await axios.post(`${API}/rooms`, form);
-            showToast(res.data.facilitiesWarning ? "warning" : "success", res.data.message || "เพิ่มห้องเรียนสำเร็จ!");
+            showToast(res.data.facilitiesWarning ? "warning" : "success", res.data.message || "เพิ่มห้องเรียนสำเร็จ");
             setShowAddModal(false);
             fetchAll();
         } catch (e) {
-            showToast("error", e.response?.status === 409 ? "ชื่อห้องซ้ำ" : "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", e.response?.status === 409 ? "ชื่อห้องซ้ำ" : "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -826,11 +827,11 @@ export default function AdminRooms() {
         setIsSubmitting(true);
         try {
             await axios.put(`${API}/rooms/${editingRoom.RoomId}`, form);
-            showToast("success", "แก้ไขห้องเรียนสำเร็จ!");
+            showToast("success", "แก้ไขห้องเรียนสำเร็จ");
             setEditingRoom(null);
             fetchAll();
         } catch (e) {
-            showToast("error", e.response?.status === 409 ? "ชื่อห้องซ้ำ" : "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", e.response?.status === 409 ? "ชื่อห้องซ้ำ" : "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -839,11 +840,11 @@ export default function AdminRooms() {
         setIsDeleting(true);
         try {
             await axios.delete(`${API}/rooms/${deletingRoom.RoomId}`);
-            showToast("success", "ลบห้องเรียนสำเร็จ!");
+            showToast("success", "ลบห้องเรียนสำเร็จ");
             setDeletingRoom(null);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsDeleting(false); }
     };
 
@@ -869,30 +870,26 @@ export default function AdminRooms() {
         <div className="space-y-6 px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className={PAGE_TITLE}>จัดการห้องเรียน</h1>
-                    <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ</p>
-                </div>
+            <PageHeader title="จัดการห้องเรียน" subtitle="เพิ่ม แก้ไข และจัดการห้องเรียนทั้งหมดในระบบ">
                 <button onClick={() => setShowAddModal(true)}
-                    className={`${BTN.primary} flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
                     <Plus className="h-4 w-4" /> เพิ่มห้องเรียน
                 </button>
-            </div>
+            </PageHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
-                    { label: "ห้องเรียนทั้งหมด", value: rooms.length, color: "bg-orange-500", icon: DoorOpen },
-                    { label: "ห้องพร้อมใช้งาน", value: availableCount, color: "bg-emerald-500", icon: Check },
-                    { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()}`, color: "bg-amber-500", icon: Users },
-                ].map(({ label, value, color, icon: Icon }, i) => (
+                    { label: "ห้องเรียนทั้งหมด", value: rooms.length, unit: "ห้อง", color: "bg-orange-500", icon: DoorOpen },
+                    { label: "ห้องพร้อมใช้งาน", value: availableCount, unit: "ห้อง", color: "bg-emerald-500", icon: Check },
+                    { label: "ความจุรวมทั้งหมด", value: `${totalCapacity.toLocaleString()}`, unit: "ที่นั่ง", color: "bg-amber-500", icon: Users },
+                ].map(({ label, value, unit, color, icon: Icon }, i) => (
                     <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                             <Icon className="h-5 w-5 text-white" />
                         </div>
                         <div>
                             <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-bold text-slate-900">{value}</p>
+                            <p className="text-xl font-bold text-slate-900">{value}<span className="ml-1 text-xs font-medium text-slate-500">{unit}</span></p>
                         </div>
                     </div>
                 ))}

@@ -5,13 +5,12 @@ import { PROGRESS_ORIGINS } from "./progressOrigins";
 import axios from "axios";
 import {
   TrendingUp, BookOpen, Search, Loader2, ChevronLeft, ChevronRight,
-  BarChart2, AlertTriangle, GraduationCap, Calendar, Users,
+  BarChart2, GraduationCap, Calendar, Users,
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
-import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
 // หนึ่งแถว = คอร์ส 1 × วิชา 1 × ติวเตอร์ 1 ซึ่งตรงกับหน่วยที่ระบบใช้จริง
@@ -63,7 +62,8 @@ function useCountUp(target, active = true, duration = 900) {
     const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
     const step = (now) => {
       const p = ease((now - start) / duration);
-      setValue(Math.round(target * p));
+      // จบที่ค่าจริงเสมอ (รองรับทศนิยม เช่น 72.5%)
+      setValue(p < 1 ? Math.round(target * p) : target);
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -74,12 +74,11 @@ function useCountUp(target, active = true, duration = 900) {
 }
 
 // ─── การ์ดสถิติ: เอียงตามเมาส์ + แสงเรือง + ไอคอนลายน้ำ + ตัวเลขวิ่งขึ้น ─────────
+// card.value = ตัวเลข (หรือ null = ยังไม่มีข้อมูล) · card.unit = หน่วยตัวเล็กต่อท้ายตัวเลข
 function StatTile({ card, ready }) {
   const Icon = card.icon;
-  const hasRaw = typeof card.raw === "number" && !Number.isNaN(card.raw);
-  const isPlainNumber = typeof card.value === "number";
-  const shown = useCountUp(hasRaw ? card.raw : (isPlainNumber ? card.value : 0), ready && (hasRaw || isPlainNumber));
-  const display = hasRaw ? `${shown}${card.suffix || ""}` : isPlainNumber ? shown.toLocaleString() : card.value;
+  const hasValue = typeof card.value === "number" && !Number.isNaN(card.value);
+  const shown = useCountUp(hasValue ? card.value : 0, ready && hasValue);
   return (
     <div
       onMouseMove={tiltMove}
@@ -93,7 +92,10 @@ function StatTile({ card, ready }) {
       </div>
       <div className="relative min-w-0">
         <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-        <p className="text-lg sm:text-xl font-bold text-slate-900 break-words">{display}</p>
+        <p className="text-lg sm:text-xl font-bold text-slate-900 break-words">
+          {hasValue ? shown.toLocaleString() : "—"}
+          {hasValue && card.unit && <> <span className="text-xs font-medium text-slate-500">{card.unit}</span></>}
+        </p>
       </div>
     </div>
   );
@@ -110,8 +112,6 @@ export default function AdminProgressOverview() {
   const cameFrom = searchParams.get("from");
 
   const [rows, setRows] = useState([]);
-  const [totals, setTotals] = useState(null);
-  const [orphanGroups, setOrphanGroups] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -124,8 +124,6 @@ export default function AdminProgressOverview() {
       .then((res) => {
         if (cancelled) return;
         setRows(Array.isArray(res.data?.rows) ? res.data.rows : []);
-        setTotals(res.data?.totals || null);
-        setOrphanGroups(Number(res.data?.orphanExamGroups) || 0);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -136,20 +134,39 @@ export default function AdminProgressOverview() {
     return () => { cancelled = true; };
   }, []);
 
-  const filtered = useMemo(() => {
+  // แถวหลังกรองตามปุ่มที่กดเข้ามา (ยังไม่กรองคำค้น) — ใช้คิดการ์ดสรุปพัฒนาการด้านบน
+  const presetRows = useMemo(() => {
     let list = rows;
     if (presetCourseId) list = list.filter((r) => String(r.courseId) === String(presetCourseId));
     if (presetSubjectId) list = list.filter((r) => String(r.subjectId) === String(presetSubjectId));
     if (presetTutorId) list = list.filter((r) => String(r.tutorId) === String(presetTutorId));
+    return list;
+  }, [rows, presetCourseId, presetSubjectId, presetTutorId]);
+
+  const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    if (!kw) return list;
-    return list.filter(
+    if (!kw) return presetRows;
+    return presetRows.filter(
       (r) =>
         r.courseName.toLowerCase().includes(kw) ||
         (r.subjectName || "").toLowerCase().includes(kw) ||
         (r.tutorName || "").toLowerCase().includes(kw)
     );
-  }, [rows, search, presetCourseId, presetSubjectId, presetTutorId]);
+  }, [presetRows, search]);
+
+  // สรุปพัฒนาการ — ใช้เฉพาะตัวเลขที่ /overview คืนมาแล้ว (pre/post avgPct, growth, improvement)
+  // ไม่แสดงจำนวนคอร์ส/ติวเตอร์/นักเรียนรวม เพราะซ้ำกับหน้าจัดการคอร์ส/ติวเตอร์/นักเรียน
+  const summary = useMemo(() => {
+    const r1 = (v) => Math.round(v * 10) / 10;
+    const mean = (arr) => (arr.length ? r1(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
+    const comparableGroups = presetRows.filter((r) => r.pre?.avgPct != null && r.post?.avgPct != null).length;
+    const avgPost = mean(presetRows.map((r) => r.post?.avgPct).filter((v) => v != null));
+    const avgGrowth = mean(presetRows.map((r) => r.growth?.growth).filter((v) => v != null));
+    const improved = presetRows.reduce((s, r) => s + (r.improvement?.improved || 0), 0);
+    const comparableStudents = presetRows.reduce((s, r) => s + (r.improvement?.comparable || 0), 0);
+    const improvedPct = comparableStudents ? r1((improved / comparableStudents) * 100) : null;
+    return { groups: presetRows.length, comparableGroups, avgPost, avgGrowth, improved, comparableStudents, improvedPct };
+  }, [presetRows]);
 
   // จัดกลุ่มเป็นการ์ดต่อคอร์ส (หนึ่งคอร์สอาจมีหลายวิชา และหลายติวเตอร์สอนวิชาเดียวกันได้)
   const courseCards = useMemo(() => {
@@ -223,38 +240,22 @@ export default function AdminProgressOverview() {
         </div>
       </div>
 
-      {/* Stats — การ์ดเอียงตามเมาส์ + ตัวเลขวิ่งขึ้น + ไอคอนลายน้ำ */}
+      {/* Stats — สรุปพัฒนาการเท่านั้น */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: "คอร์สที่เปิดสอน", value: totals?.courses ?? 0, color: "bg-orange-600", icon: BookOpen },
-          { label: "วิชา x ติวเตอร์", value: totals?.subjectGroups ?? 0, color: "bg-blue-500", icon: GraduationCap },
-          {
-            label: "คะแนนเฉลี่ย Post-test",
-            value: totals?.avgPost === null || totals?.avgPost === undefined ? "—" : `${totals.avgPost}%`,
-            raw: totals?.avgPost, suffix: "%",
-            color: "bg-emerald-500", icon: BarChart2,
-          },
+          { label: "วิชาที่เทียบผล Pre–Post ได้", value: summary.comparableGroups, unit: `/ ${summary.groups} วิชา`, color: "bg-orange-600", icon: BookOpen },
+          { label: "คะแนนเฉลี่ย Post-test", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
           {
             label: "นักเรียนที่คะแนนดีขึ้น",
-            value: totals ? `${totals.improved}/${totals.comparable}` : "—",
-            raw: totals?.improved, suffix: totals ? `/${totals.comparable}` : "",
-            color: "bg-purple-500", icon: TrendingUp,
+            value: summary.improvedPct,
+            unit: `% (${summary.improved}/${summary.comparableStudents} คน)`,
+            color: "bg-purple-500", icon: Users,
           },
+          { label: "พัฒนาการเฉลี่ย", value: summary.avgGrowth, unit: "%", color: "bg-blue-500", icon: TrendingUp },
         ].map((card, i) => (
-          <StatTile key={i} card={card} ready={!!totals} />
+          <StatTile key={i} card={card} ready={!loading} />
         ))}
       </div>
-
-      {/* ข้อมูลไม่สอดคล้อง — แจ้งอย่างเดียว ไม่แก้ให้เอง */}
-      {orphanGroups > 0 && (
-        <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
-          <AlertTriangle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
-          <p>
-            พบชุดข้อสอบ {orphanGroups} กลุ่ม ที่ผูกกับคอร์ส+วิชาแต่ติวเตอร์เจ้าของไม่ได้ถูกมอบหมายให้สอนวิชานั้นแล้ว
-            ผลสอบของกลุ่มนี้จะไม่ถูกนับในตารางด้านล่าง — เป็นการแจ้งให้ทราบเฉยๆ ระบบไม่ได้แก้ไขข้อมูลใดๆ ให้
-          </p>
-        </div>
-      )}
 
       {/* Search */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
@@ -301,7 +302,7 @@ export default function AdminProgressOverview() {
                         <Users className="h-3.5 w-3.5 text-slate-400" />
                         {c.studentsEnrolled} คน
                       </span>
-                      <span className="text-xs text-slate-500">· {c.items.length} วิชา/คอร์ส</span>
+                      <span className="text-xs text-slate-500">· {c.items.length} วิชา</span>
                     </div>
                   </div>
 
@@ -321,8 +322,8 @@ export default function AdminProgressOverview() {
                             {r.tutorName || "—"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] font-bold text-orange-600 shrink-0">
-                          <BarChart2 className="h-3.5 w-3.5" /> ดูพัฒนาการ <ChevronRight className="h-3.5 w-3.5" />
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 shrink-0">
+                          <BarChart2 className="h-4 w-4 text-slate-400 shrink-0" /> ดูพัฒนาการ <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
                         </div>
                       </button>
                     ))}

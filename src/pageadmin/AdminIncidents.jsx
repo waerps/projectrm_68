@@ -21,6 +21,7 @@ import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin/incidents`;
 const ITEMS_PER_PAGE = 12;
@@ -374,10 +375,7 @@ export default function AdminIncidents() {
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
-      <div>
-        <h1 className={PAGE_TITLE}>ศูนย์รับแจ้งปัญหา</h1>
-        <p className={PAGE_SUBTITLE}>จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน</p>
-      </div>
+      <PageHeader title="ศูนย์รับแจ้งปัญหา" subtitle="จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน" />
 
       {/* Stats — กดการ์ดเพื่อกรองตามระดับความรุนแรง (กดซ้ำเพื่อยกเลิก) ใช้ตัวเลขชุดเดียวกับตัวกรอง */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -392,7 +390,7 @@ export default function AdminIncidents() {
               </div>
               <div>
                 <p className="text-xs text-slate-500 font-medium">{sevLabel(s.key)}</p>
-                <p className="text-xl font-bold text-slate-900">{summary[s.key] ?? 0}</p>
+                <p className="text-xl font-bold text-slate-900">{summary[s.key] ?? 0}<span className="ml-1 text-xs font-medium text-slate-500">เคส</span></p>
               </div>
             </button>
           );

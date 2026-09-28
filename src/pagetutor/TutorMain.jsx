@@ -22,9 +22,9 @@ const SafeImg = ({ src, className, alt }) => {
 };
 
 const SectionTitle = ({ children, sub }) => (
-  <div className="text-center mb-6 md:mb-8">
-    <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{children}</h2>
-    {sub && <p className="mt-1 text-sm text-slate-500">{sub}</p>}
+  <div className="text-center mb-8 md:mb-10">
+    <h2 className="text-2xl md:text-[32px] font-extrabold text-slate-900">{children}</h2>
+    {sub && <p className="mt-2 text-base text-slate-500">{sub}</p>}
   </div>
 );
 

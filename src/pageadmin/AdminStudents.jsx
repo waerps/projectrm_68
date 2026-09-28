@@ -18,6 +18,7 @@ import { getConsentCatalog } from "../callapi/callusers_student";   // ← เ�
 import UIModal from "../components/ui/Modal";
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import SegmentedControl from "../components/ui/SegmentedControl";
+import PageHeader from "../components/ui/PageHeader";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { GraduationCap as LuGraduationCap } from "lucide-react";
@@ -38,7 +39,7 @@ const studentTiltMove = (e) => {
 };
 const studentTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
 
-function StudentStatTile({ label, value, color, icon: Icon }) {
+function StudentStatTile({ label, value, color, icon: Icon, unit = "คน" }) {
   return (
     <div
       onMouseMove={studentTiltMove}
@@ -52,7 +53,7 @@ function StudentStatTile({ label, value, color, icon: Icon }) {
       </div>
       <div className="relative min-w-0">
         <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900">{value}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
       </div>
     </div>
   );
@@ -216,7 +217,7 @@ function ParentSearchSelect({ onSelect }) {
           {loading ? (
             <p className="text-xs text-slate-500 text-center py-3">กำลังค้นหา...</p>
           ) : results.length === 0 ? (
-            <p className="text-xs text-slate-500 text-center py-3">ไม่พบ — กรอกข้อมูลใหม่ด้านล่างได้เลย</p>
+            <p className="text-xs text-slate-500 text-center py-3">ไม่พบข้อมูล กรุณากรอกข้อมูลผู้ปกครองด้านล่าง</p>
           ) : results.map(p => (
             <button type="button" key={p.ParentId}
               onMouseDown={() => { onSelect(p); setOpen(false); }}
@@ -879,13 +880,13 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         <div className="flex gap-3 shrink-0">
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
             <p className="text-xs text-orange-200">เข้าเรียน (รวม)</p>
-            <p className="text-xl font-bold text-white">{attRate}%</p>
+            <p className="text-xl font-bold text-white">{attRate}<span className="ml-0.5 text-xs font-medium text-orange-100">%</span></p>
             <p className="text-[11px] text-orange-300">{attended}/{totalClasses} คาบ</p>
           </div>
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
             <p className="text-xs text-orange-200">วิดีโอ (รวม)</p>
-            <p className="text-xl font-bold text-white">{watchedVideos}</p>
-            <p className="text-[11px] text-orange-300">/{totalVideos} คลิป</p>
+            <p className="text-xl font-bold text-white">{watchedVideos}<span className="ml-1 text-xs font-medium text-orange-100">คลิป</span></p>
+            <p className="text-[11px] text-orange-300">จาก {totalVideos} คลิป</p>
           </div>
         </div>
       </div>
@@ -1345,7 +1346,7 @@ function ConsentTab({ studentId, showToast }) {
   if (!courses.length) {
     return (
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
-        นักเรียนคนนี้ยังไม่ได้ลงทะเบียนคอร์สใดเลย — ความยินยอมผูกกับคอร์ส จึงยังไม่มีคอร์สให้ดู/บันทึก
+        นักเรียนยังไม่ได้ลงทะเบียนคอร์ส จึงยังไม่มีข้อมูลความยินยอม (ความยินยอมบันทึกแยกตามคอร์ส)
       </div>
     );
   }
@@ -1476,7 +1477,7 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
           {/* FIX #7: ปุ่ม disable + loading ระหว่าง request */}
           <button onClick={onConfirm} disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
           </button>
         </div>
       </div>
@@ -1497,7 +1498,7 @@ const BOARDS = {
     Icon: Award,
     heading: 'ความสามารถโดดเด่น',
     formula: 'Post-test 70% + คะแนนเฉลี่ยทุกรอบ 30%',
-    hint: 'วัดว่า "ตอนนี้เก่งแค่ไหน" — ค่าเฉลี่ยทุกรอบทำให้เด็กที่สูงมาตลอดชนะเด็กที่ฟลุกรอบเดียว',
+    hint: 'วัดระดับความสามารถปัจจุบัน โดยใช้ค่าเฉลี่ยทุกรอบเพื่อให้ผลสม่ำเสมอมีน้ำหนักมากกว่าคะแนนสูงเพียงรอบเดียว',
     score: (s) => s.ExcellenceScore,
     eligible: (s) => s.ExcellenceEvaluable === true,
     reason: (s) => s.ExcellenceReason,
@@ -1523,7 +1524,7 @@ const BOARDS = {
     Icon: TrendingUp,
     heading: 'พัฒนาการโดดเด่น',
     formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
-    hint: 'วัดว่า "ปิดช่องว่างที่ยังเหลืออยู่ไปได้กี่ %" ไม่ใช่วัดจากตัวเลขที่เพิ่มขึ้นตรง ๆ — เด็กที่เริ่มต่ำจึงไม่ได้เปรียบฟรี ๆ และเด็กที่เริ่มสูงก็ไม่ถูกลงโทษ',
+    hint: 'วัดสัดส่วนช่องว่างคะแนนที่ปิดได้ (%) แทนคะแนนที่เพิ่มขึ้นโดยตรง เพื่อให้นักเรียนที่เริ่มต้นคะแนนต่ำหรือสูงได้รับการประเมินอย่างเป็นธรรม',
     score: (s) => s.ImprovementScore,
     eligible: (s) => s.ImprovementEligible === true,
     reason: (s) => s.ImprovementReason,
@@ -1977,14 +1978,11 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
       {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
           เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
           เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
-      <div className="px-4 sm:px-5 pt-3">
+      {/* แถวเดียว: ตัวสลับกระดาน (ซ้าย) + ตัวกรอง (ขวา) */}
+      <div className="px-4 sm:px-5 pt-3 flex items-center gap-2 flex-wrap">
         <SegmentedControl stretchMobile value={boardKey} onChange={setBoardKey}
           options={Object.values(BOARDS).map((b) => ({ id: b.key, label: b.tab, icon: b.Icon }))} />
-      </div>
-      <p className="px-4 sm:px-5 pt-3 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
-
-      <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative w-full sm:w-auto ml-auto">
+        <div className="relative w-full sm:w-auto sm:ml-auto">
           <select
             value={filterGrade}
             onChange={e => setFilterGrade(e.target.value)}
@@ -2041,6 +2039,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           </button>
         )}
       </div>
+      <p className="px-4 sm:px-5 pt-3 pb-2 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
 
       <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
@@ -2216,11 +2215,11 @@ export default function AdminStudentsPage() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/students`, data);
-      showToast("success", "เพิ่มนักเรียนสำเร็จ!");
+      showToast("success", "เพิ่มนักเรียนสำเร็จ");
       setShowAddModal(false);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2228,11 +2227,11 @@ export default function AdminStudentsPage() {
     setIsSubmitting(true);
     try {
       await axios.put(`${API}/students/${editingStudent.UserId}`, data);
-      showToast("success", "แก้ไขสำเร็จ!", "บันทึกข้อมูลนักเรียนเรียบร้อยแล้ว");
+      showToast("success", "แก้ไขสำเร็จ", "บันทึกข้อมูลนักเรียนเรียบร้อยแล้ว");
       setEditingStudent(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2241,11 +2240,11 @@ export default function AdminStudentsPage() {
     setIsDeleting(true);
     try {
       await axios.delete(`${API}/students/${deletingStudent.UserId}`);
-      showToast("success", "ลบนักเรียนสำเร็จ!");
+      showToast("success", "ลบนักเรียนสำเร็จ");
       setDeletingStudent(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsDeleting(false); }
   };
 
@@ -2297,21 +2296,29 @@ export default function AdminStudentsPage() {
     <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* Header — แบนเนอร์โทนส้ม เหมือนหน้าการเงิน/คอร์ส/ติวเตอร์ */}
+      {/* Header — ชื่อหน้า (ซ้าย) + ปุ่มหลัก (ขวา) รูปแบบเดียวกับหน้าการเงิน */}
+      <PageHeader title="จัดการนักเรียน" subtitle="เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด">
+        <button onClick={() => setShowAddModal(true)}
+          className={`${BTN.primary} flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
+          <Plus className="h-4 w-4" /> เพิ่มนักเรียน
+        </button>
+      </PageHeader>
+
+      {/* แบนเนอร์โทนส้ม */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
         <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
               <GraduationCap className="h-3.5 w-3.5" /> ฐานข้อมูลนักเรียน
             </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>จัดการนักเรียน</h1>
-            <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
+            <h2 className="mt-2 text-lg font-bold text-slate-900">รายชื่อนักเรียน</h2>
+            <p className={PAGE_SUBTITLE}>ข้อมูลส่วนตัว การลงทะเบียน และผลการเรียนของนักเรียน</p>
           </div>
-          <button onClick={() => setShowAddModal(true)}
-            className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
-            <Plus className="h-4 w-4" /> เพิ่มนักเรียนใหม่
-          </button>
+          <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-2.5 shadow-sm sm:text-right">
+            <p className="text-[11px] text-slate-500">GPA เฉลี่ย</p>
+            <p className="text-lg font-bold text-slate-900">{avgGpa}{avgGpa !== "—" && <span className="ml-1 text-xs font-medium text-slate-500">จาก 4.00</span>}</p>
+          </div>
         </div>
       </div>
 

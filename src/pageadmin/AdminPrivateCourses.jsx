@@ -91,15 +91,15 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-        <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} sub={`ทั้งหมด ${courses.length} คอร์ส`} />
-        <Stat icon={Layers} color="bg-blue-500" label="วิชาที่โชว์หน้าเว็บ" value={stats.shownOffers} sub={`ซ่อนอยู่ ${offers.length - stats.shownOffers} วิชา`} />
+        <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} unit="คอร์ส" sub={`ทั้งหมด ${courses.length} คอร์ส`} />
+        <Stat icon={Layers} color="bg-blue-500" label="วิชาที่แสดงบนเว็บไซต์" value={stats.shownOffers} unit="วิชา" sub={`ซ่อนอยู่ ${offers.length - stats.shownOffers} วิชา`} />
         <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} sub="รวมทุกคอร์สเดี่ยว" className="col-span-2 md:col-span-1" />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SegmentedControl size="sm" stretchMobile value={tab} onChange={setTab} options={[
           { id: "courses", label: "คอร์สของนักเรียน", short: "คอร์สนักเรียน", count: courses.length },
-          { id: "offers", label: "รายวิชาที่โชว์หน้าเว็บ", short: "รายวิชาหน้าเว็บ", count: offers.length },
+          { id: "offers", label: "รายวิชาบนเว็บไซต์", short: "รายวิชาบนเว็บ", count: offers.length },
         ]} />
         {tab === "courses"
           ? <button type="button" onClick={() => setModal({ type: "create" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full sm:w-auto`}><Plus className="h-4 w-4" />สร้างคอร์สให้นักเรียน</button>
@@ -126,14 +126,14 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   );
 }
 
-function Stat({ icon, color, label, value, sub, className = "" }) {
+function Stat({ icon, color, label, value, unit, sub, className = "" }) {
   const Icon = icon;
   return (
     <div className={`${card} flex items-center gap-3 p-3 sm:gap-4 sm:p-4 ${className}`}>
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}><Icon className="h-5 w-5 text-white" /></span>
       <div className="min-w-0">
         <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
+        <p className="text-xl font-bold text-slate-900">{value}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
         {sub && <p className="truncate text-[11px] text-slate-500">{sub}</p>}
       </div>
     </div>
@@ -161,7 +161,7 @@ function CoursesTab({ courses, onManage, onCreate, onPay, onEnroll }) {
   if (!courses.length) {
     return (
       <EmptyState icon={UserRoundCheck} title="ยังไม่มีคอร์สเดี่ยว"
-        description="หลังพี่กวางประเมินน้องและตกลงราคากันแล้ว กดสร้างคอร์สให้นักเรียนได้เลย ระบบจะลงทะเบียนนักเรียนให้ในขั้นตอนเดียวกัน"
+        description="สร้างคอร์สหลังประเมินนักเรียนและตกลงราคาแล้ว ระบบจะลงทะเบียนนักเรียนให้ในขั้นตอนเดียวกัน"
         action={<button type="button" onClick={onCreate} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}><Plus className="h-4 w-4" />สร้างคอร์สให้นักเรียน</button>} />
     );
   }
@@ -277,7 +277,7 @@ function OffersTab({ offers, subjects, onAdd, onEdit, onChanged }) {
 
   if (!offers.length) {
     return (
-      <EmptyState icon={Layers} title="ยังไม่มีรายวิชาที่โชว์หน้าเว็บ"
+      <EmptyState icon={Layers} title="ยังไม่มีรายวิชาที่แสดงบนเว็บไซต์"
         description="หน้าคอร์สเดี่ยวจะแสดงเฉพาะแบนเนอร์และช่องทางติดต่อ จนกว่าจะเพิ่มรายวิชา"
         action={<button type="button" onClick={onAdd} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}><Plus className="h-4 w-4" />เพิ่มรายวิชา</button>} />
     );
@@ -423,7 +423,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
   };
 
   return (
-    <Modal title="สร้างคอร์สเดี่ยวให้นักเรียน" subtitle="หลังพี่กวางประเมินน้องและตกลงราคากันแล้ว" icon={UserRoundCheck} size="lg" onClose={onClose}
+    <Modal title="สร้างคอร์สเดี่ยวให้นักเรียน" subtitle="สร้างหลังประเมินนักเรียนและตกลงราคาแล้ว" icon={UserRoundCheck} size="lg" onClose={onClose}
       footer={<>
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving || lossRate} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "สร้างคอร์ส"}</button>
@@ -431,7 +431,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
       <div className="space-y-5">
         <section className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className={labelCls}>สร้างจากรายวิชาที่โชว์หน้าเว็บ (ไม่บังคับ)</label>
+            <label className={labelCls}>สร้างจากรายวิชาบนเว็บไซต์ (ไม่บังคับ)</label>
             <select value={f.OfferId} onChange={(e) => pickOffer(e.target.value)} className={INPUT}>
               <option value="">— ไม่ระบุ —</option>
               {offers.map((o) => <option key={o.OfferId} value={o.OfferId}>{o.Title}{o.StartingPrice ? ` · เริ่มต้น ${o.StartingPrice}/ชม.` : ""}</option>)}
@@ -511,13 +511,13 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
           </div>
           <div className="sm:col-span-3">
             <label className={labelCls}>หมายเหตุ</label>
-            <textarea rows={2} value={f.Remark} onChange={(e) => set("Remark", e.target.value)} className={`${INPUT} h-auto py-2`} placeholder="เช่น เป้าหมายของน้อง วันเวลาที่สะดวก" />
+            <textarea rows={2} value={f.Remark} onChange={(e) => set("Remark", e.target.value)} className={`${INPUT} h-auto py-2`} placeholder="เช่น เป้าหมายการเรียน วันเวลาที่สะดวก" />
           </div>
         </section>
 
         <label className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
           <input type="checkbox" checked={f.enrollNow} onChange={(e) => set("enrollNow", e.target.checked)} className="mt-0.5 accent-orange-500" />
-          <span>ลงทะเบียนนักเรียนเข้าคอร์สทันที<span className="block text-xs text-slate-500">คอร์สจะขึ้นใน "คอร์สเรียนของฉัน" ของน้อง · จัดตารางสอนต่อได้ที่หน้าตารางเรียนตามปกติ</span></span>
+          <span>ลงทะเบียนนักเรียนเข้าคอร์สทันที<span className="block text-xs text-slate-500">คอร์สจะแสดงในหน้า "คอร์สเรียนของฉัน" ของนักเรียน และจัดตารางสอนได้ที่หน้าตารางเรียน</span></span>
         </label>
       </div>
     </Modal>
@@ -624,7 +624,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
   };
 
   return (
-    <Modal title={offer ? "แก้ไขรายวิชา" : "เพิ่มรายวิชาที่โชว์หน้าเว็บ"} subtitle="แสดงในหน้าคอร์สเดี่ยว · ไม่มีปุ่มซื้อ" icon={Layers} size="lg" onClose={onClose}
+    <Modal title={offer ? "แก้ไขรายวิชา" : "เพิ่มรายวิชาบนเว็บไซต์"} subtitle="แสดงในหน้าคอร์สเดี่ยว · ไม่มีปุ่มซื้อ" icon={Layers} size="lg" onClose={onClose}
       footer={<>
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "บันทึก"}</button>
@@ -703,7 +703,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
           <input type="checkbox" checked={f.IsActive} onChange={(e) => set("IsActive", e.target.checked)} className="accent-orange-500" />
           แสดงบนหน้าเว็บ
         </label>
-        <p className="flex items-start gap-1.5 text-xs text-slate-500"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />ราคาที่นี่เป็นแค่ราคาเริ่มต้นที่โชว์ ราคาจริงของนักเรียนแต่ละคนกำหนดตอนสร้างคอร์ส</p>
+        <p className="flex items-start gap-1.5 text-xs text-slate-500"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />ราคานี้เป็นราคาเริ่มต้นที่แสดงบนเว็บไซต์ ราคาจริงของนักเรียนแต่ละคนกำหนดเมื่อสร้างคอร์ส</p>
       </div>
     </Modal>
   );

@@ -453,18 +453,21 @@ export default function AdminSchedule() {
             bg="bg-blue-500"
             label="คาบสอนทั้งหมด"
             value={totalClasses}
+            unit="คาบ"
           />
           <StatCard
             icon={<Users className="h-5 w-5 text-white" />}
             bg="bg-emerald-500"
             label="คอร์สที่เปิดอยู่"
             value={totalStudents}
+            unit="คอร์ส"
           />
           <StatCard
             icon={<AlertTriangle className="h-5 w-5 text-white" />}
-            bg={noCheckin > 0 ? 'bg-red-500' : 'bg-emerald-500'}
+            bg="bg-red-500"
             label="ยังไม่เช็กอิน (สัปดาห์นี้)"
             value={noCheckin}
+            unit="คาบ"
             warn={noCheckin > 0}
           />
         </div>
@@ -546,7 +549,7 @@ export default function AdminSchedule() {
             </span>
             <span className="flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              เลยเวลา/ไม่มีเช็กอิน
+              ยังไม่เช็กอิน
             </span>
             <span className="flex items-center gap-1">
               <div className="h-3 w-3 rounded-full bg-slate-300" />
@@ -814,7 +817,7 @@ export default function AdminSchedule() {
             {selected.TotalOccurrences > 1 && (
               <div className="mb-4 space-y-2">
                 <p className="text-xs font-semibold text-slate-600">
-                  ต้องการลบแค่ไหน? (มี {selected.TotalOccurrences} คาบในระบบ)
+                  เลือกขอบเขตการลบ (มีทั้งหมด {selected.TotalOccurrences} คาบในระบบ)
                 </p>
                 {[
                   { v: 'this', l: 'ลบเฉพาะคาบนี้' },
@@ -1141,7 +1144,7 @@ function ScheduleModal({
           {scopeSelector && totalOccurrences > 1 && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-700 mb-2">
-                แก้ไขแค่ไหน? (มี {totalOccurrences} คาบในระบบ)
+                เลือกขอบเขตการแก้ไข (มีทั้งหมด {totalOccurrences} คาบในระบบ)
               </p>
               <div className="space-y-1.5">
                 {[
@@ -1375,7 +1378,7 @@ function ScheduleModal({
 }
 
 // ─── helpers ──────────────────────────────────────────────────
-function StatCard({ icon, bg, label, value, warn }) {
+function StatCard({ icon, bg, label, value, unit, warn }) {
   return (
     <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
       <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
@@ -1383,7 +1386,10 @@ function StatCard({ icon, bg, label, value, warn }) {
       </div>
       <div>
         <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className={`text-xl font-bold ${warn ? 'text-red-600' : 'text-slate-900'}`}>{value}</p>
+        <p className={`text-xl font-bold ${warn ? 'text-red-600' : 'text-slate-900'}`}>
+          {value}
+          {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+        </p>
       </div>
     </div>
   );
@@ -1432,8 +1438,8 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
 
       {!hasEnrollment && (
         <p className="text-[11px] text-amber-600">
-          <LuAlertTriangle className="inline h-3.5 w-3.5 shrink-0" /> คอร์สนี้ยังไม่มีคนลงทะเบียน ระบบแนะนำห้องเล็กสุดที่ว่างไว้ก่อน
-          ถ้ามีนักเรียนสมัครเพิ่มภายหลัง ควรกลับมาปรับห้องอีกครั้ง
+          <LuAlertTriangle className="inline h-3.5 w-3.5 shrink-0" /> คอร์สนี้ยังไม่มีผู้ลงทะเบียน ระบบจึงแนะนำห้องขนาดเล็กที่สุดที่ว่าง
+          หากมีผู้ลงทะเบียนเพิ่ม ควรปรับห้องอีกครั้ง
         </p>
       )}
 
@@ -1458,12 +1464,12 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
               >
                 <div>
                   <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
-                    {isTop ? 'แนะนำที่สุด' : `ตัวเลือกที่ ${r.rank}`}
+                    {isTop ? 'ห้องที่แนะนำ' : `ตัวเลือกที่ ${r.rank}`}
                   </p>
                   <p className="text-[11px] text-slate-600">
                     {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
                     {r.isOversized && (
-                      <span className="text-amber-600"> · ใหญ่เกินความจำเป็น (เกิน {r.extraSeats} ที่นั่ง)</span>
+                      <span className="text-amber-600"> · ที่นั่งเกินความจำเป็น {r.extraSeats} ที่นั่ง</span>
                     )}
                   </p>
                 </div>

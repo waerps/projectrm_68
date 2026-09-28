@@ -485,7 +485,7 @@ export default function TutorStudentDetail() {
                                             คิดเป็นพัฒนาการ <span className="font-bold text-slate-700">{getGrowthText()}</span>
                                             {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังมีช่องว่างให้พัฒนาอีก {improvement.room}% และปิดช่องว่างนั้นไปได้แล้ว {getGrowthText()}
                                             {improvement.growthCapped
-                                                ? " · นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้"
+                                                ? " · นักเรียนมีพื้นฐานสูงตั้งแต่ต้น จึงเทียบโดยตรงกับนักเรียนที่พื้นฐานต่ำกว่าไม่ได้"
                                                 : ""}
                                         </p>
                                     )}
@@ -503,7 +503,7 @@ export default function TutorStudentDetail() {
                         ) : examData?.latest ? (
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
-                                <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ เพราะยังสอบแค่รอบเดียว ต้องมีทั้งก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
+                                <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ ต้องมีผลสอบก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
                             </p>
                         ) : (
                             <p className="text-sm text-slate-500">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
@@ -512,7 +512,7 @@ export default function TutorStudentDetail() {
                         {examSummary?.hasNonStandardMax && (
                             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-2.5">
                                 มีข้อสอบบางรอบที่ตั้งคะแนนเต็มไม่ตรง {examSummary.cap} คะแนน — ระบบปรับฐานให้เป็น {examSummary.cap} ก่อนรวมแล้ว
-                                ตัวเลขที่เห็นจึงเทียบกันได้ แต่ควรกลับไปแก้ให้ตรงเพดานที่หน้าจัดการข้อสอบ
+                                ควรแก้ไขคะแนนเต็มให้ตรงที่หน้าจัดการข้อสอบ
                             </p>
                         )}
                     </div>
@@ -536,7 +536,7 @@ export default function TutorStudentDetail() {
                                         {untested ? (
                                             <span className="text-xs text-slate-500 font-medium">ยังไม่ได้สอบวิชานี้</span>
                                         ) : delta == null ? (
-                                            <span className="text-xs text-slate-500 font-medium">ยังเทียบไม่ได้ (มีแค่รอบเดียว)</span>
+                                            <span className="text-xs text-slate-500 font-medium">ยังเทียบไม่ได้ (มีผลสอบรอบเดียว)</span>
                                         ) : (
                                             <div className={`px-2 py-1 rounded-full flex items-center gap-1 text-xs border ${getTrendColor(trend)}`}>
                                                 {getTrendIcon(trend)}
@@ -565,7 +565,7 @@ export default function TutorStudentDetail() {
 
                         {examData && (examData.untestedSubjects || []).length > 0 && (
                             <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                                วิชาที่ยังไม่ได้สอบเลย: {examData.untestedSubjects.join(", ")} — คะแนนรวมด้านบนจึงไม่ได้นับวิชาเหล่านี้
+                                วิชาที่ยังไม่มีผลสอบ: {examData.untestedSubjects.join(", ")} — คะแนนรวมด้านบนจึงไม่ได้นับวิชาเหล่านี้
                             </p>
                         )}
 
@@ -573,7 +573,7 @@ export default function TutorStudentDetail() {
                             <div className="text-center py-10">
                                 <Award className="h-10 w-10 text-slate-200 mx-auto mb-2" />
                                 <p className="text-sm text-slate-500">ยังไม่มีข้อมูลการสอบ</p>
-                                <p className="text-xs text-slate-500 mt-1">ตัวเลขจะขึ้นเมื่อนักเรียนส่งข้อสอบแล้วอย่างน้อย 1 วิชา</p>
+                                <p className="text-xs text-slate-500 mt-1">ข้อมูลจะแสดงเมื่อนักเรียนส่งข้อสอบอย่างน้อย 1 วิชา</p>
                             </div>
                         )}
                     </div>
@@ -585,14 +585,14 @@ export default function TutorStudentDetail() {
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[
-                            { label: "คาบทั้งหมด",     value: attendance.length,                      color: "text-slate-700", icon: <Calendar className="h-5 w-5 text-slate-500" /> },
-                            { label: "มาเรียน",         value: `${attendedCount} คาบ`,                 color: "text-green-600",   icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
-                            { label: "ขาดเรียน",        value: `${absentCount} คาบ`,                   color: "text-red-500",     icon: <XCircle className="h-5 w-5 text-red-400" /> },
-                            { label: "คลิปที่ยังไม่ดู", value: `${videos.length - watchedCount} คลิป`, color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-500" /> },
+                            { label: "คาบทั้งหมด",     value: attendance.length, unit: "คาบ", color: "text-slate-700", icon: <Calendar className="h-5 w-5 text-slate-500" /> },
+                            { label: "มาเรียน",         value: attendedCount, unit: "คาบ", color: "text-green-600",   icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
+                            { label: "ขาดเรียน",        value: absentCount, unit: "คาบ", color: "text-red-500",     icon: <XCircle className="h-5 w-5 text-red-400" /> },
+                            { label: "คลิปที่ยังไม่ดู", value: videos.length - watchedCount, unit: "คลิป", color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-500" /> },
                         ].map((s, i) => (
                             <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-slate-500 font-medium">{s.label}</span></div>
-                                <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value}</p>
+                                <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value} <span className="text-xs font-medium text-slate-500">{s.unit}</span></p>
                             </div>
                         ))}
                     </div>

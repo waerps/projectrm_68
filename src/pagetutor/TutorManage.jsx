@@ -184,7 +184,7 @@ export default function TutorCourseManagePage() {
     } catch { toast("ลบไฟล์ไม่สำเร็จ"); }
   };
 
-  if (loading) return <Spinner block label="กำลังดึงข้อมูล..." />;
+  if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
   if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดคลิปและเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchContent(); }} /></div>;
 
   return (
