@@ -45,79 +45,6 @@ const EXAMS_META = [
   { id: 2, label: "Post-test", badge: "bg-pink-50 text-pink-700" },
 ];
 
-// ─── Questions (mock — ยังใช้กับ Export Excel / ตัวเลขคำถามชั่วคราว จนกว่าจะมี item-level endpoint จริง) ──
-
-const QUESTIONS = [
-  { id: 1, topic: "พีชคณิต", level: "ง่าย", score: 1, text: "x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับ" },
-  { id: 2, topic: "พีชคณิต", level: "ง่าย", score: 1, text: "f(x) = 2x + 3 หา f(5)" },
-  { id: 3, topic: "พีชคณิต", level: "ปานกลาง", score: 2, text: "แก้สมการ 3x − 7 = 2x + 5" },
-  { id: 4, topic: "พีชคณิต", level: "ปานกลาง", score: 2, text: "x² + 4x + 4 = 0 มีคำตอบเป็น" },
-  { id: 5, topic: "พีชคณิต", level: "ยาก", score: 3, text: "2x² − 3x − 2 = 0 มีคำตอบเป็น" },
-  { id: 6, topic: "เรขาคณิต", level: "ง่าย", score: 1, text: "พื้นที่สามเหลี่ยมฐาน 6 ซม. สูง 4 ซม." },
-  { id: 7, topic: "เรขาคณิต", level: "ง่าย", score: 1, text: "เส้นรอบรูปสี่เหลี่ยมจัตุรัสด้าน 5 ซม." },
-  { id: 8, topic: "เรขาคณิต", level: "ปานกลาง", score: 2, text: "พื้นที่วงกลมรัศมี 7 ซม. (π = 22/7)" },
-  { id: 9, topic: "เรขาคณิต", level: "ปานกลาง", score: 2, text: "ทฤษฎีพีทาโกรัส ด้าน 5, 12 หายาวด้านตรงข้ามมุมฉาก" },
-  { id: 10, topic: "เรขาคณิต", level: "ยาก", score: 3, text: "ปริมาตรทรงกระบอก r = 3 h = 7 ซม." },
-  { id: 11, topic: "ตรีโกณมิติ", level: "ง่าย", score: 1, text: "sin 30° + cos 60° มีค่าเท่าใด" },
-  { id: 12, topic: "ตรีโกณมิติ", level: "ปานกลาง", score: 2, text: "tan 45° มีค่าเท่าใด" },
-  { id: 13, topic: "ตรีโกณมิติ", level: "ปานกลาง", score: 2, text: "cos 0° + sin 90° มีค่าเท่าใด" },
-  { id: 14, topic: "ตรีโกณมิติ", level: "ยาก", score: 3, text: "sin²x + cos²x = ?" },
-  { id: 15, topic: "ตรีโกณมิติ", level: "ยาก", score: 3, text: "หา sin 150° โดยใช้สูตรมุมสัมพัทธ์" },
-  { id: 16, topic: "อัลกอริทึม", level: "ปานกลาง", score: 2, text: "log₁₀ 1000 มีค่าเท่าใด" },
-  { id: 17, topic: "อัลกอริทึม", level: "ปานกลาง", score: 2, text: "log₂ 8 มีค่าเท่าใด" },
-  { id: 18, topic: "อัลกอริทึม", level: "ยาก", score: 3, text: "log₂ x = 5 แล้ว x = ?" },
-  { id: 19, topic: "อัลกอริทึม", level: "ยาก", score: 3, text: "log 2 + log 5 มีค่าเท่าใด" },
-  { id: 20, topic: "อัลกอริทึม", level: "ยาก", score: 3, text: "log₃ 81 มีค่าเท่าใด" },
-  { id: 21, topic: "ลำดับและอนุกรม", level: "ง่าย", score: 1, text: "ลำดับ 3, 7, 11, 15 … พจน์ที่ 10 คือ" },
-  { id: 22, topic: "ลำดับและอนุกรม", level: "ง่าย", score: 1, text: "ผลบวก 10 พจน์แรกของ 1 + 2 + 3 + …" },
-  { id: 23, topic: "ลำดับและอนุกรม", level: "ปานกลาง", score: 2, text: "ลำดับเรขาคณิต 2, 6, 18 … พจน์ที่ 5 คือ" },
-  { id: 24, topic: "ลำดับและอนุกรม", level: "ปานกลาง", score: 2, text: "ผลบวก GP a = 3, r = 2, n = 5" },
-  { id: 25, topic: "ลำดับและอนุกรม", level: "ยาก", score: 3, text: "หา S∞ ของอนุกรม 1 + 1/2 + 1/4 + …" },
-  { id: 26, topic: "สถิติ", level: "ง่าย", score: 1, text: "ค่าเฉลี่ยของ 5, 8, 3, 9, 10 คือ" },
-  { id: 27, topic: "สถิติ", level: "ปานกลาง", score: 2, text: "มัธยฐานของ 3, 5, 7, 9, 11 คือ" },
-  { id: 28, topic: "สถิติ", level: "ปานกลาง", score: 2, text: "ฐานนิยมของ 2, 3, 3, 4, 5, 3 คือ" },
-  { id: 29, topic: "สถิติ", level: "ยาก", score: 3, text: "ส่วนเบี่ยงเบนมาตรฐานของ 2, 4, 6, 8 คือ" },
-  { id: 30, topic: "สถิติ", level: "ยาก", score: 3, text: "ถ้า σ = 2.5 หา variance" },
-];
-
-const MAX_SCORE = QUESTIONS.reduce((s, q) => s + q.score, 0);
-
-// ─── Pseudo-random helpers (mock — ยังใช้กับ Export Excel ชั่วคราว) ────────────
-
-const pr = (a, b, c = 0) => {
-  let x = (Math.imul(a | 0, 2654435761) ^ Math.imul(b | 0, 2246822519) ^ Math.imul(c | 0, 1664525)) >>> 0;
-  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b) >>> 0;
-  return x / 0xffffffff;
-};
-
-const STUDENT_NAMES = Array.from({ length: 24 }, (_, i) => `นักเรียน ${String(i + 1).padStart(2, "0")}`);
-const ABILITIES = [0.88, 0.85, 0.82, 0.79, 0.76, 0.74, 0.71, 0.68, 0.65, 0.63, 0.60, 0.57, 0.54, 0.51, 0.49, 0.46, 0.43, 0.40, 0.38, 0.35, 0.32, 0.29, 0.26, 0.22];
-const P_BASE = { "ง่าย": 0.80, "ปานกลาง": 0.60, "ยาก": 0.38 };
-
-const generateData = (abilityDelta, examId) =>
-  ABILITIES.map((base, si) => {
-    const ability = Math.min(0.97, Math.max(0.05, base + abilityDelta + (pr(si, 97, examId) - 0.5) * 0.06));
-    const answers = QUESTIONS.map((q, qi) => {
-      const pv = P_BASE[q.level];
-      const threshold = ability * 0.55 + pv * 0.45;
-      const isCorrect = pr(si, qi, examId) < threshold;
-      const correctOpt = qi % 4;
-      const wrongOpts = [0, 1, 2, 3].filter(o => o !== correctOpt);
-      const chosen = isCorrect ? correctOpt : wrongOpts[Math.floor(pr(si + 100, qi, examId) * 3)];
-      const tBase = q.level === "ง่าย" ? 55 : q.level === "ปานกลาง" ? 110 : 178;
-      const timeSec = Math.max(12, Math.round(tBase + (pr(si * 3, qi * 3, examId) - 0.5) * 70));
-      return { qi, chosen, correct: isCorrect, timeSec };
-    });
-    const totalScore = answers.reduce((s, a, i) => s + (a.correct ? QUESTIONS[i].score : 0), 0);
-    return { id: si + 1, name: STUDENT_NAMES[si], answers, totalScore, pct: totalScore / MAX_SCORE, passed: totalScore / MAX_SCORE >= PASS_PCT / 100, timeSec: answers.reduce((s, a) => s + a.timeSec, 0) };
-  });
-
-const ALL_DATA = [
-  generateData(-0.24, 0),
-  generateData(0, 1),
-  generateData(+0.13, 2),
-];
-
 // ─── Stat helpers ─────────────────────────────────────────────────────────────
 
 const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
@@ -172,8 +99,11 @@ function computeRoundStats(results, topicBreakdown) {
 // 2) "ดีขึ้น/ลดลง" รายคน = คะแนนรวม % ของรอบแรกที่สอบ → รอบล่าสุดที่สอบ (หน่วย: จุดเปอร์เซ็นต์)
 //    ใช้ที่เดียวทั้งตารางรายคน หน้าต่างรายคน และ PDF — ส่วนแท็บ "เปรียบเทียบ" เป็นมุมมองระดับห้อง
 //    เทียบรอบแรกกับรอบสุดท้ายที่มีข้อมูล เฉพาะคนที่สอบครบทุกรอบ (ดู buildCohortComparison)
+// (แก้บั๊ก PDPA) เดิมไม่เช็ค consent เลย ทั้งที่คำนวณ e.consent มาให้ตั้งแต่ buildRealCrossExamData
+// แล้ว — รอบสอบที่นักเรียนไม่ยินยอมให้บันทึกพฤติกรรมสอบ ต้องไม่ถูกนำไปรวมคำนวณพัฒนาการ
+// เกณฑ์เดียวกับฝั่งแอดมิน (services/studentPerformance.js, admin.progress.routes.js)
 const scoreChangeOf = (exams) => {
-  const done = (exams || []).filter((e) => e.submitted);
+  const done = (exams || []).filter((e) => e.submitted && e.consent !== false);
   if (done.length < 2) return null;
   return Math.round((done[done.length - 1].pct - done[0].pct) * 1000) / 10;
 };
@@ -205,33 +135,6 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   if (key === "ok") reasons.push("ผ่านเกณฑ์ ไม่มีเรื่องที่น่ากังวล");
   return { key, level: STUDENT_STATUS[key].level, reasons, change, weakCount: weak };
 }
-
-const computeItemAnalysis = (data) => {
-  const n = data.length;
-  const sorted = [...data].sort((a, b) => b.pct - a.pct);
-  const upper = sorted.slice(0, Math.ceil(n * 0.27));
-  const lower = sorted.slice(Math.floor(n * 0.73));
-  return QUESTIONS.map((q, qi) => {
-    const nCorrect = data.filter(s => s.answers[qi].correct).length;
-    const pValue = nCorrect / n;
-    const uC = upper.filter(s => s.answers[qi].correct).length / upper.length;
-    const lC = lower.filter(s => s.answers[qi].correct).length / lower.length;
-    const dIndex = uC - lC;
-    const optCounts = [0, 1, 2, 3].map(opt => data.filter(s => s.answers[qi].chosen === opt).length);
-    const correctOpt = qi % 4;
-    const avgTimeSec = avg(data.map(s => s.answers[qi].timeSec));
-    const flag = pValue < 0.25 || pValue > 0.92 || dIndex < 0.15;
-    return { ...q, qi, pValue, dIndex, optCounts, correctOpt, avgTimeSec, flag };
-  });
-};
-
-const computeTopicStats = (data) =>
-  TOPICS.map(topic => {
-    const qIdx = QUESTIONS.map((q, i) => ({ q, i })).filter(({ q }) => q.topic === topic).map(({ i }) => i);
-    const maxTopicScore = qIdx.reduce((s, i) => s + QUESTIONS[i].score, 0);
-    const scores = data.map(s => qIdx.reduce((sc, i) => sc + (s.answers[i].correct ? QUESTIONS[i].score : 0), 0));
-    return { topic, avgPct: avg(scores) / maxTopicScore, maxScore: maxTopicScore, color: TOPIC_COLORS[topic] };
-  });
 
 // คำนวณคะแนนเฉลี่ยรายหัวข้อจากข้อมูลจริง (topic-breakdown) — ไม่ใช้ TOPICS ที่ hardcode
 // เพราะ category เป็น free text ที่ติวเตอร์พิมพ์เอง ต้องดึงชื่อหมวดจาก data จริงเท่านั้น
@@ -812,161 +715,6 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   );
 }
 
-// ─── Tab 2: วิเคราะห์ข้อสอบ — ปิดใช้งานชั่วคราว (mock, ไม่แตะ) ────────────────
-/*
-function ItemAnalysisTab({ data }) {
-  const [filterTopic, setFilterTopic] = useState("ทั้งหมด");
-  const [filterFlag, setFilterFlag] = useState("ทั้งหมด");
-  const [filterLevel, setFilterLevel] = useState("ทั้งหมด");
-  const [expandedQ, setExpandedQ] = useState(null);
-  const [sortKey, setSortKey] = useState("id");
-  const [sortDir, setSortDir] = useState(1);
-
-  const ia = useMemo(() => computeItemAnalysis(data), [data]);
-  const filtered = useMemo(() => {
-    let r = ia;
-    if (filterTopic !== "ทั้งหมด") r = r.filter(q => q.topic === filterTopic);
-    if (filterLevel !== "ทั้งหมด") r = r.filter(q => q.level === filterLevel);
-    if (filterFlag === "ปัญหา") r = r.filter(q => q.flag);
-    if (filterFlag === "ดี") r = r.filter(q => !q.flag);
-    return [...r].sort((a, b) => {
-      const va = a[sortKey] ?? 0, vb = b[sortKey] ?? 0;
-      return sortDir * (va < vb ? -1 : va > vb ? 1 : 0);
-    });
-  }, [ia, filterTopic, filterLevel, filterFlag, sortKey, sortDir]);
-
-  const flaggedCount = ia.filter(q => q.flag).length;
-  const avgPVal = avg(ia.map(q => q.pValue));
-  const avgDIdx = avg(ia.map(q => q.dIndex));
-
-  const handleSort = (key) => {
-    if (sortKey === key) setSortDir(d => d * -1);
-    else { setSortKey(key); setSortDir(-1); }
-  };
-  const SortIcon = ({ k }) => sortKey === k
-    ? <ChevronDown className={`h-3 w-3 inline ml-0.5 transition-transform ${sortDir === -1 ? "rotate-180" : ""}`} />
-    : null;
-
-  return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0"><AlertTriangle className="h-4 w-4 text-red-500" /></div>
-          <div><p className="text-xl font-bold text-red-600">{flaggedCount} ข้อ</p><p className="text-xs text-slate-500">ต้องพิจารณาแก้ไข</p></div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0"><Target className="h-4 w-4 text-blue-500" /></div>
-          <div>
-            <p className="text-xl font-bold text-blue-600">{fmtPct(avgPVal)}</p>
-            <p className="text-xs text-slate-500">P-value เฉลี่ย <span className="text-slate-400">(เป้า 0.3–0.7)</span></p>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0"><TrendingUp className="h-4 w-4 text-green-500" /></div>
-          <div>
-            <p className="text-xl font-bold text-green-600">{fmtPct(avgDIdx)}</p>
-            <p className="text-xs text-slate-500">D-index เฉลี่ย <span className="text-slate-400">(เป้า ≥0.3)</span></p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
-          <option>ทั้งหมด</option>
-          {TOPICS.map(t => <option key={t}>{t}</option>)}
-        </select>
-        <select value={filterLevel} onChange={e => setFilterLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate">
-          <option>ทั้งหมด</option>
-          <option>ง่าย</option><option>ปานกลาง</option><option>ยาก</option>
-        </select>
-        <div className="flex rounded-xl overflow-hidden border border-slate-200">
-          {["ทั้งหมด", "ปัญหา", "ดี"].map(f => (
-            <button key={f} onClick={() => setFilterFlag(f)} className={`px-3 py-2 text-xs font-medium transition ${filterFlag === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}>
-              {f === "ปัญหา" ? "มีปัญหา" : f === "ดี" ? "✓ ผ่านเกณฑ์" : f}
-            </button>
-          ))}
-        </div>
-        <p className="ml-auto flex items-center text-xs text-slate-500 self-center">{filtered.length} ข้อ</p>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <th onClick={() => handleSort("id")} className="cursor-pointer text-left font-semibold text-slate-500 px-4 py-3 w-10">ข้อ <SortIcon k="id" /></th>
-              <th className="text-left font-semibold text-slate-500 px-3 py-3">หัวข้อ</th>
-              <th className="text-left font-semibold text-slate-500 px-3 py-3">ระดับ</th>
-              <th onClick={() => handleSort("pValue")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">P-value <SortIcon k="pValue" /></th>
-              <th onClick={() => handleSort("dIndex")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">D-index <SortIcon k="dIndex" /></th>
-              <th className="text-left font-semibold text-slate-500 px-3 py-3 min-w-[160px]">การเลือกตัวเลือก</th>
-              <th onClick={() => handleSort("avgTimeSec")} className="cursor-pointer text-left font-semibold text-slate-500 px-3 py-3">เวลาเฉลี่ย <SortIcon k="avgTimeSec" /></th>
-              <th className="px-3 py-3 w-8 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(q => {
-              const isExpanded = expandedQ === q.id;
-              const totalOpts = q.optCounts.reduce((s, c) => s + c, 0);
-              return (
-                <>
-                  <tr key={q.id} className={`border-b border-slate-50 hover:bg-slate-50/60 transition cursor-pointer ${q.flag ? "bg-red-50/20" : ""}`} onClick={() => setExpandedQ(isExpanded ? null : q.id)}>
-                    <td className="px-4 py-3 font-bold text-slate-700">{q.flag && <AlertTriangle className="h-3 w-3 text-red-400 inline mr-1" />}{q.id}</td>
-                    <td className="px-3 py-3"><span className="px-2 py-0.5 rounded-md font-semibold text-[11px]" style={{ backgroundColor: TOPIC_LIGHT[q.topic], color: TOPIC_COLORS[q.topic] }}>{q.topic}</span></td>
-                    <td className="px-3 py-3"><span className={`px-2.5 py-0.5 rounded-full font-semibold text-xs ${LevelBadge[q.level]}`}>{q.level}</span></td>
-                    <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${PValColor(q.pValue)}`}>{fmtPct(q.pValue)}</span></td>
-                    <td className="px-3 py-3"><span className={`px-2 py-1 rounded-lg font-bold ${DIdxColor(q.dIndex)}`}>{q.dIndex >= 0 ? "+" : ""}{fmtPct(q.dIndex)}</span></td>
-                    <td className="px-3 py-3">
-                      <div className="space-y-0.5 w-40">
-                        {["A", "B", "C", "D"].map((label, oi) => {
-                          const pct = totalOpts > 0 ? q.optCounts[oi] / totalOpts : 0;
-                          const isCorrect = oi === q.correctOpt;
-                          return (
-                            <div key={label} className="flex items-center gap-1.5">
-                              <span className={`text-[11px] font-bold w-3.5 ${isCorrect ? "text-green-600" : "text-slate-400"}`}>{label}</span>
-                              <div className="flex-1 h-3 bg-slate-100 rounded-sm overflow-hidden">
-                                <div className="h-full rounded-sm transition-all" style={{ width: `${pct * 100}%`, backgroundColor: isCorrect ? "#22c55e" : "#e5e7eb" }} />
-                              </div>
-                              <span className={`text-[11px] w-5 text-right ${isCorrect ? "text-green-600 font-bold" : "text-slate-400"}`}>{q.optCounts[oi]}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-500">{Math.floor(q.avgTimeSec / 60)}:{String(Math.round(q.avgTimeSec % 60)).padStart(2, "0")} น.</td>
-                    <td className="px-3 py-3"><ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} /></td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={`${q.id}-detail`} className="border-b border-slate-100 bg-slate-50/60">
-                      <td colSpan={8} className="px-6 py-3">
-                        <div className="flex gap-6 items-start">
-                          <div className="flex-1">
-                            <p className="text-xs font-semibold text-slate-700 mb-1">โจทย์ข้อที่ {q.id}</p>
-                            <p className="text-xs text-slate-600">{q.text}</p>
-                          </div>
-                          {q.flag && (
-                            <div className="bg-red-50 border border-red-100 rounded-xl p-3 max-w-xs">
-                              <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1"><AlertTriangle className="h-3 w-3" /> คำแนะนำ</p>
-                              <ul className="text-xs text-red-600 space-y-0.5">
-                                {q.pValue < 0.25 && <li>• P-value ต่ำมาก — ข้อนี้อาจยากเกินไปหรือโจทย์ไม่ชัดเจน</li>}
-                                {q.pValue > 0.92 && <li>• P-value สูงมาก — ข้อนี้อาจง่ายเกินไป</li>}
-                                {q.dIndex < 0.15 && <li>• D-index ต่ำ — ข้อนี้ไม่ช่วยแยกแยะความสามารถนักเรียน</li>}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-*/
 
 // ─── Tab: รายคน — "น้องคนนี้เป็นยังไง ต้องช่วยตรงไหน บอกผู้ปกครองว่าอะไร" ──────────
 // การ์ดไฟสถานะ 3 ใบใช้เป็นตัวกรอง, แถบดาวรุ่ง = 3 คนที่พัฒนาจากตัวเองมากที่สุด (ไม่ได้เทียบเพื่อน)

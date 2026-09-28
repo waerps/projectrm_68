@@ -13,10 +13,8 @@ import { BTN } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 export default function CoursesPage() {
-  console.log("USER OBJECT IN LOCALSTORAGE:", localStorage.getItem("user")); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
   const token = localStorage.getItem('student_token');
-  console.log("tutorId ที่ได้:", tutorId); // 👈 เพิ่มบรรทัดนี้ด้วย
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -90,8 +88,6 @@ export default function CoursesPage() {
         const response = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        console.log("RAW API RESPONSE:", response.data); // 👈 เพิ่มบรรทัดนี้ชั่วคราว
-
         // ✅ Group ตาม CourseID เพื่อรวมหลายวิชาไว้ใน Course เดียว
         const courseMap = new Map();
 

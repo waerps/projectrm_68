@@ -9,7 +9,6 @@ import { AlertOctagon, ChevronDown, Menu, X, LayoutDashboard, BookOpen, Graduati
 
 export default function Navbar() {
     const user = JSON.parse(localStorage.getItem("user"));
-    console.log(user);
     const location = useLocation()
 
     const isActive = (path) => location.pathname === path

@@ -15,7 +15,6 @@ export async function GetLogin(email, password) {
     );
 
     // const json = await response.json();
-    console.log("data : ", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -29,7 +28,6 @@ export async function GetLogin(email, password) {
 export async function GetDataprojectUserByYear(token, id_year, page, per_page) {
   //   console.log(id_actionplan);
   try {
-    console.log("token : ", token);
     const response = await axios.post(
       `${api}/api/v1/admin/projectuserallbyidyear?page=${page}&per_page=${per_page}`,
       { id_year },
@@ -42,7 +40,6 @@ export async function GetDataprojectUserByYear(token, id_year, page, per_page) {
     );
 
     // const json = await response.json();
-    console.log("data : ", response.data?.data);
     return response.data?.data ?? [];
   } catch (error) {
     console.error("Error fetching user data:", error);
@@ -66,7 +63,6 @@ export async function getdataProducts() {
     );
 
     // const json = await response.json();
-    console.log("data : ", response);
     return response;
   } catch (error) {
     console.error("Error fetching user data:", error);
