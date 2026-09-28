@@ -20,6 +20,7 @@ export default function CoursesPage() {
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterType, setFilterType] = useState("all");
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +115,7 @@ export default function CoursesPage() {
               statusId: statusInfo.id,
               statusText: statusInfo.text,
               statusColor: statusInfo.colorClass,
+              courseType: row.Course_Type || "bundle",
               subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
             });
           }
@@ -170,8 +172,9 @@ export default function CoursesPage() {
   // 🔍 กรองข้อมูลตามการค้นหา
   const filteredCourses = courses.filter((course) => {
     const statusMatch = filterStatus === "all" || course.statusId === filterStatus;
+    const typeMatch = filterType === "all" || course.courseType === filterType;
     const searchMatch = search === "" || course.name.toLowerCase().includes(search.toLowerCase());
-    return statusMatch && searchMatch;
+    return statusMatch && typeMatch && searchMatch;
   });
 
   if (loading) return <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." />;
@@ -223,6 +226,15 @@ export default function CoursesPage() {
               />
             </div>
             <select
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] max-w-full md:max-w-[200px] truncate"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">ทุกประเภทคอร์ส</option>
+              <option value="bundle">คอร์สรวม</option>
+              <option value="single">คอร์สเดี่ยว</option>
+            </select>
+            <select
               className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px] max-w-full md:max-w-[240px] truncate"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -234,8 +246,8 @@ export default function CoursesPage() {
               <option value="upcoming">ยังไม่เริ่มสอน</option>
             </select>
             <ClearFiltersButton
-              show={Boolean(search) || filterStatus !== 'all'}
-              onClick={() => { setSearch(''); setFilterStatus('all'); }}
+              show={Boolean(search) || filterStatus !== 'all' || filterType !== 'all'}
+              onClick={() => { setSearch(''); setFilterStatus('all'); setFilterType('all'); }}
             />
           </div>
         </div>}

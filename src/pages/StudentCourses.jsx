@@ -47,6 +47,7 @@ export default function StudentCourses() {
 
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterType, setFilterType] = useState("all");
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -164,6 +165,8 @@ export default function StudentCourses() {
             totalFiles:
               courseContent.files.length || Number(c.totalFiles ?? c.TotalFiles ?? 0),
 
+            courseType: c.courseType ?? c.CourseType ?? c.Course_Type ?? "bundle",
+
             statusId: statusInfo.id,
             statusText: statusInfo.text,
             statusColor: statusInfo.colorClass,
@@ -196,8 +199,9 @@ export default function StudentCourses() {
 
   const filteredCourses = courses.filter((c) => {
     const statusMatch = filterStatus === "all" || c.statusId === filterStatus;
+    const typeMatch = filterType === "all" || c.courseType === filterType;
     const searchMatch = search === "" || String(c.name || "").toLowerCase().includes(search.toLowerCase());
-    return statusMatch && searchMatch;
+    return statusMatch && typeMatch && searchMatch;
   });
 
   if (loading) {
@@ -250,6 +254,15 @@ export default function StudentCourses() {
                 className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent transition outline-none"
               />
             </div>
+            <select
+              className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[160px]"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="all">ทุกประเภทคอร์ส</option>
+              <option value="bundle">คอร์สรวม</option>
+              <option value="single">คอร์สเดี่ยว</option>
+            </select>
             <select
               className="px-4 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[180px]"
               value={filterStatus}
