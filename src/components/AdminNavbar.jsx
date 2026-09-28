@@ -32,6 +32,16 @@ export default function Navbar() {
         window.location.href = "/login"
     }
 
+    // ⚠️ ใหม่: 5 เมนูที่ใช้บ่อยที่สุด โผล่ตรงกลาง navbar โดยตรง (เดสก์ท็อป) — ไม่ใช่เมนูใหม่แยกต่างหาก
+    // แค่หยิบ 5 อย่างแรกจาก mobileItems มาโชว์เด่นขึ้น ส่วนที่เหลือยังอยู่ในดรอปดาวน์โปรไฟล์/เมนูมือถือเหมือนเดิมทุกอย่าง
+    const mainNavItems = [
+        { to: "dashboard", label: "ภาพรวม", icon: LayoutDashboard },
+        { to: "courses", label: "คอร์ส", icon: BookOpen },
+        { to: "students", label: "นักเรียน", icon: GraduationCap },
+        { to: "tutors", label: "ติวเตอร์", icon: Users },
+        { to: "finance", label: "การเงิน", icon: Wallet },
+    ]
+
     const mobileItems = [
         { to: "dashboard", label: "ภาพรวมสถาบัน", icon: LayoutDashboard },
         { to: "courses", label: "คอร์ส", icon: BookOpen },
@@ -85,6 +95,19 @@ export default function Navbar() {
                     </Link>
                 </div>
 
+                {/* ── เมนูหลัก 5 อย่าง วางไว้กลาง navbar (>= lg) — ที่เหลือยังอยู่ในดรอปดาวน์โปรไฟล์/เมนูมือถือแบบเดิม ── */}
+                <div className="hidden lg:flex items-center gap-1 text-sm font-medium absolute left-1/2 -translate-x-1/2">
+                    {mainNavItems.map(({ to, label, icon: Icon }) => (
+                        <NavLink
+                            key={to}
+                            to={to}
+                            className={({ isActive: active }) => `px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors ${active ? "bg-orange-50 text-orange-600 font-bold" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+                        >
+                            <Icon className="h-4 w-4" />
+                            {label}
+                        </NavLink>
+                    ))}
+                </div>
 
                 <div className="flex items-center gap-2">
                     <NotificationBell role="admin" pagePath="/admin/notification" />
