@@ -272,14 +272,14 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 flex flex-col">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-8 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
         <div className="min-h-[320px]">
-          <div className="flex items-baseline justify-between gap-3 mb-5">
-            <div className="flex items-baseline gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 mb-5">
+            <div className="flex min-w-0 items-baseline gap-3">
               <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-lg font-medium text-slate-900 leading-relaxed">{current.text}</p>
+              <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>
             </div>
             <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
@@ -292,11 +292,11 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                 <button aria-label="ยืนยัน"
                   key={label}
                   onClick={() => pickAnswer(optIdx)}
-                  className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
+                  className={`w-full flex items-center gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
                 >
                   <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-                  <span className="text-base text-slate-800">{current.options?.[optIdx]}</span>
-                  {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto" />}
+                  <span className="min-w-0 flex-1 break-words text-base text-slate-800">{current.options?.[optIdx]}</span>
+                  {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto flex-shrink-0" />}
                 </button>
               );
             })}
@@ -304,15 +304,15 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
         </div>
 
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
-          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-base text-slate-500 disabled:opacity-30">
+          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-sm sm:text-base text-slate-500 disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" /> ข้อก่อนหน้า
           </button>
           {activeIdx < questions.length - 1 ? (
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1.5 text-base text-orange-600 font-semibold">
+            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1.5 text-sm sm:text-base text-orange-600 font-semibold">
               ข้อถัดไป <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
-            <button onClick={() => setConfirmSubmit(true)} className={`${BTN.primary} rounded-xl px-6 py-2.5 text-base font-semibold`}>
+            <button onClick={() => setConfirmSubmit(true)} className={`${BTN.primary} rounded-xl px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold`}>
               ส่งข้อสอบ
             </button>
           )}
@@ -322,7 +322,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       </div>
 
       {/* ── ฝั่งขวา: ผังข้อสอบ (Question Map) ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 lg:sticky lg:top-6">
+      {/* order-first ยกแผงเวลา/ความคืบหน้าขึ้นก่อนตัวข้อสอบบนมือถือ เพื่อไม่ต้องเลื่อนจอ
+         ไปดูเวลาที่เหลือ ส่วนจอ lg+ กลับไปอยู่ลำดับปกติ (คอลัมน์ขวา, sticky) */}
+      <div className="order-first lg:order-none bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 lg:sticky lg:top-6">
         <div>
           <p className="text-sm font-semibold text-slate-500 mb-2.5">ข้อสอบ</p>
           <div className="grid grid-cols-4 gap-1.5">

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Search, Heart, ShoppingCart, X, Trash2, BookOpen, ChevronRight, SlidersHorizontal } from "lucide-react"
+import {
+  Search, Heart, ShoppingCart, X, Trash2, BookOpen, ChevronRight, SlidersHorizontal,
+  Menu, Home, UserPlus, Newspaper, Tag, Info, UserCircle, CalendarDays, History, LogOut, LogIn,
+} from "lucide-react"
 import { useShop } from "../context/ShopContext"
 import { getCourses } from "../callapi/callusers"
 import { getStudentProfile } from "../callapi/callusers_student"
@@ -34,6 +37,24 @@ const TERM_OPTIONS = [
   { id: 3, name: "ปิดเทอมใหญ่ (ซัมเมอร์)" },
 ]
 
+// ── ลิงก์เมนูหลัก (โชว์เป็นแถบ hidden md:flex บนจอใหญ่ และซ้ำในแผงมือถือ) ──
+const MAIN_NAV_LINKS = [
+  { to: "/", label: "หน้าแรก", icon: Home },
+  { to: "/private-courses", label: "คอร์สเดี่ยว", icon: UserPlus },
+  { to: "/apply-tutor", label: "สมัครติวเตอร์", icon: UserPlus },
+  { to: "/news", label: "ข่าวประชาสัมพันธ์", icon: Newspaper },
+  { to: "/promotion", label: "โปรโมชัน", icon: Tag },
+  { to: "/about", label: "เกี่ยวกับสถาบัน", icon: Info },
+]
+
+// ── เมนูบัญชี (ใช้ในแผงมือถือแทน dropdown แบบ hover ซึ่งแตะไม่ได้บนทัชสกรีน) ──
+const PROFILE_LINKS = [
+  { to: "/profile", label: "ข้อมูลส่วนตัว", icon: UserCircle },
+  { to: "/profile/schedule", label: "ตารางเรียน", icon: CalendarDays },
+  { to: "/profile/my-courses", label: "คอร์สเรียนของฉัน", icon: BookOpen },
+  { to: "/profile/incidents", label: "ประวัติการแจ้งเรื่อง", icon: History },
+]
+
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState([])
@@ -57,6 +78,19 @@ export default function Navbar() {
   const favRef = useRef(null)
   const cartRef = useRef(null)
   const filterRef = useRef(null)
+
+  // ── แผงเมนูมือถือ (< md): แฮมเบอร์เกอร์รวมลิงก์หลัก + บัญชี ที่แตะได้ ──
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
+    const onKey = (e) => { if (e.key === "Escape") setMenuOpen(false) }
+    document.addEventListener("mousedown", onDown)
+    document.addEventListener("keydown", onKey)
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey) }
+  }, [menuOpen])
 
   const isActive = (path) => location.pathname === path
   const PREVIEW = 5
@@ -207,7 +241,8 @@ const cartTotal = cart.reduce((sum, item) => {
 
   return (
     <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
-      <nav className="mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-8 rounded-2xl bg-white px-6 md:px-8 shadow-lg">
+      {menuOpen && <div className="fixed inset-0 z-[60] bg-slate-900/30 md:hidden" aria-hidden="true" />}
+      <nav className="mx-3 sm:mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-2 sm:gap-4 md:gap-8 rounded-2xl bg-white px-3 sm:px-6 md:px-8 shadow-lg">
 
         {/* Logo */}
         <Link to="/" className="flex-shrink-0">
@@ -223,7 +258,7 @@ const cartTotal = cart.reduce((sum, item) => {
         </Link>
 
         {/* Menu + Search */}
-        <div className="flex items-center flex-1 justify-center gap-8">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-4 md:gap-8">
           <div className="hidden md:flex items-center gap-8 ml-4">
             <Link
               to="/"
@@ -339,8 +374,8 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* Search Box + ปุ่มฟิลเตอร์ */}
-          <div className="flex items-center flex-1 max-w-sm gap-2">
-            <div className="relative flex-1" ref={searchRef}>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:max-w-sm sm:gap-2">
+            <div className="relative min-w-0 flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -493,6 +528,121 @@ const cartTotal = cart.reduce((sum, item) => {
 
         {/* ปุ่มด้านขวา */}
         <div className="flex items-center gap-0.5">
+
+          {/* ── แฮมเบอร์เกอร์: ลิงก์เมนูหลัก + บัญชี สำหรับจอ < md ── */}
+          <div ref={menuRef} className="relative md:hidden">
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="เมนู"
+              aria-expanded={menuOpen}
+              className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${menuOpen ? "bg-orange-100 text-orange-500" : "text-gray-500 hover:bg-orange-100 hover:text-orange-500"}`}
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+
+            {menuOpen && (
+              <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
+                {userData && (
+                  <div className="flex items-center gap-3 border-b border-gray-100 bg-orange-50/60 px-4 py-3.5">
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-orange-200 bg-orange-50">
+                      <img
+                        src={
+                          userData.photo
+                            ? getFileUrl(userData.photo)
+                            : `https://api.dicebear.com/7.x/avataaars/svg?seed=user_${userData.id || userData.username}&backgroundColor=dbeafe`
+                        }
+                        alt={userData.nickname || userData.username || "นักเรียน"}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=user_${userData.id || userData.username}&backgroundColor=dbeafe`
+                        }}
+                      />
+                    </div>
+                    <p className="min-w-0 truncate text-base font-bold text-gray-900">{userData.nickname || userData.username || "นักเรียน"}</p>
+                  </div>
+                )}
+
+                <ul className="flex-1 overflow-y-auto p-2">
+                  {MAIN_NAV_LINKS.map(({ to, label, icon: Icon }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive(to) ? "bg-orange-50 text-orange-600" : "text-gray-700 hover:bg-orange-50 hover:text-orange-500"}`}
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </Link>
+                    </li>
+                  ))}
+
+                  <li className="my-1.5 border-t border-gray-100" />
+
+                  <li>
+                    <Link
+                      to="/favorites"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-gray-700 transition-colors hover:bg-orange-50 hover:text-orange-500"
+                    >
+                      <span className="flex items-center gap-3"><Heart className="h-5 w-5 shrink-0" /><span className="truncate">รายการโปรด</span></span>
+                      {favorites.length > 0 && <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-white">{favorites.length > 9 ? "9+" : favorites.length}</span>}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/cart"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex min-h-11 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-gray-700 transition-colors hover:bg-orange-50 hover:text-orange-500"
+                    >
+                      <span className="flex items-center gap-3"><ShoppingCart className="h-5 w-5 shrink-0" /><span className="truncate">ตะกร้าสินค้า</span></span>
+                      {cart.length > 0 && <span className="rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-white">{cart.length > 9 ? "9+" : cart.length}</span>}
+                    </Link>
+                  </li>
+
+                  {userData && (
+                    <>
+                      <li className="my-1.5 border-t border-gray-100" />
+                      {PROFILE_LINKS.map(({ to, label, icon: Icon }) => (
+                        <li key={to}>
+                          <Link
+                            to={to}
+                            onClick={() => setMenuOpen(false)}
+                            className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive(to) ? "bg-orange-50 text-orange-600" : "text-gray-700 hover:bg-orange-50 hover:text-orange-500"}`}
+                          >
+                            <Icon className="h-5 w-5 shrink-0" />
+                            <span className="truncate">{label}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </>
+                  )}
+                </ul>
+
+                <div className="border-t border-gray-100 p-2">
+                  {userData ? (
+                    <button
+                      type="button"
+                      onClick={() => { localStorage.clear(); window.location.href = "/login" }}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      <LogOut className="h-5 w-5 shrink-0" />
+                      ออกจากระบบ
+                    </button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-orange-500 px-3 py-2.5 text-[15px] font-bold text-white transition hover:bg-orange-600"
+                    >
+                      <LogIn className="h-5 w-5 shrink-0" />
+                      เข้าสู่ระบบ
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           <NotificationBell role="student" pagePath="/profile/notifications" />
 
@@ -649,7 +799,7 @@ const cartTotal = cart.reduce((sum, item) => {
                     }}
                   />
                 </div>
-                <span className={`font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
+                <span className={`hidden font-bold text-sm transition-colors sm:inline ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
                   {userData.nickname || userData.username || "นักเรียน"}
                 </span>
               </Link>

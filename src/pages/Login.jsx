@@ -2,6 +2,7 @@ import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X, Eye, EyeOff } from "lucide-react";
+import { toast } from "../components/ui/dialogs";
 
 // รายการรูปภาพสำหรับสไลด์
 const images = [
@@ -89,11 +90,11 @@ export function Login() {
           }
         }
       } else {
-        alert(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        toast(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง", "error");
       }
     } catch (error) {
       console.error("Login Error:", error);
-      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      toast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
     }
   };
 
@@ -102,7 +103,7 @@ export function Login() {
   const handleForgotSubmit = async (e) => {
     e.preventDefault();
     if (!forgotForm.username || !forgotForm.phoneNo) {
-      alert("กรุณากรอกชื่อผู้ใช้และเบอร์โทรศัพท์");
+      toast("กรุณากรอกชื่อผู้ใช้และเบอร์โทรศัพท์", "warning");
       return;
     }
     setForgotSubmitting(true);
@@ -114,15 +115,15 @@ export function Login() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.message || "ส่งคำขอไปหาแอดมินแล้ว กรุณารอแอดมินติดต่อกลับ");
+        toast(data.message || "ส่งคำขอไปหาแอดมินแล้ว กรุณารอแอดมินติดต่อกลับ", "success");
         setShowForgotModal(false);
         setForgotForm({ username: '', phoneNo: '' });
       } else {
-        alert(data.message || "ส่งคำขอไม่สำเร็จ");
+        toast(data.message || "ส่งคำขอไม่สำเร็จ", "error");
       }
     } catch (error) {
       console.error("Forgot Password Error:", error);
-      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      toast("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้", "error");
     } finally {
       setForgotSubmitting(false);
     }

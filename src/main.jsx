@@ -36,8 +36,6 @@ import ProfileLayout from "./layouts/ProfileLayout.jsx"
 import Home from "./pages/Home.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import CourseDetail from "./pages/Courses.jsx"
-import Performance from "./pages/Performance.jsx"
-import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 
@@ -126,8 +124,6 @@ const router = createBrowserRouter(
         { path: "courses", element: <CourseSearch /> },
         { path: "courses/:id", element: <CourseDetail /> },
         { path: "private-courses", element: <PrivateCourses /> },
-        { path: "performance", element: <Performance /> },
-        { path: "salary", element: <Salary /> },
         { path: "new", element: <New /> },
         { path: "news", element: <News /> },
         { path: "cart", element: <Cart /> },
