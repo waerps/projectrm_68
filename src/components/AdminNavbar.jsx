@@ -32,16 +32,17 @@ export default function Navbar() {
         window.location.href = "/login"
     }
 
-    // ⚠️ ใหม่: 5 เมนูที่ใช้บ่อยที่สุด โผล่ตรงกลาง navbar โดยตรง (เดสก์ท็อป) — ไม่ใช่เมนูใหม่แยกต่างหาก
-    // แค่หยิบ 5 อย่างแรกจาก mobileItems มาโชว์เด่นขึ้น ส่วนที่เหลือยังอยู่ในดรอปดาวน์โปรไฟล์/เมนูมือถือเหมือนเดิมทุกอย่าง
+    // ⚠️ ใหม่: 5 เมนูที่ดูบ่อยที่สุด โผล่ตรงกลาง navbar โดยตรง (เดสก์ท็อป lg+ เท่านั้น)
+    // "ภาพรวม"(dashboard) ไม่เอามาซ้ำ เพราะกดโลโก้ก็ไปหน้านั้นอยู่แล้ว — ใช้ "ภาพรวมพัฒนาการ" แทน
     const mainNavItems = [
-        { to: "dashboard", label: "ภาพรวม", icon: LayoutDashboard },
-        { to: "courses", label: "คอร์ส", icon: BookOpen },
-        { to: "students", label: "นักเรียน", icon: GraduationCap },
-        { to: "tutors", label: "ติวเตอร์", icon: Users },
-        { to: "finance", label: "การเงิน", icon: Wallet },
+        { to: "progress", label: "ภาพรวมพัฒนาการ" },
+        { to: "courses", label: "คอร์ส" },
+        { to: "tutors", label: "ติวเตอร์" },
+        { to: "students", label: "นักเรียน" },
+        { to: "finance", label: "การเงิน" },
     ]
-
+    // เมนูเต็ม 13 อย่าง — ใช้กับเมนูแฮมเบอร์เกอร์บนมือถือ/แท็บเล็ต (< lg) เท่านั้น เพราะจอนั้นไม่มีแถบกลางด้านบน
+    // ต้องคงครบทุกอย่างไว้ที่นี่ ไม่งั้นมือถือจะเข้าคอร์ส/นักเรียน/ติวเตอร์/การเงินไม่ได้เลย
     const mobileItems = [
         { to: "dashboard", label: "ภาพรวมสถาบัน", icon: LayoutDashboard },
         { to: "courses", label: "คอร์ส", icon: BookOpen },
@@ -95,15 +96,14 @@ export default function Navbar() {
                     </Link>
                 </div>
 
-                {/* ── เมนูหลัก 5 อย่าง วางไว้กลาง navbar (>= lg) — ที่เหลือยังอยู่ในดรอปดาวน์โปรไฟล์/เมนูมือถือแบบเดิม ── */}
-                <div className="hidden lg:flex items-center gap-1 text-sm font-medium absolute left-1/2 -translate-x-1/2">
-                    {mainNavItems.map(({ to, label, icon: Icon }) => (
+                {/* ── เมนูหลัก 5 อย่าง วางไว้กลาง navbar (>= lg) — ใช้ font/สไตล์เดียวกับ nav ฝั่งนักเรียน (ตัวหนังสือล้วน ไม่มีพื้นหลัง/ไอคอน) ── */}
+                <div className="hidden lg:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+                    {mainNavItems.map(({ to, label }) => (
                         <NavLink
                             key={to}
                             to={to}
-                            className={({ isActive: active }) => `px-3 py-2 rounded-xl flex items-center gap-1.5 transition-colors ${active ? "bg-orange-50 text-orange-600 font-bold" : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"}`}
+                            className={({ isActive: active }) => `font-medium transition-colors text-xs ${active ? "text-orange-500 pb-1" : "text-gray-700 hover:text-orange-500"}`}
                         >
-                            <Icon className="h-4 w-4" />
                             {label}
                         </NavLink>
                     ))}
@@ -202,43 +202,7 @@ export default function Navbar() {
               "
                         >
                             <ul className="py-2 text-sm text-slate-700 text-right">
-                                
-                                <li>
-                                    <Link
-                                        to="courses"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        คอร์ส
-                                    </Link>
-                                </li>
-
-                                <li>
-                                    <Link
-                                        to="students"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        นักเรียน
-                                    </Link>
-                                </li>
-
-                                <li>
-                                    <Link
-                                        to="tutors"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        ติวเตอร์
-                                    </Link>
-                                </li>
-
-                                <li>
-                                    <Link
-                                        to="progress"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        ภาพรวมพัฒนาการ
-                                    </Link>
-                                </li>
-
+                                {/* คอร์ส/นักเรียน/ติวเตอร์/ภาพรวมพัฒนาการ/การเงิน ย้ายไปอยู่แถบกลาง navbar แล้ว ไม่ต้องซ้ำในดรอปดาวน์นี้อีก */}
                                 <li>
                                     <Link
                                         to="schedule"
@@ -265,15 +229,6 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         ประชาสัมพันธ์
-                                    </Link>
-                                </li>
-
-                                <li>
-                                    <Link
-                                        to="finance"
-                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
-                                    >
-                                        การเงิน
                                     </Link>
                                 </li>
 

@@ -71,6 +71,28 @@ const formatDate = (d) => {
 
 const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
 
+/* ─── useCountUp — เลขวิ่งขึ้นแบบ ease-out, ใช้กับตัวเลขในฮีโร่ ───────────── */
+function useCountUp(target, { duration = 900, active = true } = {}) {
+    const [value, setValue] = useState(0);
+    useEffect(() => {
+        if (!active) return;
+        const end = Number(target) || 0;
+        if (end === 0) { setValue(0); return; }
+        let raf;
+        const start = performance.now();
+        const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
+        const step = (now) => {
+            const p = ease((now - start) / duration);
+            setValue(Math.round(end * p));
+            if (p < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(raf);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [target, active]);
+    return value;
+}
+
 const studentDisplayName = (t) => t.Nickname || `${t.Firstname || ''} ${t.Lastname || ''}`.trim() || '—';
 
 const txDescription = (t) => {
@@ -183,9 +205,9 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
     }[tone];
 
     return (
-        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md ${T.transition} h-full min-h-[96px]`}>
+        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-orange-200 ${T.transition} h-full min-h-[96px]`}>
             {Icon && (
-                <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0`}>
+                <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0 transition-transform duration-200`}>
                     <Icon className="h-5 w-5 text-white" />
                 </div>
             )}
@@ -200,6 +222,7 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
 
 /* ─── Donut3D — โทนเดียวกับ CourseStatusDonut ใน Dashboard ──────────── */
 function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v) => v, size = 200 }) {
+    const [hoverIdx, setHoverIdx] = useState(null);
     if (!data.length) return <EmptyState message="ยังไม่มีข้อมูล" />;
     const sorted = [...data].sort((a, b) => b.value - a.value);
     const topValue = sorted[0]?.value ?? 0;
@@ -230,12 +253,22 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                             strokeWidth={2}
                             style={{ filter: 'drop-shadow(0 4px 6px rgba(15,23,42,0.14))' }}
                             isAnimationActive={false}
+                            onMouseEnter={(_, i) => setHoverIdx(i)}
+                            onMouseLeave={() => setHoverIdx(null)}
                         >
                             {sorted.map((d, i) => (
                                 <Cell
                                     key={i}
                                     fill={`url(#${idPrefix}-${i})`}
-                                    style={d.value === topValue ? { filter: 'drop-shadow(0 5px 7px rgba(15,23,42,0.18))' } : undefined}
+                                    style={{
+                                        filter: hoverIdx === i
+                                            ? 'brightness(1.08) drop-shadow(0 6px 12px rgba(15,23,42,0.25))'
+                                            : d.value === topValue ? 'drop-shadow(0 5px 7px rgba(15,23,42,0.18))' : undefined,
+                                        transform: hoverIdx === i ? 'scale(1.035)' : undefined,
+                                        transformOrigin: 'center',
+                                        transition: 'filter .15s ease, transform .15s ease',
+                                        cursor: 'pointer',
+                                    }}
                                 />
                             ))}
                         </Pie>
@@ -249,10 +282,15 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
             </div>
             <div className="w-full max-w-xs space-y-1">
                 {sorted.map((d, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs py-0.5">
+                    <div
+                        key={i}
+                        onMouseEnter={() => setHoverIdx(i)}
+                        onMouseLeave={() => setHoverIdx(null)}
+                        className={`flex items-center justify-between text-xs py-1 px-1.5 -mx-1.5 rounded-lg cursor-default transition-colors ${hoverIdx === i ? 'bg-slate-50' : ''}`}
+                    >
                         <div className="flex items-center gap-2 min-w-0">
                             <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.base }} />
-                            <span className="text-slate-600 truncate">{d.name}</span>
+                            <span className={`text-slate-600 truncate ${hoverIdx === i ? 'font-semibold text-slate-800' : ''}`}>{d.name}</span>
                         </div>
                         <span className="font-bold text-slate-800 shrink-0">{valueFormatter(d.value)}</span>
                     </div>
@@ -262,38 +300,48 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
     );
 }
 
-/* ─── Hero: minimal white card, thin orange accent, the 5-second answer ── */
-function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet, cashMargin, tutorPayable, tutorAccrued, overdue, overdueCount }) {
+/* ─── HeroStat — การ์ดกระจกในฮีโร่ พร้อมเลขวิ่งขึ้น ───────────────────── */
+function HeroStat({ label, icon: Icon, value, tone, ready }) {
+    const shown = useCountUp(value, { active: ready });
     return (
-        <div className={`${T.card} ${T.cardPad} relative overflow-hidden`}>
-            <div className="absolute top-0 left-0 right-0 h-1 bg-orange-500" />
-            <div className="flex items-center justify-between mb-5">
-                <div>
-                    <h2 className={T.title}>ภาพรวมเดือนนี้</h2>
-                    <p className={T.subtitle}>สรุปสถานะการเงินล่าสุด ณ ตอนนี้</p>
-                </div>
-            </div>
+        <div className="bg-white/70 backdrop-blur rounded-2xl border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition">
+            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                {Icon && <Icon className="h-3.5 w-3.5" />}{label}
+            </p>
+            <p className={`tabular-nums text-xl sm:text-2xl font-bold mt-1 ${tone || 'text-slate-900'}`}>
+                ฿{Number(shown).toLocaleString()}
+            </p>
+        </div>
+    );
+}
 
-            <ApiState loading={loading} error={error} onRetry={onRetry} minHeight="h-28" skeletonHeight="h-28">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+/* ─── Hero: ไล่เฉดอ่อนๆ + การ์ดกระจกลอย + เลขวิ่งขึ้น (สอดคล้องกับดีไซน์ที่ตกลงกัน) ── */
+function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet, cashMargin, tutorPayable, tutorAccrued, overdue, overdueCount }) {
+    const ready = !loading && !error;
+    return (
+        <div className="relative overflow-hidden rounded-3xl p-5 sm:p-7" style={{ background: 'linear-gradient(135deg,#fff7ed,#fff 45%,#eff6ff)' }}>
+            <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-300/25 blur-3xl pointer-events-none" />
+            <div className="absolute left-1/4 -bottom-28 h-64 w-64 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
+            <div className="relative">
+                <div className="flex items-center justify-between mb-1">
                     <div>
-                        <p className={T.label}>รายรับเดือนนี้</p>
-                        <p className={`${T.value} mt-1`}>{formatMoney(revenue)}</p>
+                        <h2 className={T.title}>ภาพรวมเดือนนี้</h2>
+                        <p className={T.subtitle}>สรุปสถานะการเงินล่าสุด ณ ตอนนี้</p>
                     </div>
-                    <div>
-                        <p className={T.label}>กระแสเงินสดสุทธิ</p>
-                        <p className={`${T.value} mt-1 ${cashNet < 0 ? 'text-red-600' : ''}`}>{formatMoney(cashNet)}</p>
-                    </div>
-                    <div>
-                        <p className={T.label}>ค่าติวเตอร์ค้างจ่าย</p>
-                        <p className={`${T.value} mt-1 ${tutorPayable > 0 ? 'text-orange-600' : ''}`}>{formatMoney(tutorPayable)}</p>
-                    </div>
-                    <div>
-                        <p className={T.label}>ยอดเกินกำหนด</p>
-                        <p className={`${T.value} mt-1 ${overdue > 0 ? 'text-red-600' : ''}`}>{formatMoney(overdue)}</p>
-                    </div>
+                    <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 text-emerald-600 px-2.5 py-1 text-xs font-semibold shrink-0">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />ข้อมูลสด
+                    </span>
                 </div>
-            </ApiState>
+
+                <ApiState loading={loading} error={error} onRetry={onRetry} minHeight="h-28" skeletonHeight="h-28">
+                    <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                        <HeroStat label="รายรับเดือนนี้" icon={Wallet} value={revenue} ready={ready} />
+                        <HeroStat label="กระแสเงินสดสุทธิ" icon={TrendingUp} value={cashNet} tone={cashNet < 0 ? 'text-red-600' : 'text-slate-900'} ready={ready} />
+                        <HeroStat label="ค่าติวเตอร์ค้างจ่าย" icon={Banknote} value={tutorPayable} tone={tutorPayable > 0 ? 'text-orange-600' : 'text-slate-900'} ready={ready} />
+                        <HeroStat label="ยอดเกินกำหนด" icon={AlertCircle} value={overdue} tone={overdue > 0 ? 'text-red-600' : 'text-slate-900'} ready={ready} />
+                    </div>
+                </ApiState>
+            </div>
         </div>
     );
 }
