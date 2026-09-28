@@ -290,7 +290,6 @@ export default function AdminProgressOverview() {
                   key={c.courseId}
                   className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition overflow-hidden"
                 >
-                  <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500" />
                   <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
                     <p className="font-bold text-slate-900 text-sm">{c.courseName}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
