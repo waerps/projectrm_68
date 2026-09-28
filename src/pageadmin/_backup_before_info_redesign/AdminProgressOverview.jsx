@@ -43,62 +43,6 @@ const fmtDate = (v) => {
   return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
 };
 
-// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) ─────────────
-const tiltMove = (e) => {
-  const el = e.currentTarget, r = el.getBoundingClientRect();
-  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-  el.style.setProperty("--gx", `${px * 100}%`);
-  el.style.setProperty("--gy", `${py * 100}%`);
-  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
-};
-const tiltLeave = (e) => { e.currentTarget.style.transform = ""; };
-
-// ─── ตัวเลขวิ่งขึ้นแบบ ease-out ใช้กับการ์ดสถิติด้านบน ──────────────────────────
-function useCountUp(target, active = true, duration = 900) {
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!active || typeof target !== "number") { setValue(typeof target === "number" ? target : 0); return; }
-    let raf;
-    const start = performance.now();
-    const ease = (t) => 1 - Math.pow(1 - Math.min(Math.max(t, 0), 1), 3);
-    const step = (now) => {
-      const p = ease((now - start) / duration);
-      setValue(Math.round(target * p));
-      if (p < 1) raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, active]);
-  return value;
-}
-
-// ─── การ์ดสถิติ: เอียงตามเมาส์ + แสงเรือง + ไอคอนลายน้ำ + ตัวเลขวิ่งขึ้น ─────────
-function StatTile({ card, ready }) {
-  const Icon = card.icon;
-  const hasRaw = typeof card.raw === "number" && !Number.isNaN(card.raw);
-  const isPlainNumber = typeof card.value === "number";
-  const shown = useCountUp(hasRaw ? card.raw : (isPlainNumber ? card.value : 0), ready && (hasRaw || isPlainNumber));
-  const display = hasRaw ? `${shown}${card.suffix || ""}` : isPlainNumber ? shown.toLocaleString() : card.value;
-  return (
-    <div
-      onMouseMove={tiltMove}
-      onMouseLeave={tiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
-    >
-      <span className="sa-glow" />
-      <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />
-      <div className={`relative h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0 shadow-sm`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-        <p className="text-lg sm:text-xl font-bold text-slate-900 break-words">{display}</p>
-      </div>
-    </div>
-  );
-}
-
 export default function AdminProgressOverview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -205,25 +149,18 @@ export default function AdminProgressOverview() {
     <div className="space-y-6 px-4 lg:px-0">
       <Breadcrumb cameFrom={cameFrom} />
 
-      {/* Header — แบนเนอร์ไล่สีอ่อนๆ ให้ดูมีชีวิตชีวาแต่ยังอ่านสบาย เหมาะกับหน้ารายงาน */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
-        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
-        <div className="absolute left-1/3 -bottom-20 h-40 w-40 rounded-full bg-amber-200/25 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
-              <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
-            </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>ภาพรวมพัฒนาการ</h1>
-            <p className={PAGE_SUBTITLE}>
-              ผลสอบ Pre / Mid / Post ของทุกคอร์สและทุกวิชา
-              {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
-            </p>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className={PAGE_TITLE}>ภาพรวมพัฒนาการ</h1>
+          <p className={PAGE_SUBTITLE}>
+            ผลสอบ Pre / Mid / Post ของทุกคอร์สและทุกวิชา
+            {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
+          </p>
         </div>
       </div>
 
-      {/* Stats — การ์ดเอียงตามเมาส์ + ตัวเลขวิ่งขึ้น + ไอคอนลายน้ำ */}
+      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: "คอร์สที่เปิดสอน", value: totals?.courses ?? 0, color: "bg-orange-600", icon: BookOpen },
@@ -231,18 +168,29 @@ export default function AdminProgressOverview() {
           {
             label: "คะแนนเฉลี่ย Post-test",
             value: totals?.avgPost === null || totals?.avgPost === undefined ? "—" : `${totals.avgPost}%`,
-            raw: totals?.avgPost, suffix: "%",
             color: "bg-emerald-500", icon: BarChart2,
           },
           {
             label: "นักเรียนที่คะแนนดีขึ้น",
             value: totals ? `${totals.improved}/${totals.comparable}` : "—",
-            raw: totals?.improved, suffix: totals ? `/${totals.comparable}` : "",
             color: "bg-purple-500", icon: TrendingUp,
           },
-        ].map((card, i) => (
-          <StatTile key={i} card={card} ready={!!totals} />
-        ))}
+        ].map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <div key={i} className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div className={`h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0`}>
+                <Icon className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 font-medium">{card.label}</p>
+                <p className="text-lg sm:text-xl font-bold text-slate-900 break-words">
+                  {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
+                </p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* ข้อมูลไม่สอดคล้อง — แจ้งอย่างเดียว ไม่แก้ให้เอง */}
@@ -288,9 +236,8 @@ export default function AdminProgressOverview() {
               {paginatedCourses.map((c) => (
                 <div
                   key={c.courseId}
-                  className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition overflow-hidden"
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
                 >
-                  <div className="h-1 bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500" />
                   <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60">
                     <p className="font-bold text-slate-900 text-sm">{c.courseName}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">

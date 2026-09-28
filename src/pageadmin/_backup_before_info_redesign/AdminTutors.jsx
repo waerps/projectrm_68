@@ -46,42 +46,6 @@ async function forceDownload(url, filename) {
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
-// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนน้ำเงิน
-//     ให้ต่างจากหน้าคอร์ส/การเงินที่เป็นโทนส้ม แต่ยังอยู่ในลุคเดียวกันของระบบ
-const tutorTiltMove = (e) => {
-  const el = e.currentTarget, r = el.getBoundingClientRect();
-  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-  el.style.setProperty("--gx", `${px * 100}%`);
-  el.style.setProperty("--gy", `${py * 100}%`);
-  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
-};
-const tutorTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
-
-function TutorStatTile({ label, value, color, hint, icon: Icon }) {
-  return (
-    <div
-      title={hint}
-      onMouseMove={tutorTiltMove}
-      onMouseLeave={tutorTiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition"
-      style={{ '--sa-glow-color': 'rgba(59,130,246,.22)' }}
-    >
-      <span className="sa-glow" style={{ background: 'radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(59,130,246,.20), transparent 60%)' }} />
-      {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
-      <div className={`relative h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0 shadow-sm`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
-          {label}
-          {hint && <Info className="h-3 w-3 text-slate-300" />}
-        </p>
-        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
-      </div>
-    </div>
-  );
-}
-
 // Tutor-application routes are protected by authRequired + admin role.
 // The login page stores the JWT under this key.
 const getAdminAuthConfig = () => {
@@ -2471,32 +2435,37 @@ export default function AdminTutorsPage() {
 
       {/* ── List Tab ── */}
       {activeTab === 'list' && <>
-        {/* Header — แบนเนอร์โทนน้ำเงิน ให้ต่างจากหน้าคอร์ส/การเงิน แต่ยังลุคเดียวกัน */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-50 via-indigo-50/50 to-white border border-blue-100 p-5 sm:p-6">
-          <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-blue-200/30 blur-3xl" />
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 text-blue-700 px-2.5 py-1 text-[11px] font-bold">
-                <Users className="h-3.5 w-3.5" /> ทีมผู้สอนทั้งหมด
-              </span>
-              <h1 className={`${PAGE_TITLE} mt-2`}>จัดการติวเตอร์</h1>
-              <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
-            </div>
-            <button onClick={() => setShowAddModal(true)}
-              className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
-              <Plus className="h-4 w-4" /> เพิ่มติวเตอร์ใหม่
-            </button>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className={PAGE_TITLE}>จัดการติวเตอร์</h1>
+            <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
           </div>
+          <button onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}>
+            <Plus className="h-4 w-4" /> เพิ่มติวเตอร์ใหม่
+          </button>
         </div>
 
         {/* Stats — ★ เพิ่มคำอธิบายที่มาของตัวเลข + แยกนับเฉพาะติวเตอร์ที่ "กำลังสอน" สำหรับนักเรียนรวม/คาบสอนรวม */}
         <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
           {[
-            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)", icon: Users },
-            { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500", icon: Users },
-            { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500", icon: Users },
-          ].map(({ label, value, color, hint, icon }, i) => (
-            <TutorStatTile key={i} label={label} value={value} color={color} hint={hint} icon={icon} />
+            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)" },
+            { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500" },
+            { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500" },
+          ].map(({ label, value, color, hint }, i) => (
+            <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+              <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                  {label}
+                  {hint && <Info className="h-3 w-3 text-slate-300" />}
+                </p>
+                <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}</p>
+              </div>
+            </div>
           ))}
         </div>
 

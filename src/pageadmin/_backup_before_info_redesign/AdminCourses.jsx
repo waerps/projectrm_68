@@ -30,36 +30,6 @@ import PrivateCoursesPanel from "./AdminPrivateCourses";
 const API_BASE = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
-// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) ─────────────
-const tiltMove = (e) => {
-  const el = e.currentTarget, r = el.getBoundingClientRect();
-  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-  el.style.setProperty("--gx", `${px * 100}%`);
-  el.style.setProperty("--gy", `${py * 100}%`);
-  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
-};
-const tiltLeave = (e) => { e.currentTarget.style.transform = ""; };
-
-function StatTile({ label, value, color, icon: Icon }) {
-  return (
-    <div
-      onMouseMove={tiltMove}
-      onMouseLeave={tiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
-    >
-      <span className="sa-glow" />
-      {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
-      <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl ${color} shrink-0 shadow-sm`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-      </div>
-    </div>
-  );
-}
-
 const STATUS_MAP = {
   1: { label: "เปิดรับสมัคร", color: "bg-blue-100 text-blue-700 border-blue-200" },
   2: { label: "กำลังสอน", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -3094,29 +3064,23 @@ export default function AdminCoursesPage() {
   return (
     <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
-        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
-              <BookOpen className="h-3.5 w-3.5" /> คลังคอร์สเรียน
-            </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>จัดการคอร์สเรียน</h1>
-            <p className={PAGE_SUBTITLE}>
-              {courseTab === "single"
-                ? "คอร์สเดี่ยว · เรียนตัวต่อตัว 1 วิชา 1 นักเรียน ไม่ขายหน้าเว็บ ผู้สนใจติดต่อพี่กวางเพื่อประเมินก่อน"
-                : "คอร์สรวม · คอร์สเรียนกลุ่มที่ขายบนหน้าเว็บ เพิ่ม แก้ไข และจัดการได้ที่นี่"}
-            </p>
-          </div>
-          {courseTab === "bundle" && (
-            <button
-              onClick={() => setShowAddModal(true)}
-              className={`${BTN.primary} relative flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}
-            >
-              <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
-            </button>
-          )}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className={PAGE_TITLE}>จัดการคอร์สเรียน</h1>
+          <p className={PAGE_SUBTITLE}>
+            {courseTab === "single"
+              ? "คอร์สเดี่ยว · เรียนตัวต่อตัว 1 วิชา 1 นักเรียน ไม่ขายหน้าเว็บ ผู้สนใจติดต่อพี่กวางเพื่อประเมินก่อน"
+              : "คอร์สรวม · คอร์สเรียนกลุ่มที่ขายบนหน้าเว็บ เพิ่ม แก้ไข และจัดการได้ที่นี่"}
+          </p>
         </div>
+        {courseTab === "bundle" && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center justify-center md:justify-start gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}
+          >
+            <Plus className="h-4 w-4" /> เพิ่มคอร์สใหม่
+          </button>
+        )}
       </div>
 
       <SegmentedControl stretchMobile value={courseTab} onChange={setCourseTab} options={[
@@ -3133,8 +3097,19 @@ export default function AdminCoursesPage() {
           { label: "คอร์สรวมทั้งหมด", value: groupCourses.length, icon: BookOpen, color: "bg-orange-500" },
           { label: "คอร์สที่กำลังสอน", value: activeCourses, icon: Check, color: "bg-green-500" },
           { label: "คอร์สที่เลิกสอน", value: closedCourses, icon: X, color: "bg-slate-400" },
-        ].map(({ label, value, icon, color }, i) => (
-          <StatTile key={i} label={label} value={value} icon={icon} color={color} />
+        ].map(({ label, value, icon: Icon, color }, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition"
+          >
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} shrink-0`}>
+              <Icon className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium">{label}</p>
+              <p className="text-xl font-bold text-slate-900">{value}</p>
+            </div>
+          </div>
         ))}
       </div>
 

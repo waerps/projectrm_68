@@ -28,37 +28,6 @@ import Spinner from "../components/ui/Spinner";
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
-// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนเขียวมรกต
-//     ให้ต่างจากหน้าคอร์ส (ส้ม) / ติวเตอร์ (น้ำเงิน) แต่ยังลุคเดียวกันของระบบ
-const studentTiltMove = (e) => {
-  const el = e.currentTarget, r = el.getBoundingClientRect();
-  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-  el.style.setProperty("--gx", `${px * 100}%`);
-  el.style.setProperty("--gy", `${py * 100}%`);
-  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
-};
-const studentTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
-
-function StudentStatTile({ label, value, color, icon: Icon }) {
-  return (
-    <div
-      onMouseMove={studentTiltMove}
-      onMouseLeave={studentTiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-emerald-200 transition"
-    >
-      <span className="sa-glow" style={{ background: 'radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(16,185,129,.20), transparent 60%)' }} />
-      {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
-      <div className={`relative h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0 shadow-sm`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}</p>
-      </div>
-    </div>
-  );
-}
-
 // ─── FIX #6: ใช้ UserId เป็น seed แทนชื่อ เพื่อไม่ให้ avatar เปลี่ยนเมื่อแก้ชื่อ
 const avatarUrl = (userId) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=student_${userId}&backgroundColor=dbeafe`;
@@ -2298,22 +2267,16 @@ export default function AdminStudentsPage() {
     <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* Header — แบนเนอร์โทนเขียวมรกต ให้ต่างจากหน้าคอร์ส/ติวเตอร์ แต่ยังลุคเดียวกัน */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-emerald-100 p-5 sm:p-6">
-        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-emerald-200/30 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">
-              <GraduationCap className="h-3.5 w-3.5" /> ฐานข้อมูลนักเรียน
-            </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>จัดการนักเรียน</h1>
-            <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
-          </div>
-          <button onClick={() => setShowAddModal(true)}
-            className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
-            <Plus className="h-4 w-4" /> เพิ่มนักเรียนใหม่
-          </button>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className={PAGE_TITLE}>จัดการนักเรียน</h1>
+          <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
         </div>
+        <button onClick={() => setShowAddModal(true)}
+          className={`${BTN.primary} flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold transition text-sm`}>
+          <Plus className="h-4 w-4" /> เพิ่มนักเรียนใหม่
+        </button>
       </div>
 
       {/* Stats */}
@@ -2324,7 +2287,15 @@ export default function AdminStudentsPage() {
           { label: "ยังไม่ลงทะเบียน", value: students.filter(s => !s.EnrolledCourses).length, color: "bg-amber-500" },
 
         ].map(({ label, value, color }, i) => (
-          <StudentStatTile key={i} label={label} value={value} color={color} icon={GraduationCap} />
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
+            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+              <GraduationCap className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium">{label}</p>
+              <p className="text-xl font-bold text-slate-900">{value}</p>
+            </div>
+          </div>
         ))}
       </div>
 
