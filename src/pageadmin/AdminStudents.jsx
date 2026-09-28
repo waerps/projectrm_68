@@ -28,8 +28,7 @@ import Spinner from "../components/ui/Spinner";
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
-// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนเขียวมรกต
-//     ให้ต่างจากหน้าคอร์ส (ส้ม) / ติวเตอร์ (น้ำเงิน) แต่ยังลุคเดียวกันของระบบ
+// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนส้มเดียวกันทั้งระบบ
 const studentTiltMove = (e) => {
   const el = e.currentTarget, r = el.getBoundingClientRect();
   const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
@@ -44,9 +43,9 @@ function StudentStatTile({ label, value, color, icon: Icon }) {
     <div
       onMouseMove={studentTiltMove}
       onMouseLeave={studentTiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-emerald-200 transition"
+      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
     >
-      <span className="sa-glow" style={{ background: 'radial-gradient(260px circle at var(--gx, 50%) var(--gy, 50%), rgba(16,185,129,.20), transparent 60%)' }} />
+      <span className="sa-glow" />
       {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
       <div className={`relative h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0 shadow-sm`}>
         <Icon className="h-5 w-5 text-white" />
@@ -2298,12 +2297,12 @@ export default function AdminStudentsPage() {
     <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* Header — แบนเนอร์โทนเขียวมรกต ให้ต่างจากหน้าคอร์ส/ติวเตอร์ แต่ยังลุคเดียวกัน */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white border border-emerald-100 p-5 sm:p-6">
-        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-emerald-200/30 blur-3xl" />
+      {/* Header — แบนเนอร์โทนส้ม เหมือนหน้าการเงิน/คอร์ส/ติวเตอร์ */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
+        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-1 text-[11px] font-bold">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
               <GraduationCap className="h-3.5 w-3.5" /> ฐานข้อมูลนักเรียน
             </span>
             <h1 className={`${PAGE_TITLE} mt-2`}>จัดการนักเรียน</h1>
