@@ -28,6 +28,7 @@ import { PAGE_TITLE } from "../components/ui/tokens";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -56,9 +57,9 @@ function StatCard({ icon, label, value, sub, color = "bg-orange-500", onClick })
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-lg sm:text-xl font-bold text-slate-900 whitespace-nowrap lg:whitespace-normal">{value}</p>
-        {sub && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>}
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={`${STAT_VALUE} whitespace-nowrap lg:whitespace-normal`}>{value}</p>
+        {sub && <p className={`${STAT_SUB} mt-0.5 truncate`}>{sub}</p>}
       </div>
     </Wrapper>
   );
@@ -2341,7 +2342,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             {remainingSec != null && (
               <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-slate-200"}`}>
                 <p className="text-sm font-semibold text-slate-700 mb-1">เวลาที่เหลือของการสอบ</p>
-                <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-slate-800"}`}>
+                <div className={`flex items-center gap-2 tabular-nums font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-slate-800"}`}>
                   <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
                 </div>
               </div>
@@ -2495,41 +2496,41 @@ function StudentDetailModal({
             <div className="flex gap-3 flex-shrink-0">
               {passed != null && (
                 <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                  <p className="text-xl font-bold">{passed ? "✓" : "✗"}</p>
-                  <p className="text-[11px] text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
+                  <p className={STAT_NUM}>{passed ? "✓" : "✗"}</p>
+                  <p className="text-xs font-medium text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
                 </div>
               )}
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-xl font-bold">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"} <span className="text-xs font-medium text-orange-100">คะแนน</span></p>
-                <p className="text-[11px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
+                <p className={STAT_NUM}>{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}<span className="ml-1 text-xs font-medium text-orange-100">คะแนน</span></p>
+                <p className="text-xs font-medium text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-green-600">{correctCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
-              <p className="text-xs text-slate-500">ตอบถูก</p>
+              <p className={`${STAT_NUM} text-green-600`}>{correctCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบถูก</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
-              <p className="text-xs text-slate-500">ตอบผิด</p>
+              <p className={`${STAT_NUM} text-red-500`}>{wrongCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบผิด</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{student?.answeredCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
-              <p className="text-xs text-slate-500">ตอบแล้ว</p>
+              <p className={STAT_VALUE}>{student?.answeredCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบแล้ว</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{student?.unansweredCount ?? "—"} <span className="text-xs font-medium text-slate-500">ข้อ</span></p>
-              <p className="text-xs text-slate-500">ไม่ตอบ</p>
+              <p className={STAT_VALUE}>{student?.unansweredCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ไม่ตอบ</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-slate-500">เริ่มสอบ</p>
+              <p className={STAT_VALUE}>{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className={STAT_LABEL}>เริ่มสอบ</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-slate-700">{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-slate-500">ส่งข้อสอบ</p>
+              <p className={STAT_VALUE}>{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className={STAT_LABEL}>ส่งข้อสอบ</p>
             </div>
           </div>
 
@@ -2639,7 +2640,7 @@ function StudentDetailModal({
                       const no = ev.questionId != null ? questionNoById.get(ev.questionId) : null;
                       return (
                         <div key={i} className="flex items-baseline gap-2 text-[11px] text-amber-700">
-                          <span className="font-mono text-amber-500 flex-shrink-0">
+                          <span className="tabular-nums text-amber-500 flex-shrink-0">
                             {ev.occurredAt ? new Date(ev.occurredAt).toLocaleTimeString("th-TH") : "—"}
                           </span>
                           <span className="flex-1">
@@ -2718,7 +2719,7 @@ function StudentDetailModal({
                         <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
-                        <span className="text-xs font-mono text-slate-500">{formatTime(q.totalSeconds)}</span>
+                        <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
                     <QuestionPeriods periods={q.periods} />
@@ -3208,7 +3209,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
                   <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
                   <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
-                  <span className={`font-mono ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
+                  <span className={`tabular-nums ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                     {s.submittedAt ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—") : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                   </span>
                   <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
@@ -3292,7 +3293,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                         <span className="text-slate-300 mx-1">/</span>
                         <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
                       </td>
-                      <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
+                      <td className={`px-4 py-3 tabular-nums text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                         {s.submittedAt
                           ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
                           : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}

@@ -12,6 +12,7 @@ import Modal from "../components/ui/Modal";
 import Spinner from "../components/ui/Spinner";
 import UIErrorState from "../components/ui/ErrorState";
 import { BTN, INPUT } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { toast, confirmDialog } from "../components/ui/dialogs";
 import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, privateIconOf } from "../config/privateCourses";
 
@@ -43,6 +44,7 @@ const labelCls = "mb-1 block text-xs font-semibold text-slate-600";
 // onDataChanged()          : แจ้งหน้าคอร์สว่ามีการสร้าง/ลงทะเบียน/รับเงิน
 export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDataChanged }) {
   const [tab, setTab] = useState("courses");
+  const [search, setSearch] = useState("");
   const [courses, setCourses] = useState([]);
   const [offers, setOffers] = useState([]);
   const [lookups, setLookups] = useState({ subjects: [], tutors: [], students: [], years: [], availability: [] });
@@ -96,14 +98,21 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
         <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} sub="รวมทุกคอร์สเดี่ยว" className="col-span-2 md:col-span-1" />
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SegmentedControl size="sm" stretchMobile value={tab} onChange={setTab} options={[
+      {/* แถวเดียว: สลับแท็บ (ซ้าย) · ค้นหา (กลาง ใช้ได้ทั้งสองแท็บ) · ปุ่มเพิ่ม (ขวา) */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <SegmentedControl size="sm" stretchMobile value={tab} onChange={setTab} className="shrink-0" options={[
           { id: "courses", label: "คอร์สของนักเรียน", short: "คอร์สนักเรียน", count: courses.length },
           { id: "offers", label: "รายวิชาบนเว็บไซต์", short: "รายวิชาบนเว็บ", count: offers.length },
         ]} />
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="ค้นหา"
+            placeholder={tab === "courses" ? "ค้นหาชื่อนักเรียน ติวเตอร์ หรือวิชา" : "ค้นหาชื่อรายวิชา ระดับชั้น หรือคำอธิบาย"}
+            className={`${INPUT} pl-9`} />
+        </div>
         {tab === "courses"
-          ? <button type="button" onClick={() => setModal({ type: "create" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full sm:w-auto`}><Plus className="h-4 w-4" />สร้างคอร์สให้นักเรียน</button>
-          : <button type="button" onClick={() => setModal({ type: "offer" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full sm:w-auto`}><Plus className="h-4 w-4" />เพิ่มรายวิชา</button>}
+          ? <button type="button" onClick={() => setModal({ type: "create" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full shrink-0 lg:w-auto`}><Plus className="h-4 w-4" />สร้างคอร์สให้นักเรียน</button>
+          : <button type="button" onClick={() => setModal({ type: "offer" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full shrink-0 lg:w-auto`}><Plus className="h-4 w-4" />เพิ่มรายวิชา</button>}
       </div>
 
       {loading ? (
@@ -111,10 +120,10 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ) : error ? (
         <UIErrorState message={error} onRetry={load} />
       ) : tab === "courses" ? (
-        <CoursesTab courses={courses} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })}
+        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
       ) : (
-        <OffersTab offers={offers} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
+        <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
           onEdit={(o) => setModal({ type: "offer", data: o })} onChanged={load} />
       )}
 
@@ -132,9 +141,9 @@ function Stat({ icon, color, label, value, unit, sub, className = "" }) {
     <div className={`${card} flex items-center gap-3 p-3 sm:gap-4 sm:p-4 ${className}`}>
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}><Icon className="h-5 w-5 text-white" /></span>
       <div className="min-w-0">
-        <p className="text-xs font-medium text-slate-500">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
-        {sub && <p className="truncate text-[11px] text-slate-500">{sub}</p>}
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={STAT_VALUE}>{value}{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
+        {sub && <p className={`truncate ${STAT_SUB}`}>{sub}</p>}
       </div>
     </div>
   );
@@ -149,8 +158,7 @@ function payState(c) {
   return { tone: "danger", label: "ยังไม่ชำระ", pct: 0 };
 }
 
-function CoursesTab({ courses, onManage, onCreate, onPay, onEnroll }) {
-  const [search, setSearch] = useState("");
+function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll }) {
   const list = courses.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -195,11 +203,6 @@ function CoursesTab({ courses, onManage, onCreate, onPay, onEnroll }) {
 
   return (
     <div className="space-y-3">
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อนักเรียน ติวเตอร์ หรือวิชา" className={`${INPUT} pl-9`} />
-      </div>
-
       {/* จอใหญ่: ตาราง */}
       <div className={`${card} hidden overflow-hidden lg:block`}>
         <table className="w-full text-sm">
@@ -258,7 +261,7 @@ function CoursesTab({ courses, onManage, onCreate, onPay, onEnroll }) {
 }
 
 /* ═════════ แท็บ 2 · รายวิชาที่โชว์หน้าเว็บ ═════════ */
-function OffersTab({ offers, subjects, onAdd, onEdit, onChanged }) {
+function OffersTab({ offers, search = "", subjects, onAdd, onEdit, onChanged }) {
   const toggle = async (o) => {
     try {
       await axios.put(`${API}/private-courses/offers/${o.OfferId}`, { ...o, IsActive: !o.IsActive }, auth());
@@ -283,10 +286,15 @@ function OffersTab({ offers, subjects, onAdd, onEdit, onChanged }) {
     );
   }
   const subjectName = (id) => subjects.find((s) => Number(s.SubjectId) === Number(id))?.SubjectName;
+  const q = search.trim().toLowerCase();
+  const list = !q ? offers : offers.filter((o) =>
+    [o.Title, o.Note, subjectName(o.SubjectId), ...(o.Levels || [])]
+      .filter(Boolean).some((t) => String(t).toLowerCase().includes(q)));
+  if (!list.length) return <p className={`${card} py-8 text-center text-sm text-slate-500`}>ไม่พบรายวิชาที่ตรงกับคำค้นหา</p>;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {offers.map((o) => {
+      {list.map((o) => {
         const Icon = privateIconOf(o.IconKey);
         return (
           <div key={o.OfferId} className={`${card} flex flex-col p-4 ${o.IsActive ? "" : "opacity-60"}`}>

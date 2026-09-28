@@ -13,6 +13,7 @@ import Spinner from "../components/ui/Spinner";
 import { MapPin as LuMapPin } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { Info } from "lucide-react";
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -798,12 +799,12 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900 mt-0.5 truncate">
+              <p className={STAT_LABEL}>{label}</p>
+              <p className={`${STAT_VALUE} mt-0.5 truncate`}>
                 {value}
-                {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+                {unit && <span className={STAT_UNIT}>{unit}</span>}
               </p>
-              {sub && <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>}
+              {sub && <p className={`${STAT_SUB} mt-0.5`}>{sub}</p>}
             </div>
           </div>
         ))}
@@ -1538,12 +1539,12 @@ function HeatmapSummary({ tutors, daySummary, weekSummary, weeks, weekDayInfo })
           <div key={label} className={`flex items-start gap-3 p-4 rounded-2xl border ${color}`}>
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconColor}`} />
             <div className="min-w-0">
-              <p className="text-[11px] text-slate-500 font-medium">{label}</p>
-              <p className="text-base font-bold text-slate-900 mt-0.5 truncate">
+              <p className={STAT_LABEL}>{label}</p>
+              <p className={`${STAT_VALUE} mt-0.5 truncate`}>
                 {value}
-                {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+                {unit && <span className={STAT_UNIT}>{unit}</span>}
               </p>
-              {sub && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{sub}</p>}
+              {sub && <p className={`${STAT_SUB} mt-0.5 truncate`}>{sub}</p>}
             </div>
           </div>
         ))}

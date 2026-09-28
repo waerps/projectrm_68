@@ -48,3 +48,15 @@ export const CALLOUT = {
   success: "bg-emerald-50 border-emerald-200 text-emerald-800",
 };
 export const CALLOUT_ICON = { info: "text-blue-500", warning: "text-amber-500", danger: "text-red-500", success: "text-emerald-500" };
+
+/* ตัวเลขสรุป / การ์ดสถิติ (KPI) — ใช้ขนาดเดียวกันทุกหน้า (อ้างอิงหน้าการเงิน)
+   <p className={STAT_LABEL}>ป้าย</p>
+   <p className={STAT_VALUE}>123<span className={STAT_UNIT}>หน่วย</span></p>
+   <p className={STAT_SUB}>คำอธิบายย่อย</p>
+   ต้องการสีเฉพาะ (เช่น ค้างชำระ) ให้ใช้ STAT_NUM (ไม่มีสี) + คลาสสี เช่น `${STAT_NUM} text-red-600`
+   (ไม่ต่อสีท้าย STAT_VALUE เพราะ Tailwind ไม่รับประกันว่าคลาสสีไหนชนะ) */
+export const STAT_LABEL = "text-xs font-medium text-slate-500";
+export const STAT_NUM = "text-xl sm:text-2xl font-bold tabular-nums leading-tight";
+export const STAT_VALUE = `${STAT_NUM} text-slate-900`;
+export const STAT_UNIT = "ml-1 text-xs font-medium text-slate-500";
+export const STAT_SUB = "text-[11px] text-slate-500";

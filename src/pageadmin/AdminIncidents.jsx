@@ -19,6 +19,7 @@ import UIModal from "../components/ui/Modal";
 import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
@@ -389,8 +390,8 @@ export default function AdminIncidents() {
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium">{sevLabel(s.key)}</p>
-                <p className="text-xl font-bold text-slate-900">{summary[s.key] ?? 0}<span className="ml-1 text-xs font-medium text-slate-500">เคส</span></p>
+                <p className={STAT_LABEL}>{sevLabel(s.key)}</p>
+                <p className={STAT_VALUE}>{summary[s.key] ?? 0}<span className={STAT_UNIT}>เคส</span></p>
               </div>
             </button>
           );

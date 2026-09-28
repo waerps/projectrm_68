@@ -5,6 +5,7 @@ import { API_URL } from '../config';
 import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API = `${API_URL}/api/admin/notifications`;
@@ -164,8 +165,8 @@ export default function AdminNotifications() {
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()} <span className="text-xs font-medium text-slate-500">รายการ</span></p>
+              <p className={STAT_LABEL}>{label}</p>
+              <p className={STAT_VALUE}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></p>
             </div>
           </button>
         ))}

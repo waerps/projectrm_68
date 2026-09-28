@@ -12,6 +12,7 @@ import {
 import UIModal from "../components/ui/Modal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
@@ -964,8 +965,8 @@ export default function AdminCommonFacilities() {
                             <Icon className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-bold text-slate-900">{value}<span className="ml-1 text-xs font-medium text-slate-500">รายการ</span></p>
+                            <p className={STAT_LABEL}>{label}</p>
+                            <p className={STAT_VALUE}>{value}<span className={STAT_UNIT}>รายการ</span></p>
                         </div>
                     </div>
                 ))}

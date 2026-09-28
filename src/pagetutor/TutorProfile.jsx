@@ -7,6 +7,7 @@ import { toast } from "../components/ui/dialogs";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 
 
 export default function TutorProfile() {
@@ -292,10 +293,10 @@ export default function TutorProfile() {
                         {/* ส่วนโชว์เรทค่าสอน */}
                         <div className="flex flex-wrap gap-3 justify-between items-center rounded-xl border border-orange-200 p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
                             <div>
-                                <p className="text-xs text-slate-500 mb-1">ค่าตอบแทนต่อคาบ</p>
-                                <p className="text-2xl font-bold text-orange-600">
+                                <p className={`${STAT_LABEL} mb-1`}>ค่าตอบแทนต่อคาบ</p>
+                                <p className={`${STAT_NUM} text-orange-600`}>
                                     {Number(formData.ratePerTutors).toLocaleString()}
-                                    <span className="text-base font-normal text-slate-500 ml-1">บาท</span>
+                                    <span className={STAT_UNIT}>บาท</span>
                                 </p>
                             </div>
                             <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">

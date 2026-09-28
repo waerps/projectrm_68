@@ -15,6 +15,7 @@ import {
   } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { Phone as LuPhone, School as LuSchool } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
@@ -241,22 +242,22 @@ export default function TutorStudentDetail() {
                     </div>
                     <div className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-2 sm:gap-3 lg:flex lg:flex-wrap lg:shrink-0 [&>*:last-child]:col-span-2 min-[480px]:[&>*:last-child]:col-span-1">
                         <div className="bg-white border border-green-200 rounded-xl px-2 sm:px-4 py-2 text-center">
-                            <p className="text-xs text-slate-500 mb-0.5">เข้าเรียน</p>
-                            <p className={`text-lg font-bold ${rateText}`}>{attendanceRate}%</p>
-                            <p className="text-xs text-slate-500">{attendedCount}/{attendance.length} คาบ</p>
+                            <p className={`${STAT_LABEL} mb-0.5`}>เข้าเรียน</p>
+                            <p className={`${STAT_NUM} ${rateText}`}>{attendanceRate}%</p>
+                            <p className={STAT_SUB}>{attendedCount}/{attendance.length} คาบ</p>
                         </div>
                         <div className="bg-white border border-orange-200 rounded-xl px-2 sm:px-4 py-2 text-center">
-                            <p className="text-xs text-slate-500 mb-0.5">ดูคลิป</p>
-                            <p className="text-lg font-bold text-orange-600">{videoRate}%</p>
-                            <p className="text-xs text-slate-500">{watchedCount}/{videos.length} คลิป</p>
+                            <p className={`${STAT_LABEL} mb-0.5`}>ดูคลิป</p>
+                            <p className={`${STAT_NUM} text-orange-600`}>{videoRate}%</p>
+                            <p className={STAT_SUB}>{watchedCount}/{videos.length} คลิป</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-2 sm:px-4 py-2 text-center min-w-0 ${getTrendColor(getOverallTrend())}`}>
-                            <p className="text-xs mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
+                            <p className="text-xs font-medium mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
                             <div className="flex items-center justify-center gap-1">
                                 {getTrendIcon(getOverallTrend())}
-                                <p className="text-lg font-bold">{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
+                                <p className={STAT_NUM}>{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
                             </div>
-                            <div className="text-xs text-slate-500">
+                            <div className={STAT_SUB}>
                                 {improvement
                                     ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
                                     : "ยังไม่มีข้อมูลสอบ"}
@@ -591,8 +592,8 @@ export default function TutorStudentDetail() {
                             { label: "คลิปที่ยังไม่ดู", value: videos.length - watchedCount, unit: "คลิป", color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-500" /> },
                         ].map((s, i) => (
                             <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
-                                <div className="flex items-center gap-2 mb-2">{s.icon}<span className="text-xs text-slate-500 font-medium">{s.label}</span></div>
-                                <p className={`text-xl sm:text-2xl font-bold ${s.color}`}>{s.value} <span className="text-xs font-medium text-slate-500">{s.unit}</span></p>
+                                <div className="flex items-center gap-2 mb-2">{s.icon}<span className={STAT_LABEL}>{s.label}</span></div>
+                                <p className={`${STAT_NUM} ${s.color}`}>{s.value}<span className={STAT_UNIT}>{s.unit}</span></p>
                             </div>
                         ))}
                     </div>

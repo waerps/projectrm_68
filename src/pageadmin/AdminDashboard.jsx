@@ -10,6 +10,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 const API_BASE = `${API_URL}/api/admin/dashboard`;
 
@@ -318,16 +319,16 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
               <div className="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
                 <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" /> คาบวันนี้</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1"><CountUp value={sessionsTotal} /> <span className="text-xs font-medium text-slate-400">คาบ</span></p>
+                <p className="tabular-nums text-2xl sm:text-3xl font-bold mt-1"><CountUp value={sessionsTotal} /> <span className="text-xs font-medium text-slate-400">คาบ</span></p>
               </div>
               <div className="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
                 <p className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> ห้องที่ใช้อยู่</p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1 text-orange-300"><CountUp value={liveRooms} /> <span className="text-xs font-medium text-slate-400">ห้อง</span></p>
+                <p className="tabular-nums text-2xl sm:text-3xl font-bold mt-1 text-orange-300"><CountUp value={liveRooms} /> <span className="text-xs font-medium text-slate-400">ห้อง</span></p>
               </div>
               <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 p-3 sm:p-4 relative overflow-hidden shadow-lg shadow-orange-500/30">
                 <span className="absolute inset-0 sa-shine" />
                 <p className="relative text-[11px] sm:text-xs text-orange-50 flex items-center gap-1"><BellRing className="h-3.5 w-3.5" /> ต้องจัดการ</p>
-                <p className="relative text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionCount} /> <span className="text-xs font-medium text-orange-50">เรื่อง</span></p>
+                <p className="relative tabular-nums text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionCount} /> <span className="text-xs font-medium text-orange-50">เรื่อง</span></p>
               </div>
             </div>
           </div>
@@ -394,7 +395,7 @@ function ActionSection({ chips, onNavigate }) {
                   <span className="block text-[11px] text-slate-500 truncate">{a.message}</span>
                 </span>
                 <span className="flex flex-col items-end">
-                  <span className={`tabular-nums text-2xl font-bold leading-none ${meta.urgent ? "text-red-600" : "text-slate-900"}`}>{a.count} <span className="text-xs font-medium text-slate-500">รายการ</span></span>
+                  <span className={`${STAT_NUM} ${meta.urgent ? "text-red-600" : "text-slate-900"}`}>{a.count}<span className={STAT_UNIT}>รายการ</span></span>
                   <ArrowUpRight className="h-4 w-4 text-slate-300 group-hover:text-orange-500 transition mt-1" />
                 </span>
               </button>
@@ -446,9 +447,9 @@ function StatCard({ label, value, unit, money, sub, subUp, icon, color, spark, s
       <Icon className="absolute -right-4 -top-4 h-24 w-24 text-slate-100" />
       <div className="relative flex items-center gap-3">
         <span className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center shrink-0`}><Icon className="h-5 w-5 text-white" /></span>
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
+        <p className={STAT_LABEL}>{label}</p>
       </div>
-      <p className="relative text-2xl sm:text-3xl font-bold text-slate-900 mt-3"><CountUp value={value} prefix={money ? "฿" : ""} />{unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}</p>
+      <p className={`relative ${STAT_VALUE} mt-3`}><CountUp value={value} prefix={money ? "฿" : ""} />{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
       <div className="relative flex items-end justify-between gap-3 mt-1">
         {sub && (
           <p className={`text-[11px] sm:whitespace-nowrap ${subUp === undefined ? "text-slate-500" : subUp ? "text-emerald-600 font-semibold flex items-center gap-0.5" : "text-red-500 font-semibold flex items-center gap-0.5"}`}>
@@ -613,17 +614,17 @@ function FinanceCard({ finance, onNavigate }) {
         <div className="flex flex-col h-full">
           <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
             <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-              <p className="text-[11px] text-slate-500">รายรับเดือนนี้</p>
-              <p className="text-base sm:text-lg font-bold text-slate-900"><CountUp value={finance.monthlyRevenue} prefix="฿" /></p>
+              <p className={STAT_LABEL}>รายรับเดือนนี้</p>
+              <p className="tabular-nums text-base sm:text-lg font-bold text-slate-900"><CountUp value={finance.monthlyRevenue} prefix="฿" /></p>
             </div>
             <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-              <p className="text-[11px] text-slate-500">รายจ่ายเดือนนี้</p>
-              <p className="text-base sm:text-lg font-bold text-slate-900"><CountUp value={finance.monthlyExpense} prefix="฿" /></p>
+              <p className={STAT_LABEL}>รายจ่ายเดือนนี้</p>
+              <p className="tabular-nums text-base sm:text-lg font-bold text-slate-900"><CountUp value={finance.monthlyExpense} prefix="฿" /></p>
             </div>
             <div className={`rounded-xl text-white px-3 py-2 relative overflow-hidden bg-gradient-to-br ${profit >= 0 ? "from-emerald-500 to-emerald-600" : "from-red-500 to-red-600"}`}>
               <span className="absolute inset-0 sa-shine opacity-60" />
-              <p className="relative text-[11px] text-white/80">กำไรสุทธิ</p>
-              <p className="relative text-base sm:text-lg font-bold">{profit < 0 && "-"}<CountUp value={Math.abs(profit)} prefix="฿" /></p>
+              <p className="relative text-xs font-medium text-white/80">กำไรสุทธิ</p>
+              <p className="relative tabular-nums text-base sm:text-lg font-bold">{profit < 0 && "-"}<CountUp value={Math.abs(profit)} prefix="฿" /></p>
             </div>
           </div>
           <div className="flex-1 min-h-[240px]">
@@ -671,8 +672,8 @@ function StudentsCard({ students, onNavigate }) {
         <div className="relative flex items-center justify-between">
           <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Award className="h-4 w-4" /> ความสามารถโดดเด่น</p>
           <div className="flex gap-4 text-right">
-            <div><p className="text-lg font-bold leading-none"><CountUp value={students.total} /> <span className="text-xs font-medium text-slate-400">คน</span></p><p className="text-[10px] text-slate-400">ทั้งหมด</p></div>
-            <div><p className="text-lg font-bold leading-none text-emerald-300"><CountUp value={students.enrolled} /> <span className="text-xs font-medium text-slate-400">คน</span></p><p className="text-[10px] text-slate-400">ลงทะเบียน</p></div>
+            <div><p className={STAT_NUM}><CountUp value={students.total} /><span className="ml-1 text-xs font-medium text-slate-400">คน</span></p><p className="text-xs font-medium text-slate-400">ทั้งหมด</p></div>
+            <div><p className={`${STAT_NUM} text-emerald-300`}><CountUp value={students.enrolled} /><span className="ml-1 text-xs font-medium text-slate-400">คน</span></p><p className="text-xs font-medium text-slate-400">ลงทะเบียน</p></div>
           </div>
         </div>
         {podium.length === 0 ? (
@@ -792,13 +793,13 @@ function TutorsCard({ tutors, onNavigate }) {
             )}
           </svg>
           <div className="absolute inset-x-0 bottom-0 text-center">
-            <p className="text-2xl font-bold text-slate-900 leading-none">{rate === null || rate === undefined ? "—" : <CountUp value={rate} suffix="%" />}</p>
-            <p className="text-[10px] text-slate-500">เช็กอินเฉลี่ยเดือนนี้</p>
+            <p className={STAT_VALUE}>{rate === null || rate === undefined ? "—" : <CountUp value={rate} suffix="%" />}</p>
+            <p className={STAT_SUB}>เช็กอินเฉลี่ยเดือนนี้</p>
           </div>
         </div>
         <div className="flex-1 w-full grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-slate-900"><CountUp value={tutors.total} /> <span className="text-xs font-medium text-slate-500">คน</span></p><p className="text-[11px] text-slate-500">ทั้งหมด</p></div>
-          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className="text-2xl font-bold text-emerald-600"><CountUp value={tutors.active} /> <span className="text-xs font-medium text-slate-500">คน</span></p><p className="text-[11px] text-slate-500">กำลังสอน</p></div>
+          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className={STAT_VALUE}><CountUp value={tutors.total} /><span className={STAT_UNIT}>คน</span></p><p className={STAT_LABEL}>ทั้งหมด</p></div>
+          <div className="rounded-xl bg-white/80 border border-orange-100 p-3 text-center"><p className={`${STAT_NUM} text-emerald-600`}><CountUp value={tutors.active} /><span className={STAT_UNIT}>คน</span></p><p className={STAT_LABEL}>กำลังสอน</p></div>
         </div>
       </div>
 
@@ -857,7 +858,7 @@ function ScheduleCard({ sessions, nowMin, counts, onNavigate }) {
                 <span className={`absolute -left-6 ${i === firstNext ? "top-12" : "top-3"} h-5 w-5 rounded-full ${m.dot} text-white flex items-center justify-center ring-4 ring-white`}><m.Icon className="h-3 w-3" /></span>
                 <div className={`rounded-xl border ${m.card} px-3 py-2`}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-mono text-slate-500">{s.StartTime}–{s.EndTime}</span>
+                    <span className="text-[11px] tabular-nums text-slate-500">{s.StartTime}–{s.EndTime}</span>
                     {s.st === "live" && <span className="text-[10px] font-bold text-white bg-orange-500 rounded-full px-1.5 py-0.5">LIVE</span>}
                     {s.st === "missed" && <span className="text-[10px] font-bold text-red-600 bg-white border border-red-200 rounded-full px-1.5 py-0.5">ยังไม่เช็กอิน</span>}
                   </div>
@@ -981,8 +982,8 @@ function RoomsCard({ rooms, onNavigate }) {
       {(inView) => (
         <div className="flex flex-col h-full">
           <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-slate-900"><CountUp value={rooms.total} /></p>
-            <p className="text-sm text-slate-500">ห้อง</p>
+            <p className={STAT_VALUE}><CountUp value={rooms.total} /></p>
+            <p className="text-xs font-medium text-slate-500">ห้อง</p>
             {list.length > 0 && <span className="ml-auto text-[11px] text-slate-400 hidden sm:block">ชี้ที่ห้องเพื่อดูรายละเอียด</span>}
           </div>
           <div className="flex-1 flex items-center py-2">
@@ -1025,7 +1026,7 @@ function FacilitiesCard({ facilities, onNavigate }) {
   const items = facilities.lowItems || [];
   return (
     <SectionCard title="คลังอุปกรณ์" icon={Boxes} action={<LinkBtn onClick={() => onNavigate("/admin/common-facilities")}>ดูทั้งหมด</LinkBtn>}>
-      <div className="flex items-baseline gap-2 mb-2"><p className="text-3xl font-bold text-slate-900"><CountUp value={total} /></p><p className="text-sm text-slate-500">อุปกรณ์ทั้งหมด</p></div>
+      <div className="flex items-baseline gap-2 mb-2"><p className={STAT_VALUE}><CountUp value={total} /></p><p className="text-xs font-medium text-slate-500">อุปกรณ์ทั้งหมด</p></div>
       {total > 0 && (
         <div className="sa-b3" style={{ "--h": "22px", "--d": "10px" }}>
           <span style={{ right: 0, ...B3_VARS.track }}><span className="fc" /><span className="tp" /><span className="sd" /></span>
@@ -1035,9 +1036,9 @@ function FacilitiesCard({ facilities, onNavigate }) {
         </div>
       )}
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-xl px-2 py-2 border text-center bg-emerald-50 border-emerald-100 text-emerald-700"><p className="text-[11px] opacity-70">พร้อมใช้</p><p className="text-lg font-bold tabular-nums">{ready} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
-        <div className="rounded-xl px-2 py-2 border text-center bg-amber-50 border-amber-100 text-amber-700"><p className="text-[11px] opacity-70">ใกล้หมด</p><p className="text-lg font-bold tabular-nums">{low} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
-        <div className={`rounded-xl px-2 py-2 border text-center bg-red-50 border-red-100 text-red-600 ${out > 0 ? "sa-pulse-red" : ""}`}><p className="text-[11px] opacity-70">หมดสต๊อก</p><p className="text-lg font-bold tabular-nums">{out} <span className="text-xs font-medium opacity-70">รายการ</span></p></div>
+        <div className="rounded-xl px-2 py-2 border text-center bg-emerald-50 border-emerald-100 text-emerald-700"><p className="text-xs font-medium opacity-70">พร้อมใช้</p><p className={STAT_NUM}>{ready}<span className="ml-1 text-xs font-medium opacity-70">รายการ</span></p></div>
+        <div className="rounded-xl px-2 py-2 border text-center bg-amber-50 border-amber-100 text-amber-700"><p className="text-xs font-medium opacity-70">ใกล้หมด</p><p className={STAT_NUM}>{low}<span className="ml-1 text-xs font-medium opacity-70">รายการ</span></p></div>
+        <div className={`rounded-xl px-2 py-2 border text-center bg-red-50 border-red-100 text-red-600 ${out > 0 ? "sa-pulse-red" : ""}`}><p className="text-xs font-medium opacity-70">หมดสต๊อก</p><p className={STAT_NUM}>{out}<span className="ml-1 text-xs font-medium opacity-70">รายการ</span></p></div>
       </div>
       {items.length > 0 && (
         <>

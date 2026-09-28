@@ -10,6 +10,7 @@ import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { ClipboardList } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 export default function CoursesPage() {
@@ -200,8 +201,8 @@ export default function CoursesPage() {
                   <Icon className="h-6 w-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-slate-600 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 truncate">{stat.value}{stat.unit && <> <span className="text-xs font-medium text-slate-500">{stat.unit}</span></>}</p>
+                  <p className={STAT_LABEL}>{stat.label}</p>
+                  <p className={`${STAT_VALUE} truncate`}>{stat.value}{stat.unit && <span className={STAT_UNIT}>{stat.unit}</span>}</p>
                 </div>
               </div>
             );

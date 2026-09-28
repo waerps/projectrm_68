@@ -8,6 +8,7 @@ import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects } from "../utils/examShared";
 import { BankTab } from "./TutorExamDetail.jsx";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
 
 // ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
@@ -146,8 +147,8 @@ export default function TutorQuestionBank() {
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-                <p className="text-xl font-bold text-slate-900">{card.value.toLocaleString()} <span className="text-xs font-medium text-slate-500">{card.unit}</span></p>
+                <p className={STAT_LABEL}>{card.label}</p>
+                <p className={STAT_VALUE}>{card.value.toLocaleString()}<span className={STAT_UNIT}>{card.unit}</span></p>
               </div>
             </div>
           );

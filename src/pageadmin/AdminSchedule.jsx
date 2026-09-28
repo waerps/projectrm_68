@@ -9,6 +9,7 @@ import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbulb as LuLightbulb } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API_BASE = `${API_URL}/api/admin`;
@@ -1385,10 +1386,10 @@ function StatCard({ icon, bg, label, value, unit, warn }) {
         {icon}
       </div>
       <div>
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className={`text-xl font-bold ${warn ? 'text-red-600' : 'text-slate-900'}`}>
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={`${STAT_NUM} ${warn ? 'text-red-600' : 'text-slate-900'}`}>
           {value}
-          {unit && <> <span className="text-xs font-medium text-slate-500">{unit}</span></>}
+          {unit && <span className={STAT_UNIT}>{unit}</span>}
         </p>
       </div>
     </div>

@@ -19,6 +19,7 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -457,7 +458,7 @@ const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปา�
 
 
 // หน่วยตัวเล็กต่อท้ายตัวเลขบนการ์ดสรุป (มาตรฐานเดียวกันทั้งระบบ)
-const Unit = ({ children }) => <span className="text-xs font-medium text-slate-500 ml-0.5">{children}</span>;
+const Unit = ({ children }) => <span className={STAT_UNIT}>{children}</span>;
 const pctNum = (v) => (v * 100).toFixed(1); // รูปแบบเดียวกับ fmtPct แต่ไม่มี % เพื่อแยกหน่วยไปแสดงตัวเล็ก
 
 function StatCard({ icon, label, value, unit, sub, color = "bg-orange-500", tooltip }) {
@@ -469,7 +470,7 @@ function StatCard({ icon, label, value, unit, sub, color = "bg-orange-500", tool
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <p className="text-xs text-slate-500 font-medium">{label}</p>
+          <p className={STAT_LABEL}>{label}</p>
           {tooltip && (
             <div className="relative group">
               <span tabIndex={0} role="button" aria-label="คำอธิบาย" className="h-3.5 w-3.5 rounded-full border border-slate-300 flex items-center justify-center text-[10px] text-slate-500 cursor-help shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 after:absolute after:-inset-3 after:content-['']">
@@ -481,8 +482,8 @@ function StatCard({ icon, label, value, unit, sub, color = "bg-orange-500", tool
             </div>
           )}
         </div>
-        <p className="text-xl font-bold text-slate-900 tabular-nums">{value}{unit && <Unit>{unit}</Unit>}</p>
-        {sub && <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate">{sub}</p>}
+        <p className={STAT_VALUE}>{value}{unit && <Unit>{unit}</Unit>}</p>
+        {sub && <p className={`${STAT_SUB} mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate`}>{sub}</p>}
       </div>
     </div>
   );
@@ -797,7 +798,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                     </span>
                     <span className="min-w-0">
                       <span className="block font-bold truncate">{nick || full.split(" ")[0]} <span className="font-normal text-slate-500 text-xs">{nick ? full.split(" ")[0] : ""}</span></span>
-                      <span className="tabular-nums block text-xl font-bold text-emerald-300">{signed(s.scoreChange)}</span>
+                      <span className={`block ${STAT_NUM} text-emerald-300`}>{signed(s.scoreChange)}</span>
                     </span>
                   </button>
                 );
@@ -825,8 +826,8 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                 </div>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
               </div>
-              <p className={`relative tabular-nums text-2xl sm:text-3xl font-bold mt-3 ${on ? "text-white" : "text-slate-900"}`}>
-                {counts[k]}<span className={`text-lg font-bold ml-1 ${on ? "text-white/80" : "text-slate-400"}`}>คน</span>
+              <p className={`relative ${STAT_NUM} mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+                {counts[k]}<span className={`ml-1 text-xs font-medium ${on ? "text-white/80" : "text-slate-500"}`}>คน</span>
               </p>
               <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
             </button>
@@ -1276,12 +1277,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <div className="relative">
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="tabular-nums text-xl font-bold">{Math.round(latest.pct * 100)}%</p>
+                    <p className={STAT_NUM}>{Math.round(latest.pct * 100)}%</p>
                     <p className="text-[11px] text-white/80">{latest.label}</p>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="tabular-nums text-2xl font-bold">{change == null ? "—" : <><CountUp value={change} />%</>}</p>
+                  <p className={STAT_NUM}>{change == null ? "—" : <><CountUp value={change} />%</>}</p>
                   <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `เทียบกับ ${first.label}`}</p>
                   <p className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
                     {latest.pct * 100 >= PASS_PCT ? "ผ่านเกณฑ์" : `ต่ำกว่าเกณฑ์ ${Math.round(PASS_PCT - latest.pct * 100)}%`}
@@ -1480,7 +1481,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     <div className="rounded-2xl bg-slate-50 p-4 text-center">
                       <p className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1.5"><Timer className="h-3.5 w-3.5" /> จังหวะการทำข้อสอบ · {latest.label}</p>
                       <PaceGauge ratio={paceRatio} />
-                      <p className="tabular-nums text-xl font-bold text-slate-900 -mt-1">{Math.round(myPace)} <span className="text-sm font-semibold text-slate-500">วิ/ข้อ</span></p>
+                      <p className={`${STAT_VALUE} -mt-1`}>{Math.round(myPace)}<span className={STAT_UNIT}>วิ/ข้อ</span></p>
                       <p className="text-xs font-semibold text-slate-600">
                         {paceDiff === 0 ? "ใกล้เคียงค่าเฉลี่ยห้อง" : paceDiff > 0 ? `ช้ากว่าห้อง ${paceDiff}%` : `เร็วกว่าห้อง ${Math.abs(paceDiff)}%`} · ห้องเฉลี่ย {Math.round(roomPace)} วิ
                       </p>
@@ -1778,8 +1779,8 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               })}
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <p className="tabular-nums text-2xl font-bold text-emerald-600">{cmp.improvedPct}<Unit>%</Unit></p>
-              <p className="text-xs text-slate-500 font-semibold">ของห้องดีขึ้น</p>
+              <p className={`${STAT_NUM} text-emerald-600`}>{cmp.improvedPct}<Unit>%</Unit></p>
+              <p className={STAT_LABEL}>ของห้องดีขึ้น</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 mt-4 text-center">
@@ -1790,8 +1791,8 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             ].map((item) => { const [n, l, c, b] = item; const CountIcon = item[4]; return (
               <div key={l} className={`${b} rounded-2xl py-2.5`}>
                 <CountIcon className={`h-4 w-4 mx-auto ${c}`} />
-                <p className={`tabular-nums text-xl font-bold ${c}`}>{n}<Unit>คน</Unit></p>
-                <p className="text-[11px] text-slate-500">{l}</p>
+                <p className={`${STAT_NUM} ${c}`}>{n}<Unit>คน</Unit></p>
+                <p className={STAT_LABEL}>{l}</p>
               </div>
             ); })}
           </div>

@@ -21,6 +21,7 @@ import { PAGE_TITLE } from "../components/ui/tokens";
 import UIEmptyState from "../components/ui/EmptyState";
 import { BTN } from "../components/ui/tokens";
 import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 const FINANCE_API = `${API_URL}/api/admin/finance`;
 const ITEMS_PER_PAGE = 10;
@@ -47,7 +48,7 @@ const T = {
     title: 'text-lg font-bold text-slate-900',
     subtitle: 'text-sm text-slate-500',
     label: 'text-xs font-medium text-slate-500',
-    value: 'text-xl font-black text-slate-900 tracking-tight',
+    value: STAT_VALUE,
     caption: 'text-[11px] text-slate-400',
     chartHeight: 260,
 };
@@ -233,8 +234,8 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
             )}
             <div className="relative min-w-0 flex-1">
                 <p className={`${T.label} leading-snug`}>{label}</p>
-                <p className="text-lg font-bold text-slate-900 tracking-tight truncate mt-0.5">{value}</p>
-                {sub && <p className={`${T.caption} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
+                <p className={`${STAT_VALUE} truncate mt-0.5`}>{value}</p>
+                {sub && <p className={`${STAT_SUB} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
             </div>
         </div>
     );
@@ -296,8 +297,8 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                     </RePieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <p className="text-xl font-bold text-slate-900">{centerValue}</p>
-                    <p className="text-[11px] text-slate-500">{centerLabel}</p>
+                    <p className={STAT_VALUE}>{centerValue}</p>
+                    <p className={STAT_SUB}>{centerLabel}</p>
                 </div>
             </div>
             <div className="w-full max-w-xs space-y-1">
@@ -325,10 +326,10 @@ function HeroStat({ label, icon: Icon, value, tone, ready }) {
     const shown = useCountUp(value, { active: ready });
     return (
         <div className="bg-white/70 backdrop-blur rounded-2xl border border-white/70 p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition">
-            <p className="text-[11px] text-slate-500 flex items-center gap-1">
+            <p className={`${STAT_LABEL} flex items-center gap-1`}>
                 {Icon && <Icon className="h-3.5 w-3.5" />}{label}
             </p>
-            <p className={`tabular-nums text-xl sm:text-2xl font-bold mt-1 ${tone || 'text-slate-900'}`}>
+            <p className={`${STAT_NUM} mt-1 ${tone || 'text-slate-900'}`}>
                 ฿{Number(shown).toLocaleString()}
             </p>
         </div>
@@ -371,7 +372,7 @@ function TransactionRow({ txn, onView }) {
     return (
         <tr className={`hover:bg-orange-50/40 ${T.transition}`}>
             <td className="px-4 py-3">
-                <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                <span className="tabular-nums text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
                     #{txn.StudentPaymentId}
                 </span>
             </td>
@@ -705,7 +706,7 @@ export default function AdminFinance() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     <KPICard label="รายรับสะสม" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
                     <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="blue" />
-                    <KPICard label="นักเรียนที่ชำระแล้ว" value={<>{paidEnrollCount} / {totalEnrollCount}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></>} icon={Users} tone="purple" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={<>{paidEnrollCount} / {totalEnrollCount}<span className={STAT_UNIT}>คน</span></>} icon={Users} tone="purple" />
                     <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : <>{onTimePaymentRate}<span className="ml-0.5 text-xs font-medium text-slate-500">%</span></>} icon={CheckCircle} tone="green" />
                 </div>
             </ApiState>
@@ -1083,7 +1084,7 @@ function StudentPaymentRow({ txn, onView }) {
     const isFull = txn.PaymentPlan === 'full';
     return (
         <tr className={`hover:bg-orange-50/40 ${T.transition}`}>
-            <td className="px-4 py-3 font-mono text-xs text-slate-500">#{txn.TransactionId}</td>
+            <td className="px-4 py-3 tabular-nums text-xs text-slate-500">#{txn.TransactionId}</td>
             <td className="px-4 py-3">
                 <p className="font-semibold text-slate-900">{studentDisplayName(txn)}</p>
                 <p className={T.caption}>{txn.PhoneNo || 'ไม่มีเบอร์โทร'}</p>
@@ -1185,15 +1186,15 @@ function TutorPaymentDetailModal({ item, onClose }) {
                     <div className="mb-5 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>ยอดรวม</p>
-                            <p className="mt-1 text-xl sm:text-2xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
+                            <p className={`mt-1 ${STAT_NUM} text-orange-600`}>{formatMoney(item.amount)}</p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>จำนวนคาบ</p>
-                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.sessionCount}<span className="ml-1 text-xs font-medium text-slate-500">คาบ</span></p>
+                            <p className={`mt-1 ${STAT_VALUE}`}>{item.sessionCount}<span className={STAT_UNIT}>คาบ</span></p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>เรทในโปรไฟล์ติวเตอร์</p>
-                            <p className="mt-1 text-xl sm:text-2xl font-bold text-slate-900">{item.profileRate != null ? <>{Number(item.profileRate).toLocaleString('th-TH')}<span className="ml-1 text-xs font-medium text-slate-500">บาท/ชม.</span></> : 'ไม่ได้ระบุ'}</p>
+                            <p className={`mt-1 ${STAT_VALUE}`}>{item.profileRate != null ? <>{Number(item.profileRate).toLocaleString('th-TH')}<span className={STAT_UNIT}>บาท/ชม.</span></> : 'ไม่ได้ระบุ'}</p>
                         </div>
                     </div>
                     <div className="overflow-x-auto rounded-2xl border border-slate-200">
@@ -1282,7 +1283,7 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
             <div className="p-4 sm:p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
                     <p className={T.label}>ยอดที่ต้องโอน</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
+                    <p className="tabular-nums text-2xl sm:text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
                     <p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">

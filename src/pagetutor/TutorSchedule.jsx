@@ -993,7 +993,7 @@ export default function TutorSchedule() {
                   <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 uppercase">มาเรียนแล้ว</span>
-                      <span className="text-2xl font-bold text-green-600">{presentCount}</span>
+                      <span className="tabular-nums text-2xl font-bold text-green-600">{presentCount}</span>
                       <span className="text-sm font-bold text-slate-500">/ {studentsList.length} <span className="text-xs font-medium text-slate-500">คน</span></span>
                     </div>
                     <button onClick={handleSavePhase1} disabled={isSaving}

@@ -22,6 +22,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { Users as LuUsers } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
@@ -75,7 +76,7 @@ function TutorStatTile({ label, value, color, hint, icon: Icon, unit = "คน" 
           {label}
           {hint && <Info className="h-3 w-3 text-slate-300" />}
         </p>
-        <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
+        <p className={STAT_VALUE}>{value.toLocaleString()}{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
       </div>
     </div>
   );
@@ -549,14 +550,6 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
     { key: "all", label: "ทั้งหมด", icon: Users },
   ];
 
-  // สถิติสำหรับแบนเนอร์ (ข้อมูลใบสมัครทั้งหมด ไม่ขึ้นกับคำค้นหา)
-  const pendingTotal = applications.filter(a => String(a.Status) === "1").length;
-  const approvedTotal = applications.filter(a => String(a.Status) === "2").length;
-  const rejectedTotal = applications.filter(a => String(a.Status) === "3").length;
-  const decidedTotal = approvedTotal + rejectedTotal;
-  const approvalRate = decidedTotal > 0 ? Math.round((approvedTotal / decidedTotal) * 100) : null;
-  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-  const newThisMonth = applications.filter(a => a.Created_at && new Date(a.Created_at) >= monthStart).length;
 
   return (
     <div className="space-y-6">
@@ -570,20 +563,6 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
             </span>
             <h2 className="mt-2 text-lg font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h2>
             <p className={PAGE_SUBTITLE}>ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์</p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:min-w-[420px]">
-            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
-              <p className="text-[11px] text-slate-500">รอตรวจสอบ</p>
-              <p className="text-lg font-bold text-amber-600">{pendingTotal.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
-            </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
-              <p className="text-[11px] text-slate-500">สมัครเดือนนี้</p>
-              <p className="text-lg font-bold text-slate-900">{newThisMonth.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
-            </div>
-            <div className="rounded-2xl border border-white/70 bg-white/70 px-3 py-2.5 shadow-sm">
-              <p className="text-[11px] text-slate-500">อัตราการอนุมัติ</p>
-              <p className="text-lg font-bold text-emerald-600">{approvalRate === null ? "—" : approvalRate}{approvalRate !== null && <span className="ml-0.5 text-xs font-medium text-slate-500">%</span>}</p>
-            </div>
           </div>
         </div>
       </div>
@@ -600,35 +579,26 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
               <Users className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-bold text-slate-900">{value.toLocaleString()}<span className="ml-1 text-xs font-medium text-slate-500">คน</span></p>
+              <p className={STAT_LABEL}>{label}</p>
+              <p className={STAT_VALUE}>{value.toLocaleString()}<span className={STAT_UNIT}>คน</span></p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ★ แก้: Search + ปุ่มกรอง — ใช้สีเข้ม (slate-900) แยกให้ชัดจาก badge สถานะสีอ่อนในตาราง */}
+      {/* Search + ตัวกรองสถานะ (แท็บมาตรฐานของระบบ) — ปุ่มกรอง — ใช้สีเข้ม (slate-900) แยกให้ชัดจาก badge สถานะสีอ่อนในตาราง */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="ค้นหาชื่อ, เบอร์โทร, อาชีพ..."
+              placeholder="ค้นหาชื่อ เบอร์โทร หรืออาชีพ"
               className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {FILTERS.map(f => (
-              <button key={f.key} onClick={() => setFilterStatus(f.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition border
-                  ${filterStatus === f.key
-                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                <f.icon className="h-3.5 w-3.5" /> {f.label} ({countOf(f.key)})
-              </button>
-            ))}
-          </div>
+          <SegmentedControl size="sm" value={filterStatus} onChange={setFilterStatus} className="shrink-0"
+            options={FILTERS.map(f => ({ id: f.key, label: f.label, icon: f.icon, count: countOf(f.key) }))} />
         </div>
       </div>
 
@@ -2084,8 +2054,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             <Users className="h-4 w-4 text-slate-400" />
                           </div>
                           <p className="flex-1 min-w-0 sm:flex-none text-xs font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
-                          <p className="text-lg font-bold text-slate-300 mt-1">—</p>
-                          <p className="text-[11px] text-slate-300">คะแนน</p>
+                          <p className={`${STAT_NUM} text-slate-300 mt-1`}>—</p>
+                          <p className="text-xs font-medium text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
@@ -2117,8 +2087,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                             ? group.members[0].Nickname
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-lg font-bold text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-[11px] text-slate-500">คะแนน</p>
+                        <p className={`${STAT_VALUE} mt-1`}>{group.score}</p>
+                        <p className={STAT_LABEL}>คะแนน</p>
                       </div>
                     );
                   })}
@@ -2246,12 +2216,12 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         </div>
         <div className="flex gap-3 shrink-0 w-full sm:w-auto">
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-bold">{data?.students.length ?? tutor.StudentCount ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คน</span></p>
-            <p className="text-[11px] text-orange-100">นักเรียน</p>
+            <p className={STAT_NUM}>{data?.students.length ?? tutor.StudentCount ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คน</span></p>
+            <p className="text-xs font-medium text-orange-100">นักเรียน</p>
           </div>
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-bold">{tutor.TotalSessions ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คาบ</span></p>
-            <p className="text-[11px] text-orange-100">คาบสะสม</p>
+            <p className={STAT_NUM}>{tutor.TotalSessions ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คาบ</span></p>
+            <p className="text-xs font-medium text-orange-100">คาบสะสม</p>
           </div>
         </div>
       </div>

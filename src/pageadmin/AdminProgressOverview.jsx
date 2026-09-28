@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 
@@ -91,10 +92,10 @@ function StatTile({ card, ready }) {
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{card.label}</p>
-        <p className="text-lg sm:text-xl font-bold text-slate-900 break-words">
+        <p className={STAT_LABEL}>{card.label}</p>
+        <p className={`${STAT_VALUE} break-words`}>
           {hasValue ? shown.toLocaleString() : "—"}
-          {hasValue && card.unit && <> <span className="text-xs font-medium text-slate-500">{card.unit}</span></>}
+          {hasValue && card.unit && <span className={STAT_UNIT}>{card.unit}</span>}
         </p>
       </div>
     </div>

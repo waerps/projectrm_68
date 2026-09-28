@@ -24,6 +24,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { GraduationCap as LuGraduationCap } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 
 const API = `${API_URL}/api/admin`;
@@ -52,8 +53,8 @@ function StudentStatTile({ label, value, color, icon: Icon, unit = "คน" }) {
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="relative min-w-0">
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className="text-xl font-bold text-slate-900">{value}{unit && <span className="ml-1 text-xs font-medium text-slate-500">{unit}</span>}</p>
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={STAT_VALUE}>{value}{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
       </div>
     </div>
   );
@@ -879,13 +880,13 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         </div>
         <div className="flex gap-3 shrink-0">
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">เข้าเรียน (รวม)</p>
-            <p className="text-xl font-bold text-white">{attRate}<span className="ml-0.5 text-xs font-medium text-orange-100">%</span></p>
+            <p className="text-xs font-medium text-orange-200">เข้าเรียน (รวม)</p>
+            <p className={`${STAT_NUM} text-white`}>{attRate}<span className="ml-0.5 text-xs font-medium text-orange-100">%</span></p>
             <p className="text-[11px] text-orange-300">{attended}/{totalClasses} คาบ</p>
           </div>
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">วิดีโอ (รวม)</p>
-            <p className="text-xl font-bold text-white">{watchedVideos}<span className="ml-1 text-xs font-medium text-orange-100">คลิป</span></p>
+            <p className="text-xs font-medium text-orange-200">วิดีโอ (รวม)</p>
+            <p className={`${STAT_NUM} text-white`}>{watchedVideos}<span className="ml-1 text-xs font-medium text-orange-100">คลิป</span></p>
             <p className="text-[11px] text-orange-300">จาก {totalVideos} คลิป</p>
           </div>
         </div>
@@ -1140,8 +1141,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 { label: "คลิปดูแล้ว", value: `${cWatched}/${cVideos.length}`, color: "text-orange-600" },
               ].map((st, i) => (
                 <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 font-medium mb-1">{st.label}</p>
-                  <p className={`text-xl font-bold ${st.color}`}>{st.value}</p>
+                  <p className={`${STAT_LABEL} mb-1`}>{st.label}</p>
+                  <p className={`${STAT_NUM} ${st.color}`}>{st.value}</p>
                 </div>
               ))}
             </div>
@@ -1740,9 +1741,9 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
             <p className="text-xs text-slate-500 mt-0.5">{board.formula}</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-2xl font-bold text-slate-900 leading-none">
+            <p className={STAT_VALUE}>
               {board.score(s) ?? '—'}
-              {board.score(s) != null && <span className="text-sm font-semibold text-slate-500"> / 100</span>}
+              {board.score(s) != null && <span className={STAT_UNIT}>/ 100</span>}
             </p>
             {/* อันดับบนกระดานนี้ — ตอบตรง ๆ ว่าเขาขึ้นโพเดียมเรื่องอะไร */}
             {student._rank
@@ -2073,8 +2074,8 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </span>
                           </div>
                           <p className="flex-1 min-w-0 sm:flex-none text-sm font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
-                          <p className="text-2xl font-bold text-slate-300 mt-1">—</p>
-                          <p className="text-xs text-slate-300">คะแนน</p>
+                          <p className={`${STAT_NUM} text-slate-300 mt-1`}>—</p>
+                          <p className="text-xs font-medium text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
@@ -2105,8 +2106,8 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-2xl font-bold text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-xs text-slate-500">คะแนน</p>
+                        <p className={`${STAT_VALUE} mt-1`}>{group.score}</p>
+                        <p className={STAT_LABEL}>คะแนน</p>
                       </div>
                     );
                   })}
@@ -2286,12 +2287,6 @@ export default function AdminStudentsPage() {
   );
   if (loadError && students.length === 0) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 
-  // FIX #10: GPA เฉลี่ย คำนวณจากทุก student ที่โหลดมา (client-side ยังโอเคตราบที่ไม่มี server pagination)
-  const avgGpa = (() => {
-    const g = students.filter(s => s.GPA != null && s.GPA !== "");
-    return g.length ? (g.reduce((a, s) => a + Number(s.GPA), 0) / g.length).toFixed(2) : "—";
-  })();
-
   return (
     <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
@@ -2314,10 +2309,6 @@ export default function AdminStudentsPage() {
             </span>
             <h2 className="mt-2 text-lg font-bold text-slate-900">รายชื่อนักเรียน</h2>
             <p className={PAGE_SUBTITLE}>ข้อมูลส่วนตัว การลงทะเบียน และผลการเรียนของนักเรียน</p>
-          </div>
-          <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-2.5 shadow-sm sm:text-right">
-            <p className="text-[11px] text-slate-500">GPA เฉลี่ย</p>
-            <p className="text-lg font-bold text-slate-900">{avgGpa}{avgGpa !== "—" && <span className="ml-1 text-xs font-medium text-slate-500">จาก 4.00</span>}</p>
           </div>
         </div>
       </div>
