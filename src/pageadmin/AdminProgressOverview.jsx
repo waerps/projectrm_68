@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
 import axios from "axios";
 import {
@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
@@ -221,7 +222,7 @@ export default function AdminProgressOverview() {
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
-      <Breadcrumb cameFrom={cameFrom} />
+      <ProgressBreadcrumb cameFrom={cameFrom} />
 
       {/* Header — แบนเนอร์ไล่สีอ่อนๆ ให้ดูมีชีวิตชีวาแต่ยังอ่านสบาย เหมาะกับหน้ารายงาน */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
@@ -345,15 +346,18 @@ export default function AdminProgressOverview() {
 // ── breadcrumb ตามต้นทางที่กดเข้ามา ─────────────────────────────────────────
 // หน้านี้เข้าได้จาก 3 ที่ ถ้า breadcrumb ชี้กลับที่เดียวเสมอ คนกดจากหน้าติวเตอร์
 // จะถูกโยนไปหน้าอื่นที่ไม่ได้ตั้งใจไป จึงอ่านจาก ?from= ที่ต้นทางติดมาให้
-function Breadcrumb({ cameFrom }) {
+function ProgressBreadcrumb({ cameFrom }) {
   const origin = PROGRESS_ORIGINS[cameFrom];
   // ★ เข้าตรงจาก navbar (ไม่มี ?from=) = หน้าระดับบนสุด ไม่ต้องมี breadcrumb
   if (!origin) return null;
   return (
-    <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
-      <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
-      <ChevronRight className="h-4 w-4" />
-      <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการ</span>
-    </div>
+    <Breadcrumb
+      items={[
+        { label: "หน้าแรก", to: "/admin/dashboard" },
+        // มาจากแดชบอร์ด = ชั้นเดียวกับ "หน้าแรก" อยู่แล้ว ไม่ต้องซ้ำ
+        cameFrom !== "dashboard" && { label: origin.label, to: origin.to },
+        { label: "ภาพรวมพัฒนาการ" },
+      ]}
+    />
   );
 }

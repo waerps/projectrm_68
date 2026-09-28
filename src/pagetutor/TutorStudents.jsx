@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
@@ -12,6 +12,7 @@ import * as XLSX from "xlsx";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText, GraduationCap as LuGraduationCap, School as LuSchool } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
@@ -270,11 +271,14 @@ export default function TutorStudents() {
             <div className="">
                 {/* Header */}
                 <div className="mb-6">
-                    <div className="mb-6 flex flex-wrap items-center text-sm">
-                        <Link to="/tutor/courses" className="font-medium text-slate-500 hover:text-orange-600 transition">คอร์ส</Link>
-                        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-                        <span className="font-medium text-slate-800">ข้อมูลนักเรียน</span>
-                    </div>
+                    <Breadcrumb
+                        className="mb-6"
+                        items={[
+                            { label: "หน้าแรก", to: "/tutor" },
+                            { label: "คอร์สที่สอน", to: "/tutor/courses" },
+                            { label: courseInfo.name ? `ข้อมูลนักเรียน — ${courseInfo.name}` : "ข้อมูลนักเรียน" },
+                        ]}
+                    />
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>

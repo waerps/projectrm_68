@@ -1,14 +1,15 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
-import { Link, useSearchParams, useParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Users, Calendar, Video, FileText, Download, BarChart2, ChevronRight, PlayCircle,
+  Users, Calendar, Video, FileText, Download, BarChart2, PlayCircle,
   CheckCircle, XCircle, Clock,
   WalletCards,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
+import Breadcrumb from "../components/ui/Breadcrumb";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -144,11 +145,13 @@ export default function StudentCourseDetail() {
 
   return (
     <div className="space-y-6 mt-[90px]">
-      <div className="flex items-center text-sm text-neutral-500 gap-2">
-        <Link to="/profile/my-courses" className="hover:text-orange-600 transition font-medium">คอร์สเรียนของฉัน</Link>
-        <ChevronRight className="h-4 w-4" />
-        <span className="text-neutral-800 font-semibold">{courseName}</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "หน้าแรก", to: "/" },
+          { label: "คอร์สเรียนของฉัน", to: "/profile/my-courses" },
+          { label: courseName },
+        ]}
+      />
 
       <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-5">
         <div className="flex flex-col md:flex-row md:items-center gap-4">

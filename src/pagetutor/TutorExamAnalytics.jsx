@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell, ReferenceLine,
@@ -7,7 +7,7 @@ import {
 import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
   CheckCircle, Search, Award, Clock, BookOpen, Info,
-  X, ChevronRight, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
+  X, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
   Target, Timer, MessageCircle, Copy, Pencil, Check, Flame,
   PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
   Map as MapIcon, FileSpreadsheet, FileText,
@@ -17,8 +17,9 @@ import { fmtScore } from "../utils/examScore";
 import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWithAi } from "../utils/examShared";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import ErrorState from "../components/ui/ErrorState";
-import { BTN } from "../components/ui/tokens";
+import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -1174,6 +1175,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
       trend: ai?.trend || null, comment: ai?.comment || null,
     };
   }).sort((a, b) => (a.pct ?? 2) - (b.pct ?? 2));
+  // นักเรียนที่ไม่ยินยอมเก็บข้อมูลพฤติกรรมจะไม่มี topicPcts → แสดงความเห็น AI รายหมวดแบบไม่มีเปอร์เซ็นต์แทน
+  const aiOnlyTopics = topics.length === 0 ? (aiRow?.byCategory || []).filter((c) => c.topic && (c.comment || c.trend)) : [];
+  // ตัวเลขใน AI ที่ไม่ตรงกับคะแนนจริง (ตรวจฝั่ง backend) — แสดงสั้น ๆ ให้ครูตรวจก่อนส่ง
+  const numberWarnings = Array.isArray(aiRow?.numberWarnings) ? aiRow.numberWarnings : [];
+  const warnFieldLabel = (f) => (f === "overview" ? "ภาพรวม" : f === "parentMessage" ? "ข้อความถึงผู้ปกครอง" : f === "behavior" ? "พฤติกรรม" : /^byCategory/.test(f || "") ? "รายหมวด" : f);
+  const warnText = (w) => (typeof w === "string" ? w : [w?.text ? `“${w.text}”` : null, w?.field ? `(${warnFieldLabel(w.field)})` : null].filter(Boolean).join(" ") || "ตัวเลขไม่ตรง");
   const canSelfCompare = first && first !== latest;
   const mode = radarMode === "self" && canSelfCompare ? "self" : "class";
 
@@ -1394,7 +1401,20 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     </div>
                   )}
                 </div>
-                {topics.length === 0 ? (
+                {topics.length === 0 && aiOnlyTopics.length > 0 ? (
+                  <div className="space-y-2">
+                    {aiOnlyTopics.map((c, i) => (
+                      <div key={`${c.topic}-${i}`} className="rounded-2xl bg-slate-50 px-3 py-2.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <p className="text-sm font-bold text-slate-800">{c.topic}</p>
+                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">AI: {c.trend}</span>}
+                        </div>
+                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">AI:</b> {c.comment}</p>}
+                      </div>
+                    ))}
+                    <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะความเห็นจาก AI</p>
+                  </div>
+                ) : topics.length === 0 ? (
                   <p className="text-xs text-slate-500">ยังไม่มีข้อมูลรายหมวด — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
                 ) : (
                   <div className={`grid gap-5 items-center ${topics.length >= 3 ? "lg:grid-cols-[18rem_1fr]" : ""}`}>
@@ -1539,6 +1559,31 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 </div>
                 {aiRow ? (
                   <>
+                    {(aiRow.stale || numberWarnings.length > 0 || aiRow.facts?.pct != null) && (
+                      <div className="px-4 sm:px-6 pt-3 space-y-2">
+                        {aiRow.stale && (
+                          <div className={`${CALLOUT.box} ${CALLOUT.warning}`} role="alert">
+                            <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${CALLOUT_ICON.warning}`} />
+                            <p>ข้อสอบมีการแก้ไขหลังการวิเคราะห์ กรุณากด “วิเคราะห์ใหม่” ก่อนใช้ข้อความนี้</p>
+                          </div>
+                        )}
+                        {numberWarnings.length > 0 && (
+                          <div className={`${CALLOUT.box} ${CALLOUT.warning}`} role="alert">
+                            <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${CALLOUT_ICON.warning}`} />
+                            <div className="min-w-0">
+                              <p className="font-semibold">ตัวเลขในข้อความ AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบก่อนส่ง</p>
+                              <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
+                                {numberWarnings.slice(0, 5).map((w, i) => <li key={i} className="break-words">{warnText(w)}</li>)}
+                                {numberWarnings.length > 5 && <li>และอีก {numberWarnings.length - 5} รายการ</li>}
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                        {aiRow.facts?.pct != null && (
+                          <p className="text-xs font-semibold text-slate-600">คะแนนจริง {aiRow.facts.pct}%{aiRow.facts.classAvgPct != null ? ` · ค่าเฉลี่ยห้อง ${aiRow.facts.classAvgPct}%` : ""}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="m-4 sm:m-6 rounded-2xl bg-[#8cabd9] p-4 sm:p-5 bg-[radial-gradient(rgba(255,255,255,.18)_1px,transparent_1px)] [background-size:12px_12px]">
                       <p className="text-center text-[11px] text-white/90 mb-3"><span className="bg-slate-900/20 rounded-full px-2 py-0.5">ตัวอย่างตอนส่งในแชต</span></p>
                       <div className="flex gap-2 justify-end items-end">
@@ -1969,6 +2014,11 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
   );
 };
 
+// escape ข้อความที่มาจาก AI / ครู / ฐานข้อมูล ก่อนต่อเป็นสตริง HTML ของรายงาน PDF
+// (กันการฝัง tag/สคริปต์ผ่านชื่อ หัวข้อ หรือข้อความ AI ลงในหน้าต่างพิมพ์)
+const ESC_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (ch) => ESC_MAP[ch]);
+
 // เปิดหน้าต่างใหม่พร้อม HTML ที่จัดหน้าไว้แล้ว แล้วเรียก window.print() — ผู้ใช้จะเห็น
 // พรีวิวของเบราว์เซอร์ก่อนเสมอ (เลือก "บันทึกเป็น PDF" ในหน้าต่างพรีวิวนั้นได้เลย)
 // รูปแบบเดียวกับ downloadPDF ใน TutorStudents.jsx / TutorIncome.jsx และ exportResultsPdf ใน TutorExamDetail.jsx
@@ -2000,8 +2050,8 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     const passed = s.submittedAt && rawPct != null ? rawPct >= PASS_PCT : null;
     return `<tr>
       <td>${rankByJoinId.get(s.examJoinId) ?? "—"}</td>
-      <td>${s.name}</td>
-      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td>${esc(s.name)}</td>
+      <td>${esc(s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"))}</td>
       <td style="text-align:right">${s.totalScore ?? "—"} / ${s.maxScore ?? "—"}</td>
       <td style="text-align:right">${pct != null ? `${pct}%` : "—"}</td>
       <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
@@ -2009,11 +2059,11 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
   }).join("");
 
   const distRows = hist.map((b) => `<tr><td>${b.range}</td><td style="text-align:right">${b.count} คน</td></tr>`).join("");
-  const topicRows = topicStats.map((t) => `<tr><td>${t.topic}</td><td style="text-align:right">${fmtPct(t.avgPct)}</td></tr>`).join("");
+  const topicRows = topicStats.map((t) => `<tr><td>${esc(t.topic)}</td><td style="text-align:right">${fmtPct(t.avgPct)}</td></tr>`).join("");
 
   const printWindow = window.open("", "_blank");
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
-  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>วิเคราะห์ข้อสอบ - ${examLabel}</title>
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>วิเคราะห์ข้อสอบ - ${esc(examLabel)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
@@ -2027,7 +2077,7 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
     @media print{body{padding:16px;}}</style></head><body>
-    <div class="header"><div><h1>วิเคราะห์ข้อสอบ: ${examLabel}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="header"><div><h1>วิเคราะห์ข้อสอบ: ${esc(examLabel)}</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <div class="summary-grid">
       <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${fmtPct(avgPct)}</div></div>
       <div class="summary-card"><div class="label">อัตราผ่าน</div><div class="value">${fmtPct(passRate)}</div></div>
@@ -2052,10 +2102,10 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
   if (!cmp || cmp.rounds.length < 2) return;
   const noCohort = !cmp.cohortSize;
   const summaryBlock = noCohort
-    ? `<p style="color:#6b7280;font-size:12px;">ยังไม่มีนักเรียนที่สอบครบทุกรอบ (${cmp.labels.join(", ")})</p>`
+    ? `<p style="color:#6b7280;font-size:12px;">ยังไม่มีนักเรียนที่สอบครบทุกรอบ (${esc(cmp.labels.join(", "))})</p>`
     : `<div class="summary-grid">
-        <div class="summary-card"><div class="label">คะแนนเพิ่มเฉลี่ย (${cmp.fromLabel} → ${cmp.toLabel})</div><div class="value">${cmp.avgGain > 0 ? "+" : ""}${cmp.avgGain}%</div></div>
-        ${cmp.roundAvg.map((r) => `<div class="summary-card"><div class="label">ค่าเฉลี่ยกลุ่มนี้ · ${r.label}</div><div class="value">${r.pct != null ? fmtPct(r.pct) : "—"}</div></div>`).join("")}
+        <div class="summary-card"><div class="label">คะแนนเพิ่มเฉลี่ย (${esc(cmp.fromLabel)} → ${esc(cmp.toLabel)})</div><div class="value">${cmp.avgGain > 0 ? "+" : ""}${cmp.avgGain}%</div></div>
+        ${cmp.roundAvg.map((r) => `<div class="summary-card"><div class="label">ค่าเฉลี่ยกลุ่มนี้ · ${esc(r.label)}</div><div class="value">${r.pct != null ? fmtPct(r.pct) : "—"}</div></div>`).join("")}
       </div>
       <table><thead><tr><th>ผล</th><th style="text-align:right">จำนวนคน</th><th style="text-align:right">สัดส่วน</th></tr></thead><tbody>
         <tr><td>ดีขึ้น</td><td style="text-align:right">${cmp.improved} คน</td><td style="text-align:right">${cmp.improvedPct}%</td></tr>
@@ -2069,7 +2119,7 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
       </tbody></table>`;
 
   const topicRows = !noCohort && cmp.topicRows.length
-    ? cmp.topicRows.map((r) => `<tr><td>${r.topic}</td>${r.values.map((v) => `<td style="text-align:right">${v != null ? `${Math.round(v * 100)}%` : "—"}</td>`).join("")}<td style="text-align:right">${r.delta == null ? "—" : `${r.delta > 0 ? "+" : ""}${r.delta}%`}</td></tr>`).join("")
+    ? cmp.topicRows.map((r) => `<tr><td>${esc(r.topic)}</td>${r.values.map((v) => `<td style="text-align:right">${v != null ? `${Math.round(v * 100)}%` : "—"}</td>`).join("")}<td style="text-align:right">${r.delta == null ? "—" : `${r.delta > 0 ? "+" : ""}${r.delta}%`}</td></tr>`).join("")
     : `<tr><td colspan="${cmp.labels.length + 2}" style="text-align:center;color:#94a3b8">ยังไม่มีข้อมูลรายหัวข้อ</td></tr>`;
 
   const printWindow = window.open("", "_blank");
@@ -2087,11 +2137,11 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
     td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
     @media print{body{padding:16px;}}</style></head><body>
-    <div class="header"><div><h1>เปรียบเทียบพัฒนาการทั้งห้อง (${cmp.labels.join(" → ")})</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="header"><div><h1>เปรียบเทียบพัฒนาการทั้งห้อง (${esc(cmp.labels.join(" → "))})</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <h2>ภาพรวมพัฒนาการ</h2>
     ${summaryBlock}
     <h2>พัฒนาการรายหมวด (เรียงจากขยับน้อยสุด)</h2>
-    <table><thead><tr><th>หมวด</th>${cmp.labels.map((l) => `<th style="text-align:right">${l}</th>`).join("")}<th style="text-align:right">เปลี่ยนไป</th></tr></thead>
+    <table><thead><tr><th>หมวด</th>${cmp.labels.map((l) => `<th style="text-align:right">${esc(l)}</th>`).join("")}<th style="text-align:right">เปลี่ยนไป</th></tr></thead>
     <tbody>${topicRows}</tbody></table>
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
     <script>window.onload = () => window.print();</script></body></html>`);
@@ -2111,11 +2161,11 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
     const trendColor = s.scoreChange == null ? "#94a3b8" : s.scoreChange > 0 ? "#16a34a" : s.scoreChange < 0 ? "#dc2626" : "#64748b";
     const statusColor = s.statusLevel === 2 ? "#dc2626" : s.statusLevel === 1 ? "#d97706" : "#16a34a";
     return `<tr>
-      <td>${s.name}</td>
+      <td>${esc(s.name)}</td>
       <td style="text-align:center">${s.submittedCount}/${s.totalExams} รอบ</td>
-      <td style="text-align:right">${s.latestPct != null ? `${fmtPct(s.latestPct)} (${s.latestLabel})` : "—"}</td>
+      <td style="text-align:right">${s.latestPct != null ? `${fmtPct(s.latestPct)} (${esc(s.latestLabel)})` : "—"}</td>
       <td style="text-align:center;color:${trendColor}">${trend}</td>
-      <td style="color:${statusColor}"><b>${STUDENT_STATUS[s.status].short}</b><br><span style="color:#6b7280;font-size:10px">${s.statusReasons.join(" · ")}</span></td>
+      <td style="color:${statusColor}"><b>${STUDENT_STATUS[s.status].short}</b><br><span style="color:#6b7280;font-size:10px">${esc(s.statusReasons.join(" · "))}</span></td>
     </tr>`;
   }).join("");
 
@@ -2130,7 +2180,7 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
     td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;vertical-align:top;} tr:nth-child(even) td{background:#fff7ed;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
     @media print{body{padding:16px;}}</style></head><body>
-    <div class="header"><div><h1>พัฒนาการรายคน (Pre → Mid → Post)</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="header"><div><h1>พัฒนาการรายคน (Pre → Mid → Post)</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <table><thead><tr><th>ชื่อ</th><th style="text-align:center">สอบแล้ว</th><th style="text-align:right">คะแนนล่าสุด</th><th style="text-align:center">แนวโน้ม</th><th>สถานะ</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p style="color:#9ca3af;font-size:11px;">แนวโน้ม = คะแนนรวมรอบแรกที่สอบ → รอบล่าสุดที่สอบ (%)</p>
@@ -2195,7 +2245,7 @@ function buildTopicBarsHtml(topicPcts, prevTopicPcts) {
     const prev = prevTopicPcts ? prevTopicPcts[t] : null;
     return `<div style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
-        <span style="color:#475569;font-weight:600;">${t}</span>
+        <span style="color:#475569;font-weight:600;">${esc(t)}</span>
         <span>${Math.round(pct * 100)}% ${topicTrendArrowHtml(pct, prev)}</span>
       </div>
       <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
@@ -2210,10 +2260,10 @@ function buildHighlightCardsHtml(topicPcts) {
   const strengths = entries.filter(([, p]) => p >= 0.7).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const weak = entries.filter(([, p]) => p < 0.5).sort((a, b) => a[1] - b[1]).slice(0, 3);
   const strengthHtml = strengths.length
-    ? strengths.map(([t]) => `<li>${t}</li>`).join("")
+    ? strengths.map(([t]) => `<li>${esc(t)}</li>`).join("")
     : `<li style="color:#94a3b8;list-style:none;">ยังไม่มีหมวดที่โดดเด่นเป็นพิเศษ</li>`;
   const weakHtml = weak.length
-    ? weak.map(([t]) => `<li>${t}</li>`).join("")
+    ? weak.map(([t]) => `<li>${esc(t)}</li>`).join("")
     : `<li style="color:#94a3b8;list-style:none;">ไม่มีเรื่องที่น่าเป็นห่วงเป็นพิเศษ 🎉</li>`;
   return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px;">
@@ -2233,27 +2283,27 @@ function buildAiTextSectionHtml(row) {
     ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">รายหมวด</h3>
       <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
         <tbody>${row.byCategory.map((c) => `<tr>
-          <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#374151;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${c.topic}${c.trend ? ` (${c.trend})` : ""}</td>
-          <td style="padding:4px 8px;font-size:11px;color:#4b5563;border-bottom:1px solid #f1f5f9;">${c.comment || ""}</td>
+          <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#374151;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(c.topic)}${c.trend ? ` (${esc(c.trend)})` : ""}</td>
+          <td style="padding:4px 8px;font-size:11px;color:#4b5563;border-bottom:1px solid #f1f5f9;">${esc(c.comment)}</td>
         </tr>`).join("")}</tbody>
       </table>`
     : "";
   const misconceptionsHtml = (row.misconceptions || []).length
     ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">เรื่องที่น่าจะเข้าใจผิด</h3>
-      <ul style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.misconceptions.map((m) => `<li style="margin-bottom:3px;"><b>${m.topic}</b> — ${m.pattern}${m.evidence ? ` <span style="color:#9ca3af;">(หลักฐาน: ${m.evidence})</span>` : ""}</li>`).join("")}</ul>`
+      <ul style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.misconceptions.map((m) => `<li style="margin-bottom:3px;"><b>${esc(m.topic)}</b> — ${esc(m.pattern)}${m.evidence ? ` <span style="color:#9ca3af;">(หลักฐาน: ${esc(m.evidence)})</span>` : ""}</li>`).join("")}</ul>`
     : "";
   const focusNextHtml = (row.focusNext || []).length
     ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">คำแนะนำ — ควรทำต่อ เรียงตามลำดับ</h3>
-      <ol style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.focusNext.map((f) => `<li style="margin-bottom:3px;">${typeof f === "string" ? f : f.action}${typeof f !== "string" && f.why ? ` <span style="color:#9ca3af;">— ${f.why}</span>` : ""}</li>`).join("")}</ol>`
+      <ol style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.focusNext.map((f) => `<li style="margin-bottom:3px;">${esc(typeof f === "string" ? f : f.action)}${typeof f !== "string" && f.why ? ` <span style="color:#9ca3af;">— ${esc(f.why)}</span>` : ""}</li>`).join("")}</ol>`
     : "";
   const parentMessageHtml = row.parentMessage
     ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">ข้อความถึงผู้ปกครอง</h3>
-      <p style="font-size:11px;color:#374151;white-space:pre-line;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;">${row.parentMessage}</p>`
+      <p style="font-size:11px;color:#374151;white-space:pre-line;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;">${esc(row.parentMessage)}</p>`
     : "";
   return `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:0 0 6px;">ภาพรวม</h3>
-    <p style="font-size:11px;color:#374151;line-height:1.6;">${row.overview || "—"}</p>
+    <p style="font-size:11px;color:#374151;line-height:1.6;">${esc(row.overview || "—")}</p>
     ${byCategoryHtml}${misconceptionsHtml}${focusNextHtml}${parentMessageHtml}
-    ${row.model ? `<p style="font-size:10px;color:#9ca3af;margin-top:10px;">วิเคราะห์โดย ${row.model}</p>` : ""}`;
+    ${row.model ? `<p style="font-size:10px;color:#9ca3af;margin-top:10px;">วิเคราะห์โดย ${esc(row.model)}</p>` : ""}`;
 }
 
 // สร้าง HTML "1 หน้า" ของนักเรียน 1 คน — ใช้ประกอบเป็นรายงานเดี่ยวหรือรวมทั้งห้องก็ได้
@@ -2263,8 +2313,8 @@ function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, 
   return `<div class="report-page">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #f97316;padding-bottom:14px;margin-bottom:18px;">
       <div>
-        <h1 style="font-size:20px;font-weight:700;color:#f97316;">รายงานผลสอบ — ${name}</h1>
-        <p style="font-size:11px;color:#6b7280;margin-top:4px;">${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} · รอบสอบ ${examLabel} &nbsp;|&nbsp; วันที่ออกรายงาน: ${today}</p>
+        <h1 style="font-size:20px;font-weight:700;color:#f97316;">รายงานผลสอบ — ${esc(name)}</h1>
+        <p style="font-size:11px;color:#6b7280;margin-top:4px;">${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} · รอบสอบ ${esc(examLabel)} &nbsp;|&nbsp; วันที่ออกรายงาน: ${today}</p>
       </div>
     </div>
 
@@ -2285,7 +2335,7 @@ function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, 
 
     ${aiRow?.parentMessage ? `<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
       <p style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:4px;">📩 สรุปถึงผู้ปกครอง</p>
-      <p style="font-size:12px;color:#78350f;line-height:1.7;white-space:pre-line;">${aiRow.parentMessage}</p>
+      <p style="font-size:12px;color:#78350f;line-height:1.7;white-space:pre-line;">${esc(aiRow.parentMessage)}</p>
     </div>` : ""}
 
     <div style="border-top:1px dashed #d1d5db;margin:20px 0;"></div>
@@ -2296,7 +2346,7 @@ function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, 
 
 function openPrintReport(title, bodyHtml) {
   const printWindow = window.open("", "_blank");
-  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;color:#1f2937;}
     .report-page{padding-bottom:8px;} .report-page:not(:last-child){page-break-after:always;}
@@ -2553,7 +2603,10 @@ export function ExamAnalyticsView({
         next[examId] = Array.isArray(list) ? list : [];
         return next;
       });
-      if (res?.failed > 0) setReanalyzeError(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
+      const notes = [];
+      if (res?.failed > 0) notes.push(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
+      if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในข้อความ AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
+      if (notes.length) setReanalyzeError(notes.join(" · "));
     } catch (err) {
       console.error("Analyze failed:", err);
       setReanalyzeError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
@@ -2730,60 +2783,52 @@ export default function TutorExamAnalytics() {
       initialExamId={initialExamId}
       initialTab={initialTab}
       initialStudentId={initialStudentId}
-      breadcrumb={({ examId, examLabel, realExamId }) => (
+      breadcrumb={({ examId, examLabel, realExamId }) => {
         // ไม่มีปุ่ม "ย้อนกลับ" แล้ว เพราะซ้ำซ้อนกับ breadcrumb เส้นนี้
+        // เข้ามาจากหน้า "ภาพรวมพัฒนาการ" (/tutor/progress) = เส้นทางของตัวเอง แยกจากกิ่งปกติ
+        if (fromProgress) {
+          return (
+            <Breadcrumb
+              items={[
+                { label: "หน้าแรก", to: "/tutor" },
+                { label: "ภาพรวมพัฒนาการ", to: "/tutor/progress" },
+                { label: subjectName || "วิชา", title: [courseName, subjectName].filter(Boolean).join(" • ") },
+              ]}
+            />
+          );
+        }
         // ถ้าเข้ามาจากหน้ารอบสอบ (from=exam-detail) จะแทรกชั้นรอบสอบให้ด้วย และชั้นนั้น
         // จะเปลี่ยนตามรอบที่กำลังดูอยู่บนหน้านี้ (กดสลับ Pre/Mid/Post แล้ว breadcrumb ตามไปด้วย)
-        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
-          {fromProgress ? (
-            // เข้ามาจากหน้า "ภาพรวมพัฒนาการ" (/tutor/progress) — เป็นเส้นทางของตัวเอง
-            // แยกจากกิ่งปกติเด็ดขาด ไม่ใช้ท้ายเส้นร่วมกัน กันไม่ให้ ChevronRight ซ้อนกันเป็นช่องว่าง
-            <>
-              <Link to="/tutor" className="hover:text-orange-600 transition font-medium">หน้าแรก</Link>
-              <ChevronRight className="h-4 w-4" />
-              <Link to="/tutor/progress" className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
-              <ChevronRight className="h-4 w-4" />
-              <span className="font-semibold text-slate-700">{subjectName || "วิชา"}</span>
-            </>
-          ) : (
-            <>
-              <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
-              <ChevronRight className="h-4 w-4" />
-              <Link
-                to={`/tutor/exam?${new URLSearchParams({ courseId, subjectId, courseName, subjectName }).toString()}`}
-                className="hover:text-orange-600 transition font-medium"
-              >
-                {subjectName || "จัดการการสอบ"}
-              </Link>
-              {fromExamDetail && (
-                <>
-                  <ChevronRight className="h-4 w-4" />
-                  {realExamId(examId) ? (
-                    <Link
-                      to={`/tutor/exam-detail?${new URLSearchParams({
-                        courseId: courseId || "",
-                        subjectId: subjectId || "",
-                        courseName,
-                        subjectName,
-                        examId: String(realExamId(examId)),
-                      }).toString()}`}
-                      className="hover:text-orange-600 transition font-medium"
-                    >
-                      {examLabel}
-                    </Link>
-                  ) : (
-                    // ยังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) — โชว์ชื่อไว้ก่อนแบบกดไม่ได้
-                    // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
-                    <span className="font-medium">{examLabel}</span>
-                  )}
-                </>
-              )}
-              <ChevronRight className="h-4 w-4" />
-              <span className="font-semibold text-slate-700">ภาพรวมพัฒนาการนักเรียน</span>
-            </>
-          )}
-        </div>
-      )}
+        // ถ้ายังโหลดรายชื่อ exam ไม่เสร็จ (หรือรอบนี้ไม่มีข้อสอบจริง) ชั้นรอบสอบจะเป็นข้อความกดไม่ได้
+        // กันไม่ให้ breadcrumb กระพริบสลับความยาวไปมาตอนโหลด
+        const realId = fromExamDetail ? realExamId(examId) : null;
+        return (
+          <Breadcrumb
+            items={[
+              { label: "หน้าแรก", to: "/tutor" },
+              { label: "คอร์สที่สอน", to: "/tutor/courses" },
+              {
+                label: subjectName || "จัดการการสอบ",
+                to: `/tutor/exam?${new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName }).toString()}`,
+                title: [courseName, subjectName].filter(Boolean).join(" • "),
+              },
+              fromExamDetail && {
+                label: examLabel,
+                to: realId
+                  ? `/tutor/exam-detail?${new URLSearchParams({
+                      courseId: courseId || "",
+                      subjectId: subjectId || "",
+                      courseName,
+                      subjectName,
+                      examId: String(realId),
+                    }).toString()}`
+                  : undefined,
+              },
+              { label: "ภาพรวมพัฒนาการนักเรียน" },
+            ]}
+          />
+        );
+      }}
     />
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X,
+  Video, FileText, Download, Loader2, PlayCircle, X,
   ClipboardList, BookOpen,
 } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
 import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
 import { useToast } from "../components/useToast";
 import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { ToastContainer } from "../components/Toast";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -253,7 +254,11 @@ export default function StudentSubjectDetail() {
   const [subjectName, setSubjectName] = useState("");
   const [videos, setVideos] = useState([]);
   const [files, setFiles] = useState([]);
-  const [activeTab, setActiveTab] = useState("videos");
+  const location = useLocation();
+  // กลับมาจาก breadcrumb ของหน้าสอบ → เปิดแท็บ "ข้อสอบ" ค้างไว้เหมือนตอนกดออกไป
+  const [activeTab, setActiveTab] = useState(() =>
+    ["videos", "files", "exam"].includes(location.state?.tab) ? location.state.tab : "videos"
+  );
   const [selectedVideo, setSelectedVideo] = useState(null);
 
   const [examLoading, setExamLoading] = useState(false);
@@ -331,7 +336,8 @@ export default function StudentSubjectDetail() {
     setExamLoading(true);
     try {
       const data = await fetchExamEntry(courseId, userId, subjectId);
-      if (data.token) navigate(`/exam/${data.token}`);
+      // ส่งชื่อคอร์ส/วิชาไปด้วย ให้ breadcrumb หน้าสอบพากลับมาที่วิชานี้ได้
+      if (data.token) navigate(`/exam/${data.token}`, { state: { from: { courseId, courseName, subjectId, subjectName } } });
     } catch (err) {
       showToast("error", "เข้าสอบไม่ได้", err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
     } finally {
@@ -364,13 +370,15 @@ export default function StudentSubjectDetail() {
   return (
     <div className="min-h-screen mt-[70px] pb-12 mx-auto w-full max-w-[1400px] px-5 md:px-8">
       <div className="py-6">
-        <div className="mb-3 flex items-center text-sm text-neutral-500 flex-wrap">
-          <Link to="/profile/my-courses" className="hover:text-orange-600 transition">คอร์สเรียนของฉัน</Link>
-          <ChevronRight className="mx-1.5 h-4 w-4" />
-          <Link to={`/profile/course/${courseId}/subjects`} className="hover:text-orange-600 transition">{courseName}</Link>
-          <ChevronRight className="mx-1.5 h-4 w-4" />
-          <span className="text-neutral-800 font-medium">{subjectName || "รายวิชา"}</span>
-        </div>
+        <Breadcrumb
+          className="mb-3"
+          items={[
+            { label: "หน้าแรก", to: "/" },
+            { label: "คอร์สเรียนของฉัน", to: "/profile/my-courses" },
+            { label: courseName, to: `/profile/course/${courseId}/subjects` },
+            { label: subjectName || "รายวิชา" },
+          ]}
+        />
         <h1 className="text-3xl font-bold text-neutral-900 flex items-center gap-3">
           <BookOpen className="h-8 w-8 text-orange-500" /> {subjectName || "รายวิชา"}
         </h1>

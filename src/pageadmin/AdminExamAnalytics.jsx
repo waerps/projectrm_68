@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
 import { ExamAnalyticsView } from "../pagetutor/TutorExamAnalytics.jsx";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
 import { adminExamAnalyticsApi } from "../utils/examShared";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { SearchX as LuSearchX } from "lucide-react";
 
 // ─── ภาพรวมพัฒนาการรายวิชา (มุมแอดมิน) ───────────────────────────────────────
@@ -64,19 +64,15 @@ export default function AdminExamAnalytics() {
       subjectName={subjectName}
       api={api}
       breadcrumb={() => (
-        <div className="flex items-center flex-wrap gap-x-1.5 gap-y-1 text-sm text-slate-500">
-          {origin && (
-            <>
-              <Link to={origin.to} className="hover:text-orange-600 transition font-medium">{origin.label}</Link>
-              <ChevronRight className="h-4 w-4" />
-            </>
-          )}
-          <Link to={backToOverview} className="hover:text-orange-600 transition font-medium">ภาพรวมพัฒนาการ</Link>
-          <ChevronRight className="h-4 w-4" />
-          <span className="font-semibold text-slate-700 break-words min-w-0">
-            {courseName || "คอร์ส"}{subjectName ? ` · ${subjectName}` : ""}
-          </span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "หน้าแรก", to: "/admin/dashboard" },
+            // มาจากแดชบอร์ด = ชั้นเดียวกับ "หน้าแรก" อยู่แล้ว ไม่ต้องซ้ำ
+            origin && cameFrom !== "dashboard" && { label: origin.label, to: origin.to },
+            { label: "ภาพรวมพัฒนาการ", to: backToOverview },
+            { label: `${courseName || "คอร์ส"}${subjectName ? ` · ${subjectName}` : ""}` },
+          ]}
+        />
       )}
     />
   );

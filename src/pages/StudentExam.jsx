@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { fmtScore } from "../utils/examScore";
@@ -11,6 +11,7 @@ import {
   markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { Sprout as LuSprout } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 
@@ -440,12 +441,37 @@ function ResultCard({ result }) {
   );
 }
 
+// ─── Breadcrumb ของหน้าสอบ ──────────────────────────────────────────────────
+// backend ไม่ได้ส่งคอร์ส/วิชามากับลิงก์สอบ จึงอ่านจาก route state ที่หน้าต้นทาง
+// (คอร์สเรียนของฉัน / หน้ารายวิชา) แนบมา ถ้าเปิดลิงก์ตรง ๆ จะเหลือแค่ชั้นที่รู้แน่
+function ExamBreadcrumb({ from, examName }) {
+  const items = [
+    { label: "หน้าแรก", to: "/" },
+    { label: "คอร์สเรียนของฉัน", to: "/profile/my-courses" },
+  ];
+  if (from?.courseId && from?.courseName) {
+    items.push({ label: from.courseName, to: `/profile/course/${from.courseId}/subjects` });
+  }
+  if (from?.courseId && from?.subjectId) {
+    items.push({
+      label: from.subjectName || "รายวิชา",
+      to: `/profile/course/${from.courseId}/subject/${from.subjectId}`,
+      state: { tab: "exam" }, // กลับไปแล้วเปิดแท็บ "ข้อสอบ" ของวิชานั้น
+    });
+  }
+  items.push({ label: examName || "ข้อสอบ" });
+  return <Breadcrumb className="mb-4" items={items} />;
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 export default function StudentExam() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const cameFrom = location.state?.from || null;
   const userId = getCurrentUserId();
+  const [examName, setExamName] = useState("");
 
   const [phase, setPhase] = useState("loading"); // loading | landing | running | result | error
   const [landing, setLanding] = useState(null);
@@ -463,6 +489,7 @@ export default function StudentExam() {
     fetchExamByToken(token, userId)
       .then((data) => {
         if (cancelled) return;
+        setExamName(data.exam?.name || "");
         if (data.status === "submitted") {
           clearExamActive(); // เผื่อธงค้างจากรอบก่อน (เช่น backend บังคับส่งตอนหมดเวลา)
           setResult(data.result);
@@ -514,6 +541,7 @@ export default function StudentExam() {
   if (phase === "error") {
     return (
       <PageShell maxWidth="max-w-md">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
           <p className="text-sm text-slate-600">{errorMsg}</p>
@@ -524,6 +552,7 @@ export default function StudentExam() {
   if (phase === "landing") {
     return (
       <PageShell maxWidth="max-w-2xl">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
         <LandingCard
           status={landing.status}
           exam={landing.exam}
@@ -533,6 +562,9 @@ export default function StudentExam() {
       </PageShell>
     );
   }
+  // ระหว่างทำข้อสอบ (running) ตั้งใจไม่แสดง breadcrumb — ไม่อยากให้มีลิงก์ชวนกดออก
+  // กลางคัน (นาฬิกายังเดินต่อฝั่ง server แม้ออกไป) และให้หน้าจอโฟกัสที่ข้อสอบอย่างเดียว
+  // จะกลับมาแสดงอีกครั้งหลังส่งข้อสอบแล้ว
   if (phase === "running") {
     return (
       <PageShell maxWidth="max-w-4xl" align="start">
@@ -551,6 +583,7 @@ export default function StudentExam() {
   if (phase === "result") {
     return (
       <PageShell maxWidth="max-w-4xl" align="start">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
         <ResultCard result={result} />
       </PageShell>
     );

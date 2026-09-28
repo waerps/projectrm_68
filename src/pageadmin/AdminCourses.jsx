@@ -19,7 +19,7 @@ import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
 import UIErrorState from "../components/ui/ErrorState";
-import { BTN } from "../components/ui/tokens";
+import { BTN, INPUT, BADGE_BASE, BADGE_TONE, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
@@ -69,13 +69,6 @@ const STATUS_MAP = {
   4: { label: "ปิดคอร์ส", color: "bg-slate-100 text-slate-500 border-slate-200" },
 };
 
-const TERM_FILTERS = [
-  { key: "all", label: "ทุกเทอม", termId: null },
-  { key: "term1", label: "เปิดเทอม 1", termId: 1 },
-  { key: "term2", label: "เปิดเทอม 2", termId: 3 },
-  { key: "smallbreak", label: "ปิดเทอม 1", termId: 2 },
-  { key: "bigbreak", label: "ปิดเทอม 2", termId: 4 },
-];
 
 const formatDate = (d) => {
   if (!d) return "ไม่ระบุ";
@@ -1787,6 +1780,56 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
   );
 }
 
+// ─── ฟอร์มสร้าง/แก้ไขคอร์สรวม — แบบทีละขั้น (Stepper) ─────────────────────────
+// ขั้นตอน: ข้อมูลคอร์ส → วิชาและติวเตอร์ → ราคาและที่นั่ง → นักเรียน → สื่อประกอบ → ตรวจสอบและบันทึก
+// ทุกขั้นยัง mount อยู่ตลอด (ซ่อนด้วย hidden) เพื่อให้คอมโพเนนต์ลูก เช่น CourseSubjects
+// ส่งต้นทุน/ชั่วโมงกลับมาคำนวณได้แม้ผู้ใช้ยังไม่ได้เปิดขั้นนั้น
+const COURSE_FORM_STEPS = [
+  { key: "basic", label: "ข้อมูลคอร์ส", icon: BookOpen, desc: "ชื่อคอร์ส ช่วงเวลาเรียน ปีการศึกษา และการตั้งค่าพื้นฐาน" },
+  { key: "subjects", label: "วิชาและติวเตอร์", icon: Tag, desc: "กำหนดวิชา ติวเตอร์ และจำนวนชั่วโมงเรียน" },
+  { key: "pricing", label: "ราคาและที่นั่ง", icon: DollarSign, desc: "ราคาขาย ส่วนลด จำนวนที่นั่ง และการผ่อนชำระ" },
+  { key: "students", label: "นักเรียน", icon: Users, desc: "เพิ่มนักเรียนเข้าคอร์สล่วงหน้า" },
+  { key: "media", label: "สื่อประกอบ", icon: ImagePlus, desc: "รูปปก รูปประกาศ และคลิปตัวอย่าง" },
+  { key: "review", label: "ตรวจสอบและบันทึก", icon: BadgeCheck, desc: "ตรวจสอบข้อมูลทั้งหมดก่อนบันทึก" },
+];
+// ช่องที่มีข้อผิดพลาดแต่ละช่องอยู่ในขั้นไหน (ใช้พาผู้ใช้กลับไปแก้)
+const COURSE_ERROR_STEP = { CourseName: 0, StartDate: 0, LastDate: 0, YearId: 0, hours: 1, Price: 2, Discount: 2, installments: 2 };
+const COURSE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function FormField({ label, required, optional, hint, error, children, className = "" }) {
+  return (
+    <div className={className}>
+      <label className="flex items-center gap-1 text-sm font-medium text-slate-700 mb-1.5">
+        {label}
+        {required && <span className="text-red-500" aria-hidden="true">*</span>}
+        {optional && <span className="text-xs font-normal text-slate-400">(ไม่บังคับ)</span>}
+      </label>
+      {children}
+      {error ? (
+        <p className="mt-1.5 flex items-start gap-1 text-xs text-red-600">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" /> {error}
+        </p>
+      ) : hint ? (
+        <p className="mt-1.5 text-xs text-slate-500 leading-relaxed">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function FormSection({ title, subtitle, children }) {
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-4">
+      {(title || subtitle) && (
+        <header>
+          {title && <h4 className="text-sm font-bold text-slate-800">{title}</h4>}
+          {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
 function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOptions, termOptions, yearOptions = [], availabilityOptions = [], gradeLevelOptions = [], showToast }) {
   const [form, setForm] = useState({
     CourseName: "",
@@ -1816,8 +1859,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const [existingSubjectsHours, setExistingSubjectsHours] = useState(0);
   const [existingStudentCount, setExistingStudentCount] = useState(0);
   const [existingTutorCount, setExistingTutorCount] = useState(0);
-  // ★ เพิ่ม (Step 1 — UI): แท็บของฟอร์ม แยกข้อมูลเป็นหมวดแทนการรวมทุกอย่างไว้ในฟอร์มยาวเดียว
-  const [activeTab, setActiveTab] = useState("basic");
+
+  const isEdit = !!initial.CourseID;
+  const lastStep = COURSE_FORM_STEPS.length - 1;
+  const [step, setStep] = useState(0);
+  // ขั้นไกลสุดที่ไปถึงแล้ว — โหมดแก้ไขเปิดได้ทุกขั้นทันที
+  const [maxReached, setMaxReached] = useState(isEdit ? lastStep : 0);
+  // ขั้นที่ผู้ใช้กด "ถัดไป"/"บันทึก" แล้ว — จึงเริ่มแสดงข้อความเตือนใต้ช่อง
+  const [touchedSteps, setTouchedSteps] = useState(() => new Set());
+  const [showHelper, setShowHelper] = useState(false);
+  const rootRef = useRef(null);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
@@ -1835,10 +1886,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
-  const totalTutorCost = initial.CourseID ? existingSubjectsCost : pendingTotalCost;
-  const currentStudentCount = initial.CourseID ? existingStudentCount : pendingStudents.length;
-  const tutorCount = initial.CourseID ? existingTutorCount : pendingSubjects.length;
-  const addedSubjectHours = initial.CourseID
+  const totalTutorCost = isEdit ? existingSubjectsCost : pendingTotalCost;
+  const currentStudentCount = isEdit ? existingStudentCount : pendingStudents.length;
+  const tutorCount = isEdit ? existingTutorCount : pendingSubjects.length;
+  const addedSubjectHours = isEdit
     ? existingSubjectsHours
     : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
   const targetCourseHours = Number(form.TotalCourseHours || 0);
@@ -1854,15 +1905,53 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
   const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
 
-  // ★ เพิ่ม (Step 1 — UI): นิยามแท็บของฟอร์ม พร้อม badge/สัญลักษณ์เตือนต่อแท็บ
-  // เพื่อให้ผู้ใช้เห็นได้ทันทีว่าแท็บไหนมีข้อมูลค้าง/ผิดพลาดอยู่ โดยไม่ต้องไล่เลื่อนหาเอง
-  const TABS = [
-    { key: "basic", label: "ข้อมูลพื้นฐาน", icon: BookOpen },
-    { key: "pricing", label: "ราคา & ผ่อนชำระ", icon: DollarSign, warn: installmentMismatch },
-    { key: "subjects", label: "วิชา & ต้นทุน", icon: Tag, badge: tutorCount || null, warn: hoursMismatch },
-    { key: "students", label: "นักเรียนในคอร์ส", icon: Users, badge: currentStudentCount || null },
-    { key: "videos", label: "คลิปตัวอย่าง", icon: Video },
-  ];
+  // ── ช่องที่ยังไม่ครบ/ไม่ถูกต้อง (กติกาเดียวกับตอนบันทึกและฝั่ง backend) ──
+  const errors = {};
+  if (!String(form.CourseName || "").trim()) errors.CourseName = "กรุณากรอกชื่อคอร์ส";
+  if (!form.StartDate) errors.StartDate = "กรุณาเลือกวันเริ่มสอน";
+  if (!form.LastDate) errors.LastDate = "กรุณาเลือกวันสิ้นสุด";
+  if (form.StartDate && form.LastDate) {
+    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+      errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง กรุณาลบแล้วเลือกวันที่ใหม่จากปฏิทิน";
+    } else if (new Date(form.StartDate) >= new Date(form.LastDate)) {
+      errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
+    }
+  }
+  if (!form.YearId) errors.YearId = "กรุณาเลือกปีการศึกษา";
+  if (hoursMismatch) {
+    errors.hours = `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินชั่วโมงรวมของคอร์ส"} (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`;
+  }
+  if (!form.Price || Number(form.Price) <= 0) errors.Price = "กรุณากรอกราคาเต็มให้มากกว่า 0";
+  if (form.Discount !== "" && Number(form.Discount || 0) > Number(form.Price || 0) && Number(form.Price) > 0) {
+    errors.Discount = "ส่วนลดต้องไม่มากกว่าราคาเต็ม";
+  }
+  if (installmentMismatch) {
+    errors.installments = `ยอดผ่อนรวม ฿${formatPrice(installmentSum)} ต้องเท่ากับราคาสุทธิ ฿${formatPrice(fullCost)}`;
+  }
+  const errorKeys = Object.keys(errors);
+  const stepErrorKeys = (i) => errorKeys.filter((k) => COURSE_ERROR_STEP[k] === i);
+  const stepHasError = (i) => stepErrorKeys(i).length > 0;
+  const firstErrorStep = errorKeys.length ? Math.min(...errorKeys.map((k) => COURSE_ERROR_STEP[k])) : -1;
+  // แสดงข้อความเตือนใต้ช่องเมื่อผู้ใช้เคยพยายามผ่านขั้นนั้นแล้ว หรืออยู่ในโหมดแก้ไข
+  const errOf = (k) => (isEdit || touchedSteps.has(COURSE_ERROR_STEP[k]) ? errors[k] : undefined);
+
+  const markTouched = (idxs) => setTouchedSteps((s) => new Set([...s, ...idxs]));
+
+  const goTo = (i) => {
+    const target = Math.max(0, Math.min(lastStep, i));
+    setStep(target);
+    setMaxReached((m) => Math.max(m, target));
+    const scroller = rootRef.current?.closest(".overflow-y-auto");
+    if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleNext = () => {
+    markTouched([step]);
+    if (stepHasError(step)) {
+      return showToast("error", "ยังไปขั้นถัดไปไม่ได้", errors[stepErrorKeys(step)[0]]);
+    }
+    goTo(step + 1);
+  };
 
   const handleMoneyChange = (key) => (e) => {
     const cleaned = sanitizeMoneyInput(e.target.value);
@@ -1870,10 +1959,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   };
 
   const handleSubmit = () => {
+    // แสดงข้อความเตือนทุกขั้น และพาไปยังขั้นแรกที่ยังไม่ครบ
+    markTouched(COURSE_FORM_STEPS.map((_, i) => i));
+    if (firstErrorStep >= 0) goTo(firstErrorStep);
+
     if (!form.CourseName.trim()) return toast("กรุณากรอกชื่อคอร์ส");
     if (!form.StartDate || !form.LastDate) return toast("กรุณากรอกวันเริ่มและวันสิ้นสุด");
-    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-    if (!DATE_RE.test(String(form.StartDate).slice(0, 10)) || !DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
       return showToast(
         "error",
         "รูปแบบวันที่ไม่ถูกต้อง",
@@ -1883,9 +1975,9 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (!form.Price || Number(form.Price) <= 0) return toast("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
     if (!form.YearId) return toast("กรุณากรอกปีการศึกษา");
+    if (errors.Discount) return toast(errors.Discount);
 
     if (hoursMismatch) {
-      setActiveTab("subjects");
       return showToast(
         "error",
         hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
@@ -1895,7 +1987,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
     // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
     if (installmentMismatch) {
-      setActiveTab("pricing");
       return showToast(
         "error",
         "ยอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ",
@@ -1913,339 +2004,285 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     });
   };
 
-  const inputCls =
-    "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
-  const labelCls = "block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wide";
+  const inputCls = (err) => `${INPUT}${err ? " border-red-300 bg-red-50/40 focus:ring-red-300" : ""}`;
+  const current = COURSE_FORM_STEPS[step];
+  const progressPct = Math.round(((step + 1) / COURSE_FORM_STEPS.length) * 100);
+  const hasAnyError = errorKeys.length > 0;
+
+  // ── ค่าที่ใช้ในหน้าสรุป ──
+  const findName = (list, idKey, nameKey, id) =>
+    list.find((o) => String(o[idKey]) === String(id))?.[nameKey];
+  const dash = <span className="text-slate-400">ไม่ระบุ</span>;
+  const summaryGroups = [
+    {
+      step: 0, title: "ข้อมูลคอร์ส", rows: [
+        { label: "ชื่อคอร์ส", value: String(form.CourseName || "").trim() || null, err: errors.CourseName },
+        { label: "ช่วงเวลาเรียน", value: form.StartDate && form.LastDate ? `${formatDate(form.StartDate)} – ${formatDate(form.LastDate)}` : null, err: errors.StartDate || errors.LastDate },
+        { label: "ปีการศึกษา", value: findName(yearOptions, "YearId", "YearName", form.YearId), err: errors.YearId },
+        { label: "เทอม/ช่วงเวลา", value: findName(termOptions, "Term_Id", "Term_Name", form.Term_Id) },
+        { label: "ระดับชั้น", value: form.GradeLevelId ? findName(gradeLevelOptions, "GradeLevelId", "GradeDetail", form.GradeLevelId) : "ทุกระดับชั้น" },
+        { label: "รูปแบบการเรียน", value: form.Course_Availability_Id ? findName(availabilityOptions, "Course_Availability_Id", "Course_Availability_Name", form.Course_Availability_Id) : null },
+        { label: "สถานะ", value: findName(statusOptions, "Status_Course_Id", "Status_Course_Name", form.Status_Course_Id) },
+        { label: "ประเภท", value: `${form.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}${form.Is_Promotion ? " · โปรโมชัน" : ""}` },
+      ],
+    },
+    {
+      step: 1, title: "วิชาและติวเตอร์", rows: [
+        { label: "จำนวนวิชา", value: tutorCount > 0 ? `${tutorCount} วิชา` : null },
+        { label: "ชั่วโมงรายวิชารวม", value: addedSubjectHours > 0 ? formatHoursLabel(addedSubjectHours) : null },
+        { label: "ชั่วโมงรวมของคอร์ส", value: targetCourseHours > 0 ? formatHoursLabel(targetCourseHours) : null, err: errors.hours },
+      ],
+    },
+    {
+      step: 2, title: "ราคาและที่นั่ง", rows: [
+        { label: "ราคาเต็ม", value: Number(form.Price) > 0 ? `฿${formatPrice(form.Price)}` : null, err: errors.Price },
+        { label: "ส่วนลด", value: `฿${formatPrice(form.Discount)}`, err: errors.Discount },
+        { label: "ราคาสุทธิ", value: `฿${formatPrice(fullCost)}` },
+        { label: "จำนวนที่นั่ง", value: form.MaxStudents ? `${form.MaxStudents} คน` : "ไม่จำกัด" },
+        { label: "การชำระเงิน", value: isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว", err: errors.installments },
+      ],
+    },
+    {
+      step: 3, title: "นักเรียน", rows: [
+        { label: "นักเรียนในคอร์ส", value: currentStudentCount > 0 ? `${currentStudentCount} คน` : "ยังไม่มี" },
+      ],
+    },
+    {
+      step: 4, title: "สื่อประกอบ", rows: [
+        { label: "รูปปกคอร์ส", value: form.CourseImage ? "อัปโหลดแล้ว" : null },
+        { label: "รูปประกาศ", value: form.AnnouncementImage ? "อัปโหลดแล้ว" : null },
+        { label: "หมายเหตุ", value: String(form.Remark || "").trim() ? `${form.Remark.trim().length} ตัวอักษร` : null },
+      ],
+    },
+  ];
 
   return (
-    <div className="space-y-5">
-      {/* ═══ Tab Navigation (Step 1 — UI) ═══ */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 sticky top-0 bg-white z-10">
-        {TABS.map((t) => {
-          const Icon = t.icon;
-          const active = activeTab === t.key;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setActiveTab(t.key)}
-              className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition
-                ${active ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"}`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {t.label}
-              {typeof t.badge === "number" && t.badge > 0 && (
-                <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${active ? "bg-white/25" : "bg-orange-100 text-orange-600"}`}>
-                  {t.badge}
-                </span>
-              )}
-              {t.warn && (
-                <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white" title="มีข้อมูลที่ต้องตรวจสอบ" />
-              )}
-            </button>
-          );
-        })}
+    <div ref={rootRef} className="flex flex-col gap-5">
+      {/* ═══ Stepper (ติดด้านบนขณะเลื่อน) ═══ */}
+      <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 px-4 sm:px-6 pt-4 sm:pt-5 pb-3 bg-white border-b border-slate-100">
+        {/* มือถือ: ขั้นที่ x/n · ชื่อ + แถบความคืบหน้า */}
+        <div className="md:hidden">
+          <div className="flex items-center justify-between gap-2 text-sm">
+            <p className="font-bold text-slate-800 truncate">
+              <span className="text-orange-600">ขั้นที่ {step + 1}/{COURSE_FORM_STEPS.length}</span> · {current.label}
+            </p>
+            {stepHasError(step) && touchedSteps.has(step) && (
+              <span className={`${BADGE_BASE} ${BADGE_TONE.danger}`}>ยังไม่ครบ</span>
+            )}
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-full rounded-full bg-orange-500 transition-all" style={{ width: `${progressPct}%` }} />
+          </div>
+        </div>
+
+        {/* จอกว้าง: แสดงทุกขั้น */}
+        <ol className="hidden md:flex items-center gap-1">
+          {COURSE_FORM_STEPS.map((s, i) => {
+            const reachable = i <= maxReached;
+            const active = i === step;
+            const warn = stepHasError(i) && (touchedSteps.has(i) || isEdit);
+            const done = !active && i < maxReached && !stepHasError(i);
+            return (
+              <li key={s.key} className="flex items-center flex-1 min-w-0 last:flex-none">
+                <button
+                  type="button"
+                  disabled={!reachable}
+                  onClick={() => goTo(i)}
+                  aria-current={active ? "step" : undefined}
+                  className={`group flex items-center gap-2 min-w-0 rounded-xl px-1.5 py-1 transition
+                    ${reachable ? "cursor-pointer hover:bg-orange-50" : "cursor-not-allowed opacity-50"}`}
+                >
+                  <span className={`relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold border-2 transition
+                    ${active ? "bg-orange-500 border-orange-500 text-white shadow-sm shadow-orange-500/30"
+                      : warn ? "bg-red-50 border-red-300 text-red-600"
+                        : done ? "bg-emerald-500 border-emerald-500 text-white"
+                          : "bg-white border-slate-200 text-slate-500"}`}>
+                    {done && !warn ? <Check className="h-3.5 w-3.5" /> : warn && !active ? "!" : i + 1}
+                  </span>
+                  <span className={`text-xs font-semibold truncate ${active ? "text-orange-700" : warn ? "text-red-600" : "text-slate-600"}`}>
+                    {s.label}
+                  </span>
+                </button>
+                {i < lastStep && <span className={`mx-1 h-0.5 flex-1 min-w-[8px] rounded-full ${i < maxReached ? "bg-orange-200" : "bg-slate-200"}`} />}
+              </li>
+            );
+          })}
+        </ol>
       </div>
 
-      {/* ═══ TAB: ข้อมูลพื้นฐาน ═══ */}
-      <div className={activeTab === "basic" ? "space-y-5" : "hidden"}>
-        <div>
-          <label className={labelCls}>ชื่อคอร์ส <span className="text-red-400 normal-case">*</span></label>
-          <input
-            type="text"
-            value={form.CourseName}
-            onChange={(e) => set("CourseName", e.target.value)}
-            className={inputCls}
-            placeholder="เช่น คอร์สรวม (แพ็กเกจ) ป.3 ทั้งหมด 4 วิชา"
-          />
+      {/* หัวข้อขั้นปัจจุบัน + คำอธิบายเครื่องหมายช่องบังคับ */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-slate-900">{current.label}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{current.desc}</p>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>วันเริ่มสอน <span className="text-red-400 normal-case">*</span></label>
-            <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>วันสิ้นสุด <span className="text-red-400 normal-case">*</span></label>
-            <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls} />
-          </div>
-        </div>
-
-        {form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) && (
-          <p className="text-xs text-red-500 flex items-center gap-1 -mt-2">
-            <AlertTriangle className="h-3 w-3" /> วันสิ้นสุดต้องมาหลังวันเริ่มสอน
-          </p>
+        {step !== lastStep && (
+          <p className="text-xs text-slate-500 shrink-0"><span className="text-red-500 font-bold">*</span> จำเป็น</p>
         )}
+      </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>สถานะคอร์ส</label>
-            <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls}>
+      {/* ═══ ขั้นที่ 1: ข้อมูลคอร์ส ═══ */}
+      <div className={step === 0 ? "space-y-4" : "hidden"}>
+        <FormSection title="ข้อมูลหลัก" subtitle="ต้องกรอกให้ครบก่อนไปขั้นถัดไป">
+          <FormField label="ชื่อคอร์ส" required error={errOf("CourseName")}>
+            <input
+              type="text"
+              value={form.CourseName}
+              onChange={(e) => set("CourseName", e.target.value)}
+              className={inputCls(errOf("CourseName"))}
+              placeholder="เช่น คอร์สรวม (แพ็กเกจ) ป.3 ทั้งหมด 4 วิชา"
+            />
+          </FormField>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="วันเริ่มสอน" required error={errOf("StartDate")}>
+              <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls(errOf("StartDate"))} />
+            </FormField>
+            <FormField
+              label="วันสิ้นสุด" required
+              error={errOf("LastDate") || (form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) ? "วันสิ้นสุดต้องมาหลังวันเริ่มสอน" : undefined)}
+              hint={monthsSpanned > 0 ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน` : undefined}
+            >
+              <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="ปีการศึกษา (พ.ศ.)" required error={errOf("YearId")}>
+              <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
+                <option value="">เลือกปีการศึกษา</option>
+                {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
+              </select>
+            </FormField>
+            <FormField label="เทอม/ช่วงเวลา" required hint="มีค่าเริ่มต้นให้แล้ว เปลี่ยนได้ตามช่วงที่เปิดสอน">
+              <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls()}>
+                {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
+              </select>
+            </FormField>
+          </div>
+
+          <FormField label="สถานะคอร์ส" required hint="นักเรียนจะเพิ่มเข้าคอร์สได้เมื่อสถานะเป็น เปิดรับสมัคร หรือ กำลังสอน">
+            <select value={form.Status_Course_Id} onChange={(e) => set("Status_Course_Id", Number(e.target.value))} className={inputCls()}>
               {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
             </select>
-          </div>
-          <div>
-            <label className={labelCls}>เทอม</label>
-            <select value={form.Term_Id} onChange={(e) => set("Term_Id", Number(e.target.value))} className={inputCls}>
-              {termOptions.map((t) => <option key={t.Term_Id} value={t.Term_Id}>{t.Term_Name}</option>)}
-            </select>
-          </div>
-        </div>
+          </FormField>
+        </FormSection>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>ปีการศึกษา (พ.ศ.) <span className="text-red-400 normal-case">*</span></label>
-            <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls}>
-              <option value="">เลือกปีการศึกษา</option>
-              {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
-            </select>
+        <FormSection title="รายละเอียดเพิ่มเติม" subtitle="ไม่บังคับ — ข้ามได้และกลับมาแก้ไขภายหลัง">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่จำกัดชั้นของนักเรียนที่สมัคร">
+              <select
+                value={form.GradeLevelId ?? ""}
+                onChange={(e) => set("GradeLevelId", e.target.value === "" ? "" : Number(e.target.value))}
+                className={inputCls()}
+              >
+                <option value="">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
+                {gradeLevelOptions.map((g) => (
+                  <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="รูปแบบการเรียน" optional>
+              <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls()}>
+                <option value="">ไม่ระบุ</option>
+                {availabilityOptions.map((a) => (
+                  <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
+                    {a.Course_Availability_Name}
+                  </option>
+                ))}
+              </select>
+            </FormField>
           </div>
-          <div>
-            <label className={labelCls}>รูปแบบการเรียน</label>
-            <select value={form.Course_Availability_Id} onChange={(e) => set("Course_Availability_Id", e.target.value)} className={inputCls}>
-              <option value="">ไม่ระบุ</option>
-              {availabilityOptions.map((a) => (
-                <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>
-                  {a.Course_Availability_Name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
 
-        <div>
-          <label className={labelCls}>ระดับชั้นของเนื้อหา (ไม่บังคับ)</label>
-          <select
-            value={form.GradeLevelId ?? ""}
-            onChange={(e) => set("GradeLevelId", e.target.value === "" ? "" : Number(e.target.value))}
-            className={inputCls}
-          >
-            <option value="">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
-            {gradeLevelOptions.map((g) => (
-              <option key={g.GradeLevelId} value={g.GradeLevelId}>{g.GradeDetail}</option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-500 mt-1">ใช้เป็นตัวกรองเริ่มต้นตอนจัดชุดข้อสอบจากคลัง ไม่ได้จำกัดว่านักเรียนชั้นไหนลงทะเบียนคอร์สนี้ได้</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>ประเภทคอร์ส</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: "bundle", label: "คอร์สรวม" },
-                { value: "single", label: "คอร์สเดี่ยว" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => set("Course_Type", opt.value)}
-                  className={`py-2.5 rounded-xl text-sm font-bold border transition
-                  ${form.Course_Type === opt.value
-                      ? "bg-orange-500 text-white border-orange-500"
-                      : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-slate-500 mt-1">คอร์สเดี่ยว = ตัวต่อตัว 1 คน ไม่แสดงหน้าเว็บ · แนะนำให้สร้างจากแท็บ “คอร์สเดี่ยว”</p>
-          </div>
-          <div>
-            <label className={labelCls}>คอร์สโปรโมชัน</label>
-            <button
-              type="button"
-              onClick={() => set("Is_Promotion", !form.Is_Promotion)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border transition
-              ${form.Is_Promotion
-                  ? "bg-amber-50 border-amber-300"
-                  : "bg-slate-50 border-slate-200 hover:border-amber-200"}`}
-            >
-              <span className={`flex items-center gap-1.5 text-sm font-bold ${form.Is_Promotion ? "text-amber-600" : "text-slate-500"}`}>
-                <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-slate-400"}`} />
-                {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
-              </span>
-              {form.Is_Promotion
-                ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
-                : <ToggleLeft className="h-6 w-6 text-slate-300 shrink-0" />}
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <label className={labelCls}>รูปภาพคอร์ส</label>
-          <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
-        </div>
-
-        <div>
-          <label className={labelCls}>รูปประกาศ (ไม่บังคับ)</label>
-          <p className="text-[11px] text-slate-500 mb-2 normal-case">
-            ใช้สำหรับแบนเนอร์/ประกาศแยกจากรูปหน้าปกคอร์ส
-          </p>
-          <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
-        </div>
-
-        <div>
-          <label className={labelCls}>หมายเหตุ / รายละเอียดเพิ่มเติม</label>
-          <textarea
-            value={form.Remark || ""}
-            onChange={(e) => set("Remark", e.target.value)}
-            className={inputCls}
-            rows={3}
-            placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
-          />
-          {form.Remark?.trim() && (
-            <p className="flex items-center justify-end gap-1 text-[11px] text-green-600 font-medium mt-1">
-              <Check className="h-3 w-3" /> บันทึกข้อความแล้ว ({form.Remark.trim().length} ตัวอักษร)
-            </p>
-          )}
-        </div>
-      </div>
-      {/* ═══ END TAB: ข้อมูลพื้นฐาน ═══ */}
-
-      {/* ═══ TAB: ราคา & ผ่อนชำระ ═══ */}
-      <div className={activeTab === "pricing" ? "space-y-5" : "hidden"}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <label className={labelCls}>ราคาเต็ม (บาท) <span className="text-red-400 normal-case">*</span></label>
-            <input
-              type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
-              onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
-              className={inputCls} placeholder="5,900" />
-          </div>
-          <div>
-            <label className={labelCls}>ส่วนลด (บาท)</label>
-            <input
-              type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
-              onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
-              className={inputCls} placeholder="0" />
-          </div>
-          <div>
-            <label className={labelCls}>ราคาสุทธิ</label>
-            <div className="px-3 py-2.5 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600">
-              ฿{formatPrice(fullCost)}
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>จำนวนที่รับสูงสุด (คน)</label>
-            <input
-              type="number" min="0" step="1" value={form.MaxStudents}
-              onKeyDown={blockNegativeKeys}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
-              }}
-              className={inputCls} placeholder="ไม่บังคับ" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <label className={labelCls}>จำนวนงวด</label>
-            <input
-              type="number" min="0" step="1" value={form.Installments}
-              onKeyDown={blockNegativeKeys}
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
-                  set("Installments", v);
-                  // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
-                  set("InstallmentAmounts", null);
-                }
-              }}
-              className={inputCls} />
-            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${isInstallmentEnabled ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-slate-100 text-slate-500 border border-slate-200"}`}>
-                {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
-              </span>
-              {isInstallmentEnabled && (
-                <span className="text-[11px] text-slate-500">
-                  ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="ประเภทคอร์ส" hint="คอร์สเดี่ยว = ตัวต่อตัว 1 คน ไม่แสดงหน้าเว็บ · แนะนำให้สร้างจากแท็บ “คอร์สเดี่ยว”">
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "bundle", label: "คอร์สรวม" },
+                  { value: "single", label: "คอร์สเดี่ยว" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => set("Course_Type", opt.value)}
+                    className={`h-10 rounded-xl text-sm font-semibold border transition
+                    ${form.Course_Type === opt.value
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </FormField>
+            <FormField label="คอร์สโปรโมชัน" optional>
+              <button
+                type="button"
+                onClick={() => set("Is_Promotion", !form.Is_Promotion)}
+                className={`w-full h-10 flex items-center justify-between px-3 rounded-xl border transition
+                ${form.Is_Promotion
+                    ? "bg-amber-50 border-amber-300"
+                    : "bg-white border-slate-200 hover:border-amber-200"}`}
+              >
+                <span className={`flex items-center gap-1.5 text-sm font-semibold ${form.Is_Promotion ? "text-amber-600" : "text-slate-500"}`}>
+                  <Sparkles className={`h-4 w-4 ${form.Is_Promotion ? "text-amber-500" : "text-slate-400"}`} />
+                  {form.Is_Promotion ? "เป็นโปรโมชัน" : "ไม่ใช่โปรโมชัน"}
                 </span>
-              )}
-            </div>
-            {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
-            {isInstallmentEnabled && monthsSpanned > 0 && (
-              <p className="text-[11px] text-blue-500 mt-1.5 flex items-center gap-1">
-                <Info className="h-3 w-3 shrink-0" />
-                ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+                {form.Is_Promotion
+                  ? <ToggleRight className="h-6 w-6 text-amber-500 shrink-0" />
+                  : <ToggleLeft className="h-6 w-6 text-slate-300 shrink-0" />}
+              </button>
+            </FormField>
+          </div>
+
+          <FormField label="หมายเหตุ / รายละเอียดเพิ่มเติม" optional>
+            <textarea
+              value={form.Remark || ""}
+              onChange={(e) => set("Remark", e.target.value)}
+              className={`${INPUT} h-auto py-2`}
+              rows={3}
+              placeholder="รายละเอียดคอร์ส เวลาเรียน ฯลฯ"
+            />
+            {form.Remark?.trim() && (
+              <p className="flex items-center justify-end gap-1 text-[11px] text-slate-500 mt-1">
+                {form.Remark.trim().length} ตัวอักษร
               </p>
             )}
-          </div>
+          </FormField>
+        </FormSection>
+      </div>
 
-          <div>
-            <label className={labelCls}>กำหนดยอดผ่อนแต่ละงวด</label>
-            {isInstallmentEnabled ? (
-              <InstallmentAmountsEditor
-                installments={installmentsCount}
-                fullCost={fullCost}
-                value={form.InstallmentAmounts}
-                onChange={(v) => set("InstallmentAmounts", v)}
-              />
-            ) : (
-              <div className="px-3 py-2.5 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-xs text-slate-500 text-center">
-                เปิดผ่อนชำระก่อน (จำนวนงวด &gt; 1)
-              </div>
-            )}
-          </div>
+      {/* ═══ ขั้นที่ 2: วิชาและติวเตอร์ ═══ */}
+      <div className={step === 1 ? "space-y-4" : "hidden"}>
+        <div className={`${CALLOUT.box} ${CALLOUT.info}`}>
+          <Info className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.info}`} />
+          <p>ขั้นนี้ไม่บังคับ แต่หากกรอก <b>ชั่วโมงรวมของคอร์ส</b> ชั่วโมงของทุกวิชารวมกันต้องเท่ากับค่านี้จึงจะบันทึกได้</p>
         </div>
 
-        {totalTutorCost > 0 && (
-          <div>
-            <label className={labelCls}>วิเคราะห์กำไร (Pricing Calculator)</label>
-            <PricingCalculator
-              tutorCost={totalTutorCost}
-              currentPrice={fullCost}
-              currentStudentCount={currentStudentCount}
-              maxStudents={form.MaxStudents}
-              onApplyPrice={(targetNetPrice) => {
-                const discount = Number(form.Discount || 0);
-                set("Price", String(targetNetPrice + discount));
-              }}
-            />
-          </div>
-        )}
-
-        {totalTutorCost > 0 && (
-          <div>
-            <label className={labelCls}>วิเคราะห์ความคุ้มทุน (Break-even)</label>
-            <BreakEvenAnalysis
-              tutorCost={totalTutorCost}
-              fullCost={fullCost}
-              currentStudentCount={currentStudentCount}
-              maxStudents={form.MaxStudents}
-            />
-          </div>
-        )}
-      </div>
-      {/* ═══ END TAB: ราคา & ผ่อนชำระ ═══ */}
-
-      {/* ═══ TAB: วิชา & ต้นทุน ═══ */}
-      <div className={activeTab === "subjects" ? "space-y-5" : "hidden"}>
-        <div>
-          <label className={labelCls}>ชั่วโมงรวมของคอร์ส (ชม.)</label>
-          <input
-            type="number" min="0" step="0.5" value={form.TotalCourseHours}
-            onKeyDown={blockNegativeKeys}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
-            }}
-            className={inputCls} placeholder="เช่น 120"
-          />
-          {/* ★ แก้: เดิม toFixed(1) เป็นทศนิยม อ่านแล้วงงว่าคือกี่นาที เปลี่ยนเป็น ชม./นาที ด้วย formatHoursLabel */}
-          <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-            {!monthsSpanned
-              ? "ไม่บังคับกรอก — ระบบช่วยแบ่งชั่วโมง/วิชาอัตโนมัติ"
+        <FormSection>
+          <FormField
+            label="ชั่วโมงรวมของคอร์ส (ชม.)" optional
+            error={errOf("hours")}
+            hint={!monthsSpanned
+              ? "ระบบช่วยแบ่งชั่วโมงต่อวิชาให้อัตโนมัติ"
               : !form.TotalCourseHours
                 ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
                 : `เฉลี่ยประมาณ ${formatHoursLabel(avgHoursPerMonth)}/เดือน (ระยะเวลา ${monthsSpanned} เดือน)`}
-          </p>
-        </div>
+          >
+            <input
+              type="number" min="0" step="0.5" value={form.TotalCourseHours}
+              onKeyDown={blockNegativeKeys}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
+              }}
+              className={`${inputCls(errOf("hours"))} sm:max-w-xs`} placeholder="เช่น 120"
+            />
+          </FormField>
+        </FormSection>
 
-        <div>
-          <label className={labelCls}>วิชาและติวเตอร์</label>
-          {initial.CourseID
+        <FormSection title="วิชาและติวเตอร์" subtitle="เลือกวิชา ติวเตอร์ และจำนวนชั่วโมงของแต่ละวิชา">
+          {isEdit
             ? <CourseSubjects
               courseId={initial.CourseID}
               showToast={showToast}
@@ -2264,13 +2301,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             />}
 
           {targetCourseHours > 0 && (
-            <div className={`mt-2.5 flex items-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-semibold
-            ${hoursMismatch
-                ? (hoursDiff > 0 ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-red-50 border-red-200 text-red-700")
-                : "bg-emerald-50 border-emerald-200 text-emerald-700"}`}>
+            <div className={`${CALLOUT.box} ${hoursMismatch ? (hoursDiff > 0 ? CALLOUT.warning : CALLOUT.danger) : CALLOUT.success}`}>
               {hoursMismatch
-                ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                : <Check className="h-3.5 w-3.5 shrink-0" />}
+                ? <AlertTriangle className={`h-5 w-5 shrink-0 ${hoursDiff > 0 ? CALLOUT_ICON.warning : CALLOUT_ICON.danger}`} />
+                : <Check className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.success}`} />}
               <span>
                 {hoursMismatch
                   ? `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินกว่าชั่วโมงรวมของคอร์ส"} กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
@@ -2278,105 +2312,330 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               </span>
             </div>
           )}
-        </div>
+        </FormSection>
 
         {totalTutorCost > 0 && (
-          <div className="mt-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 pt-3 pb-1">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-400 shrink-0">
-                <Info className="h-3.5 w-3.5 text-white" />
-              </span>
-              <p className="text-xs font-bold text-slate-700">
-                สรุปต้นทุนคอร์ส
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-2">
-              <div className="pr-3 py-1.5">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">ต้นทุนติวเตอร์รวม</p>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <div className="grid grid-cols-2 divide-x divide-black/5 px-4 py-3">
+              <div className="pr-3">
+                <p className={STAT_LABEL}>ต้นทุนติวเตอร์รวม</p>
                 <p className="text-sm font-bold text-slate-700">฿{formatPrice(totalTutorCost)}</p>
               </div>
-              <div className="pl-3 py-1.5">
-                <p className="text-[11px] text-slate-500 uppercase tracking-wide">ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
+              <div className="pl-3">
+                <p className={STAT_LABEL}>ต้นทุนติวเตอร์เฉลี่ยต่อคน</p>
                 <p className="text-sm font-bold text-slate-700">
                   ฿{formatPrice(tutorCount > 0 ? totalTutorCost / tutorCount : 0)}
                 </p>
               </div>
             </div>
-
             <p className="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-200/60 leading-relaxed">
-              ต้นทุนนี้คำนวณจากค่าติวเตอร์รวมของคอร์สเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน (ค่าเช่า/ค่าน้ำค่าไฟ/ค่าแอดมิน ฯลฯ) — ดูผลกำไร/ขาดทุนได้ในแท็บ "ราคา & ผ่อนชำระ"
+              คำนวณจากค่าติวเตอร์รวมเท่านั้น ยังไม่รวมค่าใช้จ่ายดำเนินงานอื่นของสถาบัน — ดูกำไร/จุดคุ้มทุนได้ในขั้น “ราคาและที่นั่ง”
             </p>
           </div>
         )}
       </div>
-      {/* ═══ END TAB: วิชา & ต้นทุน ═══ */}
 
-      {/* ═══ TAB: นักเรียนในคอร์ส ═══ */}
-      <div className={activeTab === "students" ? "space-y-5" : "hidden"}>
-        <div>
-          <label className={labelCls}>นักเรียนในคอร์ส</label>
-          {initial.CourseID
-            ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
-            : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
-        </div>
-      </div>
-      {/* ═══ END TAB: นักเรียนในคอร์ส ═══ */}
+      {/* ═══ ขั้นที่ 3: ราคาและที่นั่ง ═══ */}
+      <div className={step === 2 ? "space-y-4" : "hidden"}>
+        <FormSection title="ราคาและที่นั่ง">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormField label="ราคาเต็ม (บาท)" required error={errOf("Price")}>
+              <input
+                type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
+                onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
+                className={inputCls(errOf("Price"))} placeholder="5,900" />
+            </FormField>
+            <FormField label="ส่วนลด (บาท)" optional error={errOf("Discount") || errors.Discount}>
+              <input
+                type="text" inputMode="decimal" value={moneyDisplay(form.Discount)}
+                onChange={handleMoneyChange("Discount")} onKeyDown={blockNegativeKeys}
+                className={inputCls(errors.Discount)} placeholder="0" />
+            </FormField>
+            <FormField label="ราคาสุทธิ" hint="คำนวณอัตโนมัติ (ราคาเต็ม − ส่วนลด)">
+              <div className="h-10 flex items-center px-3 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600 tabular-nums">
+                ฿{formatPrice(fullCost)}
+              </div>
+            </FormField>
+          </div>
 
-      {/* ═══ TAB: คลิปตัวอย่าง ═══ */}
-      <div className={activeTab === "videos" ? "space-y-5" : "hidden"}>
-        <div>
-          <label className={labelCls}>คลิปตัวอย่าง</label>
-          {initial.CourseID ? (
-            <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
-          ) : (
-            <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center">
-              <p className="text-xs text-slate-500">บันทึกคอร์สก่อน จึงจะสามารถเพิ่มคลิปตัวอย่างได้</p>
+          <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint="เว้นว่าง = ไม่จำกัดจำนวน">
+            <input
+              type="number" min="0" step="1" value={form.MaxStudents}
+              onKeyDown={blockNegativeKeys}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+              }}
+              className={`${inputCls()} sm:max-w-xs`} placeholder="ไม่จำกัด" />
+          </FormField>
+        </FormSection>
+
+        <FormSection title="การผ่อนชำระ" subtitle="ไม่บังคับ — ค่าเริ่มต้นคือจ่ายครั้งเดียว">
+          <FormField label="จำนวนงวด" optional>
+            <input
+              type="number" min="0" step="1" value={form.Installments}
+              onKeyDown={blockNegativeKeys}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) {
+                  set("Installments", v);
+                  // ★ เมื่อจำนวนงวดเปลี่ยน ล้างยอดผ่อนเดิมทิ้ง (ให้ระบบแบ่งเท่า ๆ กันใหม่ ป้องกัน mismatch)
+                  set("InstallmentAmounts", null);
+                }
+              }}
+              className={`${inputCls()} sm:max-w-xs`} />
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className={`${BADGE_BASE} ${isInstallmentEnabled ? BADGE_TONE.info : BADGE_TONE.neutral}`}>
+                {isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว"}
+              </span>
+              {isInstallmentEnabled && (
+                <span className="text-[11px] text-slate-500">
+                  ฿{formatPrice(calculatedInstallmentAmount)}/งวด (ค่าเริ่มต้น)
+                </span>
+              )}
+            </div>
+            {/* ★ เพิ่ม (ข้อ 5): แนะนำจำนวนงวดผ่อนสูงสุดที่เหมาะสมจากระยะเวลาคอร์ส แสดงเฉพาะตอนเปิดผ่อน */}
+            {isInstallmentEnabled && monthsSpanned > 0 && (
+              <p className="text-[11px] text-blue-600 mt-1.5 flex items-center gap-1">
+                <Info className="h-3 w-3 shrink-0" />
+                ระยะเวลาคอร์สประมาณ {monthsSpanned} เดือน แนะนำผ่อนได้ไม่เกิน {monthsSpanned} งวด
+              </p>
+            )}
+          </FormField>
+
+          {isInstallmentEnabled && (
+            <FormField label="ยอดผ่อนแต่ละงวด" required error={errOf("installments")} hint="ยอดรวมทุกงวดต้องเท่ากับราคาสุทธิ">
+              <InstallmentAmountsEditor
+                installments={installmentsCount}
+                fullCost={fullCost}
+                value={form.InstallmentAmounts}
+                onChange={(v) => set("InstallmentAmounts", v)}
+              />
+            </FormField>
+          )}
+        </FormSection>
+
+        {/* เครื่องมือช่วยคำนวณ — แยกออกจากช่องกรอกข้อมูลชัดเจน ไม่มีผลต่อการบันทึก */}
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70">
+          <button
+            type="button"
+            onClick={() => setShowHelper((v) => !v)}
+            aria-expanded={showHelper}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+          >
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200">
+                <TrendingUp className="h-4 w-4 text-orange-500" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-slate-700">เครื่องมือช่วยตั้งราคา <span className="text-xs font-normal text-slate-400">(ไม่บังคับ)</span></span>
+                <span className="block text-xs text-slate-500">วิเคราะห์กำไรและจุดคุ้มทุนจากต้นทุนติวเตอร์ — ไม่มีผลต่อการบันทึก</span>
+              </span>
+            </span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${showHelper ? "rotate-180" : ""}`} />
+          </button>
+          {showHelper && (
+            <div className="px-4 pb-4 space-y-4 border-t border-slate-200 pt-4">
+              {totalTutorCost > 0 ? (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 mb-1.5">วิเคราะห์กำไร</p>
+                    <PricingCalculator
+                      tutorCost={totalTutorCost}
+                      currentPrice={fullCost}
+                      currentStudentCount={currentStudentCount}
+                      maxStudents={form.MaxStudents}
+                      onApplyPrice={(targetNetPrice) => {
+                        const discount = Number(form.Discount || 0);
+                        set("Price", String(targetNetPrice + discount));
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-600 mb-1.5">วิเคราะห์ความคุ้มทุน (Break-even)</p>
+                    <BreakEvenAnalysis
+                      tutorCost={totalTutorCost}
+                      fullCost={fullCost}
+                      currentStudentCount={currentStudentCount}
+                      maxStudents={form.MaxStudents}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  เพิ่มวิชาและติวเตอร์ในขั้น “วิชาและติวเตอร์” ก่อน จึงจะคำนวณกำไรและจุดคุ้มทุนได้
+                  <button type="button" onClick={() => goTo(1)} className="ml-1 font-semibold text-orange-600 hover:underline">ไปที่ขั้นนั้น</button>
+                </p>
+              )}
             </div>
           )}
         </div>
       </div>
-      {/* ═══ END TAB: คลิปตัวอย่าง ═══ */}
 
-      {/* ═══ ปุ่มบันทึก/ยกเลิก — แสดงตลอด ไม่ขึ้นกับแท็บ ═══ */}
-      <div className="flex gap-3 pt-2 border-t border-slate-100">
-        <button
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}
-        >
-          ยกเลิก
-        </button>
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || hoursMismatch || installmentMismatch}
-          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}
-        >
-          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
-        </button>
+      {/* ═══ ขั้นที่ 4: นักเรียน ═══ */}
+      <div className={step === 3 ? "space-y-4" : "hidden"}>
+        <div className={`${CALLOUT.box} ${CALLOUT.info}`}>
+          <Info className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.info}`} />
+          <p>ขั้นนี้ไม่บังคับ — เพิ่มนักเรียนภายหลังได้ นักเรียนจะถูกเพิ่มเข้าคอร์สเมื่อสถานะเป็น เปิดรับสมัคร หรือ กำลังสอน</p>
+        </div>
+        <FormSection title="นักเรียนในคอร์ส">
+          {isEdit
+            ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
+            : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
+        </FormSection>
       </div>
-      {(hoursMismatch || installmentMismatch) && (
-        <p className="text-[11px] text-red-500 flex items-center gap-1 -mt-3">
-          <AlertTriangle className="h-3 w-3 shrink-0" />
-          ยังบันทึกไม่ได้ — มีข้อมูลที่ต้องแก้ไขในแท็บที่มีจุดสีแดงกำกับอยู่ด้านบน
-        </p>
-      )}
 
-      {initial.CourseID && (
-        <>
+      {/* ═══ ขั้นที่ 5: สื่อประกอบ ═══ */}
+      <div className={step === 4 ? "space-y-4" : "hidden"}>
+        <FormSection title="รูปภาพ" subtitle="ไม่บังคับ — แนะนำให้ใส่รูปปกเพื่อแสดงบนหน้าเว็บไซต์">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="รูปปกคอร์ส" optional>
+              <ImageUpload value={form.CourseImage || ""} onChange={(path) => set("CourseImage", path)} />
+            </FormField>
+            <FormField label="รูปประกาศ" optional hint="ใช้สำหรับแบนเนอร์/ประกาศ แยกจากรูปปกคอร์ส">
+              <ImageUpload value={form.AnnouncementImage || ""} onChange={(path) => set("AnnouncementImage", path)} />
+            </FormField>
+          </div>
+        </FormSection>
+
+        <FormSection title="คลิปตัวอย่าง" subtitle="ไม่บังคับ">
+          {isEdit ? (
+            <CoursePreviewVideos courseId={initial.CourseID} showToast={showToast} />
+          ) : (
+            <div className="border border-dashed border-slate-200 rounded-xl p-4 text-center">
+              <p className="text-xs text-slate-500">บันทึกคอร์สก่อน จึงจะเพิ่มคลิปตัวอย่างได้ (เปิดแก้ไขคอร์สภายหลัง)</p>
+            </div>
+          )}
+        </FormSection>
+      </div>
+
+      {/* ═══ ขั้นที่ 6: ตรวจสอบและบันทึก ═══ */}
+      <div className={step === lastStep ? "space-y-4" : "hidden"}>
+        {hasAnyError ? (
+          <div className={`${CALLOUT.box} ${CALLOUT.danger}`}>
+            <AlertTriangle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.danger}`} />
+            <div className="min-w-0 space-y-1.5">
+              <p className="font-semibold">ยังบันทึกไม่ได้ — มีข้อมูลที่ต้องแก้ไข {errorKeys.length} รายการ</p>
+              <ul className="space-y-1">
+                {errorKeys.map((k) => (
+                  <li key={k} className="flex flex-wrap items-center gap-x-2 text-xs">
+                    <span>• {errors[k]}</span>
+                    <button type="button" onClick={() => goTo(COURSE_ERROR_STEP[k])} className="font-semibold underline hover:no-underline">
+                      แก้ไขที่ขั้น “{COURSE_FORM_STEPS[COURSE_ERROR_STEP[k]].label}”
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <div className={`${CALLOUT.box} ${CALLOUT.success}`}>
+            <Check className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.success}`} />
+            <p>ข้อมูลที่จำเป็นครบถ้วนแล้ว ตรวจสอบรายละเอียดด้านล่าง แล้วกด “{isEdit ? "บันทึกการแก้ไข" : "สร้างคอร์ส"}”</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {summaryGroups.map((g) => (
+            <section key={g.title} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+              <header className="flex items-center justify-between gap-2 mb-2">
+                <h4 className="text-sm font-bold text-slate-800">{g.title}</h4>
+                <button type="button" onClick={() => goTo(g.step)} className="flex items-center gap-1 text-xs font-semibold text-orange-600 hover:underline">
+                  <Pencil className="h-3 w-3" /> แก้ไข
+                </button>
+              </header>
+              <dl className="divide-y divide-slate-100">
+                {g.rows.map((r) => (
+                  <div key={r.label} className="flex items-start justify-between gap-3 py-1.5 text-xs">
+                    <dt className="text-slate-500 shrink-0">{r.label}</dt>
+                    <dd className={`text-right font-medium min-w-0 break-words ${r.err ? "text-red-600" : "text-slate-800"}`}>
+                      {r.err ? r.err : (r.value ?? dash)}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
+        </div>
+
+        {isEdit && (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowPreview(true)}
+              className={`${BTN.base} ${BTN.secondary} ${BTN.md} w-full`}
+            >
+              <Eye className="h-4 w-4" /> ดูตัวอย่างหน้าคอร์ส (มุมมองนักเรียน)
+            </button>
+            {showPreview && <StudentPreviewModal course={initial} onClose={() => setShowPreview(false)} />}
+          </>
+        )}
+      </div>
+
+      {/* ═══ แถบปุ่มด้านล่าง (ติดด้านล่างขณะเลื่อน) ═══ */}
+      <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-3 bg-white border-t border-slate-100">
+        <div className="flex items-center gap-2">
+          {step === 0 ? (
+            <button type="button" onClick={onCancel} disabled={isSubmitting} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>
+              ยกเลิก
+            </button>
+          ) : (
+            <button type="button" onClick={() => goTo(step - 1)} disabled={isSubmitting} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>
+              <ChevronLeft className="h-4 w-4" /> ย้อนกลับ
+            </button>
+          )}
+
+          <span className="flex-1 text-center text-xs text-slate-500 tabular-nums">
+            ขั้นที่ {step + 1} จาก {COURSE_FORM_STEPS.length}
+          </span>
+
+          {isEdit && step !== lastStep && (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || hasAnyError}
+              title={hasAnyError ? "ยังมีข้อมูลที่ต้องแก้ไข" : "บันทึกการแก้ไขทั้งหมดโดยไม่ต้องไปขั้นสุดท้าย"}
+              className={`${BTN.base} ${BTN.secondary} ${BTN.md} hidden sm:inline-flex`}
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="h-4 w-4" />} บันทึกทันที
+            </button>
+          )}
+
+          {step !== lastStep ? (
+            <button type="button" onClick={handleNext} disabled={isSubmitting} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>
+              ถัดไป <ChevronRight className="h-4 w-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting || hasAnyError}
+              className={`${BTN.base} ${BTN.primary} ${BTN.md}`}
+            >
+              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> {isEdit ? "บันทึกการแก้ไข" : "สร้างคอร์ส"}</>}
+            </button>
+          )}
+        </div>
+        {isEdit && step !== lastStep && (
           <button
             type="button"
-            onClick={() => setShowPreview(true)}
-            className="flex items-center justify-center gap-2 py-2.5 border border-slate-200 text-slate-600 rounded-xl font-bold hover:border-orange-300 hover:text-orange-600 transition text-sm w-full"
+            onClick={handleSubmit}
+            disabled={isSubmitting || hasAnyError}
+            className={`${BTN.base} ${BTN.ghost} ${BTN.sm} w-full mt-2 sm:hidden`}
           >
-            <Eye className="h-4 w-4" /> Preview หน้าคอร์ส (มุมมองนักเรียน)
+            <Check className="h-3.5 w-3.5" /> บันทึกทันที (ไม่ต้องไปขั้นสุดท้าย)
           </button>
-          {showPreview && <StudentPreviewModal course={initial} onClose={() => setShowPreview(false)} />}
-        </>
-      )}
+        )}
+        {stepHasError(step) && touchedSteps.has(step) && step !== lastStep && (
+          <p className="mt-2 text-xs text-red-600 flex items-center gap-1">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> กรอกช่องที่มีเครื่องหมาย * ในขั้นนี้ให้ครบก่อนไปขั้นถัดไป
+          </p>
+        )}
+      </div>
     </div>
   );
 }
+
 function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
@@ -2894,7 +3153,8 @@ export default function AdminCoursesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [filterTerm, setFilterTerm] = useState("all");
+  const [filterTerm, setFilterTerm] = useState("all"); // "all" | Term_Id
+  const [filterGrade, setFilterGrade] = useState("all"); // "all" | "none" | GradeLevelId
   const [filterAvailability, setFilterAvailability] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -2938,7 +3198,7 @@ export default function AdminCoursesPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterAvailability]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterGrade, filterAvailability]);
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
@@ -3038,13 +3298,18 @@ export default function AdminCoursesPage() {
     else showToast("error", "ไม่พบคอร์สนี้", "ลองรีเฟรชหน้าอีกครั้ง");
   };
 
-  const activeTermFilter = TERM_FILTERS.find(t => t.key === filterTerm) || TERM_FILTERS[0];
-
-  const baseForStatusCount = groupCourses.filter((c) => {
+  // ตัวกรองรายการคอร์สรวม — นับจำนวนในแต่ละตัวเลือกโดยคิดจากตัวกรองอื่นที่เลือกอยู่
+  const matchesFilters = (c, skip = "") => {
     const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
-    const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
-    return matchSearch && matchTerm;
-  });
+    const matchStatus = skip === "status" || filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
+    const matchTerm = skip === "term" || filterTerm === "all" || String(c.Term_Id) === filterTerm;
+    const matchGrade = skip === "grade" || filterGrade === "all"
+      || (filterGrade === "none" ? (c.GradeLevelId === null || c.GradeLevelId === undefined || c.GradeLevelId === "") : String(c.GradeLevelId) === filterGrade);
+    const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
+    return matchSearch && matchStatus && matchTerm && matchGrade && matchAvailability;
+  };
+
+  const baseForStatusCount = groupCourses.filter((c) => matchesFilters(c, "status"));
   const allStatusCount = baseForStatusCount.length;
   const statusCounts = statusOptions.reduce((acc, s) => {
     acc[s.Status_Course_Id] = baseForStatusCount.filter(
@@ -3053,27 +3318,28 @@ export default function AdminCoursesPage() {
     return acc;
   }, {});
 
-  const baseForTermCount = groupCourses.filter((c) => {
-    const matchSearch = search === "" || c.CourseName?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
-    return matchSearch && matchStatus;
+  // ช่วงเวลา/เทอม: ใช้ข้อมูลเทอมจริงจาก /term + เติมเทอมที่มีในคอร์สแต่ไม่อยู่ในรายการ (กันตกหล่น)
+  const baseForTermCount = groupCourses.filter((c) => matchesFilters(c, "term"));
+  const termFilterOptions = [...termOptions.map((t) => ({ id: String(t.Term_Id), name: t.Term_Name }))];
+  groupCourses.forEach((c) => {
+    if (c.Term_Id != null && !termFilterOptions.some((t) => t.id === String(c.Term_Id))) {
+      termFilterOptions.push({ id: String(c.Term_Id), name: c.Term_Name || `เทอม ${c.Term_Id}` });
+    }
   });
-  const termCounts = TERM_FILTERS.reduce((acc, t) => {
-    acc[t.key] = t.termId === null
-      ? baseForTermCount.length
-      : baseForTermCount.filter((c) => Number(c.Term_Id) === t.termId).length;
-    return acc;
-  }, {});
+  const termCountOf = (id) => baseForTermCount.filter((c) => String(c.Term_Id) === id).length;
 
-  const filtered = groupCourses.filter((c) => {
-    const matchSearch =
-      search === "" ||
-      c.CourseName?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filterStatus === "all" || String(c.Status_Course_Id) === filterStatus;
-    const matchTerm = activeTermFilter.termId === null || Number(c.Term_Id) === activeTermFilter.termId;
-    const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
-    return matchSearch && matchStatus && matchTerm && matchAvailability;
+  // ระดับชั้น: ใช้รายการจาก /grade-levels + เติมระดับที่มีในคอร์สแต่ไม่อยู่ในรายการ
+  const baseForGradeCount = groupCourses.filter((c) => matchesFilters(c, "grade"));
+  const gradeFilterOptions = [...gradeLevelOptions.map((g) => ({ id: String(g.GradeLevelId), name: g.GradeDetail }))];
+  groupCourses.forEach((c) => {
+    if (c.GradeLevelId != null && c.GradeLevelId !== "" && !gradeFilterOptions.some((g) => g.id === String(c.GradeLevelId))) {
+      gradeFilterOptions.push({ id: String(c.GradeLevelId), name: c.GradeLevelDetail || `ระดับชั้น ${c.GradeLevelId}` });
+    }
   });
+  const gradeCountOf = (id) => baseForGradeCount.filter((c) => String(c.GradeLevelId) === id).length;
+  const noGradeCount = baseForGradeCount.filter((c) => c.GradeLevelId === null || c.GradeLevelId === undefined || c.GradeLevelId === "").length;
+
+  const filtered = groupCourses.filter((c) => matchesFilters(c));
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -3165,11 +3431,34 @@ export default function AdminCoursesPage() {
               </option>
             ))}
           </select>
+          <select
+            value={filterGrade}
+            onChange={(e) => setFilterGrade(e.target.value)}
+            aria-label="กรองตามระดับชั้น"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
+          >
+            <option value="all">ทุกระดับชั้น ({baseForGradeCount.length})</option>
+            {gradeFilterOptions.map((g) => (
+              <option key={g.id} value={g.id}>{g.name} ({gradeCountOf(g.id)})</option>
+            ))}
+            {noGradeCount > 0 && <option value="none">ไม่ระบุระดับชั้น ({noGradeCount})</option>}
+          </select>
+          <select
+            value={filterTerm}
+            onChange={(e) => setFilterTerm(e.target.value)}
+            aria-label="กรองตามช่วงเวลา/เทอม"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
+          >
+            <option value="all">ทุกช่วงเวลา ({baseForTermCount.length})</option>
+            {termFilterOptions.map((t) => (
+              <option key={t.id} value={t.id}>{t.name} ({termCountOf(t.id)})</option>
+            ))}
+          </select>
         </div>
         <div className="mt-2 pl-1 flex items-center justify-between gap-2">
           <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {groupCourses.length} คอร์ส</p>
-          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterAvailability !== "all"}
-            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterAvailability("all"); }} />
+          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterGrade !== "all" || filterAvailability !== "all"}
+            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterGrade("all"); setFilterAvailability("all"); }} />
         </div>
       </div>
 

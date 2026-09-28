@@ -27,16 +27,18 @@ export default function StudentCourses() {
   const [examChoices, setExamChoices] = useState(null); // [{ subjectId, subjectName, examName, token }]
   const { toasts, showToast, removeToast } = useToast();
 
-  const handleEnterExam = async (courseId) => {
+  const handleEnterExam = async (courseId, courseName) => {
+    // ส่งชื่อคอร์ส (และวิชา ถ้ามี) ไปกับ route state ให้ breadcrumb หน้าสอบพากลับได้ถูกที่
+    const examState = (extra = {}) => ({ state: { from: { courseId, courseName, ...extra } } });
     const userId = getCurrentUserId();
     if (!userId) return navigate("/login");
     setExamLoadingId(courseId);
     try {
       const data = await fetchExamEntry(courseId, userId);
       if (data.token) {
-        navigate(`/exam/${data.token}`);
+        navigate(`/exam/${data.token}`, examState());
       } else if (data.choices?.length) {
-        setExamChoices(data.choices);
+        setExamChoices(data.choices.map((c) => ({ ...c, examState: examState({ subjectId: c.subjectId, subjectName: c.subjectName }) })));
       }
     } catch (err) {
       showToast("error", "เข้าสอบไม่ได้", err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
@@ -377,7 +379,7 @@ export default function StudentCourses() {
 
                   <div className="flex-1 relative">
                     <button
-                      onClick={() => handleEnterExam(course.id)}
+                      onClick={() => handleEnterExam(course.id, course.name)}
                       disabled={examLoadingId === course.id}
                       className="w-full h-full bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 disabled:opacity-50 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
                     >
@@ -407,7 +409,7 @@ export default function StudentCourses() {
               {examChoices.map((c) => (
                 <button
                   key={c.token}
-                  onClick={() => navigate(`/exam/${c.token}`)}
+                  onClick={() => navigate(`/exam/${c.token}`, c.examState)}
                   className="w-full text-left border-2 border-neutral-200 hover:border-green-300 hover:bg-green-50 rounded-xl px-4 py-3 transition"
                 >
                   <p className="font-semibold text-neutral-800 text-sm">{c.subjectName}</p>

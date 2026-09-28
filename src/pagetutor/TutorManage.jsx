@@ -1,15 +1,16 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import {
-  ChevronRight, Video, FileText, Trash2, Calendar, Plus, Download,
+  Video, FileText, Trash2, Calendar, Plus, Download,
   UploadCloud, Loader2, Pencil, X, Check, PlayCircle, CircleHelp
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import TutorVideoQuestionEditor from "../components/TutorVideoQuestionEditor";
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { Folder as LuFolder } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
@@ -193,11 +194,14 @@ export default function TutorCourseManagePage() {
 
         {/* Header */}
         <div className="py-6">
-  <div className="mb-3 flex flex-wrap items-center text-sm text-slate-500">
-    <Link to="/tutor/courses" className="hover:text-orange-600 transition">คอร์สของฉัน</Link>
-    <ChevronRight className="mx-1.5 h-4 w-4" />
-    <span className="text-slate-800 font-medium">จัดการเนื้อหา</span>
-  </div>
+  <Breadcrumb
+    className="mb-3"
+    items={[
+      { label: "หน้าแรก", to: "/tutor" },
+      { label: "คอร์สที่สอน", to: "/tutor/courses" },
+      { label: subjectName ? `จัดการเนื้อหา — ${subjectName}` : "จัดการเนื้อหา", title: [courseName, subjectName].filter(Boolean).join(" • ") },
+    ]}
+  />
   <h1 className={`${PAGE_TITLE} break-words`}>
     จัดการเนื้อหา{subjectName ? ` — ${subjectName}` : ""}
   </h1>

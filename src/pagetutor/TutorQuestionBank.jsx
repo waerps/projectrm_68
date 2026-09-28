@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import {
-  FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronRight, ChevronLeft, Settings2,
+  FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronLeft, Settings2,
 } from "lucide-react";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects } from "../utils/examShared";
 import { BankTab } from "./TutorExamDetail.jsx";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
 
@@ -77,17 +78,14 @@ export default function TutorQuestionBank() {
       <div className="space-y-6 px-4 lg:px-0">
         <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-        <div className="flex items-center text-sm flex-wrap gap-y-1">
-          <Link to="/tutor" className="font-medium text-slate-500 hover:text-orange-600 transition">
-            หน้าแรก
-          </Link>
-          <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-          <button onClick={backToList} className="font-medium text-slate-500 hover:text-orange-600 transition">
-            คลังข้อสอบ
-          </button>
-          <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-          <span className="font-medium text-slate-800">{selected?.subjectName || "วิชา"}</span>
-        </div>
+        <Breadcrumb
+          items={[
+            { label: "หน้าแรก", to: "/tutor" },
+            // ย้อนกลับด้วย backToList เพื่อให้โหลดจำนวนข้อใหม่หลังแก้ไขคลัง
+            { label: "คลังข้อสอบ", onClick: backToList },
+            { label: selected?.subjectName || "วิชา" },
+          ]}
+        />
 
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="min-w-0">

@@ -1,12 +1,12 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {
     Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
-    Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
+    Phone, BookOpen, ChevronLeft, Loader2,
     AlertTriangle, KeyRound, GraduationCap, School,
     CheckCircle, XCircle, Video, Calendar, BarChart2,
     PlayCircle, Clock, Shield,
@@ -15,6 +15,7 @@ import {
   } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_NUM, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { Phone as LuPhone, School as LuSchool } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
@@ -212,14 +213,14 @@ export default function TutorStudentDetail() {
     return (
         <div className="space-y-6 px-4 lg:px-0">
 
-            {/* Breadcrumb & Profile Card (เหมือนเดิม) */}
-            <div className="flex flex-wrap items-center text-sm text-slate-500 gap-2">
-                <Link to="/tutor/courses" className="hover:text-orange-600 transition font-medium">คอร์ส</Link>
-                <ChevronRight className="h-4 w-4" />
-                <Link to={`/tutor/students?courseId=${courseId}`} className="hover:text-orange-600 transition font-medium">ข้อมูลนักเรียน</Link>
-                <ChevronRight className="h-4 w-4" />
-                <span className="text-slate-800 font-semibold break-words min-w-0">{student.name}</span>
-            </div>
+            <Breadcrumb
+                items={[
+                    { label: "หน้าแรก", to: "/tutor" },
+                    { label: "คอร์สที่สอน", to: "/tutor/courses" },
+                    { label: "ข้อมูลนักเรียน", to: `/tutor/students?courseId=${courseId}` },
+                    { label: student.name },
+                ]}
+            />
 
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 shadow-sm rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">

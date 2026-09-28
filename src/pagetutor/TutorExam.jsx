@@ -1,4 +1,4 @@
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { ChevronRight, FileQuestion, Users, Clock, BarChart2 } from "lucide-react";
 
@@ -10,6 +10,7 @@ import {
   fetchExams,
 } from "../utils/examShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import EmptyState from "../components/ui/EmptyState";
@@ -68,14 +69,13 @@ export default function TutorExam() {
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm flex-wrap gap-y-1">
-        <Link to="/tutor/courses" className="font-medium text-slate-500 hover:text-orange-600 transition">
-          คอร์ส
-        </Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-        <span className="font-medium text-slate-800">{subjectName || "จัดการการสอบ"}</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "หน้าแรก", to: "/tutor" },
+          { label: "คอร์สที่สอน", to: "/tutor/courses" },
+          { label: subjectName || "จัดการการสอบ", title: [courseName, subjectName].filter(Boolean).join(" • ") },
+        ]}
+      />
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="min-w-0">

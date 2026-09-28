@@ -25,6 +25,7 @@ import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
@@ -3436,14 +3437,18 @@ export default function TutorExamDetail() {
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm flex-wrap gap-y-1">
-        <Link to="/tutor/courses" className="font-medium text-slate-500 hover:text-orange-600 transition">คอร์ส</Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-        <button onClick={backToExamList} className="font-medium text-slate-500 hover:text-orange-600 transition">{subjectName || "จัดการการสอบ"}</button>
-        <ChevronRight className="mx-2 h-4 w-4 text-slate-400" />
-        <span className="font-medium text-slate-800">{exam.name}</span>
-      </div>
+      <Breadcrumb
+        items={[
+          { label: "หน้าแรก", to: "/tutor" },
+          { label: "คอร์สที่สอน", to: "/tutor/courses" },
+          {
+            label: subjectName || "จัดการการสอบ",
+            to: `/tutor/exam?${new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName }).toString()}`,
+            title: [courseName, subjectName].filter(Boolean).join(" • "),
+          },
+          { label: exam.name },
+        ]}
+      />
 
       {/* Exam header */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">

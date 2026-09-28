@@ -1,10 +1,11 @@
 // ===================== 2) StudentCourseContent.jsx =====================
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams, useParams, Link } from "react-router-dom";
-import { ChevronRight, Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
+import { useSearchParams, useParams } from "react-router-dom";
+import { Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
 import { getStudentCourses, getStudentVideos, getStudentFiles, getVideoLearningState, updateVideoWatchSegments } from "../callapi/callusers_student";
 import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
+import Breadcrumb from "../components/ui/Breadcrumb";
 
 let ytApiPromise = null;
 function loadYoutubeApi() {
@@ -324,11 +325,14 @@ export default function StudentCourseContent() {
     <div className="min-h-screen mt-[70px] pb-12">
       <div className="mx-auto">
         <div className="py-6">
-          <div className="mb-3 flex items-center text-sm text-neutral-500">
-            <Link to="/profile/my-courses" className="hover:text-orange-600 transition">คอร์สเรียนของฉัน</Link>
-            <ChevronRight className="mx-1.5 h-4 w-4" />
-            <span className="text-neutral-800 font-medium">เนื้อหาในคอร์ส</span>
-          </div>
+          <Breadcrumb
+            className="mb-3"
+            items={[
+              { label: "หน้าแรก", to: "/" },
+              { label: "คอร์สเรียนของฉัน", to: "/profile/my-courses" },
+              { label: "เนื้อหาในคอร์ส", title: courseName },
+            ]}
+          />
           <h1 className="text-2xl font-bold text-neutral-900">{courseName}</h1>
         </div>
 
