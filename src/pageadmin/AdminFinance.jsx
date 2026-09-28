@@ -417,7 +417,7 @@ export default function AdminFinance() {
     const [monthlyError, setMonthlyError] = useState(null);
 
     /* pie charts */
-    const [charts, setCharts] = useState({ byCourseType: [], byTerm: [], byStatus: [], topCourses: [], installmentStatuses: [], bySingleBundle: [], topSingleCourses: [] });
+    const [charts, setCharts] = useState({ byTerm: [], byStatus: [], installmentStatuses: [], bySingleBundle: [], topSingleCourses: [], topBundleCourses: [] });
     const [chartsLoading, setChartsLoading] = useState(true);
     const [chartsError, setChartsError] = useState(null);
 
@@ -597,27 +597,12 @@ export default function AdminFinance() {
         singleRevenue: m.singleRevenue || 0,
     }));
 
-    const NEUTRAL_DONUT = { base: '#94a3b8', light: '#cbd5e1' };
-    const namedColors = DONUT_COLORS.filter((_, i) => i !== DONUT_COLORS.length - 1); // เก็บสีเทาไว้แยกให้ "ไม่ระบุ" โดยเฉพาะ
-
-    let colorCursor = 0;
-    const revenueByCourseType = (charts.byCourseType || []).map((c) => {
-        const isUnlabeled = !c.TypeName;
-        const color = isUnlabeled ? NEUTRAL_DONUT : namedColors[colorCursor++ % namedColors.length];
-        return {
-            name: c.TypeName || 'ไม่ระบุ',
-            value: Number(c.revenue) || 0,
-            ...color,
-        };
-    });
-
     const installmentStatusData = (charts.installmentStatuses || []).map((c, i) => ({
         name: c.label,
         value: Number(c.count) || 0,
         ...DONUT_COLORS[i % DONUT_COLORS.length],
     }));
 
-    const revenueByCourseTypeTotal = revenueByCourseType.reduce((s, d) => s + d.value, 0);
     const installmentTotalCount = installmentStatusData.reduce((s, d) => s + d.value, 0);
 
     // ⚠️ ใหม่: รายรับแยก "คอร์สรวม" vs "คอร์สเดี่ยว" — คนละมิติกับ revenueByCourseType ด้านบน (นั่นคือแยกตามหมวดวิชา)
@@ -632,9 +617,9 @@ export default function AdminFinance() {
         ? Math.round(((revenueBySingleBundle.find(d => d.name === 'คอร์สเดี่ยว')?.value || 0) / revenueBySingleBundleTotal) * 1000) / 10
         : null;
 
-    const topCourseData = (charts.topCourses || []).map(c => ({
+    // ⚠️ ใหม่: 5 คอร์สรวมที่สร้างรายรับสูงสุด — แยกจากคอร์สเดี่ยวโดยเฉพาะ ไม่นำมาปะปนกัน
+    const topBundleCourseData = (charts.topBundleCourses || []).map(c => ({
         name: c.CourseName,
-        courseType: c.Course_Type || 'bundle',
         revenue: Number(c.revenue) || 0,
     }));
 
@@ -741,17 +726,7 @@ export default function AdminFinance() {
                         </SectionCard>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <SectionCard title="แหล่งรายรับ (ตามหมวดวิชา)" icon={PieChart}>
-                            <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
-                                {revenueByCourseType.length === 0 ? (
-                                    <EmptyState message="ยังไม่มีข้อมูลรายรับ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
-                                ) : (
-                                    <Donut3D idPrefix="courseTypeDonut" data={revenueByCourseType} centerValue={formatMoney(revenueByCourseTypeTotal)} centerLabel="รายรับรวม" valueFormatter={formatMoney} />
-                                )}
-                            </ApiState>
-                        </SectionCard>
-
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <SectionCard
                             title="คอร์สรวม vs คอร์สเดี่ยว"
                             icon={PieChart}
@@ -795,22 +770,15 @@ export default function AdminFinance() {
                         </ApiState>
                     </SectionCard>
 
-                    <SectionCard title="5 คอร์สที่สร้างรายรับสูงสุด" icon={TrendingUp}>
-                        <p className={`${T.caption} -mt-2 mb-2 flex items-center gap-3`}>
-                            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-orange-500" />คอร์สเดี่ยว</span>
-                            <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-500" />คอร์สรวม</span>
-                        </p>
+                    <SectionCard title="5 อันดับคอร์สรวมที่สร้างรายรับสูงสุด" icon={TrendingUp}>
+                        <p className={`${T.caption} -mt-2 mb-2`}>แสดงเฉพาะคอร์สรวม 5 อันดับแรกที่สร้างรายรับสูงสุด แยกออกจากคอร์สเดี่ยวโดยเฉพาะ ไม่นำมารวมกัน</p>
                         <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-64" skeletonHeight="h-64">
-                            {topCourseData.length === 0 ? (
-                                <EmptyState message="ยังไม่มีข้อมูลรายรับรายคอร์ส" suggestion="จะแสดงเมื่อมีรายการชำระที่ตรวจสอบสำเร็จ" />
+                            {topBundleCourseData.length === 0 ? (
+                                <EmptyState message="ยังไม่มีข้อมูลรายรับคอร์สรวม" suggestion="จะแสดงเมื่อมีการชำระเงินคอร์สรวมเข้ามาในระบบ" />
                             ) : (
-                                <ResponsiveContainer width="100%" height={Math.max(240, topCourseData.length * 56)}>
-                                    <BarChart data={topCourseData} layout="vertical" margin={{ top: 8, left: 12, right: 30, bottom: 8 }}>
+                                <ResponsiveContainer width="100%" height={Math.max(240, topBundleCourseData.length * 56)}>
+                                    <BarChart data={topBundleCourseData} layout="vertical" margin={{ top: 8, left: 12, right: 30, bottom: 8 }}>
                                         <defs>
-                                            <linearGradient id="topCourseBarSingle" x1="0" y1="0" x2="1" y2="0">
-                                                <stop offset="0%" stopColor="#fdba74" />
-                                                <stop offset="100%" stopColor="#ea580c" />
-                                            </linearGradient>
                                             <linearGradient id="topCourseBarBundle" x1="0" y1="0" x2="1" y2="0">
                                                 <stop offset="0%" stopColor="#93c5fd" />
                                                 <stop offset="100%" stopColor="#2563eb" />
@@ -819,16 +787,8 @@ export default function AdminFinance() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                                         <XAxis type="number" tick={CHART_TICK} tickFormatter={value => `฿${Number(value).toLocaleString()}`} axisLine={false} tickLine={false} />
                                         <YAxis type="category" dataKey="name" width={180} tick={CHART_TICK} axisLine={false} tickLine={false} />
-                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v, n, p) => [formatMoney(v), p.payload.courseType === 'single' ? 'รายรับ (คอร์สเดี่ยว)' : 'รายรับ (คอร์สรวม)']} cursor={{ fill: '#f8fafc' }} />
-                                        <Bar dataKey="revenue" name="รายรับ" radius={[0, 10, 10, 0]}>
-                                            {topCourseData.map((d, i) => (
-                                                <Cell
-                                                    key={i}
-                                                    fill={d.courseType === 'single' ? 'url(#topCourseBarSingle)' : 'url(#topCourseBarBundle)'}
-                                                    style={{ filter: d.courseType === 'single' ? 'drop-shadow(2px 4px 6px rgba(234,88,12,0.35))' : 'drop-shadow(1px 2px 3px rgba(37,99,235,0.2))' }}
-                                                />
-                                            ))}
-                                        </Bar>
+                                        <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v) => [formatMoney(v), 'รายรับ (คอร์สรวม)']} cursor={{ fill: '#f8fafc' }} />
+                                        <Bar dataKey="revenue" name="รายรับ" fill="url(#topCourseBarBundle)" radius={[0, 10, 10, 0]} style={{ filter: 'drop-shadow(1px 2px 3px rgba(37,99,235,0.2))' }} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             )}
@@ -836,12 +796,12 @@ export default function AdminFinance() {
                     </SectionCard>
 
                     <SectionCard
-                        title="5 คอร์สเดี่ยวขายดีที่สุด (ตามวิชา/ระดับชั้น)"
+                        title="5 อันดับคอร์สเดี่ยวที่สร้างรายรับสูงสุด (แยกตามวิชาและระดับชั้น)"
                         icon={User}
                         className="border-orange-200"
                         action={<span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-md">ใหม่</span>}
                     >
-                        <p className={`${T.caption} -mt-2 mb-2`}>ตอบคำถาม "วิชาไหน ระดับชั้นไหน ของคอร์สเดี่ยวขายดีที่สุด" โดยเฉพาะ</p>
+                        <p className={`${T.caption} -mt-2 mb-2`}>แสดงข้อมูลวิชาและระดับชั้นของคอร์สเดี่ยว 5 อันดับแรกที่สร้างรายรับสูงสุดโดยเฉพาะ แยกออกจากคอร์สรวมอย่างชัดเจน</p>
                         <ApiState loading={chartsLoading} error={chartsError} onRetry={fetchCharts} minHeight="h-56" skeletonHeight="h-56">
                             {topSingleCourseData.length === 0 ? (
                                 <EmptyState message="ยังไม่มีข้อมูลรายรับคอร์สเดี่ยว" suggestion="จะแสดงเมื่อมีการชำระเงินคอร์สเดี่ยวเข้ามาในระบบ" />
