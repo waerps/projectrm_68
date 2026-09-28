@@ -71,6 +71,16 @@ const formatDate = (d) => {
 
 const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
 
+/* ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/TutorExamAnalytics) ── */
+const tiltMove = (e) => {
+    const el = e.currentTarget, r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+    el.style.setProperty('--gx', `${px * 100}%`);
+    el.style.setProperty('--gy', `${py * 100}%`);
+    el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
+};
+const tiltLeave = (e) => { e.currentTarget.style.transform = ''; };
+
 /* ─── useCountUp — เลขวิ่งขึ้นแบบ ease-out, ใช้กับตัวเลขในฮีโร่ ───────────── */
 function useCountUp(target, { duration = 900, active = true } = {}) {
     const [value, setValue] = useState(0);
@@ -180,8 +190,12 @@ function SectionCard({ title, icon: Icon, action, children, className = '', body
         <div className={`${T.card} ${T.cardPad} flex flex-col h-full min-w-0 overflow-x-clip ${className}`}>
             {title && (
                 <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h3 className={`${T.title} flex items-center gap-2`}>
-                        {Icon && <Icon className="h-4 w-4 text-orange-500" />}
+                    <h3 className={`${T.title} flex items-center gap-2.5`}>
+                        {Icon && (
+                            <span className="h-7 w-7 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                                <Icon className="h-4 w-4 text-orange-600" />
+                            </span>
+                        )}
                         {title}
                     </h3>
                     {action}
@@ -205,13 +219,19 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
     }[tone];
 
     return (
-        <div className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 hover:border-orange-200 ${T.transition} h-full min-h-[96px]`}>
+        <div
+            onMouseMove={tiltMove}
+            onMouseLeave={tiltLeave}
+            className={`sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 ${T.transition} h-full min-h-[96px]`}
+        >
+            <span className="sa-glow" />
+            {Icon && <Icon className="absolute -right-3 -top-3 h-16 w-16 text-slate-50 pointer-events-none" />}
             {Icon && (
-                <div className={`h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0 transition-transform duration-200`}>
+                <div className={`relative h-11 w-11 rounded-xl ${toneBg} flex items-center justify-center shrink-0 shadow-sm`}>
                     <Icon className="h-5 w-5 text-white" />
                 </div>
             )}
-            <div className="min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1">
                 <p className={`${T.label} leading-snug`}>{label}</p>
                 <p className="text-lg font-bold text-slate-900 tracking-tight truncate mt-0.5">{value}</p>
                 {sub && <p className={`${T.caption} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
