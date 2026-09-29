@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from "../utils/escapeHtml";
 import { API_URL } from "../config";
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
@@ -559,7 +560,7 @@ export default function TutorIncome() {
       const statusColor = status === 'paid' ? 'color:#16a34a' : status === 'pending' ? 'color:#ea580c' : 'color:#2563eb';
       return `
         <tr>
-          <td>${c.courseName}</td>
+          <td>${esc(c.courseName)}</td>
           <td style="text-align:center">${c.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}</td>
           <td style="text-align:center">${c.sessions}</td>
           <td style="text-align:right">${c.totalEarned.toLocaleString()}</td>
@@ -572,7 +573,7 @@ export default function TutorIncome() {
     const sessionRows = sessions.map(s => `
       <tr>
         <td>${formatDate(s.sessionDate)}</td>
-        <td>${s.courseName}${s.subjectName ? ` (${s.subjectName})` : ''}</td>
+        <td>${esc(s.courseName)}${s.subjectName ? ` (${esc(s.subjectName)})` : ''}</td>
         <td style="text-align:center">${s.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}</td>
         <td style="text-align:center">${s.actualStudents} คน</td>
         <td style="text-align:center">${Number(s.durationHours).toFixed(1)} ชม.</td>
@@ -580,7 +581,7 @@ export default function TutorIncome() {
         <td style="text-align:center;color:${s.isPaid ? '#16a34a' : '#ea580c'}">${s.isPaid ? 'รับแล้ว' : s.isPartiallyPaid ? 'รับบางส่วน' : 'ค้างรับ'}</td>
       </tr>`).join('');
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>รายรับ - ${tutorName}</title>
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>รายรับ - ${esc(tutorName)}</title>
       <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
       <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
       .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
@@ -594,7 +595,7 @@ export default function TutorIncome() {
       tfoot td{background:#fef3c7;font-weight:700;border-top:2px solid #f97316;}
       .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
       @media print{body{padding:16px;}}</style></head><body>
-      <div class="header"><div><h1>รายงานรายรับ</h1><p>ติวเตอร์: ${tutorName} &nbsp;|&nbsp; วันที่ออกรายงาน: ${today}</p></div>
+      <div class="header"><div><h1>รายงานรายรับ</h1><p>ติวเตอร์: ${esc(tutorName)} &nbsp;|&nbsp; วันที่ออกรายงาน: ${today}</p></div>
       <div class="header-right"><p style="font-size:11px;color:#6b7280">คลาสทั้งหมด</p><p style="font-size:20px;font-weight:700;color:#1f2937">${summary.totalSessions} คลาส</p></div></div>
       <div class="summary-grid">
         <div class="summary-card"><div class="label">รายรับสะสมทั้งหมด</div><div class="value">${summary.totalEarned.toLocaleString()} บ.</div></div>

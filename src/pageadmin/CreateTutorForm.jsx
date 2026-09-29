@@ -80,7 +80,7 @@ export default function CreateTutorForm() {
 
       const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/register-tutor`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("student_token") || ""}` },
         body: JSON.stringify(body),
       });
       const data = await res.json();

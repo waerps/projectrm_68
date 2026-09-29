@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from "../utils/escapeHtml";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
@@ -2763,21 +2764,21 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
     return `<tr>
       <td>${i + 1}</td>
-      <td>${s.name}</td>
+      <td>${esc(s.name)}</td>
       <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
       <td style="text-align:right">${pct != null ? `${s.totalScore}/${s.maxScore} (${pct}%)` : "—"}</td>
       <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
       <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
-      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td>${esc(s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"))}</td>
       <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
     </tr>`;
   }).join("");
 
-  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${s.name}</td></tr>`).join("");
+  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${esc(s.name)}</td></tr>`).join("");
 
   const printWindow = window.open("", "_blank");
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
-  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${exam.name}</title>
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${esc(exam.name)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
@@ -2791,7 +2792,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
     @media print{body{padding:16px;}}</style></head><body>
-    <div class="header"><div><h1>ผลสอบ: ${exam.name}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="header"><div><h1>ผลสอบ: ${esc(exam.name)}</h1><p>${esc(courseName || "")}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <div class="summary-grid">
       <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
       <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>

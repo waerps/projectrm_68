@@ -8,8 +8,9 @@ import {
   BarChart2, GraduationCap, Calendar, Users,
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { PAGE_SUBTITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
+import PageHeader from "../components/ui/PageHeader";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
@@ -224,21 +225,24 @@ export default function AdminProgressOverview() {
     <div className="space-y-6 px-4 lg:px-0">
       <ProgressBreadcrumb cameFrom={cameFrom} />
 
-      {/* Header — แบนเนอร์ไล่สีอ่อนๆ ให้ดูมีชีวิตชีวาแต่ยังอ่านสบาย เหมาะกับหน้ารายงาน */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
+      <PageHeader
+        title="ภาพรวมพัฒนาการ"
+        subtitle="ผลสอบ Pre / Mid / Post ของทุกคอร์สและทุกวิชา"
+      />
+
+      {/* แบนเนอร์โทนส้ม */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_30px_-10px_rgba(234,88,12,0.30)] p-5 sm:p-6">
         <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
         <div className="absolute left-1/3 -bottom-20 h-40 w-40 rounded-full bg-amber-200/25 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
-              <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
-            </span>
-            <h1 className={`${PAGE_TITLE} mt-2`}>ภาพรวมพัฒนาการ</h1>
-            <p className={PAGE_SUBTITLE}>
-              ผลสอบ Pre / Mid / Post ของทุกคอร์สและทุกวิชา
-              {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
-            </p>
-          </div>
+        <div className="relative">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+            <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
+          </span>
+          <h2 className="mt-2 text-lg font-bold text-slate-900">สรุปพัฒนาการรายวิชา</h2>
+          <p className={PAGE_SUBTITLE}>
+            เปรียบเทียบคะแนนก่อนเรียนและหลังเรียนของนักเรียน
+            {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
+          </p>
         </div>
       </div>
 

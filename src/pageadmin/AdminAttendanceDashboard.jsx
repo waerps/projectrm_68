@@ -741,7 +741,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
   return (
     <div className="space-y-6">
       {/* ── Header — แบนเนอร์ส้มชุดเดียวกับหน้าแอดมินอื่น ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 p-5 sm:p-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_30px_-10px_rgba(234,88,12,0.30)] p-5 sm:p-6">
         <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
         <div className="absolute left-1/3 -bottom-20 h-40 w-40 rounded-full bg-amber-200/25 blur-3xl" />
       <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">

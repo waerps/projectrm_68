@@ -3,6 +3,7 @@ import { getFileUrl } from "../utils/fileUrl";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { escapeHtml as esc } from "../utils/escapeHtml";
 import {
     TrendingUp, TrendingDown, Minus, Award,
     Phone, Video, Search, Download, ChevronDown, ChevronRight,
@@ -86,7 +87,7 @@ export default function TutorStudents() {
         const rows = filteredStudents.map(student => {
             const rate = getAttendanceRate(student);
             return `<tr>
-                <td>${student.name}</td><td>${student.school}</td><td>${student.phone}</td>
+                <td>${esc(student.name)}</td><td>${esc(student.school)}</td><td>${esc(student.phone)}</td>
                 <td style="${rate !== null && rate < 60 ? 'color:red' : ''}">
                     ${rate !== null ? `${student.totalAttended}/${student.totalClassHeld} (${rate}%)` : "ไม่มีข้อมูล"}
                 </td>
@@ -96,11 +97,11 @@ export default function TutorStudents() {
             </tr>`;
         }).join("");
         printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-            <title>รายงานนักเรียน - ${courseInfo.name}</title>
+            <title>รายงานนักเรียน - ${esc(courseInfo.name)}</title>
             <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
             <style>body{font-family:'Sarabun',sans-serif;padding:24px;font-size:13px}h1{font-size:18px;margin-bottom:4px}p{color:#666;margin:2px 0 16px;font-size:12px}table{width:100%;border-collapse:collapse}th{background:#f97316;color:white;padding:8px 12px;text-align:left;font-size:12px}td{padding:7px 12px;border-bottom:1px solid #e5e7eb;font-size:12px}tr:nth-child(even) td{background:#fff7ed}@media print{body{padding:0}}</style>
             </head><body>
-            <h1>รายงานนักเรียน: ${courseInfo.name}</h1>
+            <h1>รายงานนักเรียน: ${esc(courseInfo.name)}</h1>
             <p>จำนวนนักเรียน: ${filteredStudents.length} คน | วันที่: ${new Date().toLocaleDateString("th-TH")}</p>
             <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>GPA</th><th>พัฒนาการ</th></tr></thead>
             <tbody>${rows}</tbody></table>

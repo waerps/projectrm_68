@@ -68,7 +68,7 @@ export default function TutorCourseManagePage() {
   const fetchContent = async () => {
     if (!courseId || !subjectId) { setLoading(false); return; }
     try {
-      const res = await axios.get(`${API_URL}/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`);
+      const res = await axios.get(`${API_URL}/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`, { headers: authHeaders });
       setVideos(res.data.videos || []);
       setDocuments(res.data.files || []);
       setLoadError(false);
@@ -150,7 +150,7 @@ export default function TutorCourseManagePage() {
     formData.append("DisplayName", uploadDisplayName.trim());
     try {
       await axios.post(`${API_URL}/api/tutor-content/file`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
       });
       setIsUploadDocOpen(false);
       setUploadFile(null);
@@ -169,7 +169,7 @@ export default function TutorCourseManagePage() {
       formData.append("FileName", editDocName.trim());
       if (editDocFile) formData.append("file", editDocFile);
       await axios.put(`${API_URL}/api/tutor-content/file/${editingDoc.FileId}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
       });
       setEditingDoc(null);
       fetchContent();
@@ -180,7 +180,7 @@ export default function TutorCourseManagePage() {
   const handleDeleteDoc = async (id) => {
     if (!await confirmDialog("ต้องการลบเอกสารนี้?")) return;
     try {
-      await axios.delete(`${API_URL}/api/tutor-content/file/${id}`);
+      await axios.delete(`${API_URL}/api/tutor-content/file/${id}`, { headers: authHeaders });
       setDocuments(documents.filter(d => d.FileId !== id));
     } catch { toast("ลบไฟล์ไม่สำเร็จ"); }
   };

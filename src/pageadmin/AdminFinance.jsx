@@ -340,7 +340,7 @@ function HeroStat({ label, icon: Icon, value, tone, ready }) {
 function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet, cashMargin, tutorPayable, tutorAccrued, overdue, overdueCount }) {
     const ready = !loading && !error;
     return (
-        <div className="relative overflow-hidden rounded-3xl p-5 sm:p-7" style={{ background: 'linear-gradient(135deg,#fff7ed,#fff 45%,#eff6ff)' }}>
+        <div className="relative overflow-hidden rounded-3xl border border-orange-100 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_30px_-10px_rgba(234,88,12,0.30)] p-5 sm:p-7" style={{ background: 'linear-gradient(135deg,#fff7ed,#fff 45%,#eff6ff)' }}>
             <div className="absolute -right-16 -top-24 h-72 w-72 rounded-full bg-orange-300/25 blur-3xl pointer-events-none" />
             <div className="absolute left-1/4 -bottom-28 h-64 w-64 rounded-full bg-blue-300/20 blur-3xl pointer-events-none" />
             <div className="relative">

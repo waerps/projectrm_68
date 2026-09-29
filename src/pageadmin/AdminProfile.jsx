@@ -34,6 +34,7 @@ const formatDate = (iso) => {
 
 // ─── ChangePasswordModal ────────────────────────────────────────────────────
 function ChangePasswordModal({ adminId, onClose, showToast }) {
+  const [currentPwd, setCurrentPwd] = useState("");
   const [pwd, setPwd] = useState("");
   const [confirmPwd, setConfirmPwd] = useState("");
   const [show, setShow] = useState(false);
@@ -42,12 +43,13 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
 
   const submit = async () => {
     if (!pwd.trim()) return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอกรหัสผ่านใหม่");
-    if (pwd.length < 6) return showToast("error", "รหัสผ่านสั้นเกินไป", "ต้องมีอย่างน้อย 6 ตัวอักษร");
+    if (!currentPwd) return showToast("error", "กรอกข้อมูลไม่ครบ", "กรุณากรอกรหัสผ่านปัจจุบัน");
+    if (pwd.length < 8) return showToast("error", "รหัสผ่านสั้นเกินไป", "ต้องมีอย่างน้อย 8 ตัวอักษร");
     if (pwd !== confirmPwd) return showToast("error", "รหัสผ่านไม่ตรงกัน", "กรุณากรอกยืนยันรหัสผ่านให้ตรงกัน");
 
     setLoading(true);
     try {
-      await axios.patch(`${API}/${adminId}/change-password`, { newPassword: pwd });
+      await axios.patch(`${API}/${adminId}/change-password`, { newPassword: pwd, currentPassword: currentPwd });
       showToast("success", "เปลี่ยนรหัสผ่านสำเร็จ");
       onClose();
     } catch (e) {
@@ -72,6 +74,14 @@ function ChangePasswordModal({ adminId, onClose, showToast }) {
         </div>
 
         <div className="space-y-3 mb-5">
+          <input
+            type="password"
+            value={currentPwd}
+            onChange={e => setCurrentPwd(e.target.value)}
+            className={inp}
+            placeholder="รหัสผ่านปัจจุบัน"
+            autoComplete="current-password"
+          />
           <div className="relative">
             <input
               type={show ? "text" : "password"}
