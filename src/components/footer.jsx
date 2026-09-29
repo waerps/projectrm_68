@@ -1,5 +1,6 @@
 // src/pages/Home.jsx
 import React from "react"
+import { Link } from "react-router-dom"
 
 export default function Footer() {
   return (
@@ -14,9 +15,9 @@ export default function Footer() {
               “ใกล้เป้าหมายมากขึ้นทุกวัน”
             </p>
             <div className="mt-4 flex items-center justify-center gap-3">
-              <button className="rounded-full bg-white px-5 py-2 text-orange-600 shadow">
+              <Link to="/courses" className="rounded-full bg-white px-5 py-2 text-orange-600 shadow">
                 ดูคอร์สเรียนทั้งหมด
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -42,9 +43,9 @@ export default function Footer() {
             <div>
               <div className="font-bold mb-3">เมนู</div>
               <ul className="space-y-2 text-orange-50">
-                <li><a href="#" className="hover:underline">โปรโมชัน</a></li>
-                <li><a href="#" className="hover:underline">ผลลัพธ์ยอดครูเสริม</a></li>
-                <li><a href="#" className="hover:underline">ข่าวประชาสัมพันธ์</a></li>
+                <li><Link to="/promotion" className="hover:underline">โปรโมชัน</Link></li>
+                <li><Link to="/about" className="hover:underline">เกี่ยวกับสถาบัน</Link></li>
+                <li><Link to="/news" className="hover:underline">ข่าวประชาสัมพันธ์</Link></li>
               </ul>
             </div>
 
@@ -52,8 +53,8 @@ export default function Footer() {
             <div>
               <div className="font-bold mb-3">ติดต่อเรา</div>
               <div className="space-y-2 text-orange-50">
-                <div>ซอยศรีจันทร์ 4 (ซอย ยืนครู่), Khon Kaen, Thailand, Khon Kaen</div>
-                <div>082 664 6551</div>
+                <div><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("ศรเสริม ติวเตอร์ ซอยศรีจันทร์ 4 ขอนแก่น")}`} target="_blank" rel="noopener noreferrer" className="hover:underline">ซอยศรีจันทร์ 4 (ซอย ยืนครู่), Khon Kaen, Thailand, Khon Kaen</a></div>
+                <div><a href="tel:0826646551" className="hover:underline">082 664 6551</a></div>
               </div>
             </div>
           </div>
