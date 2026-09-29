@@ -197,13 +197,17 @@ const INC3D_CSS = `
 .inc3d-step:hover{transform:translateY(-3px)}
 .inc3d-track{box-shadow:inset 0 2px 3px rgba(15,23,42,.08)}
 .inc3d-bar{position:relative;transform-origin:bottom;animation:inc3d-grow 1s cubic-bezier(.2,.8,.2,1) both}
-.inc3d-bar .fc{position:absolute;inset:0;border-radius:6px 6px 0 0;background:#FDBA74}
+.inc3d-bar .fc{position:absolute;inset:0;background:linear-gradient(90deg,#FDBA74,#FB923C)}
+.inc3d-bar::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:7px;background:#FED7AA;transform:skewX(-40deg);transform-origin:bottom left}
+.inc3d-bar::after{content:"";position:absolute;left:100%;top:0;bottom:0;width:6px;background:#EA580C;transform:skewY(-50deg);transform-origin:top left}
+.inc3d-bar.now::before{background:#FDBA74}
+.inc3d-bar.now::after{background:#C2410C}
 .inc3d-bar.now .fc{background:linear-gradient(180deg,#FB923C,#EA580C)}
 .inc3d-bar.hov .fc{filter:brightness(1.05) saturate(1.1)}
 @keyframes inc3d-grow{from{transform:scaleY(0)}}
 .inc3d-line{animation:inc3d-reveal 1.3s .8s cubic-bezier(.2,.8,.2,1) both}
 @keyframes inc3d-reveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
-.inc3d-dot{background:#1E293B;box-shadow:0 0 0 2px #fff}
+.inc3d-dot{background:radial-gradient(circle at 30% 25%,#64748B,#1E293B 70%);box-shadow:0 0 0 2px #fff,0 3px 0 #0F172A,0 5px 8px rgba(15,23,42,.15)}
 .inc3d-ball{background:#EA580C;box-shadow:0 0 0 3px #fff,0 1px 3px rgba(15,23,42,.3)}
 .inc3d-person{background:#22C55E}
 .inc3d-mini{background:#0EA5E9}
@@ -211,6 +215,8 @@ const INC3D_CSS = `
 .inc3d-donut{position:relative;width:176px;height:176px;animation:inc3d-sweep 1.2s .2s cubic-bezier(.2,.8,.2,1) both}
 @keyframes inc3d-sweep{from{--inc3d-sweep:0}}
 .inc3d-disc{position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(circle,transparent 58%,#000 59%);mask:radial-gradient(circle,transparent 58%,#000 59%)}
+.inc3d-disc-depth{transform:translateY(9px);filter:brightness(.72)}
+.inc3d-disc-top{box-shadow:inset 0 2px 2px rgba(255,255,255,.45)}
 .inc3d-center{position:absolute;inset:0;display:grid;place-items:center}
 .inc3d-in{animation:inc3d-in .5s ease both}
 @keyframes inc3d-in{from{translate:0 10px;opacity:0}}
@@ -276,11 +282,11 @@ function IsoMonthlyChart({ data }) {
               <div key={`${d.month}-${d.year}`} className="relative flex h-full items-end justify-center cursor-default"
                 onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
                 <div className={`inc3d-bar ${d.isCurrent ? 'now' : ''} ${hover === i ? 'hov' : ''}`}
-                  style={{ height: `${((d.total || 0) / top) * 100}%`, width: 'min(52%, 48px)', animationDelay: `${i * 70}ms` }}>
+                  style={{ height: `${((d.total || 0) / top) * 100}%`, width: 'min(44%, 42px)', visibility: d.total > 0 ? 'visible' : 'hidden', animationDelay: `${i * 70}ms` }}>
                   <span className="fc" />
                   {showVal && (
                     <span className={`absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-bold tabular-nums ${d.isCurrent ? 'text-orange-700' : 'text-slate-500'}`}
-                      style={{ bottom: 'calc(100% + 6px)' }}>{fmtK(d.total)}</span>
+                      style={{ bottom: 'calc(100% + 12px)' }}>{fmtK(d.total)}</span>
                   )}
                   {d.isBest && (
                     <span className="sa-pop absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-amber-300 shadow"
@@ -334,7 +340,8 @@ function IsoDonut({ data, centerValue, centerLabel }) {
     <div className="flex flex-col items-center gap-2 mt-2">
       <div className="grid h-[196px] w-full place-items-center">
         <div key={sig} className="inc3d-donut">
-          <span className="inc3d-disc" style={{ background: bg }} />
+          <span aria-hidden="true" className="inc3d-disc inc3d-disc-depth" style={{ background: bg }} />
+          <span aria-hidden="true" className="inc3d-disc inc3d-disc-top" style={{ background: bg }} />
           <div className="inc3d-center">
             <div className="text-center">
               <p className={STAT_VALUE}>{centerValue}<span className={STAT_UNIT}>คอร์ส</span></p>
@@ -835,11 +842,11 @@ export default function TutorIncome() {
               <div className="mt-4">
                 <div className="inc3d-track flex h-3 rounded-full overflow-hidden bg-slate-100">
                   <div className="sa-grow h-full bg-gradient-to-r from-green-400 to-green-500" style={{ width: `${paidPct}%`, animationDelay: '.3s' }} />
-                  <div className="sa-grow h-full bg-orange-400" style={{ width: `${summary.totalEarned > 0 ? 100 - paidPct : 0}%`, animationDelay: '.7s', backgroundImage: 'repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 6px, transparent 6px 12px)' }} />
+                  <div className="sa-grow h-full bg-slate-300" style={{ width: `${summary.totalEarned > 0 ? 100 - paidPct : 0}%`, animationDelay: '.7s' }} />
                 </div>
                 <div className="flex justify-between text-[11px] mt-1.5">
                   <span className="text-green-700 font-semibold">โอนแล้ว {paidPct}%</span>
-                  <span className="text-orange-600 font-semibold">ค้างรับ {summary.totalEarned > 0 ? 100 - paidPct : 0}%</span>
+                  <span className="text-slate-500 font-semibold">ค้างรับ {summary.totalEarned > 0 ? 100 - paidPct : 0}%</span>
                 </div>
               </div>
               {overpaid > 0 && (

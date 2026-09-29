@@ -41,7 +41,7 @@ export default function Footer() {
 
             {/* menu */}
             <div>
-              <div className="font-bold mb-3">เมนู</div>
+              <div className="font-bold mb-3"><Link to="/" className="hover:underline">เมนู</Link></div>
               <ul className="space-y-2 text-orange-50">
                 <li><Link to="/promotion" className="hover:underline">โปรโมชัน</Link></li>
                 <li><Link to="/about" className="hover:underline">เกี่ยวกับสถาบัน</Link></li>

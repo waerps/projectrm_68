@@ -2300,8 +2300,7 @@ export default function AdminStudentsPage() {
       </PageHeader>
 
       {/* แบนเนอร์โทนส้ม */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-50 via-amber-50/60 to-white border border-orange-100 shadow-[0_1px_2px_rgba(15,23,42,0.05),0_12px_30px_-10px_rgba(234,88,12,0.30)] p-5 sm:p-6">
-        <div className="absolute -right-10 -top-14 h-48 w-48 rounded-full bg-orange-200/30 blur-3xl" />
+      <div className="admin-summary-banner p-5 sm:p-6">
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">

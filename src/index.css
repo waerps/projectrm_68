@@ -131,3 +131,14 @@ html, body {
   .sa-card3d, .sa-coin { animation: none !important; }
   .sa-card3d:hover { transform: translateY(-2px); }
 }
+
+/* Shared white/orange summary banners for the admin pages. */
+.admin-summary-banner {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #f97316;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, .04);
+}

@@ -26,7 +26,7 @@ export default function Breadcrumb({ items = [], showHomeIcon = true, className 
           const isLast = i === list.length - 1;
           const label = String(it.label);
           const tip = it.title || label;
-          const icon = showHomeIcon && i === 0
+          const icon = showHomeIcon && !String(list[0]?.to || "").match(/^\/tutor(?:\/|$)/) && i === 0
             ? <Home className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             : null;
 
