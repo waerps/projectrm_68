@@ -82,7 +82,13 @@ export default function Navbar() {
   // ── แผงเมนูมือถือ (< md): แฮมเบอร์เกอร์รวมลิงก์หลัก + บัญชี ที่แตะได้ ──
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
-  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+  useEffect(() => {
+    setMenuOpen(false)
+    setShowSearchDrop(false)
+    setShowFilterDrop(false)
+    setShowFavDrop(false)
+    setShowCartDrop(false)
+  }, [location.pathname, location.search])
   useEffect(() => {
     if (!menuOpen) return
     const onDown = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false) }
@@ -240,9 +246,9 @@ const cartTotal = cart.reduce((sum, item) => {
 }, 0)
 
   return (
-    <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
-      {menuOpen && <div className="fixed inset-0 z-[60] bg-slate-900/30 md:hidden" aria-hidden="true" />}
-      <nav className="mx-3 sm:mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-2 sm:gap-4 md:gap-8 rounded-2xl bg-white px-3 sm:px-6 md:px-8 shadow-lg">
+    <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4 bg-white xl:bg-transparent">
+      {menuOpen && <div className="fixed inset-0 bg-slate-900/30 xl:hidden" aria-hidden="true" />}
+      <nav className="relative mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-2 sm:gap-4 xl:gap-4 rounded-2xl bg-white px-3 sm:px-4 xl:px-6 shadow-lg">
 
         {/* Logo */}
         <Link to="/" className="flex-shrink-0">
@@ -250,7 +256,7 @@ const cartTotal = cart.reduce((sum, item) => {
             <div className="flex h-9 w-9 items-center justify-center">
               <img src="/logo.png" alt="ศรเสริมติวเตอร์" className="h-auto w-full object-contain" />
             </div>
-            <div className="hidden flex-col md:flex">
+            <div className="hidden flex-col lg:flex">
               <span className="font-sans font-bold text-xs leading-tight text-gray-800">SORNSERM</span>
               <span className="font-sans font-bold text-xs leading-tight text-gray-800">TUTOR</span>
             </div>
@@ -258,8 +264,8 @@ const cartTotal = cart.reduce((sum, item) => {
         </Link>
 
         {/* Menu + Search */}
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-4 md:gap-8">
-          <div className="hidden md:flex items-center gap-8 ml-4">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-4 xl:gap-4">
+          <div className="hidden xl:flex shrink-0 items-center gap-3 whitespace-nowrap">
             <Link
               to="/"
               className={`font-medium transition-colors text-xs ${
@@ -379,15 +385,16 @@ const cartTotal = cart.reduce((sum, item) => {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
+                aria-label="ค้นหาคอร์สเรียน"
                 placeholder="ค้นหาชื่อคอร์สเรียน"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setShowSearchDrop(true)}
-                className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
 
               {showSearchDrop && (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl bg-white shadow-2xl border border-gray-100 navbar-drop">
+                <div className="fixed inset-x-4 top-[89px] xl:absolute xl:inset-x-0 xl:top-[calc(100%+8px)] z-50 max-h-[calc(100dvh-105px)] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-100 navbar-drop">
                   {searchResults.length === 0 ? (
                     <div className="px-5 py-6 text-center text-sm text-gray-400">
                       ไม่พบคอร์สที่ตรงกับ &ldquo;{searchQuery}&rdquo;
@@ -439,7 +446,7 @@ const cartTotal = cart.reduce((sum, item) => {
               <button
                 onClick={() => toggleDrop("filter")}
                 title="ตัวกรองการค้นหา"
-                className={`relative h-9 w-9 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors ${
+                className={`relative h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors ${
                   activeFilterCount > 0
                     ? "border-orange-400 bg-orange-50 text-orange-500"
                     : "border-gray-200 bg-gray-50 text-gray-400 hover:text-orange-500 hover:border-orange-300"
@@ -454,7 +461,7 @@ const cartTotal = cart.reduce((sum, item) => {
               </button>
 
               {showFilterDrop && (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-72 max-h-[420px] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-100 navbar-drop p-4 space-y-4">
+                <div className="fixed inset-x-4 top-[89px] z-50 max-h-[calc(100dvh-105px)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+8px)] sm:w-72 sm:max-h-[min(420px,calc(100dvh-105px))] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-gray-100 navbar-drop p-4 space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-800">ตัวกรอง</span>
                     {activeFilterCount > 0 && (
@@ -527,22 +534,29 @@ const cartTotal = cart.reduce((sum, item) => {
         </div>
 
         {/* ปุ่มด้านขวา */}
-        <div className="flex items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-0.5">
 
           {/* ── แฮมเบอร์เกอร์: ลิงก์เมนูหลัก + บัญชี สำหรับจอ < md ── */}
-          <div ref={menuRef} className="relative md:hidden">
+          <div ref={menuRef} className="relative order-last xl:order-none xl:hidden">
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-label="เมนู"
+              onClick={() => {
+                setMenuOpen((v) => !v)
+                setShowSearchDrop(false)
+                setShowFilterDrop(false)
+                setShowFavDrop(false)
+                setShowCartDrop(false)
+              }}
+              aria-label="เมนูหลักและบัญชี"
+              aria-controls="public-navigation-menu"
               aria-expanded={menuOpen}
-              className={`flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${menuOpen ? "bg-orange-100 text-orange-500" : "text-gray-500 hover:bg-orange-100 hover:text-orange-500"}`}
+              className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${menuOpen ? "bg-orange-100 text-orange-500" : "text-gray-500 hover:bg-orange-100 hover:text-orange-500"}`}
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
 
             {menuOpen && (
-              <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
+              <div id="public-navigation-menu" className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl md:absolute md:inset-x-auto md:right-0 md:w-80 md:top-[calc(100%+12px)]">
                 {userData && (
                   <div className="flex items-center gap-3 border-b border-gray-100 bg-orange-50/60 px-4 py-3.5">
                     <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-orange-200 bg-orange-50">
@@ -563,7 +577,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   </div>
                 )}
 
-                <ul className="flex-1 overflow-y-auto p-2">
+                <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
                   {MAIN_NAV_LINKS.map(({ to, label, icon: Icon }) => (
                     <li key={to}>
                       <Link
@@ -647,9 +661,10 @@ const cartTotal = cart.reduce((sum, item) => {
           <NotificationBell role="student" pagePath="/profile/notifications" />
 
           {/* ── Favorites ── */}
-          <div className="relative" ref={favRef}>
+          <div className="relative hidden xl:block" ref={favRef}>
             <button
               onClick={() => toggleDrop("fav")}
+              aria-label="รายการโปรด"
               className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showFavDrop ? "bg-red-50 text-red-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
             >
               <Heart className={`h-5 w-5 ${showFavDrop ? "fill-red-400 text-red-400" : ""}`} />
@@ -712,9 +727,10 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* ── Cart ── */}
-          <div className="relative mr-3" ref={cartRef}>
+          <div className="relative hidden xl:block" ref={cartRef}>
             <button
               onClick={() => toggleDrop("cart")}
+              aria-label="ตะกร้าสินค้า"
               className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showCartDrop ? "bg-orange-50 text-orange-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
             >
               <ShoppingCart className="h-5 w-5" />
@@ -783,7 +799,7 @@ const cartTotal = cart.reduce((sum, item) => {
 
           {/* ── User / Login (โชว์รูป + ชื่อเล่นเท่านั้น) ── */}
           {userData ? (
-            <div className="relative group flex items-center gap-2">
+            <div className="relative group hidden xl:flex items-center gap-2">
               <Link to="/profile" className="flex items-center gap-2 cursor-pointer pb-1">
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-orange-200 bg-orange-50 flex-shrink-0">
                   <img
@@ -799,11 +815,11 @@ const cartTotal = cart.reduce((sum, item) => {
                     }}
                   />
                 </div>
-                <span className={`hidden font-bold text-sm transition-colors sm:inline ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
+                <span className={`max-w-20 truncate font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
                   {userData.nickname || userData.username || "นักเรียน"}
                 </span>
               </Link>
-              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 border border-gray-100">
+              <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50 border border-gray-100">
                 <ul className="py-2 text-sm text-gray-700">
                   <li><Link to="/profile" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ข้อมูลส่วนตัว</Link></li>
                   <li><Link to="/profile/schedule" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ตารางเรียน</Link></li>
@@ -821,7 +837,7 @@ const cartTotal = cart.reduce((sum, item) => {
               </div>
             </div>
           ) : (
-            <Link to="/login" className="h-10 flex items-center rounded-lg bg-orange-500 px-6 text-white text-sm font-bold hover:bg-orange-600 transition-colors">
+            <Link to="/login" className="hidden xl:flex h-11 shrink-0 items-center whitespace-nowrap rounded-xl bg-orange-500 px-3 text-white text-sm font-bold hover:bg-orange-600 transition-colors">
               เข้าสู่ระบบ
             </Link>
           )}
