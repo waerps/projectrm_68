@@ -1,275 +1,159 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import axios from "axios";
-import { X, ChevronLeft, ChevronRight, Calendar, Tag } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Image as ImageIcon, Newspaper, X } from "lucide-react";
 import { API_URL } from "../config";
+import "./News.css";
 
-const SERVER_URL = API_URL;
+const newsUrl = (path) => {
+  if (!path) return null;
+  if (/^(https?:|blob:|data:)/i.test(path)) return path;
+  return `${API_URL.replace(/\/$/, "")}/${String(path).replace(/^\//, "")}`;
+};
 
-function resolveImg(img) {
-  if (!img) return null;
-  if (img.startsWith("http") || img.startsWith("blob:")) return img;
-  return `${SERVER_URL}${img}`;
+function NewsImage({ src, alt, className = "" }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+
+  if (!src || failed) {
+    return <div className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></div>;
+  }
+  return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }
 
-const FALLBACK = "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=800";
-
-const SafeImg = ({ src, className, alt }) => (
-  <img
-    src={src || FALLBACK}
-    onError={(e) => { e.currentTarget.src = FALLBACK; }}
-    className={className}
-    alt={alt}
-  />
-);
-
-const SectionTitle = ({ children, sub }) => (
-  <div className="text-center mb-8 md:mb-10">
-    <h2 className="text-2xl md:text-[32px] font-extrabold text-orange-500">{children}</h2>
-    {sub && <p className="mt-2 text-gray-500">{sub}</p>}
-  </div>
-);
-
-// ── NewsCard ──────────────────────────────────────────────────────────────
-const NewsCard = ({ item, onClick }) => (
-  <div
-    onClick={onClick}
-    className="rounded-3xl border border-gray-100 bg-white p-4 md:p-5 shadow-sm
-               hover:shadow-md hover:border-orange-200 transition cursor-pointer"
-  >
-    <div className="flex flex-col md:flex-row gap-4">
-      <div className="md:w-[36%]">
-        <SafeImg
-          src={item.img}
-          alt={item.title}
-          className="h-40 w-full rounded-2xl object-cover"
-        />
-      </div>
-      <div className="flex-1">
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-            {item.tag}
-          </span>
-          <span className="text-gray-400">{item.date}</span>
-          {item.sub && (
-            <span className="rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-700">
-              {item.sub.length > 50 ? item.sub.substring(0, 50) + "..." : item.sub}
-            </span>
-          )}
-        </div>
-        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed">{item.title}</h4>
-        <p className="mt-1 text-xs text-orange-500 font-medium">อ่านต่อ →</p>
-      </div>
-    </div>
-  </div>
-);
-
-// ── ImageGallery — แสดงรูปพร้อม lightbox ────────────────────────────────────
-function ImageGallery({ images }) {
-  const [lightbox, setLightbox] = useState(null);
-
-  if (!images?.length) return null;
-
-  const prev = () => setLightbox((i) => (i - 1 + images.length) % images.length);
-  const next = () => setLightbox((i) => (i + 1) % images.length);
-
+function NewsTile({ item, index, onOpen, closing = false }) {
+  const featured = index === 0;
+  const wide = index > 0 && index % 6 === 4;
   return (
-    <>
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        {images.map((img, idx) => (
-          <div
-            key={img.ImageId}
-            onClick={() => setLightbox(idx)}
-            className="cursor-zoom-in rounded-xl overflow-hidden aspect-square"
-          >
-            <SafeImg
-              src={resolveImg(img.ImagePath)}
-              alt=""
-              className="h-full w-full object-cover hover:scale-105 transition duration-200"
-            />
-          </div>
-        ))}
-      </div>
-
-      {lightbox !== null && (
-        <div
-          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); prev(); }}
-            className="absolute left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <ChevronLeft className="h-6 w-6 text-white" />
-          </button>
-
-          <img
-            src={resolveImg(images[lightbox].ImagePath)}
-            alt=""
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] max-w-full rounded-2xl object-contain"
-          />
-
-          <button
-            onClick={(e) => { e.stopPropagation(); next(); }}
-            className="absolute right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <ChevronRight className="h-6 w-6 text-white" />
-          </button>
-
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <X className="h-5 w-5 text-white" />
-          </button>
-
-          <span className="absolute bottom-4 text-white/70 text-sm">
-            {lightbox + 1} / {images.length}
-          </span>
-        </div>
-      )}
-    </>
+    <button
+      type="button"
+      className={`news-tile ${featured ? "news-tile-featured" : ""} ${wide ? "news-tile-wide" : ""} ${closing ? "is-closing" : ""}`}
+      onClick={(event) => onOpen(item.id, event.currentTarget)}
+      aria-label={`อ่านข่าว ${item.title || "ข่าวประชาสัมพันธ์"}`}
+      style={{ "--tile-order": Math.min(index, 9) }}
+    >
+      <span className="news-tile-photo"><NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} /></span>
+      <span className="news-tile-shade" />
+      <span className="news-tile-content">
+        <span className="news-tile-meta"><span className="news-tile-tag">{item.tag || "ข่าวประชาสัมพันธ์"}</span>{item.date && <span className="news-tile-date"><CalendarDays size={14} aria-hidden="true" />{item.date}</span>}</span>
+        <span className="news-tile-title">{item.title || "ข่าวประชาสัมพันธ์"}</span>
+        {item.sub && <span className="news-tile-summary">{item.sub}</span>}
+        <span className="news-tile-link">อ่านรายละเอียด <ArrowUpRight size={17} aria-hidden="true" /></span>
+      </span>
+    </button>
   );
 }
 
-// ── NewsDetailModal ──────────────────────────────────────────────────────
-function NewsDetailModal({ newsId, onClose }) {
+export function NewsExpanded({ item, onClose }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
+  const closeRef = useRef(null);
 
   useEffect(() => {
-    axios.get(`${SERVER_URL}/api/news/${newsId}`)
-      .then((res) => setDetail(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [newsId]);
+    const controller = new AbortController();
+    axios.get(`${API_URL}/api/news/${item.id}`, { signal: controller.signal })
+      .then((response) => setDetail(response.data))
+      .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") setError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [item.id]);
 
-  useEffect(() => {
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
+
+  const article = detail || item;
+  const images = [
+    article.img && { src: newsUrl(article.img), alt: article.title || "ภาพหลักของข่าว" },
+    ...(detail?.extraImages || []).map((image, index) => ({ src: newsUrl(image.ImagePath), alt: `ภาพเพิ่มเติม ${index + 1} ของข่าว ${article.title}` })),
+  ].filter((image) => image && image.src);
+  const imageIndex = Math.min(activeImage, Math.max(images.length - 1, 0));
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {loading ? (
-          <div className="p-16 text-center text-gray-400">กำลังโหลด...</div>
-        ) : !detail ? (
-          <div className="p-16 text-center text-gray-400">ไม่พบข้อมูล</div>
-        ) : (
-          <>
-            {detail.img && (
-              <div className="relative h-56 md:h-72 w-full">
-                <SafeImg
-                  src={resolveImg(detail.img)}
-                  alt={detail.title}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-              </div>
-            )}
-
-            <div className="p-6 md:p-8">
-              <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-medium">
-                  <Tag className="h-3 w-3" />{detail.tag}
-                </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
-                  <Calendar className="h-3 w-3" />{detail.date}
-                </span>
-              </div>
-
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4">
-                {detail.title}
-              </h2>
-
-              {detail.sub && (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">{detail.sub}</p>
-              )}
-
-              {detail.extraImages?.length > 0 && (
-                <>
-                  <hr className="my-5 border-gray-100" />
-                  <p className="text-sm font-semibold text-gray-700 mb-2">
-                    รูปภาพเพิ่มเติม ({detail.extraImages.length} รูป)
-                  </p>
-                  <ImageGallery images={detail.extraImages} />
-                </>
-              )}
-
-              <button
-                onClick={onClose}
-                className="mt-6 w-full py-2.5 rounded-2xl border border-gray-200 text-sm
-                           text-gray-600 hover:bg-gray-50 transition font-medium"
-              >
-                ปิด
-              </button>
-            </div>
-          </>
-        )}
-
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-full p-1.5 shadow hover:bg-white transition"
-        >
-          <X className="h-4 w-4 text-gray-700" />
-        </button>
+    <article className="news-expanded" aria-labelledby={`news-expanded-title-${item.id}`}>
+      <div className="news-expanded-top">
+        <span className="news-expanded-eyebrow"><Newspaper size={15} aria-hidden="true" /> กำลังอ่านเรื่องนี้</span>
+        <button ref={closeRef} type="button" className="news-expanded-close" onClick={onClose}><ArrowLeft size={18} aria-hidden="true" /> กลับไปดูข่าวทั้งหมด</button>
       </div>
-    </div>
+      <div className="news-expanded-layout">
+        <div className="news-expanded-media">
+          {images.length ? (
+            <>
+              <div className="news-expanded-photo"><NewsImage src={images[imageIndex].src} alt={images[imageIndex].alt} /></div>
+              {images.length > 1 && (
+                <div className="news-expanded-gallery">
+                  <button type="button" className="news-gallery-arrow" onClick={() => setActiveImage((imageIndex - 1 + images.length) % images.length)} aria-label="รูปก่อนหน้า"><ChevronLeft size={19} /></button>
+                  <div className="news-gallery-thumbs">{images.map((image, index) => (
+                    <button key={`${image.src}-${index}`} type="button" className={`news-gallery-thumb ${index === imageIndex ? "is-active" : ""}`} onClick={() => setActiveImage(index)} aria-label={`ดูรูปที่ ${index + 1}`} aria-pressed={index === imageIndex}><NewsImage src={image.src} alt={image.alt} /></button>
+                  ))}</div>
+                  <button type="button" className="news-gallery-arrow" onClick={() => setActiveImage((imageIndex + 1) % images.length)} aria-label="รูปถัดไป"><ChevronRight size={19} /></button>
+                </div>
+              )}
+            </>
+          ) : <div className="news-expanded-photo"><NewsImage src={null} alt="ไม่มีภาพข่าว" /></div>}
+          {images.length > 1 && <span className="news-gallery-count"><ImageIcon size={14} aria-hidden="true" /> {imageIndex + 1} / {images.length} รูป</span>}
+        </div>
+        <div className="news-expanded-copy">
+          <div className="news-expanded-meta"><span className="news-expanded-tag">{article.tag || "ข่าวประชาสัมพันธ์"}</span>{article.date && <span><CalendarDays size={15} aria-hidden="true" />{article.date}</span>}</div>
+          <h2 id={`news-expanded-title-${item.id}`}>{article.title || "ข่าวประชาสัมพันธ์"}</h2>
+          <div className="news-expanded-rule" />
+          {loading ? <p className="news-expanded-status" role="status">กำลังโหลดเนื้อหาข่าว...</p> : error ? <p className="news-expanded-status" role="alert">โหลดรายละเอียดเพิ่มเติมไม่สำเร็จ กรุณาลองเปิดข่าวอีกครั้ง</p> : article.sub ? <p className="news-expanded-body">{article.sub}</p> : <p className="news-expanded-body">ติดตามรายละเอียดข่าวสารจากศรเสริมติวเตอร์ได้ที่นี่</p>}
+          <button type="button" className="news-expanded-bottom-close" onClick={onClose}><X size={17} aria-hidden="true" /> ปิดเรื่องนี้</button>
+        </div>
+      </div>
+    </article>
   );
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────
-// News.jsx — หน้าข่าวสำหรับ "ผู้ใช้ทั่วไป" (guest ที่ไม่ได้ล็อกอิน) และ "นักเรียน" (user)
-// ทั้งสองกลุ่มนี้เห็นเฉพาะข่าวที่ TargetAudience = public เท่านั้น
-// (ต่างจาก TutorMain.jsx ที่ role=tutor จะเห็นทั้งข่าว public และ tutor)
-//
-// วิธีกำหนด role:
-//   - ถ้ามีนักเรียนล็อกอินอยู่ ให้ส่ง role="student" (หรือค่าอื่นตาม auth ของระบบ)
-//   - ถ้าเป็น guest ที่ไม่ได้ล็อกอิน ปล่อยว่างไว้ได้เลย เพราะฝั่ง backend
-//     จะ fallback เป็น public ให้อัตโนมัติเมื่อไม่ส่ง role มา
 export default function News({ role = "public" }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [closingId, setClosingId] = useState(null);
 
   useEffect(() => {
-    axios.get(`${SERVER_URL}/api/news`, { params: { role } })
-      .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+    axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
+      .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
+      .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, [role]);
 
-  if (loading) return <div className="mt-20 text-center text-gray-500">กำลังโหลดข่าวสาร...</div>;
+  const changeSelection = (id, source) => {
+    if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (source) source.style.viewTransitionName = "news-open-card";
+      const transition = document.startViewTransition(() => {
+        flushSync(() => {
+          setClosingId(id === null ? selectedId : null);
+          setSelectedId(id);
+        });
+      });
+      transition.finished.finally(() => {
+        if (source) source.style.viewTransitionName = "";
+        setClosingId(null);
+      });
+    } else {
+      setClosingId(null);
+      setSelectedId(id);
+    }
+    if (id !== null) window.requestAnimationFrame(() => document.querySelector(".news-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   return (
-    <div className="pb-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6 mt-20">
-
-        {news.length > 0 ? (
-          <>
-            <SectionTitle sub="ข่าวสารและกิจกรรมล่าสุดของสถาบัน">ข่าวประชาสัมพันธ์</SectionTitle>
-            <div className="space-y-4">
-              {news.map((n) => (
-                <NewsCard key={n.id} item={n} onClick={() => setSelectedId(n.id)} />
-              ))}
+    <div className="news-page">
+      <div className="news-page-inner">
+        <header className="news-page-heading"><span className="news-page-kicker"><Newspaper size={16} aria-hidden="true" /> เรื่องเล่าจากศรเสริม</span><h1>ข่าว<span>ประชาสัมพันธ์</span></h1><p>ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน</p></header>
+        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : (
+          <section className="news-feed" aria-label="ข่าวประชาสัมพันธ์ทั้งหมด">
+            <div className="news-feed-heading"><div><span className="news-feed-line" /><h2>{selectedId === null ? "อัปเดตล่าสุด" : "ข่าวประชาสัมพันธ์"}</h2><span className="news-feed-total">{news.length} เรื่อง</span></div></div>
+            <div className="news-grid">
+              {news.map((item, index) => selectedId === item.id ? <NewsExpanded key={item.id} item={item} onClose={() => changeSelection(null)} /> : <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} closing={closingId === item.id} />)}
             </div>
-          </>
-        ) : (
-          <div className="text-center py-20 text-gray-400">ยังไม่มีข่าวในระบบ</div>
+          </section>
         )}
       </div>
-
-      {selectedId && (
-        <NewsDetailModal newsId={selectedId} onClose={() => setSelectedId(null)} />
-      )}
     </div>
   );
 }

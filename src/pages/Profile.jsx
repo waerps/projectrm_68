@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
@@ -15,13 +15,25 @@ import {
 } from "lucide-react";
 import { getStudentProfile, updateStudentProfile } from "../callapi/callusers_student";
 
+import RecoveryEmailPanel from "../components/RecoveryEmailPanel";
+import CredentialSetupButton from "../components/CredentialSetupButton";
+
+function maskUsername(username) {
+  if (!username) return "";
+  if (username.length <= 2) return `${username[0]}*`;
+  const visible = username.length <= 4 ? 1 : 2;
+  return `${username.slice(0, visible)}${"*".repeat(username.length - visible * 2)}${username.slice(-visible)}`;
+}
+
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [studentId, setStudentId] = useState(null);
+  const [authMethods, setAuthMethods] = useState(null);
   const [alertModal, setAlertModal] = useState({ show: false, fields: [] });
 
   const token = localStorage.getItem("student_token");
@@ -45,15 +57,13 @@ export default function StudentProfile() {
   });
   const [originalData, setOriginalData] = useState({});
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  async function fetchProfile() {
+  const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
+      setLoadError("");
       const response = await getStudentProfile(token);
       const basicData = response?.profile ?? response?.student ?? response?.data ?? response ?? {};
+      setAuthMethods(basicData.authMethods ?? null);
       const resolvedStudentId = basicData.userId ?? basicData.UserId ?? basicData.studentId ?? basicData.StudentId ?? null;
       let detailData = {};
       if (resolvedStudentId) {
@@ -101,10 +111,13 @@ export default function StudentProfile() {
       }
     } catch (error) {
       console.error("Error:", error);
+      setLoadError(typeof error === "string" ? error : error?.message || "โหลดข้อมูลโปรไฟล์ไม่สำเร็จ");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [token]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -143,6 +156,7 @@ export default function StudentProfile() {
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
       setFormData((prev) => ({ ...prev, photo: uploadedPhoto }));
+      URL.revokeObjectURL(previewUrl);
       setOriginalData((prev) => ({ ...prev, photo: uploadedPhoto }));
       const savedUser = JSON.parse(localStorage.getItem("user") || "null");
       if (savedUser) localStorage.setItem("user", JSON.stringify({ ...savedUser, photo: uploadedPhoto }));
@@ -195,7 +209,7 @@ export default function StudentProfile() {
       await fetchProfile();
       setIsEditing(false);
     } catch (error) {
-      alert("เกิดข้อผิดพลาดในการบันทึก");
+      alert("บันทึกข้อมูลไม่สำเร็จ: " + (error?.response?.data?.message || error?.message || "กรุณาลองใหม่"));
     } finally {
       setIsSaving(false);
     }
@@ -216,18 +230,20 @@ export default function StudentProfile() {
       </div>
     );
 
+  if (loadError) return <div className="mt-[100px] rounded-xl bg-red-50 p-6 text-center text-red-700"><p>{loadError}</p><button type="button" onClick={fetchProfile} className="mt-3 font-semibold underline">ลองใหม่</button></div>;
+
   return (
     <div className="space-y-6 mt-[100px]">
       <div className="">
         {/* ── Edit Mode Banner ── */}
         {isEditing && (
-          <div className="mb-4 flex items-center justify-between rounded-2xl bg-orange-400 px-5 py-3 shadow-md">
-            <div className="flex items-center gap-2.5 text-white">
-              <Pencil className="h-4 w-4" />
+          <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-orange-400 px-4 py-3 shadow-md sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5 text-white">
+              <Pencil className="h-4 w-4 shrink-0" />
               <span className="font-semibold text-sm">กำลังแก้ไขข้อมูล</span>
               <span className="text-orange-100 text-xs">— กรอกข้อมูลให้ครบแล้วกดบันทึก</span>
             </div>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <button
                 onClick={handleCancel}
                 className="flex items-center gap-1.5 rounded-xl border border-white/30 bg-white/10 px-4 py-1.5 text-sm text-white font-medium hover:bg-white/20 transition"
@@ -237,7 +253,7 @@ export default function StudentProfile() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={isSaving}
+                disabled={isSaving || isUploading}
                 className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
               >
                 <Save className="h-3.5 w-3.5" />
@@ -299,8 +315,8 @@ export default function StudentProfile() {
                     </span>
                   )}
                 </div>
-                <div className="flex justify-center md:justify-start gap-5 text-sm font-medium">
-                  <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
+                <div className="flex flex-wrap justify-center gap-2 text-sm font-medium md:justify-start">
+                  <div className="flex max-w-full items-center gap-1.5 break-words bg-white/15 rounded-full px-3 py-1">
                     <Users className="h-4 w-4" />
                     {formData.schoolName || "ไม่ระบุโรงเรียน"}
                   </div>
@@ -379,7 +395,6 @@ export default function StudentProfile() {
               isEditing={isEditing}
               onChange={handleChange}
             />
-            <InfoRow label="Username" value={formData.username} isEditing={false} />
           </SectionCard>
 
           {/* โรงเรียนและหมายเหตุ */}
@@ -428,6 +443,20 @@ export default function StudentProfile() {
               * ข้อมูลผู้ปกครองแก้ไขได้จากฝ่ายบริหารเท่านั้น
             </p>
           </SectionCard>
+          {authMethods && (
+            <SectionCard title="วิธีเข้าสู่ระบบ" icon={<Users className="h-4.5 w-4.5 text-orange-500" />} isEditing={false}>
+              <InfoRow label="ชื่อผู้ใช้" value={authMethods.password && formData.username ? maskUsername(formData.username) : "ไม่ได้ตั้งค่า"} isEditing={false} />
+              <RecoveryEmailPanel authMethods={authMethods}
+                onGoogleLinked={async () => {
+                  const response = await getStudentProfile(localStorage.getItem("student_token"));
+                  const profile = response?.profile ?? response?.student ?? response?.data ?? response;
+                  setAuthMethods(profile.authMethods);
+                }} />
+              {authMethods.google && !authMethods.password && (
+                <CredentialSetupButton available={authMethods.googleRecoverySame && authMethods.recoveryEmailVerified} />
+              )}
+            </SectionCard>
+          )}
         </div>
       </div>
 
@@ -465,7 +494,7 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
       <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">
         {label}
       </span>
-      <div className="flex-1 text-right">
+      <div className="min-w-0 flex-1 break-words text-right">
         {isEditing ? (
           <input
             type={type}
@@ -476,7 +505,7 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
             className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
           />
         ) : (
-          <span className="text-sm font-semibold text-neutral-800">
+          <span className="break-all text-sm font-semibold text-neutral-800">
             {displayValue || value || <span className="text-neutral-300 font-normal">-</span>}
           </span>
         )}

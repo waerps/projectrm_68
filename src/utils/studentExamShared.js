@@ -4,7 +4,12 @@ import { API_URL } from "../config";
 const API_BASE = `${API_URL}/api/student/exam`;
 
 export function getCurrentUserId() {
-    return JSON.parse(localStorage.getItem("user") || "null")?.id || null;
+    try {
+        const user = JSON.parse(localStorage.getItem("user") || "null");
+        return user?.id ?? user?.userId ?? user?.UserId ?? user?.studentId ?? user?.StudentId ?? null;
+    } catch {
+        return null;
+    }
 }
 
 // แนบ Bearer token ของนักเรียนไปกับทุก request — คู่กับ authRequired ที่เพิ่มฝั่ง backend

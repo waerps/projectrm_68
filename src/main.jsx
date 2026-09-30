@@ -9,6 +9,7 @@ import ProfileLayout from "./layouts/ProfileLayout.jsx"
 
 // Pages Imports
 import Home from "./pages/Home.jsx"
+import VirtualTour from "./pages/VirtualTour.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import CourseDetail from "./pages/Courses.jsx"
 import Performance from "./pages/Performance.jsx"
@@ -24,6 +25,9 @@ import News from "./pages/News.jsx"
 import MyIncidents from "./pages/MyIncidents.jsx"
 import Login from "./pages/Login.jsx"
 import Register from "./pages/Register.jsx"
+import GoogleRegister from "./pages/GoogleRegister.jsx"
+import ForgotPassword from "./pages/ForgotPassword.jsx"
+import ResetPassword from "./pages/ResetPassword.jsx"
 import ThaiExam from "./pages/thai_exam.jsx"
 import About from "./pages/About.jsx"
 import Promotion from "./pages/Promotion.jsx"
@@ -83,6 +87,10 @@ const router = createBrowserRouter(
   [
     { path: "login", element: <Login /> },
     { path: "register", element: <Register /> },
+    { path: "register/google", element: <GoogleRegister /> },
+    { path: "forgot-password", element: <ForgotPassword /> },
+    { path: "reset-password", element: <ResetPassword /> },
+    { path: "setup-credentials", element: <ResetPassword setupRoute /> },
     {
       path: "/",
       element: (
@@ -92,6 +100,7 @@ const router = createBrowserRouter(
       ),
       children: [
         { index: true, element: <Home /> },
+        { path: "virtual-tour", element: <VirtualTour /> },
         { path: "schedule", element: <Schedule /> },
         { path: "courses", element: <CourseSearch /> },
         { path: "courses/:id", element: <CourseDetail /> },

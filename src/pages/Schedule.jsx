@@ -33,6 +33,7 @@ const STATUS_STYLE = {
   upcoming: { card: "bg-orange-50 border-orange-300", dot: "bg-orange-500", badge: "bg-orange-100 text-orange-700 border-orange-200", label: "กำลังจะถึง", Icon: Clock },
   future: { card: "bg-blue-50 border-blue-200", dot: "bg-blue-400", badge: "bg-blue-100 text-blue-700 border-blue-200", label: "ยังไม่ถึง", Icon: Calendar },
   unknown: { card: "bg-neutral-100 border-neutral-300", dot: "bg-neutral-400", badge: "bg-neutral-200 text-neutral-600 border-neutral-300", label: "ผ่านไปแล้ว", Icon: AlertCircle },
+  noClasses: { card: "bg-neutral-50 border-neutral-200", dot: "bg-neutral-300", badge: "bg-neutral-100 text-neutral-600 border-neutral-200", label: "ไม่มีคาบเรียน", Icon: Calendar },
 };
 
 const SUBJECT_COLORS = ["bg-orange-500", "bg-blue-500", "bg-pink-500", "bg-purple-500", "bg-teal-500", "bg-amber-600"];
@@ -42,6 +43,7 @@ const TIMELINE_CELL_STYLE = {
   upcoming: "bg-orange-500 text-white hover:bg-orange-600",
   future: "bg-blue-400 text-white hover:bg-blue-500",
   unknown: "bg-neutral-400 text-white hover:bg-neutral-500",
+  noClasses: "bg-neutral-100 text-neutral-600 hover:bg-neutral-200",
 };
 
 function parseDate(value) {
@@ -93,7 +95,7 @@ function normalizeSchedule(item) {
     StartDateTime: startDateTime,
     StartTime: (item.StartTime ?? item.startTime ?? timeFromDate(startDateTime))?.slice(0, 5),
     EndTime: (item.EndTime ?? item.endTime ?? timeFromDate(endDateTime))?.slice(0, 5),
-    DayOfWeek: Number(item.DayOfWeek ?? item.dayOfWeek ?? (jsDay === 0 ? 1 : jsDay + 1)),
+    DayOfWeek: jsDay === undefined ? Number(item.DayOfWeek ?? item.dayOfWeek) : jsDay === 0 ? 1 : jsDay + 1,
     AttendanceStatus: String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase(),
     RoomDetail: item.RoomDetail ?? item.roomDetail ?? item.RoomName ?? item.roomName,
     TutorNickname: item.TutorNickname ?? item.tutorNickname ?? item.TutorName ?? item.tutorName,
@@ -111,8 +113,8 @@ function normalizeCourse(item) {
 }
 
 function getSlotStatus(item) {
-  if (item.AttendanceStatus === "present") return "present";
-  if (item.AttendanceStatus === "absent") return "absent";
+  if (["present", "1", "มา", "มาเรียน"].includes(item.AttendanceStatus)) return "present";
+  if (["absent", "0", "ขาด", "ขาดเรียน"].includes(item.AttendanceStatus)) return "absent";
   const classDate = isoDate(item.StartDateTime);
   const today = isoDate(new Date());
   if (classDate === today) return "upcoming";
@@ -141,9 +143,11 @@ export default function StudentSchedule() {
         if (cancelled) return;
         if (scheduleResult.status === "rejected") throw scheduleResult.reason;
         const schedulePayload = scheduleResult.value;
-        const scheduleList = Array.isArray(schedulePayload) ? schedulePayload : schedulePayload?.schedule ?? schedulePayload?.data ?? [];
+        const scheduleValue = Array.isArray(schedulePayload) ? schedulePayload : schedulePayload?.schedule ?? schedulePayload?.schedules ?? schedulePayload?.data?.schedule ?? schedulePayload?.data;
+        const scheduleList = Array.isArray(scheduleValue) ? scheduleValue : [];
         const coursePayload = courseResult.status === "fulfilled" ? courseResult.value : [];
-        const courseList = Array.isArray(coursePayload) ? coursePayload : coursePayload?.courses ?? coursePayload?.data ?? [];
+        const courseValue = Array.isArray(coursePayload) ? coursePayload : coursePayload?.courses ?? coursePayload?.data?.courses ?? coursePayload?.data;
+        const courseList = Array.isArray(courseValue) ? courseValue : [];
         setSchedules(scheduleList.map(normalizeSchedule).filter((item) => item.StartDateTime));
         setCourses(courseList.map(normalizeCourse).filter((item) => item.CourseID));
       })
@@ -152,10 +156,9 @@ export default function StudentSchedule() {
     return () => { cancelled = true; };
   }, [token]);
 
-  const weekEnd = addDays(weekStart, 6);
   const weekSchedules = useMemo(() => schedules.filter((item) => {
     const date = isoDate(item.StartDateTime);
-    return date >= isoDate(weekStart) && date <= isoDate(weekEnd);
+    return date >= isoDate(weekStart) && date <= isoDate(addDays(weekStart, 6));
   }), [schedules, weekStart]);
 
   const scheduleMap = useMemo(() => {
@@ -211,7 +214,7 @@ export default function StudentSchedule() {
   if (error) return <div className="mt-[90px] py-12 text-center text-red-500">{error}</div>;
 
   return (
-    <div className="mx-auto mt-[90px] max-w-[1384px] space-y-6 px-4 pb-10 md:px-0">
+    <div className="mx-auto mt-[90px] min-w-0 max-w-[1384px] space-y-6 pb-10">
       <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:p-6">
         <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
@@ -233,7 +236,25 @@ export default function StudentSchedule() {
           <button aria-label="สัปดาห์ถัดไป" onClick={() => setWeekStart(addDays(weekStart, 7))} className="rounded-lg p-2 transition hover:bg-white"><ChevronRight className="h-5 w-5" /></button>
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+        <div className="space-y-3 md:hidden">
+          {DAY_ORDER.map((day, index) => {
+            const date = addDays(weekStart, index);
+            const dayItems = weekSchedules.filter((item) => isoDate(item.StartDateTime) === isoDate(date));
+            return <div key={day} className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+              <h2 className="mb-2 text-sm font-bold text-neutral-800">{DAY_MAP[day]} {date.toLocaleDateString("th-TH", { day: "numeric", month: "short" })}</h2>
+              {dayItems.length ? <div className="space-y-2">{dayItems.map((item, itemIndex) => {
+                const status = getSlotStatus(item);
+                const style = STATUS_STYLE[status];
+                return <button type="button" key={item.CourseScheduleDetailId ?? `${item.CourseID}-${itemIndex}`} onClick={() => goToCourse(item.CourseID)} className={`w-full rounded-xl border p-3 text-left ${style.card}`}>
+                  <span className="flex flex-wrap items-center justify-between gap-2 text-xs"><b>{item.StartTime || "—"}–{item.EndTime || "—"}</b><span className={`rounded-full border px-2 py-0.5 font-bold ${style.badge}`}>{style.label}</span></span>
+                  <span className="mt-1 block break-words text-sm font-semibold text-neutral-900">{item.CourseName}</span>
+                  <span className="mt-1 block text-xs text-neutral-600">{item.SubjectName} · {item.RoomDetail || "ยังไม่ระบุห้อง"}</span>
+                </button>;
+              })}</div> : <p className="text-xs text-neutral-400">ไม่มีคาบเรียน</p>}
+            </div>;
+          })}
+        </div>
+        <div className="hidden overflow-x-auto rounded-2xl border border-neutral-100 bg-neutral-50 p-4 md:block">
           <div className="grid min-w-[1000px] grid-cols-8 gap-2">
             <div className="py-2 text-center text-sm font-bold uppercase tracking-wider text-neutral-400">เวลา</div>
             {DAY_ORDER.map((day, index) => {
@@ -301,22 +322,36 @@ function CourseWeekOverview({ courses, schedules, weeks, selectedWeek, onSelectW
     const range = getCourseRange(course);
     if (!range.start || !range.end || end < getMondayOf(range.start) || week > range.end) return null;
     const classes = schedules.filter((item) => String(item.CourseID) === String(course.CourseID) && isoDate(item.StartDateTime) >= isoDate(week) && isoDate(item.StartDateTime) <= isoDate(end));
+    if (!classes.length) return "noClasses";
     if (classes.some((item) => getSlotStatus(item) === "absent")) return "absent";
     if (classes.length && classes.every((item) => getSlotStatus(item) === "present")) return "present";
     if (classes.some((item) => getSlotStatus(item) === "upcoming")) return "upcoming";
     if (classes.some((item) => getSlotStatus(item) === "future")) return "future";
-    const today = isoDate(new Date());
-    if (isoDate(end) < today) return "unknown";
-    if (isoDate(week) <= today && isoDate(end) >= today) return "upcoming";
-    return "future";
+    return "unknown";
   };
 
   return <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:p-6">
     <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-end">
-      <div><h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900"><BookOpen className="h-5 w-5 text-orange-500" />คอร์สที่ลงเรียน: ภาพรวมรายสัปดาห์</h2><p className="mt-1 text-xs text-neutral-500">กดสัปดาห์เพื่อเปลี่ยนตารางด้านบน หากช่วงเรียนยาวสามารถเลื่อนตารางซ้าย–ขวาได้</p></div>
+      <div><h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900"><BookOpen className="h-5 w-5 text-orange-500" />คอร์สที่ลงเรียน: ภาพรวมรายสัปดาห์</h2><p className="mt-1 text-xs text-neutral-500">เลือกสัปดาห์เพื่อดูสถานะคอร์สและตารางเรียน</p></div>
       <StatusLegend />
     </div>
-    {!courses.length ? <p className="py-8 text-center text-sm text-neutral-400">ยังไม่มีคอร์สที่ลงทะเบียน</p> : <div className="overflow-x-auto rounded-xl border border-neutral-200">
+    {!courses.length ? <p className="py-8 text-center text-sm text-neutral-400">ยังไม่มีคอร์สที่ลงทะเบียน</p> : <>
+      <div className="space-y-3 md:hidden">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-orange-50 p-2 text-center">
+          <button type="button" aria-label="ดูสัปดาห์ก่อนหน้า" onClick={() => onSelectWeek(addDays(selectedWeek, -7))} className="rounded-lg bg-white p-2 text-orange-700"><ChevronLeft className="h-4 w-4" /></button>
+          <span className="text-xs font-bold text-orange-800">{formatWeekRange(selectedWeek)}</span>
+          <button type="button" aria-label="ดูสัปดาห์ถัดไป" onClick={() => onSelectWeek(addDays(selectedWeek, 7))} className="rounded-lg bg-white p-2 text-orange-700"><ChevronRight className="h-4 w-4" /></button>
+        </div>
+        {courses.map((course) => {
+          const range = getCourseRange(course);
+          const status = statusFor(course, selectedWeek);
+          return <button type="button" key={course.CourseID} onClick={() => onSelectCourse(course.CourseID)} className="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-white p-3 text-left">
+            <span className="min-w-0"><span className="block break-words text-sm font-semibold text-neutral-900">{course.CourseName}</span><span className="mt-1 block text-xs text-neutral-500">{range.start && range.end ? `${range.start.toLocaleDateString("th-TH", { day: "numeric", month: "short" })} – ${range.end.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}` : "ยังไม่ระบุช่วงเรียน"}</span></span>
+            <span className={`shrink-0 rounded-lg px-2 py-1 text-[10px] font-bold ${status ? TIMELINE_CELL_STYLE[status] : "bg-neutral-100 text-neutral-500"}`}>{status ? STATUS_STYLE[status].label : "นอกช่วงเรียน"}</span>
+          </button>;
+        })}
+      </div>
+      <div className="hidden overflow-x-auto rounded-xl border border-neutral-200 md:block">
       <div className="min-w-max" style={{ display: "grid", gridTemplateColumns: `minmax(210px, 260px) repeat(${weeks.length}, 64px)` }}>
         <div className="sticky left-0 z-20 row-span-2 flex items-center border-b border-r border-neutral-200 bg-neutral-50 px-4 text-xs font-bold text-neutral-500">ชื่อคอร์ส</div>
         {monthGroups.map((group) => <div key={group.key} className="border-b border-r border-neutral-200 bg-orange-50 px-2 py-2 text-center text-xs font-bold text-orange-700" style={{ gridColumn: `span ${group.count}` }}>{group.label}</div>)}
@@ -335,6 +370,7 @@ function CourseWeekOverview({ courses, schedules, weeks, selectedWeek, onSelectW
           })}
         </div>;})}
       </div>
-    </div>}
+      </div>
+    </>}
   </section>;
 }

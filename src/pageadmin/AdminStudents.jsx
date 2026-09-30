@@ -482,13 +482,13 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
-              <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} autoComplete="off" />
+              <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} minLength={4} maxLength={32} pattern="[A-Za-z0-9](?:[A-Za-z0-9._-]{2,30}[A-Za-z0-9])" autoComplete="off" />
             </div>
             <div>
               <label className={lbl}>Password <span className="text-red-400 normal-case">*</span></label>
               <div className="relative">
                 <input type={showPwd ? "text" : "password"} className={inp + " pr-10"}
-                  value={form.password} onChange={e => set("password", e.target.value)} autoComplete="new-password" />
+                  value={form.password} onChange={e => set("password", e.target.value)} minLength={8} maxLength={128} autoComplete="new-password" />
                 <button type="button" onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -548,64 +548,49 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
   );
 }
 
-// ─── ResetPasswordModal (FIX #11: เพิ่ม UI รีเซ็ตรหัสผ่านที่หายไป) ───────────
+// ─── PasswordSetupLinkModal ───────────────────────────────────────────────────
 function ResetPasswordModal({ student, onClose }) {
-  const [pwd, setPwd] = useState("");
-  const [show, setShow] = useState(false);
+  const [link, setLink] = useState("");
   const [loading, setLoading] = useState(false);
-  const inp = "w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-500 transition";
+  const [copied, setCopied] = useState(false);
 
-  const submit = async () => {
-    if (!pwd.trim()) return alert("กรุณากรอกรหัสผ่านใหม่");
+  const createLink = async () => {
     setLoading(true);
     try {
-      await axios.patch(`${API}/students/${student.UserId}/reset-password`, { newPassword: pwd });
-      alert("รีเซ็ตรหัสผ่านสำเร็จ");
-      onClose();
+      const token = localStorage.getItem("student_token");
+      const { data } = await axios.post(`${API_URL}/auth/account/admin/students/${student.UserId}/password-setup-link`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLink(data.url);
     } catch (e) {
-      alert(e.response?.data?.message || "เกิดข้อผิดพลาด");
+      alert(e.response?.data?.message || "สร้างลิงก์ไม่สำเร็จ");
     } finally { setLoading(false); }
+  };
+
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); }
+    catch { alert("คัดลอกอัตโนมัติไม่ได้ กรุณาเลือกลิงก์แล้วคัดลอก"); }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">รีเซ็ตรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">{student.Nickname || `${student.Firstname} ${student.Lastname}`}</p>
-          </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0"><KeyRound className="h-5 w-5 text-orange-600" /></div>
+          <div><h3 className="font-bold text-slate-900">สร้างลิงก์ตั้งรหัสผ่าน</h3><p className="text-xs text-slate-400">{student.Nickname || `${student.Firstname} ${student.Lastname}`}</p></div>
+          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
         </div>
-        <div className="relative mb-4">
-          <input type={show ? "text" : "password"} value={pwd}
-            onChange={e => setPwd(e.target.value)}
-            className={inp + " pr-10"} placeholder="รหัสผ่านใหม่" autoComplete="new-password" />
-          <button type="button" onClick={() => setShow(v => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        <div className="flex gap-3">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
-            ยกเลิก
-          </button>
-          <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-sm hover:bg-orange-700 disabled:opacity-50 transition">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
-          </button>
+        <p className="text-sm leading-6 text-slate-600">ตรวจสอบตัวตนนักเรียนก่อนสร้างลิงก์ ลิงก์ใช้ได้ครั้งเดียวและหมดอายุใน 20 นาที การสร้างลิงก์ใหม่จะยกเลิกลิงก์เดิม</p>
+        {link && <textarea readOnly value={link} rows={4} className="mt-4 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700" />}
+        <div className="mt-5 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm">ปิด</button>
+          {!link ? <button onClick={createLink} disabled={loading} className="flex-1 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-sm disabled:opacity-50">{loading ? "กำลังสร้าง..." : "สร้างลิงก์"}</button>
+            : <button onClick={copyLink} className="flex-1 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-sm">{copied ? "คัดลอกแล้ว" : "คัดลอกลิงก์"}</button>}
         </div>
       </div>
     </div>
   );
 }
-
 function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }) {
   const [allCourses, setAllCourses] = useState([]);
   const [adding, setAdding] = useState(false);
@@ -1978,7 +1963,7 @@ export default function AdminStudentsPage() {
                           <button
                             onClick={() => setResetPwdStudent(s)}
                             className="p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition"
-                            title="รีเซ็ตรหัสผ่าน"
+                            title="สร้างลิงก์ตั้งรหัสผ่าน"
                           >
                             <KeyRound className="h-3.5 w-3.5" />
                           </button>

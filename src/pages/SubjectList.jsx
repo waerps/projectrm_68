@@ -25,11 +25,26 @@ export default function SubjectList() {
           getStudentSubjectsProgress(token, courseId),
         ]);
         if (cancelled) return;
-        setCourseName(course?.CourseName || "คอร์สเรียน");
-        const subjectList = Array.isArray(subjs) ? subjs : [];
+        setCourseName(course?.CourseName ?? course?.courseName ?? course?.data?.CourseName ?? "คอร์สเรียน");
+        const subjectPayload = Array.isArray(subjs) ? subjs : subjs?.subjects ?? subjs?.data?.subjects ?? subjs?.data;
+        const count = (value) => {
+          const number = Number(value);
+          return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0;
+        };
+        const subjectList = (Array.isArray(subjectPayload) ? subjectPayload : []).map((subject) => ({
+          ...subject,
+          subjectId: subject.subjectId ?? subject.SubjectId,
+          subjectName: subject.subjectName ?? subject.SubjectName,
+          totalVideos: count(subject.totalVideos ?? subject.TotalVideos),
+          watchedVideos: count(subject.watchedVideos ?? subject.WatchedVideos),
+          totalFiles: count(subject.totalFiles ?? subject.TotalFiles),
+          totalSessions: count(subject.totalSessions ?? subject.TotalSessions),
+          attendedSessions: count(subject.attendedSessions ?? subject.AttendedSessions),
+          latestExam: subject.latestExam ?? subject.LatestExam,
+        }));
         setSubjects(subjectList);
         // A course with one subject does not need an extra selection step.
-        if (subjectList.length === 1) {
+        if (subjectList.length === 1 && subjectList[0].subjectId != null) {
           navigate(`/profile/course/${courseId}/subject/${subjectList[0].subjectId}`, { replace: true });
           return;
         }
@@ -56,7 +71,7 @@ export default function SubjectList() {
     return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
   }
 
-  const closeSubjectPicker = () => navigate(-1);
+  const closeSubjectPicker = () => navigate("/profile/my-courses");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -109,8 +124,8 @@ export default function SubjectList() {
                 ยังไม่มีวิชาในคอร์สนี้
               </div>
             ) : subjects.map((subj, index) => {
-          const videoPct = subj.totalVideos ? Math.round((subj.watchedVideos / subj.totalVideos) * 100) : 0;
-          const attendPct = subj.totalSessions ? Math.round((subj.attendedSessions / subj.totalSessions) * 100) : 0;
+          const videoPct = subj.totalVideos ? Math.min(100, Math.round((subj.watchedVideos / subj.totalVideos) * 100)) : 0;
+          const attendPct = subj.totalSessions ? Math.min(100, Math.round((subj.attendedSessions / subj.totalSessions) * 100)) : 0;
 
           return (
             <button

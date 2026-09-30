@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { Search, Heart, ShoppingCart, X, Trash2, BookOpen, ChevronRight, SlidersHorizontal } from "lucide-react"
+import { Search, Heart, ShoppingCart, X, Trash2, BookOpen, ChevronRight, SlidersHorizontal, Menu } from "lucide-react"
 import { useShop } from "../context/ShopContext"
 import { getCourses } from "../callapi/callusers"
 import { getStudentProfile } from "../callapi/callusers_student"
@@ -42,6 +42,7 @@ export default function Navbar() {
   const [showFavDrop, setShowFavDrop] = useState(false)
   const [showCartDrop, setShowCartDrop] = useState(false)
   const [showFilterDrop, setShowFilterDrop] = useState(false)
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [userData, setUserData] = useState(null)
 
   // ── state ของฟิลเตอร์ ──
@@ -60,6 +61,8 @@ export default function Navbar() {
 
   const isActive = (path) => location.pathname === path
   const PREVIEW = 5
+
+  useEffect(() => { setShowMobileMenu(false) }, [location.pathname])
 
   useEffect(() => {
     getCourses().then((data) => setAllCourses(Array.isArray(data) ? data : []))
@@ -207,7 +210,7 @@ const cartTotal = cart.reduce((sum, item) => {
 
   return (
     <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4">
-      <nav className="mx-6 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-8 rounded-2xl bg-white px-6 md:px-8 shadow-lg">
+      <nav className="mx-2 flex h-[65px] w-full max-w-[1384px] min-w-0 items-center justify-between gap-2 rounded-2xl bg-white px-2 shadow-lg sm:mx-6 sm:gap-4 sm:px-6 md:mx-12 md:gap-8 md:px-8">
 
         {/* Logo */}
         <Link to="/" className="flex-shrink-0">
@@ -223,7 +226,7 @@ const cartTotal = cart.reduce((sum, item) => {
         </Link>
 
         {/* Menu + Search */}
-        <div className="flex items-center flex-1 justify-center gap-8">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 md:gap-8">
           <div className="hidden md:flex items-center gap-8 ml-4">
             <Link
               to="/"
@@ -329,8 +332,8 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* Search Box + ปุ่มฟิลเตอร์ */}
-          <div className="flex items-center flex-1 max-w-sm gap-2">
-            <div className="relative flex-1" ref={searchRef}>
+          <div className="flex min-w-0 flex-1 items-center gap-2 max-w-sm">
+            <div className="relative min-w-0 flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -487,7 +490,7 @@ const cartTotal = cart.reduce((sum, item) => {
           <NotificationBell role="student" pagePath="/profile/notifications" />
 
           {/* ── Favorites ── */}
-          <div className="relative" ref={favRef}>
+          <div className="relative hidden sm:block" ref={favRef}>
             <button
               onClick={() => toggleDrop("fav")}
               className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showFavDrop ? "bg-red-50 text-red-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
@@ -552,7 +555,7 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* ── Cart ── */}
-          <div className="relative mr-3" ref={cartRef}>
+          <div className="relative mr-3 hidden sm:block" ref={cartRef}>
             <button
               onClick={() => toggleDrop("cart")}
               className={`relative h-10 w-10 flex items-center justify-center rounded-lg transition-colors ${showCartDrop ? "bg-orange-50 text-orange-500" : "hover:bg-orange-100 hover:text-orange-500"}`}
@@ -623,7 +626,7 @@ const cartTotal = cart.reduce((sum, item) => {
 
           {/* ── User / Login (โชว์รูป + ชื่อเล่นเท่านั้น) ── */}
           {userData ? (
-            <div className="relative group flex items-center gap-2">
+            <div className="relative group hidden items-center gap-2 sm:flex">
               <div className={`flex items-center gap-2 cursor-pointer pb-1`}>
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-orange-200 bg-orange-50 flex-shrink-0">
                   <img
@@ -661,10 +664,20 @@ const cartTotal = cart.reduce((sum, item) => {
               </div>
             </div>
           ) : (
-            <Link to="/login" className="h-10 flex items-center rounded-lg bg-orange-500 px-6 text-white text-sm font-bold hover:bg-orange-600 transition-colors">
+            <Link to="/login" className="hidden h-10 items-center rounded-lg bg-orange-500 px-6 text-white text-sm font-bold hover:bg-orange-600 transition-colors sm:flex">
               เข้าสู่ระบบ
             </Link>
           )}
+          <div className="relative sm:hidden">
+            <button type="button" aria-label={showMobileMenu ? "ปิดเมนู" : "เปิดเมนู"} aria-expanded={showMobileMenu} onClick={() => setShowMobileMenu((open) => !open)} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-700"><Menu className="h-5 w-5" /></button>
+            {showMobileMenu && <div className="absolute right-0 top-full z-[70] mt-2 w-48 rounded-xl border border-gray-100 bg-white p-1 shadow-xl">
+              <Link to={userData ? "/profile" : "/login"} className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">{userData ? "ข้อมูลส่วนตัว" : "เข้าสู่ระบบ"}</Link>
+              {userData && <><Link to="/profile/my-courses" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">คอร์สเรียนของฉัน</Link><Link to="/profile/schedule" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ตารางเรียน</Link><Link to="/profile/incidents" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ประวัติการแจ้งเรื่อง</Link></>}
+              <Link to="/favorites" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">รายการโปรด</Link>
+              <Link to="/cart" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ตะกร้าสินค้า</Link>
+              {userData && <button type="button" onClick={() => { localStorage.clear(); window.location.href = "/login" }} className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">ออกจากระบบ</button>}
+            </div>}
+          </div>
         </div>
       </nav>
 

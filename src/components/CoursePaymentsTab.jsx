@@ -11,11 +11,13 @@ import {
 
 const money = (value) => new Intl.NumberFormat("th-TH", {
   style: "currency", currency: "THB", minimumFractionDigits: 2,
-}).format(Number(value || 0));
+}).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 
-const thaiDate = (value) => value
-  ? new Date(`${value}T00:00:00`).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
-  : "-";
+const thaiDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "-" : date.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+};
 
 const STATUS = {
   scheduled: ["ยังไม่ถึงกำหนด", "bg-slate-100 text-slate-600"],
@@ -33,6 +35,7 @@ export default function CoursePaymentsTab({ courseId }) {
   const [error, setError] = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
   const [lineLinked, setLineLinked] = useState(false);
+  const [lineStatusKnown, setLineStatusKnown] = useState(false);
   const [activeInstallment, setActiveInstallment] = useState(null);
   const [qr, setQr] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -43,12 +46,14 @@ export default function CoursePaymentsTab({ courseId }) {
     try {
       setLoading(true);
       setError("");
-      const [data, lineStatus] = await Promise.all([
+      const [data, lineResult] = await Promise.all([
         getPaymentOrders(token),
-        getLineLoginStatus(token),
+        getLineLoginStatus(token).catch(() => null),
       ]);
-      setRows(data.filter((row) => String(row.courseId) === String(courseId)));
-      setLineLinked(Boolean(lineStatus.linked));
+      const orderList = Array.isArray(data) ? data : data?.orders ?? data?.data?.orders ?? data?.data ?? [];
+      setRows((Array.isArray(orderList) ? orderList : []).filter((row) => String(row.courseId ?? row.CourseId) === String(courseId)));
+      setLineStatusKnown(Boolean(lineResult));
+      setLineLinked(Boolean(lineResult?.linked ?? lineResult?.data?.linked));
     } catch (err) {
       setError(typeof err === "string" ? err : "โหลดข้อมูลการชำระเงินไม่สำเร็จ");
     } finally {
@@ -59,7 +64,7 @@ export default function CoursePaymentsTab({ courseId }) {
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
   const summary = useMemo(() => ({
-    total: rows[0]?.totalAmount || 0,
+    total: Math.max(0, ...rows.map((row) => Number(row.totalAmount) || 0)) || rows.reduce((sum, row) => sum + Number(row.amount || 0), 0),
     paid: rows.filter((row) => row.installmentStatus === "paid").reduce((sum, row) => sum + Number(row.amount || 0), 0),
   }), [rows]);
 
@@ -79,6 +84,7 @@ export default function CoursePaymentsTab({ courseId }) {
     try {
       setLinkLoading(true);
       await disconnectLine(token);
+      setLineStatusKnown(true);
       setLineLinked(false);
       setNotice({ type: "success", text: "ยกเลิกการเชื่อม LINE แล้ว" });
     } catch (err) {
@@ -124,11 +130,11 @@ export default function CoursePaymentsTab({ courseId }) {
       <section className="rounded-2xl border border-green-200 bg-green-50/60 p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="flex items-center gap-2 font-bold text-neutral-900"><MessageCircle className="h-5 w-5 text-green-600" />{lineLinked ? "เชื่อมบัญชีกับ LINE แล้ว" : "เชื่อมบัญชีกับ LINE"}</h2>
-            <p className="mt-1 text-sm text-neutral-600">{lineLinked ? "ระบบพร้อมส่ง QR และแจ้งเตือนค่างวดให้บัญชีนี้" : "กดปุ่มเดียวเพื่อรับ QR งวดถัดไป การแจ้งเตือนค้างชำระ และการคืนสิทธิ์อัตโนมัติ"}</p>
+            <h2 className="flex items-center gap-2 font-bold text-neutral-900"><MessageCircle className="h-5 w-5 text-green-600" />{!lineStatusKnown ? "ยังตรวจสถานะ LINE ไม่ได้" : lineLinked ? "เชื่อมบัญชีกับ LINE แล้ว" : "เชื่อมบัญชีกับ LINE"}</h2>
+            <p className="mt-1 text-sm text-neutral-600">{!lineStatusKnown ? "รายการชำระเงินยังดูได้ กรุณาลองตรวจสถานะอีกครั้ง" : lineLinked ? "ระบบพร้อมส่ง QR และแจ้งเตือนค่างวดให้บัญชีนี้" : "กดปุ่มเดียวเพื่อรับ QR งวดถัดไป การแจ้งเตือนค้างชำระ และการคืนสิทธิ์อัตโนมัติ"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {lineLinked ? <button onClick={unlinkLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-600 disabled:opacity-50"><Unlink className="h-4 w-4" />ยกเลิกการเชื่อม</button> : <button onClick={connectLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl bg-[#06C755] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{linkLoading && <Loader2 className="h-4 w-4 animate-spin" />}เชื่อมบัญชีกับ LINE</button>}
+            {!lineStatusKnown ? <button onClick={loadOrders} className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-700">ลองใหม่</button> : lineLinked ? <button onClick={unlinkLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-bold text-neutral-600 disabled:opacity-50"><Unlink className="h-4 w-4" />ยกเลิกการเชื่อม</button> : <button onClick={connectLine} disabled={linkLoading} className="inline-flex items-center gap-1.5 rounded-xl bg-[#06C755] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{linkLoading && <Loader2 className="h-4 w-4 animate-spin" />}เชื่อมบัญชีกับ LINE</button>}
           </div>
         </div>
       </section>
@@ -150,7 +156,7 @@ export default function CoursePaymentsTab({ courseId }) {
               const payable = ["due", "overdue_grace", "overdue_suspended"].includes(row.installmentStatus);
               return <div key={row.installmentId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-orange-50 font-bold text-orange-600">{row.installmentNo}</div>
-                <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b>งวดที่ {row.installmentNo}</b><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${status[1]}`}>{status[0]}</span></div><p className="mt-1 text-xs text-neutral-500">ชำระวันที่ {thaiDate(row.dueStartDate)}–{thaiDate(row.dueDate)} · พักสิทธิ์วันที่ {thaiDate(row.suspendDate)}</p></div>
+                <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b>งวดที่ {row.installmentNo}</b><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${status[1]}`}>{status[0]}</span></div><p className="mt-1 text-xs text-neutral-500">ช่วงชำระ {thaiDate(row.dueStartDate)}–{thaiDate(row.dueDate)} · พักสิทธิ์วันที่ {thaiDate(row.suspendDate)}</p></div>
                 <b className="text-orange-600">{money(row.amount)}</b>
                 {payable && <button onClick={() => openQr(row)} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white"><QrCode className="h-4 w-4" />ชำระงวดนี้</button>}
                 {row.installmentStatus === "paid" && <CheckCircle2 className="h-6 w-6 text-emerald-500" />}

@@ -6,6 +6,7 @@ import {
   getStudentCourses,
   getStudentFiles,
   getStudentSchedule,
+  getStudentSubjectsProgress,
   getStudentVideos,
 } from "../callapi/callusers_student";
 import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
@@ -16,8 +17,14 @@ function unwrapList(payload, keys = []) {
   if (Array.isArray(payload)) return payload;
   for (const key of keys) {
     if (Array.isArray(payload?.[key])) return payload[key];
+    if (Array.isArray(payload?.data?.[key])) return payload.data[key];
   }
   return Array.isArray(payload?.data) ? payload.data : [];
+}
+
+function safeCount(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.floor(number) : 0;
 }
 
 export default function StudentCourses() {
@@ -59,6 +66,10 @@ export default function StudentCourses() {
     const today = new Date();
     const start = new Date(startDate);
     const end = new Date(lastDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return { id: "upcoming", text: "รอกำหนดวันเรียน", colorClass: "bg-blue-100 text-blue-700" };
+    }
+    if (typeof lastDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(lastDate)) end.setHours(23, 59, 59, 999);
 
     if (today > end) {
       return { id: "completed", text: "เรียนจบแล้ว", colorClass: "bg-neutral-200 text-neutral-700" };
@@ -70,8 +81,7 @@ export default function StudentCourses() {
   };
 
   // ── progress ตามคาบที่ผ่านไปแล้ว (เหมือน hours ของติวเตอร์) ────
-  const calcProgress = (completed, total, statusId) => {
-    if (statusId === "completed") return 100;
+  const calcProgress = (completed, total) => {
     if (!total) return 0;
     return Math.min(Math.max(Math.round((completed / total) * 100), 0), 100);
   };
@@ -87,16 +97,18 @@ export default function StudentCourses() {
 
         const contentByCourse = await Promise.all(courseList.map(async (course) => {
           const id = course.courseId ?? course.CourseId ?? course.CourseID ?? course.id;
-          const [videoResult, fileResult, scheduleResult2] = await Promise.allSettled([
+          const [videoResult, fileResult, scheduleResult2, subjectsResult] = await Promise.allSettled([
             getStudentVideos(token, id),
             getStudentFiles(token, id),
             fetchExamSchedule(id), // ไม่ส่ง subjectId = เอากำหนดสอบทุกวิชาในคอร์สนี้
+            getStudentSubjectsProgress(token, id),
           ]);
           return {
             id: String(id),
             videos: videoResult.status === "fulfilled" ? unwrapList(videoResult.value, ["videos"]) : [],
             files: fileResult.status === "fulfilled" ? unwrapList(fileResult.value, ["files", "documents"]) : [],
             examSchedule: scheduleResult2.status === "fulfilled" ? (scheduleResult2.value?.schedule || []) : [],
+            subjects: subjectsResult.status === "fulfilled" ? unwrapList(subjectsResult.value, ["subjects"]) : [],
           };
         }));
         const contentMap = new Map(contentByCourse.map((item) => [item.id, item]));
@@ -109,28 +121,30 @@ export default function StudentCourses() {
           const courseSchedules = allSchedules.filter((item) =>
             String(item.CourseID ?? item.CourseId ?? item.courseId) === String(courseId)
           );
-          const courseContent = contentMap.get(String(courseId)) ?? { videos: [], files: [] };
+          const courseContent = contentMap.get(String(courseId)) ?? { videos: [], files: [], subjects: [] };
 
-          const apiTotalSessions = Number(c.totalSessions ?? c.TotalSessions ?? 0);
-          const totalSessions = courseSchedules.length || apiTotalSessions;
+          const apiTotalSessions = safeCount(c.totalSessions ?? c.TotalSessions);
+          const subjectTotalSessions = courseContent.subjects.reduce((sum, subject) =>
+            sum + safeCount(subject.totalSessions ?? subject.TotalSessions), 0);
+          const subjectAttendedSessions = courseContent.subjects.reduce((sum, subject) =>
+            sum + safeCount(subject.attendedSessions ?? subject.AttendedSessions), 0);
+          const totalSessions = Math.max(courseSchedules.length, apiTotalSessions, subjectTotalSessions);
 
           const derivedCompletedSessions = courseSchedules.filter((item) => {
             const status = String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase();
-            if (status === "present") return true;
-            if (status === "absent") return false;
+            if (["present", "absent", "1", "0", "มา", "ขาด"].includes(status)) return true;
             const date = new Date(item.StartDateTime ?? item.startDateTime ?? item.ClassDate ?? item.classDate);
             return !Number.isNaN(date.getTime()) && date < new Date();
           }).length;
           const completedSessions = courseSchedules.length
             ? derivedCompletedSessions
-            : Number(c.completedSessions ?? c.CompletedSessions ?? 0);
+            : Math.max(safeCount(c.completedSessions ?? c.CompletedSessions), subjectAttendedSessions);
 
           const statusInfo = mapStatus(startDate, lastDate);
 
           const progress = calcProgress(
             completedSessions,
-            totalSessions,
-            statusInfo.id
+            totalSessions
           );
 
           return {
@@ -148,21 +162,18 @@ export default function StudentCourses() {
 
             totalSessions,
 
-            completedSessions:
-              statusInfo.id === "completed"
-                ? totalSessions
-                : completedSessions,
+            completedSessions: Math.min(totalSessions, completedSessions),
 
             totalVideos:
-              courseContent.videos.length || Number(c.totalVideos ?? c.TotalVideos ?? 0),
+              courseContent.videos.length || safeCount(c.totalVideos ?? c.TotalVideos),
 
             watchedVideos:
               courseContent.videos.length
                 ? courseContent.videos.filter((video) => Number(video.WatchPercent ?? video.watchPercent ?? 0) >= 80).length
-                : Number(c.watchedVideos ?? c.WatchedVideos ?? 0),
+                : safeCount(c.watchedVideos ?? c.WatchedVideos),
 
             totalFiles:
-              courseContent.files.length || Number(c.totalFiles ?? c.TotalFiles ?? 0),
+              courseContent.files.length || safeCount(c.totalFiles ?? c.TotalFiles),
 
             statusId: statusInfo.id,
             statusText: statusInfo.text,
@@ -220,17 +231,17 @@ export default function StudentCourses() {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid gap-4 md:grid-cols-3">
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-4">
           {stats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <div key={idx} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500">
-                  <Icon className="h-6 w-6 text-white" />
+              <div key={idx} className="flex min-w-0 flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white p-2.5 text-center shadow-sm transition hover:shadow-md sm:flex-row sm:gap-4 sm:p-4 sm:text-left">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 sm:h-12 sm:w-12">
+                  <Icon className="h-5 w-5 text-white sm:h-6 sm:w-6" />
                 </div>
-                <div>
-                  <p className="text-xs text-neutral-600 font-medium">{stat.label}</p>
-                  <p className="text-2xl font-bold text-neutral-900">{stat.value}</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] leading-tight text-neutral-600 font-medium sm:text-xs">{stat.label}</p>
+                  <p className="text-xl font-bold text-neutral-900 sm:text-2xl">{stat.value}</p>
                 </div>
               </div>
             );
@@ -354,10 +365,10 @@ export default function StudentCourses() {
                 )}
 
                 {/* ปุ่ม 3 ปุ่ม: เนื้อหา / เข้าสอบ / รายละเอียด */}
-                <div className="flex gap-3 p-4 bg-white border-t border-neutral-100">
+                <div className="grid grid-cols-2 gap-2 border-t border-neutral-100 bg-white p-3 sm:flex sm:gap-3 sm:p-4">
                   <Link
                     to={`/profile/course/${course.id}/subjects`}
-                    className="flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                    className="min-w-0 flex-1 bg-orange-50 text-orange-600 border-2 border-orange-100 rounded-xl py-2.5 hover:bg-orange-100 hover:border-orange-200 transition flex items-center justify-center gap-1 font-bold text-xs shadow-sm sm:gap-2 sm:text-sm"
                   >
                     <FileText className="h-4 w-4" /> เนื้อหาในคอร์ส
                   </Link>
@@ -366,7 +377,7 @@ export default function StudentCourses() {
                     <button
                       onClick={() => handleEnterExam(course.id)}
                       disabled={examLoadingId === course.id}
-                      className="w-full h-full bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 disabled:opacity-50 transition flex items-center justify-center gap-2 font-bold text-sm shadow-sm"
+                      className="w-full h-full bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 disabled:opacity-50 transition flex items-center justify-center gap-1 font-bold text-xs shadow-sm sm:gap-2 sm:text-sm"
                     >
                       <ClipboardList className="h-4 w-4" /> {examLoadingId === course.id ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
                     </button>
@@ -374,7 +385,7 @@ export default function StudentCourses() {
 
                   <Link
                     to={`/profile/course-detail/${course.id}`}
-                    className="flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-2 font-bold text-sm"
+                    className="col-span-2 min-w-0 flex-1 border-2 border-neutral-200 text-neutral-700 rounded-xl py-2.5 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center justify-center gap-1 font-bold text-xs sm:col-span-1 sm:gap-2 sm:text-sm"
                   >
                     <Users className="h-4 w-4 text-neutral-400" /> ดูรายละเอียด
                   </Link>

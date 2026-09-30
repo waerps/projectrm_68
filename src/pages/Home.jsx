@@ -9,7 +9,6 @@ import {
   GraduationCap,
   X,
   Calendar,
-  Tag,
   Sparkles,
   Heart,
   ShoppingCart,
@@ -23,6 +22,9 @@ import { getCourses } from "../callapi/callusers";
 import { getStudentCourses } from "../callapi/callusers_student";
 import { useShop } from "../context/ShopContext";
 import { CourseCheckoutModal } from "./Cart";
+import StaggerCourses from "./StaggerCourses";
+import NewsMarqueeArchive from "./NewsMarqueeArchive";
+import VirtualTourSection from "../components/VirtualTourSection";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -95,17 +97,6 @@ const resolveAnnouncementImg = (course) => {
   const image = course?.AnnouncementImage;
   if (!image) return null;
   return image.startsWith("http") || image.startsWith("blob:") ? image : `${API_URL}${image}`;
-};
-
-const resolveNewsImg = (img) => {
-  if (!img) return "/gray.jpg";
-  return img.startsWith("http") || img.startsWith("blob:") ? img : `${API_URL}${img}`;
-};
-
-const resolveImg = (img) => {
-  if (!img) return null;
-  if (img.startsWith("http") || img.startsWith("blob:")) return img;
-  return `${API_URL}${img}`;
 };
 
 const formatPrice = (price) =>
@@ -238,189 +229,6 @@ const SectionTitle = ({ children, sub, eyebrow, align = "center" }) => (
     {sub ? <p className="mt-2.5 text-gray-500 max-w-2xl mx-auto leading-relaxed">{sub}</p> : null}
   </div>
 );
-
-/**
- * ── AboutFlashcard ───────────────────────────────────────────────────────
- * การ์ดคอร์สแบบหมุนวนข้าง section "ศรเสริมติวเตอร์" — ใช้รูปคอร์สจริง
- * แสดงแค่ รูป / ชื่อคอร์ส / ราคา พร้อม dot indicator ให้คลิกเลือกได้
- */
-function AboutFlashcard({ courses }) {
-  const [idx, setIdx] = useState(0);
-
-  const slides = useMemo(() => {
-    return Array.isArray(courses) ? courses.slice(0, 5) : [];
-  }, [courses]);
-
-  useEffect(() => {
-    setIdx(0);
-  }, [slides.length]);
-
-  useEffect(() => {
-    if (slides.length < 2) return;
-
-    const timer = setInterval(() => {
-      setIdx((current) => (current + 1) % slides.length);
-    }, 3800);
-
-    return () => clearInterval(timer);
-  }, [slides.length]);
-
-  if (slides.length === 0) return null;
-
-  return (
-    <div className="relative mx-auto h-[250px] w-full max-w-[360px] md:mx-0 md:ml-auto">
-      <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl animate-pulse" />
-      <div
-        className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-orange-300/25 blur-3xl animate-pulse"
-        style={{ animationDelay: "1s" }}
-      />
-      {slides.map((course, i) => {
-        const offset = (i - idx + slides.length) % slides.length;
-        const isTop = offset === 0;
-
-        const price = Number(course.Price || 0);
-        const discount = Number(course.Discount || 0);
-        const finalPrice = Math.max(price - discount, 0);
-
-        return (
-          <Link
-            key={course.CourseID}
-            to={`/courses/${course.CourseID}`}
-            className={[
-              "group absolute inset-0 overflow-hidden rounded-3xl",
-              "bg-white shadow-xl",
-              "transition-all duration-700",
-              "ease-[cubic-bezier(.16,1,.3,1)]",
-              isTop
-                ? "pointer-events-auto"
-                : "pointer-events-none",
-            ].join(" ")}
-            style={{
-              background:
-                "linear-gradient(160deg, #ffffff 0%, #FFF3E8 100%)",
-              transform: `
-                translateY(${offset * 14}px)
-                scale(${Math.max(1 - offset * 0.05, 0.8)})
-                rotate(${offset === 0 ? 0 : offset * 2}deg)
-              `,
-              zIndex: slides.length - offset,
-              opacity: offset > 2 ? 0 : 1,
-              visibility: offset > 2 ? "hidden" : "visible",
-            }}
-          >
-            {/* รูปภาพคอร์ส */}
-            <div className="relative h-full overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-              <CourseArtwork
-                src={resolveCourseImg(course)}
-                alt={course.CourseName || "รูปภาพคอร์ส"}
-                className={[
-                  "h-full w-full object-cover",
-                  "transition-transform duration-700",
-                  isTop ? "group-hover:scale-105" : "",
-                ].join(" ")}
-              />
-
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
-
-              {course.Subject && (
-                <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-bold text-orange-600 shadow-sm backdrop-blur-md">
-                  {course.Subject}
-                </span>
-              )}
-
-              {course.Status_Course_Id === STATUS.TEACHING && (
-                <span className="absolute right-4 top-4 rounded-full border border-emerald-100 bg-emerald-50/95 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-600 shadow-sm backdrop-blur-md">
-                  กำลังสอน
-                </span>
-              )}
-
-              <div className="absolute inset-x-0 bottom-0 p-4 text-white md:p-5">
-                <h3 className="line-clamp-1 pr-20 text-sm font-bold drop-shadow-md md:text-base">
-                  {course.CourseName || "ไม่พบชื่อคอร์ส"}
-                </h3>
-                <div className="mt-1 flex items-center gap-2 text-xs">
-                  <span className="font-bold text-orange-100">{formatPrice(finalPrice)}</span>
-                  {discount > 0 && <span className="text-[10px] text-white/60 line-through">{formatPrice(price)}</span>}
-                </div>
-              </div>
-
-              {isTop && slides.length > 1 && (
-                <div className="absolute bottom-4 right-4 flex items-center gap-1">
-                  {slides.map((_, dotIndex) => (
-                    <button
-                      key={dotIndex}
-                      type="button"
-                      aria-label={`แสดงคอร์สลำดับที่ ${dotIndex + 1}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setIdx(dotIndex);
-                      }}
-                      className={`h-1.5 rounded-full shadow-sm transition-all ${dotIndex === idx ? "w-5 bg-white" : "w-1.5 bg-white/50"}`}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* รายละเอียดคอร์ส */}
-            {/* <div className="flex h-[10px] flex-col justify-between p-6">
-              <h3
-                className="line-clamp-2 min-h-[3.2rem] text-[19px] font-bold leading-snug text-[#14213D]"
-                style={{ fontFamily: "'Kanit', sans-serif" }}
-              >
-                {course.CourseName || "ไม่พบชื่อคอร์ส"}
-              </h3>
-
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="whitespace-nowrap text-2xl font-extrabold text-orange-500">
-                    ฿{formatNumber(finalPrice)}
-                  </div>
-
-                  {discount > 0 && (
-                    <div className="whitespace-nowrap text-xs text-gray-400 line-through">
-                      ฿{formatNumber(price)}
-                    </div>
-                  )}
-                </div>
-
-                {isTop && slides.length > 1 && (
-                  <div className="flex shrink-0 items-center gap-1">
-                    {slides.map((_, dotIndex) => (
-                      <button
-                        key={dotIndex}
-                        type="button"
-                        aria-label={`แสดงคอร์สลำดับที่ ${dotIndex + 1}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setIdx(dotIndex);
-                        }}
-                        className="flex h-5 items-center justify-center px-1"
-                      >
-                        <span
-                          className="block h-1.5 rounded-full transition-all duration-300"
-                          style={{
-                            width: dotIndex === idx ? "18px" : "6px",
-                            background:
-                              dotIndex === idx
-                                ? "#F97316"
-                                : "rgba(20,33,61,0.15)",
-                          }}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div> */}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * ── Course card ──────────────────────────────────────────────────────────
@@ -647,202 +455,6 @@ function CourseCarousel({ group, favorites, cart, enrolledCourseIds, onBuyNow, t
   );
 }
 
-// การ์ดข่าว
-const NewsCard = ({ item, onClick }) => (
-  <div
-    onClick={onClick}
-    className="group cursor-pointer rounded-3xl border border-gray-100 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-lg md:p-5"
-  >
-    <div className="flex flex-col gap-4 md:flex-row">
-      <div className="overflow-hidden rounded-2xl md:w-[36%]">
-        <SafeImg
-          src={item.img}
-          alt={item.title}
-          className="h-40 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-      </div>
-      <div className="flex-1">
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-            {item.tag}
-          </span>
-          <span className="text-gray-400">{item.date}</span>
-          {item.sub && (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">
-              {item.sub.length > 50 ? item.sub.substring(0, 50) + "..." : item.sub}
-            </span>
-          )}
-        </div>
-        <h4 className="text-[15px] font-semibold leading-relaxed md:text-base">{item.title}</h4>
-        <p className="mt-1 text-xs font-medium text-orange-500">อ่านต่อ →</p>
-      </div>
-    </div>
-  </div>
-);
-
-// ── ImageGallery — แสดงรูปพร้อม lightbox ────────────────────────────────────
-function ImageGallery({ images }) {
-  const [lightbox, setLightbox] = useState(null);
-
-  if (!images?.length) return null;
-
-  const prev = () => setLightbox((i) => (i - 1 + images.length) % images.length);
-  const next = () => setLightbox((i) => (i + 1) % images.length);
-
-  return (
-    <>
-      <div className="grid grid-cols-3 gap-2 mt-4">
-        {images.map((img, idx) => (
-          <div
-            key={img.ImageId}
-            onClick={() => setLightbox(idx)}
-            className="cursor-zoom-in rounded-xl overflow-hidden aspect-square"
-          >
-            <SafeImg
-              src={resolveImg(img.ImagePath)}
-              alt=""
-              className="h-full w-full object-cover hover:scale-105 transition duration-200"
-            />
-          </div>
-        ))}
-      </div>
-
-      {lightbox !== null && (
-        <div
-          className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); prev(); }}
-            className="absolute left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <ChevronLeft className="h-6 w-6 text-white" />
-          </button>
-
-          <img
-            src={resolveImg(images[lightbox].ImagePath)}
-            alt=""
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] max-w-full rounded-2xl object-contain"
-          />
-
-          <button
-            onClick={(e) => { e.stopPropagation(); next(); }}
-            className="absolute right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <ChevronRight className="h-6 w-6 text-white" />
-          </button>
-
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
-          >
-            <X className="h-5 w-5 text-white" />
-          </button>
-
-          <span className="absolute bottom-4 text-white/70 text-sm">
-            {lightbox + 1} / {images.length}
-          </span>
-        </div>
-      )}
-    </>
-  );
-}
-
-// ── NewsDetailModal ──────────────────────────────────────────────────────
-function NewsDetailModal({ newsId, onClose }) {
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    axios.get(`${API_URL}/api/news/${newsId}`)
-      .then((res) => setDetail(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [newsId]);
-
-  useEffect(() => {
-    const handler = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {loading ? (
-          <div className="p-16 text-center text-gray-400">กำลังโหลด...</div>
-        ) : !detail ? (
-          <div className="p-16 text-center text-gray-400">ไม่พบข้อมูล</div>
-        ) : (
-          <>
-            {detail.img && (
-              <div className="relative h-56 md:h-72 w-full">
-                <SafeImg
-                  src={resolveImg(detail.img)}
-                  alt={detail.title}
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-              </div>
-            )}
-
-            <div className="p-6 md:p-8">
-              <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-medium">
-                  <Tag className="h-3 w-3" />{detail.tag}
-                </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
-                  <Calendar className="h-3 w-3" />{detail.date}
-                </span>
-              </div>
-
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4">
-                {detail.title}
-              </h2>
-
-              {detail.sub && (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">{detail.sub}</p>
-              )}
-
-              {detail.extraImages?.length > 0 && (
-                <>
-                  <hr className="my-5 border-gray-100" />
-                  <p className="text-sm font-semibold text-gray-700 mb-2">
-                    รูปภาพเพิ่มเติม ({detail.extraImages.length} รูป)
-                  </p>
-                  <ImageGallery images={detail.extraImages} />
-                </>
-              )}
-
-              <button
-                onClick={onClose}
-                className="mt-6 w-full py-2.5 rounded-2xl border border-gray-200 text-sm
-                           text-gray-600 hover:bg-gray-50 transition font-medium"
-              >
-                ปิด
-              </button>
-            </div>
-          </>
-        )}
-
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-full p-1.5 shadow hover:bg-white transition"
-        >
-          <X className="h-4 w-4 text-gray-700" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /** ---------- trust strip ---------- */
 function TrustStrip() {
   const items = [
@@ -952,10 +564,10 @@ export default function Home() {
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
+  const [coursesLoaded, setCoursesLoaded] = useState(false);
+  const [newsLoaded, setNewsLoaded] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
-
-  const [selectedId, setSelectedId] = useState(null);
 
   const { cart, favorites, toggleCart, toggleFavorite } = useShop();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
@@ -988,6 +600,8 @@ export default function Home() {
       } catch (err) {
         console.error("Error loading courses:", err);
         setData([]);
+      } finally {
+        setCoursesLoaded(true);
       }
     }
     fetchCourses();
@@ -996,11 +610,12 @@ export default function Home() {
   useEffect(() => {
     axios
       .get(`${API_URL}/api/news`, { params: { role: "public" } })
-      .then((res) => setNewsItems(Array.isArray(res.data) ? res.data.slice(0, 2) : []))
+      .then((res) => setNewsItems(Array.isArray(res.data) ? res.data.slice(0, 6) : []))
       .catch((err) => {
         console.error("Error loading news:", err);
         setNewsItems([]);
-      });
+      })
+      .finally(() => setNewsLoaded(true));
   }, []);
 
   // คอร์สที่ไม่ถูกซ่อน (ไม่ใช่ Status = ปิดคอร์ส)
@@ -1176,9 +791,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ========== ABOUT — ดีไซน์ 2 คอลัมน์ พร้อมการ์ดคอร์สหมุนวน ========== */}
+        {/* ========== ABOUT ========== */}
         <section className="mt-14">
-          <div className="grid items-start gap-10 md:grid-cols-2">
+          <div className="max-w-3xl">
             <Reveal>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
                 <BadgeCheck className="h-3.5 w-3.5" /> ทีมสอนจากคณะครุศาสตร์ มข. อันดับต้น 3 ปีซ้อน
@@ -1216,9 +831,6 @@ export default function Home() {
               </div>
             </Reveal>
 
-            <Reveal delay={120} className="md:flex md:justify-end">
-              <AboutFlashcard courses={visibleCourses} />
-            </Reveal>
           </div>
         </section>
 
@@ -1248,6 +860,10 @@ export default function Home() {
           )}
         </div>
 
+        {visibleCourses.length > 0 && (
+          <StaggerCourses courses={visibleCourses.map(toCourseCardItem)} />
+        )}
+
         {/* ========== TRUST STRIP + STATS — ย้ายมาไว้หลังคอร์สเรียน ก่อนข่าวประชาสัมพันธ์ ========== */}
         <div className="mt-14">
           <TrustStrip />
@@ -1261,21 +877,7 @@ export default function Home() {
           </SectionTitle>
 
           {newsItems.length > 0 ? (
-            <div className="space-y-4">
-              {newsItems.map((n) => (
-                <NewsCard
-                  key={n.id}
-                  item={{
-                    tag: n.tag,
-                    date: n.date,
-                    sub: n.sub,
-                    title: n.title,
-                    img: resolveNewsImg(n.img),
-                  }}
-                  onClick={() => setSelectedId(n.id)}
-                />
-              ))}
-            </div>
+            <NewsMarqueeArchive items={newsItems} embedded />
           ) : (
             <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm">
               ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้
@@ -1292,14 +894,9 @@ export default function Home() {
             อ่านเพิ่มเติม
           </Link>
         </div>
-      </div>
 
-      {selectedId && (
-        <NewsDetailModal
-          newsId={selectedId}
-          onClose={() => setSelectedId(null)}
-        />
-      )}
+        <VirtualTourSection contentReady={coursesLoaded && newsLoaded} />
+      </div>
 
       {buyNowCourse && (
         <CourseCheckoutModal

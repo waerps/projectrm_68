@@ -31,6 +31,7 @@ export default function AppShell() {
 
   // หน้าทำข้อสอบ (/exam/:token) — ซ่อนแชตบอตทั้งหมด ไม่ให้มีผู้ช่วยลอยอยู่ขณะสอบ
   const isExamPage = location.pathname.startsWith("/exam/")
+  const isTourPage = location.pathname === "/virtual-tour"
 
   // แชตบอต: เฉพาะ guest (ยังไม่ล็อกอิน) และ student — และต้องไม่ใช่หน้าทำข้อสอบ
   // เผื่ออนาคตอยากเปิดให้ tutor/admin ด้วย ปรับตรงนี้:
@@ -43,14 +44,14 @@ export default function AppShell() {
       <div className="min-h-screen ">
         <Navbar />
         <main className=" ">
-          <div className="max-w-6xl mx-auto">
+          <div className={isTourPage ? "" : "max-w-6xl mx-auto"}>
             <Outlet />
           </div>
         </main>
-        <Footer />
+        {!isTourPage && <Footer />}
       </div>
 
-      {canUseChat && (
+      {canUseChat && !isTourPage && (
         <>
           <ChatWidget />
           <ChatFullscreen />
@@ -73,7 +74,7 @@ export default function AppShell() {
         </>
       )} */}
 
-      {canReportIncident && <IncidentReportButton role={currentRole} />}
+      {canReportIncident && !isTourPage && <IncidentReportButton role={currentRole} />}
     </>
   )
 }

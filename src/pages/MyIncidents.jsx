@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AlertOctagon, Loader2, Clock, EyeOff, Inbox } from "lucide-react";
 import { getMyIncidents } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
@@ -16,7 +16,9 @@ const STATUS_META = {
 const formatDate = (d) => {
     if (!d) return "—";
     try {
-        return new Date(d).toLocaleDateString("th-TH", {
+        const date = new Date(d);
+        if (Number.isNaN(date.getTime())) return "—";
+        return date.toLocaleDateString("th-TH", {
             year: "numeric", month: "short", day: "numeric",
             hour: "2-digit", minute: "2-digit",
         });
@@ -30,7 +32,7 @@ function IncidentCard({ incident, onClick }) {
     const SeverityIcon = severityMeta?.icon || AlertOctagon;
 
     return (
-        <button onClick={onClick} className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm hover:border-orange-200 transition">
+        <article role="button" tabIndex={0} onClick={onClick} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onClick(); } }} className="w-full cursor-pointer text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm hover:border-orange-200 transition">
             <div className="flex items-start gap-3">
                 <div className={`h-10 w-10 rounded-xl ${severityMeta?.solidBg || "bg-slate-400"} flex items-center justify-center shrink-0`}>
                     <SeverityIcon className="h-5 w-5 text-white" />
@@ -49,7 +51,7 @@ function IncidentCard({ incident, onClick }) {
                     {incident.Attachments?.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                             {incident.Attachments.map((att) => {
-                                const isPdf = att.url.toLowerCase().endsWith(".pdf");
+                                const isPdf = String(att.url ?? "").toLowerCase().endsWith(".pdf");
 
                                 return (
                                     <a
@@ -57,6 +59,7 @@ function IncidentCard({ incident, onClick }) {
                                         href={getFileUrl(att.url)}
                                         target="_blank"
                                         rel="noreferrer"
+                                        onClick={(event) => event.stopPropagation()}
                                         className="flex items-center gap-1.5"
                                     >
                                         {isPdf ? (
@@ -86,7 +89,7 @@ function IncidentCard({ incident, onClick }) {
                     </div>
                 </div>
             </div>
-        </button>
+        </article>
     );
 }
 
@@ -97,14 +100,17 @@ export default function MyIncidents() {
     const [error, setError] = useState("");
     const [selectedId, setSelectedId] = useState(null);
 
-    const load = () => {
+    const load = useCallback(() => {
         getMyIncidents(token)
-            .then(setIncidents)
+            .then((payload) => {
+                const list = Array.isArray(payload) ? payload : payload?.incidents ?? payload?.data?.incidents ?? [];
+                setIncidents(Array.isArray(list) ? list : []);
+            })
             .catch((err) => setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"))
             .finally(() => setLoading(false));
-    };
+    }, [token]);
 
-    useEffect(() => { load(); }, [token]);
+    useEffect(() => { load(); }, [load]);
 
     if (loading) {
         return (

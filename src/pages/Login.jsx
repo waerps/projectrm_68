@@ -1,238 +1,233 @@
-import { API_URL } from "../config";
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, GraduationCap, KeyRound, Sparkles, X } from "lucide-react";
+import { API_URL } from "../config";
+import GoogleSignInButton from "../components/GoogleSignInButton";
+import { clearGoogleRegistration, finishStudentLogin, readGoogleRegistration, saveGoogleRegistration, studentReturnContext } from "../utils/studentSession";
+import GoogleRegistrationForm from "./GoogleRegistrationForm";
+import ForgotPasswordForm from "./ForgotPasswordForm";
+import "./AuthPage.css";
 
-// รายการรูปภาพสำหรับสไลด์
-const images = [
-  "/img333.jpg",
-  "/444.jpg",
-  "/555.jpg",
+const emptyRegistration = {
+  firstname: "", lastname: "", nickname: "", phoneNo: "", schoolName: "",
+  lineId: "", birthOfDate: "", remark: "", username: "", password: "",
+  confirmPassword: "", gpa: "", parentId: "", gradeLevelId: "", genderId: "",
+};
+const grades = [
+  ...Array.from({ length: 6 }, (_, index) => `ประถมศึกษาปีที่ ${index + 1}`),
+  ...Array.from({ length: 6 }, (_, index) => `มัธยมศึกษาปีที่ ${index + 1}`),
 ];
+const inputClass = "auth-input";
 
-export function Login() {
-  const [role, setRole] = useState("user"); // user | admin
-  const [currentImage, setCurrentImage] = useState(0);
-
-  // 2. สร้าง State สำหรับเก็บค่าที่พิมพ์ในฟอร์ม
-  const [formData, setFormData] = useState({
-    username: '',
-    password: ''
-  });
-
-  const navigate = useNavigate(); // เรียกใช้ hook สำหรับเปลี่ยนหน้า
+export function Login({ initialMode = "login" }) {
+  const [mode, setMode] = useState(initialMode);
+  const [pendingGoogle, setPendingGoogle] = useState(() => initialMode === "google" ? readGoogleRegistration() : null);
+  const [role, setRole] = useState("user");
+  const [loginData, setLoginData] = useState({ username: "", password: "" });
+  const [registration, setRegistration] = useState(emptyRegistration);
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [registerBusy, setRegisterBusy] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [registerError, setRegisterError] = useState("");
+  const navigate = useNavigate();
   const location = useLocation();
 
-  // ตั้งเวลาเปลี่ยนรูปภาพอัตโนมัติ
-  useEffect(() => {
-    const slideInterval = setInterval(() => {
-      setCurrentImage((prev) => (prev === images.length - 1 ? 0 : prev + 1));
-    }, 4000);
+  useEffect(() => setMode(initialMode), [initialMode]);
 
-    return () => clearInterval(slideInterval);
-  }, []);
+  function switchMode(next) {
+    if (location.pathname === "/forgot-password" && next === "login") {
+      navigate("/login", { replace: true });
+      return;
+    }
+    if (mode === "google" && next !== "google") {
+      clearGoogleRegistration();
+      setPendingGoogle(null);
+    }
+    setMode(next);
+    setLoginError("");
+    setRegisterError("");
+    if (next === "register") setRole("user");
+  }
 
-  // ฟังก์ชันเก็บค่าจาก Input ลง State
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  // 3. ฟังก์ชันเมื่อกดปุ่ม "เข้าสู่ระบบ"
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const endpoint = role === "user"
-      ? `${API_URL}/auth/login`
-      : `${API_URL}/auth/login-admin`;
-
+  async function handleLogin(event) {
+    event.preventDefault();
+    setLoginError("");
+    setLoginBusy(true);
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_URL}${role === "user" ? "/auth/login" : "/auth/login-admin"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(loginData),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+      if (role === "user") {
+        finishStudentLogin(data, navigate, studentReturnContext(location));
+      } else {
         localStorage.setItem("student_token", data.token);
         localStorage.setItem("user_role", data.user?.roleId || "student");
-
         localStorage.setItem("user", JSON.stringify(data.user));
-
-        if (role === "user") {
-          const returnTo = location.state?.returnTo || "/";
-          navigate(returnTo, { replace: true, state: { openCheckout: Boolean(location.state?.openCheckout) } });
-        } else {
-          if (data.user.roleId === 1) {
-            navigate("/admin");
-          } else if (data.user.roleId === 2) {
-            navigate("/tutor");
-          } else {
-            navigate("/");
-          }
-        }
-      } else {
-        alert(data.message || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        navigate(data.user?.roleId === 1 ? "/admin" : data.user?.roleId === 2 ? "/tutor" : "/");
       }
     } catch (error) {
-      console.error("Login Error:", error);
-      alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+      setLoginError(error.message || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setLoginBusy(false);
     }
-  };
+  }
+
+  async function handleRegister(event) {
+    event.preventDefault();
+    setRegisterError("");
+    if (registration.password !== registration.confirmPassword) {
+      setRegisterError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      return;
+    }
+    setRegisterBusy(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registration),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "สมัครบัญชีไม่สำเร็จ กรุณาลองใหม่");
+      setLoginData({ username: registration.username.trim(), password: "" });
+      setRegistration(emptyRegistration);
+      navigate("/login", { replace: true, state: { registered: true } });
+    } catch (error) {
+      setRegisterError(error.message || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
+    } finally {
+      setRegisterBusy(false);
+    }
+  }
+
+  async function handleGoogleAuthenticated(data) {
+    if (data.needsOnboarding) {
+      saveGoogleRegistration(data, studentReturnContext(location));
+      setPendingGoogle(readGoogleRegistration());
+      setMode("google");
+      return;
+    }
+    finishStudentLogin(data, navigate, studentReturnContext(location));
+  }
+
+  function updateRegistration(event) {
+    const { name, value } = event.target;
+    setRegistration(current => ({ ...current, [name]: value }));
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative bg-gray-50/50 p-4">
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-orange-200 rounded-full blur-3xl opacity-20 animate-pulse -z-10"></div>
+    <main className="auth-page">
+      <div className="auth-page-glow auth-page-glow-one" aria-hidden="true" />
+      <div className="auth-page-glow auth-page-glow-two" aria-hidden="true" />
+      <div className="auth-stage" data-mode={mode === "login" ? "login" : "register"}>
+        <button type="button" onClick={() => navigate("/")} className="auth-close" aria-label="ปิดและกลับหน้าแรก"><X size={18} /></button>
 
-      <div className="relative w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden grid grid-cols-1 md:grid-cols-2 border border-gray-100">
-        <button type="button" onClick={() => navigate("/")} className="absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-gray-500 shadow-md backdrop-blur transition hover:bg-white hover:text-orange-500" aria-label="ปิดและกลับหน้า Home" title="กลับหน้า Home">
-          <X className="h-5 w-5" />
-        </button>
-
-        {/* ================= Left Section (Slider + Buttons) ================= แก้รอบแรกไม่ไป */}
-        <div className="hidden md:flex flex-col relative"> 
-
-          {/* ส่วนแสดงรูปภาพสไลด์ */}
-          <div className="relative overflow-hidden group" style={{ height: "400px" }}>
-            <div
-              className="flex h-full w-full transition-transform duration-1000 ease-in-out"
-              style={{ transform: `translateX(-${currentImage * 100}%)` }}
-            >
-              {images.map((src, index) => (   // ✅ ต้องมี .map() ตรงนี้
-                <img
-                  key={index}
-                  src={src}
-                  alt={`Slide ${index + 1}`}
-                  className="min-w-full w-full h-full object-cover flex-shrink-0"
-                  style={{ minWidth: "100%" }}
-                />
-              ))}
+        <section className="auth-pane auth-pane-login" aria-hidden={mode !== "login"} inert={mode !== "login"}>
+          <div className="auth-pane-inner">
+            <span className="auth-eyebrow">ยินดีต้อนรับกลับ</span>
+            <h1 className="auth-heading">เข้าสู่ระบบ</h1>
+            <p className="auth-intro">เรียนรู้ต่อได้ทันทีด้วยบัญชีของคุณ</p>
+            <div className="auth-role-switch" role="group" aria-label="ประเภทบัญชี">
+              <button type="button" className={role === "user" ? "active" : ""} onClick={() => { setRole("user"); setLoginError(""); }}>นักเรียน</button>
+              <button type="button" className={role === "admin" ? "active" : ""} onClick={() => { setRole("admin"); setLoginError(""); }}>ติวเตอร์ / แอดมิน</button>
             </div>
-
-            <div className="absolute inset-0 bg-gradient-to-t from-orange-900/70 via-transparent to-transparent" />
-
-            <div className="absolute bottom-4 left-0 w-full flex justify-center gap-2 z-10">
-              {images.map((_, index) => (
-                <div
-                  key={index}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${currentImage === index ? "bg-white w-6" : "bg-white/50 w-2"
-                    }`}
-                />
-              ))}
+            {location.state?.registered && <p className="auth-success" role="status">สมัครบัญชีสำเร็จ เข้าสู่ระบบได้เลย</p>}
+            <form onSubmit={handleLogin} className="auth-form">
+              <label htmlFor="auth-username">ชื่อผู้ใช้</label>
+              <input id="auth-username" className={inputClass} name="username" type="text" autoComplete="username" required value={loginData.username} onChange={event => setLoginData(current => ({ ...current, username: event.target.value }))} placeholder="กรอกชื่อผู้ใช้" />
+              <label htmlFor="auth-password">รหัสผ่าน</label>
+              <input id="auth-password" className={inputClass} name="password" type="password" autoComplete="current-password" required value={loginData.password} onChange={event => setLoginData(current => ({ ...current, password: event.target.value }))} placeholder="กรอกรหัสผ่าน" />
+              <div className={role === "user" ? "auth-form-meta" : "auth-form-meta auth-hidden-slot"} aria-hidden={role !== "user"} inert={role !== "user"}><button type="button" onClick={() => switchMode("forgot")} tabIndex={role === "user" ? 0 : -1}>ลืมรหัสผ่าน?</button></div>
+              {loginError && <p className="auth-error" role="alert">{loginError}</p>}
+              <button className="auth-primary" disabled={loginBusy} type="submit">{loginBusy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}</button>
+            </form>
+            <div className={role === "user" ? "auth-google-area" : "auth-google-area auth-hidden-slot"} aria-hidden={role !== "user"} inert={role !== "user"}>
+              <div className="auth-divider"><span>หรือ</span></div>
+              {role === "user" && mode === "login" && <GoogleSignInButton disabled={googleBusy} onBusyChange={setGoogleBusy} onAuthenticated={handleGoogleAuthenticated} />}
             </div>
+            <p className="auth-mobile-switch">ยังไม่มีบัญชี? <button type="button" onClick={() => switchMode("register")}>สมัครบัญชี</button></p>
           </div>
+        </section>
 
-          {/* ปุ่มสลับ Role */}
-          <div className="p-6 bg-white border-t border-orange-100 z-10">
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => setRole("user")}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all duration-300 border-2 ${role === "user"
-                  ? "bg-orange-500 text-white border-orange-500 shadow-lg scale-105"
-                  : "bg-white text-gray-500 border-gray-100 hover:border-orange-200 hover:text-orange-500"
-                  }`}
-              >
-                นักเรียน
-              </button>
-              <button
-                type="button"
-                onClick={() => setRole("admin")}
-                className={`flex-1 py-3 rounded-xl font-bold transition-all duration-300 border-2 ${role === "admin"
-                  ? "bg-gray-800 text-white border-gray-800 shadow-lg scale-105"
-                  : "bg-white text-gray-500 border-gray-100 hover:border-gray-400 hover:text-gray-700"
-                  }`}
-              >
-                ผู้ดูแลระบบ
-              </button>
+        <section className="auth-pane auth-pane-register" aria-hidden={mode === "login"} inert={mode === "login"}>
+          {mode === "google" ? <GoogleRegistrationForm pending={pendingGoogle} onCancel={() => switchMode("login")} /> : mode === "forgot" ? <ForgotPasswordForm onBack={() => switchMode("login")} /> : <div className="auth-pane-inner">
+            <span className="auth-eyebrow">เริ่มต้นเรียนรู้ไปด้วยกัน</span>
+            <h1 className="auth-heading">สร้างบัญชี</h1>
+            <p className="auth-intro">กรอกข้อมูลนักเรียนเพื่อสมัครใช้งาน</p>
+            <form onSubmit={handleRegister} className="auth-form auth-register-form">
+              <div className="auth-two-columns">
+                <div><label htmlFor="register-firstname">ชื่อ <span>*</span></label><input id="register-firstname" className={inputClass} name="firstname" autoComplete="given-name" required maxLength={100} value={registration.firstname} onChange={updateRegistration} placeholder="ชื่อ" /></div>
+                <div><label htmlFor="register-lastname">นามสกุล <span>*</span></label><input id="register-lastname" className={inputClass} name="lastname" autoComplete="family-name" required maxLength={100} value={registration.lastname} onChange={updateRegistration} placeholder="นามสกุล" /></div>
+              </div>
+              <label htmlFor="register-username">ชื่อผู้ใช้ <span>*</span></label>
+              <input id="register-username" className={inputClass} name="username" autoComplete="username" required minLength={4} maxLength={32} pattern="[A-Za-z0-9](?:[A-Za-z0-9._-]{2,30}[A-Za-z0-9])" title="4–32 ตัว ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง" value={registration.username} onChange={updateRegistration} placeholder="ตั้งชื่อผู้ใช้" />
+              <div className="auth-two-columns">
+                <div><label htmlFor="register-password">รหัสผ่าน <span>*</span></label><input id="register-password" className={inputClass} name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={registration.password} onChange={updateRegistration} placeholder="อย่างน้อย 8 ตัว" /></div>
+                <div><label htmlFor="register-confirm">ยืนยันรหัสผ่าน <span>*</span></label><input id="register-confirm" className={inputClass} name="confirmPassword" type="password" autoComplete="new-password" required value={registration.confirmPassword} onChange={updateRegistration} placeholder="กรอกอีกครั้ง" /></div>
+              </div>
+              <details className="auth-optional">
+                <summary>ข้อมูลเพิ่มเติม <span>เพิ่มภายหลังได้</span></summary>
+                <div className="auth-optional-fields">
+                  <div className="auth-two-columns">
+                    <div><label htmlFor="register-nickname">ชื่อเล่น</label><input id="register-nickname" className={inputClass} name="nickname" value={registration.nickname} onChange={updateRegistration} /></div>
+                    <div><label htmlFor="register-phone">เบอร์โทรศัพท์</label><input id="register-phone" className={inputClass} name="phoneNo" type="tel" autoComplete="tel" value={registration.phoneNo} onChange={updateRegistration} /></div>
+                  </div>
+                  <div className="auth-two-columns">
+                    <div><label htmlFor="register-school">โรงเรียน</label><input id="register-school" className={inputClass} name="schoolName" value={registration.schoolName} onChange={updateRegistration} /></div>
+                    <div><label htmlFor="register-grade">ระดับชั้น</label><select id="register-grade" className={inputClass} name="gradeLevelId" value={registration.gradeLevelId} onChange={updateRegistration}><option value="">เลือกระดับชั้น</option>{grades.map((grade, index) => <option value={index + 1} key={grade}>{grade}</option>)}</select></div>
+                  </div>
+                  <div className="auth-two-columns">
+                    <div><label htmlFor="register-gender">เพศ</label><select id="register-gender" className={inputClass} name="genderId" value={registration.genderId} onChange={updateRegistration}><option value="">เลือกเพศ</option><option value="1">ชาย</option><option value="2">หญิง</option><option value="3">ไม่ระบุ</option></select></div>
+                    <div><label htmlFor="register-birth">วันเกิด</label><input id="register-birth" className={inputClass} name="birthOfDate" type="date" value={registration.birthOfDate} onChange={updateRegistration} /></div>
+                  </div>
+                  <div className="auth-two-columns">
+                    <div><label htmlFor="register-gpa">เกรดเฉลี่ย</label><input id="register-gpa" className={inputClass} name="gpa" type="number" min="0" max="4" step="0.01" value={registration.gpa} onChange={updateRegistration} /></div>
+                    <div><label htmlFor="register-line">LINE ID</label><input id="register-line" className={inputClass} name="lineId" value={registration.lineId} onChange={updateRegistration} /></div>
+                  </div>
+                  <label htmlFor="register-parent">รหัสผู้ปกครอง</label><input id="register-parent" className={inputClass} name="parentId" value={registration.parentId} onChange={updateRegistration} />
+                  <label htmlFor="register-remark">หมายเหตุ</label><textarea id="register-remark" className={inputClass} name="remark" rows={2} value={registration.remark} onChange={updateRegistration} />
+                </div>
+              </details>
+              {registerError && <p className="auth-error" role="alert">{registerError}</p>}
+              <button className="auth-primary" disabled={registerBusy} type="submit">{registerBusy ? "กำลังสมัคร..." : "สร้างบัญชี"}</button>
+            </form>
+            <p className="auth-mobile-switch">มีบัญชีแล้ว? <button type="button" onClick={() => switchMode("login")}>เข้าสู่ระบบ</button></p>
+          </div>}
+        </section>
+
+        <aside className="auth-swipe" aria-label="สลับระหว่างเข้าสู่ระบบกับสมัครบัญชี">
+          <div className="auth-swipe-glow" aria-hidden="true" />
+          <div className={mode === "login" ? "auth-swipe-copy auth-learning-copy is-visible" : "auth-swipe-copy auth-learning-copy"} aria-hidden={mode !== "login"}>
+            <div className="auth-learning-art" aria-hidden="true">
+              <span className="auth-learning-art-orbit" />
+              <span className="auth-learning-art-book"><BookOpen size={60} strokeWidth={1.6} /></span>
+              <span className="auth-learning-art-spark"><Sparkles size={25} strokeWidth={2} /></span>
+              <span className="auth-learning-art-dot" />
             </div>
+            <p className="auth-grade-pill"><GraduationCap size={16} strokeWidth={2} /> สถาบันศรเสริมติวเตอร์ ขอนแก่น</p>
+            <h2 className="auth-learning-title">เรียนสนุกขึ้น<br /><span>เริ่มได้ที่นี่</span></h2>
+            <p className="auth-swipe-description">เลือกคอร์สที่สนใจ แล้วค่อย ๆ เติบโตในแบบของตัวเอง</p>
+            <button type="button" onClick={() => switchMode("register")} tabIndex={mode === "login" ? 0 : -1}>สมัครบัญชี <ArrowRight size={16} /></button>
           </div>
-        </div>
-
-        {/* ================= Right Form Section ================= */}
-        <div className="flex flex-col justify-center px-8 md:px-16 py-12 transition-all duration-500 bg-white">
-
-          <h2 className="text-3xl font-bold text-orange-500 mb-2 md:hidden">
-            เข้าสู่ระบบ
-          </h2>
-
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">
-              {role === "user" ? "เข้าสู่ระบบนักเรียน" : "เข้าสู่ระบบติวเตอร์และ Admin"}
-            </h2>
-            <p className="text-gray-500 mt-2 text-sm">
-              {role === "user"
-                ? "ยินดีต้อนรับเข้าสู่ระบบการเรียนรู้ออนไลน์"
-                : "เฉพาะติวเตอร์และเจ้าหน้าที่ผู้มีสิทธิ์เข้าถึงเท่านั้น"}
-            </p>
+          <div className={mode !== "login" ? "auth-swipe-copy auth-learning-copy auth-return-copy is-visible" : "auth-swipe-copy auth-learning-copy auth-return-copy"} aria-hidden={mode === "login"}>
+            <div className="auth-learning-art" aria-hidden="true">
+              <span className="auth-learning-art-orbit" />
+              <span className="auth-learning-art-book">{mode === "forgot" ? <KeyRound size={60} strokeWidth={1.6} /> : <GraduationCap size={60} strokeWidth={1.6} />}</span>
+              <span className="auth-learning-art-spark"><Sparkles size={25} strokeWidth={2} /></span>
+              <span className="auth-learning-art-dot" />
+            </div>
+            <p className="auth-grade-pill">{mode === "forgot" ? <><Sparkles size={16} strokeWidth={2} /> กู้คืนบัญชี</> : <><GraduationCap size={16} strokeWidth={2} /> สถาบันศรเสริมติวเตอร์ ขอนแก่น</>}</p>
+            <h2 className="auth-learning-title">{mode === "forgot" ? <>กลับมาเรียนต่อ<br /><span>ได้อีกครั้ง</span></> : mode === "google" ? <>อีกนิดเดียว<br /><span>ก็พร้อมเรียน</span></> : <>พร้อมเรียนต่อ<br /><span>ไปด้วยกันไหม?</span></>}</h2>
+            <p className="auth-swipe-description">{mode === "forgot" ? "ขอลิงก์ตั้งรหัสผ่านใหม่ แล้วกลับมาสนุกกับการเรียนต่อ" : mode === "google" ? "เติมข้อมูลนักเรียนให้ครบ แล้วเริ่มเรียนรู้ไปด้วยกัน" : "บทเรียนที่สนใจยังรออยู่ เข้าสู่ระบบแล้วกลับไปเรียนต่อกัน"}</p>
+            <button type="button" onClick={() => switchMode("login")} tabIndex={mode !== "login" ? 0 : -1}><ArrowLeft size={16} /> {mode === "forgot" ? "กลับไปเข้าสู่ระบบ" : mode === "google" ? "ยกเลิก" : "เข้าสู่ระบบ"}</button>
           </div>
-
-          {/* Form เชื่อมต่อกับ handleSubmit */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 ml-1">
-                {role === "user" ? "ชื่อผู้ใช้" : "ชื่อติวเตอร์ / ชื่อผู้ดูแลระบบ"}
-              </label>
-              <input
-                type="text"
-                name="username"
-                value={formData.username}     // Bind ค่า
-                onChange={handleChange}       // รับค่าเมื่อพิมพ์
-                placeholder={role === "user" ? "กรอกชื่อผู้ใช้ของคุณ" : "กรอกรหัส Admin"}
-                className="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700 ml-1">รหัสผ่าน</label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}     // Bind ค่า
-                onChange={handleChange}       // รับค่าเมื่อพิมพ์
-                placeholder="กรอกรหัสผ่าน"
-                className="w-full px-5 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-gray-600 cursor-pointer">
-                <input type="checkbox" className="accent-orange-500 w-4 h-4" />
-                จำฉันไว้ในระบบ
-              </label>
-              <a href="#" className="text-orange-500 hover:underline">
-                ลืมรหัสผ่าน?
-              </a>
-            </div>
-
-            <button
-              type="submit"
-              className={`w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-lg transition-all transform hover:-translate-y-1 ${role === "user"
-                ? "bg-gradient-to-r from-orange-500 to-orange-600 hover:shadow-orange-200"
-                : "bg-gray-800 hover:shadow-gray-400"
-                }`}
-            >
-              {role === "user" ? "เข้าสู่ระบบ" : "เข้าสู่ระบบ Admin"}
-            </button>
-          </form>
-
-          {role === "user" && (
-            <p className="text-center text-sm text-gray-500 mt-8">
-              ยังไม่มีบัญชีผู้ใช้?{" "}
-              <a href="/register" className="text-orange-500 font-bold hover:underline">
-                ลงทะเบียน
-              </a>
-            </p>
-          )}
-        </div>
+          <BookOpen className="auth-swipe-book" size={210} strokeWidth={0.7} aria-hidden="true" />
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }
 

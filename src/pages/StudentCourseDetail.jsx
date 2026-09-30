@@ -26,6 +26,12 @@ function normalizeAttendance(value) {
   return "other";
 }
 
+function thaiDate(value, options) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "—" : date.toLocaleDateString("th-TH", options);
+}
+
 export default function StudentCourseDetail() {
   const { courseId: routeCourseId } = useParams();
   const [searchParams] = useSearchParams();
@@ -68,46 +74,53 @@ export default function StudentCourseDetail() {
         const response = await getStudentCourseDetail(token, courseId);
         if (cancelled) return;
 
-        const profile = response.student || {};
+        const detail = response?.data ?? response ?? {};
+        const profile = detail.student ?? {};
         setStudent({
-          UserId: profile.userId,
-          Firstname: profile.firstname || "",
-          Lastname: profile.lastname || "",
-          Nickname: profile.nickname || "student",
-          Photo: profile.photo || "",
-          SchoolName: profile.schoolName || "",
-          PhoneNo: profile.phoneNo || "",
-          GradeDetail: profile.gradeDetail || "ไม่ระบุระดับชั้น",
+          UserId: profile.userId ?? profile.UserId,
+          Firstname: profile.firstname ?? profile.Firstname ?? "",
+          Lastname: profile.lastname ?? profile.Lastname ?? "",
+          Nickname: profile.nickname ?? profile.Nickname ?? "student",
+          Photo: profile.photo ?? profile.Photo ?? "",
+          SchoolName: profile.schoolName ?? profile.SchoolName ?? "",
+          PhoneNo: profile.phoneNo ?? profile.PhoneNo ?? "",
+          GradeDetail: profile.gradeDetail ?? profile.GradeDetail ?? "ไม่ระบุระดับชั้น",
         });
-        setCourseName(response.course?.courseName || "คอร์สเรียน");
-        setAttendance((response.schedule || []).map((item) => ({
-          StudentAttendanceId: item.attendanceId || item.courseScheduleDetailId,
-          CourseScheduleDetailId: item.courseScheduleDetailId,
-          SubjectName: item.subjectName,
-          TutorName: item.tutorName,
-          Room: item.room,
-          StartDateTime: item.classDate && item.startTime
-            ? `${item.classDate}T${item.startTime}`
-            : item.classDate,
-          EndTime: item.endTime,
-          Status: normalizeAttendance(item.attendanceStatus),
-          RawStatus: item.attendanceStatus,
-          Reason: item.attendanceReason,
+        setCourseName(detail.course?.courseName ?? detail.course?.CourseName ?? "คอร์สเรียน");
+        setAttendance((detail.schedule ?? []).map((item) => ({
+          StudentAttendanceId: item.attendanceId ?? item.AttendanceId ?? item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
+          CourseScheduleDetailId: item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
+          SubjectName: item.subjectName ?? item.SubjectName,
+          TutorName: item.tutorName ?? item.TutorName,
+          Room: item.room ?? item.Room,
+          StartDateTime: item.startDateTime ?? item.StartDateTime ?? ((item.classDate ?? item.ClassDate) && (item.startTime ?? item.StartTime)
+            ? `${item.classDate ?? item.ClassDate}T${item.startTime ?? item.StartTime}`
+            : item.classDate ?? item.ClassDate),
+          EndTime: item.endTime ?? item.EndTime,
+          Status: normalizeAttendance(item.attendanceStatus ?? item.AttendanceStatus),
+          RawStatus: item.attendanceStatus ?? item.AttendanceStatus,
+          Reason: item.attendanceReason ?? item.AttendanceReason,
         })));
-        setVideos((response.videos || []).map((video) => {
-          const progress = Math.round(Number(video.watchPercent || 0));
+        setVideos((detail.videos ?? []).map((video) => {
+          const rawProgress = Number(video.watchPercent ?? video.WatchPercent ?? 0);
+          const progress = Number.isFinite(rawProgress) ? Math.min(100, Math.max(0, Math.round(rawProgress))) : 0;
           return {
-            id: video.videoId,
-            title: video.videoTitle || "ไม่มีชื่อคลิป",
-            subjectName: video.subjectName,
-            duration: video.duration || "-",
-            url: video.videoUrl,
+            id: video.videoId ?? video.VideoId,
+            title: video.videoTitle ?? video.VideoTitle ?? "ไม่มีชื่อคลิป",
+            subjectName: video.subjectName ?? video.SubjectName,
+            duration: video.duration ?? video.Duration ?? "-",
+            url: video.videoUrl ?? video.VideoUrl,
             watched: progress >= 80,
-            watchedAt: video.watchDate,
+            watchedAt: video.watchDate ?? video.WatchDate,
             progress,
           };
         }));
-        setFiles(response.files || []);
+        setFiles((detail.files ?? []).map((file) => ({
+          fileId: file.fileId ?? file.FileId,
+          fileName: file.fileName ?? file.FileName,
+          subjectName: file.subjectName ?? file.SubjectName,
+          filePath: file.filePath ?? file.FilePath,
+        })));
       } catch (loadError) {
         console.error("โหลดรายละเอียดคอร์สไม่สำเร็จ:", loadError);
         if (!cancelled) {
@@ -130,10 +143,12 @@ export default function StudentCourseDetail() {
   const absentCount = attendance.filter((a) => a.Status === "absent").length;
   const recordedCount = attendedCount + absentCount;
   const attendanceRate = recordedCount ? Math.round((attendedCount / recordedCount) * 100) : 0;
+  const attendanceRateLabel = recordedCount ? `${attendanceRate}%` : "—";
   const watchedCount = videos.filter((v) => v.watched).length;
   const videoRate = videos.length
     ? Math.round(videos.reduce((sum, video) => sum + video.progress, 0) / videos.length)
     : 0;
+  const videoRateLabel = videos.length ? `${videoRate}%` : "—";
 
   const rateColor = attendanceRate >= 80 ? "bg-green-500" : attendanceRate >= 60 ? "bg-orange-500" : "bg-red-500";
   const rateText = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
@@ -143,11 +158,11 @@ export default function StudentCourseDetail() {
   if (!student) return <div className="mt-[90px] text-center p-10 text-neutral-500">ไม่พบข้อมูลนักเรียน</div>;
 
   return (
-    <div className="space-y-6 mt-[90px]">
-      <div className="flex items-center text-sm text-neutral-500 gap-2">
+    <div className="mt-[90px] min-w-0 space-y-6 pb-8">
+      <div className="flex min-w-0 items-center gap-2 text-sm text-neutral-500">
         <Link to="/profile/my-courses" className="hover:text-orange-600 transition font-medium">คอร์สเรียนของฉัน</Link>
         <ChevronRight className="h-4 w-4" />
-        <span className="text-neutral-800 font-semibold">{courseName}</span>
+        <span className="min-w-0 truncate text-neutral-800 font-semibold">{courseName}</span>
       </div>
 
       <div className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-5">
@@ -155,30 +170,30 @@ export default function StudentCourseDetail() {
           <div className="h-20 w-20 rounded-xl border-2 border-orange-200 overflow-hidden shrink-0 bg-white">
             <img src={student.Photo ? resolveUrl(student.Photo) : `https://api.dicebear.com/7.x/avataaars/svg?seed=${student.Nickname}&backgroundColor=fef3c7`} alt="" className="h-full w-full object-cover" />
           </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-neutral-900">{student.Firstname} {student.Lastname}</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="break-words text-xl font-bold text-neutral-900">{student.Firstname} {student.Lastname}</h1>
             <div className="flex flex-wrap gap-2 mt-1 text-xs text-neutral-600">
-              <span className="bg-white border rounded px-2 py-0.5">🏫 {student.SchoolName || "ไม่ระบุ"}</span>
-              <span className="bg-white border rounded px-2 py-0.5">📞 {student.PhoneNo || "-"}</span>
+              <span className="max-w-full break-words bg-white border rounded px-2 py-0.5">🏫 {student.SchoolName || "ไม่ระบุ"}</span>
+              <span className="max-w-full break-words bg-white border rounded px-2 py-0.5">📞 {student.PhoneNo || "-"}</span>
               <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-0.5">{student.GradeDetail}</span>
             </div>
           </div>
-          <div className="flex gap-3 flex-wrap">
-            <div className="bg-white border border-green-200 rounded-xl px-4 py-2 text-center">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+            <div className="min-w-0 bg-white border border-green-200 rounded-xl px-2 py-2 text-center sm:px-4">
               <p className="text-xs text-neutral-500 mb-0.5">เข้าเรียน</p>
-              <p className={`text-lg font-bold ${rateText}`}>{attendanceRate}%</p>
+              <p className={`text-lg font-bold ${rateText}`}>{attendanceRateLabel}</p>
               <p className="text-xs text-neutral-400">{attendedCount}/{recordedCount} คาบที่บันทึก</p>
             </div>
-            <div className="bg-white border border-orange-200 rounded-xl px-4 py-2 text-center">
+            <div className="min-w-0 bg-white border border-orange-200 rounded-xl px-2 py-2 text-center sm:px-4">
               <p className="text-xs text-neutral-500 mb-0.5">ดูคลิป</p>
-              <p className="text-lg font-bold text-orange-600">{videoRate}%</p>
+              <p className="text-lg font-bold text-orange-600">{videoRateLabel}</p>
               <p className="text-xs text-neutral-400">{watchedCount}/{videos.length} คลิป</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl w-fit flex-wrap">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-3 lg:flex lg:flex-wrap">
         {[
           { key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> },
           { key: "videos", label: "รายการคลิป", icon: <Video className="h-4 w-4" /> },
@@ -187,17 +202,17 @@ export default function StudentCourseDetail() {
           { key: "payments", label: "ค่าชำระคอร์ส", icon: <WalletCards className="h-4 w-4" /> },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${
+            className={`flex min-w-0 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-center text-xs font-semibold transition sm:text-sm lg:px-4 ${
               activeTab === tab.key ? "bg-white shadow text-orange-600" : "text-neutral-500 hover:text-neutral-700"
             }`}>
-            {tab.icon}{tab.label}
+            <span className="shrink-0">{tab.icon}</span><span className="min-w-0">{tab.label}</span>
           </button>
         ))}
       </div>
 
       {activeTab === "attendance" && (
         <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+          <div className="flex flex-col gap-2 border-b border-neutral-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-orange-600" />
               <h2 className="font-bold text-neutral-900">ประวัติการเข้าเรียนรายคาบ</h2>
@@ -210,7 +225,7 @@ export default function StudentCourseDetail() {
           <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
             <div className="flex justify-between text-xs text-neutral-500 mb-1">
               <span>อัตราการเข้าเรียน</span>
-              <span className={`font-bold ${rateText}`}>{attendanceRate}%</span>
+              <span className={`font-bold ${rateText}`}>{attendanceRateLabel}</span>
             </div>
             <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${rateColor}`} style={{ width: `${attendanceRate}%` }} />
@@ -231,7 +246,7 @@ export default function StudentCourseDetail() {
                 ) : attendance.map((rec, idx) => (
                   <tr key={idx} className={`border-t border-neutral-100 ${rec.Status === "absent" ? "bg-red-50" : "hover:bg-neutral-50"}`}>
                     <td className="px-4 py-3 font-medium text-neutral-800">
-                      {new Date(rec.StartDateTime).toLocaleDateString("th-TH", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
+                      {thaiDate(rec.StartDateTime, { weekday: "short", year: "numeric", month: "short", day: "numeric" })}
                     </td>
                     <td className="px-4 py-3 text-neutral-600">{rec.SubjectName || "-"}</td>
                     <td className="px-4 py-3 text-center">
@@ -259,12 +274,12 @@ export default function StudentCourseDetail() {
 
       {activeTab === "videos" && (
         <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+          <div className="flex flex-col gap-2 border-b border-neutral-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Video className="h-5 w-5 text-orange-600" />
               <h2 className="font-bold text-neutral-900">รายการคลิปทั้งหมด</h2>
             </div>
-            <div className="flex gap-2 text-xs font-semibold">
+            <div className="flex flex-wrap gap-2 text-xs font-semibold">
               <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full">▶ ดูแล้ว {watchedCount} คลิป</span>
               <span className="bg-neutral-100 text-neutral-600 px-2 py-1 rounded-full">⏸ ยังไม่ดู {videos.length - watchedCount} คลิป</span>
             </div>
@@ -272,7 +287,7 @@ export default function StudentCourseDetail() {
           <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
             <div className="flex justify-between text-xs text-neutral-500 mb-1">
               <span>ความคืบหน้าการดูคลิป</span>
-              <span className="font-bold text-orange-600">{videoRate}%</span>
+              <span className="font-bold text-orange-600">{videoRateLabel}</span>
             </div>
             <div className="h-2.5 bg-neutral-200 rounded-full overflow-hidden">
               <div className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all" style={{ width: `${videoRate}%` }} />
@@ -282,7 +297,7 @@ export default function StudentCourseDetail() {
             {videos.length === 0 ? (
               <div className="text-center py-10 text-neutral-400">ยังไม่มีคลิปในคอร์สนี้</div>
             ) : videos.map((vid) => (
-              <div key={vid.id} className={`flex items-center gap-4 px-4 py-3.5 ${vid.watched ? "" : "bg-neutral-50"}`}>
+              <div key={vid.id} className={`grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 px-4 py-3.5 sm:flex sm:gap-4 ${vid.watched ? "" : "bg-neutral-50"}`}>
                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${vid.watched ? "bg-orange-100" : "bg-neutral-200"}`}>
                   <PlayCircle className={`h-5 w-5 ${vid.watched ? "text-orange-600" : "text-neutral-400"}`} />
                 </div>
@@ -290,7 +305,7 @@ export default function StudentCourseDetail() {
                   <p className={`text-sm font-semibold truncate ${vid.watched ? "text-neutral-900" : "text-neutral-400"}`}>{vid.title}</p>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-neutral-400">
                     <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{vid.duration}</span>
-                    {vid.watchedAt && <span>ดูเมื่อ {new Date(vid.watchedAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                    {vid.watchedAt && <span>ดูเมื่อ {thaiDate(vid.watchedAt, { day: "numeric", month: "short", year: "numeric" })}</span>}
                   </div>
                   {!vid.watched && vid.progress > 0 && (
                     <div className="mt-1.5 flex items-center gap-2">
@@ -301,11 +316,11 @@ export default function StudentCourseDetail() {
                     </div>
                   )}
                 </div>
-                <div className="shrink-0">
+                <div className="col-span-2 justify-self-end sm:col-auto sm:shrink-0">
                   {vid.url ? (
-                    <a href={resolveUrl(vid.url)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-orange-200">
+                    <Link to={`/profile/course-content/${courseId}${vid.id != null ? `?videoId=${encodeURIComponent(vid.id)}` : ""}`} className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1.5 rounded-full hover:bg-orange-200">
                       <PlayCircle className="h-3.5 w-3.5" /> เปิดดูวิดีโอ
-                    </a>
+                    </Link>
                   ) : vid.watched ? (
                     <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 text-xs font-bold px-2.5 py-1 rounded-full">
                       <CheckCircle className="h-3.5 w-3.5" /> ดูแล้ว
@@ -322,7 +337,7 @@ export default function StudentCourseDetail() {
 
       {activeTab === "files" && (
         <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-neutral-100 flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 p-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-orange-600" />
               <h2 className="font-bold text-neutral-900">เอกสารประกอบการเรียน</h2>
@@ -333,7 +348,7 @@ export default function StudentCourseDetail() {
             {files.length === 0 ? (
               <div className="text-center py-10 text-neutral-400">ยังไม่มีเอกสารในคอร์สนี้</div>
             ) : files.map((file) => (
-              <div key={file.fileId} className="flex items-center gap-4 px-4 py-3.5">
+              <div key={file.fileId} className="grid grid-cols-[40px_minmax(0,1fr)] items-center gap-3 px-4 py-3.5 sm:flex sm:gap-4">
                 <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-50">
                   <FileText className="h-5 w-5 text-blue-600" />
                 </div>
@@ -342,11 +357,11 @@ export default function StudentCourseDetail() {
                   <p className="mt-0.5 text-xs text-neutral-400">{file.subjectName || "ไม่ระบุวิชา"}</p>
                 </div>
                 {file.filePath ? (
-                  <a href={resolveUrl(file.filePath)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 border border-blue-200 text-blue-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-blue-50">
+                  <a href={resolveUrl(file.filePath)} target="_blank" rel="noreferrer" className="col-span-2 inline-flex items-center justify-center gap-1.5 justify-self-end rounded-lg border border-blue-200 px-3 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 sm:col-auto">
                     <Download className="h-3.5 w-3.5" /> ดาวน์โหลด
                   </a>
                 ) : (
-                  <span className="text-xs text-neutral-400">ไม่มีไฟล์</span>
+                  <span className="col-span-2 justify-self-end text-xs text-neutral-400 sm:col-auto">ไม่มีไฟล์</span>
                 )}
               </div>
             ))}

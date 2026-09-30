@@ -97,13 +97,15 @@ function YoutubePlayer({ videoId, youtubeId }) {
       cancelled = true;
       if (player.current?.destroy) player.current.destroy();
     };
-  }, [videoId, youtubeId]);
+  }, [videoId, youtubeId, elementId]);
 
   return <div className="w-full aspect-video bg-black"><div id={elementId} className="w-full h-full" /></div>;
 }
 
 function UploadedVideoPlayer({ video, token }) {
   const videoRef = useRef(null);
+  const progressRef = useRef(video.WatchPercent);
+  progressRef.current = video.WatchPercent;
   const pendingSegments = useRef(new Set());
   const watchedSeconds = useRef(new Map());
   const lastSample = useRef(null);
@@ -155,7 +157,7 @@ function UploadedVideoPlayer({ video, token }) {
 
     const resume = () => {
       const saved = Number(video.LastWatchTime || 0);
-      const verifiedSeconds = Math.max(0, Math.min(element.duration, element.duration * Number(video.WatchPercent || 0) / 100));
+      const verifiedSeconds = Math.max(0, Math.min(element.duration, element.duration * Number(progressRef.current || 0) / 100));
       furthestAllowed.current = Math.min(saved, verifiedSeconds);
       if (furthestAllowed.current > 0 && furthestAllowed.current < element.duration - 3) element.currentTime = furthestAllowed.current;
     };
@@ -232,7 +234,7 @@ function FileRow({ file }) {
         <p className="text-sm font-semibold text-neutral-900 truncate">{file.FileName}</p>
         <p className="text-xs text-neutral-500">{file.FileSize}</p>
       </div>
-      <button onClick={handleDownload} disabled={downloading}
+      <button onClick={handleDownload} disabled={downloading || !file.FilePath}
         className="flex shrink-0 items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600 transition disabled:opacity-60">
         {downloading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
         {downloading ? "กำลังโหลด..." : "ดาวน์โหลด"}
@@ -275,37 +277,42 @@ export default function StudentSubjectDetail() {
         ]);
         if (cancelled) return;
 
-        if (course?.CourseName) setCourseName(course.CourseName);
-        const selectedSubject = (Array.isArray(subjectList) ? subjectList : []).find(
-          (subject) => String(subject.subjectId) === String(subjectId)
+        const courseTitle = course?.CourseName ?? course?.courseName ?? course?.data?.CourseName;
+        if (courseTitle) setCourseName(courseTitle);
+        const subjectPayload = Array.isArray(subjectList) ? subjectList : subjectList?.subjects ?? subjectList?.data?.subjects ?? subjectList?.data;
+        const selectedSubject = (Array.isArray(subjectPayload) ? subjectPayload : []).find(
+          (subject) => String(subject.subjectId ?? subject.SubjectId) === String(subjectId)
         );
-        setSubjectName(selectedSubject?.subjectName || "ไม่ระบุชื่อวิชา");
+        setSubjectName(selectedSubject?.subjectName ?? selectedSubject?.SubjectName ?? "ไม่ระบุชื่อวิชา");
 
-        const normalizedVideos = (Array.isArray(videoList) ? videoList : []).map((v) => ({
-          VideoId: v.id,
-          VideoTitle: v.title || "วิดีโอไม่มีชื่อ",
-          VideoUrl: v.url || "",
-          VideoType: v.videoType || "",
-          Thumbnail: v.thumbnail || "",
-          Duration: v.duration,
-          LastWatchTime: Number(v.lastWatchTime || 0),
-          WatchPercent: Number(v.progress || 0),
+        const videoPayload = Array.isArray(videoList) ? videoList : videoList?.videos ?? videoList?.data?.videos ?? videoList?.data;
+        const normalizedVideos = (Array.isArray(videoPayload) ? videoPayload : []).map((v) => ({
+          VideoId: v.VideoId ?? v.videoId ?? v.id,
+          VideoTitle: v.VideoTitle ?? v.videoTitle ?? v.title ?? "วิดีโอไม่มีชื่อ",
+          VideoUrl: v.VideoUrl ?? v.videoUrl ?? v.url ?? "",
+          VideoType: v.VideoType ?? v.videoType ?? "",
+          Thumbnail: v.Thumbnail ?? v.thumbnail ?? "",
+          Duration: v.Duration ?? v.duration,
+          LastWatchTime: Number(v.LastWatchTime ?? v.lastWatchTime ?? 0),
+          WatchPercent: Number(v.WatchPercent ?? v.watchPercent ?? v.progress ?? 0),
         }));
         const videosWithLearning = await Promise.all(normalizedVideos.map(async video => {
           if (getVideoType(video.VideoUrl, video.VideoType) !== "upload") return video;
           try {
             const state = await getVideoLearningState(token, video.VideoId);
-            return { ...video, CorrectCount: state.questions.filter(question => question.isCorrect).length, TotalQuestions: state.questions.length };
+            const questions = state?.questions ?? state?.data?.questions ?? [];
+            return { ...video, CorrectCount: questions.filter(question => question.isCorrect).length, TotalQuestions: questions.length };
           } catch { return { ...video, CorrectCount: 0, TotalQuestions: 0 }; }
         }));
         if (!cancelled) setVideos(videosWithLearning);
 
-        const fList = Array.isArray(fileList) ? fileList : [];
+        const filePayload = Array.isArray(fileList) ? fileList : fileList?.files ?? fileList?.data?.files ?? fileList?.data;
+        const fList = Array.isArray(filePayload) ? filePayload : [];
         setFiles(fList.map((f) => ({
-          FileId: f.FileId,
-          FileName: f.FileName,
-          FilePath: f.FilePath,
-          FileSize: f.FileSize,
+          FileId: f.FileId ?? f.fileId ?? f.id,
+          FileName: f.FileName ?? f.fileName ?? f.name ?? "เอกสารไม่มีชื่อ",
+          FilePath: f.FilePath ?? f.filePath ?? f.url ?? "",
+          FileSize: f.FileSize ?? f.fileSize ?? "",
         })));
       } catch (e) {
         console.error(e);
@@ -362,7 +369,7 @@ export default function StudentSubjectDetail() {
   }
 
   return (
-    <div className="min-h-screen mt-[70px] pb-12 mx-auto w-full max-w-[1400px] px-5 md:px-8">
+    <div className="mx-auto mt-[90px] min-h-screen min-w-0 w-full max-w-[1400px] pb-12 md:px-8">
       <div className="py-6">
         <div className="mb-3 flex items-center text-sm text-neutral-500 flex-wrap">
           <Link to="/profile/my-courses" className="hover:text-orange-600 transition">คอร์สเรียนของฉัน</Link>
@@ -371,20 +378,20 @@ export default function StudentSubjectDetail() {
           <ChevronRight className="mx-1.5 h-4 w-4" />
           <span className="text-neutral-800 font-medium">{subjectName || "รายวิชา"}</span>
         </div>
-        <h1 className="text-3xl font-bold text-neutral-900 flex items-center gap-3">
+        <h1 className="flex items-center gap-3 break-words text-2xl font-bold text-neutral-900 sm:text-3xl">
           <BookOpen className="h-8 w-8 text-orange-500" /> {subjectName || "รายวิชา"}
         </h1>
         <p className="mt-2 text-base text-neutral-500">{courseName} · เนื้อหาสำหรับรายวิชานี้</p>
       </div>
 
-      <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl w-fit flex-wrap mb-6">
+      <div className="mb-6 grid grid-cols-3 gap-1 rounded-xl bg-neutral-100 p-1">
         {[
           { key: "videos", label: `คลิปวิดีโอ (${videos.length})`, icon: <Video className="h-4 w-4" /> },
           { key: "files", label: `เอกสาร (${files.length})`, icon: <FileText className="h-4 w-4" /> },
           { key: "exam", label: "ข้อสอบ", icon: <ClipboardList className="h-4 w-4" /> },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg text-base font-semibold transition ${
+            className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-3 text-xs font-semibold transition sm:gap-2 sm:px-6 sm:text-base ${
               activeTab === tab.key ? "bg-white shadow text-orange-600" : "text-neutral-500 hover:text-neutral-700"
             }`}>
             {tab.icon}{tab.label}
@@ -394,22 +401,22 @@ export default function StudentSubjectDetail() {
 
       {activeTab === "videos" && (
         <div className="min-h-[380px] bg-white rounded-2xl border border-neutral-200 shadow-sm">
-          <div className="p-6 space-y-3">
+          <div className="space-y-3 p-2 sm:p-6">
             {videos.length > 0 ? videos.map((video) => (
               <div key={video.VideoId} className="relative rounded-xl border border-neutral-200 hover:border-orange-200 hover:shadow-sm transition bg-white overflow-hidden flex items-stretch gap-0 pb-2">
-                <button onClick={() => setSelectedVideo(video)} className="relative flex-shrink-0 w-28 bg-neutral-100 group">
+                <button onClick={() => setSelectedVideo(video)} className="group relative w-20 flex-shrink-0 bg-neutral-100 sm:w-28">
                   {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
-                    <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="w-28 h-full object-cover" />
+                    <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="h-full w-20 object-cover sm:w-28" />
                   ) : (
-                    <div className="w-28 h-full flex items-center justify-center min-h-[72px]"><span className="text-2xl">📁</span></div>
+                    <div className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></div>
                   )}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                     <PlayCircle className="h-8 w-8 text-white" />
                   </div>
                 </button>
-                <div className="flex-1 px-3 py-3 flex flex-col justify-between min-w-0">
+                <div className="flex min-w-0 flex-1 flex-col justify-between px-2 py-3 sm:px-3">
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1">
+                    <div className="mb-1 flex flex-wrap items-center gap-1.5">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "bg-purple-50 text-purple-600" : "bg-neutral-100 text-neutral-500"}`}>
                         {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "🎬 วิดีโอระบบ" : "คลิปเดิม · ไม่นับความคืบหน้า"}
                       </span>
@@ -417,7 +424,7 @@ export default function StudentSubjectDetail() {
                     </div>
                     <p className="text-sm font-semibold text-neutral-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
                   </div>
-                  <div className="flex items-center justify-end gap-3 mt-2">
+                  <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
                     {getVideoType(video.VideoUrl, video.VideoType) === "upload" ? (
                       <div className="mr-auto flex items-center gap-3"><span className="text-[11px] font-semibold text-orange-600">ดูแล้ว {Math.round(video.WatchPercent || 0)}%</span>{video.TotalQuestions > 0 && <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">ตอบถูก {video.CorrectCount || 0}/{video.TotalQuestions} ข้อ</span>}</div>
                     ) : <span className="mr-auto text-[10px] text-neutral-300">คลิปนี้ไม่บันทึกความคืบหน้า</span>}
@@ -498,8 +505,10 @@ export default function StudentSubjectDetail() {
             </div>
             {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
               <InteractiveVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} onLearningChange={handleLearningChange} />
-            ) : (
+            ) : getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "youtube" ? (
               <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} />
+            ) : (
+              <div className="p-6 text-center"><a href={selectedVideo.VideoUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-orange-600 underline">เปิดวิดีโอในแท็บใหม่</a></div>
             )}
           </div>
         </div>

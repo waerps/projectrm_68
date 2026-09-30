@@ -1,26 +1,18 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
-import ProfileSidebar from "../components/ProfileSidebar";
+import { useEffect } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 export default function ProfileLayout() {
+  const { pathname, search } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  if (!localStorage.getItem("student_token")) {
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(pathname + search)}`} replace />;
+  }
   return (
 
-    <div className="min-h-screen">
-        <main className="pt-[30px]">
+    <div className="min-h-screen min-w-0 px-4 sm:px-6 lg:px-0">
+        <main className="min-w-0 pt-[30px]">
           <Outlet />
         </main>
     </div>
-    // // AppShell มี pt-20 กัน navbar อยู่แล้ว (ถ้าใส่)
-    // <div className="grid grid-cols-12 gap-6">
-    //   {/* <aside className="col-span-12 md:col-span-3">
-    //     <div className="sticky top-24">
-    //       <ProfileSidebar />
-    //     </div>
-    //   </aside> */}
-
-    //   <main className="pt-[30px]">
-    //     <Outlet />
-    //   </main>
-    // </div>
   );
 }

@@ -1,0 +1,80 @@
+.stagger-courses {
+  position: relative;
+  isolation: isolate;
+  margin-top: 4rem;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 32px;
+  background: radial-gradient(circle at 12% 18%, rgba(255, 226, 194, .2), transparent 28%), radial-gradient(circle at 91% 85%, rgba(255, 221, 183, .16), transparent 30%), #fffdfb;
+  padding: 22px 20px 24px;
+  font-family: "Kanit", sans-serif;
+}
+.stagger-courses::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .1;
+  background-image: radial-gradient(#fb923c 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: linear-gradient(to bottom, transparent, #000 45%, transparent);
+}
+.stagger-courses-toolbar { position: relative; display: flex; align-items: center; justify-content: center; min-height: 28px; max-width: 1100px; margin: 0 auto; }
+.stagger-courses-count { position: absolute; right: 2px; color: #ea580c; font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stagger-courses-count span { color: #94a3b8; font-size: 13px; }
+.stagger-courses-stage { position: relative; height: 410px; max-width: 1100px; margin: 8px auto 0; touch-action: pan-y; }
+.stagger-course-card {
+  position: absolute;
+  left: 50%;
+  top: 49%;
+  display: flex;
+  height: 355px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 27px;
+  background: #fff;
+  box-shadow: 0 13px 32px -22px rgba(124, 45, 18, .38);
+  transition: transform .55s cubic-bezier(.2,.8,.2,1), box-shadow .4s, opacity .4s;
+}
+.stagger-course-card.is-selected { box-shadow: 0 25px 50px -24px rgba(20, 33, 61, .3); }
+.stagger-course-card:not(.is-selected) { filter: saturate(.86); }
+.stagger-course-card:not(.is-selected):hover { box-shadow: 0 21px 38px -22px rgba(20, 33, 61, .28); }
+.stagger-course-art { position: relative; flex: none; height: 166px; overflow: hidden; background: linear-gradient(135deg,#ffedd5,#fed7aa); }
+.stagger-course-image, .stagger-course-image-fallback { width: 100%; height: 100%; }
+.stagger-course-image { object-fit: cover; }
+.stagger-course-image-fallback { display: grid; place-items: center; color: #fb923c; }
+.stagger-course-promo, .stagger-course-status { position: absolute; top: 12px; display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 999px; font-size: 10px; font-weight: 700; box-shadow: 0 3px 12px #43140717; }
+.stagger-course-promo { left: 12px; background: #f97316; color: #fff; }
+.stagger-course-status { right: 12px; background: rgba(255,255,255,.95); color: #9a3412; }
+.stagger-course-body { display: flex; flex: 1; flex-direction: column; padding: 16px 18px 14px; }
+.stagger-course-overline { overflow: hidden; color: #f97316; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.stagger-course-title { display: -webkit-box; overflow: hidden; margin-top: 3px; color: #14213d; font-size: 18px; font-weight: 700; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.stagger-course-meta { display: flex; gap: 6px; margin-top: 7px; overflow: hidden; }
+.stagger-course-meta span { overflow: hidden; max-width: 145px; padding: 2px 8px; border-radius: 999px; background: #fff3e7; color: #9a3412; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.stagger-course-bottom { display: flex; justify-content: space-between; align-items: end; gap: 10px; margin-top: auto; border-top: 1px solid #fff1e6; padding-top: 8px; }
+.stagger-course-price { color: #ea580c; font-size: 21px; font-weight: 800; }
+.stagger-course-old-price { margin-left: 8px; color: #94a3b8; font-size: 11px; text-decoration: line-through; }
+.stagger-course-arrow { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: #fff0de; color: #ea580c; transition: background .2s, color .2s, transform .2s; }
+.is-selected:hover .stagger-course-arrow { transform: translate(2px,-2px); background: #f97316; color: #fff; }
+.stagger-course-hit { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; cursor: pointer; border: 0; background: transparent; }
+.stagger-course-hit:focus-visible { outline: 4px solid #14213d; outline-offset: -7px; border-radius: 27px; }
+.stagger-courses-controls { display: flex; justify-content: center; align-items: center; gap: 12px; margin-top: 6px; }
+.stagger-courses-controls button { display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid #fed7aa; border-radius: 50%; background: #fff; color: #ea580c; box-shadow: 0 7px 18px -13px #7c2d12; transition: transform .2s, background .2s, color .2s; }
+.stagger-courses-controls button:hover { transform: translateY(-3px); background: #f97316; color: #fff; }
+.stagger-courses-controls button:focus-visible { outline: 2px solid #14213d; outline-offset: 3px; }
+@media (max-width: 639px) {
+  .stagger-courses { margin-top: 3rem; padding: 14px 12px 20px; border-radius: 24px; }
+  .stagger-courses-toolbar { min-height: 24px; }
+  .stagger-courses-count { right: 6px; font-size: 15px; }
+  .stagger-courses-count span { font-size: 12px; }
+  .stagger-courses-controls { gap: 8px; margin-top: 8px; }
+  .stagger-courses-controls button { width: 40px; height: 40px; }
+  .stagger-courses-stage { width: 100%; height: 380px; margin-top: 4px; }
+  .stagger-course-card { height: 340px; top: 50%; }
+  .stagger-course-art { height: 145px; }
+  .stagger-course-title { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stagger-course-card, .stagger-course-arrow, .stagger-courses-controls button { transition: none; }
+}
