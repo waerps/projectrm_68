@@ -25,6 +25,8 @@ import { CourseCheckoutModal } from "./Cart";
 import StaggerCourses from "./StaggerCourses";
 import NewsMarqueeArchive from "./NewsMarqueeArchive";
 import VirtualTourSection from "../components/VirtualTourSection";
+import PrivateCourseTeaser from "../components/PrivateCourseTeaser";
+import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -485,6 +487,24 @@ function TrustStrip() {
 }
 
 /** ---------- stats — animated counters ---------- */
+function StatItem({ stat, active }) {
+  const value = useCountUp(stat.value, active);
+  return (
+    <div className="text-center">
+      <div
+        className="text-[32px] font-extrabold md:text-[40px]"
+        style={{ color: "#FDBA74", fontFamily: "'Kanit', sans-serif" }}
+      >
+        {value}
+        <span style={{ color: "#F97316" }}>{stat.suffix}</span>
+      </div>
+      <div className="mt-1 text-[12.5px]" style={{ color: "rgba(255,255,255,0.65)" }}>
+        {stat.label}
+      </div>
+    </div>
+  );
+}
+
 function Stats() {
   const [ref, visible] = useReveal();
   const stats = [
@@ -497,23 +517,7 @@ function Stats() {
     <section ref={ref} className="mt-6 overflow-hidden rounded-[32px] py-14" style={{ background: "#14213D" }}>
       <div className="mx-auto max-w-[1100px] px-5 md:px-8">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          {stats.map((s) => {
-            const val = useCountUp(s.value, visible);
-            return (
-              <div key={s.label} className="text-center">
-                <div
-                  className="text-[32px] font-extrabold md:text-[40px]"
-                  style={{ color: "#FDBA74", fontFamily: "'Kanit', sans-serif" }}
-                >
-                  {val}
-                  <span style={{ color: "#F97316" }}>{s.suffix}</span>
-                </div>
-                <div className="mt-1 text-[12.5px]" style={{ color: "rgba(255,255,255,0.65)" }}>
-                  {s.label}
-                </div>
-              </div>
-            );
-          })}
+          {stats.map((stat) => <StatItem key={stat.label} stat={stat} active={visible} />)}
         </div>
       </div>
     </section>
