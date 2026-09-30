@@ -82,12 +82,13 @@ export function finishStudentLogin(data, navigate, returnContext) {
   });
 }
 
-export async function postStudentAuth(path, body, signal, token) {
+export async function postStudentAuth(path, body, signal, token, timeoutMs = 20000) {
   const controller = new AbortController();
   const cancel = () => controller.abort();
   if (signal?.aborted) controller.abort();
   signal?.addEventListener("abort", cancel, { once: true });
-  const timeout = setTimeout(cancel, 20000);
+  let timedOut = false;
+  const timeout = setTimeout(() => { timedOut = true; cancel(); }, timeoutMs);
   try {
     const response = await fetch(`${API_URL}${path}`, {
       method: "POST",
@@ -105,6 +106,7 @@ export async function postStudentAuth(path, body, signal, token) {
     return data;
   } catch (error) {
     if (signal?.aborted) throw error;
+    if (timedOut) throw new Error("เซิร์ฟเวอร์ใช้เวลาตอบนานเกินไป กรุณาลองอีกครั้งในอีกสักครู่");
     if (error.name === "AbortError" || error instanceof TypeError) {
       throw new Error("การเชื่อมต่อขัดข้อง กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง");
     }

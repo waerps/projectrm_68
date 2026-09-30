@@ -13,7 +13,7 @@ export default function ForgotPasswordForm({ onBack }) {
     setLoading(true);
     setError("");
     try {
-      const data = await postStudentAuth("/auth/account/forgot-password", { username: username.trim() });
+      const data = await postStudentAuth("/auth/account/forgot-password", { username: username.trim() }, undefined, undefined, 90000);
       setMessage(data.message);
     } catch (failure) {
       setError(failure.message || "ไม่สามารถส่งลิงก์ได้ กรุณาลองใหม่");

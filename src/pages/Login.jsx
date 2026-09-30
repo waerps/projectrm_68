@@ -11,7 +11,7 @@ import "./AuthPage.css";
 const emptyRegistration = {
   firstname: "", lastname: "", nickname: "", phoneNo: "", schoolName: "",
   lineId: "", birthOfDate: "", remark: "", username: "", password: "",
-  confirmPassword: "", gpa: "", parentId: "", gradeLevelId: "", genderId: "",
+  confirmPassword: "", gpa: "", gradeLevelId: "", genderId: "",
 };
 const grades = [
   ...Array.from({ length: 6 }, (_, index) => `ประถมศึกษาปีที่ ${index + 1}`),
@@ -25,6 +25,9 @@ export function Login({ initialMode = "login" }) {
   const [role, setRole] = useState("user");
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registration, setRegistration] = useState(emptyRegistration);
+  const [registrationPhoto, setRegistrationPhoto] = useState(null);
+  const [registrationPhotoPreview, setRegistrationPhotoPreview] = useState(null);
+  const [pdpaAcknowledged, setPdpaAcknowledged] = useState(false);
   const [loginBusy, setLoginBusy] = useState(false);
   const [registerBusy, setRegisterBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -34,6 +37,21 @@ export function Login({ initialMode = "login" }) {
   const location = useLocation();
 
   useEffect(() => setMode(initialMode), [initialMode]);
+  useEffect(() => () => {
+    if (registrationPhotoPreview) URL.revokeObjectURL(registrationPhotoPreview);
+  }, [registrationPhotoPreview]);
+
+  function updateRegistrationPhoto(event) {
+    const file = event.target.files?.[0] || null;
+    if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
+      setRegisterError("รูปโปรไฟล์ต้องเป็น JPG, PNG หรือ WEBP และไม่เกิน 10 MB");
+      event.target.value = "";
+      return;
+    }
+    setRegisterError("");
+    setRegistrationPhoto(file);
+    setRegistrationPhotoPreview(file ? URL.createObjectURL(file) : null);
+  }
 
   function switchMode(next) {
     if (location.pathname === "/forgot-password" && next === "login") {
@@ -80,21 +98,32 @@ export function Login({ initialMode = "login" }) {
   async function handleRegister(event) {
     event.preventDefault();
     setRegisterError("");
+    if (!pdpaAcknowledged) {
+      setRegisterError("กรุณารับทราบเรื่องการเก็บและใช้ข้อมูลก่อนสมัครบัญชี");
+      return;
+    }
     if (registration.password !== registration.confirmPassword) {
       setRegisterError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
       return;
     }
     setRegisterBusy(true);
     try {
+      const formData = new FormData();
+      Object.entries(registration).forEach(([key, value]) => {
+        if (key !== "confirmPassword") formData.append(key, value ?? "");
+      });
+      if (registrationPhoto) formData.append("photo", registrationPhoto);
       const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(registration),
+        body: formData,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || "สมัครบัญชีไม่สำเร็จ กรุณาลองใหม่");
       setLoginData({ username: registration.username.trim(), password: "" });
       setRegistration(emptyRegistration);
+      setRegistrationPhoto(null);
+      setRegistrationPhotoPreview(null);
+      setPdpaAcknowledged(false);
       navigate("/login", { replace: true, state: { registered: true } });
     } catch (error) {
       setRegisterError(error.message || "ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
@@ -163,7 +192,7 @@ export function Login({ initialMode = "login" }) {
                 <div><label htmlFor="register-lastname">นามสกุล <span>*</span></label><input id="register-lastname" className={inputClass} name="lastname" autoComplete="family-name" required maxLength={100} value={registration.lastname} onChange={updateRegistration} placeholder="นามสกุล" /></div>
               </div>
               <label htmlFor="register-username">ชื่อผู้ใช้ <span>*</span></label>
-              <input id="register-username" className={inputClass} name="username" autoComplete="username" required minLength={4} maxLength={32} pattern="[A-Za-z0-9](?:[A-Za-z0-9._-]{2,30}[A-Za-z0-9])" title="4–32 ตัว ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง" value={registration.username} onChange={updateRegistration} placeholder="ตั้งชื่อผู้ใช้" />
+              <input id="register-username" className={inputClass} name="username" autoComplete="username" required minLength={4} maxLength={32} pattern="[A-Za-z0-9](?:[A-Za-z0-9._]|-){2,30}[A-Za-z0-9]" title="4–32 ตัว ใช้ตัวอักษรอังกฤษ ตัวเลข จุด ขีดกลาง หรือขีดล่าง" value={registration.username} onChange={updateRegistration} placeholder="ตั้งชื่อผู้ใช้" />
               <div className="auth-two-columns">
                 <div><label htmlFor="register-password">รหัสผ่าน <span>*</span></label><input id="register-password" className={inputClass} name="password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} value={registration.password} onChange={updateRegistration} placeholder="อย่างน้อย 8 ตัว" /></div>
                 <div><label htmlFor="register-confirm">ยืนยันรหัสผ่าน <span>*</span></label><input id="register-confirm" className={inputClass} name="confirmPassword" type="password" autoComplete="new-password" required value={registration.confirmPassword} onChange={updateRegistration} placeholder="กรอกอีกครั้ง" /></div>
@@ -187,12 +216,24 @@ export function Login({ initialMode = "login" }) {
                     <div><label htmlFor="register-gpa">เกรดเฉลี่ย</label><input id="register-gpa" className={inputClass} name="gpa" type="number" min="0" max="4" step="0.01" value={registration.gpa} onChange={updateRegistration} /></div>
                     <div><label htmlFor="register-line">LINE ID</label><input id="register-line" className={inputClass} name="lineId" value={registration.lineId} onChange={updateRegistration} /></div>
                   </div>
-                  <label htmlFor="register-parent">รหัสผู้ปกครอง</label><input id="register-parent" className={inputClass} name="parentId" value={registration.parentId} onChange={updateRegistration} />
+                  <div className="auth-photo-upload">
+                    <label htmlFor="register-photo">รูปโปรไฟล์ <span className="auth-optional-label">ไม่บังคับ</span></label>
+                    <div className="auth-photo-row">
+                      {registrationPhotoPreview && <img src={registrationPhotoPreview} alt="ตัวอย่างรูปโปรไฟล์" />}
+                      <input id="register-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={updateRegistrationPhoto} />
+                    </div>
+                    <p>รองรับ JPG, PNG, WEBP ไม่เกิน 10 MB</p>
+                  </div>
                   <label htmlFor="register-remark">หมายเหตุ</label><textarea id="register-remark" className={inputClass} name="remark" rows={2} value={registration.remark} onChange={updateRegistration} />
                 </div>
               </details>
+              <div className="auth-pdpa-notice">
+                <strong>การเก็บและใช้ข้อมูลส่วนบุคคล</strong>
+                <p>สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
+                <label htmlFor="register-pdpa"><input id="register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว *</span></label>
+              </div>
               {registerError && <p className="auth-error" role="alert">{registerError}</p>}
-              <button className="auth-primary" disabled={registerBusy} type="submit">{registerBusy ? "กำลังสมัคร..." : "สร้างบัญชี"}</button>
+              <button className="auth-primary" disabled={registerBusy || !pdpaAcknowledged} type="submit">{registerBusy ? "กำลังสมัคร..." : "สร้างบัญชี"}</button>
             </form>
             <p className="auth-mobile-switch">มีบัญชีแล้ว? <button type="button" onClick={() => switchMode("login")}>เข้าสู่ระบบ</button></p>
           </div>}

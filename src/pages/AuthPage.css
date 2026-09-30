@@ -102,6 +102,18 @@
 .auth-optional summary span { float: right; color: #a8a29e; font-weight: 500; }
 .auth-optional-fields { display: flex; flex-direction: column; gap: 11px; padding-top: 17px; }
 .auth-optional textarea { resize: vertical; }
+.auth-photo-upload { padding: 12px; border: 1px dashed #fdba74; border-radius: 12px; background: #fffaf5; }
+.auth-photo-upload .auth-optional-label { margin-left: 4px; color: #9ca3af; font-weight: 500; }
+.auth-photo-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.auth-photo-row img { width: 52px; height: 52px; flex: none; border: 2px solid #fed7aa; border-radius: 50%; object-fit: cover; }
+.auth-photo-row input { width: 100%; min-width: 0; color: #6b7280; font-size: 11px; }
+.auth-photo-row input::file-selector-button { margin-right: 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: #ffedd5; color: #c2410c; font-weight: 700; cursor: pointer; }
+.auth-photo-upload p { margin: 7px 0 0; color: #9ca3af; font-size: 10px; }
+.auth-pdpa-notice { padding: 12px 13px; border: 1px solid #fed7aa; border-radius: 12px; background: #fff7ed; }
+.auth-pdpa-notice strong { display: block; color: #9a3412; font-size: 12px; }
+.auth-pdpa-notice p { margin: 6px 0 11px; color: #57534e; font-size: 11px; line-height: 1.65; }
+.auth-pdpa-notice label { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #374151; font-size: 11px; font-weight: 700; line-height: 1.5; cursor: pointer; }
+.auth-pdpa-notice input { width: 16px; height: 16px; flex: none; margin-top: 1px; accent-color: #f97316; }
 
 .auth-swipe {
   position: absolute;

@@ -14,6 +14,7 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
   const [form, setForm] = useState(() => emptyGoogleForm(pending?.profile));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pdpaAcknowledged, setPdpaAcknowledged] = useState(false);
 
   function change(event) {
     const { name, value, type, checked } = event.target;
@@ -23,6 +24,10 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
   async function submit(event) {
     event.preventDefault();
     if (busy || !pending) return;
+    if (!pdpaAcknowledged) {
+      setError("กรุณารับทราบเรื่องการเก็บและใช้ข้อมูลก่อนสมัครบัญชี");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -82,9 +87,14 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
             </div>
           </div>
         </details>
+        <div className="auth-pdpa-notice">
+          <strong>การเก็บและใช้ข้อมูลส่วนบุคคล</strong>
+          <p>สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
+          <label htmlFor="google-register-pdpa"><input id="google-register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว *</span></label>
+        </div>
         <label className="auth-consent"><input type="checkbox" name="marketingConsent" checked={form.marketingConsent} onChange={change} /><span>ยินยอมให้ติดต่อเพื่อแนะนำคอร์สและสิทธิประโยชน์ (ไม่บังคับ)</span></label>
         {error && <p className="auth-error" role="alert">{error}</p>}
-        <button type="submit" disabled={busy} className="auth-primary">{busy ? "กำลังสร้างบัญชี..." : "สร้างบัญชีและเข้าสู่ระบบ"}</button>
+        <button type="submit" disabled={busy || !pdpaAcknowledged} className="auth-primary">{busy ? "กำลังสร้างบัญชี..." : "สร้างบัญชีและเข้าสู่ระบบ"}</button>
       </form>
       <p className="auth-mobile-switch">มีบัญชีเดิมอยู่แล้ว? <button type="button" onClick={onCancel}>เข้าสู่ระบบ</button></p>
     </div>
