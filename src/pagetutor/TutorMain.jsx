@@ -1,7 +1,10 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { X, ChevronLeft, ChevronRight, Calendar, Tag } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Calendar, Tag, Newspaper } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
+import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
 
 const SERVER_URL = API_URL;
 
@@ -11,21 +14,17 @@ function resolveImg(img) {
   return `${SERVER_URL}${img}`;
 }
 
-const FALLBACK = "https://images.unsplash.com/photo-1513258496099-48168024aec0?w=800";
-
-const SafeImg = ({ src, className, alt }) => (
-  <img
-    src={src || FALLBACK}
-    onError={(e) => { e.currentTarget.src = FALLBACK; }}
-    className={className}
-    alt={alt}
-  />
-);
+// รูปเสีย/ไม่มีรูป → ซ่อนช่องรูปทั้งช่อง (ไม่ดึงรูปสำรองจากเว็บภายนอก และไม่ทิ้งกรอบเทาว่าง)
+const SafeImg = ({ src, className, alt }) => {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return null;
+  return <img src={src} onError={() => setBroken(true)} className={className} alt={alt} loading="lazy" />;
+};
 
 const SectionTitle = ({ children, sub }) => (
   <div className="text-center mb-8 md:mb-10">
-    <h2 className="text-2xl md:text-[32px] font-extrabold text-orange-500">{children}</h2>
-    {sub && <p className="mt-2 text-gray-500">{sub}</p>}
+    <h2 className="text-2xl md:text-[32px] font-extrabold text-slate-900">{children}</h2>
+    {sub && <p className="mt-2 text-base text-slate-500">{sub}</p>}
   </div>
 );
 
@@ -33,33 +32,33 @@ const SectionTitle = ({ children, sub }) => (
 const NewsCard = ({ item, highlight, onClick }) => (
   <div
     onClick={onClick}
-    className="rounded-3xl border border-gray-100 bg-white p-4 md:p-5 shadow-sm
-               hover:shadow-md hover:border-orange-200 transition cursor-pointer"
+    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm
+               hover:shadow-md hover:border-orange-300 transition cursor-pointer"
   >
-    <div className="flex flex-col md:flex-row gap-4">
-      <div className="md:w-[36%]">
+    <div className="flex flex-col sm:flex-row gap-4">
+      <div className="sm:w-48 md:w-56 shrink-0 empty:hidden">
         <SafeImg
           src={item.img}
           alt={item.title}
-          className="h-40 w-full rounded-2xl object-cover"
+          className="h-40 sm:h-32 w-full rounded-xl bg-slate-100 object-cover"
         />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
+          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 font-semibold text-slate-600">
             {item.tag}
           </span>
-          <span className="text-gray-400">{item.date}</span>
+          <span className="text-slate-400">{item.date}</span>
           {item.sub && (
-            <span className={`rounded-full px-2 py-0.5 ${
-              highlight ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"
+            <span className={`rounded-full border px-2.5 py-0.5 font-semibold ${
+              highlight ? "bg-orange-50 text-orange-700 border-orange-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"
             }`}>
               {item.sub.length > 50 ? item.sub.substring(0, 50) + "..." : item.sub}
             </span>
           )}
         </div>
-        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed">{item.title}</h4>
-        <p className="mt-1 text-xs text-orange-500 font-medium">อ่านต่อ →</p>
+        <h4 className="text-base font-semibold leading-snug text-slate-900 break-words line-clamp-2">{item.title}</h4>
+        <p className="mt-2 text-xs text-orange-600 font-semibold">อ่านต่อ →</p>
       </div>
     </div>
   </div>
@@ -98,9 +97,9 @@ function ImageGallery({ images }) {
           className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4"
           onClick={() => setLightbox(null)}
         >
-          <button
+          <button aria-label="ก่อนหน้า"
             onClick={(e) => { e.stopPropagation(); prev(); }}
-            className="absolute left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
+            className="absolute left-2 sm:left-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
             <ChevronLeft className="h-6 w-6 text-white" />
           </button>
@@ -112,14 +111,14 @@ function ImageGallery({ images }) {
             className="max-h-[85vh] max-w-full rounded-2xl object-contain"
           />
 
-          <button
+          <button aria-label="ถัดไป"
             onClick={(e) => { e.stopPropagation(); next(); }}
-            className="absolute right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
+            className="absolute right-2 sm:right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
             <ChevronRight className="h-6 w-6 text-white" />
           </button>
 
-          <button
+          <button aria-label="ปิด"
             onClick={() => setLightbox(null)}
             className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full transition"
           >
@@ -156,17 +155,17 @@ function NewsDetailModal({ newsId, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl w-full max-w-2xl my-8 overflow-hidden shadow-2xl"
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {loading ? (
-          <div className="p-16 text-center text-gray-400">กำลังโหลด...</div>
+          <Spinner block label="กำลังโหลด..." />
         ) : !detail ? (
-          <div className="p-16 text-center text-gray-400">ไม่พบข้อมูล</div>
+          <div className="p-16 text-center text-slate-400">ไม่พบข้อมูล</div>
         ) : (
           <>
             {/* รูปหน้าปก */}
@@ -181,32 +180,32 @@ function NewsDetailModal({ newsId, onClose }) {
               </div>
             )}
 
-            <div className="p-6 md:p-8">
+            <div className="p-5 sm:p-6 md:p-8">
               {/* Badge + วันที่ */}
               <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
                 <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 text-orange-700 px-3 py-1 font-medium">
                   <Tag className="h-3 w-3" />{detail.tag}
                 </span>
-                <span className="inline-flex items-center gap-1 text-gray-400">
+                <span className="inline-flex items-center gap-1 text-slate-400">
                   <Calendar className="h-3 w-3" />{detail.date}
                 </span>
               </div>
 
               {/* หัวข้อ */}
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-snug mb-4">
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-snug mb-4 break-words">
                 {detail.title}
               </h2>
 
               {/* เนื้อหา */}
               {detail.sub && (
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">{detail.sub}</p>
+                <p className="text-slate-600 leading-relaxed whitespace-pre-line break-words">{detail.sub}</p>
               )}
 
               {/* รูปเพิ่มเติม */}
               {detail.extraImages?.length > 0 && (
                 <>
-                  <hr className="my-5 border-gray-100" />
-                  <p className="text-sm font-semibold text-gray-700 mb-2">
+                  <hr className="my-5 border-slate-100" />
+                  <p className="text-sm font-semibold text-slate-700 mb-2">
                     รูปภาพเพิ่มเติม ({detail.extraImages.length} รูป)
                   </p>
                   <ImageGallery images={detail.extraImages} />
@@ -216,8 +215,8 @@ function NewsDetailModal({ newsId, onClose }) {
               {/* ปุ่มปิด */}
               <button
                 onClick={onClose}
-                className="mt-6 w-full py-2.5 rounded-2xl border border-gray-200 text-sm
-                           text-gray-600 hover:bg-gray-50 transition font-medium"
+                className="mt-6 w-full py-2.5 rounded-2xl border border-slate-200 text-sm
+                           text-slate-600 hover:bg-slate-50 transition font-medium"
               >
                 ปิด
               </button>
@@ -226,11 +225,11 @@ function NewsDetailModal({ newsId, onClose }) {
         )}
 
         {/* X button */}
-        <button
+        <button aria-label="ปิด"
           onClick={onClose}
           className="absolute top-4 right-4 bg-white/80 backdrop-blur rounded-full p-1.5 shadow hover:bg-white transition"
         >
-          <X className="h-4 w-4 text-gray-700" />
+          <X className="h-4 w-4 text-slate-700" />
         </button>
       </div>
     </div>
@@ -241,28 +240,30 @@ function NewsDetailModal({ newsId, onClose }) {
 export default function TutorMain() {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState(null); // id ที่เปิด modal
 
   useEffect(() => {
+    setLoadError(false);
     axios.get(`${SERVER_URL}/api/news?role=tutor`)
       .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
-      .catch(console.error)
+      .catch((err) => { console.error(err); setLoadError(true); })
       .finally(() => setLoading(false));
   }, []);
 
   const publicNews = news.filter((n) => n.type === "public");
   const tutorNews  = news.filter((n) => n.type === "tutor");
 
-  if (loading) return <div className="mt-20 text-center text-gray-500">กำลังโหลดข่าวสาร...</div>;
+  if (loading) return <Spinner block label="กำลังโหลดข่าวสาร..." />;
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข่าวสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>;
 
   return (
-    <div className="pb-24">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6 mt-20">
-
+    <div>
+      <div className="px-4 lg:px-0 space-y-2">
         {publicNews.length > 0 && (
           <>
             <SectionTitle sub="ข่าวสารและกิจกรรมล่าสุดของสถาบัน">ข่าวประชาสัมพันธ์</SectionTitle>
-            <div className="space-y-4 mb-16">
+            <div className="space-y-3 mb-10">
               {publicNews.map((n) => (
                 <NewsCard key={n.id} item={n} onClick={() => setSelectedId(n.id)} />
               ))}
@@ -273,7 +274,7 @@ export default function TutorMain() {
         {tutorNews.length > 0 && (
           <>
             <SectionTitle sub="ประกาศและข้อมูลสำคัญสำหรับติวเตอร์">ข่าวสำหรับติวเตอร์</SectionTitle>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {tutorNews.map((n) => (
                 <NewsCard key={n.id} item={n} highlight onClick={() => setSelectedId(n.id)} />
               ))}
@@ -282,7 +283,7 @@ export default function TutorMain() {
         )}
 
         {publicNews.length === 0 && tutorNews.length === 0 && (
-          <div className="text-center py-20 text-gray-400">ยังไม่มีข่าวในระบบ</div>
+          <EmptyState icon={Newspaper} title="ยังไม่มีข่าวในระบบ" description="ข่าวและประกาศใหม่จากสถาบันจะแสดงที่นี่" />
         )}
       </div>
 

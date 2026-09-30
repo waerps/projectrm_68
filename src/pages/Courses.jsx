@@ -15,6 +15,7 @@ import {
 } from "../callapi/callusers";
 import { getFileUrl } from "../utils/fileUrl";
 import { useShop } from "../context/ShopContext";
+import Breadcrumb from "../components/ui/Breadcrumb";
 
 // ─── Constants — เหมือนกับ AdminCoursesPage.jsx เป๊ะๆ เพื่อให้ badge/label ตรงกัน ───
 const STATUS_MAP = {
@@ -305,7 +306,7 @@ export default function CourseDetail() {
   // Real, dynamically-pulled highlight badges — every value here comes
   // straight from `course`, nothing is hardcoded.
   const highlightBadges = [
-    course.discount > 0 && { key: "promo", label: "โปรโมชั่น", icon: Sparkles, solid: true },
+    course.discount > 0 && { key: "promo", label: "โปรโมชัน", icon: Sparkles, solid: true },
     course.termName && { key: "term", label: course.termName, icon: BadgeCheck, tone: "text-blue-100" },
     course.availabilityName && { key: "avail", label: course.availabilityName, icon: BadgeCheck, tone: "text-blue-100" },
     course.discount > 0 && { key: "discount", label: `ลด ${formatPrice(course.discount)} บาท`, icon: Tag, tone: "text-red-200" },
@@ -326,6 +327,14 @@ export default function CourseDetail() {
 
       {/* ─── Cinematic hero — contained, rounded, pulled clear of the navbar ─── */}
       <div className="pt-28 md:pt-36 container mx-auto max-w-6xl px-4">
+        <Breadcrumb
+          className="mb-4"
+          items={[
+            { label: "หน้าแรก", to: "/" },
+            { label: "คอร์สเรียน", to: "/courses" },
+            { label: course.title },
+          ]}
+        />
         <div className="relative w-full h-[60vh] md:h-[65vh] min-h-[440px] max-h-[760px] rounded-3xl overflow-hidden shadow-[0_20px_60px_-20px_rgba(0,0,0,0.35)]">
           <img
             src={course.image}

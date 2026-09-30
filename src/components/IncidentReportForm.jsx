@@ -10,6 +10,7 @@ import {
 import {
   INCIDENT_CATEGORIES, getIncidentTypeById, getSeverityMeta, CRITICAL_SAFETY_NOTICE,
 } from "../config/incidentTypes";
+import { BTN } from "./ui/tokens";
 
 const API = `${API_URL}/api/incidents`;
 
@@ -146,7 +147,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         )}
 
         <button onClick={onClose}
-          className="w-full py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition text-sm">
+          className={`${BTN.primary} w-full py-2.5 rounded-xl font-bold transition text-sm`}>
           ปิดหน้าต่าง
         </button>
       </div>
@@ -169,7 +170,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`font-semibold text-sm ${meta.text}`}>{cat.label}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   {cat.types.map(t => t.label).join(" · ")}
                 </p>
               </div>
@@ -184,7 +185,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
   return (
     <div className="space-y-5">
       <button onClick={() => setStep(1)}
-        className="flex items-center gap-1 text-xs text-slate-400 hover:text-orange-600 transition">
+        className="flex items-center gap-1 text-xs text-slate-500 hover:text-orange-600 transition">
         <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนหมวดหมู่
       </button>
 
@@ -200,7 +201,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         <div className="flex flex-wrap gap-1.5">
           {selectedCategory.types.map(t => (
             <button key={t.id} onClick={() => setIncidentTypeId(t.id)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition ${incidentTypeId === t.id
+              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border transition ${incidentTypeId === t.id
                 ? "bg-orange-600 text-white border-orange-600"
                 : "bg-slate-50 text-slate-600 border-slate-200 hover:border-orange-300"
                 }`}>
@@ -219,9 +220,9 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           value={description}
           onChange={e => setDescription(e.target.value)}
           placeholder="อธิบายเหตุการณ์ที่เกิดขึ้น วันเวลา และรายละเอียดที่เกี่ยวข้อง..."
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition resize-none"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition resize-none"
         />
-        <p className="text-[11px] text-slate-400 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
+        <p className="text-[11px] text-slate-500 mt-1">{description.trim().length}/10 ตัวอักษรขั้นต่ำ</p>
       </div>
 
       <div className="space-y-3">
@@ -232,7 +233,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         {role === "student" && (
           <>
             <select value={relatedCourseId} onChange={e => setRelatedCourseId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุคอร์ส</option>
               {myCourses.map(c => {
                 const id = c.courseId ?? c.CourseId ?? c.CourseID ?? c.id;
@@ -242,7 +243,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
             </select>
             {relatedCourseId && (
               <select value={relatedTutorId} onChange={e => setRelatedTutorId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+                className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
                 <option value="">ไม่ระบุติวเตอร์</option>
                 {courseTutors.map(t => (
                   <option key={t.AdminId} value={t.AdminId}>
@@ -257,14 +258,14 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         {role === "tutor" && (
           <>
             <select value={relatedCourseId} onChange={e => { setRelatedCourseId(e.target.value); setRelatedStudentId(""); }}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุคอร์ส</option>
               {tutorData.courses.map(c => (
                 <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
               ))}
             </select>
             <select value={relatedStudentId} onChange={e => setRelatedStudentId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500">
+              className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400">
               <option value="">ไม่ระบุนักเรียน</option>
               {tutorData.students
                 .filter(s => !relatedCourseId || String(s.CourseID) === String(relatedCourseId))
@@ -286,9 +287,9 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
             {isAnonymous ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             แจ้งแบบไม่เปิดเผยตัวตน
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
-            {role === "tutor" ? "นักเรียน" : "ติวเตอร์/คู่กรณี"}จะไม่เห็นว่าใครเป็นผู้แจ้ง
-            แต่ทีมแอดมินจะยังเห็นข้อมูลของคุณเสมอเพื่อใช้ติดตามเคส
+          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+            จะไม่มีใครเห็นว่าใครเป็นผู้แจ้ง ไม่ว่าจะเป็น{role === "tutor" ? "นักเรียน" : "ติวเตอร์/คู่กรณี"}
+            หรือแม้แต่ทีมแอดมิน — แอดมินจะเห็นแค่เนื้อหาที่แจ้งเท่านั้น ไม่เห็นชื่อหรือช่องทางติดต่อของคุณเลย
           </p>
         </div>
       </label>
@@ -298,17 +299,24 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           <AlertTriangle className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
           <p className="text-xs text-red-700 leading-relaxed">
             เรื่องนี้จัดอยู่ในระดับความปลอดภัย ระบบจะแจ้งเตือนทีมงานให้ตรวจสอบโดยด่วน
+            {isAnonymous && (
+              <>
+                {" "}— แต่เนื่องจากคุณเลือกไม่เปิดเผยตัวตน ทีมงานจะ<strong>ติดต่อกลับไปช่วยเหลือหรือสอบถาม
+                ความปลอดภัยของคุณโดยตรงไม่ได้เลย</strong> ถ้าต้องการให้ทีมงานติดต่อกลับได้ ลองพิจารณาเอาเครื่องหมาย
+                ถูกที่ "แจ้งแบบไม่เปิดเผยตัวตน" ด้านบนออกดูนะ
+              </>
+            )}
           </p>
         </div>
       )}
 
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} disabled={submitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
         <button onClick={submit} disabled={submitting || !incidentTypeId}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 disabled:opacity-50 transition text-sm shadow-sm">
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> ส่งเรื่อง</>}
         </button>
       </div>

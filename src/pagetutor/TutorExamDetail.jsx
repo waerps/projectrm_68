@@ -1,3 +1,4 @@
+import { escapeHtml as esc } from "../utils/escapeHtml";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
@@ -6,19 +7,30 @@ import {
   Plus, Pencil, Upload, Zap, Check, X, AlertCircle, Info, Trash2,
   Download, FileSpreadsheet, Play, StopCircle,
   Settings as SettingsIcon, Eye, BarChart2, Search, Award, CheckCircle,
-  Tags, Merge, UserX, Flag,
+  Tags, Merge, UserX, Flag, Filter, Copy,
 } from "lucide-react";
 
 import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
   deriveStatus, isExamReady, formatTime,
   downloadXlsxTemplate, parseXlsx, emptyQuestion,
-  fetchExamDetail, updateExamSettings, addQuestions, updateQuestion, deleteQuestion,
+  fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
-  fetchSubjectCategories, renameSubjectCategory,
+  fetchBankCategories, renameBankCategory,
+  fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
+  assembleExamSet, applyExamSet,
+  fetchAiSummaries,
 } from "../utils/examShared";
+import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
+import { Lightbulb as LuLightbulb } from "lucide-react";
+import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 // เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
 const PASS_PCT = 60;
@@ -35,29 +47,31 @@ function Badge({ className, children }) {
 
 // StatCard สไตล์เดียวกับ TutorExamAnalytics.jsx (ไอคอนสี่เหลี่ยมทึบ + label/value/sub)
 // onClick เป็น optional — ใส่มาแล้วการ์ดจะกดได้ (เช่น การ์ด "ขาดสอบ" ที่กดดูรายชื่อได้)
-function StatCard({ icon: Icon, label, value, sub, color = "bg-orange-500", onClick }) {
+function StatCard({ icon, label, value, sub, color = "bg-orange-500", onClick }) {
+  const Icon = icon;
   const Wrapper = onClick ? "button" : "div";
   return (
     <Wrapper
       onClick={onClick}
-      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-neutral-100 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
+      className={`flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm h-full w-full text-left ${onClick ? "cursor-pointer hover:border-orange-200 hover:shadow-md transition" : ""}`}
     >
       <div className={`h-11 w-11 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-neutral-500 font-medium">{label}</p>
-        <p className="text-xl font-black text-neutral-900">{value}</p>
-        {sub && <p className="text-[11px] text-neutral-400 mt-0.5 truncate">{sub}</p>}
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={`${STAT_VALUE} whitespace-nowrap lg:whitespace-normal`}>{value}</p>
+        {sub && <p className={`${STAT_SUB} mt-0.5 truncate`}>{sub}</p>}
       </div>
     </Wrapper>
   );
 }
 
+// เรียงตามลำดับการทำงานจริง: เตรียมวัตถุดิบ → จัดชุดและเปิดสอบ → ตรวจทานสิ่งที่จะใช้ → ดูผล
 const TABS = [
-  { key: "questions", label: "ข้อสอบ", icon: FileQuestion },
-  { key: "preview", label: "ดูตัวอย่างข้อสอบ", icon: Eye },
+  { key: "questions", label: "คลังข้อสอบ", icon: FileQuestion },
   { key: "manage", label: "ตั้งค่า / เปิดสอบ", icon: SettingsIcon },
+  { key: "preview", label: "ชุดข้อสอบรอบนี้", icon: Eye },
   { key: "results", label: "ผลสอบ / สถิติ", icon: BarChart2 },
 ];
 
@@ -67,125 +81,116 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 
 function AddMethodPicker({ onPick }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div className="relative border-2 border-neutral-200 rounded-xl p-4 opacity-50 bg-neutral-50 cursor-not-allowed select-none">
-        <div className="h-9 w-9 rounded-lg bg-amber-100 flex items-center justify-center mb-2"><Zap className="h-4 w-4 text-amber-600" /></div>
-        <p className="text-sm font-semibold text-neutral-700">สุ่มจากคลังข้อสอบกลาง</p>
-        <p className="text-xs text-neutral-500 mt-0.5">ระบบสุ่มข้ออัตโนมัติ</p>
-        <span className="absolute top-3 right-3 bg-amber-100 text-amber-700 text-[10px] font-semibold px-2 py-0.5 rounded-full">เร็วๆ นี้</span>
-      </div>
-
-      <button onClick={() => onPick("manual")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <button onClick={() => onPick("manual")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-neutral-800">พิมพ์ข้อสอบเอง</p>
-        <p className="text-xs text-neutral-500 mt-0.5">เพิ่มทีละข้อผ่าน editor</p>
+        <p className="text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</p>
+        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
       </button>
 
-      <button onClick={() => onPick("excel")} className="text-left border-2 border-neutral-200 hover:border-orange-300 rounded-xl p-4 transition">
+      <button onClick={() => onPick("excel")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
         <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-neutral-800">Import จาก Excel</p>
-        <p className="text-xs text-neutral-500 mt-0.5">นำเข้าได้ครั้งละหลายข้อ</p>
+        <p className="text-sm font-semibold text-slate-800">Import จาก Excel</p>
+        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
       </button>
     </div>
   );
 }
 
-// ─── Manage Categories Modal ─────────────────────────────────────────────────
-// รวม/เปลี่ยนชื่อหมวดย้อนหลัง — สำหรับซ่อมกรณีพิมพ์ผิด/พิมพ์ไม่ตรงกันระหว่างรอบสอบ
-// cascade อัปเดตทุก exam (Pre/Mid/Post) ของวิชานี้ในครั้งเดียว
-function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
+// ─── Bank Categories Modal ───────────────────────────────────────────────────
+// รวมหรือเปลี่ยนชื่อหมวดในคลัง สำหรับซ่อมกรณีชื่อหมวดพิมพ์ไม่ตรงกัน
+// เช่น "กรดเบส" กับ "กรด เบส" ที่ความจริงคือหมวดเดียวกัน แต่ระบบมองเป็นคนละหมวด
+// ทำให้ตารางจัดชุดและกราฟรายหมวดแตกเป็นหลายก้อนโดยไม่จำเป็น
+function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [renamingFrom, setRenamingFrom] = useState(null);
   const [renameTo, setRenameTo] = useState("");
+  const [cascade, setCascade] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
-    fetchSubjectCategories({ subjectId, adminId })
-      .then(setCategories)
-      .catch((err) => { console.error("Fetch categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
+    fetchBankCategories(subjectId)
+      .then((rows) => setCategories(Array.isArray(rows) ? rows : []))
+      .catch((err) => { console.error("Fetch bank categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
       .finally(() => setLoading(false));
-  };
+  }, [subjectId]);
 
-  useEffect(() => { load(); }, [subjectId, adminId]);
-
-  const startRename = (cat) => { setRenamingFrom(cat); setRenameTo(cat); setSaveError(""); };
+  useEffect(() => { load(); }, [load]);
 
   const confirmRename = async () => {
-    if (!renameTo.trim() || renameTo.trim() === renamingFrom) { setRenamingFrom(null); return; }
-    setSaving(true);
-    setSaveError("");
+    const to = renameTo.trim();
+    if (!to || to === renamingFrom) { setRenamingFrom(null); return; }
+    setSaving(true); setSaveError("");
     try {
-      await renameSubjectCategory({ subjectId, adminId, from: renamingFrom, to: renameTo.trim() });
+      await renameBankCategory({ subjectId, from: renamingFrom, to, cascade });
       setRenamingFrom(null);
       load();
-      await onChanged(); // reload exam detail ที่หน้าหลัก เพื่อให้ตาราง Questions อัปเดตชื่อหมวดใหม่ด้วย
+      await onChanged();
     } catch (err) {
-      console.error("Rename category failed:", err);
-      setSaveError("บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
+      console.error("Rename bank category failed:", err);
+      setSaveError(err.response?.data?.message || "บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally { setSaving(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-100">
-          <p className="text-sm font-semibold text-neutral-800 flex items-center gap-2"><Tags className="h-4 w-4 text-orange-500" /> จัดการหมวดหมู่ (Category)</p>
-          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Tags className="h-4 w-4 text-white" /> จัดการหมวดหมู่
+            </h3>
+            <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
+          </div>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700 leading-relaxed">
-              รวม 2 หมวดที่จริงๆ เป็นเรื่องเดียวกันแต่พิมพ์ไม่ตรงกัน (เช่น "พีชคณิต" กับ "พีชคณิค") — การกด "เปลี่ยนชื่อ" จะอัปเดตทุกข้อในวิชานี้ ทุกรอบสอบ (Pre/Mid/Post) ทันที
-            </p>
-          </div>
-
-          {loading && <p className="text-sm text-neutral-400 text-center py-6">กำลังโหลด...</p>}
-          {error && <p className="text-sm text-red-500 text-center py-6">{error}</p>}
-
-          {!loading && !error && categories.length === 0 && (
-            <p className="text-sm text-neutral-400 text-center py-6">ยังไม่มีหมวดหมู่ในวิชานี้</p>
-          )}
-
-          {!loading && !error && categories.length > 0 && (
-            <div className="border border-neutral-100 rounded-xl divide-y divide-neutral-50 overflow-hidden">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          {loading ? (
+            <Spinner block label="กำลังโหลด…" />
+          ) : error ? (
+            <p className="text-sm text-red-600 py-6 text-center">{error}</p>
+          ) : !categories.length ? (
+            <p className="text-sm text-slate-500 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
+          ) : (
+            <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
               {categories.map((c) => (
-                <div key={c.category} className="px-4 py-3">
+                <div key={c.category} className="px-4 py-2.5">
                   {renamingFrom === c.category ? (
-                    <div className="flex items-center gap-2">
+                    <div className="space-y-2">
                       <input
                         autoFocus
-                        type="text"
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
-                        list="category-options-manage"
-                        className="flex-1 border border-orange-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="ชื่อใหม่ หรือพิมพ์ชื่อหมวดที่มีอยู่เพื่อรวมเข้าด้วยกัน"
+                        className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                       />
-                      <datalist id="category-options-manage">
-                        {categories.filter((x) => x.category !== c.category).map((x) => (
-                          <option key={x.category} value={x.category} />
-                        ))}
-                      </datalist>
-                      <button onClick={confirmRename} disabled={saving} className="text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-40 rounded-lg px-3 py-1.5">
-                        {saving ? "กำลังบันทึก…" : "ยืนยัน"}
-                      </button>
-                      <button onClick={() => setRenamingFrom(null)} className="text-xs font-medium text-neutral-500 hover:text-neutral-700 px-2">ยกเลิก</button>
+                      {findSimilarCategory(renameTo, categories) && (
+                        <p className="text-[11px] text-amber-700">จะถูกรวมเข้ากับหมวด "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={confirmRename} disabled={saving} className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}>
+                          {saving ? "กำลังบันทึก…" : "บันทึก"}
+                        </button>
+                        <button onClick={() => { setRenamingFrom(null); setSaveError(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
+                      </div>
+                      {saveError && <p className="text-[11px] text-red-600">{saveError}</p>}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-neutral-800 truncate">{c.category}</p>
-                        <p className="text-xs text-neutral-400">{c.questionCount} ข้อ</p>
+                        <p className="text-sm text-slate-800 truncate">{c.category}</p>
+                        <p className="text-[11px] text-slate-500">{c.count} ข้อ</p>
                       </div>
-                      <button onClick={() => startRename(c.category)} className="flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5 hover:bg-orange-100 transition flex-shrink-0">
-                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวมหมวด
+                      <button
+                        onClick={() => { setRenamingFrom(c.category); setRenameTo(c.category); setSaveError(""); }}
+                        className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-orange-600 px-2 py-1"
+                      >
+                        <Merge className="h-3.5 w-3.5" /> เปลี่ยนชื่อ / รวม
                       </button>
                     </div>
                   )}
@@ -194,7 +199,19 @@ function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
             </div>
           )}
 
-          {saveError && <p className="text-xs text-red-500">{saveError}</p>}
+          <label className="flex items-start gap-2 cursor-pointer bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+            <input type="checkbox" checked={cascade} onChange={(e) => setCascade(e.target.checked)} className="mt-0.5 accent-orange-500" />
+            <span>
+              <span className="text-sm text-slate-800">แก้ย้อนหลังในข้อสอบที่เคยใช้สอบไปแล้วด้วย</span>
+              <span className="block text-xs text-slate-500 mt-0.5">
+                กราฟพัฒนาการรายหมวดของรอบสอบเก่าจะถูกต้องตามไปด้วย แต่เท่ากับแก้ข้อมูลย้อนหลัง หากไม่เลือก จะแก้ไขเฉพาะในคลัง
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="flex justify-end px-6 py-4 border-t border-slate-100">
+          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">ปิด</button>
         </div>
       </div>
     </div>
@@ -203,87 +220,240 @@ function ManageCategoriesModal({ subjectId, adminId, onClose, onChanged }) {
 
 // Single-question form — reused for both "add new" (loops, one POST per save)
 // and "edit existing" (one PUT per save). Every save is a real API round trip.
-function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions }) {
+// เทียบชื่อหมวดแบบไม่สนช่องว่างและขีด เพื่อจับกรณี "กรด-เบส" กับ "กรดเบส" ที่ความจริงคือหมวดเดียวกัน
+// ตัดช่องว่าง/สัญลักษณ์คั่น และคำเชื่อมที่คนพิมพ์ต่างกันได้ (และ/กับ/หรือ/ของ, "/", "-", "_", ".", ",")
+// เพื่อจับคู่ "อะตอมและตารางธาตุ" กับ "อะตอม/ตารางธาตุ" ว่าคือหมวดเดียวกัน
+const normCategory = (v) =>
+  String(v || "")
+    .toLowerCase()
+    .replace(/[\s\-_./,]/g, "")
+    .replace(/(และ|กับ|หรือ|ของ)/g, "");
+
+// เทียบ "โจทย์ซ้ำ" แบบหลวม ๆ — ตัดช่องว่างซ้ำและตัวพิมพ์เล็กใหญ่ออกก่อนเทียบ
+// จงใจไม่ใช้ normCategory เพราะอันนั้นตัดคำเชื่อมทิ้ง ซึ่งกับ "โจทย์" จะทำให้จับซ้ำผิดตัว
+const normQuestionText = (v) => String(v || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+// ระยะแก้ไข (Levenshtein) ไว้จับกรณีพิมพ์ตกหล่น/พิมพ์ผิดเล็กน้อย เช่น "กรดเบส" กับ "กรคเบส"
+function levenshtein(a, b) {
+  const al = a.length, bl = b.length;
+  if (!al) return bl;
+  if (!bl) return al;
+  const dp = Array.from({ length: al + 1 }, () => new Array(bl + 1).fill(0));
+  for (let i = 0; i <= al; i++) dp[i][0] = i;
+  for (let j = 0; j <= bl; j++) dp[0][j] = j;
+  for (let i = 1; i <= al; i++) {
+    for (let j = 1; j <= bl; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[al][bl];
+}
+const similarityRatio = (a, b) => {
+  const maxLen = Math.max(a.length, b.length) || 1;
+  return 1 - levenshtein(a, b) / maxLen;
+};
+
+// หาหมวดเดิมที่ "น่าจะ" เป็นหมวดเดียวกับชื่อที่พิมพ์ ไม่ใช่แค่ตัวอักษรตรงกันเป๊ะ
+// ใช้ทั้ง (1) เท่ากันหลังตัดคำเชื่อม/สัญลักษณ์ (2) คำหนึ่งเป็นส่วนหนึ่งของอีกคำ (3) ระยะแก้ไขใกล้เคียงพอ (พิมพ์ผิด/ตกหล่น)
+function findSimilarCategory(name, options) {
+  const raw = String(name || "").trim();
+  const n = normCategory(raw);
+  if (!n) return null;
+  let best = null, bestScore = 0;
+  for (const c of options || []) {
+    const cRaw = String(c.category || "").trim();
+    if (!cRaw || cRaw === raw) continue;
+    const cn = normCategory(cRaw);
+    if (!cn) continue;
+    if (cn === n) return cRaw;
+    const shorter = Math.min(cn.length, n.length), longer = Math.max(cn.length, n.length) || 1;
+    const contains = (cn.includes(n) || n.includes(cn)) && shorter / longer >= 0.55;
+    const ratio = similarityRatio(n, cn);
+    const score = contains ? Math.max(ratio, 0.85) : ratio;
+    if (score >= 0.72 && score > bestScore) { bestScore = score; best = cRaw; }
+  }
+  return best;
+}
+
+function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, gradeLevelOptions, hideScore }) {
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState("");
   const [q, setQ] = useState(initial || emptyQuestion());
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
   const complete = q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
 
   return (
-    <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
+    <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-neutral-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
-        <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        <p className="text-sm font-semibold text-slate-800">{initial ? "แก้ไขข้อสอบ" : "เพิ่มข้อสอบ"}</p>
+        <button aria-label="ปิด" onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-4 w-4" /></button>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-neutral-800 mb-2">โจทย์</label>
-        <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none" />
+        <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
+        <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
       </div>
 
       <div className="space-y-2.5">
         {OPTION_LABELS.map((label, optIdx) => {
           const isCorrect = q.correct === optIdx;
           return (
-            <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200 bg-white"}`}>
-              <button onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-neutral-300 hover:border-green-400"}`}>
+            <div key={label} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200 bg-white"}`}>
+              <button aria-label="ยืนยัน" onClick={() => patch({ correct: isCorrect ? null : optIdx })} className={`h-6 w-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition ${isCorrect ? "border-green-500 bg-green-500" : "border-slate-300 hover:border-green-400"} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0`}>
                 {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
-              <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-neutral-800" />
+              <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-slate-800" />
             </div>
           );
         })}
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-neutral-800 mb-2">
-          💡 คำอธิบายเฉลย <span className="text-xs font-normal text-neutral-400">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
+        <label className="block text-sm font-semibold text-slate-800 mb-2">
+          <LuLightbulb className="inline h-4 w-4 -mt-0.5 text-amber-500" /> คำอธิบายเฉลย <span className="text-xs font-normal text-slate-500">(ไม่บังคับ — นักเรียนจะเห็นหลังส่งข้อสอบ)</span>
         </label>
         <textarea
           value={q.explanation || ""}
           onChange={(e) => patch({ explanation: e.target.value })}
           placeholder="อธิบายว่าทำไมคำตอบนี้ถึงถูก…"
           rows={2}
-          className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"
+          className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">คะแนน</label>
-          <div className="flex items-center border border-neutral-200 rounded-xl overflow-hidden">
-            <button onClick={() => patch({ score: Math.max(1, q.score - 1) })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">−</button>
-            <span className="flex-1 text-center text-sm font-semibold text-neutral-800">{q.score}</span>
-            <button onClick={() => patch({ score: q.score + 1 })} className="px-3 py-2 text-neutral-500 hover:bg-neutral-50 text-sm font-bold">+</button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className={hideScore ? "hidden" : ""}>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">คะแนน</label>
+          {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
+              ปุ่ม −/+ เดินทีละ 0.5 ส่วนช่องกลางพิมพ์ตัวเลขเองได้ทุกค่า */}
+          <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden">
+            <button onClick={() => patch({ score: Math.max(0.5, Math.round((q.score - 0.5) * 100) / 100) })} className="px-3 py-2 text-slate-500 hover:bg-slate-50 text-sm font-bold">−</button>
+            <input
+              type="number" step="0.25" min="0"
+              value={q.score}
+              onChange={(e) => {
+                const v = e.target.value;
+                patch({ score: v === "" ? "" : Math.max(0, Math.round(Number(v) * 100) / 100) });
+              }}
+              onBlur={(e) => { if (e.target.value === "" || Number(e.target.value) <= 0) patch({ score: 1 }); }}
+              className="flex-1 w-full text-center text-sm font-semibold text-slate-800 outline-none py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button onClick={() => patch({ score: Math.round((Number(q.score) + 0.5) * 100) / 100 })} className="px-3 py-2 text-slate-500 hover:bg-slate-50 text-sm font-bold">+</button>
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Difficulty</label>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">Difficulty</label>
           <div className="flex gap-1">
             {["ง่าย", "ปานกลาง", "ยาก"].map((lv) => (
-              <button key={lv} onClick={() => patch({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${q.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-neutral-200 text-neutral-500"}`}>{lv}</button>
+              <button key={lv} onClick={() => patch({ level: lv })} className={`flex-1 py-2 rounded-lg text-xs font-medium border transition ${q.level === lv ? LEVEL_BADGE[lv] + " border-transparent" : "border-slate-200 text-slate-500"}`}>{lv}</button>
             ))}
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Category</label>
-          <input
-            type="text"
-            list="category-options"
-            value={q.category}
-            onChange={(e) => patch({ category: e.target.value })}
-            placeholder="เช่น พีชคณิต"
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
-          />
-          <datalist id="category-options">
-            {(categoryOptions || []).map((c) => (
-              <option key={c.category} value={c.category} />
-            ))}
-          </datalist>
-          {categoryOptions?.length > 0 && (
-            <p className="text-[10px] text-neutral-400 mt-1">หมวดที่เคยใช้ในวิชานี้: {categoryOptions.map((c) => c.category).join(", ")}</p>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">หมวดหมู่</label>
+          {/* เลือกจากรายการเป็นหลัก เพื่อไม่ให้เกิดหมวดชื่อเพี้ยนซ้ำซ้อน
+              จะสร้างหมวดใหม่ต้องกดปุ่ม และระบบจะเตือนถ้าชื่อคล้ายของเดิม */}
+          {addingCategory ? (
+            <div className="space-y-2">
+              <input
+                type="text"
+                autoFocus
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="ชื่อหมวดใหม่"
+                className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+              {newCategory.trim() && (() => {
+                const kw = newCategory.trim().toLowerCase();
+                const matches = (categoryOptions || []).filter((c) => c.category?.toLowerCase().includes(kw)).slice(0, 6);
+                if (!matches.length) return null;
+                return (
+                  <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-32 overflow-y-auto">
+                    {matches.map((c) => (
+                      <button
+                        key={c.category}
+                        type="button"
+                        onClick={() => { patch({ category: c.category }); setAddingCategory(false); setNewCategory(""); }}
+                        className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-orange-50 hover:text-orange-700"
+                      >
+                        {c.category} <span className="text-slate-400">({c.questionCount} ข้อ)</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+              {findSimilarCategory(newCategory, categoryOptions) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 space-y-1.5">
+                  <p className="text-[11px] text-amber-700">
+                    ชื่อนี้คล้ายกับ "{findSimilarCategory(newCategory, categoryOptions)}" ที่มีอยู่แล้ว
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      patch({ category: findSimilarCategory(newCategory, categoryOptions) });
+                      setAddingCategory(false); setNewCategory("");
+                    }}
+                    className="text-[11px] font-semibold text-amber-800 underline"
+                  >
+                    ใช้หมวดเดิมแทน
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={!newCategory.trim()}
+                  onClick={() => { patch({ category: newCategory.trim() }); setAddingCategory(false); setNewCategory(""); }}
+                  className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}
+                >
+                  ใช้หมวดนี้
+                </button>
+                <button type="button" onClick={() => { setAddingCategory(false); setNewCategory(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <select
+                value={q.category || ""}
+                onChange={(e) => patch({ category: e.target.value })}
+                className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
+              >
+                <option value="">เลือกหมวด</option>
+                {(categoryOptions || []).map((c) => (
+                  <option key={c.category} value={c.category}>{c.category}</option>
+                ))}
+                {q.category && !(categoryOptions || []).some((c) => c.category === q.category) && (
+                  <option value={q.category}>{q.category}</option>
+                )}
+              </select>
+              <button
+                type="button"
+                onClick={() => setAddingCategory(true)}
+                className="flex-shrink-0 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
+              >
+                + หมวดใหม่
+              </button>
+            </div>
           )}
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+            ระดับชั้น <span className="text-[11px] font-normal text-slate-500">(ไม่บังคับ)</span>
+          </label>
+          {/* แท็กไว้ให้ตอนจัดชุดข้อสอบกรองตามระดับชั้นของคอร์สได้ ปล่อย "ไม่ระบุ" ได้ถ้ายังไม่แน่ใจ —
+              ข้อที่ไม่ระบุจะไม่ถูกกรองออกไม่ว่าจะเลือกระดับชั้นไหนตอนจัดชุด */}
+          <select
+            value={q.gradeLevelId ?? ""}
+            onChange={(e) => patch({ gradeLevelId: e.target.value === "" ? null : Number(e.target.value) })}
+            className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+          >
+            <option value="">ไม่ระบุ</option>
+            {(gradeLevelOptions || []).map((g) => (
+              <option key={g.id} value={g.id}>{g.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -295,11 +465,11 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       )}
 
       <div className="flex justify-end gap-2 pt-1">
-        <button onClick={onClose} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium px-3">ยกเลิก</button>
+        <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3">ยกเลิก</button>
         <button
           onClick={() => onSave(q)}
           disabled={!complete || saving}
-          className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-4 py-2 text-sm font-semibold transition"
+          className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-4 py-2 text-sm font-semibold transition`}
         >
           {saving ? "กำลังบันทึก…" : (saveLabel || "บันทึก")}
         </button>
@@ -308,9 +478,13 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
-function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
+function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions, existingItems }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
-  const knownCategories = new Set((categoryOptions || []).map((c) => c.category.trim().toLowerCase()));
+  const [bulkGrade, setBulkGrade] = useState(""); // ระดับชั้นเดียวใส่ให้ทั้งไฟล์ที่ import ครั้งนี้ ไม่บังคับเลือก
+  const [rowGradeOverrides, setRowGradeOverrides] = useState({}); // เผื่อบางข้อในไฟล์เดียวกันเป็นคนละระดับชั้น ปรับแยกรายข้อได้
+  const [skipDup, setSkipDup] = useState(false); // ข้ามข้อที่ซ้ำตอนกดยืนยัน (ค่าเริ่มต้นคือไม่ข้าม — แค่เตือน)
+  const [catMap, setCatMap] = useState({});   // หมวดในไฟล์ -> หมวดในคลังที่จะแมปเข้า
+  const knownCategories = new Set((categoryOptions || []).map((c) => normCategory(c.category)));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -335,8 +509,33 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
     setConfirming(true);
     setError("");
     try {
-      const inserted = await addQuestions(examId, rows);
-      onImported(inserted);
+      // (แก้บั๊ก) เดิม invalidCount/bad (ดูด้านล่าง) ใช้แสดงผล "! ข้อมีปัญหา" อย่างเดียว ไม่เคย
+      // กันแถวที่ข้อมูลไม่ครบ (ไม่มีโจทย์/ตัวเลือก/ยังไม่เลือกเฉลย) ออกจากที่จะส่งเข้าคลังจริง
+      // กดยืนยันแล้วส่งไปทั้งแถวที่เสีย จึงกรองออกตั้งแต่ฝั่ง frontend ก่อนส่ง แล้วแจ้งจำนวนที่
+      // ถูกข้ามให้ผู้สอนเห็นหลังนำเข้าเสร็จ (ดู onImported ด้านล่าง)
+      const isInvalidRow = (q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+
+      const mappedAll = rows.map((r, i) => ({
+        ...r,
+        category: catMap[r.category?.trim()] || r.category,
+        bankId: rowPlan[i]?.mode === "update" ? rowPlan[i].id : null,
+        gradeLevelId: (() => {
+          const eff = effGradeId(i);
+          return eff === "" ? null : Number(eff);
+        })(),
+      }));
+
+      const mapped = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && !isInvalidRow(r));
+      const skippedInvalidCount = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && isInvalidRow(r)).length;
+
+      if (!mapped.length) {
+        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว หรือข้อมูลไม่ครบ");
+        setConfirming(false);
+        return;
+      }
+
+      const result = await onConfirmRows(mapped);
+      onImported({ ...(result || {}), skippedInvalidCount });
     } catch (err) {
       console.error("Excel import save failed:", err);
       setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -347,11 +546,90 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
 
   const invalidCount = rows.filter((q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null).length;
 
+  // หมวดในไฟล์ที่ยังไม่มีในคลัง — ให้ครูเลือกก่อนว่าจะแมปเข้าหมวดเดิมหรือสร้างใหม่
+  // กันกรณีพิมพ์ชื่อหมวดคนละแบบใน Excel แล้วคลังแตกเป็นหลายหมวดที่ความจริงคืออันเดียวกัน
+  const unknownCats = [...new Set(
+    rows.map((r) => r.category?.trim()).filter((c) => c && !knownCategories.has(normCategory(c)))
+  )];
+  const countOfCat = (c) => rows.filter((r) => r.category?.trim() === c).length;
+
+  // คอลัมน์ grade_level ในไฟล์เก็บเป็น "ชื่อ" ระดับชั้น (เช่น ม.3) ต้องแปลงกลับเป็น id
+  // ชื่อที่ไม่ตรงกับระดับชั้นในระบบถือว่าไม่ได้ระบุ แล้วตกไปใช้ค่าเริ่มต้นของไฟล์แทน
+  const gradeIdFromLabel = (label) => {
+    const t = String(label || "").trim().toLowerCase();
+    if (!t) return null;
+    const g = (gradeLevelOptions || []).find((x) => String(x.label).trim().toLowerCase() === t);
+    return g ? g.id : null;
+  };
+
+  // ระดับชั้นที่จะถูกบันทึกจริงของแถวนั้น เรียงความสำคัญ: เลือกเองรายข้อ > ค่าในไฟล์ > ค่าเริ่มต้นของไฟล์
+  const effGradeId = (i) => {
+    const ov = rowGradeOverrides[i];
+    if (ov !== undefined && ov !== "") return String(ov);
+    const fromFile = gradeIdFromLabel(rows[i]?.gradeLabel);
+    if (fromFile != null) return String(fromFile);
+    return bulkGrade === "" ? "" : String(bulkGrade);
+  };
+
+  // ── แถวไหน "ทับข้อเดิม" แถวไหน "เพิ่มใหม่" ─────────────────────────────────
+  // ทับได้เมื่อ bank_id ในไฟล์เป็นข้อที่ยังอยู่ในคลังของวิชานี้จริงเท่านั้น
+  // ที่เหลือกลายเป็นข้อใหม่ทั้งหมด พร้อมบอกเหตุผลให้ครูเห็น:
+  //   notfound = id ไม่ใช่ของวิชานี้ (เช่นหยิบไฟล์ของวิชาอื่นมา) หรือข้อนั้นถูกลบไปแล้ว
+  //   iddup    = bank_id เดียวกันโผล่หลายแถวในไฟล์ แถวแรกได้ทับ ที่เหลือเป็นข้อใหม่
+  // ฝั่งหลังบ้านตัดสินซ้ำอีกรอบด้วยกติกาเดียวกัน หน้าจอนี้แค่บอกล่วงหน้าว่าจะเกิดอะไรขึ้น
+  const ownIdSet = useMemo(
+    () => new Set((existingItems || []).map((it) => Number(it.id))),
+    [existingItems]
+  );
+  const rowPlan = useMemo(() => {
+    const used = new Set();
+    return rows.map((r) => {
+      const id = Number(r.bankId) || null;
+      if (!id) return { mode: "new" };
+      if (!ownIdSet.has(id)) return { mode: "new", note: "notfound" };
+      if (used.has(id)) return { mode: "new", note: "iddup" };
+      used.add(id);
+      return { mode: "update", id };
+    });
+  }, [rows, ownIdSet]);
+
+  // ── หาข้อที่ซ้ำ ────────────────────────────────────────────────────────────
+  // "bank" = ซ้ำกับข้ออื่นที่มีอยู่แล้วในคลัง / "file" = ซ้ำกันเองในไฟล์ที่เพิ่งอัปโหลด
+  // แถวที่กำลังจะทับ "ตัวเอง" ไม่นับว่าซ้ำ ไม่งั้นไฟล์ที่ export ออกไปแก้จะขึ้นเตือนทั้งไฟล์
+  // ตั้งใจให้เป็นแค่คำเตือน ไม่บล็อกการนำเข้า เพราะบางทีครูตั้งใจมีข้อคล้ายกันหลายเวอร์ชัน
+  const bankTextById = useMemo(() => {
+    const m = new Map();
+    for (const it of existingItems || []) {
+      const k = normQuestionText(it.text);
+      if (k && !m.has(k)) m.set(k, Number(it.id));
+    }
+    return m;
+  }, [existingItems]);
+  const dupFlags = useMemo(() => {
+    const seen = new Set();
+    return rows.map((r, i) => {
+      const key = normQuestionText(r.text);
+      if (!key) return null;
+      const hitId = bankTextById.get(key);
+      if (hitId != null && hitId !== rowPlan[i]?.id) return "bank";
+      if (seen.has(key)) return "file";
+      seen.add(key);
+      return null;
+    });
+  }, [rows, bankTextById, rowPlan]);
+  const dupCount = dupFlags.filter(Boolean).length;
+
+  // นับตามที่จะเกิดขึ้นจริงหลังหักข้อที่ถูกข้าม เพื่อให้ตัวเลขบนปุ่มยืนยันตรงกับผลลัพธ์
+  const keptRows = rows.map((_r, i) => !(skipDup && dupFlags[i]));
+  const importCount = keptRows.filter(Boolean).length;
+  const updateCount = rowPlan.filter((p, i) => p.mode === "update" && keptRows[i]).length;
+  const newCount = importCount - updateCount;
+
   return (
-    <div className="border border-neutral-200 rounded-2xl p-5 space-y-4">
+    <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-neutral-800">นำเข้าข้อสอบจาก Excel</p>
-        <button onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
+        <p className="text-sm font-semibold text-slate-800">นำเข้าข้อสอบจาก Excel</p>
+        <button aria-label="ปิด" onClick={onCancel} className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-4 w-4" /></button>
       </div>
 
       {step === 1 && (
@@ -359,12 +637,12 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
           <button onClick={downloadXlsxTemplate} className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-green-300 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl py-2.5 text-xs font-semibold transition">
             <Download className="h-3.5 w-3.5" /> ดาวน์โหลด Template (.xlsx)
           </button>
-          <div onClick={() => fileRef.current?.click()} onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }} onDragOver={(e) => e.preventDefault()} className="border-2 border-dashed border-neutral-200 rounded-xl p-6 text-center cursor-pointer hover:border-orange-300 transition">
-            {loading ? <p className="text-xs text-neutral-500 animate-pulse">กำลังอ่านไฟล์…</p> : (
+          <div onClick={() => fileRef.current?.click()} onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }} onDragOver={(e) => e.preventDefault()} className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center cursor-pointer hover:border-orange-300 transition">
+            {loading ? <p className="text-xs text-slate-500 animate-pulse">กำลังอ่านไฟล์…</p> : (
               <>
-                <FileSpreadsheet className="h-7 w-7 text-neutral-300 mx-auto mb-1.5" />
-                <p className="text-xs text-neutral-500">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
-                <p className="text-[10px] text-neutral-400 mt-1">รองรับ .xlsx, .xls, .csv</p>
+                <FileSpreadsheet className="h-7 w-7 text-slate-300 mx-auto mb-1.5" />
+                <p className="text-xs text-slate-500">ลากไฟล์มาวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</p>
+                <p className="text-[11px] text-slate-500 mt-1">รองรับ .xlsx, .xls, .csv</p>
               </>
             )}
           </div>
@@ -380,30 +658,136 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
 
       {step === 2 && (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-green-100 text-green-700">พบ {rows.length} ข้อ</Badge>
             {invalidCount > 0 && <Badge className="bg-amber-100 text-amber-700">{invalidCount} ข้อมีปัญหา</Badge>}
+            {updateCount > 0 && <Badge className="bg-blue-100 text-blue-700">ทับของเดิม {updateCount} ข้อ</Badge>}
+            {newCount > 0 && <Badge className="bg-slate-100 text-slate-600">เพิ่มใหม่ {newCount} ข้อ</Badge>}
+            {dupCount > 0 && <Badge className="bg-red-100 text-red-700">{dupCount} ข้อซ้ำ</Badge>}
+            <div className="flex items-center gap-1.5 ml-auto">
+              <span className="text-xs text-slate-500">ระดับชั้นเริ่มต้นของไฟล์นี้:</span>
+              <select
+                value={bulkGrade}
+                onChange={(e) => setBulkGrade(e.target.value)}
+                className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
+              >
+                <option value="">ไม่ระบุ</option>
+                {(gradeLevelOptions || []).map((g) => (
+                  <option key={g.id} value={g.id}>{g.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="border border-neutral-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-neutral-50">
+          <p className="text-[11px] text-slate-500 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
+
+          {dupCount > 0 && (
+            <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+              <p className="text-xs text-red-700 flex-1 min-w-[200px]">
+                พบ {dupCount} ข้อที่โจทย์ซ้ำ (กับข้อในคลังเดิม หรือซ้ำกันเองในไฟล์) — นำเข้าต่อได้ถ้าตั้งใจ
+              </p>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-red-700 cursor-pointer">
+                <input type="checkbox" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} className="accent-red-500" />
+                ข้ามข้อที่ซ้ำ ({rows.length - dupCount} ข้อจะถูกนำเข้า)
+              </label>
+            </div>
+          )}
+
+          {unknownCats.length > 0 && (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-amber-800">
+                มี {unknownCats.length} หมวดในไฟล์ที่ยังไม่มีในคลัง — เลือกว่าจะใช้หมวดเดิมหรือสร้างใหม่
+              </p>
+              {unknownCats.map((cat) => {
+                const similar = findSimilarCategory(cat, categoryOptions);
+                return (
+                  <div key={cat} className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-slate-800">"{cat}"</span>
+                    <span className="text-[11px] text-slate-500">{countOfCat(cat)} ข้อ</span>
+                    <select
+                      value={catMap[cat] ?? ""}
+                      onChange={(e) => setCatMap((m) => ({ ...m, [cat]: e.target.value }))}
+                      className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
+                    >
+                      <option value="">สร้างเป็นหมวดใหม่</option>
+                      {(categoryOptions || []).map((c) => (
+                        <option key={c.category} value={c.category}>ใช้ {c.category}</option>
+                      ))}
+                    </select>
+                    {similar && !catMap[cat] && (
+                      <button
+                        type="button"
+                        onClick={() => setCatMap((m) => ({ ...m, [cat]: similar }))}
+                        className="text-[11px] font-semibold text-amber-800 underline"
+                      >
+                        คล้ายกับ "{similar}" กดเพื่อใช้อันนั้น
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="border border-slate-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-slate-50">
             {rows.map((q, i) => {
               const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+              const dup = dupFlags[i];
+              const skipped = skipDup && dup;
+              const plan = rowPlan[i] || { mode: "new" };
               return (
-                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${bad ? "bg-amber-50/50" : ""}`}>
-                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-neutral-100 text-neutral-600"}`}>{bad ? "!" : i + 1}</span>
+                <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
+                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className="text-xs text-neutral-700 truncate">{q.text || "(ไม่มีโจทย์)"}</p>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
+                    {plan.mode === "update" && (
+                      <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
+                    )}
+                    {plan.note === "notfound" && (
+                      <p className="text-[11px] text-amber-600 mt-0.5">ไม่พบ bank_id นี้ในคลังของวิชานี้ — จะเพิ่มเป็นข้อใหม่แทน</p>
+                    )}
+                    {plan.note === "iddup" && (
+                      <p className="text-[11px] text-amber-600 mt-0.5">bank_id ซ้ำกับแถวก่อนหน้าในไฟล์เดียวกัน — จะเพิ่มเป็นข้อใหม่แทน</p>
+                    )}
+                    {dup && (
+                      <p className="text-[11px] text-red-600 mt-0.5">
+                        {dup === "bank" ? "โจทย์ซ้ำกับข้อที่มีอยู่แล้วในคลัง" : "โจทย์ซ้ำกับอีกข้อในไฟล์เดียวกัน"}
+                        {skipped ? " — จะไม่ถูกนำเข้า" : ""}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-slate-500">
                       {q.level} {q.category && `· ${q.category}`}
                       {q.explanation?.trim() ? (
                         <span className="text-blue-500"> · มีคำอธิบายเฉลย</span>
                       ) : (
-                        <span className="text-neutral-300"> · ไม่มีคำอธิบายเฉลย</span>
+                        <span className="text-slate-300"> · ไม่มีคำอธิบายเฉลย</span>
                       )}
                     </p>
-                    {q.category?.trim() && knownCategories.size > 0 && !knownCategories.has(q.category.trim().toLowerCase()) && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">⚠️ หมวด "{q.category}" ยังไม่เคยใช้ในวิชานี้ — พิมพ์ผิดหรือหมวดใหม่จริง?</p>
+                    {q.category?.trim() && catMap[q.category.trim()] && (
+                      <p className="text-[11px] text-green-600 mt-0.5">จะบันทึกเป็นหมวด "{catMap[q.category.trim()]}"</p>
                     )}
+                    {q.category?.trim() && !catMap[q.category.trim()] && knownCategories.size > 0 && !knownCategories.has(normCategory(q.category)) && (
+                      <p className="text-[11px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
+                    )}
+                    {(() => {
+                      const eff = effGradeId(i);
+                      if (eff === "") return null;
+                      const g = (gradeLevelOptions || []).find((x) => String(x.id) === String(eff));
+                      if (!g) return null;
+                      const fromFile = gradeIdFromLabel(q.gradeLabel) != null && (rowGradeOverrides[i] === undefined || rowGradeOverrides[i] === "");
+                      return <p className="text-[11px] text-blue-500 mt-0.5">ระดับชั้น: {g.label}{fromFile ? " (จากไฟล์)" : ""}</p>;
+                    })()}
                   </div>
+                  <select
+                    value={rowGradeOverrides[i] ?? ""}
+                    onChange={(e) => setRowGradeOverrides((m) => ({ ...m, [i]: e.target.value }))}
+                    title="ระดับชั้นของข้อนี้ (ว่าง = ใช้ค่าเริ่มต้นของทั้งไฟล์ด้านบน)"
+                    className="flex-shrink-0 border border-slate-200 rounded-xl px-1.5 py-1 text-[11px] bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 w-20 self-start max-w-full md:max-w-[240px] truncate"
+                  >
+                    <option value="">ค่าเริ่มต้น</option>
+                    {(gradeLevelOptions || []).map((g) => (
+                      <option key={g.id} value={g.id}>{g.label}</option>
+                    ))}
+                  </select>
                 </div>
               );
             })}
@@ -414,10 +798,14 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
               <p className="text-xs text-red-600">{error}</p>
             </div>
           )}
-          <div className="flex justify-between">
-            <button onClick={() => setStep(1)} className="text-sm text-neutral-500 hover:text-neutral-700 font-medium">← อัปโหลดไฟล์อื่น</button>
-            <button onClick={handleConfirm} disabled={confirming} className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition">
-              {confirming ? "กำลังบันทึก…" : `ยืนยันนำเข้า ${rows.length} ข้อ`}
+          <div className="flex flex-wrap justify-between gap-2">
+            <button onClick={() => setStep(1)} className="text-sm text-slate-500 hover:text-slate-700 font-medium">← อัปโหลดไฟล์อื่น</button>
+            <button onClick={handleConfirm} disabled={confirming} className={`${BTN.primary} disabled:opacity-40 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}>
+              {confirming
+                ? "กำลังบันทึก…"
+                : updateCount > 0
+                  ? `ยืนยัน — ทับของเดิม ${updateCount} · เพิ่มใหม่ ${newCount}`
+                  : `ยืนยันนำเข้า ${importCount} ข้อ`}
             </button>
           </div>
         </div>
@@ -426,189 +814,1024 @@ function ExcelImportFlow({ examId, onCancel, onImported, categoryOptions }) {
   );
 }
 
-function QuestionsTab({ examId, subjectId, adminId, questions, status, onChanged }) {
-  const locked = status === "active";
-  const [mode, setMode] = useState(null); // null | "picker" | "manual" | "excel"
-  const [editingId, setEditingId] = useState(null);
+// ─── ตัวช่วยคิดคะแนน ─────────────────────────────────────────────────────────
+// ต้องตรงกับสูตรฝั่งหลังบ้านเป๊ะ ๆ เพราะหน้าจอใช้แสดงผลตอนพรีวิว
+// ส่วนค่าที่บันทึกจริงหลังบ้านคำนวณเองอีกรอบ เพื่อไม่ให้ค่าจากเบราว์เซอร์เป็นตัวตัดสิน
+const LEVEL_WEIGHT = { "ง่าย": 1, "ปานกลาง": 1.5, "ยาก": 2 };
+const BANK_LEVELS = ["ง่าย", "ปานกลาง", "ยาก"];
+const MIN_PER_CATEGORY = 5;   // หมวดที่มีน้อยกว่านี้ กราฟพัฒนาการรายหมวดยังตีความไม่ได้
+
+function scaleScoresLocal(items, totalScore) {
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const weights = items.map((it) => LEVEL_WEIGHT[it.level] || 1);
+  const sum = weights.reduce((a, b) => a + b, 0) || 1;
+  const factor = totalScore / sum;
+  const scores = weights.map((w) => r2(w * factor));
+  const diff = r2(totalScore - scores.reduce((a, b) => r2(a + b), 0));
+  if (diff !== 0 && scores.length) {
+    let h = 0;
+    for (let i = 1; i < weights.length; i++) if (weights[i] > weights[h]) h = i;
+    scores[h] = r2(scores[h] + diff);
+  }
+  return items.map((it, i) => ({ ...it, score: scores[i] }));
+}
+
+// ─── Bank Tab — คลังข้อสอบของติวเตอร์ ───────────────────────────────────────
+// คลังเป็น "ของใครของมัน" ข้อสอบทุกข้อเป็นของครูที่สร้างมัน ครูคนอื่นที่สอนวิชาเดียวกัน
+// มีคลังของตัวเองแยกต่างหาก มองไม่เห็นและแตะของกันไม่ได้ (backend กรองด้วยเจ้าของจาก token
+// ทุก endpoint หน้าจอนี้จึงไม่ต้องกรองเองและไม่ต้องส่ง id ของครูไปไหน)
+// คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
+// แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
+export function BankTab({ subjectId, showToast, subjectName }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [mode, setMode] = useState(null);        // null | picker | manual | excel
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
-  const [categoryOptions, setCategoryOptions] = useState([]);
-  const [showManageCategories, setShowManageCategories] = useState(false);
+  const [search, setSearch] = useState("");
+  const [fCat, setFCat] = useState("");
+  const [fLevel, setFLevel] = useState("");
+  const [showCategories, setShowCategories] = useState(false);
+  const [formKey, setFormKey] = useState(0);      // เปลี่ยนค่านี้เพื่อบังคับให้ฟอร์มเพิ่มข้อ mount ใหม่ (เคลียร์ฟอร์มแน่นอน)
+  const panelRef = useRef(null);                  // ใช้เลื่อนจอขึ้นมาหาฟอร์มตอนกด "แก้ไข" ข้อที่อยู่ล่าง ๆ ของรายการ
+  const [gradeLevels, setGradeLevels] = useState([]); // รายการระดับชั้นให้เลือกตอนเพิ่ม/แก้ข้อ (ไม่บังคับ)
+  const [selectedIds, setSelectedIds] = useState([]);  // ข้อที่ติ๊กไว้ เพื่อลบ/เปลี่ยนแท็กทีเดียวหลายข้อ
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkPending, setBulkPending] = useState(null);  // งานหลายข้อที่รอยืนยัน { type: grade|category|delete, value, label }
 
-  const loadCategories = () => {
-    if (!subjectId || !adminId) return;
-    fetchSubjectCategories({ subjectId, adminId })
-      .then(setCategoryOptions)
-      .catch((err) => console.error("Fetch subject categories failed:", err));
+  useEffect(() => { fetchGradeLevels().then(setGradeLevels).catch(() => setGradeLevels([])); }, []);
+
+  const load = useCallback(() => {
+    if (!subjectId) return;
+    setLoading(true);
+    setLoadError("");
+    fetchBank(subjectId)
+      .then((rows) => setItems(Array.isArray(rows) ? rows : []))
+      .catch((err) => { console.error("Fetch bank failed:", err); setLoadError("โหลดคลังข้อสอบไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  }, [subjectId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // ฟอร์มเพิ่ม/แก้ไข/นำเข้า อยู่ตำแหน่งเดิมเสมอ (เหนือรายการ) แต่ถ้าเปิดจากการกด "แก้ไข"
+  // ข้อที่อยู่ไกลลงไปในลิสต์ จอจะยังค้างอยู่ตรงที่กด เลยต้องเลื่อนขึ้นมาให้เห็นฟอร์มเอง
+  useEffect(() => {
+    if ((mode === "manual" || mode === "excel" || editing) && panelRef.current) {
+      panelRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [mode, editing]);
+
+  const categoryOptions = useMemo(() => {
+    const m = {};
+    for (const it of items) if (it.category) m[it.category] = (m[it.category] || 0) + 1;
+    return Object.entries(m).map(([category, questionCount]) => ({ category, questionCount }));
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const kw = search.trim().toLowerCase();
+    return items.filter((it) =>
+      (!fCat || it.category === fCat) &&
+      (!fLevel || it.level === fLevel) &&
+      (!kw || it.text.toLowerCase().includes(kw))
+    );
+  }, [items, search, fCat, fLevel]);
+
+  // ติ๊กได้เฉพาะข้อที่มองเห็นอยู่จริงบนจอ ถ้าเปลี่ยนตัวกรองจนข้อที่เลือกไว้หลุดจากรายการ
+  // ให้ถอดออกจากรายการที่เลือกด้วย — กันเผลอลบข้อที่ตัวเองมองไม่เห็นตอนกดยืนยัน
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const next = prev.filter((id) => filtered.some((it) => it.id === id));
+      return next.length === prev.length ? prev : next;   // คืน array เดิมถ้าไม่มีอะไรหลุด กัน re-render ฟรี ๆ
+    });
+    setBulkPending(null);
+  }, [filtered]);
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id));
+  const toggleSelect = (id) => setSelectedIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const toggleSelectAll = () => setSelectedIds(allVisibleSelected ? [] : filtered.map((it) => it.id));
+
+  // ทุกงานแบบหลายข้อวิ่งผ่านตัวนี้ตัวเดียว เพื่อให้ล้างสถานะ/โหลดใหม่/แจ้งเตือนเหมือนกันหมด
+  const runBulk = async (fn, okTitle, okDetail = "") => {
+    setBulkBusy(true);
+    try {
+      await fn();
+      load();
+      setSelectedIds([]);
+      setBulkPending(null);
+      showToast?.("success", okTitle, okDetail);
+    } catch (err) {
+      console.error("Bulk bank action failed:", err);
+      showToast?.("error", "ทำรายการไม่สำเร็จ", "ลองใหม่อีกครั้ง");
+    } finally {
+      setBulkBusy(false);
+    }
   };
 
-  useEffect(() => { loadCategories(); }, [subjectId, adminId]);
+  // งานแบบหลายข้อทุกชนิดต้องผ่านการยืนยันก่อนเสมอ ไม่ใช่แค่การลบ
+  // เพราะเลือก dropdown พลาดทีเดียวก็เปลี่ยนแท็กของข้อสอบหลายสิบข้อพร้อมกันแล้ว
+  const bulkPendingText = () => {
+    const n = selectedIds.length;
+    if (!bulkPending) return "";
+    if (bulkPending.type === "delete") return `ลบ ${n} ข้อออกจากคลัง? (ผลสอบเก่าไม่กระทบ)`;
+    if (bulkPending.type === "category") return `ย้าย ${n} ข้อไปหมวด "${bulkPending.value}"?`;
+    return bulkPending.value === null
+      ? `ล้างระดับชั้นของ ${n} ข้อ ให้ใช้ได้ทุกระดับชั้น?`
+      : `เปลี่ยนระดับชั้นของ ${n} ข้อเป็น "${bulkPending.label}"?`;
+  };
 
-  const editingQuestion = questions.find((q) => q.id === editingId) || null;
+  const runBulkPending = () => {
+    if (!bulkPending) return;
+    const n = selectedIds.length;
+    if (bulkPending.type === "delete") {
+      runBulk(() => bulkDeleteBankQuestions(selectedIds), `ลบ ${n} ข้อออกจากคลังแล้ว`);
+    } else if (bulkPending.type === "category") {
+      runBulk(
+        () => bulkUpdateBankQuestions(selectedIds, { category: bulkPending.value }),
+        `ย้าย ${n} ข้อแล้ว`,
+        `ไปหมวด "${bulkPending.value}"`
+      );
+    } else {
+      runBulk(
+        () => bulkUpdateBankQuestions(selectedIds, { gradeLevelId: bulkPending.value }),
+        `เปลี่ยนระดับชั้น ${n} ข้อแล้ว`,
+        bulkPending.value === null ? "ไม่ระบุระดับชั้น" : bulkPending.label
+      );
+    }
+  };
+
+  // ส่งออกทั้งคลัง (ไม่ใช่เฉพาะที่กรองอยู่) เพราะไฟล์นี้มีไว้แก้แบบออฟไลน์แล้วนำเข้ากลับ
+  const handleExport = () => {
+    if (!items.length) return;
+    exportBankXlsx(items, subjectName);
+    showToast?.("success", "ส่งออกไฟล์แล้ว", `คลัง ${items.length} ข้อ — แก้ไขใน Excel แล้วนำเข้ากลับได้`);
+  };
 
   const handleAddOne = async (q) => {
-    setSaving(true);
-    setFormError("");
+    setSaving(true); setFormError("");
     try {
-      await addQuestions(examId, [q]);
-      await onChanged();
-      // stay open so the tutor can add the next question right away
-      setMode("manual-added");
-      setTimeout(() => setMode("manual"), 0);
+      await addBankQuestions(subjectId, [q]);
+      load();
+      setFormKey((k) => k + 1); // mount ฟอร์มใหม่ทั้งก้อน -> เคลียร์ทุกช่องแน่นอน ไม่ต้องเดา timing
+      showToast?.("success", "เพิ่มเข้าคลังแล้ว", "เพิ่มข้อถัดไปได้");
     } catch (err) {
-      console.error("Add question failed:", err);
-      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
+      console.error("Add to bank failed:", err);
+      setFormError(err.response?.data?.message || "เพิ่มเข้าคลังไม่สำเร็จ");
+      showToast?.("error", "เพิ่มเข้าคลังไม่สำเร็จ", err.response?.data?.message);
+    } finally { setSaving(false); }
   };
 
   const handleEditSave = async (q) => {
-    setSaving(true);
-    setFormError("");
+    setSaving(true); setFormError("");
     try {
-      await updateQuestion(editingId, q);
-      await onChanged();
-      setEditingId(null);
+      await updateBankQuestion(editing.id, q);
+      setEditing(null);
+      load();
+      showToast?.("success", "บันทึกการแก้ไขแล้ว");
     } catch (err) {
-      console.error("Update question failed:", err);
-      setFormError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
-    } finally {
-      setSaving(false);
-    }
+      console.error("Update bank item failed:", err);
+      setFormError(err.response?.data?.message || "บันทึกไม่สำเร็จ");
+      showToast?.("error", "บันทึกไม่สำเร็จ", err.response?.data?.message);
+    } finally { setSaving(false); }
   };
 
-  const handleDelete = async (questionId) => {
-    setDeletingId(questionId);
+  const handleDelete = async (id) => {
     try {
-      await deleteQuestion(questionId);
-      await onChanged();
-    } catch (err) {
-      console.error("Delete question failed:", err);
-    } finally {
+      await deleteBankQuestion(id);
       setDeletingId(null);
+      load();
+      showToast?.("success", "ลบออกจากคลังแล้ว");
+    } catch (err) {
+      console.error("Delete bank item failed:", err);
+      showToast?.("error", "ลบไม่สำเร็จ", "ลองใหม่อีกครั้ง");
     }
   };
 
   return (
-    <div className="space-y-5">
-            <div className="flex items-center justify-between">
-        <p className="text-sm text-neutral-500">{questions.length} ข้อในชุดข้อสอบนี้</p>
-        <div className="flex items-center gap-2">
-          {categoryOptions.length > 0 && (
-            <button onClick={() => setShowManageCategories(true)} className="flex items-center gap-1.5 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-600 hover:text-orange-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
-              <Tags className="h-4 w-4" /> จัดการหมวดหมู่
-            </button>
-          )}
-          {!editingId && !locked && (
-            <button onClick={() => setMode(mode ? null : "picker")} className="flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-              <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
-            </button>
-          )}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">คลังข้อสอบของฉัน</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {loading ? "กำลังโหลด…" : `มี ${items.length} ข้อ`} · เป็นข้อสอบของคุณเอง ใช้ซ้ำได้ทุกคอร์สและทุกรอบสอบของวิชานี้
+            {" "}· ตอนจะเปิดสอบค่อยไปจัดชุดที่แท็บตั้งค่า
+          </p>
         </div>
+        {!mode && !editing && (
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto [&>button]:flex-1 [&>button]:justify-center sm:[&>button]:flex-none">
+            {items.length > 0 && (
+              <button onClick={handleExport} title="ดาวน์โหลดคลังทั้งวิชาเป็น .xlsx แก้แล้วนำเข้ากลับได้" className="flex items-center gap-1.5 border border-slate-200 hover:border-green-300 hover:text-green-700 text-slate-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+                <Download className="h-4 w-4" /> ส่งออก Excel
+              </button>
+            )}
+            {items.length > 0 && (
+              <button onClick={() => setShowCategories(true)} className="flex items-center gap-1.5 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-sm font-semibold transition">
+                <Tags className="h-4 w-4" /> จัดการหมวดหมู่
+              </button>
+            )}
+            <button onClick={() => setMode("picker")} className={`${BTN.primary} flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition`}>
+              <Plus className="h-4 w-4" /> เพิ่มข้อสอบเข้าคลัง
+            </button>
+          </div>
+        )}
       </div>
 
-      {showManageCategories && (
-        <ManageCategoriesModal
+      {showCategories && (
+        <BankCategoriesModal
           subjectId={subjectId}
-          adminId={adminId}
-          onClose={() => setShowManageCategories(false)}
-          onChanged={async () => { loadCategories(); await onChanged(); }}
+          onClose={() => setShowCategories(false)}
+          onChanged={async () => { load(); }}
         />
       )}
 
-      {locked && (
-        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">การสอบนี้กำลังเปิดอยู่ — เพิ่ม/ลบ/แก้ไขข้อสอบไม่ได้จนกว่าจะปิดสอบ (ไปที่แท็บ "เปิด/ปิดสอบ")</p>
+      <div ref={panelRef}>
+        {mode === "picker" && (
+          <div className="border border-slate-200 rounded-2xl p-5 relative">
+            <button aria-label="ปิด" onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400"><X className="h-4 w-4" /></button>
+            <p className="text-sm font-semibold text-slate-800 mb-3">เลือกวิธีเพิ่มข้อสอบเข้าคลัง</p>
+            <AddMethodPicker onPick={setMode} />
+          </div>
+        )}
+
+        {mode === "manual" && (
+          <QuestionFormPanel
+            key={formKey}
+            saving={saving}
+            error={formError}
+            saveLabel="บันทึกเข้าคลังและเพิ่มข้อถัดไป"
+            onSave={handleAddOne}
+            onClose={() => setMode(null)}
+            categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
+            hideScore
+          />
+        )}
+
+        {mode === "excel" && (
+          <ExcelImportFlow
+            onCancel={() => setMode(null)}
+            onConfirmRows={(rows) => upsertBankQuestions(subjectId, rows)}
+            onImported={(r) => {
+              load();
+              setMode(null);
+              const ins = Number(r?.inserted || 0);
+              const upd = Number(r?.updated || 0);
+              const skipped = Number(r?.skippedInvalidCount || 0);
+              const parts = [];
+              if (ins) parts.push(`เพิ่มใหม่ ${ins} ข้อ`);
+              if (upd) parts.push(`อัปเดตทับ ${upd} ข้อ`);
+              if (skipped) parts.push(`ข้าม ${skipped} ข้อ (ข้อมูลไม่ครบ)`);
+              showToast?.("success", "นำเข้าเรียบร้อย", parts.join(" · ") || "ไม่มีการเปลี่ยนแปลง");
+            }}
+            categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
+            existingItems={items}
+          />
+        )}
+
+        {editing && (
+          // (แก้บั๊ก) เพิ่ม key={editing.id} เพื่อบังคับให้ React mount ฟอร์มใหม่ทุกครั้งที่
+          // เปลี่ยนไปแก้ข้อสอบข้อใหม่ — เดิมไม่มี key เลย ทำให้กดแก้ไขข้อ B ระหว่างฟอร์ม
+          // ข้อ A เปิดค้างอยู่ (ดูจุดกันการกดซ้อนอีกจุดด้านล่าง) จะ reuse instance เดิมไม่รีเซ็ต
+          // state ภายในฟอร์ม เสี่ยง save เนื้อหาเก่าของ A ทับเป็นข้อ B แบบเงียบๆ
+          <QuestionFormPanel
+            key={editing.id}
+            initial={{ ...editing, score: 1 }}
+            saving={saving}
+            error={formError}
+            saveLabel="บันทึกการแก้ไข"
+            onSave={handleEditSave}
+            onClose={() => { setEditing(null); setFormError(""); }}
+            categoryOptions={categoryOptions}
+            gradeLevelOptions={gradeLevels}
+            hideScore
+          />
+        )}
+      </div>
+
+      {items.length > 0 && !editing && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาจากโจทย์"
+              className="w-full border border-slate-200 rounded-xl pl-9 pr-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
+            <option value="">ทุกหมวด</option>
+            {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
+          </select>
+          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
+            <option value="">ทุกระดับ</option>
+            {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
+          </select>
+          {filtered.length > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none px-1">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} className="accent-orange-500" />
+              เลือกทั้งหมด ({filtered.length})
+            </label>
+          )}
         </div>
       )}
 
-      {mode === "picker" && (
-        <div className="border border-neutral-200 rounded-2xl p-5 relative">
-          <button onClick={() => setMode(null)} className="absolute top-3 right-3 h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          <p className="text-sm font-semibold text-neutral-800 mb-3">เลือกวิธีเพิ่มข้อสอบ</p>
-          <AddMethodPicker onPick={setMode} />
+      {selectedIds.length > 0 && !editing && (
+        <div className="border border-orange-200 bg-orange-50 rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
+          <p className="text-xs font-semibold text-orange-800">เลือกไว้ {selectedIds.length} ข้อ</p>
+          <button
+            onClick={() => { setSelectedIds([]); setBulkPending(null); }}
+            className="text-[11px] text-slate-500 hover:text-slate-700 underline"
+          >
+            ยกเลิกการเลือก
+          </button>
+
+          {bulkPending ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className={`text-xs font-medium ${bulkPending.type === "delete" ? "text-red-700" : "text-slate-700"}`}>
+                {bulkPendingText()}
+              </span>
+              <button
+                onClick={runBulkPending}
+                disabled={bulkBusy}
+                className={`text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition disabled:opacity-40 ${
+                  bulkPending.type === "delete" ? "bg-red-600 hover:bg-red-700" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {bulkBusy ? "กำลังบันทึก…" : bulkPending.type === "delete" ? "ยืนยันลบ" : "ยืนยัน"}
+              </button>
+              <button
+                onClick={() => setBulkPending(null)}
+                disabled={bulkBusy}
+                className="text-xs text-slate-600 font-medium px-2 py-1.5 hover:bg-white rounded-xl transition disabled:opacity-40"
+              >
+                ยกเลิก
+              </button>
+            </div>
+          ) : (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <select
+                value=""
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") return;
+                  setBulkPending({
+                    type: "grade",
+                    value: v === "none" ? null : Number(v),
+                    label: v === "none" ? "ไม่ระบุระดับชั้น" : (gradeLevels.find((g) => String(g.id) === v)?.label || ""),
+                  });
+                }}
+                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs"
+              >
+                <option value="">เปลี่ยนระดับชั้น…</option>
+                <option value="none">ไม่ระบุ (ใช้ได้ทุกระดับชั้น)</option>
+                {gradeLevels.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+              </select>
+
+              <select
+                value=""
+                disabled={categoryOptions.length === 0}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (!v) return;
+                  setBulkPending({ type: "category", value: v });
+                }}
+                className="border border-orange-200 bg-white rounded-lg px-2 h-10 text-xs disabled:opacity-40 max-w-full md:max-w-[240px] truncate"
+              >
+                <option value="">เปลี่ยนหมวดหมู่…</option>
+                {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
+              </select>
+
+              <button
+                onClick={() => setBulkPending({ type: "delete" })}
+                className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl px-3 py-1.5 text-xs font-semibold transition"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> ลบที่เลือก
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {mode === "manual" && (
-        <QuestionFormPanel
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกและเพิ่มข้อถัดไป"
-          onSave={handleAddOne}
-          onClose={() => setMode(null)}
-          categoryOptions={categoryOptions}
-        />
-      )}
+      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
 
-      {mode === "excel" && (
-        <ExcelImportFlow examId={examId} onCancel={() => setMode(null)} onImported={async () => { await onChanged(); setMode(null); }} categoryOptions={categoryOptions} />
-      )}
-
-      {editingId && (
-        <QuestionFormPanel
-          initial={editingQuestion}
-          saving={saving}
-          error={formError}
-          saveLabel="บันทึกการแก้ไข"
-          onSave={handleEditSave}
-          onClose={() => { setEditingId(null); setFormError(""); }}
-          categoryOptions={categoryOptions}
-        />
-      )}
-
-      {questions.length === 0 && !mode ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-          <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-          <p className="text-sm font-semibold text-neutral-500">ยังไม่มีข้อสอบในชุดนี้</p>
-          <p className="text-xs text-neutral-400 mt-1">กด “เพิ่มข้อสอบ” เพื่อเริ่มต้น</p>
+      {/* (แก้บั๊ก) เดิมรายการข้อสอบด้านล่างนี้ไม่ได้ถูกกันด้วย !editing เหมือนแถบ
+          ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
+          ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
+      {!editing && (!loading && items.length === 0 && !mode ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+          <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
+          <p className="text-sm font-semibold text-slate-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
+          <p className="text-xs text-slate-500 mt-1">กดเพิ่มข้อสอบเข้าคลัง แล้วค่อยไปจัดชุดตอนจะเปิดสอบ</p>
         </div>
-      ) : questions.length > 0 && !editingId ? (
-        <div className="border border-neutral-100 rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-neutral-50 border-b border-neutral-100">
-                {["#", "โจทย์", "หมวด", "ระดับ", "คะแนน", ""].map((h) => (
-                  <th key={h} className="text-left text-xs font-semibold text-neutral-500 px-4 py-2.5">{h}</th>
+      ) : (
+        <div className="border border-slate-200 rounded-2xl divide-y divide-slate-100">
+          {filtered.map((it) => (
+            <div key={it.id} className={`px-4 py-3 flex items-start gap-3 ${deletingId === it.id ? "bg-red-50" : selectedIds.includes(it.id) ? "bg-orange-50/60" : ""}`}>
+              {deletingId === it.id ? (
+                <div className="flex-1 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-red-700 font-medium">ลบข้อนี้ออกจากคลังถาวร? (ข้อที่เคยใช้สอบไปแล้วจะไม่กระทบผลสอบเดิม)</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={() => handleDelete(it.id)} className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl px-3 py-1.5 transition">ยืนยันลบ</button>
+                    <button onClick={() => setDeletingId(null)} className="text-xs text-slate-600 font-medium px-3 py-1.5 hover:bg-slate-100 rounded-xl transition">ยกเลิก</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(it.id)}
+                    onChange={() => toggleSelect(it.id)}
+                    title="เลือกไว้เพื่อลบหรือเปลี่ยนแท็กทีเดียวหลายข้อ"
+                    className="mt-1 accent-orange-500 flex-shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวด"}</span>
+                      <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
+                      {it.gradeDetail && (
+                        <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{it.gradeDetail}</span>
+                      )}
+                      <span className="text-[11px] text-slate-500">
+                        {it.usedCount > 0
+                          ? `ใช้ไปแล้ว ${it.usedCount} ครั้ง${it.lastUsed ? ` · ล่าสุด ${it.lastUsed.courseName}${it.lastUsed.termName ? ` ${it.lastUsed.termName}` : ""}` : ""}`
+                          : "ยังไม่เคยใช้"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => { setEditing(it); setMode(null); }} title="แก้ไข" className="h-8 w-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setDeletingId(it.id)} title="ลบออกจากคลัง" className="h-8 w-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <p className="px-4 py-8 text-center text-sm text-slate-500">ไม่พบข้อสอบตามเงื่อนไขที่กรอง</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// สลับลำดับแบบสุ่ม (Fisher–Yates) ใช้กับปุ่มทางลัด "สุ่มเลือก N ข้อ" ในโหมดเลือกเอง
+function shuffleArr(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// นับจำนวนข้อแยกตามหมวด×ระดับ ใช้สรุปให้ครูดูก่อนกดยืนยัน ทั้งโหมดสุ่มและโหมดเลือกเอง
+function summarizeByCategory(items) {
+  const map = new Map();
+  for (const it of items || []) {
+    const cat = it.category || "ไม่ระบุหมวด";
+    if (!map.has(cat)) map.set(cat, { category: cat, "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0 });
+    const row = map.get(cat);
+    const lv = BANK_LEVELS.includes(it.level) ? it.level : "ปานกลาง";
+    row[lv] += 1;
+  }
+  return [...map.values()].map((r) => ({ ...r, total: r["ง่าย"] + r["ปานกลาง"] + r["ยาก"] }));
+}
+
+// ตารางสรุปชุดข้อสอบ (หมวด × ระดับความยาก) — โชว์ก่อนยืนยัน ให้ครูเช็คว่าสัดส่วนพอใจไหม
+// ก่อนที่จะกดใช้ชุดนี้จริง ไม่ต้องไล่นับเองทีละข้อ
+function SetSummaryTable({ items }) {
+  const rows = summarizeByCategory(items);
+  if (!rows.length) return null;
+  const totals = rows.reduce(
+    (acc, r) => ({
+      "ง่าย": acc["ง่าย"] + r["ง่าย"],
+      "ปานกลาง": acc["ปานกลาง"] + r["ปานกลาง"],
+      "ยาก": acc["ยาก"] + r["ยาก"],
+      total: acc.total + r.total,
+    }),
+    { "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0, total: 0 }
+  );
+  return (
+    <div className="border border-slate-200 rounded-xl overflow-hidden">
+      <p className="text-xs font-semibold text-slate-600 px-4 pt-3 pb-1.5">สรุปชุดข้อสอบ — ตรวจสอบสัดส่วนก่อนใช้งาน</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 text-slate-500 text-xs">
+              <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
+              {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2 w-20">{lv}</th>)}
+              <th className="text-center px-3 py-2 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.category} className="border-t border-slate-100">
+                <td className="px-4 py-1.5 text-slate-800">{r.category}</td>
+                {BANK_LEVELS.map((lv) => (
+                  <td key={lv} className="text-center px-3 py-1.5 text-slate-600">{r[lv] || "-"}</td>
                 ))}
+                <td className="text-center px-3 py-1.5 font-semibold text-slate-700">{r.total}</td>
               </tr>
-            </thead>
-            <tbody>
-              {questions.map((q, i) => (
-                <tr key={q.id} className="border-b border-neutral-50 hover:bg-neutral-50 transition">
-                  <td className="px-4 py-3 text-neutral-400">{i + 1}</td>
-                  <td className="px-4 py-3 text-neutral-800 max-w-[320px] truncate">{q.text}</td>
-                  <td className="px-4 py-3"><span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{q.category || "—"}</span></td>
-                  <td className="px-4 py-3"><Badge className={LEVEL_BADGE[q.level]}>{q.level}</Badge></td>
-                  <td className="px-4 py-3 text-neutral-500">{q.score}</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {locked ? (
-                      <span className="text-xs text-neutral-300">ล็อกอยู่</span>
-                    ) : (
-                      <>
-                        <button onClick={() => { setMode(null); setEditingId(q.id); }} className="text-xs text-orange-500 hover:text-orange-700 font-medium mr-3">แก้ไข</button>
-                        <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id} className="text-xs text-red-400 hover:text-red-600 font-medium disabled:opacity-40">
-                          {deletingId === q.id ? "กำลังลบ…" : "ลบ"}
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-slate-200 bg-slate-50/70 font-semibold text-slate-800">
+              <td className="px-4 py-2">รวมทั้งหมด</td>
+              {BANK_LEVELS.map((lv) => <td key={lv} className="text-center px-3 py-2">{totals[lv] || "-"}</td>)}
+              <td className="text-center px-3 py-2">{totals.total}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ─── Assemble Dialog — จัดชุดข้อสอบก่อนเปิดสอบ ───────────────────────────────
+// สองโหมด: ให้ระบบสุ่มมาหลายชุดให้เลือก หรือครูติ๊กเลือกเองจากคลัง
+// ชุดที่เลือกได้จะถูกคัดลอกลงรอบสอบ ต้นฉบับยังอยู่ในคลังเสมอ
+function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
+  const [tab, setTab] = useState("auto");
+  const [bank, setBank] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [counts, setCounts] = useState({});
+  const totalScore = 20; // คะแนนเต็มต่อรอบคงที่ไว้ที่ 20 เสมอ เพื่อเทียบคะแนนข้ามรอบ/ข้ามวิชาได้บนสเกลเดียวกัน
+  const [applyTo, setApplyTo] = useState("all");
+  const [sets, setSets] = useState(null);
+  const [activeSet, setActiveSet] = useState(0);
+  const [working, setWorking] = useState(null);      // ชุดที่กำลังปรับ (array ของข้อ)
+  const [swapIndex, setSwapIndex] = useState(null);  // กำลังหาข้อมาแทนข้อที่เท่าไร
+  const [picked, setPicked] = useState([]);          // โหมดเลือกเอง
+  const [quickCount, setQuickCount] = useState("");  // ช่องกรอกจำนวนเองสำหรับปุ่มทางลัด
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notes, setNotes] = useState([]);
+
+  useEffect(() => {
+    if (!subjectId) return;
+    setLoading(true);
+    fetchBank(subjectId)
+      .then((list) => setBank(list || []))
+      .catch((err) => { console.error("Load bank failed:", err); setError("โหลดคลังข้อสอบไม่สำเร็จ"); })
+      .finally(() => setLoading(false));
+  }, [subjectId]);
+
+  // ระดับชั้นที่คอร์สนี้ถูกแท็กไว้ (ถ้ามี) — ใช้เป็นตัวกรองคลังเริ่มต้นเท่านั้น เพื่อกันเนื้อหาข้ามระดับชั้น
+  // (เช่น เคมี ม.4 ปนกับเคมี ม.1) หลุดเข้ามาโดยไม่ตั้งใจ ไม่ใช่การบล็อกแบบตายตัว ติวเตอร์ปิดตัวกรองดูทุกระดับชั้นได้เสมอ
+  const courseGradeLevelId = exam?.courseGradeLevelId || null;
+  const courseGradeDetail = exam?.courseGradeDetail || null;
+  const [showAllGrades, setShowAllGrades] = useState(!courseGradeLevelId);
+
+  // คลังหลังกรองตามระดับชั้น — ข้อที่ไม่ได้ระบุระดับชั้น (gradeLevelId ว่าง) ถือว่าใช้ได้ทุกระดับชั้นเสมอ
+  const gradeFilteredBank = useMemo(() => {
+    if (showAllGrades || !courseGradeLevelId) return bank;
+    return bank.filter((b) => b.gradeLevelId == null || b.gradeLevelId === courseGradeLevelId);
+  }, [bank, showAllGrades, courseGradeLevelId]);
+
+  // สลับตัวกรองระดับชั้นแล้ว ค่าที่เคยตั้งไว้อาจเกินจำนวนที่มีจริง รีเซ็ตให้เริ่มจัดชุดใหม่สะอาด ๆ
+  useEffect(() => {
+    setCounts({});
+    setSets(null);
+    setWorking(null);
+    setPicked([]);
+  }, [showAllGrades]);
+
+  const summary = useMemo(() => {
+    const map = {};
+    for (const b of gradeFilteredBank) {
+      if (!b.category) continue;
+      const k = `${b.category}||${b.level || "ปานกลาง"}`;
+      map[k] = (map[k] || 0) + 1;
+    }
+    return Object.entries(map).map(([k, count]) => {
+      const [category, level] = k.split("||");
+      return { category, level, count };
+    });
+  }, [gradeFilteredBank]);
+
+  const categories = useMemo(() => [...new Set(summary.map((r) => r.category))].sort(), [summary]);
+  const availableOf = (c, l) => summary.find((r) => r.category === c && r.level === l)?.count || 0;
+  const key = (c, l) => `${c}||${l}`;
+  const countOf = (c, l) => Number(counts[key(c, l)] || 0);
+
+  const setCount = (c, l, v) => {
+    const max = availableOf(c, l);
+    const n = Math.max(0, Math.min(max, Number(v) || 0));
+    setCounts((prev) => ({ ...prev, [key(c, l)]: n }));
+    setSets(null); setWorking(null);
+  };
+
+  const blueprint = useMemo(
+    () => Object.entries(counts).filter(([, n]) => Number(n) > 0).map(([k, n]) => {
+      const [category, level] = k.split("||");
+      return { category, level, count: Number(n) };
+    }),
+    [counts]
+  );
+  const totalQuestions = blueprint.reduce((s, c) => s + c.count, 0);
+
+  const thinCategories = useMemo(() => {
+    const byCat = {};
+    for (const c of blueprint) byCat[c.category] = (byCat[c.category] || 0) + c.count;
+    return Object.entries(byCat).filter(([, n]) => n < MIN_PER_CATEGORY).map(([c]) => c);
+  }, [blueprint]);
+
+  const readError = (err, fallback) => {
+    const d = err?.response?.data;
+    if (d?.blockers?.length) return d.blockers.join(" / ");
+    if (d?.shortages?.length) {
+      return "คลังมีข้อไม่พอ: " + d.shortages.map((x) => `${x.category} (${x.level}) ขาด ${x.need - x.have} ข้อ`).join(" / ");
+    }
+    return d?.message || fallback;
+  };
+
+  const runAssemble = async () => {
+    setBusy(true); setError(""); setNotes([]);
+    try {
+      const data = await assembleExamSet({ courseId, subjectId, blueprint, totalScore, setCount: 3 });
+      setSets(data.sets || []);
+      setNotes(data.notes || []);
+      setActiveSet(0);
+      setWorking((data.sets?.[0]?.items || []).map((x) => ({ ...x })));
+    } catch (err) {
+      console.error("Assemble failed:", err);
+      setError(readError(err, "จัดชุดข้อสอบไม่สำเร็จ ลองใหม่อีกครั้ง"));
+    } finally { setBusy(false); }
+  };
+
+  const chooseSet = (idx) => {
+    setActiveSet(idx);
+    setWorking((sets[idx]?.items || []).map((x) => ({ ...x })));
+    setSwapIndex(null);
+  };
+
+  const replaceAt = (idx, bankItem) => {
+    setWorking((prev) => prev.map((it, i) => (i === idx ? {
+      bankQuestionId: bankItem.id, text: bankItem.text, options: bankItem.options,
+      correct: bankItem.correct, level: bankItem.level, category: bankItem.category,
+      explanation: bankItem.explanation, reused: false,
+    } : it)));
+    setSwapIndex(null);
+  };
+
+  const removeAt = (idx) => setWorking((prev) => prev.filter((_, i) => i !== idx));
+
+  const apply = async (ids) => {
+    setBusy(true); setError("");
+    try {
+      await applyExamSet({ examId: exam.id, bankQuestionIds: ids, applyTo, totalScore });
+      await onDone();
+    } catch (err) {
+      console.error("Apply set failed:", err);
+      setError(readError(err, "บันทึกชุดข้อสอบไม่สำเร็จ"));
+    } finally { setBusy(false); }
+  };
+
+  const scored = working ? scaleScoresLocal(working, totalScore) : [];
+  const pickedItems = bank.filter((b) => picked.includes(b.id));
+  const pickedScored = scaleScoresLocal(
+    pickedItems.map((b) => ({ ...b, bankQuestionId: b.id })), totalScore
+  );
+
+  // เลือกว่าชุดนี้จะใช้กับรอบไหนบ้าง — อธิบายเหตุผลละเอียดหน่อยเพราะเป็นการตัดสินใจที่กระทบ
+  // การวัดพัฒนาการก่อน-หลังโดยตรง ใช้ร่วมกันทั้งโหมดสุ่มและโหมดเลือกเอง
+  const applyToBox = (
+    <div className="border border-slate-200 rounded-xl p-4 space-y-2.5">
+      <p className="text-sm font-semibold text-slate-700">ใช้ชุดนี้กับ</p>
+
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "all" ? "bg-orange-50" : "hover:bg-slate-50"}`}>
+        <input type="radio" name="applyTo" checked={applyTo === "all"} onChange={() => setApplyTo("all")} className="mt-1 accent-orange-500" />
+        <span>
+          <span className="text-sm font-medium text-slate-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
+          <span className="block text-xs text-slate-500 mt-0.5">
+            ใช้ข้อสอบชุดเดียวกันทุกรอบ เพื่อให้เทียบคะแนนก่อนเรียนและหลังเรียนได้แม่นยำ
+            โดยไม่มีผลจากความยากง่ายของข้อสอบที่ต่างกัน
+          </span>
+        </span>
+      </label>
+
+      <label className={`flex items-start gap-2.5 rounded-lg p-2.5 -m-0.5 cursor-pointer transition ${applyTo === "this" ? "bg-orange-50" : "hover:bg-slate-50"}`}>
+        <input type="radio" name="applyTo" checked={applyTo === "this"} onChange={() => setApplyTo("this")} className="mt-1 accent-orange-500" />
+        <span>
+          <span className="text-sm font-medium text-slate-800">เฉพาะรอบนี้</span>
+          <span className="block text-xs text-slate-500 mt-0.5">
+            ใช้เมื่อต้องการให้รอบนี้ต่างจากรอบอื่นโดยตั้งใจ (เช่น เปลี่ยนเนื้อหาที่สอนระหว่างเทอม) —
+            แต่หลังจากนี้จะเทียบผลก่อน-หลังของรอบนี้กับรอบอื่นแบบตรงไปตรงมาไม่ได้อีก เพราะข้อสอบไม่ใช่ชุดเดียวกันแล้ว
+          </span>
+        </span>
+      </label>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Zap className="h-4 w-4 text-white" /> จัดชุดข้อสอบ
+            </h3>
+            <p className="text-xs text-white/80 mt-1">หยิบข้อจากคลังของคุณมาเป็นชุดที่จะใช้สอบ ต้นฉบับในคลังไม่ถูกแตะต้อง</p>
+          </div>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
         </div>
-      ) : null}
+
+        <div className="flex gap-1 px-4 sm:px-6 pt-3 border-b border-slate-100">
+          {[["auto", "ให้ระบบสุ่มให้"], ["manual", "เลือกเอง"]].map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => { setTab(k); setError(""); }}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition ${tab === k ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {courseGradeLevelId && !loading && bank.length > 0 && (
+          <div className="mx-4 sm:mx-6 mt-3 flex items-start sm:items-center justify-between gap-2 sm:gap-3 bg-blue-50 border border-blue-100 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 flex-col sm:flex-row">
+            <div className="flex items-start gap-2">
+              <Filter className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] sm:text-xs text-blue-700">
+                {showAllGrades
+                  ? `กำลังแสดงข้อจากคลังทุกระดับชั้น (คอร์สนี้แท็กไว้ว่า ${courseGradeDetail || "-"})`
+                  : `กรองคลังให้ตรงกับระดับชั้นของคอร์สนี้ (${courseGradeDetail || "-"}) เป็นค่าเริ่มต้น — ข้อที่ไม่ได้ระบุระดับชั้นจะแสดงด้วยเสมอ`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAllGrades((v) => !v)}
+              className="text-[11px] sm:text-xs font-semibold text-blue-700 border border-blue-200 bg-white hover:bg-blue-100 rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5 flex-shrink-0 transition self-start sm:self-auto"
+            >
+              {showAllGrades ? `กรองเฉพาะ ${courseGradeDetail || "ระดับชั้นคอร์ส"}` : "แสดงทุกระดับชั้น"}
+            </button>
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4">
+          {loading ? (
+            <Spinner block label="กำลังโหลดคลังข้อสอบ…" />
+          ) : !bank.length ? (
+            <div className="border border-dashed border-slate-200 rounded-xl py-10 text-center">
+              <FileQuestion className="h-9 w-9 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-600">คลังของคุณยังไม่มีข้อสอบในวิชานี้</p>
+              <p className="text-xs text-slate-500 mt-1">ไปเพิ่มข้อที่แท็บคลังข้อสอบก่อน</p>
+            </div>
+          ) : tab === "auto" && !working ? (
+            <>
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full min-w-[480px] text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 text-xs">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
+                      {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2.5 w-28">{lv}</th>)}
+                      <th className="text-center px-3 py-2.5 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categories.map((cat) => (
+                      <tr key={cat} className="border-t border-slate-100">
+                        <td className="px-4 py-2.5 font-medium text-slate-800">{cat}</td>
+                        {BANK_LEVELS.map((lv) => {
+                          const max = availableOf(cat, lv);
+                          return (
+                            <td key={lv} className="px-3 py-2 text-center">
+                              <input
+                                type="number" min={0} max={max} disabled={max === 0}
+                                value={counts[key(cat, lv)] ?? ""} placeholder="0"
+                                onChange={(e) => setCount(cat, lv, e.target.value)}
+                                className="w-16 border border-slate-200 rounded-xl px-2 h-10 text-sm text-center disabled:bg-slate-50 disabled:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                              />
+                              <p className="text-[11px] text-slate-500 mt-1">มี {max} ข้อ</p>
+                            </td>
+                          );
+                        })}
+                        <td className="px-3 py-2.5 text-center font-semibold text-slate-700">
+                          {BANK_LEVELS.reduce((s, lv) => s + countOf(cat, lv), 0) || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600">คะแนนเต็ม</span>
+                  <span className="w-20 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 text-sm text-center font-semibold text-slate-700">{totalScore}</span>
+                  <span className="text-[11px] text-slate-500">คงที่ทุกรอบสอบ เทียบคะแนนข้ามรอบได้บนสเกลเดียวกัน</span>
+                </div>
+                <p className="text-sm text-slate-600">รวม <span className="font-bold text-slate-900">{totalQuestions}</span> ข้อ</p>
+              </div>
+
+              {applyToBox}
+
+              {thinCategories.length > 0 && (
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+                  <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">
+                    หมวด {thinCategories.join(", ")} มีน้อยกว่า {MIN_PER_CATEGORY} ข้อ กราฟพัฒนาการรายหมวดของหมวดนี้จะยังตีความไม่ได้ (จัดชุดได้ตามปกติ)
+                  </p>
+                </div>
+              )}
+            </>
+          ) : tab === "auto" && working ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm text-slate-600">เลือกชุด</span>
+                {(sets || []).map((s, i) => (
+                  <button key={s.label} onClick={() => chooseSet(i)}
+                    className={`px-3 py-1.5 rounded-xl text-sm font-semibold border transition ${i === activeSet ? "bg-orange-500 text-white border-orange-500" : "border-slate-200 text-slate-600 hover:border-orange-300"}`}>
+                    ชุด {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm">
+                <span className="font-semibold text-slate-800">{scored.length} ข้อ</span>
+                <span className="text-slate-600">รวม {fmtScore(scored.reduce((s, it) => s + it.score, 0))} คะแนน</span>
+                <span className="text-slate-500">ซ้ำกับที่เคยใช้ {scored.filter((it) => it.reused).length} ข้อ</span>
+              </div>
+
+              {notes.map((n, i) => (
+                <p key={i} className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">{n}</p>
+              ))}
+
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+                {scored.map((it, idx) => (
+                  <div key={`${it.bankQuestionId}-${idx}`} className="px-4 py-3">
+                    <div className="flex items-start gap-3">
+                      <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
+                          <span className="text-[11px] text-slate-500">{fmtScore(it.score)} คะแนน</span>
+                          {it.reused && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">เคยใช้แล้ว</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => setSwapIndex(swapIndex === idx ? null : idx)} className="text-xs font-semibold text-slate-500 hover:text-orange-600 px-2 py-1">เปลี่ยนข้อ</button>
+                        <button onClick={() => removeAt(idx)} title="เอาออก" className="h-7 w-7 rounded-lg hover:bg-red-50 flex items-center justify-center text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    </div>
+
+                    {swapIndex === idx && (
+                      <div className="mt-3 ml-9 border border-orange-200 bg-orange-50/40 rounded-xl p-3 max-h-56 overflow-y-auto space-y-1">
+                        <p className="text-xs text-slate-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
+                        {gradeFilteredBank
+                          .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
+                          .map((b) => (
+                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5 line-clamp-2">
+                              {b.text}
+                            </button>
+                          ))}
+                        {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
+                          <p className="text-xs text-slate-500 py-2">ไม่มีข้ออื่นในช่องนี้ให้สลับแล้ว</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <SetSummaryTable items={scored} />
+              {applyToBox}
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-slate-500">เลือกข้อที่ต้องการจากคลัง ระบบจะแบ่งคะแนนให้รวมเท่ากับ {totalScore} คะแนน</p>
+
+              <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5">
+                <span className="text-xs font-semibold text-slate-500">ทางลัด:</span>
+                <button
+                  type="button"
+                  onClick={() => setPicked(gradeFilteredBank.map((b) => b.id))}
+                  className="text-xs font-semibold border border-slate-200 bg-white hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-2.5 py-1 transition"
+                >
+                  เอาทั้งหมด ({gradeFilteredBank.length})
+                </button>
+                {[10, 20, 30].filter((n) => n < gradeFilteredBank.length).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, n))}
+                    className="text-xs font-semibold border border-slate-200 bg-white hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-2.5 py-1 transition"
+                  >
+                    สุ่มเอา {n} ข้อ
+                  </button>
+                ))}
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number" min="1" max={gradeFilteredBank.length}
+                    value={quickCount}
+                    onChange={(e) => setQuickCount(e.target.value)}
+                    placeholder="จำนวน"
+                    className="w-16 border border-slate-200 rounded-xl px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                  <button
+                    type="button"
+                    disabled={!Number(quickCount) || Number(quickCount) <= 0}
+                    onClick={() => setPicked(shuffleArr(gradeFilteredBank.map((b) => b.id)).slice(0, Math.min(Number(quickCount), gradeFilteredBank.length)))}
+                    className="text-xs font-semibold bg-orange-50 hover:bg-orange-100 disabled:opacity-40 text-orange-700 rounded-xl px-2.5 py-1 transition"
+                  >
+                    สุ่มเอาตามจำนวน
+                  </button>
+                </div>
+                {picked.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPicked([])}
+                    className="text-xs font-semibold text-slate-600 hover:text-red-600 border border-slate-200 hover:border-red-300 bg-white rounded-xl px-2.5 py-1 ml-auto transition"
+                  >
+                    ล้างที่เลือกไว้
+                  </button>
+                )}
+              </div>
+
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 max-h-[46vh] overflow-y-auto">
+                {gradeFilteredBank.map((b) => {
+                  const on = picked.includes(b.id);
+                  return (
+                    <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
+                      <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-slate-800 line-clamp-2">{b.text}</p>
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
+                          <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
+                          {b.gradeDetail && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{b.gradeDetail}</span>}
+                          <span className="text-[11px] text-slate-500">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-sm text-slate-600">
+                เลือกแล้ว <span className="font-bold text-slate-900">{picked.length}</span> ข้อ
+                {picked.length > 0 && ` · ข้อละประมาณ ${fmtScore(pickedScored[0]?.score || 0)} คะแนน`}
+              </p>
+
+              {picked.length > 0 && <SetSummaryTable items={pickedScored} />}
+              {applyToBox}
+            </>
+          )}
+
+          {error && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700">{error}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-slate-100">
+          <p className="text-xs text-slate-500">
+            {applyTo === "all" ? "จะใส่ลงทั้ง Pre / Mid / Post และแทนที่ข้อสอบเดิมของรอบเหล่านั้น" : "จะใส่ลงเฉพาะรอบนี้และแทนที่ข้อสอบเดิม"}
+          </p>
+          <div className="flex flex-wrap items-center justify-end gap-2 flex-shrink-0">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">ยกเลิก</button>
+            {tab === "auto" && working ? (
+              <>
+                <button onClick={runAssemble} disabled={busy} className="px-4 py-2 text-sm font-semibold border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-600 disabled:opacity-40">สุ่มใหม่</button>
+                <button onClick={() => apply(scored.map((it) => it.bankQuestionId))} disabled={busy || !scored.length}
+                  className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
+                  {busy ? "กำลังบันทึก…" : `ใช้ชุด ${sets?.[activeSet]?.label || ""}`}
+                </button>
+              </>
+            ) : tab === "auto" ? (
+              <button onClick={runAssemble} disabled={busy || totalQuestions === 0 || loading}
+                className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
+                {busy ? "กำลังสุ่ม…" : "สุ่มชุดข้อสอบ"}
+              </button>
+            ) : (
+              <button onClick={() => apply(picked)} disabled={busy || !picked.length}
+                className={`${BTN.primary} px-4 py-2 text-sm font-semibold rounded-xl disabled:opacity-40`}>
+                {busy ? "กำลังบันทึก…" : "ใช้ข้อที่เลือก"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 // ─── Preview Tab ─────────────────────────────────────────────────────────────
 
-function PreviewTab({ exam, goToQuestions }) {
+function PreviewTab({ exam, goToAssemble }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const questions = exam.questions || [];
   const current = questions[activeIdx];
@@ -617,11 +1840,11 @@ function PreviewTab({ exam, goToQuestions }) {
 
   if (questions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-        <FileQuestion className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">ยังไม่มีข้อสอบให้ preview</p>
-        <button onClick={goToQuestions} className="mt-4 flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-4 py-2 text-sm font-semibold transition">
-          <Plus className="h-4 w-4" /> เพิ่มข้อสอบ
+      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+        <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
+        <p className="text-sm font-semibold text-slate-500">รอบนี้ยังไม่มีชุดข้อสอบ</p>
+        <button onClick={goToAssemble} className={`${BTN.primary} mt-4 flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition`}>
+          <Zap className="h-4 w-4" /> ไปจัดชุดข้อสอบ
         </button>
       </div>
     );
@@ -645,28 +1868,28 @@ function PreviewTab({ exam, goToQuestions }) {
         </div>
       )}
 
-      <div className="border border-neutral-200 rounded-2xl p-6">
+      <div className="border border-slate-200 rounded-2xl p-4 sm:p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-neutral-200 flex items-center justify-center text-neutral-500 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="text-sm font-semibold text-neutral-700">ข้อที่ {activeIdx + 1} / {questions.length}</span>
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-neutral-200 flex items-center justify-center text-neutral-500 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            <button aria-label="ก่อนหน้า" onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><ChevronLeft className="h-4 w-4" /></button>
+            <span className="text-sm font-semibold text-slate-700">ข้อที่ {activeIdx + 1} / {questions.length}</span>
+            <button aria-label="ถัดไป" onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} disabled={activeIdx === questions.length - 1} className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 disabled:opacity-30 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><ChevronRight className="h-4 w-4" /></button>
           </div>
           {current.level && <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${LEVEL_COLOR[current.level]?.pill}`}>{current.level}</span>}
         </div>
 
         <div className="flex items-baseline gap-3 mb-5">
-          <span className="text-xl font-black text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text || <span className="text-neutral-300 italic">ยังไม่มีโจทย์</span>}</p>
+          <span className="text-xl font-bold text-orange-500">{activeIdx + 1}.</span>
+          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
         </div>
 
         <div className="space-y-2.5">
           {OPTION_LABELS.map((label, optIdx) => {
             const isCorrect = current.correct === optIdx;
             return (
-              <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-neutral-200"}`}>
-                <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                <span className="text-sm text-neutral-800">{current.options?.[optIdx] || <span className="text-neutral-300 italic">ว่าง</span>}</span>
+              <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200"}`}>
+                <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+                <span className="text-sm text-slate-800">{current.options?.[optIdx] || <span className="text-slate-300 italic">ว่าง</span>}</span>
                 {isCorrect && <Check className="h-4 w-4 text-green-600 ml-auto" />}
               </div>
             );
@@ -675,16 +1898,16 @@ function PreviewTab({ exam, goToQuestions }) {
 
         {current.explanation?.trim() ? (
           <div className="mt-4 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
-            <span className="text-sm flex-shrink-0">💡</span>
+            <LuLightbulb className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
               <p className="text-xs text-blue-700/90 leading-relaxed">{current.explanation}</p>
             </div>
           </div>
         ) : (
-          <div className="mt-4 flex gap-2 bg-neutral-50 border border-neutral-100 rounded-lg p-3">
-            <AlertCircle className="h-4 w-4 text-neutral-300 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-neutral-400">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
+          <div className="mt-4 flex gap-2 bg-slate-50 border border-slate-100 rounded-lg p-3">
+            <AlertCircle className="h-4 w-4 text-slate-300 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-500">ยังไม่ได้ใส่คำอธิบายเฉลยสำหรับข้อนี้</p>
           </div>
         )}
       </div>
@@ -719,7 +1942,7 @@ function formatCountdown(sec) {
   return `เหลืออีก ${parts.join(" ")}`;
 }
 
-function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) {
+function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, onReopen, onClose, goToPreview }) {
   const examId = exam.id;
   const settings = exam.settings;
   const status = deriveStatus(exam);
@@ -744,7 +1967,8 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
       return;
     }
     try {
-      const payload = { totalQuestions: Number(form.totalQuestions), duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
+      // ไม่ส่ง totalQuestions ไปด้วย เพราะจำนวนข้อมาจากชุดที่จัดไว้ ไม่ใช่ค่าที่ครูพิมพ์
+      const payload = { duration: Number(form.duration), date: form.date || null, time: form.time || null, openMode: mode };
       const result = await updateExamSettings(examId, payload);
       await onSaved();
       setSaved(true);
@@ -830,48 +2054,96 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
     return () => clearInterval(iv);
   }, [status, pollResults]);
 
+  const [showAssemble, setShowAssemble] = useState(false);
   const joined = live?.joinedCount ?? 0;
   const enrolled = live?.enrolledCount ?? 0;
   const pct = enrolled ? Math.round((joined / enrolled) * 100) : 0;
 
+  const setQuestions = exam.questions || [];
+  const setScoreSum = sumScores(setQuestions);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+      {/* ── ข้อสอบของรอบนี้ — จุดเริ่มต้นก่อนเปิดสอบ ── */}
+      <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <FileQuestion className="h-4 w-4 text-slate-400" /> ข้อสอบของรอบนี้
+            </h3>
+            <p className="text-sm text-slate-700 mt-1">
+              {setQuestions.length > 0
+                ? `${setQuestions.length} ข้อ · รวม ${fmtScore(setScoreSum)} คะแนน`
+                : "ยังไม่มีข้อสอบในรอบนี้"}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              เลือกข้อจากคลังข้อสอบ โดยให้ระบบสุ่มหลายชุด หรือเลือกเอง
+            </p>
+            {setQuestions.length > 0 && (
+              <button onClick={goToPreview} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700">
+                ดูชุดข้อสอบทั้ง {setQuestions.length} ข้อ <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowAssemble(true)}
+            disabled={status === "active"}
+            className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 rounded-xl px-4 py-2.5 text-sm font-semibold transition`}
+          >
+            <Zap className="h-4 w-4" /> {setQuestions.length > 0 ? "จัดชุดข้อสอบใหม่" : "จัดชุดข้อสอบ"}
+          </button>
+        </div>
+        {status === "active" && (
+          <p className="text-xs text-amber-600 mt-2">กำลังเปิดสอบอยู่ ต้องปิดสอบก่อนจึงจะจัดชุดใหม่ได้</p>
+        )}
+      </div>
+
+      {showAssemble && (
+        <AssembleDialog
+          exam={exam}
+          courseId={courseId}
+          subjectId={subjectId}
+          onClose={() => setShowAssemble(false)}
+          onDone={async () => {
+            setShowAssemble(false);
+            await onSaved();
+            showToast?.("success", "บันทึกชุดข้อสอบแล้ว", "ข้อสอบถูกใส่ลงรอบสอบเรียบร้อย");
+          }}
+        />
+      )}
+
       {/* ── ตั้งค่าข้อสอบ ── */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5 space-y-5">
-        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2">
-          <SettingsIcon className="h-4 w-4 text-neutral-400" /> ตั้งค่าข้อสอบ
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-5">
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+          <SettingsIcon className="h-4 w-4 text-slate-400" /> ตั้งค่าข้อสอบ
         </h3>
 
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-xl p-3">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700 leading-relaxed">Exam Settings คุมภาพรวมของการสอบเท่านั้น (จำนวนข้อเป้าหมาย / เวลา / วันสอบ) — ส่วนโจทย์แต่ละข้อแก้ไขได้ที่แท็บ ข้อสอบ</p>
+          <p className="text-xs text-blue-700 leading-relaxed">ส่วนนี้คุมเวลาและวันสอบเท่านั้น จำนวนข้อและคะแนนมาจากชุดที่จัดไว้ในกล่องด้านบน ส่วนเนื้อข้อสอบแก้ได้ที่แท็บคลังข้อสอบ</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">จำนวนข้อ (เป้าหมาย)</label>
-            <input type="number" min={0} value={form.totalQuestions} onChange={(e) => setForm({ ...form, totalQuestions: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1.5">เวลาสอบ (นาที)</label>
-            <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-          </div>
+        {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
+            ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสอบ (นาที)</label>
+          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
           <div className="grid grid-cols-2 gap-3">
-            <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
-            <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-neutral-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300" />
+            <input type="date" value={form.date || ""} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            <input type="time" value={form.time || ""} onChange={(e) => setForm({ ...form, time: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1.5">วิธีเปิดสอบ</label>
-          <div className={`flex rounded-xl overflow-hidden border border-neutral-200 ${isClosed ? "opacity-50" : ""}`}>
+          <label className="block text-sm font-medium text-slate-700 mb-1.5">วิธีเปิดสอบ</label>
+          <div className={`flex rounded-xl overflow-hidden border border-slate-200 ${isClosed ? "opacity-50" : ""}`}>
             <button
               type="button"
               onClick={() => setForm({ ...form, openMode: "manual" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed || (form.openMode || "manual") === "manual" ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               เปิดเอง
             </button>
@@ -879,7 +2151,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
               type="button"
               disabled={isClosed}
               onClick={() => setForm({ ...form, openMode: "auto" })}
-              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-neutral-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+              className={`flex-1 px-3 py-2.5 text-sm font-semibold transition ${isClosed ? "bg-white text-slate-400 cursor-not-allowed" : form.openMode === "auto" ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
             >
               เปิดอัตโนมัติตามวันเวลา
             </button>
@@ -888,14 +2160,14 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
             <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mt-2 text-left">
               <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 leading-relaxed">
-                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลใดๆ จนกว่าจะกดปุ่ม "เปิดสอบใหม่" ด้วยตัวเองก่อน (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
+                ข้อสอบนี้ปิดไปแล้ว โหมดเปิดอัตโนมัติจะยังไม่มีผลจนกว่าจะกดปุ่ม "เปิดสอบใหม่" (ระบบจะไม่เปิดข้อสอบที่เคยปิดไปแล้วให้อัตโนมัติ เพื่อป้องกันการลบผลสอบเดิมของนักเรียนโดยไม่ตั้งใจ)
               </p>
             </div>
           ) : (
-            <p className="text-xs text-neutral-400 mt-1.5 leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
               {form.openMode === "auto"
                 ? "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้ (ต้องระบุวันที่และเวลาให้ครบ) — ถ้าถึงเวลาแล้วแต่ยังใส่ข้อสอบไม่ครบ ระบบจะรอจนกว่าจะมีข้อสอบก่อนค่อยเปิดให้"
-                : "ติวเตอร์เป็นคนกดปุ่มเปิดสอบเองด้านล่าง — วันที่ที่ตั้งไว้จะโชว์ให้นักเรียนเห็นเป็นกำหนดการเฉยๆ (อาจเปลี่ยนแปลงได้)"}
+                : "ติวเตอร์กดปุ่มเปิดสอบด้านล่างเอง — วันที่ที่ตั้งไว้จะแสดงให้นักเรียนเห็นเป็นกำหนดการเท่านั้น (อาจเปลี่ยนแปลงได้)"}
             </p>
           )}
           {isScheduledAuto && (
@@ -916,20 +2188,20 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
       </div>
 
       {/* ── เปิด/ปิดสอบ ── */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
-        <h3 className="text-sm font-bold text-neutral-800 flex items-center gap-2 mb-5">
-          <Play className="h-4 w-4 text-neutral-400" /> เปิด/ปิดสอบ
+      <div className="bg-white rounded-2xl border border-slate-200 p-5">
+        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-5">
+          <Play className="h-4 w-4 text-slate-400" /> เปิด/ปิดสอบ
         </h3>
 
         {/* ── closed: offer "เปิดสอบใหม่" (reset + reopen), with a clear warning ── */}
         {status === "closed" && (
           <div className="text-center py-6 space-y-4">
-            <div className="h-14 w-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto">
-              <StopCircle className="h-6 w-6 text-neutral-400" />
+            <div className="h-14 w-14 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+              <StopCircle className="h-6 w-6 text-slate-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">การสอบนี้ปิดแล้ว</p>
-              <p className="text-xs text-neutral-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
+              <p className="text-sm font-semibold text-slate-800">การสอบนี้ปิดแล้ว</p>
+              <p className="text-xs text-slate-500 mt-1">ผลสอบรอบที่ผ่านมาดูได้ที่แท็บ ผลสอบ/สถิติ</p>
             </div>
 
             <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -942,27 +2214,27 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 
             <button
               onClick={() => setConfirmReopen(true)}
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+              className={`${BTN.primary} inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}
             >
               <Play className="h-4 w-4" /> เปิดสอบใหม่
             </button>
 
             {confirmReopen && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmReopen(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmReopen(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบใหม่?</h3>
-                    <p className="text-sm text-neutral-500">
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">เปิดสอบใหม่?</h3>
+                    <p className="text-sm text-slate-500">
                       ข้อมูลผลสอบของนักเรียนทั้งหมดจากรอบก่อนจะถูกลบ และนักเรียนทุกคนจะต้องเริ่มสอบใหม่
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmReopen(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setReopening(true); try { await onReopen(); setConfirmReopen(false); } finally { setReopening(false); } }}
                       disabled={reopening}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                      className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}
                     >
                       {reopening ? "กำลังเปิด…" : "เปิดสอบใหม่"}
                     </button>
@@ -980,10 +2252,10 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
               <Clock className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">
+              <p className="text-sm font-semibold text-slate-800">
                 ตั้งเปิดอัตโนมัติวันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น.
               </p>
-              <p className="text-xs text-neutral-500 mt-1">{formatCountdown(scheduleRemainingSec)}</p>
+              <p className="text-xs text-slate-500 mt-1">{formatCountdown(scheduleRemainingSec)}</p>
             </div>
             {!ready && (
               <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -996,27 +2268,27 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
               disabled={!ready}
               className="inline-flex items-center gap-1.5 border border-orange-200 hover:bg-orange-50 disabled:opacity-40 disabled:cursor-not-allowed text-orange-600 rounded-xl px-4 py-2 text-xs font-semibold transition"
             >
-              <Play className="h-3.5 w-3.5" /> เปิดเลยตอนนี้ (ข้ามกำหนดเวลา)
+              <Play className="h-3.5 w-3.5" /> เปิดสอบทันที (ข้ามกำหนดเวลา)
             </button>
 
             {confirmOverride && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmOverride(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6 text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmOverride(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 text-left max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-amber-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
-                    <p className="text-sm text-neutral-500">
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">เปิดสอบก่อนกำหนด?</h3>
+                    <p className="text-sm text-slate-500">
                       ตั้งเปิดอัตโนมัติไว้วันที่ {formatThaiDate(settings.date)} เวลา {settings.time} น. — ถ้ากดเปิดตอนนี้ นักเรียนจะเข้าสอบได้ทันที ก่อนถึงเวลาที่ตั้งไว้
                     </p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmOverride(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmOverride(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setOverriding(true); try { await onOpen(); setConfirmOverride(false); } finally { setOverriding(false); } }}
                       disabled={overriding}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold"
+                      className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}
                     >
-                      {overriding ? "กำลังเปิด…" : "เปิดเลยตอนนี้"}
+                      {overriding ? "กำลังเปิด…" : "เปิดสอบทันที"}
                     </button>
                   </div>
                 </div>
@@ -1032,8 +2304,8 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
               <Play className="h-6 w-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
-              <p className="text-xs text-neutral-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
+              <p className="text-sm font-semibold text-slate-800">พร้อมเปิดสอบ {exam.name} หรือยัง?</p>
+              <p className="text-xs text-slate-500 mt-1">นักเรียนที่ enroll ในคอร์สนี้จะกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้ทันทีหลังเปิด</p>
             </div>
             {!ready && (
               <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left max-w-md mx-auto">
@@ -1044,7 +2316,7 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
             <button
               onClick={async () => { setOpening(true); try { await onOpen(); } finally { setOpening(false); } }}
               disabled={!ready || opening}
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl px-5 py-2.5 text-sm font-semibold transition"
+              className={`${BTN.primary} inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-5 py-2.5 text-sm font-semibold transition`}
             >
               <Play className="h-4 w-4" /> {opening ? "กำลังเปิด…" : "เปิดสอบ"}
             </button>
@@ -1056,23 +2328,23 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
           <div className="space-y-5">
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-              <p className="text-sm text-green-700 font-medium">การสอบกำลังเปิดอยู่ — นักเรียนกด "เข้าสอบ" จากหน้าคอร์สของตัวเองได้เลย</p>
+              <p className="text-sm text-green-700 font-medium">การสอบเปิดอยู่ — นักเรียนเข้าสอบได้จากหน้าคอร์สของตนเอง</p>
             </div>
 
-            <div className="border border-neutral-200 rounded-2xl p-5">
+            <div className="border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-neutral-700">ความคืบหน้าการเข้าสอบ</p>
+                <p className="text-sm font-semibold text-slate-700">ความคืบหน้าการเข้าสอบ</p>
                 <p className="text-sm font-bold text-orange-600">{joined}/{enrolled} คน</p>
               </div>
-              <div className="h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+              <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700" style={{ width: `${pct}%` }} />
               </div>
             </div>
 
             {remainingSec != null && (
-              <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-neutral-200"}`}>
-                <p className="text-sm font-semibold text-neutral-700 mb-1">เวลาที่เหลือของการสอบ</p>
-                <div className={`flex items-center gap-2 font-mono font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-neutral-800"}`}>
+              <div className={`border rounded-2xl p-5 ${remainingSec <= 60 ? "border-red-200 bg-red-50" : "border-slate-200"}`}>
+                <p className="text-sm font-semibold text-slate-700 mb-1">เวลาที่เหลือของการสอบ</p>
+                <div className={`flex items-center gap-2 tabular-nums font-bold text-2xl ${remainingSec <= 60 ? "text-red-600" : "text-slate-800"}`}>
                   <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
                 </div>
               </div>
@@ -1083,15 +2355,15 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
             </button>
 
             {confirmClose && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmClose(false)}>
-                <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmClose(false)}>
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
-                    <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันการปิดสอบ?</h3>
-                    <p className="text-sm text-neutral-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
+                    <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันการปิดสอบ?</h3>
+                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
                   </div>
                   <div className="flex gap-3">
-                    <button onClick={() => setConfirmClose(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ยกเลิก</button>
+                    <button onClick={() => setConfirmClose(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
                     <button
                       onClick={async () => { setClosing(true); try { await onClose(); } finally { setClosing(false); setConfirmClose(false); } }}
                       disabled={closing}
@@ -1120,10 +2392,51 @@ function ManageExamTab({ exam, onSaved, showToast, onOpen, onReopen, onClose }) 
 // เดียวกัน ไม่ใช่ mock) โดยจับคู่ด้วย question id แทนที่จะเรียก API เพิ่ม
 // ถ้าในอนาคต fetchExamJoinDetail() ส่ง category ต่อข้อมาด้วยโดยตรง ให้ใช้ค่า
 // จาก response นั้นแทนการ join นี้ได้เลย
-function StudentDetailModal({ student, examJoinId, examName, examQuestions, onClose }) {
+// รายการ "ครั้งที่ 1, 2, 3..." ของข้อหนึ่ง — พับเก็บไว้ก่อน กดค่อยกาง
+// เดิมกางทั้งหมดตลอดเวลา พอข้อสอบเยอะ ๆ หน้าจะยาวและอ่านยาก
+function QuestionPeriods({ periods }) {
+  const [open, setOpen] = useState(false);
+  // นับเฉพาะช่วงที่ยาวตั้งแต่ 1 วินาทีขึ้นไป — ช่วง 0 วินาทีไม่มีความหมายให้อ่าน
+  // และเป็นร่องรอยจากข้อมูลเก่าที่ระบบเคยบันทึกซ้ำตอนนักเรียนกดเลือกคำตอบ
+  // (ต้นตอนั้นแก้ที่ StudentExam.jsx แล้ว ข้อมูลใหม่จะไม่มีช่วงลักษณะนี้อีก)
+  const shown = (periods || []).filter((p) => (Number(p?.seconds) || 0) >= 1);
+  if (shown.length <= 1) return null;
+  return (
+    <div className="pl-5 mt-1">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="text-[11px] text-slate-500 hover:text-slate-600 transition font-medium"
+      >
+        {open ? "ซ่อน" : "ดู"}ช่วงเวลาที่กลับมาทำซ้ำ ({shown.length} ครั้ง) {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div className="mt-1 space-y-0.5">
+          {shown.map((p, pi) => (
+            <p key={pi} className="text-[11px] text-slate-500">
+              ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentDetailModal({
+  student, examJoinId, examName, examQuestions, aiSummary,
+  courseId, subjectId, courseName, subjectName, examType,
+  onClose,
+}) {
+  // แบ่งเนื้อหาเป็น 2 แท็บ — เดิมต่อกันยาวทั้งหมดในหน้าเดียว พอข้อสอบเยอะจะตาลาย
+  const [modalTab, setModalTab] = useState("overview");
+  const [copiedMsg, setCopiedMsg] = useState(false); // แค่ animation "คัดลอกแล้ว" ของปุ่มข้อความถึงผู้ปกครอง
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // (Phase 3) หน้านี้เหลือแค่ Quick Insight แบบดูอย่างเดียว — ไม่มีแก้ไข/ขยายดูบทวิเคราะห์
+  // แบบละเอียดในโมดัลนี้แล้ว (ย้ายไปอยู่หน้า "วิเคราะห์เชิงลึก" ที่เดียวตามที่ตกลงกัน)
+  // ดูลิงก์ "ดูรายละเอียดที่หน้าวิเคราะห์เชิงลึก" ด้านล่างในการ์ด Quick Insight
 
   useEffect(() => {
     let cancelled = false;
@@ -1165,13 +2478,13 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
   const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-semibold text-neutral-800">รายละเอียดผลสอบ</p>
-            <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-neutral-100 flex items-center justify-center text-neutral-400"><X className="h-4 w-4" /></button>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 sticky top-0 z-10">
+          <h3 className="text-base font-bold text-white">รายละเอียดผลสอบ</h3>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="p-4 sm:p-6">
 
           {/* Header / summary card — สไตล์เดียวกับ StudentModal ของ Analytics */}
           <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
@@ -1185,48 +2498,124 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
             <div className="flex gap-3 flex-shrink-0">
               {passed != null && (
                 <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                  <p className="text-xl font-black">{passed ? "✓" : "✗"}</p>
-                  <p className="text-[10px] text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
+                  <p className={STAT_NUM}>{passed ? "✓" : "✗"}</p>
+                  <p className="text-xs font-medium text-orange-100">{passed ? "ผ่าน" : "ไม่ผ่าน"}</p>
                 </div>
               )}
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-                <p className="text-xl font-black">{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}</p>
-                <p className="text-[10px] text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
+                <p className={STAT_NUM}>{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}<span className="ml-1 text-xs font-medium text-orange-100">คะแนน</span></p>
+                <p className="text-xs font-medium text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-green-600">{correctCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบถูก</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={`${STAT_NUM} text-green-600`}>{correctCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบถูก</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-red-500">{wrongCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบผิด</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={`${STAT_NUM} text-red-500`}>{wrongCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบผิด</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{student?.answeredCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ตอบแล้ว</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={STAT_VALUE}>{student?.answeredCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ตอบแล้ว</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{student?.unansweredCount ?? "—"}</p>
-              <p className="text-xs text-neutral-500">ไม่ตอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={STAT_VALUE}>{student?.unansweredCount ?? "—"}<span className={STAT_UNIT}>ข้อ</span></p>
+              <p className={STAT_LABEL}>ไม่ตอบ</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-neutral-500">เริ่มสอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={STAT_VALUE}>{detail?.joinedAt ? new Date(detail.joinedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className={STAT_LABEL}>เริ่มสอบ</p>
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-center">
-              <p className="text-lg font-bold text-neutral-700">{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
-              <p className="text-xs text-neutral-500">ส่งข้อสอบ</p>
+            <div className="bg-slate-50 rounded-xl p-3 text-center">
+              <p className={STAT_VALUE}>{detail?.submittedAt ? new Date(detail.submittedAt).toLocaleTimeString("th-TH") : "—"}</p>
+              <p className={STAT_LABEL}>ส่งข้อสอบ</p>
             </div>
           </div>
+
+          {/* แท็บในโมดัล: ภาพรวม (สถิติ/ธง/รายหัวข้อ) กับ รายข้อ (คำตอบทีละข้อ) */}
+          <div className="flex gap-1.5 mb-5 border-b border-slate-200">
+            {[
+              ["overview", "ภาพรวม"],
+              ["items", `รายข้อ${enrichedQuestions.length ? ` (${enrichedQuestions.length})` : ""}`],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setModalTab(key)}
+                className={`px-3.5 py-2 text-xs font-bold transition border-b-2 -mb-px ${
+                  modalTab === key
+                    ? "border-orange-500 text-orange-600"
+                    : "border-transparent text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Quick Insight จาก AI ─────────────────────────────────────────
+              สรุปสั้นๆ + แนวโน้มรายหมวดให้เห็นภาพเร็วๆ (โดยเฉพาะเวลาผู้ปกครองมาดู)
+              บทวิเคราะห์แบบละเอียด (สาเหตุ/จุดที่เข้าใจผิด/คำแนะนำ) กดขยายดูได้ที่ปุ่มด้านล่าง
+              ไม่บังคับเปิดให้เห็นตลอด กันหน้าจอรกเกินไปสำหรับคนที่แค่อยากดูสรุปเร็วๆ */}
+          {modalTab === "overview" && aiSummary && (
+            <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
+              {/* หน้านี้ = ดูเร็วหลังสอบ: AI แบบสั้น (สรุป 3 บรรทัด + คัดลอกข้อความถึงผู้ปกครอง)
+                  ส่วนแบบละเอียด (รายหมวด/จุดเข้าใจผิด/แผนทำต่อ/แก้ข้อความ) อยู่หน้าวิเคราะห์ แท็บ "รายคน" ที่เดียว */}
+              <div className="flex flex-wrap lg:flex-nowrap items-start justify-between gap-3">
+                <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
+                  <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
+                  {aiSummary.misconceptions?.length > 0 && (
+                    <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
+                      จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
+                    </span>
+                  )}
+                </p>
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โดย {aiSummary.model}</span>}
+              </div>
+              <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
+              <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
+                <Link
+                  to={`/tutor/exam-analytics?${new URLSearchParams({
+                    courseId: courseId || "",
+                    subjectId: subjectId || "",
+                    courseName: courseName || "",
+                    subjectName: subjectName || "",
+                    examType: examType || "",
+                    tab: "progress",
+                    studentId: String(student?.userId ?? ""),
+                    from: "exam-detail",
+                  }).toString()}`}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-orange-600 hover:text-orange-700"
+                >
+                  ดูพัฒนาการเต็มของคนนี้ <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+                {aiSummary.parentMessage && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(`${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
+                        setCopiedMsg(true);
+                        setTimeout(() => setCopiedMsg(false), 2000);
+                      } catch (err) { console.error("Copy failed:", err); }
+                    }}
+                    className={`${BTN.primary} flex items-center gap-1 text-xs font-bold rounded-xl px-2.5 py-1 transition`}
+                  >
+                    {copiedMsg ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedMsg ? "คัดลอกแล้ว" : "คัดลอกข้อความถึงผู้ปกครอง"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── ธงคุณภาพข้อมูล ──────────────────────────────────────────────
               บอกว่า "คะแนนชุดนี้เชื่อถือได้แค่ไหน" ก่อนนำไปวางแผนสอนหรือคุยกับผู้ปกครอง
               ไม่ใช่ข้อสรุปว่าทุจริต — การสลับแอปอาจมาจากแจ้งเตือนเด้งหรือจอล็อกก็ได้ */}
-          {student?.integrity && (student.integrity.leaveCount > 0 || student.integrity.copyCount > 0) ? (
+          {modalTab === "overview" && student?.integrity && (student.integrity.leaveCount > 0 || student.integrity.copyCount > 0) ? (
             <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-bold text-amber-800 mb-1.5 flex items-center gap-1.5">
                 <Flag className="h-4 w-4" /> ธงคุณภาพข้อมูล — ควรตรวจสอบก่อนใช้คะแนนนี้
@@ -1253,7 +2642,7 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
                       const no = ev.questionId != null ? questionNoById.get(ev.questionId) : null;
                       return (
                         <div key={i} className="flex items-baseline gap-2 text-[11px] text-amber-700">
-                          <span className="font-mono text-amber-500 flex-shrink-0">
+                          <span className="tabular-nums text-amber-500 flex-shrink-0">
                             {ev.occurredAt ? new Date(ev.occurredAt).toLocaleTimeString("th-TH") : "—"}
                           </span>
                           <span className="flex-1">
@@ -1272,11 +2661,20 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
               )}
 
               <p className="text-[11px] text-amber-600 mt-2 leading-relaxed">
-                นี่ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือนเด้ง สายเข้า หรือจอล็อกก็ได้
-                แนะนำให้ลองถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจอะไร
+                ข้อมูลนี้ไม่ใช่ข้อสรุปว่าทุจริต — การออกจากหน้าอาจเกิดจากการแจ้งเตือน สายเรียกเข้า หรือหน้าจอล็อก
+                ควรสอบถามความเข้าใจของนักเรียนในคาบเรียนเพื่อยืนยันก่อนตัดสินใจ
               </p>
             </div>
-          ) : student?.submittedAt ? (
+          ) : modalTab === "overview" && student?.examBehaviorConsent === false ? (
+            // PDPA: นักเรียนไม่ยินยอมให้เก็บพฤติกรรมสอบรอบนี้ — ต้องแยกให้ชัดจาก "เก็บแล้วไม่พบอะไร"
+            // ไม่งั้นติวเตอร์จะเข้าใจผิดว่านักเรียนคนนี้ "สะอาด" ทั้งที่จริง ๆ คือไม่มีการเก็บข้อมูลเลย
+            <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs text-slate-500">
+                ไม่มีข้อมูลส่วนนี้ — นักเรียนไม่ได้ยินยอมให้บันทึกพฤติกรรมระหว่างสอบรอบนี้ (ไม่ใช่ "ตรวจแล้วไม่พบความผิดปกติ")
+                คะแนนสอบยังใช้อ้างอิงได้ตามปกติ
+              </p>
+            </div>
+          ) : modalTab === "overview" && student?.submittedAt ? (
             <div className="mb-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
               <p className="text-xs text-emerald-700">
                 ไม่พบพฤติกรรมที่ต้องตรวจสอบระหว่างสอบ — ไม่มีการออกจากหน้าสอบหรือคัดลอกข้อความ คะแนนชุดนี้ใช้อ้างอิงได้ตามปกติ
@@ -1284,51 +2682,49 @@ function StudentDetailModal({ student, examJoinId, examName, examQuestions, onCl
             </div>
           ) : null}
 
-          {topicBreakdown && (
+          {modalTab === "overview" && topicBreakdown && (
             <div className="mb-6">
-              <p className="text-sm font-bold text-neutral-800 mb-3">คะแนนรายหัวข้อ</p>
+              <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหัวข้อ</p>
               <div className="space-y-2.5">
                 {topicBreakdown.map((t) => (
                   <div key={t.category} className="flex items-center gap-3">
-                    <p className="text-xs text-neutral-500 w-32 flex-shrink-0 truncate">{t.category}</p>
-                    <div className="flex-1 h-2 bg-neutral-100 rounded-full overflow-hidden">
+                    <p className="text-xs text-slate-500 w-24 sm:w-32 flex-shrink-0 truncate">{t.category}</p>
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-orange-400" style={{ width: `${t.pct * 100}%` }} />
                     </div>
-                    <p className="text-xs font-semibold text-neutral-700 w-24 text-right">{t.sc}/{t.maxSc} ({Math.round(t.pct * 100)}%)</p>
+                    <p className="text-xs font-semibold text-slate-700 w-24 text-right">{fmtScore(t.sc)}/{fmtScore(t.maxSc)} ({Math.round(t.pct * 100)}%)</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {loading && <p className="text-sm text-neutral-400 text-center py-8">กำลังโหลด...</p>}
+          {loading && <Spinner block label="กำลังโหลด..." />}
           {error && <p className="text-sm text-red-500 text-center py-8">{error}</p>}
 
-          {detail && !loading && (
+          {modalTab === "items" && detail && !loading && (
             <div>
-              <p className="text-sm font-bold text-neutral-800 mb-3">รายข้อ</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-slate-800">รายข้อ</p>
+                <p className="text-[11px] text-slate-500">เขียว = ตอบถูก · แดง = ตอบผิด</p>
+              </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
-                    <div className="flex items-start justify-between gap-3 mb-1.5">
-                      <p className="text-sm font-medium text-neutral-900 flex-1"><span className="text-neutral-400 font-bold mr-1.5">{i + 1}.</span>{q.text}</p>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {q.category && <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-                          {q.scoreAwarded}/{q.score}
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
+                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed">
+                        <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
+                        {q.text}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+                        {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
+                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                          {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
-                        <span className="text-xs font-mono text-neutral-500">{formatTime(q.totalSeconds)}</span>
+                        <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
-                    {q.periods?.length > 1 && (
-                      <div className="pl-5 mt-1 space-y-0.5">
-                        {q.periods.map((p, pi) => (
-                          <p key={pi} className="text-[11px] text-neutral-400">
-                            ครั้งที่ {pi + 1}: {formatTime(p.seconds)}
-                          </p>
-                        ))}
-                      </div>
-                    )}
+                    <QuestionPeriods periods={q.periods} />
                   </div>
                 ))}
               </div>
@@ -1368,21 +2764,21 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
     return `<tr>
       <td>${i + 1}</td>
-      <td>${s.name}</td>
+      <td>${esc(s.name)}</td>
       <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
       <td style="text-align:right">${pct != null ? `${s.totalScore}/${s.maxScore} (${pct}%)` : "—"}</td>
       <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
       <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
-      <td>${s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</td>
+      <td>${esc(s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"))}</td>
       <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
     </tr>`;
   }).join("");
 
-  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${s.name}</td></tr>`).join("");
+  const absentRows = (results.absentStudents || []).map((s) => `<tr><td>${esc(s.name)}</td></tr>`).join("");
 
   const printWindow = window.open("", "_blank");
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
-  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${exam.name}</title>
+  printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ผลสอบ - ${esc(exam.name)}</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
     <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;font-size:13px;color:#1f2937;}
     .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #f97316;padding-bottom:16px;}
@@ -1396,7 +2792,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:12px;} tr:nth-child(even) td{background:#fff7ed;}
     .footer{margin-top:28px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;text-align:center;}
     @media print{body{padding:16px;}}</style></head><body>
-    <div class="header"><div><h1>ผลสอบ: ${exam.name}</h1><p>${courseName || ""}${subjectName ? ` · ${subjectName}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
+    <div class="header"><div><h1>ผลสอบ: ${esc(exam.name)}</h1><p>${esc(courseName || "")}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <div class="summary-grid">
       <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
       <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>
@@ -1413,14 +2809,131 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
   printWindow.document.close();
 };
 
+// ─── "ข้อที่ควรตรวจสอบ" — มองพฤติกรรมระหว่างสอบตามข้อ ไม่ใช่ตามคน ──────────────
+// จุดประสงค์: แยกให้ออกว่า "โจทย์มีปัญหา" หรือ "น่าสงสัยว่าไปหาคำตอบ" ซึ่งเป็นการตัดสินใจ
+// คนละเรื่องกันคนละทาง — และช่วยกันไม่ให้ติวเตอร์เข้าใจผิดว่ามีเด็กน่าสงสัยหลายคน
+// ทั้งที่จริง ๆ ทุกคนไปสะดุดที่ข้อเดียวกันเพราะโจทย์เอง
+function QuestionFlagsCard({ flags, submittedCount }) {
+  // เกณฑ์ขึ้นเตือน: การออกจากหน้าเป็นสัญญาณอ่อน (แจ้งเตือนเด้งก็นับ) ต้องเห็นเป็นรูปแบบร่วม
+  // จึงขอตั้งแต่ 2 คนขึ้นไป หรือเกิน 30% ของคนที่ส่ง — ส่วนการคัดลอกเป็นสัญญาณแรง ขึ้นตั้งแต่ 1 คน
+  const notable = (flags || []).filter((f) => {
+    if (f.copyStudents >= 1) return true;
+    if (f.leaveStudents >= 2) return true;
+    return submittedCount > 0 && f.leaveStudents / submittedCount >= 0.3;
+  });
+  if (notable.length === 0) return null;
+
+  return (
+    <div className="bg-white border border-amber-200 rounded-xl p-4 shadow-sm space-y-3">
+      <div className="flex items-start gap-2.5">
+        <Flag className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-base font-bold text-slate-800">ข้อที่ควรตรวจสอบ ({notable.length} ข้อ)</p>
+          <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+            รวมพฤติกรรมระหว่างสอบตามข้อ เพื่อดูว่าปัญหาอยู่ที่โจทย์หรือที่การหาคำตอบ — ไม่ใช่ข้อสรุปว่าใครทุจริต
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        {notable.map((f) => {
+          const pct = f.answeredCount ? Math.round((f.correctCount / f.answeredCount) * 100) : null;
+          // อ่านความหมายให้ติวเตอร์เลย ไม่ต้องตีความเอง
+          let verdict, tone;
+          if (f.copyStudents >= 1) {
+            verdict = "มีการคัดลอกข้อความ ซึ่งข้อสอบปรนัยปกติไม่มีเหตุต้องคัดลอก — ควรดูเป็นรายคนต่อ";
+            tone = "text-red-600";
+          } else if (pct != null && pct <= 50) {
+            verdict = "ตอบผิดเกือบทั้งห้อง — อาจเป็นที่โจทย์ (กำกวม ยากเกินระดับ หรือรูปไม่แสดง)";
+            tone = "text-amber-700";
+          } else if (pct != null && pct >= 80) {
+            verdict = "แต่ตอบถูกเกือบทั้งห้อง — อาจมีการค้นหาคำตอบ ควรเปลี่ยนข้อนี้ในรอบถัดไป";
+            tone = "text-orange-600";
+          } else {
+            verdict = "อัตราตอบถูกอยู่ในระดับกลาง ยังสรุปสาเหตุไม่ได้ ควรสอบถามความเข้าใจในคาบเรียน";
+            tone = "text-slate-500";
+          }
+          return (
+            <div key={f.questionId} className="border border-slate-100 bg-slate-50/60 rounded-xl p-4">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-1 sm:gap-3">
+                <p className="text-sm font-semibold text-slate-800 min-w-0">
+                  <span className="text-amber-600">ข้อ {f.no}</span>
+                  {f.category ? <span className="text-slate-400 font-medium"> · {f.category}</span> : null}
+                  <span className="block text-slate-500 font-normal mt-1 leading-relaxed line-clamp-2">{f.text}</span>
+                </p>
+                <p className="text-sm font-semibold text-slate-600 whitespace-nowrap flex-shrink-0 text-left sm:text-right">
+                  {pct != null ? <>ตอบถูก {f.correctCount}/{f.answeredCount} ({pct}%)</> : "ยังไม่มีผู้ส่ง"}
+                </p>
+              </div>
+              <p className="text-sm text-slate-600 mt-2">
+                {f.leaveStudents > 0 && (
+                  <>ออกจากหน้าสอบ {f.leaveStudents} คน{submittedCount ? ` จาก ${submittedCount}` : ""} (รวม {formatTime(f.leaveSeconds)})</>
+                )}
+                {f.leaveStudents > 0 && f.copyStudents > 0 && " · "}
+                {f.copyStudents > 0 && <>คัดลอกข้อความ {f.copyStudents} คน</>}
+              </p>
+              <p className={`text-sm mt-1.5 leading-relaxed ${tone}`}>{verdict}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Results Tab ─────────────────────────────────────────────────────────────
+// ─── AI Status Strip — แถบสถานะสั้นๆ (ดูผ่านๆ เร็วๆ เท่านั้น) ─────────────────
+// (Phase 3) ตัดปุ่ม "วิเคราะห์ใหม่" ออกจากหน้านี้แล้ว — ย้ายไปอยู่หน้า "วิเคราะห์เชิงลึก"
+// (TutorExamAnalytics.jsx แท็บ "ภาพรวม") ที่เดียว ตามหลักที่ตกลงกันว่าฟังก์ชันเกี่ยวกับ
+// ประมวลผล AI ทั้งหมด (ดูละเอียด/แก้ไข/สั่งวิเคราะห์ใหม่/ส่งออก PDF) อยู่หน้า analytics
+// อย่างเดียว ส่วนหน้านี้ ("จัดการรอบสอบ") เหลือไว้แค่สรุปสถานะสั้นๆ ให้ติวเตอร์เห็นเร็วๆ
+// ตอนปิดสอบพอ ถ้าอยากดูเชิงลึกกดลิงก์ไปหน้า analytics แทน (ดู StudentDetailModal ด้านบน)
+function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }) {
+  const [summaries, setSummaries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    fetchAiSummaries(examId)
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        setSummaries(list);
+        onSummariesChange?.(list);
+      })
+      .catch((err) => { console.error("Fetch AI summaries failed:", err); })
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // สอบยังไม่ปิด ยังไม่มีอะไรให้วิเคราะห์ (auto-trigger ทำงานตอนปิดสอบเท่านั้น) — ไม่ต้องโชว์แถบนี้เลย
+  if (examStatus !== "closed") return null;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 flex items-center gap-2">
+      <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
+      <p className="text-xs text-slate-500 min-w-0 lg:truncate">
+        {loading
+          ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
+          : summaries.length > 0
+            ? `AI วิเคราะห์แล้ว ${summaries.length} จาก ${submittedCount || 0} คน — ดูบทวิเคราะห์ได้ที่ปุ่ม "ดูผล" ของนักเรียนแต่ละคน`
+            : submittedCount
+              ? "ยังไม่มีผลวิเคราะห์ AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียด/สั่งวิเคราะห์ใหม่ได้ที่หน้าวิเคราะห์เชิงลึก)"
+              : "ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้"}
+      </p>
+    </div>
+  );
+}
+
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [remainingSec, setRemainingSec] = useState(null);
+  const [aiSummaries, setAiSummaries] = useState([]); // จาก AiStatusStrip — ใช้ทำ badge สถานะ AI ในตาราง + ส่งต่อให้โมดัลรายคน
+  const [remainingSec] = useState(null);
   const [search, setSearch] = useState("");
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
   const [sortKey, setSortKey] = useState("rank");
@@ -1428,7 +2941,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
   // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
-  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ก็แค่เอาคอมเมนต์ block นี้ออก
+  // โชว์ "—" เฉยๆ แทน จะกลับมาเปิดใช้ ให้เอาคอมเมนต์ block ข้างล่างออก
+  // แล้วเปลี่ยนบรรทัดประกาศ state ข้างบนกลับเป็น [remainingSec, setRemainingSec]
   // useEffect(() => {
   //   if (!results?.examStartedAt || results?.durationMinutes == null) { setRemainingSec(null); return; }
   //   const deadline = new Date(results.examStartedAt).getTime() + results.durationMinutes * 60 * 1000;
@@ -1529,7 +3043,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const avgTimeSec = submittedWithTime.length
     ? Math.round(submittedWithTime.reduce((sum, s) => sum + s.secondsUsed, 0) / submittedWithTime.length)
     : null;
-  const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore);
+  // ใช้กลุ่มเดียวกับ averageScorePct ของ backend และหน้าวิเคราะห์ (ส่งแล้ว + มีคะแนนเต็ม + ไม่ได้
+  // ปฏิเสธความยินยอม exam_behavior) — เดิมอัตราผ่านนับทุกคน ตัวเลขการ์ดข้างกันจึงมาจากคนละกลุ่ม
+  const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
   const passedCount = passEligible.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
   const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
   const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
@@ -1539,17 +3055,21 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     : null;
   const examMaxScore = passEligible.length ? passEligible[0].maxScore : (results?.students?.[0]?.maxScore ?? null);
 
+  // map userId -> แถวผลวิเคราะห์ AI (ถ้ามี) — ใช้ทำ badge สถานะในตารางรายชื่อ และส่งต่อ
+  // ให้ StudentDetailModal ตอนเปิดดูรายคน (ข้อมูลมาจาก AiStatusStrip ด้านล่าง)
+  const aiByUserId = useMemo(() => new Map(aiSummaries.map((r) => [r.userId, r])), [aiSummaries]);
+
   if (status !== "closed" && status !== "active") {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-neutral-200 rounded-2xl">
-        <BarChart2 className="h-10 w-10 text-neutral-300 mb-3" />
-        <p className="text-sm font-semibold text-neutral-500">ยังไม่มีผลสอบ</p>
-        <p className="text-xs text-neutral-400 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
+      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
+        <BarChart2 className="h-10 w-10 text-slate-300 mb-3" />
+        <p className="text-sm font-semibold text-slate-500">ยังไม่มีผลสอบ</p>
+        <p className="text-xs text-slate-500 mt-1">ผลจะแสดงหลังเปิดสอบ</p>
       </div>
     );
   }
 
-  if (loading) return <p className="text-sm text-neutral-400">กำลังโหลดผลสอบ...</p>;
+  if (loading) return <Spinner block label="กำลังโหลดผลสอบ..." />;
   if (error) return <p className="text-sm text-red-500">{error}</p>;
   if (!results) return null;
 
@@ -1574,14 +3094,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           icon={Award}
           label="คะแนนเฉลี่ย"
           value={`${results.averageScorePct}%`}
-          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีคนส่ง"}
+          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีผู้ส่ง"}
           color="bg-orange-500"
         />
         <StatCard
           icon={CheckCircle}
           label="ผ่านเกณฑ์"
           value={passRatePct != null ? `${passRatePct}%` : "—"}
-          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีคนส่ง"}
+          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีผู้ส่ง"}
           color="bg-emerald-500"
         />
         <StatCard
@@ -1593,24 +3113,28 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
         />
       </div>
 
+      <QuestionFlagsCard flags={results.questionFlags} submittedCount={results.submittedCount} />
+
+      <AiStatusStrip examId={exam.id} examStatus={status} submittedCount={results.submittedCount} onSummariesChange={setAiSummaries} />
+
       {/* Search & Filter */}
-      <div className="bg-white border border-neutral-200 rounded-xl p-3 shadow-sm">
+      <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ค้นหานักเรียน..."
-              className="pl-10 pr-4 py-2 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          <div className="flex rounded-xl overflow-hidden border border-neutral-200 flex-shrink-0">
+          <div className="flex rounded-xl overflow-hidden border border-slate-200 flex-shrink-0">
             {["ทั้งหมด", "ผ่าน", "ไม่ผ่าน", "ขาดสอบ"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPass(f)}
-                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-neutral-600 hover:bg-neutral-50"}`}
+                className={`px-3 py-2 text-xs font-bold transition ${filterPass === f ? "bg-orange-500 text-white" : "bg-white text-slate-600 hover:bg-slate-50"}`}
               >
                 {f}{f === "ขาดสอบ" && results.absentStudents?.length ? ` (${results.absentStudents.length})` : ""}
               </button>
@@ -1624,7 +3148,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             <Download className="h-3.5 w-3.5" /> Export PDF
           </button>
         </div>
-        <p className="text-xs text-neutral-400 mt-2 pl-1">
+        <p className="text-xs text-slate-500 mt-2 pl-1">
           {filterPass === "ขาดสอบ"
             ? <>แสดง {filteredAbsent.length} จาก {results.absentStudents?.length ?? 0} คน</>
             : <>แสดง {displayedStudents.length} จาก {results.students.length} คน</>}
@@ -1634,32 +3158,82 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
       {/* Table */}
       {filterPass === "ขาดสอบ" ? (
         filteredAbsent.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
-            <p className="text-sm text-neutral-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
+          <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+            <p className="text-sm text-slate-500 font-medium">{search.trim() ? "ไม่พบนักเรียนที่ค้นหา" : "ไม่มีนักเรียนที่ขาดสอบ"}</p>
           </div>
         ) : (
-          <div className="border border-neutral-100 rounded-xl overflow-hidden bg-white divide-y divide-neutral-50">
+          <div className="border border-slate-100 rounded-xl overflow-hidden bg-white divide-y divide-slate-50">
             {filteredAbsent.map((s) => (
               <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
                 <div className="h-8 w-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                   <UserX className="h-4 w-4 text-red-400" />
                 </div>
-                <p className="text-sm font-medium text-neutral-700 flex-1">{s.name}</p>
+                <p className="text-sm font-medium text-slate-700 flex-1 min-w-0 break-words">{s.name}</p>
                 <span className="text-xs font-medium text-red-500">ขาดสอบ</span>
               </div>
             ))}
           </div>
         )
       ) : displayedStudents.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-neutral-200">
-          <p className="text-sm text-neutral-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
+          <p className="text-sm text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
-        <div className="border border-neutral-100 rounded-xl overflow-hidden">
+        <>
+        {/* มือถือ/แท็บเล็ต: การ์ดรายนักเรียน (ตารางแสดงบนจอใหญ่) */}
+        <div className="lg:hidden grid gap-2.5 md:grid-cols-2">
+          {displayedStudents.map((s) => {
+            const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
+            const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+            return (
+              <div key={s.examJoinId} className="min-w-0 rounded-xl border border-slate-100 bg-white p-3.5">
+                <div className="flex items-center gap-3">
+                  <span className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-800 text-sm truncate">{s.name}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</p>
+                  </div>
+                  {passed != null && (
+                    <span className={`shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                      {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
+                    </span>
+                  )}
+                </div>
+                {pct != null && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-700">{pct}%</span>
+                    <span className="text-xs text-slate-500">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
+                  </div>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
+                  <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                  <span className={`tabular-nums ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
+                    {s.submittedAt ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—") : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                  </span>
+                  <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                  {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"><Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ</span>
+                  )}
+                </div>
+                {s.submittedAt && (
+                  <button onClick={() => setSelectedStudent(s)}
+                    className="mt-3 w-full h-10 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                    <Eye className="h-4 w-4" /> ดูผล
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block border border-slate-100 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
               <thead>
-                <tr className="bg-neutral-50 border-b border-neutral-100">
+                <tr className="bg-slate-50 border-b border-slate-100">
                   {[
                     ["rank", "อันดับ"],
                     ["name", "ชื่อนักเรียน"],
@@ -1674,7 +3248,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                     <th
                       key={label}
                       onClick={k ? () => handleSort(k) : undefined}
-                      className={`text-left text-xs font-semibold text-neutral-500 px-4 py-2.5 whitespace-nowrap ${k ? "cursor-pointer hover:text-neutral-700 select-none" : ""}`}
+                      className={`text-left text-xs font-semibold text-slate-500 px-4 py-2.5 whitespace-nowrap last:sticky last:right-0 last:bg-slate-50 lg:last:static lg:last:bg-transparent ${k ? "cursor-pointer hover:text-slate-700 select-none" : ""}`}
                     >
                       {label}{k && <SortIcon k={k} />}
                     </th>
@@ -1686,42 +3260,53 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                   const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
                   const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
                   return (
-                    <tr key={s.examJoinId} className="border-b border-neutral-50 hover:bg-neutral-50 transition">
+                    <tr key={s.examJoinId} className="group border-b border-slate-50 hover:bg-slate-50 transition">
                       <td className="px-4 py-3">
-                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-neutral-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-neutral-100 text-neutral-500"}`}>{s.rank}</span>
+                        <span className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold ${s.rank === 1 ? "bg-amber-400 text-white" : s.rank === 2 ? "bg-slate-400 text-white" : s.rank === 3 ? "bg-amber-700 text-white" : "bg-slate-100 text-slate-500"}`}>{s.rank}</span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800">{s.name}</td>
-                      <td className="px-4 py-3 text-neutral-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        <span className="inline-flex items-center gap-1.5">
+                          {s.name}
+                          {status === "closed" && s.submittedAt && (
+                            aiByUserId.get(s.userId) ? (
+                              <span title="วิเคราะห์ AI แล้ว — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
+                            ) : (
+                              <span title="กำลังวิเคราะห์ AI" className="text-slate-300 text-xs leading-none">⏳</span>
+                            )
+                          )}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">{s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
                       <td className="px-4 py-3">
                         {pct != null ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <div className="w-16 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                              <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                 <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
                               </div>
-                              <span className="font-semibold text-neutral-700">{pct}%</span>
+                              <span className="font-semibold text-slate-700">{pct}%</span>
                             </div>
-                            <p className="text-neutral-400 mt-0.5 text-xs">{s.totalScore}/{s.maxScore}</p>
+                            <p className="text-slate-500 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
                           </>
                         ) : "—"}
                       </td>
                       <td className="px-4 py-3 text-xs whitespace-nowrap">
                         <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
-                        <span className="text-neutral-300 mx-1">/</span>
-                        <span className="inline-flex items-center gap-1 text-neutral-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
+                        <span className="text-slate-300 mx-1">/</span>
+                        <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
                       </td>
-                      <td className={`px-4 py-3 font-mono text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-neutral-500"}`}>
+                      <td className={`px-4 py-3 tabular-nums text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                         {s.submittedAt
                           ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
                           : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium ${s.submittedAt ? "text-green-700" : "text-neutral-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
+                        <span className={`text-xs font-medium whitespace-nowrap lg:whitespace-normal ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
                         {/* ธงคุณภาพข้อมูล — เตือนให้ตรวจสอบก่อนเชื่อตัวเลข ไม่ใช่การกล่าวหา (ดูรายละเอียดในหน้า "ดูผล") */}
                         {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
                           <span
                             title="มีพฤติกรรมที่ควรตรวจสอบก่อนใช้คะแนนนี้ — กด 'ดูผล' เพื่อดูรายละเอียด"
-                            className="ml-1.5 inline-flex items-center gap-1 align-middle text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"
+                            className="ml-1.5 inline-flex items-center gap-1 align-middle text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5"
                           >
                             <Flag className="h-2.5 w-2.5" /> ตรวจซ้ำ
                           </span>
@@ -1729,14 +3314,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       </td>
                       <td className="px-4 py-3">
                         {passed == null ? (
-                          <span className="text-xs text-neutral-300">—</span>
+                          <span className="text-xs text-slate-300">—</span>
                         ) : (
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap lg:whitespace-normal ${passed ? "bg-emerald-100 text-emerald-700 border-emerald-200" : "bg-red-100 text-red-600 border-red-200"}`}>
                             {passed ? "✓ ผ่าน" : "✗ ไม่ผ่าน"}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right sticky right-0 bg-white group-hover:bg-slate-50 lg:static lg:bg-transparent">
                         {s.submittedAt && (
                           <button
                             onClick={() => setSelectedStudent(s)}
@@ -1753,6 +3338,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {results.students.length > 0 && (
@@ -1781,6 +3367,12 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           examJoinId={selectedStudent.examJoinId}
           examName={exam.name}
           examQuestions={exam.questions}
+          aiSummary={aiByUserId.get(selectedStudent.userId)}
+          courseId={courseId}
+          subjectId={subjectId}
+          courseName={courseName}
+          subjectName={subjectName}
+          examType={exam.type}
           onClose={() => setSelectedStudent(null)}
         />
       )}
@@ -1828,13 +3420,13 @@ export default function TutorExamDetail() {
   };
 
   if (loading) {
-    return <div className="mt-[90px] text-center py-16 text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</div>;
+    return <div className="px-4 lg:px-0"><Spinner block label="กำลังโหลดข้อมูลการสอบ..." /></div>;
   }
 
   if (loadError || !exam) {
     return (
-      <div className="mt-[90px] text-center py-16">
-        <p className="text-sm text-neutral-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
+      <div className="px-4 lg:px-0 text-center py-16">
+        <p className="text-sm text-slate-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
         <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
       </div>
     );
@@ -1845,40 +3437,44 @@ export default function TutorExamDetail() {
   const sb = STATUS_BADGE[status];
 
   return (
-    <div className="space-y-6 mt-[90px]">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm flex-wrap gap-y-1">
-        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">คอร์ส</Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <button onClick={backToExamList} className="font-medium text-gray-500 hover:text-orange-600 transition">{subjectName || "จัดการการสอบ"}</button>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <span className="font-medium text-gray-800">{exam.name}</span>
-      </div>
+    <div className="space-y-6 px-4 lg:px-0">
+      <Breadcrumb
+        items={[
+          { label: "หน้าแรก", to: "/tutor" },
+          { label: "คอร์สที่สอน", to: "/tutor/courses" },
+          {
+            label: subjectName || "จัดการการสอบ",
+            to: `/tutor/exam?${new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName }).toString()}`,
+            title: [courseName, subjectName].filter(Boolean).join(" • "),
+          },
+          { label: exam.name },
+        ]}
+      />
 
       {/* Exam header */}
-      <div className="bg-white rounded-2xl border border-neutral-200 p-5">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <Badge className={TYPE_BADGE[exam.type]}>{meta?.label}</Badge>
               <Badge className={sb.cls}>
                 {status === "active" && <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />}
                 {sb.label}
               </Badge>
             </div>
-            <h1 className="text-xl font-bold text-neutral-900">{exam.name}</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
+            <h1 className={`${PAGE_TITLE} line-clamp-2 break-words`} title={exam.name}>{exam.name}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">{courseName} {subjectName ? `• ${subjectName}` : ""}</p>
           </div>
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2 text-sm text-neutral-600"><FileQuestion className="h-4 w-4 text-neutral-400" />{exam.questions?.length || 0} ข้อ</div>
-            <div className="flex items-center gap-2 text-sm text-neutral-600"><Clock className="h-4 w-4 text-neutral-400" />{exam.settings?.duration || 0} นาที</div>
-            {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-neutral-600"><Calendar className="h-4 w-4 text-neutral-400" />{exam.settings.date}</div>}
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <div className="flex items-center gap-2 text-sm text-slate-600"><FileQuestion className="h-4 w-4 text-slate-400" />{exam.questions?.length || 0} ข้อ</div>
+            <div className="flex items-center gap-2 text-sm text-slate-600"><Clock className="h-4 w-4 text-slate-400" />{exam.settings?.duration || 0} นาที</div>
+            {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-slate-600"><Calendar className="h-4 w-4 text-slate-400" />{exam.settings.date}</div>}
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-neutral-200 overflow-x-auto">
+      <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = tab === t.key;
@@ -1886,7 +3482,7 @@ export default function TutorExamDetail() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-600" : "border-transparent text-neutral-500 hover:text-neutral-700"}`}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
             >
               <Icon className="h-4 w-4" /> {t.label}
             </button>
@@ -1896,21 +3492,17 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <QuestionsTab
-            examId={exam.id}
-            subjectId={subjectId}
-            adminId={JSON.parse(localStorage.getItem("user") || "null")?.id}
-            questions={exam.questions || []}
-            status={status}
-            onChanged={reload}
-          />
+          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} />
         )}
         {tab === "preview" && (
-          <PreviewTab exam={exam} goToQuestions={() => setTab("questions")} />
+          <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />
         )}
         {tab === "manage" && (
           <ManageExamTab
             exam={exam}
+            courseId={courseId}
+            subjectId={subjectId}
+            goToPreview={() => setTab("preview")}
             onSaved={reload}
             showToast={showToast}
             onOpen={async () => { await openExamSession(exam.id); await reload(); }}

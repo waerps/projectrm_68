@@ -1,10 +1,16 @@
 import { API_URL } from "../config";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Plus, Edit, Trash2, Search, X, Save, UserCheck, BookOpen,
+  Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen,
   Users, MapPin, RefreshCw, AlertCircle, Loader2, ChevronLeft,
   ChevronRight, CheckCircle, Clock, AlertTriangle, Layers, Info,
 } from 'lucide-react';
+import { confirmDialog, toast } from "../components/ui/dialogs";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbulb as LuLightbulb } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -89,6 +95,8 @@ function getCourseSubjects(course, allSubjects) {
 
 // ─── component ────────────────────────────────────────────────
 export default function AdminSchedule() {
+  // มือถือ: วันที่เลือกดูในมุมมองรายวัน (1=อาทิตย์ … 7=เสาร์ แบบเดียวกับ DayOfWeek)
+  const [mobileDow, setMobileDow] = useState(() => new Date().getDay() + 1);
   // data
   const [schedule, setSchedule] = useState([]);
   const [meta, setMeta] = useState({ rooms: [], tutors: [], subjects: [], courses: [] });
@@ -256,7 +264,7 @@ export default function AdminSchedule() {
   const openEdit = entry => {
     // ── ใหม่: ห้ามแก้ไขคาบสอนที่ผ่านไปแล้ว ──
     if (entry.WeekDate && isoDate(entry.WeekDate) < isoDate(new Date())) {
-      alert('ไม่สามารถแก้ไขคาบสอนที่ผ่านไปแล้วได้');
+      toast('ไม่สามารถแก้ไขคาบสอนที่ผ่านไปแล้วได้');
       return;
     }
     setSelected(entry);
@@ -310,7 +318,7 @@ export default function AdminSchedule() {
       setShowAdd(false);
       await fetchSchedule(weekStart);
     } catch (e) {
-      alert(`ไม่สามารถสร้างคาบสอนได้: ${e.message}`);
+      toast(`ไม่สามารถสร้างคาบสอนได้: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -348,7 +356,7 @@ export default function AdminSchedule() {
       setSelected(null);
       await fetchSchedule(weekStart);
     } catch (e) {
-      alert(`แก้ไขไม่สำเร็จ: ${e.message}`);
+      toast(`แก้ไขไม่สำเร็จ: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -373,7 +381,7 @@ export default function AdminSchedule() {
           const list = d.paidCheckins
             .map(c => `• ${c.date} — ${c.tutor} (Payment #${c.paymentId})`)
             .join('\n');
-          alert(`${d.message}\n\nรายการที่ติดค้าง:\n${list}\n\n${d.hint}`);
+          toast(`${d.message}\n\nรายการที่ติดค้าง:\n${list}\n\n${d.hint}`);
           return;
         }
         throw new Error(d.message);
@@ -383,7 +391,7 @@ export default function AdminSchedule() {
       setSelected(null);
       await fetchSchedule(weekStart);
     } catch (e) {
-      alert(`ลบไม่สำเร็จ: ${e.message}`);
+      toast(`ลบไม่สำเร็จ: ${e.message}`);
     } finally {
       setSaving(false);
     }
@@ -402,19 +410,19 @@ export default function AdminSchedule() {
   const weekEndDate = addDays(weekStart, 6);
 
   return (
-    <div className="min-h-screen mt-[90px]">
+    <div className="min-h-screen px-4 lg:px-0">
       <div className="mx-auto">
 
         {/* ── Header ── */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-neutral-900">จัดการตารางเรียน</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">ตารางเรียนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
+            <h1 className={PAGE_TITLE}>จัดการตารางสอน</h1>
+            <p className={PAGE_SUBTITLE}>ตารางสอนประจำสัปดาห์ทั้งหมดของสถาบัน</p>
           </div>
           <div className="flex gap-2 flex-wrap">
             {/* <button
               onClick={() => fetchSchedule(weekStart)}
-              className="flex items-center gap-2 px-3 py-2 border-2 border-neutral-200 text-neutral-600 rounded-xl hover:bg-neutral-50 text-sm font-medium"
+              className="flex items-center gap-2 px-3 py-2 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 text-sm font-medium"
             >
               <RefreshCw className="h-4 w-4" /> รีเฟรช
             </button> */}
@@ -424,7 +432,7 @@ export default function AdminSchedule() {
                 setConflicts([]);
                 setShowAdd(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium"
+              className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold`}
             >
               <Plus className="h-4 w-4" /> เพิ่มคาบสอน
             </button>
@@ -440,36 +448,39 @@ export default function AdminSchedule() {
         )}
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 gap-3 mb-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
           <StatCard
             icon={<BookOpen className="h-5 w-5 text-white" />}
             bg="bg-blue-500"
             label="คาบสอนทั้งหมด"
             value={totalClasses}
+            unit="คาบ"
           />
           <StatCard
             icon={<Users className="h-5 w-5 text-white" />}
             bg="bg-emerald-500"
             label="คอร์สที่เปิดอยู่"
             value={totalStudents}
+            unit="คอร์ส"
           />
           <StatCard
             icon={<AlertTriangle className="h-5 w-5 text-white" />}
-            bg={noCheckin > 0 ? 'bg-red-500' : 'bg-emerald-500'}
+            bg="bg-red-500"
             label="ยังไม่เช็กอิน (สัปดาห์นี้)"
             value={noCheckin}
+            unit="คาบ"
             warn={noCheckin > 0}
           />
         </div>
 
         {/* ── Week Navigation ── */}
-        <div className="bg-white border-2 border-neutral-200 rounded-xl p-3 mb-3 flex items-center justify-between gap-3">
-          <button onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-neutral-100 transition">
-            <ChevronLeft className="h-5 w-5 text-neutral-600" />
+        <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3 flex items-center justify-between gap-3">
+          <button aria-label="ก่อนหน้า" onClick={goPrevWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
+            <ChevronLeft className="h-5 w-5 text-slate-600" />
           </button>
 
           <div className="text-center">
-            <p className="font-semibold text-neutral-900 text-sm">
+            <p className="font-semibold text-slate-900 text-sm">
               {fmtDate(weekStart)} – {fmtDate(weekEndDate)}
             </p>
             <button onClick={goToday} className="text-xs text-orange-500 hover:underline mt-0.5">
@@ -477,25 +488,21 @@ export default function AdminSchedule() {
             </button>
           </div>
 
-          <button onClick={goNextWeek} className="p-2 rounded-lg hover:bg-neutral-100 transition">
-            <ChevronRight className="h-5 w-5 text-neutral-600" />
+          <button aria-label="ถัดไป" onClick={goNextWeek} className="p-2 rounded-lg hover:bg-slate-100 transition">
+            <ChevronRight className="h-5 w-5 text-slate-600" />
           </button>
         </div>
 
         {/* ── Filters ── */}
-        <div className="bg-white border-2 border-neutral-200 rounded-xl p-3 mb-3">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-neutral-600 mb-2">
-            <Layers className="h-3.5 w-3.5 text-orange-500" /> กรองข้อมูล
-          </div>
-
+        <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 value={fSearch}
                 onChange={e => setFSearch(e.target.value)}
                 placeholder="ค้นหา..."
-                className="pl-8 pr-3 py-1.5 w-full bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="pl-8 pr-3 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none"
               />
             </div>
 
@@ -520,24 +527,19 @@ export default function AdminSchedule() {
               placeholder="ทุกวิชา"
             />
 
-            <button
-              onClick={() => {
+            <ClearFiltersButton show={fTutor !== 'all' || fRoom !== 'all' || fSubject !== 'all' || !!fSearch} onClick={() => {
                 setFTutor('all');
                 setFRoom('all');
                 setFSubject('all');
                 setFSearch('');
-              }}
-              className="px-3 py-1.5 border border-neutral-200 rounded-lg text-xs hover:bg-neutral-50 transition text-neutral-600"
-            >
-              ล้างตัวกรอง
-            </button>
+              }} />
           </div>
         </div>
 
         {/* ── Grid ── */}
-        <div className="bg-white rounded-2xl border-2 border-neutral-200 p-3">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
           {/* Legend */}
-          <div className="flex items-center gap-4 text-xs text-neutral-500 mb-3 px-1 flex-wrap">
+          <div className="flex items-center gap-4 text-xs text-slate-500 mb-3 px-1 flex-wrap">
             <span className="flex items-center gap-1">
               <CheckCircle className="h-3.5 w-3.5 text-green-500" />
               เช็กอินแล้ว
@@ -548,26 +550,85 @@ export default function AdminSchedule() {
             </span>
             <span className="flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5 text-red-500" />
-              เลยเวลา/ไม่มีเช็กอิน
+              ยังไม่เช็กอิน
             </span>
             <span className="flex items-center gap-1">
-              <div className="h-3 w-3 rounded-full bg-neutral-300" />
+              <div className="h-3 w-3 rounded-full bg-slate-300" />
               ยังไม่ถึงวัน
             </span>
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-20 gap-3 text-neutral-400">
+            <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
               <Loader2 className="h-6 w-6 animate-spin" />
               <span>กำลังโหลด...</span>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* มือถือ: มุมมองรายวัน */}
+            <div className="lg:hidden">
+              <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
+                {DAY_ORDER.map(dow => {
+                  const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
+                  const isToday = isoDate(dayDate) === isoDate(new Date());
+                  const holiday = holidayMap[isoDate(dayDate)];
+                  const active = dow === mobileDow;
+                  const n = Object.values(scheduleMap[dow] || {}).reduce((a, arr) => a + arr.filter(pass).length, 0);
+                  return (
+                    <button key={dow} type="button" onClick={() => setMobileDow(dow)}
+                      className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : holiday ? 'bg-red-50 border-red-200 text-red-700' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
+                      <div className="text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</div>
+                      <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</div>
+                      <div className={`mt-0.5 text-[11px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {(() => {
+                const dow = mobileDow;
+                const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
+                const dateStr = isoDate(dayDate);
+                const holiday = holidayMap[dateStr];
+                const addAt = async (slot) => {
+                  if (holiday) {
+                    const ok = await confirmDialog(`วันที่เลือกเป็นวันหยุดของสถาบัน (${holiday}) ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`);
+                    if (!ok) return;
+                  }
+                  openAdd(dow, slot.start, slot.end);
+                };
+                return (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-sm font-bold text-slate-800">วัน{DAY_MAP[dow]} <span className="font-normal text-slate-400">· {dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })}</span></p>
+                    {holiday && <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 flex items-center gap-1.5"><LuCalendarOff className="h-3.5 w-3.5 shrink-0" /> วันหยุด: {holiday}</p>}
+                    {derivedTimeSlots.filter(sl => !sl.isBreak).map(slot => {
+                      const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
+                      return (
+                        <div key={slot.label} className={`flex gap-3 rounded-2xl border p-2.5 ${entries.length ? 'bg-white border-slate-200' : 'bg-slate-50 border-dashed border-slate-200'}`}>
+                          <div className="w-16 shrink-0 pt-1 text-center text-xs font-bold text-slate-600 leading-tight">{slot.label}</div>
+                          <div className="min-w-0 flex-1 space-y-1.5">
+                            {entries.map(e => (
+                              <ClassCard key={e.CourseScheduleDetailId} entry={e} weekStart={weekStart}
+                                onEdit={() => openEdit(e)}
+                                onDelete={() => { setSelected(e); setDeleteScope('this'); setShowDelete(true); }} />
+                            ))}
+                            <button type="button" onClick={() => addAt(slot)}
+                              className={`w-full ${entries.length ? 'h-8' : 'h-10'} rounded-xl text-xs font-semibold text-slate-500 hover:text-orange-500 flex items-center justify-center gap-1 border border-dashed border-slate-200 bg-white/60`}>
+                              <Plus className="h-3.5 w-3.5" /> เพิ่มคาบ
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+            <div className="hidden lg:block overflow-x-auto">
               <div className="min-w-[1100px]">
                 <div className="grid grid-cols-8 gap-1.5">
 
                   {/* Header */}
-                  <div className="text-center text-xs font-semibold text-neutral-500 py-2">เวลา</div>
+                  <div className="text-center text-xs font-semibold text-slate-500 py-2 sticky left-0 z-10 bg-white lg:static lg:bg-transparent">เวลา</div>
 
                   {DAY_ORDER.map(dow => {
                     const dayDate = addDays(weekStart, dow === 1 ? 6 : dow - 2);
@@ -584,15 +645,15 @@ export default function AdminSchedule() {
                               'bg-orange-50 text-orange-700'}`}
                       >
                         {DAY_MAP[dow]}
-                        <div className={`text-[10px] font-normal
+                        <div className={`text-[11px] font-normal
                               ${holiday ? 'text-red-400' : isToday ? 'text-orange-100' : 'text-orange-400'}`}>
                           {dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
                         </div>
                         {/* ── ชื่อวันหยุด ── */}
                         {holiday && (
-                          <div className="text-[9px] mt-0.5 font-normal text-red-500 truncate px-1"
+                          <div className="text-[11px] mt-0.5 font-normal text-red-500 truncate px-1"
                             title={holiday}>
-                            🎌 {holiday}
+                            <LuCalendarOff className="inline h-3 w-3 shrink-0" /> {holiday}
                           </div>
                         )}
                       </div>
@@ -602,7 +663,7 @@ export default function AdminSchedule() {
                   {/* Rows */}
                   {derivedTimeSlots.map(slot => (
                     <React.Fragment key={slot.label}>
-                      <div className="text-center text-[11px] text-neutral-500 py-2 flex items-center justify-center bg-neutral-50 rounded-xl font-medium">
+                      <div className="text-center text-[11px] text-slate-500 py-2 flex items-center justify-center bg-slate-50 rounded-xl font-medium sticky left-0 z-10 lg:static">
                         {slot.label}
                       </div>
 
@@ -611,9 +672,9 @@ export default function AdminSchedule() {
                           return (
                             <div
                               key={dow}
-                              className="min-h-[70px] rounded-xl bg-neutral-50 border border-dashed border-neutral-200 flex items-center justify-center"
+                              className="min-h-[70px] rounded-xl bg-slate-50 border border-dashed border-slate-200 flex items-center justify-center"
                             >
-                              <span className="text-[10px] text-neutral-300">พักเที่ยง</span>
+                              <span className="text-[11px] text-slate-300">พักเที่ยง</span>
                             </div>
                           );
                         }
@@ -625,13 +686,13 @@ export default function AdminSchedule() {
                         const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
                         const hasEntries = entries.length > 0;
 
-                        // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบเรียนได้
+                        // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบสอนได้
                         // แต่ถ้าเลือกวันหยุด ให้ยืนยันก่อนเสมอ
-                        const confirmHolidayThenAdd = () => {
+                        const confirmHolidayThenAdd = async () => {
                           if (isHoliday) {
                             const holidayName = holidayMap[dateStr];
-                            const ok = window.confirm(
-                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบเรียนในวันนี้หรือไม่?`
+                            const ok = await confirmDialog(
+                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`
                             );
                             if (!ok) return;
                           }
@@ -643,17 +704,17 @@ export default function AdminSchedule() {
                             key={dow}
                             className={`min-h-[110px] rounded-xl border transition-all p-1 space-y-1 relative
                                   ${hasEntries
-                                ? 'border-neutral-200 bg-white hover:shadow-sm'
+                                ? 'border-slate-200 bg-white hover:shadow-sm'
                                 : isHoliday
                                   ? 'border-dashed border-red-200 bg-red-50 hover:border-red-300 hover:bg-red-100 cursor-pointer group'
-                                  : 'border-dashed border-neutral-200 bg-neutral-50 hover:border-orange-300 hover:bg-orange-50 cursor-pointer group'
+                                  : 'border-dashed border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50 cursor-pointer group'
                               }`}
                             onClick={() => {
                               if (!hasEntries) confirmHolidayThenAdd();
                             }}
                           >
                             {isHoliday && !hasEntries && (
-                              <span className="absolute top-1 left-1 text-[9px] text-red-400 pointer-events-none">
+                              <span className="absolute top-1 left-1 text-[11px] text-red-400 pointer-events-none">
                                 วันหยุด
                               </span>
                             )}
@@ -673,7 +734,7 @@ export default function AdminSchedule() {
                               ))
                             ) : (
                               <div className="flex items-center justify-center h-full">
-                                <Plus className={`h-4 w-4 transition ${isHoliday ? 'text-red-200 group-hover:text-red-400' : 'text-neutral-300 group-hover:text-orange-400'}`} />
+                                <Plus className={`h-4 w-4 transition ${isHoliday ? 'text-red-200 group-hover:text-red-400' : 'text-slate-300 group-hover:text-orange-400'}`} />
                               </div>
                             )}
 
@@ -683,7 +744,7 @@ export default function AdminSchedule() {
                                   e.stopPropagation();
                                   confirmHolidayThenAdd();
                                 }}
-                                className="w-full py-0.5 text-[10px] text-neutral-300 hover:text-orange-500 hover:bg-orange-50 rounded transition flex items-center justify-center gap-0.5"
+                                className="w-full py-0.5 text-[11px] text-slate-500 lg:text-slate-300 hover:text-orange-500 hover:bg-orange-50 rounded transition flex items-center justify-center gap-0.5"
                               >
                                 <Plus className="h-2.5 w-2.5" /> เพิ่ม
                               </button>
@@ -696,6 +757,7 @@ export default function AdminSchedule() {
                 </div>
               </div>
             </div>
+            </>
           )}
         </div>
       </div>
@@ -719,7 +781,7 @@ export default function AdminSchedule() {
         />
       )}
 
-      {/* Edit */}
+      {/* Pencil */}
       {showEdit && selected && (
         <ScheduleModal
           title="แก้ไขคาบสอน"
@@ -745,17 +807,18 @@ export default function AdminSchedule() {
 
       {/* Delete */}
       {showDelete && selected && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-neutral-900 mb-2">ยืนยันการลบคาบสอน</h3>
-            <p className="text-sm text-neutral-600 mb-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1 text-center">ยืนยันการลบคาบสอน</h3>
+            <p className="text-sm text-slate-500 mb-4 text-center">
               ลบคาบ <strong>{selected.SubjectName || selected.CourseName}</strong> วัน{DAY_MAP[selected.DayOfWeek]} {selected.StartTime}–{selected.EndTime}
             </p>
 
             {selected.TotalOccurrences > 1 && (
               <div className="mb-4 space-y-2">
-                <p className="text-xs font-semibold text-neutral-600">
-                  ต้องการลบแค่ไหน? (มี {selected.TotalOccurrences} คาบในระบบ)
+                <p className="text-xs font-semibold text-slate-600">
+                  เลือกขอบเขตการลบ (มีทั้งหมด {selected.TotalOccurrences} คาบในระบบ)
                 </p>
                 {[
                   { v: 'this', l: 'ลบเฉพาะคาบนี้' },
@@ -771,7 +834,7 @@ export default function AdminSchedule() {
                       onChange={() => setDeleteScope(o.v)}
                       className="accent-red-500"
                     />
-                    <span className="text-sm text-neutral-700">{o.l}</span>
+                    <span className="text-sm text-slate-700">{o.l}</span>
                   </label>
                 ))}
               </div>
@@ -779,20 +842,20 @@ export default function AdminSchedule() {
 
             <p className="text-xs text-red-500 mb-4">* การเช็กอินที่เกี่ยวข้องจะถูกยกเลิกด้วย</p>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={() => {
                   setShowDelete(false);
                   setSelected(null);
                 }}
-                className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl text-neutral-700 hover:bg-neutral-50 text-sm font-medium"
+                className={`${BTN.secondary} flex-1 py-2.5 rounded-xl text-sm font-bold`}
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleDelete}
                 disabled={saving}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm font-medium disabled:opacity-50"
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 text-sm font-bold disabled:opacity-50"
               >
                 {saving ? 'กำลังลบ...' : 'ลบคาบสอน'}
               </button>
@@ -850,49 +913,49 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
     done: <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />,
     missed: <AlertTriangle className="h-3 w-3 text-red-500 flex-shrink-0" />,
     upcoming: <Clock className="h-3 w-3 text-yellow-500 flex-shrink-0" />,
-    future: <div className="h-3 w-3 rounded-full bg-neutral-300 flex-shrink-0" />,
+    future: <div className="h-3 w-3 rounded-full bg-slate-300 flex-shrink-0" />,
   }[checkinStatus];
 
   const borderColor = {
     done: 'border-green-200',
     missed: 'border-red-200',
     upcoming: 'border-yellow-200',
-    future: 'border-neutral-200',
+    future: 'border-slate-200',
   }[checkinStatus];
 
   return (
     <div className={`relative group bg-white border rounded-lg p-2 hover:shadow-sm transition ${borderColor}`}>
-      <div className="flex items-start justify-between gap-1 mb-1">
-        <div className={`${colorClass} text-white text-[10px] font-semibold px-1.5 py-0.5 rounded inline-block`}>
+      <div className="flex items-start justify-between gap-1 mb-1 pr-14 lg:pr-0">
+        <div className={`${colorClass} text-white text-[11px] font-semibold px-1.5 py-0.5 rounded inline-block`}>
           {entry.SubjectName || '—'}
         </div>
         {statusIcon}
       </div>
 
-      <p className="text-[11px] text-neutral-700 font-medium line-clamp-1 mb-1 leading-tight">
+      <p className="text-[11px] text-slate-700 font-medium line-clamp-1 mb-1 leading-tight">
         {entry.CourseName}
       </p>
 
-      <div className="flex items-center gap-1 text-[10px] text-neutral-500 mb-0.5">
+      <div className="flex items-center gap-1 text-[11px] text-slate-500 mb-0.5">
         <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
         <span className="truncate">{entry.RoomDetail || 'ไม่ระบุ'}</span>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] text-neutral-500 mb-1">
+      <div className="flex items-center gap-1 text-[11px] text-slate-500 mb-1">
         <UserCheck className="h-2.5 w-2.5 flex-shrink-0" />
         <span className="truncate">{entry.TutorNickname || 'ไม่ระบุ'}</span>
       </div>
 
-      <div className="flex items-center gap-1 text-[10px] mb-1">
-        <Users className="h-2.5 w-2.5 text-neutral-400" />
-        <span className={`font-medium ${isFull ? 'text-red-600' : 'text-neutral-700'}`}>
+      <div className="flex items-center gap-1 text-[11px] mb-1">
+        <Users className="h-2.5 w-2.5 text-slate-400" />
+        <span className={`font-medium ${isFull ? 'text-red-600' : 'text-slate-700'}`}>
           {entry.StudentCount}/{entry.MaxStudents || '—'}
         </span>
-        {isFull && <span className="text-red-500 text-[9px]">เต็ม</span>}
+        {isFull && <span className="text-red-500 text-[11px]">เต็ม</span>}
       </div>
 
       {entry.MaxStudents > 0 && (
-        <div className="w-full bg-neutral-100 rounded-full h-1 mb-1">
+        <div className="w-full bg-slate-100 rounded-full h-1 mb-1">
           <div
             className={`${isFull ? 'bg-red-400' : 'bg-green-400'} h-1 rounded-full`}
             style={{ width: `${pct}%` }}
@@ -901,28 +964,28 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
       )}
 
       {entry.TotalOccurrences > 1 && (
-        <p className="text-[9px] text-neutral-400">{entry.TotalOccurrences} คาบในเทอม</p>
+        <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบในเทอม</p>
       )}
 
       {/* Actions */}
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition flex gap-1">
-        <button
+      <div className="absolute top-1 right-1 opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition flex gap-1">
+        <button aria-label="แก้ไข"
           onClick={e => {
             e.stopPropagation();
             onEdit();
           }}
-          className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className={`${BTN.primary} p-1.5 lg:p-1 rounded min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}
         >
-          <Edit className="h-2.5 w-2.5" />
+          <Pencil className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
         </button>
-        <button
+        <button aria-label="ลบ"
           onClick={e => {
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1 bg-red-500 text-white rounded hover:bg-red-600"
+          className="p-1.5 lg:p-1 bg-red-500 text-white rounded hover:bg-red-600 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
         >
-          <Trash2 className="h-2.5 w-2.5" />
+          <Trash2 className="h-3.5 w-3.5 lg:h-2.5 lg:w-2.5" />
         </button>
       </div>
     </div>
@@ -1036,7 +1099,7 @@ function ScheduleModal({
 
     const todayStr = isoDate(new Date());
     if (formData.TermStartDate < todayStr) {
-      return 'ไม่สามารถเพิ่มตารางเรียนย้อนหลังได้';
+      return 'ไม่สามารถเพิ่มตารางสอนย้อนหลังได้';
     }
 
     if (selectedCourse?.StartDate && selectedCourse?.LastDate) {
@@ -1067,12 +1130,12 @@ function ScheduleModal({
     !timeError;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-neutral-900">{title}</h3>
-          <button onClick={onClose}>
-            <X className="h-5 w-5 text-neutral-400 hover:text-neutral-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between gap-3 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 mb-4 px-4 sm:px-6 py-4 bg-gradient-to-r from-orange-500 to-amber-500 sticky -top-4 sm:-top-6 z-10">
+          <h3 className="text-base font-bold text-white">{title}</h3>
+          <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -1082,7 +1145,7 @@ function ScheduleModal({
           {scopeSelector && totalOccurrences > 1 && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-700 mb-2">
-                แก้ไขแค่ไหน? (มี {totalOccurrences} คาบในระบบ)
+                เลือกขอบเขตการแก้ไข (มีทั้งหมด {totalOccurrences} คาบในระบบ)
               </p>
               <div className="space-y-1.5">
                 {[
@@ -1099,7 +1162,7 @@ function ScheduleModal({
                       onChange={() => setScope(o.v)}
                       className="accent-orange-500"
                     />
-                    <span className="text-xs text-neutral-700">{o.l}</span>
+                    <span className="text-xs text-slate-700">{o.l}</span>
                   </label>
                 ))}
               </div>
@@ -1107,13 +1170,13 @@ function ScheduleModal({
           )}
 
           {/* Day + Time */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-neutral-600 mb-1 block">วัน *</label>
+              <label className="text-xs text-slate-600 mb-1 block">วัน *</label>
               <select
                 value={formData.DayOfWeek}
                 onChange={e => set('DayOfWeek', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกวัน</option>
                 {DAY_ORDER.map(d => (
@@ -1123,11 +1186,11 @@ function ScheduleModal({
             </div>
 
             <div>
-              <label className="text-xs text-neutral-600 mb-1 block">ช่วงเวลา *</label>
+              <label className="text-xs text-slate-600 mb-1 block">ช่วงเวลา *</label>
               <select
                 value={currentSlotLabel}
                 onChange={e => handleSlot(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกเวลา</option>
                 {timeSlots.filter(s => !s.isBreak).map(s => (
@@ -1146,11 +1209,11 @@ function ScheduleModal({
 
           {/* Course */}
           <div>
-            <label className="text-xs text-neutral-600 mb-1 block">คอร์ส *</label>
+            <label className="text-xs text-slate-600 mb-1 block">คอร์ส *</label>
             <select
               value={formData.CourseID}
               onChange={e => handleCourseChange(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
             >
               <option value="">เลือกคอร์ส</option>
               {meta.courses.map(c => (
@@ -1165,24 +1228,24 @@ function ScheduleModal({
               <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-1">
                 <Info className="h-3.5 w-3.5" /> ข้อมูลคอร์ส
               </div>
-              <p className="text-xs text-neutral-700">
-                <span className="text-neutral-500">คอร์ส:</span> {selectedCourse.CourseName}
+              <p className="text-xs text-slate-700">
+                <span className="text-slate-500">คอร์ส:</span> {selectedCourse.CourseName}
               </p>
               {selectedCourse.StartDate && selectedCourse.LastDate && (
-                <p className="text-xs text-neutral-700">
-                  <span className="text-neutral-500">ระยะเวลา:</span>{' '}
+                <p className="text-xs text-slate-700">
+                  <span className="text-slate-500">ระยะเวลา:</span>{' '}
                   {new Date(selectedCourse.StartDate).toLocaleDateString('th-TH')} - {new Date(selectedCourse.LastDate).toLocaleDateString('th-TH')}
                 </p>
               )}
               {Array.isArray(availableSubjects) && availableSubjects.length > 0 && (
-                <p className="text-xs text-neutral-700">
-                  <span className="text-neutral-500">วิชาที่รองรับ:</span>{' '}
+                <p className="text-xs text-slate-700">
+                  <span className="text-slate-500">วิชาที่รองรับ:</span>{' '}
                   {availableSubjects.map(s => s.SubjectName).join(', ')}
                 </p>
               )}
               {selectedCourse.EnrolledCount != null && (
-                <p className="text-xs text-neutral-700">
-                  <span className="text-neutral-500">นักเรียน:</span>{' '}
+                <p className="text-xs text-slate-700">
+                  <span className="text-slate-500">นักเรียน:</span>{' '}
                   {selectedCourse.EnrolledCount} คน
                 </p>
               )}
@@ -1198,13 +1261,13 @@ function ScheduleModal({
           />
 
           {/* Subject + Room */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-neutral-600 mb-1 block">วิชา</label>
+              <label className="text-xs text-slate-600 mb-1 block">วิชา</label>
               <select
                 value={formData.SubjectId}
                 onChange={e => set('SubjectId', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกวิชา</option>
                 {availableSubjects.map(s => (
@@ -1214,11 +1277,11 @@ function ScheduleModal({
             </div>
 
             <div>
-              <label className="text-xs text-neutral-600 mb-1 block">ห้อง</label>
+              <label className="text-xs text-slate-600 mb-1 block">ห้อง</label>
               <select
                 value={formData.RoomId}
                 onChange={e => set('RoomId', e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกห้อง</option>
                 {meta.rooms.map(r => (
@@ -1232,11 +1295,11 @@ function ScheduleModal({
 
           {/* Tutor */}
           <div>
-            <label className="text-xs text-neutral-600 mb-1 block">ติวเตอร์</label>
+            <label className="text-xs text-slate-600 mb-1 block">ติวเตอร์</label>
             <select
               value={formData.AdminId}
               onChange={e => set('AdminId', e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
             >
               <option value="">เลือกติวเตอร์</option>
               {meta.tutors.map(t => (
@@ -1248,21 +1311,21 @@ function ScheduleModal({
           {/* Term dates (add only) */}
           {showTermFields && (
             <div>
-              <label className="text-xs text-neutral-600 mb-1 block">
-                ช่วงเทอม * <span className="text-neutral-400">(จะสร้างทุกสัปดาห์อัตโนมัติ)</span>
+              <label className="text-xs text-slate-600 mb-1 block">
+                ช่วงเทอม * <span className="text-slate-400">(จะสร้างทุกสัปดาห์อัตโนมัติ)</span>
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="date"
                   value={formData.TermStartDate}
                   onChange={e => set('TermStartDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                  className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
                 />
                 <input
                   type="date"
                   value={formData.TermEndDate}
                   onChange={e => set('TermEndDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+                  className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
                 />
               </div>
 
@@ -1296,7 +1359,7 @@ function ScheduleModal({
         <div className="flex gap-3 mt-5">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-neutral-300 rounded-xl text-neutral-700 hover:bg-neutral-50 text-sm font-medium"
+            className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-700 hover:bg-slate-50 text-sm font-medium"
           >
             ยกเลิก
           </button>
@@ -1304,7 +1367,7 @@ function ScheduleModal({
           <button
             onClick={onSave}
             disabled={saving || !canSave}
-            className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl hover:bg-orange-600 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            className={`${BTN.primary} flex-1 px-4 py-2 rounded-xl text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50`}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -1316,15 +1379,18 @@ function ScheduleModal({
 }
 
 // ─── helpers ──────────────────────────────────────────────────
-function StatCard({ icon, bg, label, value, warn }) {
+function StatCard({ icon, bg, label, value, unit, warn }) {
   return (
-    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+    <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
       <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center shrink-0`}>
         {icon}
       </div>
       <div>
-        <p className="text-xs text-slate-500 font-medium">{label}</p>
-        <p className={`text-xl font-black ${warn ? 'text-red-600' : 'text-slate-900'}`}>{value}</p>
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={`${STAT_NUM} ${warn ? 'text-red-600' : 'text-slate-900'}`}>
+          {value}
+          {unit && <span className={STAT_UNIT}>{unit}</span>}
+        </p>
       </div>
     </div>
   );
@@ -1335,7 +1401,7 @@ function Select({ value, onChange, options, placeholder }) {
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className="px-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none"
+      className="px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-orange-400 focus:outline-none max-w-full md:max-w-[240px] truncate"
     >
       <option value="all">{placeholder}</option>
       {options.map(o => (
@@ -1348,7 +1414,7 @@ function Select({ value, onChange, options, placeholder }) {
 function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-neutral-400 p-3 bg-neutral-50 rounded-xl">
+      <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-slate-50 rounded-xl">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> กำลังหาห้องที่เหมาะสม...
       </div>
     );
@@ -1356,7 +1422,7 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
 
   if (!data) {
     return (
-      <div className="text-xs text-neutral-400 p-3 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+      <div className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
         เลือกคอร์ส วัน และเวลาก่อน ระบบจะแนะนำห้องให้อัตโนมัติ
       </div>
     );
@@ -1367,14 +1433,14 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
   return (
     <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
       <p className="text-xs font-semibold text-slate-600">
-        💡 แนะนำห้องสำหรับคาบนี้
+        <LuLightbulb className="inline h-4 w-4 shrink-0 text-amber-500" /> แนะนำห้องสำหรับคาบนี้
         {hasEnrollment ? ` (นักเรียน ${studentCount} คน)` : ' (ยังไม่มีนักเรียนลงทะเบียน)'}
       </p>
 
       {!hasEnrollment && (
         <p className="text-[11px] text-amber-600">
-          ⚠ คอร์สนี้ยังไม่มีคนลงทะเบียน ระบบแนะนำห้องเล็กสุดที่ว่างไว้ก่อน
-          ถ้ามีนักเรียนสมัครเพิ่มภายหลัง ควรกลับมาปรับห้องอีกครั้ง
+          <LuAlertTriangle className="inline h-3.5 w-3.5 shrink-0" /> คอร์สนี้ยังไม่มีผู้ลงทะเบียน ระบบจึงแนะนำห้องขนาดเล็กที่สุดที่ว่าง
+          หากมีผู้ลงทะเบียนเพิ่ม ควรปรับห้องอีกครั้ง
         </p>
       )}
 
@@ -1390,21 +1456,21 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
                 key={r.RoomId}
                 type="button"
                 onClick={() => onPick(r.RoomId)}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left transition
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition
         ${isSelected
                     ? 'border-orange-500 bg-orange-50'
                     : isTop
                       ? 'border-orange-300 bg-white hover:bg-orange-50'
-                      : 'border-neutral-200 bg-white hover:bg-neutral-50'}`}
+                      : 'border-slate-200 bg-white hover:bg-slate-50'}`}
               >
                 <div>
-                  <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-neutral-600'}`}>
-                    {isTop ? '⭐ แนะนำที่สุด' : `ตัวเลือกที่ ${r.rank}`}
+                  <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
+                    {isTop ? 'ห้องที่แนะนำ' : `ตัวเลือกที่ ${r.rank}`}
                   </p>
-                  <p className="text-[11px] text-neutral-600">
+                  <p className="text-[11px] text-slate-600">
                     {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
                     {r.isOversized && (
-                      <span className="text-amber-600"> · ใหญ่เกินความจำเป็น (เกิน {r.extraSeats} ที่นั่ง)</span>
+                      <span className="text-amber-600"> · ที่นั่งเกินความจำเป็น {r.extraSeats} ที่นั่ง</span>
                     )}
                   </p>
                 </div>
@@ -1416,8 +1482,8 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
       )}
 
       {busyButFits.length > 0 && (
-        <details className="text-[11px] text-neutral-500">
-          <summary className="cursor-pointer hover:text-neutral-700">
+        <details className="text-[11px] text-slate-500">
+          <summary className="cursor-pointer hover:text-slate-700">
             ห้องที่จุพอแต่ไม่ว่าง ({busyButFits.length})
           </summary>
           <ul className="mt-1 space-y-0.5 pl-3">

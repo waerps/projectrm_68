@@ -1,3 +1,4 @@
+import { STAT_LABEL, STAT_VALUE } from "../components/ui/tokens";
 import { ArrowLeft, TrendingUp, Users, Video, FileText, Award, Clock, Eye, Download, BarChart3 } from "lucide-react";
 
 export default function TutorAnalytics() {
@@ -82,8 +83,8 @@ export default function TutorAnalytics() {
             return (
               <div key={idx} className="flex items-center justify-between rounded-lg bg-white p-6 shadow-md transition-all hover:shadow-lg">
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className="mt-2 text-3xl font-bold text-gray-900">{stat.value}</p>
+                  <p className={STAT_LABEL}>{stat.label}</p>
+                  <p className={`mt-2 ${STAT_VALUE}`}>{stat.value}</p>
                   {stat.percentage !== null && (
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-200">
                       <div className="h-full bg-orange-500 transition-all" style={{ width: `${stat.percentage}%` }} />

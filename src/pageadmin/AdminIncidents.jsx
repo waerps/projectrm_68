@@ -15,6 +15,14 @@ import {
   INCIDENT_CATEGORIES, getIncidentTypeById, getSeverityMeta, SEVERITY,
 } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
+import UIModal from "../components/ui/Modal";
+import UIPagination from "../components/ui/Pagination";
+import Badge from "../components/ui/Badge";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin/incidents`;
 const ITEMS_PER_PAGE = 12;
@@ -54,27 +62,9 @@ const formatDateTime = (d) => {
 };
 
 // ─── Modal (โครงเดียวกับ AdminStudents.jsx) ──────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-3xl" : "max-w-lg"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? 'xl' : 'md'}>{children}</UIModal>;
 }
 
 // ─── IncidentDetailModal ──────────────────────────────────────────────────────
@@ -109,7 +99,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
 
   if (loading) return (
     <Modal title="รายละเอียดเคส" icon={AlertOctagon} onClose={onClose} wide>
-      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
+      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
     </Modal>
   );
   if (!data) return null;
@@ -123,18 +113,18 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
   return (
     <Modal title={`เคส #${String(i.IncidentId).padStart(4, "0")}`} icon={AlertOctagon} onClose={onClose} wide>
       {/* Header summary */}
-      <div className={`flex flex-col md:flex-row gap-4 mb-6 p-4 rounded-2xl border ${sevMeta.bg} ${sevMeta.border}`}>
+      <div className={`flex flex-col md:flex-row gap-4 mb-5 sm:mb-6 p-4 rounded-2xl border ${sevMeta.bg} ${sevMeta.border}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-2">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
+            <Badge colorClass={`${sevMeta.bg} ${sevMeta.text} ${sevMeta.border}`}>
               <SevIcon className="h-3.5 w-3.5" /> {sevLabel(i.Severity)}
-            </span>
-            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
+            </Badge>
+            <Badge colorClass={`${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
               {statusMeta.label}
-            </span>
+            </Badge>
           </div>
           <p className="font-semibold text-slate-900">{typeMeta?.label || i.IncidentTypeId}</p>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
             <Clock className="h-3 w-3" /> {formatDateTime(i.Created_at)}
           </p>
         </div>
@@ -146,19 +136,19 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
           <User className="h-3.5 w-3.5" /> ผู้แจ้ง
         </p>
         <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-          <div className="flex items-center justify-between mb-2">
-            <p className="font-semibold text-slate-900">
-              {i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`}
-              <span className="ml-2 text-xs font-normal text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p className="font-semibold text-slate-900 break-words">
+              {i.IsAnonymous ? "ไม่เปิดเผยตัวตน" : (i.ReporterNickname || `${i.ReporterFirstname} ${i.ReporterLastname}`)}
+              <span className="ml-2 text-xs font-normal text-slate-500">
                 ({i.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"})
               </span>
             </p>
             {i.IsAnonymous ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200 text-slate-600 rounded-full text-[11px] font-semibold">
-                <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน (คู่กรณีไม่เห็น)
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-slate-200 text-slate-600 rounded-full text-xs font-semibold">
+                <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน — ไม่มีใครเห็น รวมถึงแอดมิน
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-semibold">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
                 <Eye className="h-3 w-3" /> เปิดเผยตัวตน
               </span>
             )}
@@ -179,12 +169,12 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
           </p>
           <div className="flex flex-wrap gap-2">
             {i.TutorFirstname && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                 <GraduationCap className="h-3.5 w-3.5" /> {i.TutorFirstname} {i.TutorLastname}
               </span>
             )}
             {i.CourseName && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
                 <BookOpen className="h-3.5 w-3.5" /> {i.CourseName}
               </span>
             )}
@@ -269,7 +259,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
           value={note} onChange={e => setNote(e.target.value)}
           placeholder="บันทึกเพิ่มเติม (ไม่บังคับ)..."
           rows={2}
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition resize-none"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition resize-none"
         />
         <div className="flex flex-wrap gap-2">
           {i.Status !== "in_review" && (
@@ -378,37 +368,32 @@ export default function AdminIncidents() {
   const SEVERITY_CARDS = SEVERITY_ORDER.map(key => ({ key, ...getSeverityMeta(key) }));
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลเคส...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลเคส..." />
   );
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">ศูนย์รับแจ้งปัญหา</h1>
-        <p className="text-sm text-slate-500 mt-1">จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน</p>
-      </div>
+      <PageHeader title="ศูนย์รับแจ้งปัญหา" subtitle="จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน" />
 
-      {/* Stats — การ์ดสรุปภาพรวมเท่านั้น ไม่ใช่ตัวกรอง (โครง/พฤติกรรมเดียวกับสถิติในหน้า AdminStudents) */}
+      {/* Stats — กดการ์ดเพื่อกรองตามระดับความรุนแรง (กดซ้ำเพื่อยกเลิก) ใช้ตัวเลขชุดเดียวกับตัวกรอง */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {SEVERITY_CARDS.map(s => {
           const Icon = s.icon;
           return (
-            <div key={s.key}
-              className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+            <button key={s.key} type="button" aria-pressed={filterSeverity === s.key}
+              onClick={() => setFilterSeverity(filterSeverity === s.key ? "all" : s.key)}
+              className={`flex min-w-0 items-center gap-3 p-4 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterSeverity === s.key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
               <div className={`h-10 w-10 rounded-xl ${s.solidBg} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 font-medium">{sevLabel(s.key)}</p>
-                <p className="text-xl font-black text-slate-900">{summary[s.key] ?? 0}</p>
+                <p className={STAT_LABEL}>{sevLabel(s.key)}</p>
+                <p className={STAT_VALUE}>{summary[s.key] ?? 0}<span className={STAT_UNIT}>เคส</span></p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -420,12 +405,12 @@ export default function AdminIncidents() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาเลขที่เคส, ผู้แจ้ง, ประเภทปัญหา, ติวเตอร์, คอร์ส..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           <div className="relative md:min-w-[180px]">
             <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}
-              className="w-full appearance-none px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer">
+              className="w-full appearance-none px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-orange-400 outline-none transition cursor-pointer">
               <option value="all">ทุกระดับความรุนแรง ({allSeverityCount})</option>
               {SEVERITY_CARDS.map(s => (
                 <option key={s.key} value={s.key}>
@@ -437,7 +422,7 @@ export default function AdminIncidents() {
           </div>
           <div className="relative md:min-w-[180px]">
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-              className="w-full appearance-none px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer">
+              className="w-full appearance-none px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:ring-2 focus:ring-orange-400 outline-none transition cursor-pointer">
               <option value="all">ทุกสถานะ ({allStatusCount})</option>
               {Object.entries(STATUS_META).map(([key, m]) => (
                 <option key={key} value={key}>
@@ -447,27 +432,81 @@ export default function AdminIncidents() {
             </select>
             <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           </div>
-          {(filterSeverity !== "all" || filterStatus !== "all" || search) && (
-            <button
-              onClick={() => { setFilterSeverity("all"); setFilterStatus("all"); setSearch(""); }}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-lg hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition">
-              <X className="h-3.5 w-3.5" /> ล้างตัวกรอง
-            </button>
-          )}
+          <ClearFiltersButton show={filterSeverity !== "all" || filterStatus !== "all" || !!search}
+            onClick={() => { setFilterSeverity("all"); setFilterStatus("all"); setSearch(""); }} />
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {incidents.length} เคส</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {incidents.length} เคส</p>
       </div>
 
       {/* Table */}
       {paginated.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <CheckCircle2 className="h-14 w-14 text-emerald-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีเคสในหมวดนี้</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ: การ์ดรายเคส (ตารางแสดงตั้งแต่แท็บเล็ตขึ้นไป) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+          {paginated.map(inc => {
+            const sevMeta = getSeverityMeta(inc.Severity);
+            const SevIcon = sevMeta.icon;
+            const typeMeta = getIncidentTypeById(inc.IncidentTypeId);
+            const statusMeta = STATUS_META[inc.Status] || STATUS_META.new;
+            const needsUrgentReview = inc.Severity === SEVERITY.CRITICAL && inc.Status === "new";
+            const reporterName = inc.IsAnonymous
+              ? "ไม่เปิดเผยตัวตน"
+              : (inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`);
+            return (
+              <button key={inc.IncidentId} onClick={() => setViewId(inc.IncidentId)}
+                className={`min-w-0 w-full text-left bg-white rounded-2xl border shadow-sm p-4 active:bg-orange-50/60 ${needsUrgentReview ? "border-red-200 bg-red-50/40" : "border-slate-200"}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`h-10 w-10 rounded-xl ${sevMeta.solidBg} flex items-center justify-center shrink-0`}>
+                    <SevIcon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{typeMeta?.label || inc.IncidentTypeId}</p>
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                      #{String(inc.IncidentId).padStart(4, "0")} · <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
+                    </p>
+                  </div>
+                  <Eye className="h-4 w-4 text-orange-500 shrink-0 mt-1" />
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                  <Badge colorClass={`${sevMeta.bg} ${sevMeta.text} ${sevMeta.border}`}>{sevLabel(inc.Severity)}</Badge>
+                  <Badge colorClass={`${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>{statusMeta.label}</Badge>
+                  {needsUrgentReview && (
+                    <span className="text-[11px] font-bold text-red-600 flex items-center gap-1"><AlertOctagon className="h-3 w-3" /> ต้องตรวจสอบทันที</span>
+                  )}
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                  <p className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-slate-400">ผู้แจ้ง</span>
+                    <span className="font-medium text-slate-700">{reporterName}</span>
+                    <span className="text-[11px] text-slate-500">· {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}</span>
+                  </p>
+                  {(inc.TutorFirstname || inc.CourseName) && (
+                    <div className="flex flex-wrap gap-1">
+                      {inc.TutorFirstname && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold max-w-full">
+                          <GraduationCap className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.TutorFirstname} {inc.TutorLastname}</span>
+                        </span>
+                      )}
+                      {inc.CourseName && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold max-w-full">
+                          <BookOpen className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.CourseName}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1000px] lg:min-w-[820px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เคส</th>
@@ -485,7 +524,9 @@ export default function AdminIncidents() {
                   const typeMeta = getIncidentTypeById(inc.IncidentTypeId);
                   const statusMeta = STATUS_META[inc.Status] || STATUS_META.new;
                   const needsUrgentReview = inc.Severity === SEVERITY.CRITICAL && inc.Status === "new";
-                  const reporterName = inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`;
+                  const reporterName = inc.IsAnonymous
+                    ? "ไม่เปิดเผยตัวตน"
+                    : (inc.ReporterNickname || `${inc.ReporterFirstname} ${inc.ReporterLastname}`);
 
                   return (
                     <tr key={inc.IncidentId}
@@ -498,8 +539,8 @@ export default function AdminIncidents() {
                           </div>
                           <div className="min-w-0">
                             <p className="font-semibold text-slate-900 text-sm truncate">{typeMeta?.label || inc.IncidentTypeId}</p>
-                            <p className="text-[10px] text-slate-400">#{String(inc.IncidentId).padStart(4, "0")}</p>
-                            <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <p className="text-[11px] text-slate-500">#{String(inc.IncidentId).padStart(4, "0")}</p>
+                            <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                               <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
                             </p>
                           </div>
@@ -510,11 +551,11 @@ export default function AdminIncidents() {
                       <td className="px-4 py-3">
                         <p className="text-sm text-slate-700 truncate max-w-[160px]">{reporterName}</p>
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[11px] text-slate-500">
                             {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}
                           </span>
                           {!!inc.IsAnonymous && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[11px] font-bold">
                               <EyeOff className="h-3 w-3" /> ไม่เปิดเผยตัวตน
                             </span>
                           )}
@@ -525,12 +566,12 @@ export default function AdminIncidents() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {inc.TutorFirstname && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold whitespace-nowrap max-w-[220px] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible">
                               <GraduationCap className="h-3 w-3" /> {inc.TutorFirstname} {inc.TutorLastname}
                             </span>
                           )}
                           {inc.CourseName && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-semibold">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold whitespace-nowrap max-w-[220px] truncate lg:max-w-none lg:whitespace-normal lg:overflow-visible">
                               <BookOpen className="h-3 w-3" /> {inc.CourseName}
                             </span>
                           )}
@@ -539,7 +580,7 @@ export default function AdminIncidents() {
                           )}
                         </div>
                         {needsUrgentReview && (
-                          <p className="mt-1.5 text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <p className="mt-1.5 text-[11px] font-bold text-red-600 flex items-center gap-1">
                             <AlertOctagon className="h-3 w-3" /> ต้องตรวจสอบทันที
                           </p>
                         )}
@@ -547,16 +588,16 @@ export default function AdminIncidents() {
 
                       {/* คอลัมน์: ความรุนแรง */}
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold ${sevMeta.bg} ${sevMeta.text} border ${sevMeta.border}`}>
+                        <Badge colorClass={`${sevMeta.bg} ${sevMeta.text} ${sevMeta.border}`}>
                           {sevLabel(inc.Severity)}
-                        </span>
+                        </Badge>
                       </td>
 
                       {/* คอลัมน์: สถานะ */}
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${statusMeta.bg} ${statusMeta.text} border ${statusMeta.border}`}>
+                        <Badge colorClass={`${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
                           {statusMeta.label}
-                        </span>
+                        </Badge>
                       </td>
 
                       {/* คอลัมน์: ปุ่มจัดการ */}
@@ -564,7 +605,7 @@ export default function AdminIncidents() {
                         <div className="flex items-center justify-end">
                           <button
                             onClick={() => setViewId(inc.IncidentId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                            className="flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                           >
                             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
                           </button>
@@ -577,41 +618,11 @@ export default function AdminIncidents() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Pagination — โครงเดียวกับ AdminStudents.jsx */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> เคส
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-              .reduce((acc, p, idx, arr) => {
-                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, idx) => p === "..." ? (
-                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-              ) : (
-                <button key={p} onClick={() => setCurrentPage(p)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                  {p}
-                </button>
-              ))}
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="เคส" onChange={setCurrentPage} />
 
       {/* Modal */}
       {viewId && (

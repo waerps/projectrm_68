@@ -1,8 +1,33 @@
 import { GoogleOAuthProvider } from "@react-oauth/google";
 
+// ★ เพิ่ม: บังคับใช้ "จำฉันไว้ในระบบ" — รันครั้งเดียวตอนแอปเริ่มโหลด ก่อน React จะ render อะไรเลย
+//   ถ้าตอน login ไม่ได้ติ๊ก "จำฉันไว้ในระบบ" (remember_me === "false") แล้วเบราว์เซอร์/แท็บถูกปิด
+//   ไปจริง ๆ (sessionStorage ของแท็บนั้นหายไป) เมื่อเปิดใหม่จะเจอว่า session_active ไม่มีอยู่แล้ว
+//   → เคลียร์ข้อมูลล็อกอินทิ้ง ถือว่า session หมดอายุ (ถ้าเป็นแค่ refresh หน้า/เปลี่ยนหน้าในแท็บเดิม
+//   sessionStorage ยังอยู่ตามปกติ จึงไม่ถูกเคลียร์)
+(function enforceRememberMe() {
+  try {
+    const rememberMe = localStorage.getItem("remember_me");
+    const sessionActive = sessionStorage.getItem("session_active");
+    if (rememberMe === "false" && !sessionActive) {
+      localStorage.removeItem("student_token");
+      localStorage.removeItem("user_role");
+      localStorage.removeItem("user");
+      localStorage.removeItem("remember_me");
+    }
+    sessionStorage.setItem("session_active", "1");
+  } catch {
+    // localStorage/sessionStorage อาจใช้ไม่ได้ (เช่น private mode) — ไม่ทำให้แอปพัง
+  }
+})();
+
 import React from "react"
+import { installAdminApiAuth } from "./utils/adminApiAuth.js"
+
+// แนบ token ให้คำขอ /api/admin ทั้งหมด (backend ตรวจสิทธิ์แอดมินแล้ว)
+installAdminApiAuth()
 import ReactDOM from "react-dom/client"
-import { createBrowserRouter, RouterProvider } from "react-router-dom"
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 
 import AppShell from "./layouts/AppShell.jsx"
 import ProfileLayout from "./layouts/ProfileLayout.jsx"
@@ -12,8 +37,6 @@ import Home from "./pages/Home.jsx"
 import VirtualTour from "./pages/VirtualTour.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import CourseDetail from "./pages/Courses.jsx"
-import Performance from "./pages/Performance.jsx"
-import Salary from "./pages/Salary.jsx"
 import Profile from "./pages/Profile.jsx"
 import TutorApply from "./pages/TutorApply.jsx"
 
@@ -32,6 +55,7 @@ import ThaiExam from "./pages/thai_exam.jsx"
 import About from "./pages/About.jsx"
 import Promotion from "./pages/Promotion.jsx"
 import CourseSearch from "./pages/CourseSearch.jsx"
+import PrivateCourses from "./pages/PrivateCourses.jsx"
 import StudentCourseContent from "./pages/StudentCourseContent.jsx"
 import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
 import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
@@ -57,6 +81,8 @@ import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
 import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
 import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
+import TutorQuestionBank from "./pagetutor/TutorQuestionBank.jsx"
+import TutorProgressOverview from "./pagetutor/TutorProgressOverview.jsx"
 import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
 
 // Admin Layouts
@@ -68,8 +94,8 @@ import AdminStudents from "./pageadmin/AdminStudents.jsx"
 import AdminTutors from "./pageadmin/AdminTutors.jsx"
 import AdminFinance from "./pageadmin/AdminFinance.jsx"
 import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
-import AdminMedia from "./pageadmin/AdminMedia.jsx"
 import AdminNotification from "./pageadmin/AdminNotification.jsx"
+import AdminPasswordResets from "./pageadmin/AdminPasswordResets.jsx"
 import AdminRooms from "./pageadmin/AdminRooms.jsx"
 import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
 import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
@@ -77,6 +103,8 @@ import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 import AdminManagement from "./pageadmin/AdminManagement.jsx"
 import AdminProfile from "./pageadmin/AdminProfile.jsx"
 import AdminIncidents from "./pageadmin/AdminIncidents.jsx"
+import AdminProgressOverview from "./pageadmin/AdminProgressOverview.jsx"
+import AdminExamAnalytics from "./pageadmin/AdminExamAnalytics.jsx"
 
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
@@ -104,8 +132,7 @@ const router = createBrowserRouter(
         { path: "schedule", element: <Schedule /> },
         { path: "courses", element: <CourseSearch /> },
         { path: "courses/:id", element: <CourseDetail /> },
-        { path: "performance", element: <Performance /> },
-        { path: "salary", element: <Salary /> },
+        { path: "private-courses", element: <PrivateCourses /> },
         { path: "new", element: <New /> },
         { path: "news", element: <News /> },
         { path: "cart", element: <Cart /> },
@@ -153,6 +180,8 @@ const router = createBrowserRouter(
             { path: "exam-analytics", element: <TutorExamAnalytics /> },
             { path: "manage", element: <TutorManage /> },
             { path: "exam-detail", element: <TutorExamDetail /> },
+            { path: "question-bank", element: <TutorQuestionBank /> },   // คลังข้อสอบของติวเตอร์ เข้าตรงจากเมนู
+            { path: "progress", element: <TutorProgressOverview /> },   // เลือกคอร์ส+วิชา แล้วเข้าหน้าวิเคราะห์พัฒนาการ
           ],
         },
 
@@ -164,20 +193,23 @@ const router = createBrowserRouter(
             { index: true, element: <AdminDashboard /> },
             { path: "dashboard", element: <AdminDashboard /> },
             { path: "courses", element: <AdminCourses /> },
+            { path: "private-courses", element: <Navigate to="/admin/courses?type=single" replace /> }, // ย้ายไปเป็นแท็บในหน้าคอร์สแล้ว
             { path: "schedule", element: <AdminSchedule /> },
             { path: "students", element: <AdminStudents /> },
             { path: "tutors", element: <AdminTutors /> },
             { path: "finance", element: <AdminFinance /> },
             { path: "announcements", element: <AdminAnnouncements /> },
-            { path: "media", element: <AdminMedia /> },
             { path: "notification", element: <AdminNotification /> },
+            { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
             { path: "create-tutor", element: <CreateTutorForm /> },
-            { path: "attendance", element: <AdminAttendanceDashboard /> },
+            { path: "attendance", element: <div className="px-4 lg:px-0"><AdminAttendanceDashboard /></div> },
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },
             { path: "profile", element: <AdminProfile /> }, // ← เพิ่ม → path เต็ม = /admin/profile
             { path: "incidents", element: <AdminIncidents /> },
+            { path: "progress", element: <AdminProgressOverview /> },   // ภาพรวมพัฒนาการ คอร์ส x วิชา (อ่านอย่างเดียว)
+            { path: "exam-analytics", element: <AdminExamAnalytics /> },   // หน้าวิเคราะห์ตัวเดียวกับติวเตอร์ แต่มุมแอดมิน
           ],
         },
       ],

@@ -21,7 +21,7 @@ export default function SubjectList() {
       try {
         setError("");
         const [course, subjs] = await Promise.all([
-          getCourseBasic(courseId),
+          getCourseBasic(courseId, token),
           getStudentSubjectsProgress(token, courseId),
         ]);
         if (cancelled) return;

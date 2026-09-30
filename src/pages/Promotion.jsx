@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { BadgeCheck, BookOpen, Calendar, Heart, Loader2, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
+import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
 
@@ -33,7 +34,7 @@ function CourseArtwork({ src, alt }) {
     )
   }
 
-  return <img src={src} alt={alt} onError={() => setFailed(true)} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+  return <img src={src} alt={alt} onError={() => setFailed(true)} className="h-full w-full object-cover" />
 }
 export const toCardItem = (course) => {
   const price = Number(course.Price || 0)
@@ -48,7 +49,7 @@ export const toCardItem = (course) => {
     dateRange: formatDateRange(course.StartDate, course.LastDate),
     status: course.Status_Course_Id,
     img: resolveCourseImg(course),
-    courseType: (Array.isArray(course.Subjects) ? course.Subjects.length : 0) > 1 ? "คอร์สรวม" : "คอร์สเดี่ยว",
+    courseType: course.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม",
     availabilityName: AVAILABILITY_LABELS[Number(course.Course_Availability_Id)] || "ยังไม่ระบุรูปแบบ",
   }
 }
@@ -57,15 +58,17 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
   const statusBadge = STATUS_BADGE[item.status]
   const canEnroll = [1, 2].includes(Number(item.status))
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
+    <div className="sa-card3d group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
+      {...cardTiltHandlers} style={cardIdleDelay(item.id)}>
+      <span className="sa-glow3d" />
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-        <CourseArtwork src={item.img} alt={item.title} />
+        <div className="sa-parallax h-full w-full"><CourseArtwork src={item.img} alt={item.title} /></div>
         {showDiscountBadge && item.discountPercent > 0 && (
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+          <span className="sa-pop3d absolute left-2.5 top-2.5 inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
             <Tag className="h-3 w-3" /> ลดราคา {item.discountPercent}%
           </span>
         )}
-        {statusBadge && <span className={`absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur ${statusBadge.cls}`}>{statusBadge.label}</span>}
+        {statusBadge && <span className={`sa-pop3d absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur ${statusBadge.cls}`}>{statusBadge.label}</span>}
       </div>
       <div className="flex flex-1 flex-col p-3.5">
         <h3 className="line-clamp-2 min-h-[2.6rem] text-[13.5px] font-bold leading-snug text-neutral-800">{item.title}</h3>
@@ -78,7 +81,7 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
           {item.discount > 0 && <span className="text-[11px] text-neutral-400 line-through">{formatNumber(item.price)} บาท</span>}
         </div>
         <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
-          {item.discount > 0 && <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"><Sparkles className="h-3 w-3" /> โปรโมชัน</span>}
+          {item.discount > 0 && <span className="sa-pop3d inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"><Sparkles className="h-3 w-3" /> โปรโมชัน</span>}
           <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{item.courseType}</span>
           <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{item.availabilityName}</span>
         </div>

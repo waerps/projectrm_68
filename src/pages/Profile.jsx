@@ -12,8 +12,17 @@ import {
   Users,
   Clock,
   BookOpen,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
-import { getStudentProfile, updateStudentProfile } from "../callapi/callusers_student";
+import {
+  getStudentProfile,
+  updateStudentProfile,
+} from "../callapi/callusers_student";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
+import Spinner from "../components/ui/Spinner";
+import { BTN } from "../components/ui/tokens";
 
 import RecoveryEmailPanel from "../components/RecoveryEmailPanel";
 import CredentialSetupButton from "../components/CredentialSetupButton";
@@ -27,6 +36,7 @@ function maskUsername(username) {
 
 export default function StudentProfile() {
   const fileInputRef = useRef(null);
+  const { toasts, showToast, removeToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -66,12 +76,16 @@ export default function StudentProfile() {
       setAuthMethods(basicData.authMethods ?? null);
       const resolvedStudentId = basicData.userId ?? basicData.UserId ?? basicData.studentId ?? basicData.StudentId ?? null;
       let detailData = {};
+      let parentDetailData = null;
       if (resolvedStudentId) {
         try {
           const detailResponse = await axios.get(`${API_URL}/api/admin/students/${resolvedStudentId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           detailData = detailResponse.data?.student ?? detailResponse.data?.data?.student ?? detailResponse.data?.data ?? {};
+          // ★ แก้: /api/admin/students/:id ส่งข้อมูลผู้ปกครองแยกไว้ที่ key "parent" ต่างหาก
+          //   (ไม่ได้ฝังอยู่ใน "student") เดิมโค้ดนี้อ่านแต่ .student จึงไม่เคยเห็นข้อมูลผู้ปกครองเลย
+          parentDetailData = detailResponse.data?.parent ?? detailResponse.data?.data?.parent ?? null;
         } catch (detailError) {
           console.warn("โหลดรูปโปรไฟล์จากข้อมูลนักเรียนไม่สำเร็จ:", detailError);
         }
@@ -96,9 +110,15 @@ export default function StudentProfile() {
         username: dbData.username ?? dbData.Username ?? "",
         remark: dbData.remark ?? dbData.Remark ?? "",
 
-        parentName: dbData.parentName ?? dbData.ParentName ?? "",
-        parentRelationship: dbData.parentRelationship ?? dbData.ParentRelationship ?? dbData.ParentProfileTypeName ?? "",
-        parentPhone: dbData.parentPhone ?? dbData.ParentPhone ?? dbData.ParentPhoneNo ?? "",
+        parentName: parentDetailData
+          ? `${parentDetailData.Firstname ?? ""} ${parentDetailData.Lastname ?? ""}`.trim() || (parentDetailData.Nickname ?? "")
+          : (dbData.parentName ?? dbData.ParentName ?? ""),
+        parentRelationship: parentDetailData
+          ? (parentDetailData.ParentProfilesType_Name ?? parentDetailData.Relationship ?? "")
+          : (dbData.parentRelationship ?? dbData.ParentRelationship ?? dbData.ParentProfileTypeName ?? ""),
+        parentPhone: parentDetailData
+          ? (parentDetailData.PhoneNo ?? "")
+          : (dbData.parentPhone ?? dbData.ParentPhone ?? dbData.ParentPhoneNo ?? ""),
         photo: dbData.photo ?? dbData.Photo ?? dbData.profileImage ?? dbData.ProfileImage ?? dbData.imageUrl ?? null,
       };
       setStudentId(resolvedStudentId);
@@ -123,11 +143,11 @@ export default function StudentProfile() {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("กรุณาเลือกไฟล์รูปภาพเท่านั้น");
+      showToast("error", "ไฟล์ไม่ถูกต้อง", "กรุณาเลือกไฟล์รูปภาพเท่านั้น");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("รูปภาพต้องมีขนาดไม่เกิน 5 MB");
+      showToast("error", "ไฟล์ใหญ่เกินไป", "รูปภาพต้องมีขนาดไม่เกิน 5 MB");
       return;
     }
     const previewUrl = URL.createObjectURL(file);
@@ -143,7 +163,7 @@ export default function StudentProfile() {
       const uploadedPhoto = res.data?.path ?? res.data?.imageUrl ?? res.data?.data?.path;
       if (!uploadedPhoto) throw new Error("เซิร์ฟเวอร์ไม่ส่ง path ของรูปกลับมา");
       if (!studentId) throw new Error("ไม่พบรหัสนักเรียน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
-      await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
+      const putRes = await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
         firstname: formData.firstname,
         lastname: formData.lastname,
         nickname: formData.nickname,
@@ -155,6 +175,18 @@ export default function StudentProfile() {
         gpa: formData.gpa,
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
+      if (putRes.data?.photoBlocked) {
+        // ไม่ยินยอมเรื่องรูป (เช่น เพิ่งถอนความยินยอมไปในแท็บอื่น) — เซิร์ฟเวอร์ไม่ได้บันทึกรูปใหม่จริง
+        // แม้ request จะสำเร็จก็ตาม ต้องคืนค่ารูปเดิมแทนที่จะโชว์เหมือนบันทึกสำเร็จ
+        URL.revokeObjectURL(previewUrl);
+        setFormData((prev) => ({ ...prev, photo: previousPhoto }));
+        showToast(
+          "error",
+          "อัปโหลดรูปไม่สำเร็จ",
+          "มีการปฏิเสธความยินยอมเรื่องภาพถ่ายไว้ก่อนหน้านี้ ระบบจึงไม่บันทึกรูปใหม่ให้ — กรุณาติดต่อเจ้าหน้าที่หากต้องการเปลี่ยนแปลง"
+        );
+        return;
+      }
       setFormData((prev) => ({ ...prev, photo: uploadedPhoto }));
       URL.revokeObjectURL(previewUrl);
       setOriginalData((prev) => ({ ...prev, photo: uploadedPhoto }));
@@ -165,7 +197,7 @@ export default function StudentProfile() {
       console.error(error);
       URL.revokeObjectURL(previewUrl);
       setFormData((prev) => ({ ...prev, photo: previousPhoto }));
-      alert("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || error.message || "กรุณาลองใหม่"));
+      showToast("error", "อัปโหลดไม่สำเร็จ", error.response?.data?.message || error.message || "กรุณาลองใหม่");
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -224,7 +256,7 @@ export default function StudentProfile() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 rounded-full border-4 border-orange-200 border-t-orange-500 animate-spin" />
+          <Spinner size="lg" />
           <p className="text-orange-600 font-medium text-sm">กำลังโหลด...</p>
         </div>
       </div>
@@ -234,6 +266,7 @@ export default function StudentProfile() {
 
   return (
     <div className="space-y-6 mt-[100px]">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="">
         {/* ── Edit Mode Banner ── */}
         {isEditing && (
@@ -264,12 +297,12 @@ export default function StudentProfile() {
         )}
 
         {/* ── Profile Header Card ── */}
-        <div className="mb-6 overflow-hidden rounded-2xl shadow-lg">
-          <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-8 md:p-10">
-            <div className="flex flex-col gap-8 md:flex-row md:items-center">
+        <div className="mb-6 overflow-hidden rounded-2xl shadow-sm">
+          <div className="bg-gradient-to-br from-orange-500 to-orange-300 p-5 sm:p-8 md:p-10">
+            <div className="flex flex-col gap-4 sm:gap-8 md:flex-row md:items-center">
               {/* รูปโปรไฟล์ */}
               <div className="relative shrink-0 mx-auto md:mx-0">
-                <div className="relative h-36 w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-gray-100">
+                <div className="relative h-24 w-24 sm:h-36 sm:w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-slate-100">
                   <img
                     src={getFileUrl(formData.photo) || "/placeholder-user.jpg"}
                     onError={(event) => { event.currentTarget.src = "/placeholder-user.jpg"; }}
@@ -284,19 +317,19 @@ export default function StudentProfile() {
                     onChange={handleFileChange}
                   />
                 </div>
-                <button
+                <button aria-label="เปลี่ยนรูป"
                   onClick={() => fileInputRef.current.click()}
                   disabled={isUploading}
                   className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100 disabled:cursor-wait disabled:opacity-70"
                 >
-                  {isUploading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-500" /> : <ImagePlus className="h-4.5 w-4.5" />}
+                  {isUploading ? <Spinner size="sm" /> : <ImagePlus className="h-4.5 w-4.5" />}
                 </button>
               </div>
 
               {/* ชื่อ + สถิติ */}
               <div className="flex-1 space-y-3 text-center md:text-left text-white">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
                     {formData.firstname} {formData.lastname}
                   </h1>
                   {formData.nickname && (
@@ -411,7 +444,7 @@ export default function StudentProfile() {
               onChange={handleChange}
             />
             <div className="py-3">
-              <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 หมายเหตุ
               </span>
               {isEditing ? (
@@ -420,11 +453,11 @@ export default function StudentProfile() {
                   rows={3}
                   value={formData.remark}
                   onChange={handleChange}
-                  className="mt-2 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-sm text-neutral-800 outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+                  className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-800 outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
                 />
               ) : (
-                <p className="mt-1 text-sm font-medium text-neutral-800">
-                  {formData.remark || <span className="text-neutral-300 font-normal">ไม่มีหมายเหตุ</span>}
+                <p className="mt-1 text-sm font-medium text-slate-800">
+                  {formData.remark || <span className="text-slate-300 font-normal">ไม่มีหมายเหตุ</span>}
                 </p>
               )}
             </div>
@@ -439,7 +472,7 @@ export default function StudentProfile() {
             <InfoRow label="ชื่อผู้ปกครอง" value={formData.parentName} isEditing={false} />
             <InfoRow label="ความสัมพันธ์" value={formData.parentRelationship} isEditing={false} />
             <InfoRow label="เบอร์โทร" value={formData.parentPhone} isEditing={false} />
-            <p className="mt-4 text-xs text-neutral-400 text-center">
+            <p className="mt-4 text-xs text-slate-500 text-center">
               * ข้อมูลผู้ปกครองแก้ไขได้จากฝ่ายบริหารเท่านั้น
             </p>
           </SectionCard>
@@ -458,6 +491,7 @@ export default function StudentProfile() {
             </SectionCard>
           )}
         </div>
+
       </div>
 
       {alertModal.show && (
@@ -474,13 +508,13 @@ export default function StudentProfile() {
 function SectionCard({ title, icon, children, isEditing }) {
   return (
     <div
-      className={`rounded-2xl bg-white shadow-sm overflow-hidden border-2 transition-all duration-200 ${
-        isEditing ? "border-orange-200 shadow-md" : "border-neutral-100"
+      className={`rounded-2xl bg-white shadow-sm overflow-hidden border transition-all duration-200 ${
+        isEditing ? "border-orange-300 shadow-md" : "border-slate-200"
       }`}
     >
-      <div className="px-5 py-4 border-b border-neutral-100 flex items-center gap-2">
+      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
         {icon}
-        <h2 className="text-sm font-bold text-neutral-800">{title}</h2>
+        <h2 className="text-sm font-bold text-slate-800">{title}</h2>
       </div>
       <div className="p-5 space-y-0.5">{children}</div>
     </div>
@@ -490,8 +524,8 @@ function SectionCard({ title, icon, children, isEditing }) {
 // ── Info Row ──────────────────────────────────────────────────
 function InfoRow({ label, value, displayValue, name, isEditing, onChange, type = "text" }) {
   return (
-    <div className="flex justify-between items-center py-3 border-b border-neutral-50 last:border-0 min-h-[52px] gap-4">
-      <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide shrink-0">
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
+      <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
         {label}
       </span>
       <div className="min-w-0 flex-1 break-words text-right">
@@ -502,7 +536,7 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
             value={value ?? ""}
             step={type === "number" ? "0.01" : undefined}
             onChange={onChange}
-            className="w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-1.5 text-right text-sm text-neutral-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-100 transition-all"
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-left text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
           />
         ) : (
           <span className="break-all text-sm font-semibold text-neutral-800">
@@ -514,19 +548,19 @@ function InfoRow({ label, value, displayValue, name, isEditing, onChange, type =
   );
 }
 
+
 function ValidationModal({ fields, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl overflow-hidden animate-in">
-        <div className="h-1.5 w-full bg-gradient-to-r from-orange-400 to-amber-400" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="relative w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl overflow-hidden animate-in max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex flex-col items-center text-center mb-5">
-            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 border border-orange-100">
-              <AlertTriangle className="h-7 w-7 text-orange-500" />
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-7 w-7 text-orange-600" />
             </div>
-            <h3 className="text-lg font-bold text-neutral-800">กรอกข้อมูลไม่ครบ</h3>
-            <p className="text-sm text-neutral-400 mt-1">
+            <h3 className="text-lg font-bold text-slate-900">กรอกข้อมูลไม่ครบ</h3>
+            <p className="text-sm text-slate-500 mt-1">
               กรุณากรอกข้อมูลในฟิลต่อไปนี้ให้ครบก่อนบันทึก
             </p>
           </div>
@@ -544,7 +578,7 @@ function ValidationModal({ fields, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="w-full rounded-xl bg-orange-500 py-2.5 text-sm font-bold text-white hover:bg-orange-600 active:scale-95 transition-all shadow-sm"
+            className={`${BTN.primary} w-full rounded-xl py-2.5 text-sm font-bold active:scale-95 transition-all`}
           >
             รับทราบ แก้ไขต่อ
           </button>

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2 } from 'lucide-react';
+import { PAGE_TITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
 
 const API=`${API_URL}/api/tutor/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
@@ -61,27 +63,27 @@ export default function TutorNotifications(){
   const grouped = useMemo(()=>groupByDate(filtered),[filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2.5">
+          <h1 className={`${PAGE_TITLE} flex items-center gap-2.5`}>
             <Bell className="h-6 w-6 text-orange-600" /> การแจ้งเตือน
           </h1>
-          <p className="text-sm text-slate-500 mt-1">ข้อมูลจริงสำหรับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p>
+          <p className="text-sm text-slate-500 mt-1">การแจ้งเตือนเกี่ยวกับงานสอนของคุณ · ยังไม่ได้อ่าน {unread} รายการ</p>
         </div>
         {unread>0 && (
           <button onClick={markAll} disabled={busy==='all'}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm disabled:opacity-60">
-            <Check className="h-4 w-4" /> อ่านทั้งหมด
+            className={`${BTN.secondary} flex items-center justify-center gap-2 self-end sm:self-auto px-4 py-2 rounded-xl font-semibold transition text-sm disabled:opacity-60`}>
+            <Check className="h-4 w-4 text-slate-500" /> อ่านทั้งหมด
           </button>
         )}
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={load} className="font-bold underline">ลองใหม่</button>
+          <button onClick={load} className="font-bold underline">โหลดใหม่</button>
         </div>
       )}
 
@@ -102,13 +104,13 @@ export default function TutorNotifications(){
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
-          <p className="text-sm font-medium text-slate-500">กำลังโหลดงานของคุณ...</p>
+          <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
       ) : filtered.length===0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีการแจ้งเตือน</p>
-          <p className="text-sm text-slate-400 mt-1">หากไม่มีงานค้าง หน้านี้ว่างได้เป็นปกติ</p>
+          <p className="text-sm text-slate-500 mt-1">การแจ้งเตือนใหม่จะแสดงที่นี่</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -116,9 +118,9 @@ export default function TutorNotifications(){
             <div key={groupLabel}>
               {/* หัวกลุ่มวัน — sticky เล็กน้อยให้รู้ว่ากำลังอยู่ช่วงไหน */}
               <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide">{groupLabel}</h2>
+                <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">{groupLabel}</h2>
                 <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-[11px] text-slate-400">{groupItems.length} รายการ</span>
+                <span className="text-[11px] text-slate-500">{groupItems.length} รายการ</span>
               </div>
 
               <div className="space-y-3">
@@ -132,17 +134,17 @@ export default function TutorNotifications(){
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
                         {!item.isRead && (
                           <button disabled={busy===item.id} onClick={()=>mark(item.id)} title="อ่านแล้ว"
-                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50">
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                             <Check className="h-3.5 w-3.5" />
                           </button>
                         )}
                         <button disabled={busy===item.id} onClick={()=>dismiss(item.id)} title="ซ่อนรายการ"
-                          className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-red-200 text-red-500 hover:bg-red-50 shadow-sm transition disabled:opacity-50">
+                          className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-red-200 text-red-500 hover:bg-red-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
 
-                      <div className="p-4 pl-5 flex gap-3">
+                      <div className="p-3 pl-4 sm:p-4 sm:pl-5 flex gap-3">
                         <div className={`h-9 w-9 rounded-lg ${m.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                           <m.Icon className={`h-4.5 w-4.5 ${m.text}`} />
                         </div>
@@ -153,13 +155,13 @@ export default function TutorNotifications(){
                               {item.title}
                               {!item.isRead && <span className="ml-1.5 inline-block w-1.5 h-1.5 bg-orange-500 rounded-full align-middle" />}
                             </h3>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${m.bg} ${m.text}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${m.bg} ${m.text}`}>
                               {m.label}
                             </span>
                           </div>
-                          <p className="text-sm leading-6 text-slate-600">{item.message}</p>
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="text-xs text-slate-400">{ago(item.createdAt)}</span>
+                          <p className="text-sm leading-6 text-slate-600 break-words">{item.message}</p>
+                          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                            <span className="text-xs text-slate-500">{ago(item.createdAt)}</span>
                             {item.link && (
                               <button onClick={()=>act(item)}
                                 className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">

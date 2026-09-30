@@ -5,22 +5,68 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, GraduationCap, School,
   CheckCircle, XCircle, Video, Calendar, BarChart2,
   PlayCircle, Clock, Shield,
   ChevronDown, ChevronUp, ArrowLeft,
-  Award, TrendingUp, TrendingDown, Minus, ImagePlus,   // ★ เพิ่ม
+  Award, TrendingUp, TrendingDown, Minus, ImagePlus, Flag,   // ★ เพิ่ม
 } from "lucide-react";
 import { getFileUrl } from "../utils/fileUrl";
+import { getConsentCatalog } from "../callapi/callusers_student";   // ← เพิ่ม: PDPA (endpoint สาธารณะ ไม่ต้องใช้ token)
+import UIModal from "../components/ui/Modal";
+import { confirmDialog, toast } from "../components/ui/dialogs";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import PageHeader from "../components/ui/PageHeader";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { GraduationCap as LuGraduationCap } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 
+// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนส้มเดียวกันทั้งระบบ
+const studentTiltMove = (e) => {
+  const el = e.currentTarget, r = el.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  el.style.setProperty("--gx", `${px * 100}%`);
+  el.style.setProperty("--gy", `${py * 100}%`);
+  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
+};
+const studentTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
+
+function StudentStatTile({ label, value, color, icon: Icon, unit = "คน" }) {
+  return (
+    <div
+      onMouseMove={studentTiltMove}
+      onMouseLeave={studentTiltLeave}
+      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
+    >
+      <span className="sa-glow" />
+      {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
+      <div className={`relative h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0 shadow-sm`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div className="relative min-w-0">
+        <p className={STAT_LABEL}>{label}</p>
+        <p className={STAT_VALUE}>{value}{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── FIX #6: ใช้ UserId เป็น seed แทนชื่อ เพื่อไม่ให้ avatar เปลี่ยนเมื่อแก้ชื่อ
 const avatarUrl = (userId) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=student_${userId}&backgroundColor=dbeafe`;
+
+// เกณฑ์ "ดูคลิปจบ" — ต้องใช้ค่าเดียวกับฝั่งนักเรียนและติวเตอร์ (80%)
+// ไม่งั้นตัวเลขที่แอดมินเห็นจะไม่ตรงกับที่ติวเตอร์เห็น
+const VIDEO_WATCHED_PERCENT = 80;
 
 // ─── FIX #8: handle format วันที่ที่หลากหลาย
 const formatDate = (d) => {
@@ -72,27 +118,9 @@ function StudentAvatar({ student, className = "h-10 w-10 rounded-xl" }) {
 }
 
 // ─── Modal ─────────────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? '2xl' : 'lg'}>{children}</UIModal>;
 }
 
 // ─── ImageUpload (เหมือนหน้าติวเตอร์ทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
@@ -137,7 +165,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-500">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -146,7 +174,7 @@ function ImageUpload({ value, onChange, showToast }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-500 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -177,7 +205,7 @@ function ParentSearchSelect({ onSelect }) {
   return (
     <div className="relative">
       <input
-        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none transition"
+        className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -188,9 +216,9 @@ function ParentSearchSelect({ onSelect }) {
       {open && (
         <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg">
           {loading ? (
-            <p className="text-xs text-slate-400 text-center py-3">กำลังค้นหา...</p>
+            <p className="text-xs text-slate-500 text-center py-3">กำลังค้นหา...</p>
           ) : results.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-3">ไม่พบ — กรอกข้อมูลใหม่ด้านล่างได้เลย</p>
+            <p className="text-xs text-slate-500 text-center py-3">ไม่พบข้อมูล กรุณากรอกข้อมูลผู้ปกครองด้านล่าง</p>
           ) : results.map(p => (
             <button type="button" key={p.ParentId}
               onMouseDown={() => { onSelect(p); setOpen(false); }}
@@ -199,7 +227,7 @@ function ParentSearchSelect({ onSelect }) {
                 {displayNameOf(p)}
                 {p.ParentProfilesType_Name && <span className="text-slate-400"> · {p.ParentProfilesType_Name}</span>}
               </span>
-              {p.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{p.PhoneNo}</span>}
+              {p.PhoneNo && <span className="text-[11px] text-slate-500 shrink-0">{p.PhoneNo}</span>}
             </button>
           ))}
         </div>
@@ -243,13 +271,13 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const submit = () => {
-    if (!form.firstname.trim() || !form.lastname.trim()) return alert("กรุณากรอกชื่อ-นามสกุล");
-    if (!isEdit && (!form.username.trim() || !form.password.trim())) return alert("กรุณากรอก Username และ Password");
+    if (!form.firstname.trim() || !form.lastname.trim()) return toast("กรุณากรอกชื่อ-นามสกุล");
+    if (!isEdit && (!form.username.trim() || !form.password.trim())) return toast("กรุณากรอก Username และ Password");
     // ★ กันเคสกรอกชื่อ/นามสกุลผู้ปกครองมาไม่ครบ
     const hasPartialParent =
       (form.parentFirstname.trim() || form.parentLastname.trim()) &&
       !(form.parentFirstname.trim() && form.parentLastname.trim());
-    if (hasPartialParent) return alert("กรุณากรอกชื่อและนามสกุลผู้ปกครองให้ครบ");
+    if (hasPartialParent) return toast("กรุณากรอกชื่อและนามสกุลผู้ปกครองให้ครบ");
 
     onSave({
       ...form,
@@ -265,7 +293,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     return formatted;
   };
 
-  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition";
+  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
   const [courses, setCourses] = useState([]); // ★ ใหม่: คอร์สที่นักเรียนคนนี้ลงทะเบียนอยู่
@@ -315,7 +343,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
@@ -325,7 +353,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อเล่น</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} />
@@ -350,7 +378,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
             placeholder="เทศบาลสวนสนุก" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>Line ID</label>
           <input className={inp} value={form.lineId || ""} onChange={e => set("lineId", e.target.value)} />
@@ -360,7 +388,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
           <label className={lbl}>ระดับชั้น</label>
           <select className={inp} value={form.gradeLevelId || ""} onChange={e => set("gradeLevelId", e.target.value)}>
@@ -425,9 +453,9 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           parentProfilesTypeId: p.ParentProfilesType_Id || "",
           removeParent: false,
         }))} />
-        <p className="text-[11px] text-slate-400">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
+        <p className="text-[11px] text-slate-500">หรือแก้ไข/กรอกข้อมูลผู้ปกครองด้านล่างโดยตรง</p>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input className={inp} placeholder="ชื่อผู้ปกครอง"
             value={form.parentFirstname}
             onChange={e => setForm(f => ({ ...f, parentFirstname: e.target.value, parentId: "", removeParent: false }))} />
@@ -470,7 +498,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
             {form.username || "—"}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
+          <p className="text-[11px] text-slate-500 mt-1">ไม่สามารถแก้ไข Username ได้</p>
         </div>
       )}
 
@@ -479,7 +507,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" /> ข้อมูลเข้าสู่ระบบ
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} minLength={4} maxLength={32} pattern="[A-Za-z0-9](?:[A-Za-z0-9._-]{2,30}[A-Za-z0-9])" autoComplete="off" />
@@ -510,7 +538,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
             {courses.map(c => (
-              <span key={c.CourseID} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+              <span key={c.CourseID} className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                 {c.CourseName}
                 <button
                   type="button"
@@ -520,10 +548,10 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
                       await axios.delete(`${API}/enroll/${c.EnrollId}`);
                       loadCourses();
                     } catch (err) {
-                      alert(err.response?.data?.message || "ลบไม่สำเร็จ");
+                      toast(err.response?.data?.message || "ลบไม่สำเร็จ");
                     }
                   }}
-                  className="text-orange-400 hover:text-red-500 transition"
+                  className="text-red-400 hover:text-red-600 transition"
                   title="นำออกจากคอร์ส"
                 >
                   <X className="h-3 w-3" />
@@ -536,11 +564,11 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
         <button onClick={submit} disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 disabled:opacity-50 transition text-sm shadow-sm">
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
@@ -666,18 +694,18 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
 
       <div className="flex items-center gap-2 p-3">
         <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+          className="flex-1 px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
         <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
           {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
         </button>
       </div>
 
       {/* ★ เพิ่ม: บอกให้รู้ว่ากรองอะไรอยู่ */}
-      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่</p>
+      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-500">แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่</p>
 
       <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+          <p className="text-xs text-slate-500 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
         ) : filtered.map(c => {
           const id = String(c.CourseID);
           const checked = selectedIds.includes(id);
@@ -692,11 +720,11 @@ function AddCourseToStudent({ studentId, enrolledCourseIds, onAdded, showToast }
       <div className="flex items-center gap-2 p-3 border-t border-orange-100">
         <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คอร์ส</span>
         <button onClick={handleAdd} disabled={saving || !selectedIds.length}
-          className="px-3 py-2 bg-orange-600 text-white rounded-lg text-xs font-bold hover:bg-orange-700 disabled:opacity-50 transition flex items-center gap-1.5">
+          className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition flex items-center gap-1.5`}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
         </button>
-        <button onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
-          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+        <button aria-label="ปิด" onClick={() => { setAdding(false); setSelectedIds([]); setSearch(""); }}
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -733,7 +761,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   if (loading) return (
     <Modal title="ข้อมูลนักเรียน" icon={Eye} onClose={onClose} wide>
-      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-600" /></div>
+      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
     </Modal>
   );
 
@@ -756,7 +784,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   const attColor = attRate >= 80 ? "text-emerald-600" : attRate >= 60 ? "text-amber-500" : "text-red-500";
   const attBarColor = attRate >= 80 ? "bg-emerald-500" : attRate >= 60 ? "bg-amber-400" : "bg-red-500";
 
-  const watchedVideos = videoProgress.filter(v => v.WatchPercent >= 100).length;
+  const watchedVideos = videoProgress.filter(v => v.WatchPercent >= VIDEO_WATCHED_PERCENT).length;
   const totalVideos = videoProgress.length;
 
   // ── ข้อมูลกรองตามคอร์สที่เลือก (ใช้ในทุก tab ยกเว้น "courses") ──────────
@@ -767,19 +795,19 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   const cAttended = cAttendance.filter(a => a.Status === "1").length;
   const cAttRate = cAttendance.length ? Math.round((cAttended / cAttendance.length) * 100) : 0;
-  const cWatched = cVideos.filter(v => v.WatchPercent >= 100).length;
+  const cWatched = cVideos.filter(v => v.WatchPercent >= VIDEO_WATCHED_PERCENT).length;
 
-  // ── รวมคะแนนสอบเป็นรายวิชา (pre/mid/post = ExamTypeId 1/2/3) ────────────
+  // ── รวมคะแนนสอบเป็นรายวิชา ───────────────────────────────────────────────
+  // ใช้ TypeSlug ที่หลังบ้านแปลงมาจากชื่อรอบสอบ ไม่ hardcode ExamTypeId = 1/2/3
+  // (ถ้ามีคนสลับลำดับในตาราง examtype ตัวเลขจะเพี้ยนโดยไม่มีใครรู้)
   const scoresBySubject = {};
   cScores.forEach(e => {
-    if (!e.MaxScore || e.MaxScore <= 0) return;
+    if (!e.MaxScore || Number(e.MaxScore) <= 0) return;
     const key = e.SubjectName || "ไม่ระบุวิชา";
     if (!scoresBySubject[key]) scoresBySubject[key] = { pre: [], mid: [], post: [] };
-    const pct = Math.round((e.Score / e.MaxScore) * 100);
-    const typeId = String(e.ExamTypeId);
-    if (typeId === "1") scoresBySubject[key].pre.push(pct);
-    else if (typeId === "2") scoresBySubject[key].mid.push(pct);
-    else if (typeId === "3") scoresBySubject[key].post.push(pct);
+    const pct = Math.round((Number(e.Score) / Number(e.MaxScore)) * 100);
+    const bucket = { "pre-test": "pre", "mid-test": "mid", "post-test": "post" }[e.TypeSlug];
+    if (bucket) scoresBySubject[key][bucket].push(pct);
   });
   const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
   const subjectSummaries = Object.entries(scoresBySubject).map(([subject, v]) => {
@@ -805,12 +833,13 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
     { key: "scores", label: "คะแนนสอบ", count: subjectSummaries.length },      // ★ ใหม่
     { key: "overview", label: "ภาพรวม", count: null },                          // ★ ใหม่
     { key: "parent", label: "ผู้ปกครอง", count: null },                         // ★ เพิ่ม
+    { key: "consent", label: "ความยินยอม (PDPA)", count: null },               // ★ เพิ่ม
   ];
 
   // ── ข้อความเตือนเมื่อยังไม่เลือกคอร์ส ────────────────────────────────
   const NeedCourseNotice = () => (
     <div className="text-center py-10">
-      <p className="text-slate-400 text-sm mb-3">กรุณาเลือกคอร์สก่อน เพื่อดูรายละเอียดของคอร์สนั้น</p>
+      <p className="text-slate-500 text-sm mb-3">กรุณาเลือกคอร์สก่อน เพื่อดูรายละเอียดของคอร์สนั้น</p>
       <button onClick={() => setTab("courses")}
         className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition">
         <BookOpen className="h-3.5 w-3.5" /> ไปเลือกคอร์ส
@@ -836,14 +865,14 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         </div>
         <div className="flex gap-3 shrink-0">
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">เข้าเรียน (รวม)</p>
-            <p className="text-xl font-black text-white">{attRate}%</p>
-            <p className="text-[10px] text-orange-300">{attended}/{totalClasses} คาบ</p>
+            <p className="text-xs font-medium text-orange-200">เข้าเรียน (รวม)</p>
+            <p className={`${STAT_NUM} text-white`}>{attRate}<span className="ml-0.5 text-xs font-medium text-orange-100">%</span></p>
+            <p className="text-[11px] text-orange-300">{attended}/{totalClasses} คาบ</p>
           </div>
           <div className="bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-center backdrop-blur-sm">
-            <p className="text-xs text-orange-200">วิดีโอ (รวม)</p>
-            <p className="text-xl font-black text-white">{watchedVideos}</p>
-            <p className="text-[10px] text-orange-300">/{totalVideos} คลิป</p>
+            <p className="text-xs font-medium text-orange-200">วิดีโอ (รวม)</p>
+            <p className={`${STAT_NUM} text-white`}>{watchedVideos}<span className="ml-1 text-xs font-medium text-orange-100">คลิป</span></p>
+            <p className="text-[11px] text-orange-300">จาก {totalVideos} คลิป</p>
           </div>
         </div>
       </div>
@@ -851,7 +880,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
       {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
       {selectedCourse && tab !== "courses" && (
-        <div className="flex items-center gap-2 mb-4 text-xs">
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <span className="text-slate-400">กำลังดูคอร์ส:</span>
           <span className="bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-semibold">
             {selectedCourse.CourseName}
@@ -864,19 +893,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5 flex-wrap">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}>
-            {t.label}
-            {t.count !== null && (
-              <span className={`text-[11px] font-black px-1.5 py-0.5 rounded-full ${tab === t.key ? "bg-orange-100 text-orange-600" : "bg-slate-200 text-slate-500"}`}>
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl className="mb-5" value={tab} onChange={setTab}
+        options={TABS.map(t => ({ id: t.key, label: t.label, count: t.count }))} />
 
       {/* Tab: คอร์สที่ลงทะเบียน — คลิกเพื่อเลือกดูรายละเอียด */}
       {tab === "courses" && (
@@ -914,10 +932,10 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 {rate !== null && (
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-right">
-                      <p className={`text-sm font-black ${rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                      <p className={`text-sm font-bold ${rate >= 80 ? "text-emerald-600" : rate >= 60 ? "text-amber-500" : "text-red-500"}`}>
                         {rate}%
                       </p>
-                      <p className="text-[10px] text-slate-400">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
+                      <p className="text-[11px] text-slate-500">{c.TotalAttended}/{c.TotalClassHeld} คาบ</p>
                     </div>
                     <div className="h-10 w-2 bg-slate-200 rounded-full overflow-hidden flex items-end">
                       <div className={`w-full rounded-full ${rColor}`} style={{ height: `${rate}%` }} />
@@ -928,7 +946,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                   type="button"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    if (!confirm(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
+                    if (!await confirmDialog(`นำ "${c.CourseName}" ออกจากคอร์สของนักเรียนคนนี้?`)) return;
                     try {
                       await axios.delete(`${API}/enroll/${c.EnrollId}`);
                       loadDetail();
@@ -936,7 +954,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       showToast("error", err.response?.data?.message || "ลบไม่สำเร็จ");
                     }
                   }}
-                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                  className="shrink-0 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                   title="นำออกจากคอร์ส"
                 >
                   <X className="h-4 w-4" />
@@ -954,7 +972,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-500 font-medium">อัตราการเข้าเรียนในคอร์สนี้</span>
-                <span className={`font-black ${cAttRate >= 80 ? "text-emerald-600" : cAttRate >= 60 ? "text-amber-500" : "text-red-500"}`}>
+                <span className={`font-bold ${cAttRate >= 80 ? "text-emerald-600" : cAttRate >= 60 ? "text-amber-500" : "text-red-500"}`}>
                   {cAttRate}% ({cAttended}/{cAttendance.length} คาบ)
                 </span>
               </div>
@@ -966,13 +984,13 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูลการเข้าเรียนในคอร์สนี้</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-0 sm:min-w-[520px] text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs">
-                      <th className="text-left px-4 py-3 font-semibold">วันที่</th>
-                      <th className="text-left px-4 py-3 font-semibold">คอร์ส / วิชา</th>
-                      <th className="text-left px-4 py-3 font-semibold">เวลา</th>
-                      <th className="text-center px-4 py-3 font-semibold">สถานะ</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่</th>
+                      <th className="hidden sm:table-cell text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส / วิชา</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เวลา</th>
+                      <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -981,18 +999,18 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                         <td className="px-4 py-3 font-medium text-slate-800 text-xs">
                           {formatDate(a.ClassDate || a.AttendanceDate)}
                         </td>
-                        <td className="px-4 py-3 text-slate-600 text-xs">
+                        <td className="hidden sm:table-cell px-4 py-3 text-slate-600 text-xs">
                           <span className="font-medium">{a.CourseName}</span>
                           {a.SubjectName && <span className="text-slate-400"> · {a.SubjectName}</span>}
                         </td>
-                        <td className="px-4 py-3 text-slate-400 text-xs">{a.StartTime} – {a.EndTime} น.</td>
+                        <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap lg:whitespace-normal">{a.StartTime} – {a.EndTime} น.</td>
                         <td className="px-4 py-3 text-center">
                           {a.Status === "1" ? (
-                            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               <CheckCircle className="h-3 w-3" /> มาเรียน
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-[11px] font-bold px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                               <XCircle className="h-3 w-3" /> ขาดเรียน
                             </span>
                           )}
@@ -1016,7 +1034,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             ) : (
               <div className="space-y-2">
                 {cVideos.map(v => {
-                  const done = v.WatchPercent >= 100;
+                  const done = v.WatchPercent >= VIDEO_WATCHED_PERCENT;
                   return (
                     <div key={v.StudentVideoProgressId} className={`flex items-center gap-3 p-3 rounded-xl border ${done ? "bg-orange-50 border-orange-100" : "bg-slate-50 border-slate-200"}`}>
                       <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${done ? "bg-orange-600" : "bg-slate-300"}`}>
@@ -1024,7 +1042,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-semibold truncate ${done ? "text-orange-800" : "text-slate-500"}`}>{v.VideoTitle}</p>
-                        <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                        <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-500">
                           <span>{v.CourseName}{v.SubjectName && ` · ${v.SubjectName}`}</span>
                           {v.WatchDate && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />ดูเมื่อ {formatDate(v.WatchDate)}</span>}
                         </div>
@@ -1033,17 +1051,17 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                             <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                               <div className="h-full bg-orange-400 rounded-full" style={{ width: `${v.WatchPercent}%` }} />
                             </div>
-                            <span className="text-[10px] text-orange-500 font-medium">{v.WatchPercent}%</span>
+                            <span className="text-[11px] text-orange-500 font-medium">{v.WatchPercent}%</span>
                           </div>
                         )}
                       </div>
                       <div className="shrink-0">
                         {done ? (
-                          <span className="inline-flex items-center gap-1 bg-orange-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                          <span className="inline-flex items-center gap-1 bg-orange-500 text-white text-xs font-semibold px-2.5 py-0.5 rounded-full">
                             <CheckCircle className="h-3 w-3" /> ดูแล้ว
                           </span>
                         ) : (
-                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-500">{v.WatchPercent}%</span>
                         )}
                       </div>
                     </div>
@@ -1071,7 +1089,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       <span className="font-semibold text-sm text-slate-900">{sub.subject}</span>
                     </div>
                     {sub.improvement !== null && (
-                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-bold ${trendColor(t)}`}>
+                      <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${trendColor(t)}`}>
                         {trendIcon(t)}
                         {sub.improvement > 0 ? `+${sub.improvement}` : sub.improvement}
                       </span>
@@ -1084,8 +1102,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       { label: "หลังเรียน", value: sub.post },
                     ].map(({ label, value }) => (
                       <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
-                        <p className="text-[10px] text-slate-400 mb-1">{label}</p>
-                        <p className="text-sm font-black text-slate-800">{value !== null ? `${value}%` : "—"}</p>
+                        <p className="text-[11px] text-slate-500 mb-1">{label}</p>
+                        <p className="text-sm font-bold text-slate-800">{value !== null ? `${value}%` : "—"}</p>
                       </div>
                     ))}
                   </div>
@@ -1108,8 +1126,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 { label: "คลิปดูแล้ว", value: `${cWatched}/${cVideos.length}`, color: "text-orange-600" },
               ].map((st, i) => (
                 <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 font-medium mb-1">{st.label}</p>
-                  <p className={`text-xl font-black ${st.color}`}>{st.value}</p>
+                  <p className={`${STAT_LABEL} mb-1`}>{st.label}</p>
+                  <p className={`${STAT_NUM} ${st.color}`}>{st.value}</p>
                 </div>
               ))}
             </div>
@@ -1139,7 +1157,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         !parent ? (
           <div className="text-center py-10">
             <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-slate-400 text-sm">ยังไม่มีข้อมูลผู้ปกครอง — เพิ่มได้ผ่านปุ่มแก้ไขข้อมูลนักเรียน</p>
+            <p className="text-slate-500 text-sm">ยังไม่มีข้อมูลผู้ปกครอง — เพิ่มได้ผ่านปุ่มแก้ไขข้อมูลนักเรียน</p>
           </div>
         ) : (
           <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-3">
@@ -1148,51 +1166,288 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                 {parent.Nickname || `${parent.Firstname} ${parent.Lastname}`}
               </p>
               {parent.ParentProfilesType_Name && (
-                <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                   {parent.ParentProfilesType_Name}
                 </span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-[11px] text-slate-400">ชื่อ-นามสกุล</p>
+                <p className="text-[11px] text-slate-500">ชื่อ-นามสกุล</p>
                 <p className="text-slate-700">{parent.Firstname} {parent.Lastname}</p>
               </div>
               <div>
-                <p className="text-[11px] text-slate-400">เบอร์โทร</p>
+                <p className="text-[11px] text-slate-500">เบอร์โทร</p>
                 <p className="text-slate-700">{parent.PhoneNo || "—"}</p>
               </div>
               <div>
-                <p className="text-[11px] text-slate-400">Line ID</p>
+                <p className="text-[11px] text-slate-500">Line ID</p>
                 <p className="text-slate-700">{parent.LineID || "—"}</p>
               </div>
               {parent.Relationship && (
                 <div className="col-span-2">
-                  <p className="text-[11px] text-slate-400">หมายเหตุความสัมพันธ์</p>
+                  <p className="text-[11px] text-slate-500">หมายเหตุความสัมพันธ์</p>
                   <p className="text-slate-700">{parent.Relationship}</p>
                 </div>
               )}
             </div>
+            <ParentPrivacyNoticeBlock parent={parent} />
           </div>
         )
       )}
+
+      {/* ★ เพิ่ม: Tab ความยินยอม PDPA — ดูสถานะ + บันทึกจากเอกสารกระดาษที่เคาน์เตอร์ */}
+      {tab === "consent" && (
+        <ConsentTab studentId={studentId} showToast={showToast} />
+      )}
     </Modal>
+  );
+}
+
+// ─── ParentPrivacyNoticeBlock ────────────────────────────────────────────────
+// แจ้งผู้ปกครองว่าสถาบันเก็บข้อมูลส่วนตัวของ "ตัวผู้ปกครองเอง" อะไรบ้าง (ชื่อ/ชื่อเล่น/
+// เบอร์โทร/LINE/วันเกิด/ความสัมพันธ์) — ★ นี่ไม่ใช่ "ความยินยอม" แบบของนักเรียนที่ปฏิเสธได้
+// (ดู ConsentTab ด้านล่าง) เพราะข้อมูลนี้จำเป็นต่อการลงทะเบียนผู้เยาว์อยู่แล้ว จึงเป็นแค่การ
+// แจ้งให้ทราบตาม ม.23 — นักเรียนกรอกข้อมูลผู้ปกครองและรับทราบเรื่องนี้เองตอนซื้อคอร์สแรก
+// (ดู POST /api/student/profile/parent) บล็อกนี้จึงเป็นแค่การแสดงสถานะ ไม่มีปุ่มบันทึกในหน้านี้แล้ว
+function ParentPrivacyNoticeBlock({ parent }) {
+  const acknowledgedAt = parent.PrivacyNoticeAcknowledgedAt;
+
+  return (
+    <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-4">
+      <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> การแจ้งข้อมูลส่วนบุคคลของผู้ปกครอง</p>
+      <p className="mt-1 text-xs text-orange-700 leading-relaxed">
+        สถาบันเก็บชื่อ ชื่อเล่น เบอร์โทร LINE ID วันเกิด และความสัมพันธ์ของผู้ปกครองไว้เพื่อระบุตัวผู้ใช้อำนาจปกครอง
+        และใช้ติดต่อเรื่องการเรียน/การชำระเงินของนักเรียน — เป็นข้อมูลที่จำเป็นต่อการลงทะเบียนผู้เยาว์อยู่แล้ว
+        จึงเป็นการแจ้งให้ทราบ ไม่ใช่การขอความยินยอมที่ปฏิเสธได้แบบรายการของนักเรียนด้านล่าง
+      </p>
+
+      {acknowledgedAt ? (
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-emerald-200 px-3 py-2">
+          <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold">รับทราบแล้ว</span>
+          <span className="text-xs text-slate-500">เมื่อ {new Date(acknowledgedAt).toLocaleString("th-TH")}</span>
+        </div>
+      ) : (
+        <div className="mt-3 flex items-center gap-2 rounded-lg bg-white border border-amber-200 px-3 py-2">
+          <span className="rounded-full bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 text-xs font-semibold">ยังไม่ได้แจ้ง</span>
+          <span className="text-xs text-slate-500">ระบบจะให้นักเรียนกรอกข้อมูลนี้และรับทราบเองตอนซื้อคอร์สแรก</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ConsentTab (PDPA) ──────────────────────────────────────────────────────
+// แยกเป็น component ของตัวเอง ไม่ยุ่งกับ loadDetail() ของ modal หลัก เพราะข้อมูล
+// ความยินยอมโหลด/บันทึกแยกกันคนละจังหวะกับข้อมูลเรียน/คะแนน
+function ConsentTab({ studentId, showToast }) {
+  const [catalog, setCatalog] = useState([]);
+  const [courses, setCourses] = useState([]);                  // [{ courseId, courseName }] ที่ลงทะเบียนอยู่
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
+  const [consentsByCourse, setConsentsByCourse] = useState({}); // { [courseId]: { [consentKey]: status } }
+  const [history, setHistory] = useState([]);      // ทุกคอร์สรวมกัน มี CourseId กำกับทุกแถว — กรองตามคอร์สที่เลือกตอนใช้
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState({});          // { [consentKey]: true|false } — ยังไม่ได้บันทึก (ของคอร์สที่เลือกอยู่)
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const load = () => {
+    setLoading(true);
+    Promise.all([
+      getConsentCatalog(),
+      axios.get(`${API}/students/${studentId}/consents`),
+    ])
+      .then(([cat, res]) => {
+        setCatalog(cat?.items ?? []);
+        const loadedCourses = res.data?.courses ?? [];
+        setCourses(loadedCourses);
+        setConsentsByCourse(res.data?.consentsByCourse ?? {});
+        setHistory(res.data?.history ?? []);
+        // คงคอร์สที่เลือกไว้เดิมถ้ายังอยู่ในรายชื่อ (เช่น refresh หลังบันทึก) ไม่งั้นเลือกคอร์สแรกให้
+        setSelectedCourseId((prev) =>
+          prev && loadedCourses.some((c) => c.courseId === prev) ? prev : (loadedCourses[0]?.courseId ?? null)
+        );
+      })
+      .catch((e) => showToast("error", "โหลดข้อมูลความยินยอมไม่สำเร็จ", e.response?.data?.message || e.message))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { load(); }, [studentId]);
+  // สลับคอร์สแล้วต้องเคลียร์คำตอบร่าง/ไฟล์แนบ — กันเผลอเอาคำตอบของอีกคอร์สไปบันทึกผิดคอร์ส
+  useEffect(() => {
+    setDraft({});
+    setEvidenceFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [selectedCourseId]);
+
+  const status = consentsByCourse[selectedCourseId] || {};
+  const historyForCourse = history.filter((r) => r.CourseId === selectedCourseId);
+  const latestRecordFor = (key) => historyForCourse.find((r) => r.ConsentKey === key) || null;
+  const METHOD_LABEL = { online: "ออนไลน์", paper: "กระดาษ" };
+
+  const STATUS_LABEL = {
+    granted: { text: "ยินยอมแล้ว", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    denied: { text: "ไม่ยินยอม", cls: "bg-slate-100 text-slate-500 border-slate-200" },
+    not_answered: { text: "ยังไม่ได้ตอบ", cls: "bg-amber-50 text-amber-600 border-amber-200" },
+  };
+
+  // มีเฉพาะรายการที่ "ยังไม่ได้ตอบ" เท่านั้นที่แอดมินเพิ่มคำตอบแทนได้ — ตอบแล้วไม่ว่าจะยินยอมหรือไม่
+  // ยินยอม (ไม่ว่านักเรียนตอบเองหรือแอดมินเคยบันทึกไว้ก่อน) แก้ทับไม่ได้อีก (ฝั่ง backend บล็อกไว้แล้วเช่นกัน)
+  // เช็คเฉพาะของ "คอร์สที่เลือกอยู่" เท่านั้น — คอร์สอื่นมีสถานะของตัวเองแยกกัน
+  const pendingItems = catalog.filter((item) => (status[item.key] || "not_answered") === "not_answered");
+  const answeredCount = Object.keys(draft).length;
+
+  const handleSavePaper = async () => {
+    if (!selectedCourseId) return showToast("error", "กรุณาเลือกคอร์สก่อนบันทึก");
+    if (!answeredCount) return showToast("error", "กรุณาเลือกอย่างน้อย 1 รายการก่อนบันทึก");
+
+    const items = Object.entries(draft).map(([consentKey, isGranted]) => ({ consentKey, isGranted }));
+    const fd = new FormData();
+    fd.append("items", JSON.stringify(items));
+    fd.append("courseId", String(selectedCourseId));
+    if (evidenceFile) fd.append("evidence", evidenceFile);
+
+    setSaving(true);
+    try {
+      await axios.post(`${API}/students/${studentId}/consents/paper`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      showToast("success", "บันทึกความยินยอมสำเร็จ");
+      setDraft({});
+      setEvidenceFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      load();
+    } catch (e) {
+      showToast("error", "บันทึกไม่สำเร็จ", e.response?.data?.message || e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
+  }
+
+  if (!courses.length) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center text-sm text-slate-500">
+        นักเรียนยังไม่ได้ลงทะเบียนคอร์ส จึงยังไม่มีข้อมูลความยินยอม (ความยินยอมบันทึกแยกตามคอร์ส)
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+        <p className="text-sm font-bold text-orange-800 flex items-center gap-1.5"><Shield className="h-4 w-4" /> ความยินยอม (PDPA)</p>
+        <p className="mt-1 text-xs text-orange-700 leading-relaxed">
+          ความยินยอมผูกกับ "คอร์สที่ลงทะเบียน" แยกกันทีละคอร์ส นักเรียนอาจยินยอมคอร์สหนึ่งแต่ไม่ยินยอมอีกคอร์สหนึ่งก็ได้
+          เลือกคอร์สด้านล่างเพื่อดู/บันทึกของคอร์สนั้น — นักเรียนกดตอบเองในระบบแล้วหรือยัง ถ้ายังไม่ตอบ
+          แอดมินเพิ่มคำตอบแทนได้ (เช่น คุยทางโทรศัพท์ หรือเซ็นใบยินยอมที่เคาน์เตอร์) แต่ถ้ามีคำตอบแล้ว จะแก้ไขทับไม่ได้อีก
+        </p>
+
+        {courses.length > 1 ? (
+          <label className="mt-3 flex items-center gap-2">
+            <BookOpen className="h-3.5 w-3.5 shrink-0 text-orange-700" />
+            <select
+              value={selectedCourseId ?? ""}
+              onChange={(e) => setSelectedCourseId(Number(e.target.value))}
+              className="flex-1 min-w-0 w-full lg:min-w-auto lg:w-auto rounded-xl border border-orange-200 bg-white px-2.5 h-10 text-xs font-semibold text-slate-700 focus:border-orange-400 focus:outline-none"
+            >
+              {courses.map((c) => (
+                <option key={c.courseId} value={c.courseId}>{c.courseName}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-bold text-orange-800">
+            <BookOpen className="h-3.5 w-3.5 shrink-0" /> คอร์ส: {courses[0]?.courseName}
+          </p>
+        )}
+
+        <div className="mt-3 space-y-2.5">
+          {catalog.map((item) => {
+            const s = STATUS_LABEL[status[item.key] || "not_answered"];
+            const latest = latestRecordFor(item.key);
+            const answered = (status[item.key] || "not_answered") !== "not_answered";
+            return (
+              <div key={item.key} className="rounded-lg border border-orange-100 bg-white px-3 py-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-slate-700">{item.label}</p>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{item.summary}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>{s.text}</span>
+                    {latest && (
+                      <span className="text-[11px] text-slate-500">
+                        {METHOD_LABEL[latest.ConsentMethod] || latest.ConsentMethod} · {new Date(latest.ActionAt).toLocaleString("th-TH")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!answered && (
+                  <div className="mt-2 flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, [item.key]: true }))}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === true ? "bg-emerald-500 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-emerald-50"}`}
+                    >
+                      ยินยอม
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDraft((d) => ({ ...d, [item.key]: false }))}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition ${draft[item.key] === false ? "bg-slate-600 text-white" : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"}`}
+                    >
+                      ไม่ยินยอม
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {pendingItems.length > 0 && (
+          <>
+            <div className="mt-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)}
+                className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-100 file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-orange-700"
+              />
+              <p className="mt-1 text-[11px] text-orange-600">ไม่บังคับแนบ — รองรับ JPG, PNG, WEBP หรือ PDF ถ้าต้องการแนบ · ไม่เกิน 10 MB</p>
+            </div>
+
+            <button
+              type="button"
+              disabled={saving || !answeredCount}
+              onClick={handleSavePaper}
+              className={`${BTN.primary} mt-4 flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition disabled:opacity-50`}
+            >
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              {saving ? "กำลังบันทึก..." : "บันทึกคำตอบแทนนักเรียน"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ยืนยันการลบนักเรียน</h3>
-            <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบนักเรียน</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
           <p className="text-sm font-semibold text-red-800">
@@ -1200,15 +1455,15 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
           </p>
           <p className="text-xs text-red-400 mt-0.5">ID: #{student.UserId}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
           {/* FIX #7: ปุ่ม disable + loading ระหว่าง request */}
           <button onClick={onConfirm} disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
           </button>
         </div>
       </div>
@@ -1216,131 +1471,338 @@ function ConfirmDelete({ student, onConfirm, onCancel, isDeleting }) {
   );
 }
 
-// ─── helper: badge ตามคะแนน ──────────────────────────────────────────────────
-function calcStudentBadge(score) {
-  if (score >= 90) return { label: 'ดีเยี่ยม', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
-  if (score >= 80) return { label: 'ดีมาก', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
-  if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
-  if (score >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
-  return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+// ─── 2 โพเดียม = 2 มิติของความสำเร็จ ────────────────────────────────────────
+// เดิมมีคะแนนเดียว ซึ่งไม่เป็นธรรมเชิงโครงสร้างเพราะ "เพดานคะแนน":
+// เด็ก Pre 90 เพิ่มได้สูงสุด 10 จุด จึงถูกล็อกออกจากคะแนนพัฒนาการตั้งแต่ยังไม่เริ่มเรียน
+// ตอนนี้แยกเป็น 2 กระดาน ทุกคนได้ทั้ง 2 คะแนน และขึ้นได้ทั้ง 2 โพเดียม
+// (ไม่แบ่งกลุ่มเด็กตาม Pre-test เพราะจะเกิดหน้าผาที่เส้นแบ่ง และเปิดช่องให้ทำ Pre ต่ำ ๆ)
+// สูตรจริงอยู่ที่ backend-project/services/studentPerformance.js
+const BOARDS = {
+  excellence: {
+    key: 'excellence',
+    tab: 'ความสามารถ',
+    Icon: Award,
+    heading: 'ความสามารถโดดเด่น',
+    formula: 'Post-test 70% + คะแนนเฉลี่ยทุกรอบ 30%',
+    hint: 'วัดระดับความสามารถปัจจุบัน โดยใช้ค่าเฉลี่ยทุกรอบเพื่อให้ผลสม่ำเสมอมีน้ำหนักมากกว่าคะแนนสูงเพียงรอบเดียว',
+    score: (s) => s.ExcellenceScore,
+    eligible: (s) => s.ExcellenceEvaluable === true,
+    reason: (s) => s.ExcellenceReason,
+    ranges: [
+      { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
+      { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
+      { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
+      { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
+      { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
+    ],
+    badge: (v) => {
+      if (v == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
+      if (v >= 90) return { label: 'ดีเยี่ยม', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+      if (v >= 80) return { label: 'ดีมาก', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
+      if (v >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+      if (v >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+      return { label: 'ต้องพัฒนา', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+    },
+  },
+  improvement: {
+    key: 'improvement',
+    tab: 'พัฒนาการ',
+    Icon: TrendingUp,
+    heading: 'พัฒนาการโดดเด่น',
+    formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
+    hint: 'วัดสัดส่วนช่องว่างคะแนนที่ปิดได้ (%) แทนคะแนนที่เพิ่มขึ้นโดยตรง เพื่อให้นักเรียนที่เริ่มต้นคะแนนต่ำหรือสูงได้รับการประเมินอย่างเป็นธรรม',
+    score: (s) => s.ImprovementScore,
+    eligible: (s) => s.ImprovementEligible === true,
+    reason: (s) => s.ImprovementReason,
+    ranges: [
+      { key: 'leap', label: 'ก้าวกระโดด (85-100)', test: (v) => v >= 85 },
+      { key: 'high', label: 'พัฒนาการสูง (70-84)', test: (v) => v >= 70 && v < 85 },
+      { key: 'good', label: 'พัฒนาการดี (55-69)', test: (v) => v >= 55 && v < 70 },
+      { key: 'slight', label: 'พัฒนาการเล็กน้อย (40-54)', test: (v) => v >= 40 && v < 55 },
+      { key: 'none', label: 'ยังไม่เห็นพัฒนาการ (ต่ำกว่า 40)', test: (v) => v < 40 },
+    ],
+    badge: (v) => {
+      if (v == null) return { label: 'ยังประเมินไม่ได้', bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200' };
+      if (v >= 85) return { label: 'ก้าวกระโดด', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
+      if (v >= 70) return { label: 'พัฒนาการสูง', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' };
+      if (v >= 55) return { label: 'พัฒนาการดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
+      if (v >= 40) return { label: 'พัฒนาการเล็กน้อย', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
+      return { label: 'ยังไม่เห็นพัฒนาการ', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+    },
+  },
+};
+
+// ── คำเตือนตัวกันเพดาน (อ้างอิงงานวิจัย Normalized Gain, Hake 1998) ────────
+// ป้ายระดับสูง/กลาง/ต่ำแบบเดิมถูกตัดออก เพราะซ้ำกับป้าย "ก้าวกระโดด / พัฒนาการ
+// สูง / ..." ที่หัวการ์ดอยู่แล้ว (คนละเกณฑ์ตัด คนละที่มา แต่พูดเรื่องเดียวกัน
+// จนแอดมินงงว่าทำไมมีสองป้าย)
+//
+// สิ่งเดียวที่ยังต้องเตือนคือกรณีพิเศษ: ระบบใส่ "ขั้นต่ำพื้นที่ที่เหลือ 30 จุด"
+// กันเพดานระเบิด (ไม่งั้น 95→100 จะได้คะแนนพัฒนาการเท่ากับ 10→100) พอตัวกันนี้
+// ทำงาน (Pre-test เกิน 70%) ตัวเลขจะเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้
+// แล้ว — อันนี้มีประโยชน์จริงและไม่มีป้ายไหนบอกอยู่ก่อน จึงเก็บไว้เฉพาะเคสนี้
+// เขียนเป็นภาษาที่แอดมินอ่านเข้าใจโดยไม่ต้องรู้จักงานวิจัย ส่วนที่มาเชิงเทคนิค
+// (สูตร + อ้างอิง Hake 1998) ซ่อนไว้หลังไอคอน (i) ให้กดดูเฉพาะเวลาต้องการ
+const HAKE_ROOM_UNCLAMPED = 70;
+function ceilingGuardNote(growthPct, preScore) {
+  if (growthPct == null || preScore == null) return null;
+  if (preScore <= HAKE_ROOM_UNCLAMPED) return null;
+  return {
+    label: 'นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขพัฒนาการนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้',
+    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนนก่อนเรียนสูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
+  };
 }
 
-// ★ เพิ่ม: จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
+// ป้ายคำอธิบายพร้อมไอคอน (i) — กดหรือชี้เพื่อดูรายละเอียดเชิงเทคนิคเพิ่มเติม
+// ใช้เมื่อข้อความหลักสั้นพอจะอ่านตรง ๆ ได้ แต่มีรายละเอียดเสริมที่ไม่จำเป็น
+// ต้องเห็นทุกคน (เช่น อ้างอิงงานวิจัย) จะได้ไม่ทำให้การ์ดหลักรกเกินไป
+function InfoNote({ label, detail }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <div className="flex items-start gap-1.5 text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-2">
+        <span className="flex-1">{label}</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          className="shrink-0 h-4 w-4 rounded-full border border-slate-300 text-slate-500 text-[10px] font-bold flex items-center justify-center hover:border-orange-400 hover:text-orange-500 transition"
+          aria-label="ดูรายละเอียดเพิ่มเติม"
+        >
+          i
+        </button>
+      </div>
+      {open && (
+        <div className="absolute right-0 z-10 mt-1 w-72 text-[11px] leading-relaxed text-slate-600 bg-white border border-slate-200 rounded-lg shadow-lg px-3 py-2.5">
+          {detail}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// แปะคะแนนของกระดานที่กำลังดูอยู่ลงบนนักเรียนแต่ละคน (_score/_eligible/_reason)
+// ส่วนที่เหลือของหน้าจะได้ไม่ต้องรู้ว่ากำลังดูกระดานไหน
+const withBoardScore = (list, board) =>
+  list.map((s) => ({
+    ...s,
+    _score: board.score(s),
+    _eligible: board.eligible(s),
+    _reason: board.reason(s),
+  }));
+
+// จัดกลุ่มตามคะแนนที่เท่ากัน แล้วเอาแค่ 3 "กลุ่มคะแนน" สูงสุด (ไม่ใช่ 3 คนแรก)
 function topScoreGroups(sortedList, groupCount = 3) {
   const groups = [];
-  for (const item of sortedList) {
+  // เอาเฉพาะคนที่เข้าเกณฑ์ของกระดานนี้ขึ้นโพเดียม
+  for (const item of sortedList.filter((s) => s._eligible)) {
     const last = groups[groups.length - 1];
-    if (last && last.score === item.PerformanceScore) {
+    if (last && last.score === item._score) {
       last.members.push(item);
     } else {
       if (groups.length >= groupCount) break;
-      groups.push({ score: item.PerformanceScore, members: [item] });
+      groups.push({ score: item._score, members: [item] });
     }
   }
   return groups;
 }
 
-// ★ เพิ่ม: standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
+// standard competition ranking (1,1,3,3,5) — คะแนนเท่ากันได้อันดับเดียวกัน
 function withCompetitionRank(sortedList) {
   let rank = 0;
   let prevScore = null;
-  return sortedList.map((item, idx) => {
-    if (item.PerformanceScore !== prevScore) rank = idx + 1;
-    prevScore = item.PerformanceScore;
+  let idx = 0;
+  return sortedList.map((item) => {
+    // คนที่ยังไม่เข้าเกณฑ์ ไม่มีอันดับ และไม่กินเลขอันดับของคนอื่น
+    if (!item._eligible) return { ...item, _rank: null };
+    if (item._score !== prevScore) rank = idx + 1;
+    prevScore = item._score;
+    idx += 1;
     return { ...item, _rank: rank };
   });
 }
 
 // ─── Score Ring SVG ───────────────────────────────────────────────────────────
 function StudentScoreRing({ score }) {
-  const r = 20, circ = 2 * Math.PI * r;
+  const r = 23, circ = 2 * Math.PI * r;
+  // ยังประเมินไม่ได้ (ไม่มี Post-test) — โชว์วงว่างกับขีดกลาง ไม่โชว์เลข 0 หรือ NaN
+  if (score == null) {
+    return (
+      <svg width="64" height="64" className="shrink-0" role="img" aria-label="ยังประเมินไม่ได้">
+        <circle cx="32" cy="32" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" strokeDasharray="3 4" />
+        <text x="32" y="38" textAnchor="middle" fontSize="17" fontWeight="600" fill="#94a3b8">—</text>
+      </svg>
+    );
+  }
   const dash = (score / 100) * circ;
   const color = score >= 80 ? '#059669' : score >= 60 ? '#d97706' : '#dc2626';
   return (
-    <svg width="56" height="56" className="shrink-0">
-      <circle cx="28" cy="28" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
-      <circle cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="5"
+    <svg width="64" height="64" className="shrink-0">
+      <circle cx="32" cy="32" r={r} fill="none" stroke="#e2e8f0" strokeWidth="5" />
+      <circle cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="5"
         strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`}
         strokeDashoffset={`${(circ / 4).toFixed(1)}`}
         strokeLinecap="round" />
-      <text x="28" y="33" textAnchor="middle" fontSize="13" fontWeight="600" fill={color}>{score}</text>
+      <text x="32" y="38" textAnchor="middle" fontSize="15" fontWeight="700" fill={color}>{score}</text>
     </svg>
   );
 }
 
-// ─── Metric Breakdown (expandable detail) ────────────────────────────────────
-function StudentMetricBreakdown({ student }) {
-  const hasAny = [student.PreTestScore, student.MidTestScore, student.PostTestScore]
-    .some(v => v !== null);
-
-  const metrics = [
-    {
-      name: 'อัตราการเข้าเรียน',
-      raw: student.AttendanceRate,
-      weight: student.AttendanceWeight,
-      contrib: student.AttendanceContrib,
-      sub: `${student.TotalAttended ?? 0} / ${student.TotalClasses ?? 0} คาบ`,
-    },
-    ...(student.PreTestScore !== null ? [{
-      name: 'Pre-test',
-      raw: student.PreTestScore,
-      weight: student.TestWeight,
-      contrib: student.PreTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.PreTestScore}%  (${student.PreTestCount} ครั้ง)`,
-    }] : []),
-    ...(student.MidTestScore !== null ? [{
-      name: 'Mid-test',
-      raw: student.MidTestScore,
-      weight: student.TestWeight,
-      contrib: student.MidTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.MidTestScore}%  (${student.MidTestCount} ครั้ง)`,
-    }] : []),
-    ...(student.PostTestScore !== null ? [{
-      name: 'Post-test',
-      raw: student.PostTestScore,
-      weight: student.TestWeight,
-      contrib: student.PostTestContrib,
-      sub: `คะแนนเฉลี่ย ${student.PostTestScore}%  (${student.PostTestCount} ครั้ง)`,
-    }] : []),
-  ];
-
+// ─── Metric Breakdown ────────────────────────────────────────────────────────
+// กางแล้วโชว์ "ทั้งสองคะแนน" เสมอ ไม่ว่ากำลังดูกระดานไหนอยู่
+// จงใจให้เห็นคู่กัน เพราะเด็กคนหนึ่งเก่งและพัฒนาได้พร้อมกัน และบางคนเด่นคนละด้าน
+function ScoreBar({ label, value, sub, weight }) {
+  const v = value ?? 0;
+  const barColor = v >= 80 ? 'bg-emerald-500' : v >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  const textColor = v >= 80 ? 'text-emerald-700' : v >= 60 ? 'text-amber-700' : 'text-red-700';
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2.5">
-      {!hasAny && (
-        <p className="text-[11px] text-slate-400 italic">
-          ยังไม่มีข้อมูลผลสอบ — คำนวณจากการเข้าเรียนเพียงอย่างเดียว
-        </p>
-      )}
-      {metrics.map(m => {
-        const val = m.raw ?? 0;
-        const barColor = val >= 80 ? 'bg-emerald-500' : val >= 60 ? 'bg-amber-500' : 'bg-red-500';
-        const textColor = val >= 80 ? 'text-emerald-700' : val >= 60 ? 'text-amber-700' : 'text-red-700';
-        return (
-          <div key={m.name}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-36 shrink-0">
-                {m.name}
-                <span className="text-[10px] ml-1 text-slate-400">(×{m.weight}%)</span>
-              </span>
-              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${val}%` }} />
-              </div>
-              <span className={`text-xs font-semibold w-7 text-right ${textColor}`}>{m.contrib}</span>
-            </div>
-            <p className="text-[10px] text-slate-400 ml-[9.5rem] mt-0.5">{m.sub}</p>
-          </div>
-        );
-      })}
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-        <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold text-slate-800">{student.PerformanceScore} / 100</span>
+    <div>
+      <div className="flex items-center gap-2.5">
+        <span className="text-sm text-slate-600 w-28 sm:w-44 shrink-0">
+          {label}
+          {weight != null && <span className="text-xs ml-1 text-slate-500">(×{weight}%)</span>}
+        </span>
+        <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
+          <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, v)}%` }} />
+        </div>
+        <span className={`text-sm font-bold w-11 text-right ${textColor}`}>
+          {value == null ? '—' : Math.round(value)}
+        </span>
       </div>
+      {sub && <p className="text-xs text-slate-500 ml-[7.75rem] sm:ml-[11.75rem] mt-1">{sub}</p>}
     </div>
   );
 }
 
-function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
-  const badge = calcStudentBadge(student.PerformanceScore);
+// ─── Metric Breakdown ────────────────────────────────────────────────────────
+// กางแล้วต้อง "เน้นกระดานที่กดมา" ไม่ใช่โชว์เหมือนกันทั้งสองแท็บ
+// ของเดิมโชว์สองคะแนนเท่ากันหมด ทำให้แท็บเสียความหมาย กดสลับแล้วเนื้อหาเหมือนเดิม
+// ตอนนี้เป็นหลัก-รอง: กระดานที่กดมากางเต็มพร้อมอันดับ อีกกระดานยุบเป็นแถบเดียว
+// แล้วมีปุ่มกดข้ามไปดูอีกด้านได้ (สลับแท็บให้เลย)
+function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }) {
+  const s = student;
+  const isExcellence = board.key === 'excellence';
+  const other = isExcellence ? BOARDS.improvement : BOARDS.excellence;
+  const OtherIcon = other.Icon;
+  const BoardIcon = board.Icon;
+
+  const otherScore = other.score(s);
+  const otherEligible = other.eligible(s);
+  const otherRank = isExcellence ? s.ImprovementRank : s.ExcellenceRank;
+
+  const guardNote = !isExcellence ? ceilingGuardNote(s.ImprovementGrowth, s.PreTestScore) : null;
+
+  return (
+    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-4 space-y-4">
+
+      {/* ── ธงเตือน — ข้อมูลกลาง โชว์ทั้งสองกระดาน ─────────────── */}
+      {s.Flags?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {s.Flags.map((f) => (
+            <span key={f.key}
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border ${
+                f.tone === 'red'
+                  ? 'bg-red-50 text-red-700 border-red-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}>
+              {f.tone === 'red'
+                ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                : <Flag className="h-3.5 w-3.5 shrink-0" />}
+              {f.label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* ── กระดานหลัก (ที่กดมา) — กางเต็ม ─────────────────────── */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-bold text-slate-800 flex items-center gap-1.5">
+              <BoardIcon className="h-4 w-4 text-orange-500" />
+              {board.heading}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">{board.formula}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={STAT_VALUE}>
+              {board.score(s) ?? '—'}
+              {board.score(s) != null && <span className={STAT_UNIT}>/ 100</span>}
+            </p>
+            {/* อันดับบนกระดานนี้ — ตอบตรง ๆ ว่าเขาขึ้นโพเดียมเรื่องอะไร */}
+            {student._rank
+              ? <p className="text-xs font-semibold text-orange-600 mt-1">
+                  อันดับที่ {student._rank} จาก {totalEligible} คน
+                </p>
+              : <p className="text-xs text-slate-500 mt-1">ยังไม่ติดอันดับ</p>}
+          </div>
+        </div>
+
+        {isExcellence ? (
+          board.eligible(s) ? (
+            <>
+              <ScoreBar label="Post-test" value={s.PostTestScore} weight={70}
+                sub={`คะแนนเฉลี่ยรอบหลังเรียน (สอบแล้ว ${s.PostTestCount} ครั้ง)`} />
+              <ScoreBar label="ค่าเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
+                sub={`ตัวชี้ว่าสูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">{s.ExcellenceReason || 'ยังไม่มีข้อมูลการสอบ'}</p>
+          )
+        ) : (
+          s.ImprovementScore != null ? (
+            <>
+              <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
+                sub={`${s.PreTestScore}% → ${s.PostTestScore}% (เพิ่มขึ้น ${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta}% จากช่องว่างที่มีอยู่ ${s.ImprovementRoom}%)`} />
+              <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
+                sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
+              {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}
+              {!s.ImprovementEligible && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  ยังไม่ขึ้นโพเดียมพัฒนาการ — {s.ImprovementReason}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-slate-500">{s.ImprovementReason || 'ยังเทียบพัฒนาการไม่ได้'}</p>
+          )
+        )}
+      </div>
+
+      {/* ── อีกกระดาน (รอง) — โชว์เฉพาะตอนที่เข้าเกณฑ์ฝั่งนั้นจริง ───────
+          ของเดิมโชว์เสมอ ถึงไม่มีข้อมูล (ขึ้น "—" พร้อมปุ่มกดที่ไม่มีอะไรให้ดู)
+          ตอนนี้ซ่อนทั้งบล็อกถ้ายังไม่เข้าเกณฑ์ฝั่งนั้น การ์ดของคนที่มีข้อมูล
+          ด้านเดียวจะกระชับขึ้น ไม่มีลิงก์หลอกให้กด ───────────────────── */}
+      {otherEligible && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSwitchBoard(other.key); }}
+          className="w-full flex flex-wrap items-center gap-2.5 pt-3 border-t border-slate-200 text-left group"
+        >
+          <OtherIcon className="h-4 w-4 text-slate-400 shrink-0" />
+          <span className="text-sm text-slate-500">อีกด้าน · {other.heading}</span>
+          <span className="text-sm font-bold text-slate-700 ml-auto">{otherScore}/100</span>
+          {otherRank && <span className="text-xs text-slate-500">อันดับ {otherRank}</span>}
+          <span className="text-xs font-semibold text-orange-600 group-hover:underline shrink-0">
+            ดูรายละเอียด
+          </span>
+          <ChevronRight className="h-3.5 w-3.5 text-orange-600 shrink-0" />
+        </button>
+      )}
+
+      {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
+      <p className="text-xs text-slate-500 pt-3 border-t border-slate-200">
+        เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
+        {s.PreTestScore != null ? ` · Pre ${s.PreTestScore}%` : ''}
+        {s.MidTestScore != null ? ` · Mid ${s.MidTestScore}%` : ''}
+        {s.PostTestScore != null ? ` · Post ${s.PostTestScore}%` : ''}
+      </p>
+    </div>
+  );
+}
+
+function StudentScoreCard({ student, rank, expanded, onToggle, onView, board, totalEligible, onSwitchBoard }) {
+  const badge = board.badge(student._score);
   const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const name = student.Nickname || `${student.Firstname} ${student.Lastname}`;
 
@@ -1348,40 +1810,52 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
     <div className={`bg-white rounded-2xl border transition-all
       ${rank === 1 ? 'border-amber-300' : 'border-slate-200'}`}>
       {/* แถวหลัก */}
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer" onClick={onToggle}>
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer" onClick={onToggle}>
         {/* อันดับ — standard competition ranking: คะแนนเท่ากัน = อันดับเดียวกัน */}
         <span className="text-lg w-6 text-center shrink-0">
           {MEDAL[rank]
             ? MEDAL[rank]
-            : <span className="text-xs text-slate-400">{rank}</span>}
+            : <span className="text-sm font-semibold text-slate-500">{rank}</span>}
         </span>
 
         {/* Avatar — ★ เปลี่ยนมาใช้ StudentAvatar */}
-        <StudentAvatar student={student} className="h-9 w-9 rounded-xl border border-orange-100" />
+        <StudentAvatar student={student} className="h-9 w-9 rounded-xl border border-orange-100 hidden sm:block" />
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{name}</p>
+          <p className="text-sm sm:text-base font-semibold text-slate-900 break-words">{name}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border
               ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
             {student.GradeDetail && (
-              <span className="text-[10px] text-slate-400">{student.GradeDetail}</span>
+              <span className="text-xs text-slate-500">{student.GradeDetail}</span>
             )}
-            <span className="text-[10px] text-slate-400">{student.TotalClasses} คาบ</span>
+            <span className="text-xs text-slate-500">{student.TotalClasses} คาบ</span>
+            {student.Flags?.slice(0, 1).map((f) => (
+              <span key={f.key}
+                className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border ${
+                  f.tone === 'red'
+                    ? 'bg-red-50 text-red-600 border-red-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                {f.tone === 'red'
+                  ? <AlertTriangle className="h-3 w-3 shrink-0" />
+                  : <Flag className="h-3 w-3 shrink-0" />}
+                {f.label}
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Score Ring */}
-        <StudentScoreRing score={student.PerformanceScore} />
+        {/* Score Ring — คะแนนของกระดานที่กำลังดูอยู่ */}
+        <div className="flex shrink-0 -mx-2 scale-75 sm:mx-0 sm:scale-100"><StudentScoreRing score={student._score} /></div>
 
         {/* ปุ่มดูข้อมูลนักเรียน (ไม่ใช้ modal) */}
         <button
           onClick={e => { e.stopPropagation(); onView(student.UserId); }}
           className="shrink-0 p-1.5 rounded-lg bg-orange-50 border border-orange-100
-                     text-orange-600 hover:bg-orange-100 transition"
+                     text-orange-600 hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
           title="ดูข้อมูลนักเรียน"
         >
           <Eye className="h-3.5 w-3.5" />
@@ -1396,7 +1870,12 @@ function StudentScoreCard({ student, rank, expanded, onToggle, onView }) {
       {/* Breakdown (ขยาย inline ไม่ใช้ modal) */}
       {expanded && (
         <div className="px-4 pb-4">
-          <StudentMetricBreakdown student={student} />
+          <StudentMetricBreakdown
+            student={student}
+            board={board}
+            totalEligible={totalEligible}
+            onSwitchBoard={onSwitchBoard}
+          />
         </div>
       )}
     </div>
@@ -1411,17 +1890,12 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [filterGrade, setFilterGrade] = useState('all');
-  const [filterScoreRange, setFilterScoreRange] = useState('all'); // ★ เพิ่ม
+  const [filterScoreRange, setFilterScoreRange] = useState('all');
   const [showLimit, setShowLimit] = useState(DEFAULT_LIMIT);
+  const [boardKey, setBoardKey] = useState('excellence');   // กระดานที่กำลังดู
 
-  // ★ ช่วงคะแนน อ้างอิงเกณฑ์เดียวกับ calcStudentBadge เพื่อให้ label/สีตรงกับ badge ที่โชว์อยู่
-  const SCORE_RANGES = [
-    { key: 'excellent', label: 'ดีเยี่ยม (90-100)', test: (v) => v >= 90 },
-    { key: 'great', label: 'ดีมาก (80-89)', test: (v) => v >= 80 && v < 90 },
-    { key: 'good', label: 'ดี (70-79)', test: (v) => v >= 70 && v < 80 },
-    { key: 'fair', label: 'พอใช้ (55-69)', test: (v) => v >= 55 && v < 70 },
-    { key: 'needs_work', label: 'ต้องพัฒนา (ต่ำกว่า 55)', test: (v) => v < 55 },
-  ];
+  const board = BOARDS[boardKey];
+  const SCORE_RANGES = board.ranges;
 
   useEffect(() => {
     axios.get(`${API}/students/performance`)
@@ -1434,26 +1908,41 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   useEffect(() => {
     setShowLimit(DEFAULT_LIMIT);
     setExpandedId(null);
-  }, [filterGrade, filterScoreRange]);
+  }, [filterGrade, filterScoreRange, boardKey]);
+
+  // สลับกระดานแล้วต้องล้างตัวกรองช่วงคะแนน เพราะสองกระดานใช้ช่วงคนละชุดกัน
+  useEffect(() => { setFilterScoreRange('all'); }, [boardKey]);
+
+  // แปะคะแนนของกระดานที่เลือกลงทุกคนก่อน แล้วค่อยกรอง/เรียงจาก _score
+  const scoped = withBoardScore(perfData, board);
 
   // กรองตามชั้นปี
   const matchGradeFn = (s) => filterGrade === 'all' || String(s.GradeLevelId) === filterGrade;
-  // ★ กรองตามช่วงคะแนน
+  // กรองตามช่วงคะแนนของกระดานนี้
   const matchScoreFn = (s) => {
     if (filterScoreRange === 'all') return true;
+    if (!s._eligible) return false;   // ยังไม่เข้าเกณฑ์ จึงไม่เข้าช่วงคะแนนใดเลย
     const range = SCORE_RANGES.find(r => r.key === filterScoreRange);
-    return range ? range.test(s.PerformanceScore) : true;
+    return range ? range.test(s._score) : true;
   };
 
-  const filtered = perfData.filter(s => matchGradeFn(s) && matchScoreFn(s));
+  const filtered = scoped
+    .filter(s => matchGradeFn(s) && matchScoreFn(s))
+    .sort((a, b) => {
+      if (a._eligible !== b._eligible) return a._eligible ? -1 : 1;
+      if (!a._eligible) return (b.AttendanceRate || 0) - (a.AttendanceRate || 0);
+      return b._score - a._score;
+    });
 
-  const rankedFiltered = withCompetitionRank(filtered); // ★ เพิ่ม
-  const podiumGroups = topScoreGroups(rankedFiltered, 3); // ★ เพิ่ม
+  const rankedFiltered = withCompetitionRank(filtered);
+  const podiumGroups = topScoreGroups(rankedFiltered, 3);
+  // จำนวนคนที่เข้าเกณฑ์ของกระดานนี้ — ใช้เขียน "อันดับที่ 3 จาก 41 คน"
+  const totalEligible = filtered.filter((s) => s._eligible).length;
 
-  // ★ นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
-  const baseForScoreCount = perfData.filter(matchGradeFn);
+  // นับจำนวนสำหรับ dropdown ช่วงคะแนน (กรองตามชั้นปีที่เลือกไว้ก่อน)
+  const baseForScoreCount = scoped.filter(matchGradeFn);
   const scoreRangeCounts = SCORE_RANGES.reduce((acc, r) => {
-    acc[r.key] = baseForScoreCount.filter(s => r.test(s.PerformanceScore)).length;
+    acc[r.key] = baseForScoreCount.filter(s => s._eligible && r.test(s._score)).length;
     return acc;
   }, {});
 
@@ -1464,21 +1953,26 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       {/* ── Header ─────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-orange-100
-                      bg-gradient-to-r from-orange-500 to-amber-500">
+      <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-sm">Performance Score นักเรียน</h2>
+          <BarChart2 className="h-5 w-5 text-orange-500" />
+          <h2 className="font-bold text-slate-900 text-base">คะแนนนักเรียน · {board.heading}</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เข้าเรียน 40% + Pre/Mid/Post-test 60%</span>
+        <span className="text-xs text-slate-500">{board.formula}</span>
       </div>
 
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative ml-auto">
+      {/* ── แท็บสลับ 2 กระดาน ─────────────────────────────────────
+          เด็กที่พยายามจนพัฒนาขึ้นมาก ควรมีโพเดียมของตัวเอง
+          เท่ากับเด็กที่เก่งอยู่แล้ว — คนละมิติของความสำเร็จ ──── */}
+      {/* แถวเดียว: ตัวสลับกระดาน (ซ้าย) + ตัวกรอง (ขวา) */}
+      <div className="px-4 sm:px-5 pt-3 flex items-center gap-2 flex-wrap">
+        <SegmentedControl stretchMobile value={boardKey} onChange={setBoardKey}
+          options={Object.values(BOARDS).map((b) => ({ id: b.key, label: b.tab, icon: b.Icon }))} />
+        <div className="relative w-full sm:w-auto sm:ml-auto">
           <select
             value={filterGrade}
             onChange={e => setFilterGrade(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1499,11 +1993,11 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
         </div>
 
         {/* ★ เพิ่ม: dropdown กรองตามช่วง Performance Score */}
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1523,7 +2017,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           <button
             onClick={() => { setFilterGrade('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
-                 text-slate-500 bg-white border border-slate-200 rounded-lg
+                 text-slate-500 bg-white border border-slate-200 rounded-xl
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
           >
             <X className="h-3.5 w-3.5" />
@@ -1531,15 +2025,16 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
           </button>
         )}
       </div>
+      <p className="px-4 sm:px-5 pt-3 pb-2 text-[13px] text-slate-500 leading-relaxed">{board.hint}</p>
 
-      <div className="px-5 pb-5 space-y-4">
+      <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-slate-400 text-sm">ไม่มีนักเรียนในระดับชั้นนี้</p>
+            <p className="text-slate-500 text-sm">ไม่มีนักเรียนในระดับชั้นนี้</p>
           </div>
         ) : (
           <>
@@ -1547,36 +2042,36 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
             {filtered.length > 0 && (() => {
               const MEDALS = ['🥇', '🥈', '🥉'];
               return (
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
 
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
-                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                          className={`min-w-0 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center  ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                          data-rank={medalIdx + 1}
                         >
-                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="text-2xl opacity-30 shrink-0">{MEDALS[medalIdx]}</div>
                           <div className="flex justify-center mt-2">
                             <span className="h-10 w-10 rounded-xl bg-slate-200/60 flex items-center justify-center">
                               <Users className="h-4 w-4 text-slate-400" />
                             </span>
                           </div>
-                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                          <p className="flex-1 min-w-0 sm:flex-none text-sm font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
+                          <p className={`${STAT_NUM} text-slate-300 mt-1`}>—</p>
+                          <p className="text-xs font-medium text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        className={`min-w-0 rounded-xl border p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'} ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                        data-rank={medalIdx + 1}
                       >
-                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
-                        <div className="flex justify-center -space-x-2 mt-2">
+                        <div className="text-2xl shrink-0">{MEDALS[medalIdx]}</div>
+                        <div className="flex flex-wrap justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(s => (
                             <button key={s.UserId} onClick={() => onViewStudent(s.UserId)}
                               className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
@@ -1586,18 +2081,18 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                             </button>
                           ))}
                           {group.members.length > 4 && (
-                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-600 shadow-sm">
                               +{group.members.length - 4}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        <p className="flex-1 min-w-0 sm:flex-none text-sm font-semibold text-slate-800 mt-1.5 truncate">
                           {group.members.length === 1
                             ? (group.members[0].Nickname || `${group.members[0].Firstname} ${group.members[0].Lastname}`)
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-[10px] text-slate-400">คะแนน</p>
+                        <p className={`${STAT_VALUE} mt-1`}>{group.score}</p>
+                        <p className={STAT_LABEL}>คะแนน</p>
                       </div>
                     );
                   })}
@@ -1616,13 +2111,16 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                   expanded={expandedId === s.UserId}
                   onToggle={() => setExpandedId(expandedId === s.UserId ? null : s.UserId)}
                   onView={onViewStudent}
+                  board={board}
+                  totalEligible={totalEligible}
+                  onSwitchBoard={setBoardKey}
                 />
               ))}
             </div>
 
             {/* ── Show More / Show Less ───────────────────────────── */}
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p className="text-sm text-slate-500">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
               </p>
@@ -1640,7 +2138,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
                     onClick={() => setShowLimit(v => v + DEFAULT_LIMIT)}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
                                text-orange-600 bg-orange-50 border border-orange-200
-                               rounded-lg hover:bg-orange-100 transition"
+                               rounded-xl hover:bg-orange-100 transition"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                     แสดงเพิ่มอีก {Math.min(DEFAULT_LIMIT, filtered.length - showLimit)} คน
@@ -1675,6 +2173,7 @@ export default function AdminStudentsPage() {
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [viewStudentId, setViewStudentId] = useState(null);
   const [resetPwdStudent, setResetPwdStudent] = useState(null); // FIX #11
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAll = async () => {
     try {
@@ -1688,8 +2187,10 @@ export default function AdminStudentsPage() {
       setGradeLevels(gRes.data);
       setGenders(genRes.data);
       setParentProfileTypes(pptRes.data); // ★ เพิ่ม
+      setLoadError(false);
     } catch (e) {
       console.error("fetch error:", e);
+      setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -1700,11 +2201,11 @@ export default function AdminStudentsPage() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/students`, data);
-      showToast("success", "เพิ่มนักเรียนสำเร็จ!");
+      showToast("success", "เพิ่มนักเรียนสำเร็จ");
       setShowAddModal(false);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -1712,11 +2213,11 @@ export default function AdminStudentsPage() {
     setIsSubmitting(true);
     try {
       await axios.put(`${API}/students/${editingStudent.UserId}`, data);
-      showToast("success", "แก้ไขสำเร็จ!", "บันทึกข้อมูลนักเรียนเรียบร้อยแล้ว");
+      showToast("success", "แก้ไขสำเร็จ", "บันทึกข้อมูลนักเรียนเรียบร้อยแล้ว");
       setEditingStudent(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -1725,11 +2226,11 @@ export default function AdminStudentsPage() {
     setIsDeleting(true);
     try {
       await axios.delete(`${API}/students/${deletingStudent.UserId}`);
-      showToast("success", "ลบนักเรียนสำเร็จ!");
+      showToast("success", "ลบนักเรียนสำเร็จ");
       setDeletingStudent(null);
       fetchAll();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsDeleting(false); }
   };
 
@@ -1767,51 +2268,44 @@ export default function AdminStudentsPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
-    <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลนักเรียน...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลนักเรียน..." />
   );
-
-  // FIX #10: GPA เฉลี่ย คำนวณจากทุก student ที่โหลดมา (client-side ยังโอเคตราบที่ไม่มี server pagination)
-  const avgGpa = (() => {
-    const g = students.filter(s => s.GPA != null && s.GPA !== "");
-    return g.length ? (g.reduce((a, s) => a + Number(s.GPA), 0) / g.length).toFixed(2) : "—";
-  })();
+  if (loadError && students.length === 0) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchAll(); }} /></div>;
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">จัดการนักเรียน</h1>
-          <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด</p>
-        </div>
+      {/* Header — ชื่อหน้า (ซ้าย) + ปุ่มหลัก (ขวา) รูปแบบเดียวกับหน้าการเงิน */}
+      <PageHeader title="จัดการนักเรียน" subtitle="เพิ่ม แก้ไข และดูข้อมูลนักเรียนทั้งหมด">
         <button onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
-          <Plus className="h-4 w-4" /> เพิ่มนักเรียนใหม่
+          className={`${BTN.primary} flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
+          <Plus className="h-4 w-4" /> เพิ่มนักเรียน
         </button>
+      </PageHeader>
+
+      {/* แบนเนอร์โทนส้ม */}
+      <div className="admin-summary-banner p-5 sm:p-6">
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+              <GraduationCap className="h-3.5 w-3.5" /> ฐานข้อมูลนักเรียน
+            </span>
+            <h2 className="mt-2 text-lg font-bold text-slate-900">รายชื่อนักเรียน</h2>
+            <p className={PAGE_SUBTITLE}>ข้อมูลส่วนตัว การลงทะเบียน และผลการเรียนของนักเรียน</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "นักเรียนทั้งหมด", value: students.length, color: "bg-orange-600" },
           { label: "ลงทะเบียนแล้ว", value: students.filter(s => s.EnrolledCourses > 0).length, color: "bg-emerald-500" },
           { label: "ยังไม่ลงทะเบียน", value: students.filter(s => !s.EnrolledCourses).length, color: "bg-amber-500" },
 
         ].map(({ label, value, color }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
-              <GraduationCap className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value}</p>
-            </div>
-          </div>
+          <StudentStatTile key={i} label={label} value={value} color={color} icon={GraduationCap} />
         ))}
       </div>
 
@@ -1828,11 +2322,11 @@ export default function AdminStudentsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อ, ชื่อเล่น, โรงเรียน, เบอร์โทร, ID..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[160px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate">
             <option value="all">ทุกระดับชั้น ({allGradeCount})</option>
             {gradeLevels.map(g => (
               <option key={g.GradeLevelId} value={g.GradeLevelId}>
@@ -1841,25 +2335,73 @@ export default function AdminStudentsPage() {
             ))}
           </select>
           <select value={filterEnrolled} onChange={e => setFilterEnrolled(e.target.value)}
-            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none md:min-w-[180px]">
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px] max-w-full md:max-w-[240px] truncate">
             <option value="all">สถานะลงทะเบียนทั้งหมด ({enrolledCount + notEnrolledCount})</option>
             <option value="enrolled">ลงทะเบียนแล้ว ({enrolledCount})</option>
             <option value="not_enrolled">ยังไม่ลงทะเบียน ({notEnrolledCount})</option>
           </select>
         </div>
-        <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {students.length} คน</p>
       </div>
 
       {/* Table */}
       {paginated.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-          <div className="text-6xl mb-3">👨‍🎓</div>
-          <p className="text-slate-500 font-medium">ไม่พบนักเรียนที่ค้นหา</p>
+        <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuGraduationCap className="h-7 w-7 text-orange-400" /></div>
+          <p className="text-base font-semibold text-slate-700">ไม่พบนักเรียนที่ค้นหา</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ/แท็บเล็ต: การ์ดรายคน (ตารางแสดงบนจอใหญ่) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+          {paginated.map(s => {
+            const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
+            return (
+              <div key={s.UserId} className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col">
+                <button onClick={() => setViewStudentId(s.UserId)} className="flex items-start gap-3 text-left">
+                  <StudentAvatar student={s} className="h-11 w-11 rounded-xl shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
+                    {s.Nickname && <p className="text-xs text-slate-500 truncate">{s.Firstname} {s.Lastname}</p>}
+                    <p className="text-[11px] text-slate-500">#{s.UserId}</p>
+                  </div>
+                  {s.GPA ? (
+                    <span className="shrink-0 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">GPA {s.GPA}</span>
+                  ) : null}
+                </button>
+                <div className="mt-3 space-y-1.5 text-xs text-slate-600">
+                  {s.SchoolName && (
+                    <p className="flex items-center gap-1.5"><School className="h-3.5 w-3.5 text-slate-400 shrink-0" /><span className="truncate">{s.SchoolName}</span></p>
+                  )}
+                  {s.PhoneNo && (
+                    <p className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{s.PhoneNo}</p>
+                  )}
+                  <div className="flex flex-wrap gap-1 pt-0.5">
+                    {s.GradeDetail && <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{s.GradeDetail}</span>}
+                    {s.GenderName && <span className="px-2.5 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-xs font-semibold">{s.GenderName}</span>}
+                    {s.EnrolledCourses > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"><BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส</span>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-auto pt-3">
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
+                    <button onClick={() => setViewStudentId(s.UserId)}
+                      className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+                      <Eye className="h-4 w-4" /> ดูข้อมูล
+                    </button>
+                    <button onClick={() => setEditingStudent(s)} title="แก้ไขข้อมูล" className="w-10 h-10 flex items-center justify-center text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Pencil className="h-4 w-4" /></button>
+                    <button onClick={() => setResetPwdStudent(s)} title="รีเซ็ตรหัสผ่าน" className="w-10 h-10 flex items-center justify-center text-slate-500 bg-slate-50 border border-slate-200 rounded-xl"><KeyRound className="h-4 w-4" /></button>
+                    <button onClick={() => setDeletingStudent(s)} title="ลบ" className="w-10 h-10 flex items-center justify-center text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[760px] text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
@@ -1867,7 +2409,7 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">GPA</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                  <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -1876,16 +2418,16 @@ export default function AdminStudentsPage() {
                   return (
                     <tr key={s.UserId} className="hover:bg-orange-50/40 transition-colors group">
                       {/* คอลัมน์: นักเรียน */}
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 min-w-[180px] lg:min-w-0">
                         <div className="flex items-center gap-3">
                           {/* ★ เปลี่ยนมาใช้ StudentAvatar */}
                           <StudentAvatar student={s} className="h-9 w-9 rounded-xl" />
                           <div>
                             <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
                             {s.Nickname && (
-                              <p className="text-xs text-slate-400">{s.Firstname} {s.Lastname}</p>
+                              <p className="text-xs text-slate-500">{s.Firstname} {s.Lastname}</p>
                             )}
-                            <p className="text-[10px] text-slate-400">#{s.UserId}</p>
+                            <p className="text-[11px] text-slate-500">#{s.UserId}</p>
                           </div>
                         </div>
                       </td>
@@ -1900,12 +2442,12 @@ export default function AdminStudentsPage() {
                         )}
                         <div className="flex flex-wrap gap-1">
                           {s.GradeDetail && (
-                            <span className="px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[10px] font-semibold">
+                            <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                               {s.GradeDetail}
                             </span>
                           )}
                           {s.GenderName && (
-                            <span className="px-2 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-[10px] font-semibold">
+                            <span className="px-2.5 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-xs font-semibold">
                               {s.GenderName}
                             </span>
                           )}
@@ -1915,7 +2457,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: ติดต่อ */}
                       <td className="px-4 py-3">
                         {s.PhoneNo && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap lg:whitespace-normal">
                             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span>{s.PhoneNo}</span>
                           </div>
@@ -1925,7 +2467,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: คอร์ส */}
                       <td className="px-4 py-3 text-center">
                         {s.EnrolledCourses > 0 ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
                             <BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส
                           </span>
                         ) : (
@@ -1936,7 +2478,7 @@ export default function AdminStudentsPage() {
                       {/* คอลัมน์: GPA */}
                       <td className="px-4 py-3 text-center">
                         {s.GPA ? (
-                          <span className="inline-block px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-bold">
+                          <span className="inline-block px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
                             {s.GPA}
                           </span>
                         ) : (
@@ -1945,20 +2487,20 @@ export default function AdminStudentsPage() {
                       </td>
 
                       {/* คอลัมน์: ปุ่มจัดการ */}
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setViewStudentId(s.UserId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
+                            className="flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition"
                           >
                             <Eye className="h-3.5 w-3.5" /> ดูข้อมูล
                           </button>
                           <button
                             onClick={() => setEditingStudent(s)}
-                            className="p-1.5 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition"
+                            className="p-1.5 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="แก้ไขข้อมูล"
                           >
-                            <Edit2 className="h-3.5 w-3.5" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => setResetPwdStudent(s)}
@@ -1969,7 +2511,7 @@ export default function AdminStudentsPage() {
                           </button>
                           <button
                             onClick={() => setDeletingStudent(s)}
-                            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition"
+                            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                             title="ลบ"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1983,41 +2525,11 @@ export default function AdminStudentsPage() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
-            แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
-          </p>
-          <div className="flex items-center gap-1.5">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-              .reduce((acc, p, idx, arr) => {
-                if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((p, idx) => p === "..." ? (
-                <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-              ) : (
-                <button key={p} onClick={() => setCurrentPage(p)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-600 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                  {p}
-                </button>
-              ))}
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
+      <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} />
 
       {/* Modals */}
       {showAddModal && (
@@ -2028,7 +2540,7 @@ export default function AdminStudentsPage() {
         </Modal>
       )}
       {editingStudent && (
-        <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Edit2} onClose={() => setEditingStudent(null)}>
+        <Modal title={`แก้ไขข้อมูลนักเรียน #${editingStudent.UserId}`} icon={Pencil} onClose={() => setEditingStudent(null)}>
           <StudentForm initial={editingStudent} onSave={handleUpdate} onCancel={() => setEditingStudent(null)}
             isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders}
             parentProfileTypes={parentProfileTypes} showToast={showToast} />

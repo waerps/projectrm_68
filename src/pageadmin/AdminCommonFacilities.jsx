@@ -4,11 +4,18 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-    Plus, Search, Edit2, Trash2, X, Check, Eye, Loader2,
+    Plus, Search, Pencil, Trash2, X, Check, Eye, Loader2,
     AlertTriangle, ChevronDown, Package, Cpu, Printer, Sofa,
     Refrigerator, PenTool, FileText, MapPin, History, Minus,
     TrendingDown, TrendingUp, Boxes, AlertCircle, Info,
 } from "lucide-react";
+import UIModal from "../components/ui/Modal";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin`;
 
@@ -45,27 +52,9 @@ const blockNegativeKeys = (e) => {
 };
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children }) {
-    return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-[fadeIn_0.15s_ease-out]">
-            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-[scaleIn_0.2s_ease-out]">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-                    <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-                        {Icon && (
-                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                                <Icon className="h-4 w-4 text-white" />
-                            </span>
-                        )}
-                        {title}
-                    </h3>
-                    <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-                <div className="overflow-y-auto flex-1 p-6">{children}</div>
-            </div>
-        </div>
-    );
+function Modal({ title, icon, onClose, children }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={'md'}>{children}</UIModal>;
 }
 
 // ─── CommonFacilityForm — เพิ่ม/แก้ไข ─────────────────────────────────────
@@ -151,7 +140,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
         });
     };
 
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const errInp = "border-red-300 focus:ring-red-300";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
@@ -213,7 +202,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                                 type="checkbox"
                                 checked={confirmSimilar}
                                 onChange={e => setConfirmSimilar(e.target.checked)}
-                                className="h-4 w-4 rounded border-amber-300 text-amber-500 focus:ring-amber-400"
+                                className="h-4 w-4 rounded border-slate-300 text-orange-500 focus:ring-orange-400"
                             />
                             <span className="text-xs font-medium text-amber-700">
                                 ยืนยันว่าต้องการสร้างเป็นอุปกรณ์ใหม่ (ไม่ใช่รายการเดิม)
@@ -241,7 +230,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className={lbl}>หมวดหมู่ <span className="text-red-400 normal-case">*</span></label>
                     <select className={`${inp} ${errors.categoryId ? errInp : ""}`} value={form.categoryId} onChange={e => set("categoryId", e.target.value)}>
@@ -264,7 +253,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
             </div>
 
             {!isEdit && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className={lbl}>จำนวนเริ่มต้น <span className="text-red-400 normal-case">*</span></label>
                         <input
@@ -323,11 +312,11 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             <div className="flex gap-3 pt-2">
                 <button onClick={onCancel} disabled={isSubmitting}
-                    className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                    className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     ยกเลิก
                 </button>
                 <button onClick={submit} disabled={isSubmitting || hasExactDup || checkingName}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                    className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                 </button>
             </div>
@@ -385,7 +374,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
         } finally { setLoading(false); }
     };
 
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
     return (
@@ -394,7 +383,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                 <div>
                     <label className={lbl}>จำนวน ({item.Unit})</label>
                     <div className="flex items-center gap-2">
-                        <button type="button" onClick={() => step(-1)}
+                        <button aria-label="ลด" type="button" onClick={() => step(-1)}
                             className="w-11 h-11 flex items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all shrink-0">
                             <Minus className="h-5 w-5" />
                         </button>
@@ -404,7 +393,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             value={targetQty}
                             onChange={e => handleInput(e.target.value)}
                         />
-                        <button type="button" onClick={() => step(1)}
+                        <button aria-label="เพิ่ม" type="button" onClick={() => step(1)}
                             className="w-11 h-11 flex items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all shrink-0">
                             <Plus className="h-5 w-5" />
                         </button>
@@ -417,7 +406,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
                             <span className="font-bold">({isIncrease ? "+" : ""}{delta})</span>
                         </p>
                     ) : (
-                        <p className="text-xs text-slate-400 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
+                        <p className="text-xs text-slate-500 mt-2">ปัจจุบันมี {item.Quantity} {item.Unit} — ใช้ปุ่ม +/- เพื่อปรับจำนวน</p>
                     )}
                 </div>
 
@@ -456,7 +445,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
 
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
                     <button onClick={submit} disabled={loading || !hasChange}
@@ -494,7 +483,7 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
         } finally { setLoading(false); }
     };
 
-    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
     const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
     return (
@@ -529,11 +518,11 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
                 </div>
                 <div className="flex gap-3 pt-2">
                     <button onClick={onClose} disabled={loading}
-                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
                     <button onClick={submit} disabled={loading}
-                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+                        className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
                     </button>
                 </div>
@@ -545,24 +534,20 @@ function StatusChangeModal({ item, statuses, onClose, onSaved, showToast }) {
 // ─── ConfirmDelete — Backend ใช้ Soft Delete จริง จึงต้องสื่อสารให้ตรง ──────
 function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                        <AlertTriangle className="h-6 w-6 text-red-500" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-slate-900">ยืนยันการนำอุปกรณ์ออกจากรายการ</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">อุปกรณ์นี้จะถูกซ่อนออกจากรายการ ข้อมูลและประวัติยังถูกเก็บไว้ในระบบ</p>
-                    </div>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-5 sm:p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+                <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการนำอุปกรณ์ออกจากรายการ</h3>
+          <p className="text-sm text-slate-500 mt-1">อุปกรณ์นี้จะถูกซ่อนออกจากรายการ ข้อมูลและประวัติยังถูกเก็บไว้ในระบบ</p>
+        </div>
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
                     <p className="text-sm font-semibold text-red-800">{item.Name}</p>
                     <p className="text-xs text-red-400 mt-0.5">{item.Quantity} {item.Unit} · ID: #{item.CommonFacilityId}</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-2">
                     <button onClick={onCancel} disabled={isDeleting}
-                        className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+                        className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
                         ยกเลิก
                     </button>
                     <button onClick={onConfirm} disabled={isDeleting}
@@ -593,28 +578,28 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
         <Modal title={item.Name} icon={CIcon} onClose={onClose}>
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">จำนวนคงเหลือ</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">จำนวนคงเหลือ</p>
                     <p className="text-sm text-slate-800 font-semibold">{item.Quantity} {item.Unit}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">หมวดหมู่</p>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">หมวดหมู่</p>
                     <p className="text-sm text-slate-800 font-semibold">{item.Category_Name}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">สถานะ (สภาพอุปกรณ์)</p>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">สถานะ (สภาพอุปกรณ์)</p>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                         {item.Status_Name}
                     </span>
                     {isAssetMultiUnit && (
-                        <p className="text-[11px] text-slate-400 mt-1.5">
+                        <p className="text-[11px] text-slate-500 mt-1.5">
                             * เป็นสถานะภาพรวมของอุปกรณ์ทั้งหมด {item.Quantity} ชิ้น (ยังไม่รองรับสถานะรายชิ้น)
                         </p>
                     )}
                 </div>
                 {item.Location && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1">
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1 flex items-center gap-1">
                             <MapPin className="h-3 w-3" /> ตำแหน่ง
                         </p>
                         <p className="text-sm text-slate-800 font-semibold">{item.Location}</p>
@@ -622,7 +607,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 )}
                 {item.Detail && (
                     <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 col-span-2">
-                        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">รายละเอียดอุปกรณ์</p>
+                        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">รายละเอียดอุปกรณ์</p>
                         <p className="text-sm text-slate-700">{item.Detail}</p>
                     </div>
                 )}
@@ -653,7 +638,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                 </button>
                 <button onClick={() => onEdit(item)}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 hover:bg-amber-100 active:scale-95 transition-all">
-                    <Edit2 className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
+                    <Pencil className="h-4 w-4" /> แก้ไขข้อมูลทั่วไป
                 </button>
             </div>
 
@@ -662,22 +647,22 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
                     <History className="h-3.5 w-3.5" /> ประวัติการเปลี่ยนแปลง
                 </p>
                 {loadingLogs ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-400" /></div>
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
                 ) : logs.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนแปลง
                     </p>
                 ) : (
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 lg:max-h-64 lg:overflow-y-auto pr-1">
                         {logs.map(log => (
                             <div key={log.LogId} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                     <p className="text-xs font-semibold text-slate-700">
                                         {log.ActionType === "quantity_change"
                                             ? `จำนวน: ${log.Old_Value} → ${log.New_Value} ${item.Unit}`
                                             : `สถานะ: ${statusNameOf(log.Old_Value)} → ${statusNameOf(log.New_Value)}`}
                                     </p>
-                                    <span className="text-[10px] text-slate-400">
+                                    <span className="text-[11px] text-slate-500 shrink-0">
                                         {new Date(log.Created_at).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
                                 </div>
@@ -694,17 +679,58 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusCha
 // ─── FacilityTable — แสดงข้อมูลแบบตาราง ─────────────────────────────
 function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <>
+        {/* มือถือ: การ์ดรายอุปกรณ์ (ตารางแสดงตั้งแต่แท็บเล็ตขึ้นไป) */}
+        <div className="lg:hidden grid gap-3 md:grid-cols-2">
+            {items.map(item => {
+                const st = styleOf(item.StatusId);
+                const CIcon = iconForCategory(item.Category_Name);
+                const outOfStock = item.Quantity === 0;
+                const lowStock = !outOfStock && item.LowStock;
+                return (
+                    <div key={item.CommonFacilityId}
+                        className={`min-w-0 rounded-2xl border shadow-sm p-4 ${outOfStock ? "bg-red-50/50 border-red-200" : lowStock ? "bg-yellow-50/50 border-yellow-200" : "bg-white border-slate-200"}`}>
+                        <button onClick={() => onView(item)} className="w-full text-left flex items-start gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                                <CIcon className="h-5 w-5 text-orange-500" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="font-bold text-slate-900 leading-snug break-words">{item.Name}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                                <p className="text-slate-700 text-sm"><span className="font-bold text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</p>
+                                {outOfStock && <p className="text-[11px] font-bold text-red-600">หมดสต๊อก</p>}
+                                {lowStock && <p className="text-[11px] font-bold text-yellow-700">ใกล้หมด</p>}
+                            </div>
+                        </button>
+                        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                            <span className={`inline-flex min-w-0 items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${st.dot}`} />
+                                <span className="truncate">{item.Status_Name}</span>
+                            </span>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                                <button onClick={() => onView(item)} title="ดูรายละเอียด" className="flex items-center justify-center w-10 h-10 text-orange-600 bg-orange-50 border border-orange-100 rounded-xl"><Eye className="h-4 w-4" /></button>
+                                <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป" className="flex items-center justify-center w-10 h-10 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl"><Pencil className="h-4 w-4" /></button>
+                                <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ" className="flex items-center justify-center w-10 h-10 text-slate-600 bg-slate-50 border border-slate-200 rounded-xl"><AlertTriangle className="h-4 w-4" /></button>
+                                <button onClick={() => onDelete(item)} title="นำออกจากรายการ" className="flex items-center justify-center w-10 h-10 text-red-500 bg-red-50 border border-red-100 rounded-xl"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+        <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[860px] text-sm">
                     <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">อุปกรณ์</th>
-                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
-                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
-                            <th className="text-left px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
-                            <th className="text-center px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
-                            <th className="text-right px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">การจัดการ</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">อุปกรณ์</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จำนวน</th>
+                            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
+                            <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ตำแหน่ง</th>
+                            <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide sticky right-0 bg-slate-50 lg:static">การจัดการ</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -724,37 +750,37 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                                 <CIcon className="h-4 w-4 text-orange-500" />
                                             </div>
                                             <div className="min-w-0">
-                                                <p className="font-bold text-slate-900 truncate">{item.Name}</p>
-                                                {item.Detail && <p className="text-[11px] text-slate-400 truncate max-w-[220px]">{item.Detail}</p>}
+                                                <p className="font-bold text-slate-900 truncate max-w-[180px] sm:max-w-[240px] lg:max-w-none">{item.Name}</p>
+                                                {item.Detail && <p className="text-[11px] text-slate-500 truncate max-w-[220px]">{item.Detail}</p>}
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-600">{item.Category_Name}</td>
                                     <td className="px-4 py-3">
                                         <p className="text-slate-700">
-                                            <span className="font-black text-slate-900">{item.Quantity}</span> {item.Unit}
+                                            <span className="font-bold text-slate-900">{item.Quantity}</span> {item.Unit}
                                         </p>
                                         {outOfStock && (
-                                            <p className="flex items-center gap-1 text-[10px] font-bold text-red-600 mt-0.5">
+                                            <p className="flex items-center gap-1 text-[11px] font-bold text-red-600 mt-0.5">
                                                 <AlertCircle className="h-3 w-3" /> หมดสต๊อก
                                             </p>
                                         )}
                                         {lowStock && (
-                                            <p className="flex items-center gap-1 text-[10px] font-bold text-yellow-700 mt-0.5">
+                                            <p className="flex items-center gap-1 text-[11px] font-bold text-yellow-700 mt-0.5">
                                                 <AlertCircle className="h-3 w-3" /> ใกล้หมด
                                             </p>
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${st.bg} ${st.text} ${st.border}`}>
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border whitespace-nowrap lg:whitespace-normal ${st.bg} ${st.text} ${st.border}`}>
                                             <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
                                             {item.Status_Name}
                                         </span>
                                         {isAssetMultiUnit && (
-                                            <p className="text-[10px] text-slate-400 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
+                                            <p className="text-[11px] text-slate-500 mt-1">ภาพรวม {item.Quantity} ชิ้น</p>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-slate-500 text-center">
+                                    <td className="px-4 py-3 text-slate-500 text-center min-w-[140px] lg:min-w-0">
                                         {item.Location ? (
                                             <span className="flex items-center justify-center gap-1 text-xs">
                                                 <MapPin className="h-3 w-3 shrink-0" /> {item.Location}
@@ -763,22 +789,22 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                                             <span className="text-xs text-slate-300">-</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                         <div className="flex items-center justify-end gap-1.5">
                                             <button onClick={() => onView(item)} title="ดูรายละเอียด"
-                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <Eye className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onEdit(item)} title="แก้ไขข้อมูลทั่วไป"
-                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all">
-                                                <Edit2 className="h-3.5 w-3.5" />
+                                                className="flex items-center justify-center w-8 h-8 text-amber-600 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
+                                                <Pencil className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onStatusChange(item)} title="เปลี่ยนสถานะ"
-                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <AlertTriangle className="h-3.5 w-3.5" />
                                             </button>
                                             <button onClick={() => onDelete(item)} title="นำออกจากรายการ"
-                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all">
+                                                className="flex items-center justify-center w-8 h-8 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 active:scale-95 transition-all min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                                                 <Trash2 className="h-3.5 w-3.5" />
                                             </button>
                                         </div>
@@ -790,6 +816,7 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                 </table>
             </div>
         </div>
+        </>
     );
 }
 
@@ -844,11 +871,11 @@ export default function AdminCommonFacilities() {
         setIsSubmitting(true);
         try {
             await axios.post(`${API}/common-facilities`, form);
-            showToast("success", "เพิ่มอุปกรณ์สำเร็จ!");
+            showToast("success", "เพิ่มอุปกรณ์สำเร็จ");
             setShowAddModal(false);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -856,11 +883,11 @@ export default function AdminCommonFacilities() {
         setIsSubmitting(true);
         try {
             await axios.put(`${API}/common-facilities/${editingItem.CommonFacilityId}`, form);
-            showToast("success", "แก้ไขอุปกรณ์สำเร็จ!");
+            showToast("success", "แก้ไขอุปกรณ์สำเร็จ");
             setEditingItem(null);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsSubmitting(false); }
     };
 
@@ -869,11 +896,11 @@ export default function AdminCommonFacilities() {
         setIsDeleting(true);
         try {
             await axios.delete(`${API}/common-facilities/${deletingItem.CommonFacilityId}`);
-            showToast("success", "นำอุปกรณ์ออกจากรายการสำเร็จ!");
+            showToast("success", "นำอุปกรณ์ออกจากรายการสำเร็จ");
             setDeletingItem(null);
             fetchAll();
         } catch (e) {
-            showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+            showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
         } finally { setIsDeleting(false); }
     };
 
@@ -913,26 +940,19 @@ export default function AdminCommonFacilities() {
         ];
 
     if (loading) return (
-        <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-500">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคลังอุปกรณ์...</p>
-        </div>
+        <Spinner block label="กำลังโหลดข้อมูลคลังอุปกรณ์..." />
     );
 
     return (
-        <div className="space-y-6 mt-[90px] px-4 md:px-0">
+        <div className="space-y-6 px-4 lg:px-0">
             <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900">จัดการคลังอุปกรณ์</h1>
-                    <p className="text-sm text-slate-500 mt-1">จัดการทรัพย์สินและวัสดุส่วนกลางที่ใช้ร่วมกันในสถาบัน</p>
-                </div>
+            <PageHeader title="จัดการคลังอุปกรณ์" subtitle="จัดการทรัพย์สินและวัสดุส่วนกลางของสถาบัน">
                 <button onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition text-sm active:scale-95">
+                    className={`${BTN.primary} flex items-center justify-center gap-2 px-4 h-10 rounded-xl font-bold hover:shadow-md transition text-sm active:scale-95`}>
                     <Plus className="h-4 w-4" /> เพิ่มอุปกรณ์
                 </button>
-            </div>
+            </PageHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
@@ -940,13 +960,13 @@ export default function AdminCommonFacilities() {
                     { label: "สภาพพร้อมใช้งาน", value: readyCount, color: "bg-emerald-500", icon: Check },
                     { label: "ใกล้หมด/ต้องเติม", value: lowStockCount, color: "bg-amber-500", icon: AlertCircle },
                 ].map(({ label, value, color, icon: Icon }, i) => (
-                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
+                    <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
                         <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
                             <Icon className="h-5 w-5 text-white" />
                         </div>
                         <div>
-                            <p className="text-xs text-slate-500 font-medium">{label}</p>
-                            <p className="text-xl font-black text-slate-900">{value}</p>
+                            <p className={STAT_LABEL}>{label}</p>
+                            <p className={STAT_VALUE}>{value}<span className={STAT_UNIT}>รายการ</span></p>
                         </div>
                     </div>
                 ))}
@@ -960,14 +980,14 @@ export default function AdminCommonFacilities() {
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
                                 value={search} onChange={e => setSearch(e.target.value)}
-                                placeholder="ชื่ออุปกรณ์, ตำแหน่ง..."
-                                className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+                                placeholder="ค้นหาชื่ออุปกรณ์, ตำแหน่ง..."
+                                className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
                             />
                         </div>
                     </div>
                     <div className="relative">
                         <select value={filterType} onChange={e => setFilterType(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
                             <option value="all">ทุกประเภท</option>
                             <option value="asset">ทรัพย์สิน</option>
                             <option value="consumable">วัสดุสิ้นเปลือง</option>
@@ -976,7 +996,7 @@ export default function AdminCommonFacilities() {
                     </div>
                     <div className="relative">
                         <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] w-full">
                             <option value="all">ทุกหมวดหมู่</option>
                             {categories.map(c => <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>)}
                         </select>
@@ -984,7 +1004,7 @@ export default function AdminCommonFacilities() {
                     </div>
                     <div className="relative">
                         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
                             <option value="all">ทุกสถานะ</option>
                             {statuses.map(s => <option key={s.Status_Id} value={s.Status_Id}>{s.Status_Name}</option>)}
                         </select>
@@ -992,17 +1012,21 @@ export default function AdminCommonFacilities() {
                     </div>
                     <div className="relative">
                         <select value={filterStock} onChange={e => setFilterStock(e.target.value)}
-                            className="appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
+                            className="appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[140px] w-full">
                             {stockOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-2 pl-1">แสดง {filtered.length} จาก {items.length} รายการ</p>
+                <div className="mt-2 pl-1 flex items-center justify-between gap-2">
+                    <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {items.length} รายการ</p>
+                    <ClearFiltersButton show={!!search || filterType !== "all" || filterCategory !== "all" || filterStatus !== "all" || filterStock !== "all"}
+                        onClick={() => { setSearch(""); setFilterType("all"); setFilterCategory("all"); setFilterStatus("all"); setFilterStock("all"); }} />
+                </div>
             </div>
 
             {filtered.length === 0 ? (
-                <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-200">
+                <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <Boxes className="h-16 w-16 mx-auto text-slate-200" />
                     <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
                 </div>
@@ -1053,7 +1077,7 @@ export default function AdminCommonFacilities() {
                 </Modal>
             )}
             {editingItem && (
-                <Modal title={`แก้ไขอุปกรณ์: ${editingItem.Name}`} icon={Edit2} onClose={() => setEditingItem(null)}>
+                <Modal title={`แก้ไขอุปกรณ์: ${editingItem.Name}`} icon={Pencil} onClose={() => setEditingItem(null)}>
                     <CommonFacilityForm initial={editingItem} categories={categories} statuses={statuses} onSave={handleUpdate} onCancel={() => setEditingItem(null)} isSubmitting={isSubmitting} />
                 </Modal>
             )}

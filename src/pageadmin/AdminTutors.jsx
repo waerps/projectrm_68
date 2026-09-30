@@ -1,17 +1,29 @@
 //ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
+import { useNavigate } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Edit2, Trash2, X, Check, Eye, EyeOff,
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
-  UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2,
+  UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2, Download,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
+import UIModal from "../components/ui/Modal";
+import { confirmDialog } from "../components/ui/dialogs";
+import SegmentedControl from "../components/ui/SegmentedControl";
+import PageHeader from "../components/ui/PageHeader";
+import UIPagination from "../components/ui/Pagination";
+import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { Users as LuUsers } from "lucide-react";
+import ErrorState from "../components/ui/ErrorState";
+import { BTN } from "../components/ui/tokens";
+import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
+import Spinner from "../components/ui/Spinner";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -35,6 +47,40 @@ async function forceDownload(url, filename) {
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
+
+// ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนส้มเดียวกันทั้งระบบ
+const tutorTiltMove = (e) => {
+  const el = e.currentTarget, r = el.getBoundingClientRect();
+  const px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  el.style.setProperty("--gx", `${px * 100}%`);
+  el.style.setProperty("--gy", `${py * 100}%`);
+  el.style.transform = `perspective(700px) rotateX(${(0.5 - py) * 6}deg) rotateY(${(px - 0.5) * 8}deg) translateY(-2px)`;
+};
+const tutorTiltLeave = (e) => { e.currentTarget.style.transform = ""; };
+
+function TutorStatTile({ label, value, color, hint, icon: Icon, unit = "คน" }) {
+  return (
+    <div
+      title={hint}
+      onMouseMove={tutorTiltMove}
+      onMouseLeave={tutorTiltLeave}
+      className="sa-tilt relative overflow-hidden flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
+    >
+      <span className="sa-glow" />
+      {Icon && <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />}
+      <div className={`relative h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0 shadow-sm`}>
+        <Icon className="h-5 w-5 text-white" />
+      </div>
+      <div className="relative min-w-0">
+        <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+          {label}
+          {hint && <Info className="h-3 w-3 text-slate-300" />}
+        </p>
+        <p className={STAT_VALUE}>{value.toLocaleString()}{unit && <span className={STAT_UNIT}>{unit}</span>}</p>
+      </div>
+    </div>
+  );
+}
 
 // Tutor-application routes are protected by authRequired + admin role.
 // The login page stores the JWT under this key.
@@ -106,16 +152,16 @@ function HoursInlineEdit({ value, onSave, onCancel }) {
     <div className="flex items-center gap-1.5">
       <input type="number" min="0" step="1" value={hours}
         onChange={e => /^\d*$/.test(e.target.value) && setHours(e.target.value)}
-        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" autoFocus />
-      <span className="text-[11px] text-slate-400">ชม.</span>
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" autoFocus />
+      <span className="text-[11px] text-slate-500">ชม.</span>
       <input type="number" min="0" max="59" step="1" value={minutes}
         onChange={e => /^\d*$/.test(e.target.value) && Number(e.target.value) < 60 && setMinutes(e.target.value)}
-        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-lg text-xs text-right outline-none" />
-      <span className="text-[11px] text-slate-400">นาที</span>
-      <button onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700">
+        className="w-12 px-1.5 py-1 bg-white border border-orange-300 rounded-xl text-xs text-right outline-none" />
+      <span className="text-[11px] text-slate-500">นาที</span>
+      <button aria-label="ยืนยัน" onClick={save} disabled={saving} className="p-1 text-green-500 hover:text-green-700 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
         {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
       </button>
-      <button onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500">
+      <button aria-label="ปิด" onClick={onCancel} disabled={saving} className="p-1 text-slate-400 hover:text-red-500 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
         <X className="h-3.5 w-3.5" />
       </button>
     </div>
@@ -205,18 +251,18 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
   const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
-            <UserX className="h-5 w-5 text-red-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <UserX className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ปฏิเสธใบสมัคร</h3>
-            <p className="text-xs text-slate-400">{displayName}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">ปฏิเสธใบสมัคร</h3>
+            <p className="text-xs text-white/80 truncate">{displayName}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -225,7 +271,7 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
         </label>
         <textarea
           rows={3}
-          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition mb-4"
+          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition mb-4"
           value={reason}
           onChange={e => setReason(e.target.value)}
           placeholder="เช่น คุณสมบัติไม่ตรงตามที่ต้องการ / เอกสารไม่ครบ..."
@@ -233,7 +279,7 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose} disabled={loading}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 disabled:opacity-50 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
@@ -299,32 +345,61 @@ function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting
 }
 
 // ─── ★ ใหม่: ดูรายละเอียดใบสมัคร ก่อนอนุมัติ/ปฏิเสธ/ดาวน์โหลด Resume (สไตล์เดียวกับ TutorDetailModal) ──
-function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
+function ApplicationDetailModal({ application, onClose, onApprove, onReject, showToast }) {
   const displayName = application.Nickname || `${application.Firstname} ${application.Lastname}`;
   const status = appStatusOf(application.Status);
-  const [downloading, setDownloading] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [resumeBlobUrl, setResumeBlobUrl] = useState(null);
+  const [resumeMime, setResumeMime] = useState("");
+  const resumeObjectUrlRef = useRef(null);
 
-  // ★ แก้: ใช้ axios (มี auth token แนบอยู่แล้ว) + responseType blob แทน fetch ธรรมดา
-  const handleDownload = async () => {
+  // เคลียร์ object URL ที่สร้างไว้ตอน unmount กันหน่วยความจำรั่ว
+  useEffect(() => () => {
+    if (resumeObjectUrlRef.current) window.URL.revokeObjectURL(resumeObjectUrlRef.current);
+  }, []);
+
+  // ★ แก้บั๊ก: ก่อนหน้านี้ไม่ได้แนบ token เลย (ไม่ได้ใช้ getAdminAuthConfig()) เลย
+  // โดนปฏิเสธ 401 เงียบ ๆ ทุกครั้ง กดแล้วไม่มีอะไรเกิดขึ้นเหมือนปุ่มพัง
+  const fetchResumeBlob = () =>
+    axios.get(`${API}/tutor-applications/${application.ApplicationId}/resume`, {
+      responseType: "blob",
+      ...getAdminAuthConfig(),
+    });
+
+  // ★ แก้: หานามสกุล/ประเภทไฟล์จาก Content-Type จริงหลังโหลดไฟล์มาแล้ว (resumeMime) แทนการเดา
+  // จาก URL — ไฟล์บน Cloudinary มักไม่มีนามสกุลต่อท้าย URL เลย เดาแล้วผิดเกือบตลอด
+  const MIME_TO_EXT = { "application/pdf": "pdf", "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+  const resumeExt = MIME_TO_EXT[resumeMime] || "";
+  const canPreviewInline = !!resumeMime && (resumeMime === "application/pdf" || resumeMime.startsWith("image/"));
+
+  // ★ แก้ตามที่ขอ: รวมปุ่มดูตัวอย่าง+ดาวน์โหลดเป็นจุดเดียว — กดดูตัวอย่างก่อน แล้วปุ่มดาวน์โหลด
+  // จะอยู่ในแผงพรีวิวนั้นเลย ไม่แยกปุ่มเหมือนเดิม (โหลดไฟล์แค่ครั้งเดียว ใช้ blob ก้อนเดียวกันทั้งดูและโหลด)
+  const handleOpenPreview = async () => {
     if (!application.ApplicationId) return;
-    setDownloading(true);
+    if (resumeObjectUrlRef.current) return; // โหลดไปแล้ว ไม่ต้องยิงซ้ำ
+    setPreviewing(true);
     try {
-      const res = await axios.get(`${API}/tutor-applications/${application.ApplicationId}/resume`, {
-        responseType: "blob",
-      });
+      const res = await fetchResumeBlob();
       const blobUrl = window.URL.createObjectURL(res.data);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `resume-${application.Nickname || application.Firstname}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      resumeObjectUrlRef.current = blobUrl;
+      setResumeMime(res.data.type || "");
+      setResumeBlobUrl(blobUrl);
     } catch (err) {
-      console.error("[handleDownload]", err);
+      console.error("[handleOpenPreview]", err);
+      showToast?.("error", "เปิดดูตัวอย่างไม่สำเร็จ", err.response?.data?.message || err.message);
     } finally {
-      setDownloading(false);
+      setPreviewing(false);
     }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!resumeBlobUrl) return;
+    const a = document.createElement("a");
+    a.href = resumeBlobUrl;
+    a.download = `resume-${application.Nickname || application.Firstname}${resumeExt ? "." + resumeExt : ""}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return (
@@ -335,27 +410,27 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
         <div className="flex-1 min-w-0">
           <p className="font-bold text-lg">{displayName}</p>
           <p className="text-sm text-orange-100">{application.Firstname} {application.Lastname}</p>
-          <span className="inline-block mt-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/20">
+          <span className="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/20">
             {status.label}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">เบอร์โทร</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">เบอร์โทร</p>
           <p className="text-sm text-slate-800">{application.PhoneNo || "—"}</p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">LINE ID</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">LINE ID</p>
           <p className="text-sm text-slate-800">{application.LineID || "—"}</p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">อาชีพ</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">อาชีพ</p>
           <p className="text-sm text-slate-800">{application.Occupation || "—"}</p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">วันที่สมัคร</p>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">วันที่สมัคร</p>
           <p className="text-sm text-slate-800">{formatDate(application.Created_at)}</p>
         </div>
       </div>
@@ -368,15 +443,39 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject }) {
       )}
 
       <div className="mb-5">
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">ไฟล์ Resume</p>
+        <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">ไฟล์ Resume</p>
         {application.ResumePath ? (
-          <button onClick={handleDownload} disabled={downloading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 disabled:opacity-50 transition">
-            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-            {downloading ? "กำลังดาวน์โหลด..." : "ดาวน์โหลด Resume"}
-          </button>
+          resumeBlobUrl ? (
+            <div className="rounded-xl border border-slate-200 overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+                <span className="text-xs font-semibold text-slate-500">ตัวอย่างไฟล์ Resume</span>
+                <button onClick={handleDownloadFromPreview}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition">
+                  <Download className="h-3.5 w-3.5" />
+                  ดาวน์โหลด
+                </button>
+              </div>
+              {canPreviewInline ? (
+                resumeMime === "application/pdf" ? (
+                  <iframe src={resumeBlobUrl} title="ตัวอย่าง Resume" className="w-full h-[420px] bg-white" />
+                ) : (
+                  <img src={resumeBlobUrl} alt="ตัวอย่าง Resume" className="max-h-[420px] w-full object-contain bg-white" />
+                )
+              ) : (
+                <p className="text-xs text-slate-500 p-4">
+                  ไฟล์ประเภทนี้แสดงตัวอย่างในเบราว์เซอร์ไม่ได้ กรุณากด "ดาวน์โหลด" เพื่อเปิดด้วยโปรแกรมที่รองรับ
+                </p>
+              )}
+            </div>
+          ) : (
+            <button onClick={handleOpenPreview} disabled={previewing}
+              className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 disabled:opacity-50 transition">
+              {previewing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+              {previewing ? "กำลังเปิด..." : "ดูตัวอย่าง Resume"}
+            </button>
+          )
         ) : (
-          <p className="text-xs text-slate-400">ไม่มีไฟล์แนบ</p>
+          <p className="text-xs text-slate-500">ไม่มีไฟล์แนบ</p>
         )}
       </div>
 
@@ -421,11 +520,11 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
         data,
         getAdminAuthConfig(),
       );
-      showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ!");
+      showToast("success", "อนุมัติและสร้างบัญชีติวเตอร์สำเร็จ");
       setApprovingApp(null); setViewingApp(null);
       onRefresh();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -440,7 +539,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
       setViewingApp(null);
       onRefresh();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     }
   };
 
@@ -451,14 +550,22 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
     { key: "all", label: "ทั้งหมด", icon: Users },
   ];
 
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h1>
-        <p className="text-sm text-slate-500 mt-1">ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์ใหม่</p>
+      {/* แบนเนอร์โทนส้ม — รูปแบบเดียวกับหน้ารายชื่อติวเตอร์ */}
+      <div className="admin-summary-banner p-5 sm:p-6">
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+              <UserCheck className="h-3.5 w-3.5" /> ใบสมัครติวเตอร์
+            </span>
+            <h2 className="mt-2 text-lg font-bold text-slate-900">ผู้สมัครเป็นติวเตอร์</h2>
+            <p className={PAGE_SUBTITLE}>ตรวจสอบ อนุมัติ หรือปฏิเสธใบสมัครติวเตอร์</p>
+          </div>
+        </div>
       </div>
 
-      {/* ★ เพิ่ม: Stats cards เหมือนหน้ารายชื่อติวเตอร์ */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "ทั้งหมด", value: countOf("all"), color: "bg-orange-500" },
@@ -466,59 +573,50 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
           { label: "อนุมัติแล้ว", value: countOf("2"), color: "bg-emerald-500" },
           { label: "ปฏิเสธ", value: countOf("3"), color: "bg-red-500" },
         ].map(({ label, value, color }, i) => (
-          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+          <div key={i} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Users className="h-5 w-5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-slate-500 font-medium">{label}</p>
-              <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
+              <p className={STAT_LABEL}>{label}</p>
+              <p className={STAT_VALUE}>{value.toLocaleString()}<span className={STAT_UNIT}>คน</span></p>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ★ แก้: Search + ปุ่มกรอง — ใช้สีเข้ม (slate-900) แยกให้ชัดจาก badge สถานะสีอ่อนในตาราง */}
+      {/* Search + ตัวกรองสถานะ (แท็บมาตรฐานของระบบ) — ปุ่มกรอง — ใช้สีเข้ม (slate-900) แยกให้ชัดจาก badge สถานะสีอ่อนในตาราง */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="ค้นหาชื่อ, เบอร์โทร, อาชีพ..."
-              className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              placeholder="ค้นหาชื่อ เบอร์โทร หรืออาชีพ"
+              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {FILTERS.map(f => (
-              <button key={f.key} onClick={() => setFilterStatus(f.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border
-                  ${filterStatus === f.key
-                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
-                <f.icon className="h-3.5 w-3.5" /> {f.label} ({countOf(f.key)})
-              </button>
-            ))}
-          </div>
+          <SegmentedControl size="sm" value={filterStatus} onChange={setFilterStatus} className="shrink-0"
+            options={FILTERS.map(f => ({ id: f.key, label: f.label, icon: f.icon, count: countOf(f.key) }))} />
         </div>
       </div>
 
       {/* ★ แก้: Table แทน list การ์ด — เหมือนหน้ารายชื่อติวเตอร์ */}
       {filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <p className="text-slate-500 font-medium">ไม่พบใบสมัครในสถานะนี้</p>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] lg:min-w-0 text-sm">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้สมัคร</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ / อาชีพ</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
+                  <th className="whitespace-nowrap lg:whitespace-normal text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                  <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -545,16 +643,16 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
+                      <td className="whitespace-nowrap lg:whitespace-normal px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+                        <span className={`inline-flex items-center whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
                           {status.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
                         <div className="flex items-center justify-end gap-1.5">
                           <button onClick={() => setViewingApp(a)}
-                            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูรายละเอียด">
+                            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ดูรายละเอียด">
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                           {a.Status === 1 && (
@@ -586,6 +684,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
           onClose={() => setViewingApp(null)}
           onApprove={(app) => { setViewingApp(null); setApprovingApp(app); }}
           onReject={(app) => { setViewingApp(null); setRejectingApp(app); }}
+          showToast={showToast}
         />
       )}
       {approvingApp && (
@@ -612,27 +711,9 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
 }
 
 // ─── Modal wrapper ─────────────────────────────────────────────────────────────
-function Modal({ title, icon: Icon, onClose, children, wide }) {
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`bg-white rounded-2xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
-            {Icon && (
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
-                <Icon className="h-4 w-4 text-white" />
-              </span>
-            )}
-            {title}
-          </h3>
-          <button onClick={onClose} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="overflow-y-auto flex-1 p-6">{children}</div>
-      </div>
-    </div>
-  );
+function Modal({ title, icon, onClose, children, wide }) {
+  // ใช้ Modal กลางของระบบ (components/ui/Modal) — คงชื่อ/props เดิมไว้ให้จุดที่เรียกใช้ไม่ต้องแก้
+  return <UIModal title={title} icon={icon} onClose={onClose} size={wide ? '2xl' : 'lg'}>{children}</UIModal>;
 }
 
 // ─── ImageUpload (เหมือนหน้าคอร์สทุกจุด — ใช้ endpoint /api/admin/upload/image ร่วมกัน) ──
@@ -677,7 +758,7 @@ function ImageUpload({ value, onChange, showToast }) {
             ? <><Loader2 className="h-7 w-7 text-orange-500 animate-spin" /><p className="text-xs text-orange-500 font-medium">กำลังอัปโหลด...</p></>
             : value
               ? <><Check className="h-7 w-7 text-green-600" /><p className="text-xs text-green-600 font-medium">อัปโหลดแล้ว</p></>
-              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[10px] text-slate-400">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
+              : <><ImagePlus className="h-7 w-7 text-slate-400" /><p className="text-xs text-slate-500 font-medium">คลิกหรือลากไฟล์มาวาง</p><p className="text-[11px] text-slate-500">JPG, PNG, WEBP · ไม่เกิน 5MB</p></>
           }
         </div>
         <input ref={inputRef} type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden"
@@ -686,7 +767,7 @@ function ImageUpload({ value, onChange, showToast }) {
       {err && <p className="text-xs text-red-500">{err}</p>}
       {value && !uploading && (
         <button type="button" onClick={() => onChange("")}
-          className="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+          className="text-xs text-slate-500 hover:text-red-500 transition flex items-center gap-1">
           <X className="h-3.5 w-3.5" /> ลบรูปภาพ
         </button>
       )}
@@ -709,9 +790,9 @@ function SubjectMultiSelect({ allSubjects, selectedIds, onChange }) {
       {selectedItems.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {selectedItems.map(s => (
-            <span key={s.SubjectId} className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+            <span key={s.SubjectId} className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
               {s.SubjectName}
-              <button type="button" onClick={() => toggle(s.SubjectId)} className="text-orange-400 hover:text-red-500 transition">
+              <button aria-label="ปิด" type="button" onClick={() => toggle(s.SubjectId)} className="text-orange-400 hover:text-red-500 transition">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -724,14 +805,14 @@ function SubjectMultiSelect({ allSubjects, selectedIds, onChange }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="ค้นหาวิชา..."
-          className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400"
+          className="w-full pl-9 pr-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400"
         />
       </div>
       <div className="mt-2 max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
         {allSubjects.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ยังไม่มีรายวิชาในระบบ</p>
+          <p className="text-xs text-slate-500 text-center py-3">ยังไม่มีรายวิชาในระบบ</p>
         ) : filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ไม่พบวิชาที่ค้นหา</p>
+          <p className="text-xs text-slate-500 text-center py-3">ไม่พบวิชาที่ค้นหา</p>
         ) : filtered.map(s => {
           const checked = selectedIds.includes(String(s.SubjectId));
           return (
@@ -770,7 +851,7 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
   return (
     <div className="relative">
       <input
-        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+        className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
         value={query}
         onChange={e => { onSelectName(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
@@ -787,9 +868,9 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
               onMouseDown={() => pick(t)}
               className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-orange-50 transition"
             >
-              <TutorAvatar tutor={t} className="h-6 w-6 rounded-full text-[10px]" />
+              <TutorAvatar tutor={t} className="h-6 w-6 rounded-full text-[11px]" />
               <span className="flex-1 truncate">{displayNameOf(t)}</span>
-              {t.PhoneNo && <span className="text-[11px] text-slate-400 shrink-0">{t.PhoneNo}</span>}
+              {t.PhoneNo && <span className="text-[11px] text-slate-500 shrink-0">{t.PhoneNo}</span>}
             </button>
           ))}
         </div>
@@ -884,12 +965,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
               s => !excludeIds.includes(String(s.SubjectId)) || String(s.SubjectId) === String(SubjectId)
             );
             return (
-              <div key={localId} className="flex items-center gap-3 px-3 py-2">
-                <span className="flex-1 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
+              <div key={localId} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2">
+                <span className="flex-1 basis-full sm:flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">{course.CourseName}</span>
                 <select
                   value={SubjectId}
                   onChange={e => setSubjectFor(localId, e.target.value)}
-                  className="px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-orange-400"
+                  className="flex-1 min-w-0 sm:flex-initial sm:min-w-auto px-2 h-10 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
                 >
                   <option value="">เลือกวิชา...</option>
                   {subjectOptions.map(s => (
@@ -908,16 +989,16 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
 
       <div className="flex items-center gap-2 p-3">
         <input type="text" placeholder="ค้นหาคอร์ส..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 px-2.5 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-400" />
+          className="flex-1 px-2.5 h-10 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-400" />
       </div>
 
-      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-400">
+      <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-500">
         แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่ · คลิกคอร์สเดิมซ้ำได้เพื่อเพิ่มวิชาที่สอง
       </p>
 
       <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
         {filtered.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
+          <p className="text-xs text-slate-500 text-center py-3">ไม่พบคอร์สที่สามารถเพิ่มได้</p>
         ) : filtered.map(c => {
           const id = String(c.CourseID);
           const dbCount = assignedSubjectIdsOf(id).length;
@@ -927,12 +1008,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
               type="button"
               key={id}
               onClick={() => addRow(id)}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition hover:bg-white text-left"
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm transition hover:bg-white text-left"
             >
               <Plus className="h-3.5 w-3.5 text-orange-400 shrink-0" />
               <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
               {(dbCount + pendingCount) > 0 && (
-                <span className="text-[10px] text-orange-500 font-semibold shrink-0">
+                <span className="text-[11px] text-orange-500 font-semibold shrink-0">
                   {dbCount} วิชาแล้ว{pendingCount ? ` +${pendingCount}` : ""}
                 </span>
               )}
@@ -943,11 +1024,11 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
       <div className="flex items-center gap-2 p-3 border-t border-orange-100">
         <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selected.length} รายการ</span>
         <button onClick={handleAdd} disabled={saving || !selected.length}
-          className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-bold hover:bg-orange-600 disabled:opacity-50 transition flex items-center gap-1.5">
+          className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition flex items-center gap-1.5`}>
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
         </button>
-        <button onClick={() => { setAdding(false); setSelected([]); setSearch(""); }}
-          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-300 transition">
+        <button aria-label="ปิด" onClick={() => { setAdding(false); setSelected([]); setSearch(""); }}
+          className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-300 transition">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -984,7 +1065,7 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
   const [editingId, setEditingId] = useState(null); // ★ เพิ่ม
   const grouped = groupCoursesByCourseId(courses);
   if (grouped.length === 0) {
-    return <p className="text-center text-slate-400 py-6 text-sm">ยังไม่มีคอร์สที่สอน</p>;
+    return <p className="text-center text-slate-500 py-6 text-sm">ยังไม่มีคอร์สที่สอน</p>;
   }
   return (
     <div className={compact ? "mt-2 space-y-2" : "space-y-2"}>
@@ -1002,7 +1083,7 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
           <div className="flex flex-col gap-1.5 mt-2">
             {g.subjects.map(s => (
               <div key={s.TutorCourseDetailId} className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-[11px] font-semibold">
+                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
                   {s.SubjectName || "ไม่ระบุวิชา"}
                   <button
                     type="button"
@@ -1027,7 +1108,7 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
                     className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-orange-600 transition"
                     title="แก้ไขชั่วโมงสอน"
                   >
-                    {formatHoursLabel(s.TotalHours)} <Edit2 className="h-3 w-3" />
+                    {formatHoursLabel(s.TotalHours)} <Pencil className="h-3 w-3" />
                   </button>
                 )}
               </div>
@@ -1090,7 +1171,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
     onSave(form);   // ← ต้องอยู่บรรทัดสุดท้าย
   };
 
-  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+  const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
   return (
@@ -1101,7 +1182,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <ImageUpload value={form.photo || ""} onChange={(path) => set("photo", path)} showToast={showToast} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
@@ -1111,7 +1192,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} placeholder="นามสกุล" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ชื่อเล่น / ชื่อที่ใช้เรียก</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} placeholder="เช่น ครูเป้ว" />
@@ -1127,7 +1208,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>Line ID</label>
           <input className={inp} value={form.lineId || ""} onChange={e => set("lineId", e.target.value)} placeholder="@lineid" />
@@ -1137,7 +1218,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>อาชีพ / สาขาวิชา</label>
           <input className={inp} value={form.occupation || ""} onChange={e => set("occupation", e.target.value)} placeholder="เช่น นักศึกษา" />
@@ -1170,7 +1251,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
           <CreditCard className="h-3.5 w-3.5" /> ข้อมูลบัญชีธนาคาร
         </p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label className={lbl}>ธนาคาร</label>
             <input className={inp} value={form.bankName || ""} onChange={e => set("bankName", e.target.value)} placeholder="เช่น ไทยพาณิชย์" />
@@ -1188,7 +1269,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       {/* ผู้ติดต่อฉุกเฉิน — ★ แก้: เลือกชื่อจากรายชื่อติวเตอร์ในระบบได้ (Searchable Select), เบอร์เติมอัตโนมัติแต่แก้เองได้ */}
       <div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className={lbl}>ชื่อผู้ติดต่อฉุกเฉิน</label>
             <EmergencyContactSelect
@@ -1223,7 +1304,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <div className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 font-medium select-text">
             {form.username || "—"}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">ไม่สามารถแก้ไข Username ได้</p>
+          <p className="text-[11px] text-slate-500 mt-1">ไม่สามารถแก้ไข Username ได้</p>
         </div>
       )}
 
@@ -1232,7 +1313,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <p className="text-xs font-bold text-orange-700 uppercase tracking-wide flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5" /> ข้อมูลเข้าสู่ระบบ
           </p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} placeholder="username" autoComplete="off" />
@@ -1248,7 +1329,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
                   placeholder="รหัสผ่าน"
                   autoComplete="new-password"
                 />
-                <button type="button" onClick={() => setShowPwd(v => !v)}
+                <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShowPwd(v => !v)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                   {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -1293,11 +1374,11 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       <div className="flex gap-3 pt-2">
         <button onClick={onCancel} disabled={isSubmitting}
-          className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+          className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           ยกเลิก
         </button>
         <button onClick={submit} disabled={isSubmitting}
-          className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 disabled:opacity-50 transition text-sm shadow-sm">
+          className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
           {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="h-4 w-4" /> บันทึก</>}
         </button>
       </div>
@@ -1325,35 +1406,35 @@ function ResetPasswordModal({ tutor, onClose, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <KeyRound className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <KeyRound className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">รีเซ็ตรหัสผ่าน</h3>
-            <p className="text-xs text-slate-400">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">รีเซ็ตรหัสผ่าน</h3>
+            <p className="text-xs text-white/80 truncate">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
+            <X className="h-5 w-5" />
           </button>
         </div>
         <div className="relative mb-4">
           <input type={show ? "text" : "password"} value={pwd} onChange={e => setPwd(e.target.value)}
             className={inp + " pr-10"} placeholder="รหัสผ่านใหม่" autoComplete="new-password" />
-          <button type="button" onClick={() => setShow(v => !v)}
+          <button aria-label="ดูรายละเอียด" type="button" onClick={() => setShow(v => !v)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
             {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยัน"}
           </button>
         </div>
@@ -1388,18 +1469,18 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-            <UserCog className="h-5 w-5 text-orange-600" />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 -mx-6 -mt-6 px-6 sticky -top-6 z-10 mb-4 py-4 bg-gradient-to-r from-orange-500 to-amber-500">
+          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <UserCog className="h-4 w-4 text-white" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900">เปลี่ยนสถานะติวเตอร์</h3>
-            <p className="text-xs text-slate-400">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white truncate">เปลี่ยนสถานะติวเตอร์</h3>
+            <p className="text-xs text-white/80 truncate">{tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}</p>
           </div>
-          <button onClick={onClose} className="ml-auto p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
-            <X className="h-4 w-4" />
+          <button onClick={onClose} aria-label="ปิด" className="ml-auto p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -1427,12 +1508,12 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
             </label>
             <textarea
               rows={3}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="เช่น ย้ายที่อยู่ / ปรับตารางเรียน / ลาออก..."
             />
-            <p className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
               <Info className="h-3 w-3" /> ข้อมูลติวเตอร์และประวัติค่าสอนจะยังถูกเก็บไว้ตามเดิม ไม่มีการลบผู้ใช้ออกจากระบบ
             </p>
           </div>
@@ -1440,11 +1521,11 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
 
         <div className="flex gap-3">
           <button onClick={onClose}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold text-sm transition`}>
             ยกเลิก
           </button>
           <button onClick={submit} disabled={loading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 disabled:opacity-50 transition">
+            className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 transition`}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "บันทึก"}
           </button>
         </div>
@@ -1456,16 +1537,12 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
 function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-            <AlertTriangle className="h-6 w-6 text-red-500" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">ยืนยันการลบติวเตอร์</h3>
-            <p className="text-xs text-slate-400 mt-0.5">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="text-center mb-4">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
+          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบติวเตอร์</h3>
+          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
         </div>
         <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
           <p className="text-sm font-semibold text-red-800">
@@ -1473,14 +1550,14 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
           </p>
           <p className="text-xs text-red-400 mt-0.5">ID: #{tutor.AdminId}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
-            className="flex-1 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition text-sm">
+            className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
             ยกเลิก
           </button>
           <button onClick={onConfirm} disabled={isDeleting}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ลบเลย"}
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
           </button>
         </div>
       </div>
@@ -1489,7 +1566,55 @@ function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
 }
 
 // เพิ่ม component นี้ไว้นอก AdminTutorsPage
+// การ์ดติวเตอร์สำหรับมือถือ/แท็บเล็ต — ข้อมูลและปุ่มเดียวกับ TutorRow
+function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
+  const navigate = useNavigate();
+  const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
+  const fullName = `${t.Firstname} ${t.Lastname}`;
+  const status = statusOf(t.Status_Tutor_Id);
+  const isInactive = Number(t.Status_Tutor_Id) === 2;
+  const iconBtn = "w-10 h-10 flex items-center justify-center rounded-xl border";
+  return (
+    <div className={`min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col ${isInactive ? "opacity-60" : ""}`}>
+      <button onClick={() => setViewTutor(t)} className="flex items-start gap-3 text-left">
+        <TutorAvatar tutor={t} className="h-11 w-11 rounded-xl text-sm shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
+          {t.Nickname && displayName !== fullName && <p className="text-xs text-slate-500 truncate">{fullName}</p>}
+          <p className="text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</p>
+        </div>
+        <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
+          {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+          {status.label}
+        </span>
+      </button>
+      <div className="mt-3 space-y-1.5 text-xs">
+        {t.Occupation && <p className="flex items-center gap-1.5 text-orange-600 font-medium"><Briefcase className="h-3.5 w-3.5 shrink-0" /><span className="line-clamp-1">{t.Occupation}</span></p>}
+        {(t.TeachingSubjects || t.Subjects) && <p className="flex items-start gap-1.5 text-slate-500"><BookOpen className="h-3.5 w-3.5 text-orange-400 shrink-0 mt-0.5" /><span className="line-clamp-2">{t.TeachingSubjects || t.Subjects}</span></p>}
+        {t.PhoneNo && t.PhoneNo !== "000-000-0000" && <p className="flex items-center gap-1.5 text-slate-600"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{t.PhoneNo}</p>}
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">นักเรียน {t.StudentCount || 0}</span>
+          {t.RatePerTutors ? <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
+        </div>
+      </div>
+      <div className="mt-auto pt-3">
+        <div className="pt-3 border-t border-slate-100 flex items-center gap-1.5">
+          <button onClick={() => setEditingTutor(t)} className="flex-1 h-10 flex items-center justify-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl">
+            <Pencil className="h-4 w-4" /> แก้ไข
+          </button>
+          <button onClick={() => setViewTutor(t)} title="ดูข้อมูลติวเตอร์" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><Eye className="h-4 w-4" /></button>
+          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}&from=tutors`)} title="ดูภาพรวมพัฒนาการ" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><BarChart2 className="h-4 w-4" /></button>
+          <button onClick={() => setStatusTutor(t)} title="เปลี่ยนสถานะ" className={`${iconBtn} text-orange-600 bg-orange-50 border-orange-100`}><UserCog className="h-4 w-4" /></button>
+          <button onClick={() => setResetPwdTutor(t)} title="รีเซ็ตรหัสผ่าน" className={`${iconBtn} text-indigo-600 bg-indigo-50 border-indigo-100`}><KeyRound className="h-4 w-4" /></button>
+          <button onClick={() => setDeletingTutor(t)} title="ลบ" className={`${iconBtn} text-red-500 bg-red-50 border-red-100`}><Trash2 className="h-4 w-4" /></button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setStatusTutor, setViewTutor }) {
+  const navigate = useNavigate();
   const displayName = t.Nickname || `${t.Firstname} ${t.Lastname}`;
   const fullName = `${t.Firstname} ${t.Lastname}`;
   const status = statusOf(t.Status_Tutor_Id);
@@ -1497,21 +1622,21 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
 
   return (
     <tr className={`hover:bg-orange-50/40 transition-colors ${isInactive ? "opacity-60" : ""}`}>
-      <td className="px-4 py-3">
+      <td className="px-4 py-3 min-w-[180px] lg:min-w-0">
         <div className="flex items-center gap-3">
           <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-sm" />
           <div>
             <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
             {t.Nickname && displayName !== fullName && (
-              <p className="text-xs text-slate-400">{fullName}</p>
+              <p className="text-xs text-slate-500">{fullName}</p>
             )}
-            <p className="text-[10px] text-slate-400">#{t.AdminId} · {t.ExperienceYear} ปี</p>
+            <p className="text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</p>
           </div>
         </div>
       </td>
       <td className="px-4 py-3">
         {t.Occupation && (
-          <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mb-1 max-w-[200px] lg:max-w-none">
             <Briefcase className="h-3.5 w-3.5 shrink-0" />
             <span>{t.Occupation}</span>
           </div>
@@ -1526,7 +1651,7 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       <td className="px-4 py-3">
         {t.PhoneNo && t.PhoneNo !== "000-000-0000" && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-600">
+          <div className="flex items-center gap-1.5 text-xs text-slate-600 whitespace-nowrap lg:whitespace-normal">
             <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
             <span>{t.PhoneNo}</span>
           </div>
@@ -1534,46 +1659,51 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
       </td>
       {/* ★ เพิ่ม: คอลัมน์สถานะ */}
       <td className="px-4 py-3 text-center">
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${status.bg} ${status.text} ${status.border}`}>
+        <span className={`inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
-        <span className="inline-block px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold">
+        <span className="inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">
           {t.StudentCount || 0}
         </span>
       </td>
       <td className="px-4 py-3 text-center">
         {t.RatePerTutors ? (
-          <span className="inline-block px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-bold">
+          <span className="inline-block px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">
             {Number(t.RatePerTutors).toLocaleString()}
           </span>
         ) : (
           <span className="text-xs text-slate-300">—</span>
         )}
       </td>
-      <td className="px-4 py-3">
+      <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">
         <div className="flex items-center justify-end gap-1.5">
           {/* ★ เพิ่ม: ปุ่มดูข้อมูล วางไว้เป็นปุ่มแรกสุด เหมือนหน้านักเรียน */}
           <button onClick={() => setViewTutor(t)}
-            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="ดูข้อมูลติวเตอร์">
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ดูข้อมูลติวเตอร์">
             <Eye className="h-3.5 w-3.5" />
+          </button>
+          {/* ทางลัดดูพัฒนาการของวิชาที่ติวเตอร์คนนี้สอน — อ่านอย่างเดียว */}
+          <button type="button" onClick={() => navigate(`/admin/progress?tutorId=${t.AdminId}&from=tutors`)}
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ดูภาพรวมพัฒนาการ">
+            <BarChart2 className="h-3.5 w-3.5" />
           </button>
           <button onClick={() => setEditingTutor(t)}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
-            <Edit2 className="h-3.5 w-3.5" /> แก้ไข
+            <Pencil className="h-3.5 w-3.5" /> แก้ไข
           </button>
           <button onClick={() => setStatusTutor(t)}
-            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition" title="เปลี่ยนสถานะ">
+            className="p-1.5 text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="เปลี่ยนสถานะ">
             <UserCog className="h-3.5 w-3.5" />
           </button>
           <button onClick={() => setResetPwdTutor(t)}
-            className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition" title="รีเซ็ตรหัสผ่าน">
+            className="p-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg hover:bg-indigo-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="รีเซ็ตรหัสผ่าน">
             <KeyRound className="h-3.5 w-3.5" />
           </button>
           <button onClick={() => setDeletingTutor(t)}
-            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition" title="ลบ">
+            className="p-1.5 text-red-500 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center" title="ลบ">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -1649,14 +1779,14 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
     {
       name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 20,
       sub: isConsistencyDefault
-        ? `ข้อมูลมีแค่ ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
+        ? `มีข้อมูลเพียง ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
         : 'วัดจาก stddev การสอนต่อสัปดาห์',
       warn: isConsistencyDefault,
     },
   ];
 
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-4 py-3 space-y-2">
+    <div className="mt-3 bg-slate-50 rounded-xl px-3 sm:px-4 py-3 space-y-2">
       {/* ★ เพิ่ม: เตือนรวมด้านบนถ้าคาบสอนน้อยกว่าเกณฑ์ขึ้นโพเดียม */}
       {tutor.LowDataWarning && (
         <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1">
@@ -1675,9 +1805,9 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
         return (
           <div key={m.name}>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-36 shrink-0">
+              <span className="text-xs text-slate-500 w-28 sm:w-36 shrink-0">
                 {m.name}
-                <span className="text-[10px] ml-1">(×{m.weight}%)</span>
+                <span className="text-[11px] ml-1">(×{m.weight}%)</span>
               </span>
               <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
                 <div className={`h-full rounded-full ${barColor}`}
@@ -1687,16 +1817,16 @@ function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
                 {contrib}
               </span>
             </div>
-            <p className={`text-[10px] ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
+            <p className={`text-[11px] ml-[7.5rem] sm:ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
               {m.warn && <Info className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}{m.sub}
             </p>
           </div>
         );
       })}
 
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
+      <div className="pt-2 border-t border-slate-200 flex justify-between items-center gap-3">
         <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold">
+        <span className="text-base font-semibold text-right">
           {tutor.PerformanceScore === null ? 'ยังไม่มีข้อมูล (ไม่มีตารางสอนเดือนนี้)' : `${tutor.PerformanceScore} / 100`}
         </span>
       </div>
@@ -1711,37 +1841,37 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
   return (
     <div className={`bg-white rounded-2xl border transition-all
       ${index === 0 ? 'border-amber-300' : 'border-slate-200'}`}>
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer"
         onClick={onToggle}>
         {/* rank */}
         <span className="text-lg w-6 text-center shrink-0">
-          {index < 3 ? MEDAL[index] : <span className="text-xs text-slate-400">{index + 1}</span>}
+          {index < 3 ? MEDAL[index] : <span className="text-xs text-slate-500">{index + 1}</span>}
         </span>
         {/* avatar */}
         <TutorAvatar tutor={tutor} className="h-9 w-9 rounded-xl text-xs shrink-0" />
         {/* info */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-900">{tutor.Nickname}</p>
+          <p className="text-sm font-semibold text-slate-900 truncate">{tutor.Nickname}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
+            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${badge.bg} ${badge.text} ${badge.border}`}>
               {badge.label}
             </span>
             {/* ★ เพิ่ม: badge เตือนข้อมูลยังไม่พอ — ยังโชว์ในลิสต์ได้ แต่ไม่ขึ้นโพเดียม */}
             {tutor.LowDataWarning && (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
+              <span className="flex items-center gap-0.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border bg-amber-50 text-amber-600 border-amber-200">
                 <Info className="h-2.5 w-2.5" /> ข้อมูลยังไม่พอ
               </span>
             )}
-            <span className="text-[10px] text-slate-400">{tutor.TotalScheduled} คาบ</span>
+            <span className="text-[11px] text-slate-500">{tutor.TotalScheduled} คาบ</span>
           </div>
         </div>
         {/* score ring */}
-        <ScoreRing score={tutor.PerformanceScore} />
+        <div className="flex shrink-0 -mx-2 scale-75 sm:mx-0 sm:scale-100"><ScoreRing score={tutor.PerformanceScore} /></div>
 
         {/* ★ เพิ่ม: ปุ่มดวงตา — วางตรงนี้ ระหว่าง ScoreRing กับ chevron */}
         <button
           onClick={e => { e.stopPropagation(); onView(tutor); }}
-          className="shrink-0 p-1.5 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 hover:bg-orange-100 transition"
+          className="shrink-0 p-1.5 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 hover:bg-orange-100 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
           title="ดูข้อมูลติวเตอร์"
         >
           <Eye className="h-3.5 w-3.5" />
@@ -1752,7 +1882,7 @@ function TutorScoreCard({ tutor, index, expanded, onToggle, onView, minWeeksForC
           ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
           : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
       </div>
-      {expanded && <div className="px-4 pb-3"><MetricBreakdown tutor={tutor} minWeeksForConsistency={minWeeksForConsistency} /></div>}
+      {expanded && <div className="px-3 sm:px-4 pb-3"><MetricBreakdown tutor={tutor} minWeeksForConsistency={minWeeksForConsistency} /></div>}
     </div>
   );
 }
@@ -1780,7 +1910,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
     { key: 'fair', label: 'พอใช้', test: (v) => v >= 55 && v < 70 },
     { key: 'needs_work', label: 'ต้องปรับปรุง', test: (v) => v < 55 },
   ];
-  const allSubjectNames = [...new Set(allSubjects.map(s => s.SubjectName))].sort();
+  const allSubjectNames = [...new Set((Array.isArray(allSubjects) ? allSubjects : []).map(s => s.SubjectName))].sort();
 
   useEffect(() => {
     axios.get(`${API}/tutors/performance`)
@@ -1838,30 +1968,25 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-orange-100
-                      bg-gradient-to-r from-orange-500 to-amber-500">
+      <div className="flex flex-col items-start gap-1 lg:flex-row lg:items-center lg:justify-between lg:gap-0 px-4 sm:px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <BarChart2 className="h-5 w-5 text-white" />
-          <h2 className="font-bold text-white text-sm">Performance Score ติวเตอร์ประจำเดือน</h2>
+          <BarChart2 className="h-5 w-5 text-orange-500" />
+          <h2 className="font-bold text-slate-900 text-base">Performance Score ติวเตอร์ประจำเดือน</h2>
         </div>
-        <span className="text-[11px] text-orange-100">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
+        <span className="text-xs text-slate-500">เช็กอิน 35% + ปฏิบัติหน้าที่ตามภาระงาน 45% + ความสม่ำเสมอ 20%</span>
       </div>
 
-      {/* ★ เพิ่ม: บอกชัดว่าคำนวณจากเดือนปัจจุบันเท่านั้น ไม่ใช่ช่วงเวลาเดียวกับหน้า Attendance */}
-      <div className="px-5 pt-3">
-        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+      {/* แถวเดียว: หมายเหตุช่วงเวลา (ซ้าย) + ตัวกรองวิชา/ช่วงคะแนน (ขวา) */}
+      <div className="px-4 sm:px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
+        <p className="flex w-full sm:w-auto sm:flex-1 min-w-0 items-center gap-1 text-[11px] text-slate-500">
           <Info className="h-3 w-3 shrink-0" />
-          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงตามช่วงวันที่ที่เลือกในหน้าบันทึกชั่วโมงการสอน)
+          คำนวณจากคาบสอนในเดือนปัจจุบันเท่านั้น (ไม่อ้างอิงช่วงวันที่ในหน้าชั่วโมงการสอน)
         </p>
-      </div>
-
-      {/* ★ เพิ่ม: แถบตัวกรอง วิชา + ช่วงคะแนน */}
-      <div className="px-5 pt-4 pb-2 flex items-center gap-2 flex-wrap">
-        <div className="relative ml-auto">
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterSubject}
             onChange={e => setFilterSubject(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1872,11 +1997,11 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
         </div>
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select
             value={filterScoreRange}
             onChange={e => setFilterScoreRange(e.target.value)}
-            className="w-full appearance-none pl-3 pr-8 py-2 bg-slate-50 border border-slate-200
+            className="w-full appearance-none pl-3 pr-8 h-10 bg-slate-50 border border-slate-200
                  rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-orange-400
                  focus:border-transparent outline-none transition cursor-pointer"
           >
@@ -1891,7 +2016,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           <button
             onClick={() => { setFilterSubject('all'); setFilterScoreRange('all'); }}
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold
-                 text-slate-500 bg-white border border-slate-200 rounded-lg
+                 text-slate-500 bg-white border border-slate-200 rounded-xl
                  hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition"
           >
             <X className="h-3.5 w-3.5" /> ล้างตัวกรอง
@@ -1899,20 +2024,20 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
         )}
       </div>
 
-      <div className="px-5 pb-5 space-y-4">
+      <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-32">
             <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-slate-400 text-sm">ไม่พบติวเตอร์ที่ตรงกับตัวกรอง</p>
+            <p className="text-slate-500 text-sm">ไม่พบติวเตอร์ที่ตรงกับตัวกรอง</p>
           </div>
         ) : (
           <>
             {filtered.length >= 1 && (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
                   {[podiumGroups[1], podiumGroups[0], podiumGroups[2]].map((group, i) => {
                     const medalIdx = i === 0 ? 1 : i === 1 ? 0 : 2; // 0=ทอง 1=เงิน 2=ทองแดง
                     const MEDALS = ['🥇', '🥈', '🥉'];
@@ -1920,49 +2045,49 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                     if (!group) {
                       return (
                         <div key={`empty-${i}`}
-                          className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-3 text-center"
-                          style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                          className={`rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center  ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                          data-rank={medalIdx + 1}
                         >
-                          <div className="text-2xl opacity-30">{MEDALS[medalIdx]}</div>
+                          <div className="text-2xl opacity-30 shrink-0">{MEDALS[medalIdx]}</div>
                           <div className="h-10 w-10 rounded-xl bg-slate-200/60 mx-auto mt-2 flex items-center justify-center">
                             <Users className="h-4 w-4 text-slate-400" />
                           </div>
-                          <p className="text-xs font-medium text-slate-400 mt-1.5">ยังไม่มี</p>
-                          <p className="text-lg font-black text-slate-300 mt-1">—</p>
-                          <p className="text-[10px] text-slate-300">คะแนน</p>
+                          <p className="flex-1 min-w-0 sm:flex-none text-xs font-medium text-slate-500 mt-1.5">ยังไม่มี</p>
+                          <p className={`${STAT_NUM} text-slate-300 mt-1`}>—</p>
+                          <p className="text-xs font-medium text-slate-300">คะแนน</p>
                         </div>
                       );
                     }
 
                     return (
                       <div key={group.score}
-                        className={`rounded-xl border p-3 text-center transition-all duration-200 cursor-pointer
-                        hover:-translate-y-1.5 hover:shadow-lg hover:scale-[1.03]
-                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'}`}
-                        style={{ marginTop: medalIdx === 0 ? 0 : medalIdx === 1 ? 16 : 32 }}
+                        className={`rounded-xl border p-2 sm:p-3 flex items-center gap-3 text-left sm:block sm:text-center transition-all duration-200 cursor-pointer
+                        sm:hover:-translate-y-1.5 hover:shadow-lg sm:hover:scale-[1.03]
+                        ${medalIdx === 0 ? 'border-amber-300 bg-amber-50/30' : 'border-slate-200 bg-slate-50'} ${["order-1 sm:order-none sm:mt-0","order-2 sm:order-none sm:mt-4","order-3 sm:order-none sm:mt-8"][medalIdx]}`}
+                        data-rank={medalIdx + 1}
                       >
-                        <div className="text-2xl">{MEDALS[medalIdx]}</div>
+                        <div className="text-2xl shrink-0">{MEDALS[medalIdx]}</div>
                         <div className="flex justify-center -space-x-2 mt-2">
                           {group.members.slice(0, 4).map(t => (
                             <button key={t.AdminId} onClick={() => onViewTutor(t)}
-                              className="h-10 w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition"
+                              className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl overflow-hidden border-2 border-white shadow-sm hover:z-10 hover:scale-105 transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center"
                               title={t.Nickname}>
-                              <TutorAvatar tutor={t} className="h-10 w-10 rounded-xl text-xs" />
+                              <TutorAvatar tutor={t} className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl text-xs" />
                             </button>
                           ))}
                           {group.members.length > 4 && (
-                            <span className="h-10 w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shadow-sm">
+                            <span className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl border-2 border-white bg-slate-200 flex items-center justify-center text-[11px] font-bold text-slate-600 shadow-sm">
                               +{group.members.length - 4}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-semibold text-slate-800 mt-1.5 truncate">
+                        <p className="flex-1 min-w-0 sm:flex-none text-xs font-semibold text-slate-800 mt-1.5 truncate">
                           {group.members.length === 1
                             ? group.members[0].Nickname
                             : `${group.members.length} คนเสมอกัน`}
                         </p>
-                        <p className="text-lg font-black text-slate-900 mt-1">{group.score}</p>
-                        <p className="text-[10px] text-slate-400">คะแนน</p>
+                        <p className={`${STAT_VALUE} mt-1`}>{group.score}</p>
+                        <p className={STAT_LABEL}>คะแนน</p>
                       </div>
                     );
                   })}
@@ -1984,8 +2109,8 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
               ))}
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-slate-400">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <p className="text-xs text-slate-500">
                 แสดง <span className="font-semibold text-slate-600">{visible.length}</span> จาก{' '}
                 <span className="font-semibold text-slate-600">{filtered.length}</span> คน
               </p>
@@ -2000,7 +2125,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
                   <button onClick={() => setShowLimit(v => v + DEFAULT_TUTOR_LIMIT)}
                     className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold
                                text-orange-600 bg-orange-50 border border-orange-200
-                               rounded-lg hover:bg-orange-100 transition">
+                               rounded-xl hover:bg-orange-100 transition">
                     <ChevronDown className="h-3.5 w-3.5" />
                     แสดงเพิ่มอีก {Math.min(DEFAULT_TUTOR_LIMIT, filtered.length - showLimit)} คน
                   </button>
@@ -2012,7 +2137,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
       </div>
 
       {/* ★ เพิ่ม: คำอธิบายที่มาของ Performance Score */}
-      <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/50">
+      <div className="px-4 sm:px-5 py-4 border-t border-slate-100 bg-slate-50/50">
         {/* <p className="text-xs text-slate-500 leading-relaxed">
           <span className="font-semibold text-slate-600">Performance ของติวเตอร์</span> เป็นคะแนนประเมินแบบละเอียด
           คำนวณจากหลายปัจจัย ได้แก่ การเช็กอินการสอน 35% · การปฏิบัติหน้าที่ตามภาระงาน 45% · ความสม่ำเสมอในการปฏิบัติงาน 20%
@@ -2020,7 +2145,7 @@ function TutorPerformanceRanking({ onViewTutor, allSubjects = [] }) {
           จึงอาจแตกต่างจากสถานะในหน้าบันทึกชั่วโมงการสอนได้
         </p> */}
         {/* ★ เพิ่ม: คำอธิบายเกณฑ์ขึ้นโพเดียม ให้แอดมินเข้าใจว่าทำไมบางคนไม่ขึ้น */}
-        <p className="flex items-center gap-1 text-[11px] text-slate-400">
+        <p className="flex items-start sm:items-center gap-1 text-[11px] text-slate-500">
           <Info className="h-3 w-3 shrink-0" />
           ขึ้นโพเดียมได้เฉพาะติวเตอร์ที่มีคาบสอนอย่างน้อย {minSessionsForRanking} คาบ และ Performance Score ตั้งแต่ {minScoreForPodium} คะแนนขึ้นไป ({podiumEligible.length} คนเข้าเกณฑ์)
         </p>
@@ -2072,13 +2197,13 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   return (
     <Modal title={`ข้อมูลติวเตอร์: ${displayName}`} icon={Eye} onClose={onClose} wide>
       {/* Profile card */}
-      <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
         <TutorAvatar tutor={tutor} className="h-16 w-16 rounded-2xl text-lg border-2 border-white/30" />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-lg">{displayName}</p>
           <p className="text-sm text-orange-100">{tutor.Firstname} {tutor.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
-            {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-full">{tutor.TeachingSubjects}</span>}
+            {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-lg sm:rounded-full">{tutor.TeachingSubjects}</span>}
             <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
             {/* ★ เพิ่ม: บอกด้วยว่าถ้าข้อมูลยังไม่พอ จะไม่ถูกจัดอันดับโพเดียม */}
             {perf?.LowDataWarning && (
@@ -2088,27 +2213,21 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
             )}
           </div>
         </div>
-        <div className="flex gap-3 shrink-0">
+        <div className="flex gap-3 shrink-0 w-full sm:w-auto">
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-black">{data?.students.length ?? tutor.StudentCount ?? 0}</p>
-            <p className="text-[10px] text-orange-100">นักเรียน</p>
+            <p className={STAT_NUM}>{data?.students.length ?? tutor.StudentCount ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คน</span></p>
+            <p className="text-xs font-medium text-orange-100">นักเรียน</p>
           </div>
           <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
-            <p className="text-xl font-black">{tutor.TotalSessions ?? 0}</p>
-            <p className="text-[10px] text-orange-100">คาบสะสม</p>
+            <p className={STAT_NUM}>{tutor.TotalSessions ?? 0}<span className="ml-1 text-xs font-medium opacity-80">คาบ</span></p>
+            <p className="text-xs font-medium text-orange-100">คาบสะสม</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-5">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${tab === t.key ? 'bg-white shadow text-orange-600' : 'text-slate-500'}`}>
-            {t.label}{t.count !== undefined && ` (${t.count})`}
-          </button>
-        ))}
-      </div>
+      <SegmentedControl className="mb-5" value={tab} onChange={setTab}
+        options={TABS.map(t => ({ id: t.key, label: t.label, count: t.count }))} />
 
       {loading ? (
         <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
@@ -2126,7 +2245,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               <GroupedTutorCourseList
                 courses={data.courses}
                 onRemoveSubject={async (tutorCourseDetailId, label) => {
-                  if (!confirm(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
+                  if (!await confirmDialog(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
                   try {
                     await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
                     loadDetail();
@@ -2151,9 +2270,9 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               ? <p className="text-center text-slate-400 py-8">ยังไม่มีนักเรียน</p>
               : <div className="space-y-1">
                 {data.students.map(s => (
-                  <div key={`${s.UserId}-${s.CourseID}`} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50">
+                  <div key={`${s.UserId}-${s.CourseID}`} className="flex flex-col items-start gap-0.5 sm:flex-row sm:items-center justify-between sm:gap-3 px-3 py-2 rounded-lg hover:bg-slate-50">
                     <span className="text-sm text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
-                    <span className="text-[11px] text-slate-400">{s.CourseName}</span>
+                    <span className="text-[11px] text-slate-500 text-left sm:text-right">{s.CourseName}</span>
                   </div>
                 ))}
               </div>
@@ -2191,6 +2310,7 @@ export default function AdminTutorsPage() {
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [viewTutor, setViewTutor] = useState(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [loadError, setLoadError] = useState(false);
   const [applications, setApplications] = useState([]);
 
   const fetchTutors = async () => {
@@ -2200,6 +2320,7 @@ export default function AdminTutorsPage() {
     } catch (e) {
       console.error("fetch tutors error:", e);
       showToast("error", "โหลดข้อมูลติวเตอร์ไม่สำเร็จ");
+      setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -2235,11 +2356,11 @@ export default function AdminTutorsPage() {
     setIsSubmitting(true);
     try {
       await axios.post(`${API}/tutors`, data);
-      showToast("success", "เพิ่มข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "เพิ่มข้อมูลติวเตอร์สำเร็จ");
       setShowAddModal(false);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2247,11 +2368,11 @@ export default function AdminTutorsPage() {
     setIsSubmitting(true);
     try {
       await axios.put(`${API}/tutors/${editingTutor.AdminId}`, data);
-      showToast("success", "แก้ไขข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "แก้ไขข้อมูลติวเตอร์สำเร็จ");
       setEditingTutor(null);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsSubmitting(false); }
   };
 
@@ -2261,15 +2382,15 @@ export default function AdminTutorsPage() {
     setIsDeleting(true);
     try {
       await axios.delete(`${API}/tutors/${deletingTutor.AdminId}`);
-      showToast("success", "ลบข้อมูลติวเตอร์สำเร็จ!");
+      showToast("success", "ลบข้อมูลติวเตอร์สำเร็จ");
       setDeletingTutor(null);
       fetchTutors();
     } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด!", e.response?.data?.message);
+      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally { setIsDeleting(false); }
   };
 
-  const allSubjectNames = [...allSubjects.map(s => s.SubjectName)].sort();
+  const allSubjectNames = [...(Array.isArray(allSubjects) ? allSubjects : []).map(s => s.SubjectName)].sort();
 
   const matchSearchFn = (t) => {
     const displayName = (t.Nickname || `${t.Firstname} ${t.Lastname}`).toLowerCase();
@@ -2312,52 +2433,34 @@ export default function AdminTutorsPage() {
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center h-64 text-orange-500">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลติวเตอร์...</p>
-    </div>
+    <Spinner block label="กำลังโหลดข้อมูลติวเตอร์..." />
   );
+  if (loadError && tutors.length === 0) return <ErrorState onRetry={() => { setLoadError(false); setLoading(true); fetchTutors(); }} />;
 
   const activeTutorCount = tutors.filter(t => Number(t.Status_Tutor_Id || 1) === 1).length;
   const inactiveTutorCount = tutors.length - activeTutorCount;
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="space-y-6 px-4 lg:px-0">
       {/* ✅ วางบรรทัดแรกสุดใน return ก่อนทุกอย่าง */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      {/* ── Tab Bar ── */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTab('list')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'list'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          รายชื่อติวเตอร์
-        </button>
-        <button
-          onClick={() => setActiveTab('attendance')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'attendance'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          บันทึกชั่วโมงการสอน
-        </button>
-        <button
-          onClick={() => setActiveTab('applications')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition
-                    ${activeTab === 'applications'
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-        >
-          สมัครเป็นติวเตอร์
-        </button>
-      </div>
+      {/* ── Header: ชื่อหน้า (ซ้าย) + ตัวสลับมุมมอง/ปุ่มหลัก (ขวา) — รูปแบบเดียวกับหน้าการเงิน ── */}
+      <PageHeader title="จัดการติวเตอร์" subtitle="จัดการบัญชีติวเตอร์ ชั่วโมงการสอน และใบสมัคร">
+        <SegmentedControl stretchMobile value={activeTab} onChange={setActiveTab} options={[
+          { id: 'list', label: 'รายชื่อติวเตอร์', short: 'รายชื่อ' },
+          { id: 'attendance', label: 'ชั่วโมงการสอน', short: 'ชั่วโมงสอน' },
+          { id: 'applications', label: 'ใบสมัครติวเตอร์', short: 'ใบสมัคร' },
+        ]} />
+        {activeTab === 'list' && (
+          <button onClick={() => setShowAddModal(true)}
+            className={`${BTN.primary} flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition text-sm shadow-lg shadow-orange-500/20`}>
+            <Plus className="h-4 w-4" /> เพิ่มติวเตอร์
+          </button>
+        )}
+      </PageHeader>
 
       {/* ── Attendance Tab ── */}
-      {activeTab === 'attendance' && <AdminAttendanceDashboard />}
+      {activeTab === 'attendance' && <AdminAttendanceDashboard embedded />}
 
       {activeTab === 'applications' && (
         <TutorApplicationList
@@ -2371,37 +2474,27 @@ export default function AdminTutorsPage() {
 
       {/* ── List Tab ── */}
       {activeTab === 'list' && <>
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">จัดการติวเตอร์</h1>
-            <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
+        {/* Header — แบนเนอร์โทนส้ม เหมือนหน้าการเงิน/คอร์ส */}
+        <div className="admin-summary-banner p-5 sm:p-6">
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
+                <Users className="h-3.5 w-3.5" /> ทีมผู้สอนทั้งหมด
+              </span>
+              <h2 className="mt-2 text-lg font-bold text-slate-900">รายชื่อติวเตอร์</h2>
+              <p className={PAGE_SUBTITLE}>เพิ่ม แก้ไข และจัดการบัญชีติวเตอร์ทั้งหมด</p>
+            </div>
           </div>
-          <button onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold shadow-sm transition text-sm">
-            <Plus className="h-4 w-4" /> เพิ่มติวเตอร์ใหม่
-          </button>
         </div>
 
         {/* Stats — ★ เพิ่มคำอธิบายที่มาของตัวเลข + แยกนับเฉพาะติวเตอร์ที่ "กำลังสอน" สำหรับนักเรียนรวม/คาบสอนรวม */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
           {[
-            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)" },
-            { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500" },
-            { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500" },
-          ].map(({ label, value, color, hint }, i) => (
-            <div key={i} title={hint} className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-              <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                  {label}
-                  {hint && <Info className="h-3 w-3 text-slate-300" />}
-                </p>
-                <p className="text-xl font-black text-slate-900">{value.toLocaleString()}</p>
-              </div>
-            </div>
+            { label: "ติวเตอร์ทั้งหมด", value: tutors.length, color: "bg-orange-500", hint: "รวมทุกสถานะ (กำลังสอน + เลิกสอน)", icon: Users },
+            { label: "ติวเตอร์ที่กำลังสอน", value: activeTutorCount, color: "bg-emerald-500", icon: Users },
+            { label: "ติวเตอร์ที่เลิกสอน", value: inactiveTutorCount, color: "bg-slate-500", icon: Users },
+          ].map(({ label, value, color, hint, icon }, i) => (
+            <TutorStatTile key={i} label={label} value={value} color={color} hint={hint} icon={icon} />
           ))}
         </div>
 
@@ -2416,13 +2509,13 @@ export default function AdminTutorsPage() {
               <input
                 value={search} onChange={e => setSearch(e.target.value)}
                 placeholder="ค้นหาชื่อ, ชื่อเล่น, เบอร์โทร, วิชา, ID..."
-                className="pl-10 pr-4 py-2 w-full bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+                className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
               />
             </div>
             <select
               value={filterSubject}
               onChange={e => setFilterSubject(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
             >
               <option value="all">ทุกวิชา ({allSubjectCount})</option>
               {allSubjectNames.map(sub => (
@@ -2433,7 +2526,7 @@ export default function AdminTutorsPage() {
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] max-w-full md:max-w-[240px] truncate"
             >
               <option value="all">ทุกสถานะ ({allStatusCount})</option>
               <option value="1">กำลังสอน ({activeStatusCount})</option>
@@ -2443,32 +2536,46 @@ export default function AdminTutorsPage() {
             <select
               value={filterHasStudents}
               onChange={e => setFilterHasStudents(e.target.value)}
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px]"
+              className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[170px] max-w-full md:max-w-[240px] truncate"
             >
               <option value="all">นักเรียนทั้งหมด ({hasStudentsCount + noStudentsCount})</option>
               <option value="has">มีนักเรียน ({hasStudentsCount})</option>
               <option value="none">ยังไม่มีนักเรียน ({noStudentsCount})</option>
             </select>
           </div>
-          <p className="text-xs text-slate-400 mt-2 pl-1">
+          <p className="text-xs text-slate-500 mt-2 pl-1">
             แสดง {filtered.length} จาก {tutors.length} คน
           </p>
         </div>
 
         {/* Table */}
         {paginated.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-            <div className="text-6xl mb-3">👩‍🏫</div>
-            <p className="text-slate-500 font-medium">
+          <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
+            <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuUsers className="h-7 w-7 text-orange-400" /></div>
+            <p className="text-base font-semibold text-slate-700">
               {filterSubject !== "all"
                 ? `ไม่พบติวเตอร์ที่สอนวิชา "${filterSubject}"`
                 : "ไม่พบติวเตอร์ที่ค้นหา"}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <>
+          <div className="lg:hidden grid gap-3 md:grid-cols-2">
+            {paginated.map(t => (
+              <TutorCard
+                key={t.AdminId}
+                t={t}
+                setEditingTutor={setEditingTutor}
+                setResetPwdTutor={setResetPwdTutor}
+                setDeletingTutor={setDeletingTutor}
+                setStatusTutor={setStatusTutor}
+                setViewTutor={setViewTutor}
+              />
+            ))}
+          </div>
+          <div className="hidden lg:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[960px] lg:min-w-0 text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติวเตอร์</th>
@@ -2477,7 +2584,7 @@ export default function AdminTutorsPage() {
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทค่าสอน (บาท/ชม.)</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
+                    <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -2496,41 +2603,11 @@ export default function AdminTutorsPage() {
               </table>
             </div>
           </div>
+          </>
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">
-              แสดง <span className="font-semibold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)}</span> จาก <span className="font-semibold">{filtered.length}</span> คน
-            </p>
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                .reduce((acc, p, idx, arr) => {
-                  if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
-                  acc.push(p);
-                  return acc;
-                }, [])
-                .map((p, idx) => p === "..." ? (
-                  <span key={`d${idx}`} className="flex h-9 w-9 items-center justify-center text-slate-400 text-sm">…</span>
-                ) : (
-                  <button key={p} onClick={() => setCurrentPage(p)}
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${currentPage === p ? "bg-orange-500 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600"}`}>
-                    {p}
-                  </button>
-                ))}
-              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 disabled:opacity-30 transition">
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+        <UIPagination page={currentPage} totalPages={totalPages} total={filtered.length} pageSize={ITEMS_PER_PAGE} unit="คน" onChange={setCurrentPage} />
 
         {/* Modals */}
         {showAddModal && (
@@ -2546,7 +2623,7 @@ export default function AdminTutorsPage() {
           </Modal>
         )}
         {editingTutor && (
-          <Modal title={`แก้ไขติวเตอร์ #${editingTutor.AdminId}`} icon={Edit2} onClose={() => setEditingTutor(null)}>
+          <Modal title={`แก้ไขติวเตอร์ #${editingTutor.AdminId}`} icon={Pencil} onClose={() => setEditingTutor(null)}>
             <TutorForm
               initial={editingTutor}
               onSave={handleUpdate}

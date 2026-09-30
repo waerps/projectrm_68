@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronRight } from 'lucide-react';
+import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { initNotifySound, isNotifySoundMuted, playNotifySound, setNotifySoundMuted } from '../utils/notifySound';
+
+const POLL_MS = 30000;
 
 const ago = value => {
   const date = new Date(value);
@@ -19,20 +22,69 @@ export default function NotificationBell({ role, pagePath }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [muted, setMuted] = useState(() => isNotifySoundMuted(role));
   const api = `${API_URL}/api/${role}/notifications`;
+  // Baseline for "new arrival" detection: null until the first successful load,
+  // so the initial page load never plays a sound.
+  const seenIdsRef = useRef(null);
+  const prevUnreadRef = useRef(0);
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
-  const load = async () => {
-    const token = localStorage.getItem('student_token');
-    if (!token) return;
-    setLoading(true);
-    try {
-      const { data } = await axios.get(api, { headers: { Authorization: `Bearer ${token}` } });
-      setItems(Array.isArray(data.items) ? data.items : []);
-    } catch { setItems([]); }
-    finally { setLoading(false); }
+  const detectNew = list => {
+    const unreadNow = list.filter(item => !item.isRead);
+    const hasIds = list.some(item => item.id != null);
+    const firstLoad = seenIdsRef.current === null;
+    let arrived = false;
+    if (!firstLoad) {
+      arrived = hasIds
+        ? unreadNow.some(item => item.id != null && !seenIdsRef.current.has(String(item.id)))
+        : unreadNow.length > prevUnreadRef.current;
+    }
+    const seen = seenIdsRef.current || new Set();
+    list.forEach(item => { if (item.id != null) seen.add(String(item.id)); });
+    seenIdsRef.current = seen;
+    prevUnreadRef.current = unreadNow.length;
+    if (arrived && !mutedRef.current) playNotifySound();
   };
 
-  useEffect(() => { load(); }, [api]);
+  const load = async ({ silent = false } = {}) => {
+    let token = null;
+    try { token = localStorage.getItem('student_token'); } catch { token = null; }
+    if (!token) return;
+    if (!silent) setLoading(true);
+    try {
+      const { data } = await axios.get(api, { headers: { Authorization: `Bearer ${token}` } });
+      const list = Array.isArray(data.items) ? data.items : [];
+      setItems(list);
+      detectNew(list);
+    } catch { if (!silent) setItems([]); }
+    finally { if (!silent) setLoading(false); }
+  };
+
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
+  useEffect(() => { setMuted(isNotifySoundMuted(role)); }, [role]);
+  useEffect(() => { initNotifySound(); }, []);
+
+  useEffect(() => {
+    seenIdsRef.current = null;
+    prevUnreadRef.current = 0;
+    loadRef.current();
+    const poll = () => { if (document.visibilityState === 'visible') loadRef.current({ silent: true }); };
+    const timer = setInterval(poll, POLL_MS);
+    document.addEventListener('visibilitychange', poll);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', poll); };
+  }, [api]);
+
+  const toggleMute = () => {
+    setMuted(value => {
+      const next = !value;
+      setNotifySoundMuted(role, next);
+      return next;
+    });
+  };
   useEffect(() => {
     const close = event => { if (ref.current && !ref.current.contains(event.target)) setOpen(false); };
     document.addEventListener('mousedown', close);
@@ -45,12 +97,17 @@ export default function NotificationBell({ role, pagePath }) {
       <Bell className="h-5 w-5" />
       {unread > 0 && <span className="absolute right-0 top-0 flex min-w-4 h-4 px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>}
     </button>
-    {open && <div className="navbar-drop absolute right-0 top-[calc(100%+12px)] z-[70] w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
+    {open && <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] sm:absolute sm:inset-x-auto sm:right-0 sm:top-[calc(100%+12px)] sm:w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <span className="font-bold text-gray-900">การแจ้งเตือน</span>
-        <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">ยังไม่อ่าน {unread}</span>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={toggleMute} aria-label={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} title={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} aria-pressed={muted} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-orange-50 hover:text-orange-500">
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">ยังไม่อ่าน {unread}</span>
+        </div>
       </div>
-      <div className="max-h-[330px] overflow-y-auto">
+      <div className="max-h-[min(330px,calc(100dvh-230px))] overflow-y-auto sm:max-h-[330px]">
         {loading && items.length === 0 ? <p className="px-4 py-10 text-center text-sm text-gray-400">กำลังโหลด...</p> : items.length === 0 ? <div className="px-4 py-10 text-center"><Bell className="mx-auto mb-2 h-10 w-10 text-gray-200"/><p className="text-sm text-gray-400">ยังไม่มีการแจ้งเตือน</p></div> : items.slice(0, 5).map(item => <Link key={item.id} to={item.link || pagePath} onClick={() => setOpen(false)} className={`block border-b border-gray-50 px-4 py-3 transition hover:bg-orange-50 ${!item.isRead ? 'bg-orange-50/40' : ''}`}>
           <div className="flex items-start gap-3"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.isRead ? 'bg-gray-200' : 'bg-orange-500'}`}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-900">{item.title}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-600">{item.message}</p><p className="mt-1 text-[11px] text-gray-400">{ago(item.createdAt)}</p></div></div>
         </Link>)}

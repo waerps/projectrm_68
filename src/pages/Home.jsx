@@ -241,16 +241,20 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAd
   const actionLabel = isEnrolled ? "มีคอร์สนี้แล้ว" : !canEnroll ? statusBadge?.label || "ไม่เปิดรับสมัคร" : "ซื้อคอร์สเรียน";
 
   return (
-    <div className="group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl">
+    <div className="sa-card3d group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
+      {...cardTiltHandlers} style={cardIdleDelay(item.id)}>
+      <span className="sa-glow3d" />
       {/* รูป */}
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
-        <CourseArtwork
-          src={item.img}
-          alt={item.title}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        <div className="sa-parallax h-full w-full">
+          <CourseArtwork
+            src={item.img}
+            alt={item.title}
+            className="h-full w-full object-cover"
+          />
+        </div>
         {statusBadge && (
-          <span className={`absolute top-2.5 right-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur ${statusBadge.cls}`}>
+          <span className={`sa-pop3d absolute top-2.5 right-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur ${statusBadge.cls}`}>
             {statusBadge.label}
           </span>
         )}
@@ -279,7 +283,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAd
         {/* แสดงเฉพาะข้อมูลหลักของคอร์ส: โปรโมชัน / เทอม / ประเภท / รูปแบบเรียน */}
         <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
           {item.isPromotion && (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+            <span className="sa-pop3d inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
               <Sparkles className="h-3 w-3" /> โปรโมชัน
             </span>
           )}
@@ -682,7 +686,7 @@ export default function Home() {
       Number(c.Discount || 0) > 0,
     courseType:
       getOptionLabel(c.Course_Type ?? c.CourseType, ["Course_Type", "courseType", "Type_Name"]) ||
-      ((Array.isArray(c.Subjects) ? c.Subjects.length : 0) > 1 ? "bundle" : "single"),
+      "bundle", // หน้าเว็บแสดงเฉพาะคอร์สรวม (คอร์สเดี่ยวไม่ขายผ่านเว็บ)
     availabilityName:
       getOptionLabel(c.Course_Availability_Name ?? c.CourseAvailability, ["Course_Availability_Name", "availabilityName"]) ||
       AVAILABILITY_LABELS[Number(c.Course_Availability_Id ?? c.courseAvailabilityId)] ||
@@ -766,7 +770,7 @@ export default function Home() {
                 </>
               )}
 
-              {/* เมนูลัด: โปรโมชั่น / สมัครติวเตอร์ — ทับมุมขวาบนของประกาศ */}
+              {/* เมนูลัด: โปรโมชัน / สมัครติวเตอร์ — ทับมุมขวาบนของประกาศ */}
               {/* <div className="absolute right-2 top-2 z-20 flex flex-col gap-2 md:right-5 md:top-5 md:gap-3">
                 <Link
                   to="/courses"
@@ -774,7 +778,7 @@ export default function Home() {
                 >
                   <Percent className="h-4 w-4 text-orange-500 md:h-5 md:w-5" />
                   <span className="text-[8px] font-semibold text-gray-700 sm:text-[9px] md:text-[11px]">
-                    โปรโมชั่น
+                    โปรโมชัน
                   </span>
                 </Link>
                 <Link
@@ -863,6 +867,8 @@ export default function Home() {
         {visibleCourses.length > 0 && (
           <StaggerCourses courses={visibleCourses.map(toCourseCardItem)} />
         )}
+        {/* ========== คอร์สเดี่ยว (เรียนตัวต่อตัว) — แยกจากคอร์สรวมเพราะไม่มีปุ่มซื้อ ========== */}
+        <PrivateCourseTeaser />
 
         {/* ========== TRUST STRIP + STATS — ย้ายมาไว้หลังคอร์สเรียน ก่อนข่าวประชาสัมพันธ์ ========== */}
         <div className="mt-14">

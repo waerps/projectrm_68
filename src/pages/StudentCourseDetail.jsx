@@ -1,14 +1,15 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
-import { Link, useSearchParams, useParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
-  Users, Calendar, Video, FileText, Download, BarChart2, ChevronRight, PlayCircle,
+  Users, Calendar, Video, FileText, Download, BarChart2, PlayCircle,
   CheckCircle, XCircle, Clock,
   WalletCards,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
+import Breadcrumb from "../components/ui/Breadcrumb";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 

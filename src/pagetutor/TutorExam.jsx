@@ -1,4 +1,4 @@
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { ChevronRight, FileQuestion, Users, Clock, BarChart2 } from "lucide-react";
 
@@ -9,6 +9,11 @@ import {
   deriveStatus,
   fetchExams,
 } from "../utils/examShared";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
+import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
+import EmptyState from "../components/ui/EmptyState";
 
 function Badge({ className, children }) {
   return (
@@ -63,22 +68,21 @@ export default function TutorExam() {
   };
 
   return (
-    <div className="space-y-6 mt-[90px]">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-sm flex-wrap gap-y-1">
-        <Link to="/tutor/courses" className="font-medium text-gray-500 hover:text-orange-600 transition">
-          คอร์ส
-        </Link>
-        <ChevronRight className="mx-2 h-4 w-4 text-gray-400" />
-        <span className="font-medium text-gray-800">{subjectName || "จัดการการสอบ"}</span>
-      </div>
+    <div className="space-y-6 px-4 lg:px-0">
+      <Breadcrumb
+        items={[
+          { label: "หน้าแรก", to: "/tutor" },
+          { label: "คอร์สที่สอน", to: "/tutor/courses" },
+          { label: subjectName || "จัดการการสอบ", title: [courseName, subjectName].filter(Boolean).join(" • ") },
+        ]}
+      />
 
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h1 className={`${PAGE_TITLE} break-words`}>
             จัดการการสอบ{subjectName ? ` — ${subjectName}` : ""}
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             {courseName} {subjectName ? `• ${subjectName}` : ""}
           </p>
         </div>
@@ -87,17 +91,20 @@ export default function TutorExam() {
             const params = new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName });
             navigate(`/tutor/exam-analytics?${params.toString()}`);
           }}
-          className="flex items-center gap-2 border border-neutral-200 hover:border-orange-300 hover:bg-orange-50 text-neutral-700 hover:text-orange-600 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
+          className="flex items-center gap-2 border border-slate-200 hover:border-orange-300 hover:bg-orange-50 text-slate-700 hover:text-orange-600 rounded-xl px-4 py-2.5 text-sm font-semibold transition"
         >
           <BarChart2 className="h-4 w-4" /> ดูภาพรวมพัฒนาการ
         </button>
       </div>
 
-      {loading && <p className="text-sm text-neutral-400">กำลังโหลดข้อมูลการสอบ...</p>}
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {loading && <Spinner block label="กำลังโหลดข้อมูลการสอบ..." />}
+      {error && <ErrorState description={error} />}
 
       {/* Exam Cards — Pre / Mid / Post, always exist for this Subject */}
-      {!loading && !error && (
+      {!loading && !error && exams.length === 0 && (
+        <EmptyState icon={FileQuestion} title="ยังไม่มีชุดข้อสอบของวิชานี้" description="ชุดข้อสอบก่อนเรียน / กลางภาค / หลังเรียนจะแสดงที่นี่เมื่อถูกสร้าง" />
+      )}
+      {!loading && !error && exams.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {exams.map((exam) => {
             const meta = EXAM_TYPES.find((t) => t.value === exam.type);
@@ -109,7 +116,7 @@ export default function TutorExam() {
               <button
                 key={exam.id}
                 onClick={() => handleManage(exam)}
-                className={`text-left bg-white rounded-2xl border-2 p-5 transition hover:shadow-md ${status === "active" ? "border-green-300" : "border-neutral-200 hover:border-orange-200"}`}
+                className={`text-left bg-white rounded-2xl border shadow-sm p-5 transition hover:shadow-md ${status === "active" ? "border-green-300" : "border-slate-200 hover:border-orange-200"}`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <Badge className={TYPE_BADGE[exam.type]}>{meta?.label}</Badge>
@@ -119,24 +126,24 @@ export default function TutorExam() {
                   </Badge>
                 </div>
 
-                <p className="text-sm text-neutral-400 mb-4">{meta?.sub}</p>
+                <p className="text-sm text-slate-500 mb-4">{meta?.sub}</p>
 
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-neutral-600">
-                    <FileQuestion className="h-4 w-4 text-neutral-400" />
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <FileQuestion className="h-4 w-4 text-slate-400" />
                     {qCount} ข้อ
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-neutral-600">
-                    <Clock className="h-4 w-4 text-neutral-400" />
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <Clock className="h-4 w-4 text-slate-400" />
                     {exam.settings?.duration || 0} นาที
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-neutral-600 col-span-2">
-                    <Users className="h-4 w-4 text-neutral-400" />
+                  <div className="flex items-center gap-2 text-sm text-slate-600 col-span-2">
+                    <Users className="h-4 w-4 text-slate-400" />
                     {status === "active" || status === "closed" ? "ดูรายชื่อในหน้าจัดการ" : "ยังไม่เปิดสอบ"}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                   <span className="text-sm font-semibold text-orange-600">
                     {qCount > 0 ? "จัดการข้อสอบ" : "เริ่มเพิ่มข้อสอบ"}
                   </span>

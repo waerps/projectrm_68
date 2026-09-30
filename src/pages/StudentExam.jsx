@@ -1,19 +1,30 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2, X } from "lucide-react";
+import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
+import { fmtScore } from "../utils/examScore";
+import { useToast } from "../components/useToast";
+import { ToastContainer } from "../components/Toast";
 import {
   getCurrentUserId, formatTime,
-  fetchExamByToken, startExam, saveAnswer, submitExam, fetchExamResult,
+  fetchExamByToken, startExam, saveAnswer, submitExam,
   logQuestionEnter, logIntegrityEvent,
+  markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
+import { PAGE_TITLE } from "../components/ui/tokens";
+import Breadcrumb from "../components/ui/Breadcrumb";
+import { Sprout as LuSprout } from "lucide-react";
+import { BTN } from "../components/ui/tokens";
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Shared page shell ───────────────────────────────────────────────────────
 function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
+  // เผื่อความสูง navbar ที่ fixed อยู่ (~90px) + ระยะหายใจ ถ้าไม่เว้นไว้
+  // การ์ดที่เนื้อหายาวจะถูกจัดกึ่งกลางจนลอยขึ้นไปชิด/ทับ navbar
+  // โหมดกึ่งกลาง (หน้าเริ่มสอบ) เว้นมากกว่า เพราะการ์ดสั้นกว่าจึงลอยขึ้นไปชิดง่ายกว่า
   return (
-    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start" : "items-center"} justify-center px-4 py-12`}>
-      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-36" : ""}`}>
+    <div className={`min-h-[calc(100vh-6rem)] flex ${align === "start" ? "items-start pt-[110px]" : "items-center pt-[128px]"} justify-center px-4 pb-12`}>
+      <div className={`w-full ${maxWidth} ${align === "start" ? "mt-8" : ""}`}>
         {children}
       </div>
     </div>
@@ -24,13 +35,13 @@ function PageShell({ maxWidth = "max-w-md", align = "center", children }) {
 function LoadingSkeleton() {
   return (
     <PageShell maxWidth="max-w-md">
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4 animate-pulse">
-        <div className="h-5 w-2/3 bg-neutral-200 rounded mx-auto" />
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4 animate-pulse">
+        <div className="h-5 w-2/3 bg-slate-200 rounded mx-auto" />
         <div className="flex justify-center gap-6">
-          <div className="h-4 w-16 bg-neutral-200 rounded" />
-          <div className="h-4 w-10 bg-neutral-200 rounded" />
+          <div className="h-4 w-16 bg-slate-200 rounded" />
+          <div className="h-4 w-10 bg-slate-200 rounded" />
         </div>
-        <div className="h-11 w-full bg-neutral-200 rounded-xl" />
+        <div className="h-11 w-full bg-slate-200 rounded-xl" />
       </div>
     </PageShell>
   );
@@ -38,40 +49,84 @@ function LoadingSkeleton() {
 
 // ─── Landing screen (before starting / resuming) ────────────────────────────
 
-function LandingCard({ status, exam, onStart, starting }) {
+// ─── น้องหมาโกลเด้นประจำหน้าเริ่มสอบ ────────────────────────────────────────
+// วาดเป็น SVG ในตัว ไม่ต้องโหลดรูปจากที่ไหน ไม่เพิ่ม dependency และไม่ถ่วงเวลาโหลดหน้า
+function GoldenRetriever({ className = "" }) {
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
-      <h1 className="text-lg font-bold text-neutral-900">{exam.name}</h1>
-      <div className="flex justify-center gap-6 text-sm text-neutral-600">
-        <div className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-neutral-400" />{exam.duration} นาที</div>
-        <div>{exam.totalQuestions} ข้อ</div>
+    <svg viewBox="0 0 120 116" className={className} role="img" aria-label="น้องหมาโกลเด้นยิ้มทักทาย">
+      {/* หูตกสองข้าง */}
+      <ellipse cx="26" cy="62" rx="15" ry="26" fill="#C9873A" />
+      <ellipse cx="94" cy="62" rx="15" ry="26" fill="#C9873A" />
+      {/* หัว */}
+      <ellipse cx="60" cy="54" rx="37" ry="34" fill="#EFB05C" />
+      {/* ขนกระหม่อมสีอ่อน */}
+      <ellipse cx="60" cy="38" rx="27" ry="17" fill="#F6C57E" />
+      {/* ปากกระบอก */}
+      <ellipse cx="60" cy="74" rx="22" ry="17" fill="#FCEBD0" />
+      {/* ตา */}
+      <ellipse cx="46" cy="50" rx="5" ry="5.8" fill="#4A3418" />
+      <ellipse cx="74" cy="50" rx="5" ry="5.8" fill="#4A3418" />
+      <circle cx="47.8" cy="47.8" r="1.8" fill="#ffffff" />
+      <circle cx="75.8" cy="47.8" r="1.8" fill="#ffffff" />
+      {/* แก้มแดงจาง */}
+      <ellipse cx="33" cy="63" rx="6" ry="4" fill="#F2A98F" opacity="0.5" />
+      <ellipse cx="87" cy="63" rx="6" ry="4" fill="#F2A98F" opacity="0.5" />
+      {/* ลิ้น (วาดก่อนเส้นปาก เพื่อให้เส้นปากทับด้านบน) */}
+      <path d="M52 79 q8 12 16 0 z" fill="#F28B8B" />
+      {/* จมูกและปากยิ้ม */}
+      <ellipse cx="60" cy="67" rx="7" ry="5.2" fill="#4A3418" />
+      <path d="M60 72 v4" stroke="#4A3418" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M60 76 q-7 6 -13 1" stroke="#4A3418" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <path d="M60 76 q7 6 13 1" stroke="#4A3418" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LandingCard({ status, exam, onStart, starting }) {
+  const startDisabled = starting;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-8 text-center space-y-5">
+      <GoldenRetriever className="h-24 w-24 mx-auto" />
+
+      <div className="space-y-2">
+        <h1 className={`${PAGE_TITLE}`}>{exam.name}</h1>
+        <div className="flex justify-center gap-7 text-base text-slate-600">
+          <div className="flex items-center gap-2"><Clock className="h-5 w-5 text-slate-400" />{exam.duration} นาที</div>
+          <div>{exam.totalQuestions} ข้อ</div>
+        </div>
       </div>
+
       {status === "in-progress" && (
-        <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
-          <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700">คุณเข้าสอบชุดนี้ไปแล้ว กดปุ่มด้านล่างเพื่อทำต่อจากเดิม</p>
+        <div className="flex gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-left">
+          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">คุณเข้าสอบชุดนี้ไปแล้ว กดปุ่มด้านล่างเพื่อทำต่อจากเดิม</p>
         </div>
       )}
-      {/* ข้อความก่อนเริ่มสอบ — พูดความจริงตรงๆ ว่าคะแนนนี้ถูกใช้ทำอะไร และทำไมการตอบตามความเข้าใจจริง
-          เป็นผลดีกับตัวนักเรียนเอง เจตนาคือลดแรงกดดันและแรงจูงใจในการลอก ไม่ใช่ข่มขู่ */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2">
-        <p className="text-sm font-bold text-slate-700">ก่อนเริ่มทำ อ่านสักครู่นะ</p>
-        <ul className="space-y-1.5 text-xs text-slate-600 leading-relaxed">
-          <li>• ข้อสอบชุดนี้<span className="font-semibold text-slate-700">ไม่ใช่การตัดสินว่าเก่งหรือไม่เก่ง</span> มีไว้ให้เห็นว่าตอนนี้เข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม</li>
-          <li>• ทำได้น้อยในรอบแรกไม่ใช่เรื่องผิด — มันคือจุดตั้งต้นที่จะทำให้เห็นพัฒนาการของตัวเองได้ชัดในรอบถัดไป</li>
-          <li>• ถ้ารอบแรกตอบเกินความเข้าใจจริง (เช่น เปิดหาคำตอบ) คะแนนตั้งต้นจะสูงเกินจริง แล้ว<span className="font-semibold text-slate-700">พัฒนาการที่เห็นตอนจบจะดูน้อยกว่าที่เก่งขึ้นจริง</span> ทั้งที่ตั้งใจเรียนมาเต็มที่</li>
-          <li>• ผลสอบอาจถูกนำไปคุยกับผู้ปกครอง ในรูปของพัฒนาการและจุดที่ควรช่วย ไม่ใช่คำตัดสินว่าผ่านหรือไม่ผ่าน</li>
-          <li>• ระบบบันทึกเวลาที่ใช้และการออกจากหน้าสอบไว้ เพื่อให้ติวเตอร์รู้ว่าคะแนนสะท้อนความเข้าใจจริงแค่ไหน</li>
-        </ul>
-        <p className="text-xs font-semibold text-orange-600 pt-0.5">ทำเท่าที่เข้าใจจริง แล้วติวเตอร์จะช่วยได้ตรงจุดที่สุด</p>
+
+      {/* ข้อความก่อนเริ่มสอบ — ลดแรงกดดัน และอธิบายว่าทำไมการตอบตามความเข้าใจจริง
+          เป็นผลดีกับตัวนักเรียนเอง ตั้งใจไม่ใช้ bullet เพราะอ่านเหมือนระเบียบข้อบังคับ */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-left space-y-3.5">
+        <p className="text-lg font-bold text-slate-700 text-center">อ่านสักครู่ก่อนเริ่มนะ</p>
+        <p className="text-base text-slate-600 leading-relaxed">
+          ข้อสอบชุดนี้ไม่ได้เอาไปตัดเกรด จัดอันดับ หรือตัดสินอะไรทั้งนั้น หน้าที่เดียวของมันคือบอกว่าตอนนี้เธอเข้าใจเรื่องไหนแล้ว และเรื่องไหนที่ติวเตอร์ควรช่วยเพิ่ม
+        </p>
+        <p className="text-base text-slate-600 leading-relaxed">
+          ตอบไปตามที่เข้าใจจริงเลย ยิ่งตรงกับความเข้าใจของเธอมากเท่าไหร่ ติวเตอร์ก็ยิ่งช่วยได้ตรงจุดเท่านั้น และรอบหน้าเธอจะเห็นพัฒนาการของตัวเองชัดขึ้นด้วย
+        </p>
+        <p className="text-lg font-bold text-orange-600 text-center pt-0.5">“ทำเท่าที่ทำได้ เต็มที่ของวันนี้ก็พอแล้ว”</p>
       </div>
 
       <button
         onClick={onStart}
-        disabled={starting}
-        className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-3 text-sm font-semibold transition"
+        disabled={startDisabled}
+        className={`${BTN.primary} w-full disabled:opacity-50 rounded-2xl py-4 text-base font-semibold transition`}
       >
-        {starting ? "กำลังเข้าสู่ห้องสอบ…" : status === "in-progress" ? "ทำข้อสอบต่อ" : "เริ่มทำข้อสอบ"}
+        {starting
+          ? "กำลังเข้าสู่ห้องสอบ…"
+          : status === "in-progress"
+          ? "ทำข้อสอบต่อ"
+          : "เริ่มทำข้อสอบ"}
       </button>
     </div>
   );
@@ -81,17 +136,17 @@ function LandingCard({ status, exam, onStart, starting }) {
 
 function NoQuestionsNotice() {
   return (
-    <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-3">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-3">
       <AlertCircle className="h-10 w-10 text-amber-400 mx-auto" />
-      <p className="text-sm font-semibold text-neutral-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
-      <p className="text-xs text-neutral-400">กรุณาติดต่อผู้สอนของคุณ</p>
+      <p className="text-sm font-semibold text-slate-700">ไม่พบข้อสอบสำหรับการสอบนี้</p>
+      <p className="text-xs text-slate-500">กรุณาติดต่อผู้สอนของคุณ</p>
     </div>
   );
 }
 
 // ─── Taking the exam ─────────────────────────────────────────────────────────
 
-function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, onSubmitted }) {
+function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, examBehaviorConsent, onSubmitted }) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [activeIdx, setActiveIdx] = useState(0);
   const [remainingSec, setRemainingSec] = useState(() => {
@@ -106,6 +161,8 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const [error, setError] = useState("");
   const submittedRef = useRef(false);
   const didInitialLog = useRef(false); // ข้อแรกถูก log ไว้แล้วตอน /start ที่ backend
+  // (แก้บั๊ก) ใช้แจ้งเตือนตอน autosave คำตอบล้มเหลว — ดูจุดแก้ที่ pickAnswer ด้านล่าง
+  const { toasts, showToast, removeToast } = useToast();
 
   const current = questions[activeIdx];
   const answeredCount = questions.filter((q) => q.selected !== null && q.selected !== undefined).length;
@@ -144,7 +201,10 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     logQuestionEnter({ examJoinId, userId, questionId: current.id }).catch((err) => {
       console.error('log enter failed:', err);
     });
-  }, [activeIdx, current, examJoinId, userId]);
+    // ผูกกับ current?.id (ตัวเลข) ไม่ใช่ current (object) — เพราะ pickAnswer สร้าง object ใหม่
+    // ทุกครั้งที่นักเรียนเลือกคำตอบ ถ้าผูกกับ object effect จะยิง log ซ้ำสำหรับข้อเดิม
+    // ทำให้ backend ปิดช่วงเวลาเดิมแล้วเปิดใหม่ กลายเป็น "กลับมาทำซ้ำ 2 ครั้ง" ทั้งที่ไม่ได้ย้อนกลับ
+  }, [activeIdx, current?.id, examJoinId, userId]);
 
   // ── ธงคุณภาพข้อมูล: บันทึกการออกจากหน้าสอบ และการคัดลอกข้อความ ──────────────
   // ไม่บล็อกอะไรทั้งสิ้น แค่บันทึกไว้ให้ติวเตอร์ประกอบการอ่านคะแนน (เบราว์เซอร์ไม่มีทางรู้ว่า
@@ -154,6 +214,10 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   useEffect(() => { currentQuestionIdRef.current = current?.id ?? null; }, [current]);
 
   useEffect(() => {
+    // PDPA: ไม่ยินยอม (สแนปช็อตตอนกดเข้าสอบรอบนี้) — ไม่แนบ listener เลย เท่ากับไม่มีการ
+    // ยิง network call ใด ๆ ทั้งสิ้นฝั่งนี้ ไม่ใช่แค่ backend ปฏิเสธเงียบ ๆ
+    if (examBehaviorConsent === false) return;
+
     const report = (eventType, extra = {}) => {
       if (submittedRef.current) return; // ส่งข้อสอบแล้วไม่ต้องเก็บอีก
       logIntegrityEvent({ examJoinId, eventType, questionId: currentQuestionIdRef.current, ...extra })
@@ -177,13 +241,24 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("copy", onCopy);
     };
-  }, [examJoinId]);
+  }, [examJoinId, examBehaviorConsent]);
 
   const pickAnswer = (optIdx) => {
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
-    saveAnswer({ examJoinId, userId, questionId: current.id, selected: optIdx }).catch((err) => {
-      console.error("Autosave failed:", err);
-    });
+    const questionId = current.id;
+    // (แก้บั๊ก) เดิม autosave fail แล้วแค่ console.error เงียบๆ หน้าจอยังโชว์ว่าเลือกคำตอบแล้ว
+    // ทั้งที่ยังไม่ถูกบันทึกจริง นักเรียนไม่รู้ตัวจนกว่าจะเห็นคะแนนตอนจบ — ลองบันทึกซ้ำอีกครั้ง
+    // เผื่อเป็นแค่เน็ตสะดุดชั่วคราว ถ้ายังไม่สำเร็จอีกรอบค่อยแจ้งเตือนผู้ใช้จริงๆ
+    const trySave = (isRetry) =>
+      saveAnswer({ examJoinId, userId, questionId, selected: optIdx }).catch((err) => {
+        console.error("Autosave failed:", err);
+        if (!isRetry) {
+          trySave(true);
+          return;
+        }
+        showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "กรุณาเลือกคำตอบข้อนี้ใหม่อีกครั้ง เช็คสัญญาณอินเทอร์เน็ตของคุณด้วย");
+      });
+    trySave(false);
   };
 
   // Guard: exam has no questions at all — show a clear message instead of
@@ -195,49 +270,50 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const lowTime = remainingSec <= 60;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5 items-start">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       {/* ── ฝั่งซ้าย: เนื้อหาข้อสอบ ── */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 flex flex-col">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-8 flex flex-col">
         {/* min-height keeps the Prev/Next/Submit row from jumping when
            question text length differs between questions */}
-        <div className="min-h-[280px]">
-          <div className="flex items-baseline justify-between gap-3 mb-5">
-            <div className="flex items-baseline gap-3">
-              <span className="text-lg font-black text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-base font-medium text-neutral-900 leading-relaxed">{current.text}</p>
+        <div className="min-h-[320px]">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 mb-5">
+            <div className="flex min-w-0 items-baseline gap-3">
+              <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
+              <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>
             </div>
-            <span className="flex-shrink-0 text-xs font-semibold text-neutral-400 bg-neutral-100 px-2.5 py-1 rounded-full">
-              {current.score} คะแนน
+            <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+              {fmtScore(current.score)} คะแนน
             </span>
           </div>
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {OPTION_LABELS.map((label, optIdx) => {
               const isSelected = current.selected === optIdx;
               return (
-                <button
+                <button aria-label="ยืนยัน"
                   key={label}
                   onClick={() => pickAnswer(optIdx)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-neutral-200 hover:border-orange-200"}`}
+                  className={`w-full flex items-center gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
                 >
-                  <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-neutral-100 text-neutral-600"}`}>{label}</span>
-                  <span className="text-sm text-neutral-800">{current.options?.[optIdx]}</span>
-                  {isSelected && <Check className="h-4 w-4 text-orange-600 ml-auto" />}
+                  <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
+                  <span className="min-w-0 flex-1 break-words text-base text-slate-800">{current.options?.[optIdx]}</span>
+                  {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto flex-shrink-0" />}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
-          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1 text-sm text-neutral-500 disabled:opacity-30">
+        <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+          <button onClick={() => setActiveIdx((i) => Math.max(0, i - 1))} disabled={activeIdx === 0} className="flex items-center gap-1.5 text-sm sm:text-base text-slate-500 disabled:opacity-30">
             <ChevronLeft className="h-4 w-4" /> ข้อก่อนหน้า
           </button>
           {activeIdx < questions.length - 1 ? (
-            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1 text-sm text-orange-600 font-semibold">
+            <button onClick={() => setActiveIdx((i) => Math.min(questions.length - 1, i + 1))} className="flex items-center gap-1.5 text-sm sm:text-base text-orange-600 font-semibold">
               ข้อถัดไป <ChevronRight className="h-4 w-4" />
             </button>
           ) : (
-            <button onClick={() => setConfirmSubmit(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl px-5 py-2 text-sm font-semibold">
+            <button onClick={() => setConfirmSubmit(true)} className={`${BTN.primary} rounded-xl px-5 sm:px-6 py-2.5 text-sm sm:text-base font-semibold`}>
               ส่งข้อสอบ
             </button>
           )}
@@ -247,9 +323,11 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       </div>
 
       {/* ── ฝั่งขวา: ผังข้อสอบ (Question Map) ── */}
-      <div className="bg-white border border-neutral-200 rounded-2xl p-4 space-y-4 lg:sticky lg:top-4">
+      {/* order-first ยกแผงเวลา/ความคืบหน้าขึ้นก่อนตัวข้อสอบบนมือถือ เพื่อไม่ต้องเลื่อนจอ
+         ไปดูเวลาที่เหลือ ส่วนจอ lg+ กลับไปอยู่ลำดับปกติ (คอลัมน์ขวา, sticky) */}
+      <div className="order-first lg:order-none bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4 lg:sticky lg:top-6">
         <div>
-          <p className="text-xs font-semibold text-neutral-500 mb-2">ข้อสอบ</p>
+          <p className="text-sm font-semibold text-slate-500 mb-2.5">ข้อสอบ</p>
           <div className="grid grid-cols-4 gap-1.5">
             {questions.map((q, i) => {
               const answered = q.selected !== null && q.selected !== undefined;
@@ -259,11 +337,11 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                   key={q.id}
                   onClick={() => setActiveIdx(i)}
                   title={`ข้อ ${i + 1}${answered ? " (ตอบแล้ว)" : " (ยังไม่ตอบ)"}`}
-                  className={`h-9 w-full rounded-lg text-xs font-semibold border-2 transition ${isActive
+                  className={`h-11 w-full rounded-lg text-sm font-semibold border-2 transition ${isActive
                       ? "border-orange-500 bg-orange-500 text-white"
                       : answered
                         ? "border-green-300 bg-green-50 text-green-700"
-                        : "border-neutral-200 text-neutral-500"
+                        : "border-slate-200 text-slate-500"
                     }`}
                 >
                   {i + 1}
@@ -273,43 +351,43 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           </div>
         </div>
 
-        <div className="border-t border-neutral-100 pt-3 space-y-1.5 text-sm">
+        <div className="border-t border-slate-100 pt-3 space-y-1.5 text-sm">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-neutral-600">
+            <span className="flex items-center gap-1.5 text-slate-600">
               <span className="h-2.5 w-2.5 rounded-sm bg-green-300 border border-green-400 inline-block" /> ตอบแล้ว
             </span>
-            <span className="font-semibold text-neutral-700">{answeredCount}/{questions.length}</span>
+            <span className="font-semibold text-slate-700">{answeredCount}/{questions.length}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-neutral-600">
-              <span className="h-2.5 w-2.5 rounded-sm bg-neutral-100 border border-neutral-300 inline-block" /> ยังไม่ตอบ
+            <span className="flex items-center gap-1.5 text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-sm bg-slate-100 border border-slate-300 inline-block" /> ยังไม่ตอบ
             </span>
-            <span className="font-semibold text-neutral-700">{questions.length - answeredCount}/{questions.length}</span>
+            <span className="font-semibold text-slate-700">{questions.length - answeredCount}/{questions.length}</span>
           </div>
         </div>
 
-        <div className={`border-t border-neutral-100 pt-3 ${lowTime ? "text-red-600" : "text-neutral-700"}`}>
-          <p className="text-xs font-semibold text-neutral-500 mb-1">เวลาที่เหลือ</p>
-          <div className="flex items-center gap-1.5 font-mono font-bold text-lg">
-            <Clock className="h-4 w-4" /> {formatTime(remainingSec)}
+        <div className={`border-t border-slate-100 pt-3 ${lowTime ? "text-red-600" : "text-slate-700"}`}>
+          <p className="text-sm font-semibold text-slate-500 mb-1">เวลาที่เหลือ</p>
+          <div className="flex items-center gap-2 font-mono font-bold text-xl">
+            <Clock className="h-5 w-5" /> {formatTime(remainingSec)}
           </div>
         </div>
       </div>
 
       {confirmSubmit && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setConfirmSubmit(false)}>
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={() => setConfirmSubmit(false)}>
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="text-center mb-5">
               <div className="h-14 w-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-orange-600" /></div>
-              <h3 className="text-lg font-bold text-neutral-900 mb-1">ยืนยันส่งข้อสอบ?</h3>
-              <p className="text-sm text-neutral-500">
+              <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันส่งข้อสอบ?</h3>
+              <p className="text-sm text-slate-500">
                 คุณตอบแล้ว {answeredCount}/{questions.length} ข้อ
                 {answeredCount < questions.length && " — ข้อที่ไม่ได้ตอบจะได้ 0 คะแนน"}
               </p>
             </div>
             <div className="flex gap-3">
-              <button onClick={() => setConfirmSubmit(false)} className="flex-1 border border-neutral-200 rounded-xl py-2.5 text-sm font-semibold text-neutral-700">ตรวจทานอีกครั้ง</button>
-              <button onClick={doSubmit} disabled={submitting} className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-xl py-2.5 text-sm font-semibold">
+              <button onClick={() => setConfirmSubmit(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ตรวจทานอีกครั้ง</button>
+              <button onClick={doSubmit} disabled={submitting} className={`${BTN.primary} flex-1 disabled:opacity-50 rounded-xl py-2.5 text-sm font-semibold`}>
                 {submitting ? "กำลังส่ง…" : "ยืนยันส่ง"}
               </button>
             </div>
@@ -321,92 +399,68 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
 }
 
 // ─── Result screen ───────────────────────────────────────────────────────────
-function QuestionReviewRow({ q, index }) {
-  const OPTION_LABELS = ["A", "B", "C", "D"];
-  const wasAnswered = q.selected !== null && q.selected !== undefined;
+// ไม่แสดงเฉลยรายข้อให้นักเรียนแล้ว (กันเฉลยหลุดไปถึงเพื่อนที่ยังสอบอยู่ และไม่อยากให้เด็ก
+// โฟกัสแค่ข้อที่ผิด) — เหลือแค่คะแนน + ข้อความให้กำลังใจที่ไม่ตัดสินจากคะแนน
+const ENCOURAGEMENTS = [
+  { title: "เก่งมากที่ทำจนจบ!", body: "คะแนนเป็นแค่ตัวเลขของวันนี้ ไม่ได้บอกว่าเราเก่งหรือไม่เก่ง สิ่งที่มีค่าที่สุดคือความตั้งใจที่เราใส่ลงไปในทุกข้อ" },
+  { title: "ทุกข้อคือการเรียนรู้", body: "ข้อที่ยังไม่ถูก คือเรื่องที่เรากำลังจะเข้าใจมากขึ้น ครูจะช่วยทบทวนไปด้วยกันนะ ไม่ต้องกังวลเลย" },
+  { title: "ขอบคุณที่พยายามเต็มที่", body: "เก่งขึ้นทีละนิดทุกวันก็ดีมากแล้ว ไม่จำเป็นต้องเปรียบเทียบกับใคร ขอแค่วันนี้เราดีกว่าเมื่อวาน" },
+  { title: "ภูมิใจในตัวเองได้เลย", body: "คะแนนมากหรือน้อยไม่ได้บอกว่าเราเป็นคนแบบไหน ความพยายามของเราวันนี้คือสิ่งที่พาเราไปได้ไกล" },
+  { title: "พักสมองสักหน่อยนะ", body: "ทำข้อสอบมาเหนื่อยแล้ว ให้รางวัลตัวเองสักนิด แล้วเรามาเรียนรู้ต่อไปด้วยกัน ครูเชื่อในตัวเราเสมอ" },
+];
+
+function ResultCard({ result }) {
+  const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
+  // สุ่มครั้งเดียวตอน mount — ไม่ผูกกับคะแนน ข้อความจึงไม่ "ตัดสิน" ว่าคะแนนดีหรือไม่ดี
+  const [msg] = useState(() => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
 
   return (
-    <div className={`border rounded-xl p-4 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-black text-neutral-400">{index + 1}.</span>
-          <p className="text-sm font-medium text-neutral-900 leading-relaxed">{q.text}</p>
+    <div className="space-y-4 pt-0">
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4">
+        <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+        <h1 className="text-lg font-bold text-slate-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
+        <div className="bg-slate-50 rounded-xl p-5">
+          <p className="text-sm text-slate-500 mb-1">คะแนน</p>
+          <p className="text-3xl font-bold text-orange-600">
+            {fmtScore(result.totalScore)}/{fmtScore(result.maxScore)}
+          </p>
+          <p className="text-sm text-slate-500 mt-1">{pct}%</p>
         </div>
-        <span className={`flex-shrink-0 flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
-          {q.isCorrect ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-          {q.scoreAwarded}/{q.score} คะแนน
-        </span>
-      </div>
-
-      <div className="space-y-1.5 pl-6">
-        {(q.options || []).map((opt, optIdx) => {
-          const isCorrectOpt = optIdx === q.correct;
-          const isSelectedOpt = optIdx === q.selected;
-          let cls = "border-neutral-200 text-neutral-500";
-          if (isCorrectOpt) cls = "border-green-400 bg-green-100 text-green-800 font-medium";
-          else if (isSelectedOpt && !isCorrectOpt) cls = "border-red-300 bg-red-100 text-red-700 font-medium";
-
-          return (
-            <div key={optIdx} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs ${cls}`}>
-              <span className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold flex-shrink-0 bg-white/70">
-                {OPTION_LABELS[optIdx]}
-              </span>
-              <span className="flex-1">{opt}</span>
-              {isCorrectOpt && <span className="text-[10px] font-bold text-green-700">คำตอบที่ถูก</span>}
-              {isSelectedOpt && !isCorrectOpt && <span className="text-[10px] font-bold text-red-600">คำตอบของคุณ</span>}
-            </div>
-          );
-        })}
-        {!wasAnswered && (
-          <p className="text-[11px] text-neutral-400 italic pt-0.5">ไม่ได้ตอบข้อนี้</p>
+        {result.correctCount != null && (
+          <p className="text-sm text-slate-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
         )}
-
-        {/* ↓↓↓ เพิ่มบล็อกนี้ ↓↓↓ */}
-        {q.explanation && q.explanation.trim() && (
-          <div className="mt-3 ml-6 flex gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
-            <span className="text-sm flex-shrink-0">💡</span>
-            <div>
-              <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
-              <p className="text-xs text-blue-700/90 leading-relaxed">{q.explanation}</p>
-            </div>
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-left flex gap-3">
+          <LuSprout className="h-6 w-6 shrink-0 text-emerald-500" />
+          <div>
+            <p className="text-sm font-bold text-orange-700 mb-1">{msg.title}</p>
+            <p className="text-sm text-orange-800/90 leading-relaxed">{msg.body}</p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 }
 
-function ResultCard({ result }) {
-  const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
-  const hasQuestions = Array.isArray(result.questions) && result.questions.length > 0;
-
-  return (
-    <div className="space-y-4 pt-0">
-      <div className="bg-white border border-neutral-200 rounded-2xl p-6 text-center space-y-4">
-        <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-        <h1 className="text-lg font-bold text-neutral-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
-        <div className="bg-neutral-50 rounded-xl p-5">
-          <p className="text-sm text-neutral-500 mb-1">คะแนน</p>
-          <p className="text-3xl font-bold text-orange-600">
-            {result.totalScore}/{result.maxScore}
-          </p>
-          <p className="text-sm text-neutral-500 mt-1">{pct}%</p>
-        </div>
-        {result.correctCount != null && (
-          <p className="text-sm text-neutral-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>
-        )}
-      </div>
-
-      {hasQuestions && (
-        <div className="bg-white border border-neutral-200 rounded-2xl p-6 space-y-3">
-          <p className="text-sm font-semibold text-neutral-700 mb-1">เฉลยรายข้อ</p>
-          {result.questions.map((q, i) => (
-            <QuestionReviewRow key={q.id ?? i} q={q} index={i} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+// ─── Breadcrumb ของหน้าสอบ ──────────────────────────────────────────────────
+// backend ไม่ได้ส่งคอร์ส/วิชามากับลิงก์สอบ จึงอ่านจาก route state ที่หน้าต้นทาง
+// (คอร์สเรียนของฉัน / หน้ารายวิชา) แนบมา ถ้าเปิดลิงก์ตรง ๆ จะเหลือแค่ชั้นที่รู้แน่
+function ExamBreadcrumb({ from, examName }) {
+  const items = [
+    { label: "หน้าแรก", to: "/" },
+    { label: "คอร์สเรียนของฉัน", to: "/profile/my-courses" },
+  ];
+  if (from?.courseId && from?.courseName) {
+    items.push({ label: from.courseName, to: `/profile/course/${from.courseId}/subjects` });
+  }
+  if (from?.courseId && from?.subjectId) {
+    items.push({
+      label: from.subjectName || "รายวิชา",
+      to: `/profile/course/${from.courseId}/subject/${from.subjectId}`,
+      state: { tab: "exam" }, // กลับไปแล้วเปิดแท็บ "ข้อสอบ" ของวิชานั้น
+    });
+  }
+  items.push({ label: examName || "ข้อสอบ" });
+  return <Breadcrumb className="mb-4" items={items} />;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -414,7 +468,10 @@ function ResultCard({ result }) {
 export default function StudentExam() {
   const { token } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const cameFrom = location.state?.from || null;
   const userId = getCurrentUserId();
+  const [examName, setExamName] = useState("");
 
   const [phase, setPhase] = useState("loading"); // loading | landing | running | result | error
   const [landing, setLanding] = useState(null);
@@ -432,7 +489,9 @@ export default function StudentExam() {
     fetchExamByToken(token, userId)
       .then((data) => {
         if (cancelled) return;
+        setExamName(data.exam?.name || "");
         if (data.status === "submitted") {
+          clearExamActive(); // เผื่อธงค้างจากรอบก่อน (เช่น backend บังคับส่งตอนหมดเวลา)
           setResult(data.result);
           setPhase("result");
         } else {
@@ -452,6 +511,13 @@ export default function StudentExam() {
     setStarting(true);
     try {
       const data = await startExam(token, userId);
+      // ปักธงว่า "ยังสอบค้างอยู่" — ใช้ซ่อนแชตบอตทั่วทั้งเว็บจนกว่าจะกดส่ง
+      markExamActive({
+        examJoinId: data.examJoinId,
+        deadlineAt: data.examStartedAt && data.durationMinutes != null
+          ? new Date(new Date(data.examStartedAt).getTime() + data.durationMinutes * 60 * 1000).toISOString()
+          : null,
+      });
       setRunData(data);
       setPhase("running");
     } catch (err) {
@@ -462,17 +528,11 @@ export default function StudentExam() {
     }
   };
 
-  const handleSubmitted = async (submitResult) => {
+  const handleSubmitted = (submitResult) => {
+    clearExamActive(); // ส่งข้อสอบแล้ว — ปลดล็อกแชตบอตทั้งเว็บ
     setResult(submitResult);
     setPhase("result");
-    // Best-effort refresh with the full breakdown. Merge instead of overwrite:
-    // GET /result doesn't include fields like correctCount/totalQuestions that
-    // the UI needs, so spreading `full` on top of `prev` keeps whatever the
-    // submit response already gave us for any key `full` doesn't have.
-    try {
-      const full = await fetchExamResult(runData.examJoinId, userId);
-      setResult((prev) => ({ ...prev, ...full }));
-    } catch { /* keep the submit response as-is */ }
+    // (ตัดเฉลยรายข้อออกแล้ว) ไม่ต้องดึง GET /result มาเติมอีก — คะแนนจาก submit ครบแล้ว
   };
 
   if (phase === "loading") {
@@ -481,29 +541,40 @@ export default function StudentExam() {
   if (phase === "error") {
     return (
       <PageShell maxWidth="max-w-md">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
-          <p className="text-sm text-neutral-600">{errorMsg}</p>
+          <p className="text-sm text-slate-600">{errorMsg}</p>
         </div>
       </PageShell>
     );
   }
   if (phase === "landing") {
     return (
-      <PageShell maxWidth="max-w-md">
-        <LandingCard status={landing.status} exam={landing.exam} onStart={handleStart} starting={starting} />
+      <PageShell maxWidth="max-w-2xl">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
+        <LandingCard
+          status={landing.status}
+          exam={landing.exam}
+          onStart={handleStart}
+          starting={starting}
+        />
       </PageShell>
     );
   }
+  // ระหว่างทำข้อสอบ (running) ตั้งใจไม่แสดง breadcrumb — ไม่อยากให้มีลิงก์ชวนกดออก
+  // กลางคัน (นาฬิกายังเดินต่อฝั่ง server แม้ออกไป) และให้หน้าจอโฟกัสที่ข้อสอบอย่างเดียว
+  // จะกลับมาแสดงอีกครั้งหลังส่งข้อสอบแล้ว
   if (phase === "running") {
     return (
-      <PageShell maxWidth="max-w-2xl" align="start">
+      <PageShell maxWidth="max-w-4xl" align="start">
         <ExamRunner
           examJoinId={runData.examJoinId}
           userId={userId}
           examStartedAt={runData.examStartedAt}
           durationMinutes={runData.durationMinutes}
           questions={runData.questions}
+          examBehaviorConsent={runData.examBehaviorConsent}
           onSubmitted={handleSubmitted}
         />
       </PageShell>
@@ -511,7 +582,8 @@ export default function StudentExam() {
   }
   if (phase === "result") {
     return (
-      <PageShell maxWidth="max-w-2xl" align="start">
+      <PageShell maxWidth="max-w-4xl" align="start">
+        <ExamBreadcrumb from={cameFrom} examName={examName} />
         <ResultCard result={result} />
       </PageShell>
     );
