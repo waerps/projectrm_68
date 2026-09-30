@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import axios from "axios";
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Image as ImageIcon, Newspaper, X } from "lucide-react";
 import { API_URL } from "../config";
+import "./NewsMarqueeArchive.css";
 import "./News.css";
 
 const newsUrl = (path) => {
@@ -21,24 +22,30 @@ function NewsImage({ src, alt, className = "" }) {
   return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }
 
-function NewsTile({ item, index, onOpen, closing = false }) {
+function NewsTile({ item, index, onOpen }) {
   const featured = index === 0;
   const wide = index > 0 && index % 6 === 4;
+  const summary = item.sub?.trim();
   return (
     <button
       type="button"
-      className={`news-tile ${featured ? "news-tile-featured" : ""} ${wide ? "news-tile-wide" : ""} ${closing ? "is-closing" : ""}`}
+      className={`archive-news-story-card news-tile ${featured ? "news-tile-featured" : ""} ${wide ? "news-tile-wide" : ""}`}
       onClick={(event) => onOpen(item.id, event.currentTarget)}
       aria-label={`อ่านข่าว ${item.title || "ข่าวประชาสัมพันธ์"}`}
       style={{ "--tile-order": Math.min(index, 9) }}
     >
-      <span className="news-tile-photo"><NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} /></span>
-      <span className="news-tile-shade" />
-      <span className="news-tile-content">
-        <span className="news-tile-meta"><span className="news-tile-tag">{item.tag || "ข่าวประชาสัมพันธ์"}</span>{item.date && <span className="news-tile-date"><CalendarDays size={14} aria-hidden="true" />{item.date}</span>}</span>
-        <span className="news-tile-title">{item.title || "ข่าวประชาสัมพันธ์"}</span>
-        {item.sub && <span className="news-tile-summary">{item.sub}</span>}
-        <span className="news-tile-link">อ่านรายละเอียด <ArrowUpRight size={17} aria-hidden="true" /></span>
+      <span className="archive-news-story-cover news-tile-photo">
+        <NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} className="archive-news-story-image" />
+        <span className="archive-news-story-image-mark"><ImageIcon size={14} aria-hidden="true" /> ดูภาพและรายละเอียด</span>
+      </span>
+      <span className="archive-news-story-content news-tile-content">
+        <span className="archive-news-story-meta">
+          <span className="archive-news-story-tag">{item.tag || "ข่าวประชาสัมพันธ์"}</span>
+          {item.date && <span className="archive-news-story-date"><CalendarDays size={13} aria-hidden="true" />{item.date}</span>}
+        </span>
+        <span className="archive-news-story-title">{item.title || "ข่าวประชาสัมพันธ์"}</span>
+        {summary && <span className="archive-news-story-summary">{summary}</span>}
+        <span className="archive-news-story-read">อ่านเรื่องนี้ <ArrowUpRight size={16} aria-hidden="true" /></span>
       </span>
     </button>
   );
@@ -110,7 +117,6 @@ export default function News({ role = "public" }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
-  const [closingId, setClosingId] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,20 +130,9 @@ export default function News({ role = "public" }) {
   const changeSelection = (id, source) => {
     if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       if (source) source.style.viewTransitionName = "news-open-card";
-      const transition = document.startViewTransition(() => {
-        flushSync(() => {
-          setClosingId(id === null ? selectedId : null);
-          setSelectedId(id);
-        });
-      });
-      transition.finished.finally(() => {
-        if (source) source.style.viewTransitionName = "";
-        setClosingId(null);
-      });
-    } else {
-      setClosingId(null);
-      setSelectedId(id);
-    }
+      const transition = document.startViewTransition(() => flushSync(() => setSelectedId(id)));
+      transition.finished.finally(() => { if (source) source.style.viewTransitionName = ""; });
+    } else setSelectedId(id);
     if (id !== null) window.requestAnimationFrame(() => document.querySelector(".news-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
@@ -148,9 +143,13 @@ export default function News({ role = "public" }) {
         {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : (
           <section className="news-feed" aria-label="ข่าวประชาสัมพันธ์ทั้งหมด">
             <div className="news-feed-heading"><div><span className="news-feed-line" /><h2>{selectedId === null ? "อัปเดตล่าสุด" : "ข่าวประชาสัมพันธ์"}</h2><span className="news-feed-total">{news.length} เรื่อง</span></div></div>
-            <div className="news-grid">
-              {news.map((item, index) => selectedId === item.id ? <NewsExpanded key={item.id} item={item} onClose={() => changeSelection(null)} /> : <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} closing={closingId === item.id} />)}
-            </div>
+            {selectedId !== null ? (
+              <NewsExpanded item={news.find((item) => item.id === selectedId)} onClose={() => changeSelection(null)} />
+            ) : (
+              <div className="news-grid">
+                {news.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} />)}
+              </div>
+            )}
           </section>
         )}
       </div>
