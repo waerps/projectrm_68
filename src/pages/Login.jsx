@@ -262,7 +262,7 @@ export function Login({ initialMode = "login" }) {
             </div>
             <p className="auth-grade-pill">{mode === "forgot" ? <><Sparkles size={16} strokeWidth={2} /> กู้คืนบัญชี</> : <><GraduationCap size={16} strokeWidth={2} /> สถาบันศรเสริมติวเตอร์ ขอนแก่น</>}</p>
             <h2 className="auth-learning-title">{mode === "forgot" ? <>กลับมาเรียนต่อ<br /><span>ได้อีกครั้ง</span></> : mode === "google" ? <>อีกนิดเดียว<br /><span>ก็พร้อมเรียน</span></> : <>พร้อมเรียนต่อ<br /><span>ไปด้วยกันไหม?</span></>}</h2>
-            <p className="auth-swipe-description">{mode === "forgot" ? "ขอลิงก์ตั้งรหัสผ่านใหม่ แล้วกลับมาสนุกกับการเรียนต่อ" : mode === "google" ? "เติมข้อมูลนักเรียนให้ครบ แล้วเริ่มเรียนรู้ไปด้วยกัน" : "บทเรียนที่สนใจยังรออยู่ เข้าสู่ระบบแล้วกลับไปเรียนต่อกัน"}</p>
+            <p className="auth-swipe-description">{mode === "forgot" ? "ให้เจ้าหน้าที่ช่วยตรวจสอบบัญชี แล้วกลับมาเรียนต่อได้อีกครั้ง" : mode === "google" ? "เติมข้อมูลนักเรียนให้ครบ แล้วเริ่มเรียนรู้ไปด้วยกัน" : "บทเรียนที่สนใจยังรออยู่ เข้าสู่ระบบแล้วกลับไปเรียนต่อกัน"}</p>
             <button type="button" onClick={() => switchMode("login")} tabIndex={mode !== "login" ? 0 : -1}><ArrowLeft size={16} /> {mode === "forgot" ? "กลับไปเข้าสู่ระบบ" : mode === "google" ? "ยกเลิก" : "เข้าสู่ระบบ"}</button>
           </div>
           <BookOpen className="auth-swipe-book" size={210} strokeWidth={0.7} aria-hidden="true" />

@@ -6,7 +6,7 @@ const emptyGoogleForm = profile => ({
   firstname: profile?.firstname || "",
   lastname: profile?.lastname || "",
   nickname: "", phoneNo: "", schoolName: "", lineId: "", birthOfDate: "",
-  gradeLevelId: "", genderId: "", gpa: "", marketingConsent: false,
+  gradeLevelId: "", genderId: "", gpa: "",
 });
 
 export default function GoogleRegistrationForm({ pending, onCancel }) {
@@ -92,7 +92,6 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
           <p>สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
           <label htmlFor="google-register-pdpa"><input id="google-register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว *</span></label>
         </div>
-        <label className="auth-consent"><input type="checkbox" name="marketingConsent" checked={form.marketingConsent} onChange={change} /><span>ยินยอมให้ติดต่อเพื่อแนะนำคอร์สและสิทธิประโยชน์ (ไม่บังคับ)</span></label>
         {error && <p className="auth-error" role="alert">{error}</p>}
         <button type="submit" disabled={busy || !pdpaAcknowledged} className="auth-primary">{busy ? "กำลังสร้างบัญชี..." : "สร้างบัญชีและเข้าสู่ระบบ"}</button>
       </form>

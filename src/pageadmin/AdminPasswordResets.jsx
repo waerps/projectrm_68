@@ -10,10 +10,8 @@ import { BTN } from "../components/ui/tokens";
 import PageHeader from "../components/ui/PageHeader";
 
 // ─── หน้าคำขอ "ลืมรหัสผ่าน" ────────────────────────────────────────────────
-// ระบบนี้ไม่มี email/SMS ให้ผู้ใช้รีเซ็ตรหัสผ่านเอง (ดู routes/auth.routes.js POST
-// /forgot-password และ migrations/20260911_password_reset_requests.sql) ผู้ใช้ที่ลืมรหัสผ่าน
-// จึงยืนยันตัวตนด้วยเบอร์โทรแล้วส่งคำขอมาที่นี่ แอดมินรีเซ็ตรหัสผ่านให้เองด้วยหน้าจัดการที่มีอยู่
-// แล้ว (จัดการนักเรียน/จัดการแอดมิน) จากนั้นกลับมากด "ทำเสร็จแล้ว" ที่นี่ เพื่อแจ้งกลับไปหาผู้ใช้
+// คำขอจาก /auth/forgot-password: เจ้าหน้าที่ตรวจสอบตัวตนกับผู้ใช้ก่อนสร้างลิงก์
+// ตั้งรหัสผ่านจากหน้าจัดการนักเรียน ส่งลิงก์ให้ผู้ใช้ แล้วจึงกดดำเนินการแล้ว
 const API = `${API_URL}/api/admin`;
 const auth = () => {
   const token = localStorage.getItem("student_token");
@@ -46,7 +44,7 @@ export default function AdminPasswordResets() {
     setResolvingId(id);
     try {
       await axios.patch(`${API}/password-reset-requests/${id}/resolve`, {}, auth());
-      showToast("success", "บันทึกเรียบร้อย", "ระบบแจ้งผลไปยังผู้ใช้แล้ว");
+      showToast("success", "บันทึกเรียบร้อย", "ตรวจสอบว่าได้ส่งลิงก์ให้นักเรียนแล้ว");
       load();
     } catch (err) {
       showToast("error", "บันทึกไม่สำเร็จ", err.response?.data?.message || err.message);
@@ -59,7 +57,7 @@ export default function AdminPasswordResets() {
     <div className="p-4 sm:p-6 max-w-4xl mx-auto">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <PageHeader className="mb-6" icon={KeyRound} title="คำขอลืมรหัสผ่าน"
-        subtitle={'ตรวจสอบตัวตนผู้ใช้ รีเซ็ตรหัสผ่านที่หน้าจัดการนักเรียนหรือผู้ดูแลระบบ แล้วกด "ดำเนินการแล้ว" เพื่อแจ้งผู้ใช้'} />
+        subtitle={'ตรวจสอบตัวตนผู้ใช้ สร้างลิงก์ตั้งรหัสผ่านที่หน้าจัดการนักเรียน ส่งลิงก์ให้ผู้ใช้ แล้วกด "ดำเนินการแล้ว"'} />
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
