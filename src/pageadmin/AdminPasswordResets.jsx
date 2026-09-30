@@ -1,9 +1,10 @@
 import { API_URL } from "../config";
 import { useState, useEffect, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
-import { KeyRound, Loader2, Check, Clock, User, Phone } from "lucide-react";
+import { KeyRound, Loader2, Check, Clock, User, Phone, ArrowUpRight } from "lucide-react";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import EmptyState from "../components/ui/EmptyState";
 import { BTN } from "../components/ui/tokens";
@@ -19,6 +20,8 @@ const auth = () => {
 };
 
 export default function AdminPasswordResets() {
+  const [searchParams] = useSearchParams();
+  const focusedRequestId = Number(searchParams.get("request"));
   const { toasts, showToast, removeToast } = useToast();
   const [pending, setPending] = useState([]);
   const [recentlyDone, setRecentlyDone] = useState([]);
@@ -39,6 +42,10 @@ export default function AdminPasswordResets() {
   }, [showToast]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (loading || !focusedRequestId) return;
+    document.getElementById(`password-reset-request-${focusedRequestId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [loading, focusedRequestId]);
 
   const handleResolve = async (id) => {
     setResolvingId(id);
@@ -72,7 +79,7 @@ export default function AdminPasswordResets() {
             ) : (
               <div className="space-y-3">
                 {pending.map((r) => (
-                  <div key={r.RequestId} className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div id={`password-reset-request-${r.RequestId}`} key={r.RequestId} className={`rounded-xl border bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3 ${focusedRequestId === r.RequestId ? "border-orange-500 ring-2 ring-orange-200" : "border-amber-200"}`}>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-white border border-amber-200 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
@@ -84,6 +91,11 @@ export default function AdminPasswordResets() {
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {r.PhoneNo || "ไม่มีเบอร์โทร"}</span>
                         <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(r.Created_at).toLocaleString("th-TH")}</span>
                       </div>
+                      {r.UserType === "student" && (
+                        <Link to={`/admin/students?student=${r.UserId}`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-700 hover:underline">
+                          ดูข้อมูลนักเรียนคนนี้ <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                      )}
                     </div>
                     <button
                       onClick={() => handleResolve(r.RequestId)}

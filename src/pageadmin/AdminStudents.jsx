@@ -1,6 +1,7 @@
 //ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
@@ -2155,6 +2156,8 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminStudentsPage() {
+  const [searchParams] = useSearchParams();
+  const linkedStudentId = Number(searchParams.get("student"));
   const { toasts, showToast, removeToast } = useToast(); //alert ต่างๆ
   const [students, setStudents] = useState([]);
   const [gradeLevels, setGradeLevels] = useState([]);
@@ -2195,6 +2198,11 @@ export default function AdminStudentsPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    if (!loading && linkedStudentId && students.some(student => Number(student.UserId) === linkedStudentId)) {
+      setViewStudentId(linkedStudentId);
+    }
+  }, [loading, linkedStudentId, students]);
   useEffect(() => { setCurrentPage(1); }, [search, filterGrade, filterEnrolled]);
 
   const handleCreate = async (data) => {
