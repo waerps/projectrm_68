@@ -126,9 +126,9 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   const below = latest?.pct != null && latest.pct * 100 < PASS_PCT;
   const reasons = [];
   if (!latest) reasons.push("ยังไม่ได้เข้าสอบ");
-  if (below) reasons.push(`ต่ำกว่าเกณฑ์ ${PASS_PCT}%`);
-  if (weak) reasons.push(`หมวดต่ำกว่า 50% ${weak} หมวด`);
-  if (change != null && change < 0) reasons.push(`คะแนนลง ${Math.abs(change)}%`);
+  if (below) reasons.push(`คะแนนสอบล่าสุด ${fmtPct(latest.pct)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
+  if (weak) reasons.push(`ควรทบทวน ${weak} หมวด (คะแนนรายหมวดไม่ถึงครึ่ง)`);
+  if (change != null && change < 0) reasons.push("คะแนนสอบลดลงจากรอบแรก");
   if (missedRounds) reasons.push(`ขาดสอบ ${missedRounds} รอบ`);
   if (misconceptionCount >= 2) reasons.push(`เข้าใจผิด ${misconceptionCount} เรื่อง`);
   let key = "ok";
@@ -580,14 +580,14 @@ function OverviewTab({ results, topicBreakdown, loading }) {
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={Award}
-          label="คะแนนเฉลี่ย"
+          label="คะแนนเฉลี่ยของห้อง"
           value={pctNum(avgPct)}
           unit="%"
           sub={`มัธยฐาน ${medianPct != null ? fmtPct(medianPct) : "—"} · ${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน`}
           color="bg-orange-500"
           tooltip={`ค่าเฉลี่ยคำนวณจากคะแนนของนักเรียนทุกคน ส่วนมัธยฐานคือคะแนนของผู้ที่อยู่ลำดับกึ่งกลาง หากสองค่านี้ต่างกันมาก แสดงว่ามีคะแนนที่สูงหรือต่ำผิดปกติ · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ค่ายิ่งมาก คะแนนในห้องยิ่งกระจายตัว)`}
         />
-        <StatCard icon={CheckCircle} label="อัตราผ่าน" value={pctNum(passRate)} unit="%" sub={`${passCount} จาก ${stats.stat.length} คน (เกณฑ์ ${PASS_PCT}%)`} color="bg-emerald-500" />
+        <StatCard icon={CheckCircle} label="นักเรียนที่สอบผ่าน" value={`${passCount}/${stats.stat.length}`} unit="คน" sub={`คิดเป็น ${pctNum(passRate)}% ของผู้มีผลสอบ · เกณฑ์ผ่าน ${PASS_PCT}%`} color="bg-emerald-500" />
         <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
         <StatCard
           icon={Users}
@@ -645,7 +645,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                   <span className="h-2 w-2 rounded-full bg-amber-400" /> 50–69% พอใช้
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-red-400" /> ต่ำกว่า 50% ควรทบทวน
+                  <span className="h-2 w-2 rounded-full bg-red-400" /> ควรทบทวน (คะแนนหมวดนี้ไม่ถึงครึ่ง)
                 </span>
               </div>
 
@@ -1285,15 +1285,16 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <p className={STAT_NUM}>{Math.round(latest.pct * 100)}%</p>
-                    <p className="text-[11px] text-white/80">{latest.label}</p>
+                    <p className="text-[11px] text-white/80">คะแนนสอบล่าสุด</p>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className={STAT_NUM}>{change == null ? "—" : <><CountUp value={change} />%</>}</p>
-                  <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `เทียบกับ ${first.label}`}</p>
+                  <p className="text-lg font-bold tabular-nums">{change == null ? "—" : `${fmtPct(first.pct)} → ${fmtPct(latest.pct)}`}</p>
+                  <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `${first.label} → ${latest.label}`}</p>
                   <p className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
-                    {latest.pct * 100 >= PASS_PCT ? "ผ่านเกณฑ์" : `ต่ำกว่าเกณฑ์ ${Math.round(PASS_PCT - latest.pct * 100)}%`}
+                    {latest.pct * 100 >= PASS_PCT ? "สอบผ่าน" : "ยังไม่ผ่าน"} · เกณฑ์ผ่าน {PASS_PCT}%
                   </p>
+
                 </div>
               </div>
             )}

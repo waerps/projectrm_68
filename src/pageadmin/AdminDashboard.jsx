@@ -247,7 +247,7 @@ function HealthRing({ score, active }) {
     if (val > 0) layers.push(<path key={`p${k}`} d={prog} transform={`translate(0 ${k})`} fill={shade("#f97316", -0.25 - (k / depth) * 0.2)} />);
   }
   return (
-    <svg viewBox="0 0 220 150" className="w-full overflow-visible">
+    <svg viewBox="0 0 220 150" className="w-full overflow-visible" role="img" aria-label={score === null ? "ยังไม่มีคะแนนสุขภาพการดำเนินงาน" : `คะแนนสุขภาพการดำเนินงาน ${score} จาก 100 คะแนน`}>
       <defs>
         <radialGradient id="dashHealthGrad" cx="35%" cy="30%" r="75%">
           <stop offset="0" stopColor="#fcd34d" /><stop offset="1" stopColor="#f59e0b" />
@@ -257,22 +257,11 @@ function HealthRing({ score, active }) {
       {layers}
       <path d={track} fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.15)" strokeWidth=".8" />
       {val > 0 && <path d={prog} fill="url(#dashHealthGrad)" stroke="rgba(255,255,255,.55)" strokeWidth="1" />}
-      <text x={cx} y={cy + 11} textAnchor="middle" fontSize="34" fontWeight="700" fill="#fff">
+      <text x={cx} y={cy + 9} textAnchor="middle" fontSize="30" fontWeight="700" fill="#fff">
         {score === null ? "—" : Math.round(score * ease(p))}
+        {score !== null && <tspan dx="5" fontSize="10" fontWeight="500" fill="#cbd5e1">คะแนน</tspan>}
       </text>
     </svg>
-  );
-}
-
-function Cube({ size, className = "", style }) {
-  const h = size / 2;
-  const faces = ["", "rotateY(180deg) ", "rotateY(90deg) ", "rotateY(-90deg) ", "rotateX(90deg) ", "rotateX(-90deg) "];
-  return (
-    <div className={`sa-cube-scene absolute hidden lg:block ${className}`} style={style}>
-      <div className="sa-cube" style={{ width: size, height: size }}>
-        {faces.map((f, i) => <i key={i} style={{ transform: `${f}translateZ(${h}px)` }} />)}
-      </div>
-    </div>
   );
 }
 
@@ -295,8 +284,6 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
         <div className="absolute inset-0 sa-grain opacity-30" />
         <div data-px="18" className="absolute -right-16 -top-24 h-80 w-80 rounded-full bg-orange-500/40 blur-3xl" />
         <div data-px="-12" className="absolute left-1/3 -bottom-32 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl" />
-        <div data-px="26" className="absolute right-[38%] top-8 hidden lg:block"><Cube size={64} className="!relative" /></div>
-        <div data-px="-20" className="absolute left-[46%] bottom-6 hidden lg:block opacity-60"><Cube size={32} className="!relative" /></div>
 
         <div className="relative flex flex-col lg:flex-row lg:items-center gap-6 lg:gap-8">
           <div className="flex-1 min-w-0">
@@ -344,9 +331,6 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
                   <FlatBar pct={m.value} className="bg-white/10" fill={`linear-gradient(90deg, ${METRIC_COLORS[i][0]}, ${METRIC_COLORS[i][1]})`} delay={0.2 + i * 0.15} />
                 </div>
               ))}
-              <p className="text-[10px] text-slate-500">
-                {metrics.length ? `คะแนนสุขภาพ = ค่าเฉลี่ยของ ${metrics.length} ตัวชี้วัดนี้` : "ยังไม่มีข้อมูลพอคำนวณคะแนนสุขภาพ"}
-              </p>
             </div>
           </div>
         </div>

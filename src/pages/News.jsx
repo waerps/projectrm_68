@@ -41,6 +41,7 @@ function NewsTile({ item, index, onOpen }) {
       <span className="archive-news-story-content news-tile-content">
         <span className="archive-news-story-meta">
           <span className="archive-news-story-tag">{item.tag || "ข่าวประชาสัมพันธ์"}</span>
+          {item.type === "tutor" && <span className="archive-news-story-tag">สำหรับติวเตอร์</span>}
           {item.date && <span className="archive-news-story-date"><CalendarDays size={13} aria-hidden="true" />{item.date}</span>}
         </span>
         <span className="archive-news-story-title">{item.title || "ข่าวประชาสัมพันธ์"}</span>
@@ -112,7 +113,7 @@ export function NewsExpanded({ item, onClose }) {
   );
 }
 
-export default function News({ role = "public" }) {
+export default function News({ role = "public", embedded = false }) {
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -120,6 +121,9 @@ export default function News({ role = "public" }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
+    setError(false);
+    setSelectedId(null);
     axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
@@ -137,7 +141,7 @@ export default function News({ role = "public" }) {
   };
 
   return (
-    <div className="news-page">
+    <div className={`news-page${embedded ? " news-page-embedded" : ""}`}>
       <div className="news-page-inner">
         <header className="news-page-heading"><span className="news-page-kicker"><Newspaper size={16} aria-hidden="true" /> เรื่องเล่าจากศรเสริม</span><h1>ข่าว<span>ประชาสัมพันธ์</span></h1><p>ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน</p></header>
         {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : (

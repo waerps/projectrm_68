@@ -90,3 +90,6 @@
   .news-page-heading, .news-tile, .news-expanded, .news-expanded-photo img, .news-expanded-photo .news-image-fallback { animation: none; }
   .news-tile, .news-tile-photo img, .archive-news-story-read svg, .news-expanded button { transition: none; }
 }
+
+/* TutorLayout already provides the space below the navigation. */
+.news-page.news-page-embedded { padding-top: 0; padding-bottom: 24px; }

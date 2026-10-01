@@ -31,9 +31,9 @@ export default function Navbar() {
         window.location.href = "/login"
     }
 
-    // ⚠️ ใหม่: 5 เมนูที่ดูบ่อยที่สุด โผล่ตรงกลาง navbar โดยตรง (เดสก์ท็อป lg+ เท่านั้น)
-    // "ภาพรวม"(dashboard) ไม่เอามาซ้ำ เพราะกดโลโก้ก็ไปหน้านั้นอยู่แล้ว — ใช้ "ภาพรวมพัฒนาการ" แทน
+    // เมนูหลักบนเดสก์ท็อป เริ่มจากทางกลับแดชบอร์ด
     const mainNavItems = [
+        { to: "dashboard", label: "หน้าแรก" },
         { to: "progress", label: "ภาพรวมพัฒนาการ" },
         { to: "courses", label: "คอร์ส" },
         { to: "tutors", label: "ติวเตอร์" },
@@ -43,11 +43,11 @@ export default function Navbar() {
     // เมนูเต็ม 13 อย่าง — ใช้กับเมนูแฮมเบอร์เกอร์บนมือถือ/แท็บเล็ต (< lg) เท่านั้น เพราะจอนั้นไม่มีแถบกลางด้านบน
     // ต้องคงครบทุกอย่างไว้ที่นี่ ไม่งั้นมือถือจะเข้าคอร์ส/นักเรียน/ติวเตอร์/การเงินไม่ได้เลย
     const mobileItems = [
-        { to: "dashboard", label: "ภาพรวมสถาบัน", icon: LayoutDashboard },
+        { to: "dashboard", label: "หน้าแรก", icon: LayoutDashboard },
+        { to: "progress", label: "ภาพรวมพัฒนาการ", icon: TrendingUp },
         { to: "courses", label: "คอร์ส", icon: BookOpen },
         { to: "students", label: "นักเรียน", icon: GraduationCap },
         { to: "tutors", label: "ติวเตอร์", icon: Users },
-        { to: "progress", label: "ภาพรวมพัฒนาการ", icon: TrendingUp },
         { to: "schedule", label: "ตารางเรียน", icon: CalendarDays },
         { to: "rooms", label: "ห้องเรียน", icon: DoorOpen },
         { to: "common-facilities", label: "คลังอุปกรณ์", icon: Package },
@@ -95,8 +95,8 @@ export default function Navbar() {
                     </Link>
                 </div>
 
-                {/* ── เมนูหลัก 5 อย่าง วางไว้กลาง navbar (>= lg) — ใช้ font/สไตล์เดียวกับ nav ฝั่งนักเรียน (ตัวหนังสือล้วน ไม่มีพื้นหลัง/ไอคอน) ── */}
-                <div className="hidden lg:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
+                {/* ── เมนูหลัก 6 อย่าง วางไว้กลาง navbar (>= lg) — ใช้ font/สไตล์เดียวกับ nav ฝั่งนักเรียน (ตัวหนังสือล้วน ไม่มีพื้นหลัง/ไอคอน) ── */}
+                <div className="hidden lg:flex items-center gap-4 xl:gap-8 whitespace-nowrap absolute left-1/2 -translate-x-1/2">
                     {mainNavItems.map(({ to, label }) => (
                         <NavLink
                             key={to}
