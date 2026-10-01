@@ -22,9 +22,9 @@ function NewsImage({ src, alt, className = "" }) {
   return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }
 
-function NewsTile({ item, index, onOpen }) {
-  const featured = index === 0;
-  const wide = index > 0 && index % 6 === 4;
+function NewsTile({ item, index, onOpen, balanced = false }) {
+  const featured = !balanced && index === 0;
+  const wide = !balanced && index > 0 && index % 6 === 4;
   const summary = item.sub?.trim();
   return (
     <button
@@ -159,8 +159,8 @@ export default function News({ role = "public", embedded = false }) {
               {selectedItem ? (
                 <NewsExpanded key={selectedItem.id} item={selectedItem} onClose={() => changeSelection(null)} />
               ) : section.items.length > 0 ? (
-                <div className="news-grid">
-                  {section.items.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} />)}
+                <div className={`news-grid${role === "tutor" ? " news-grid-balanced" : ""}`} style={role === "tutor" ? { "--news-columns": section.items.length === 4 ? 2 : Math.min(section.items.length, 3) } : undefined}>
+                  {section.items.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} balanced={role === "tutor"} />)}
                 </div>
               ) : <div className="news-page-state">{section.empty}</div>}
             </section>
