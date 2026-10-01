@@ -140,22 +140,32 @@ export default function News({ role = "public", embedded = false }) {
     if (id !== null) window.requestAnimationFrame(() => document.querySelector(".news-expanded")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
+  const sections = role === "tutor"
+    ? [
+        { key: "public", title: "ข่าวประชาสัมพันธ์ทั่วไป", items: news.filter((item) => item.type === "public"), empty: "ยังไม่มีข่าวประชาสัมพันธ์ทั่วไปในขณะนี้" },
+        { key: "tutor", title: "ข่าวสำหรับติวเตอร์", items: news.filter((item) => item.type === "tutor"), empty: "ยังไม่มีข่าวสำหรับติวเตอร์ในขณะนี้" },
+      ]
+    : [{ key: "all", title: selectedId === null ? "อัปเดตล่าสุด" : "ข่าวประชาสัมพันธ์", items: news }];
+
   return (
     <div className={`news-page${embedded ? " news-page-embedded" : ""}`}>
       <div className="news-page-inner">
         <header className="news-page-heading"><span className="news-page-kicker"><Newspaper size={16} aria-hidden="true" /> เรื่องเล่าจากศรเสริม</span><h1>ข่าว<span>ประชาสัมพันธ์</span></h1><p>ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน</p></header>
-        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : (
-          <section className="news-feed" aria-label="ข่าวประชาสัมพันธ์ทั้งหมด">
-            <div className="news-feed-heading"><div><span className="news-feed-line" /><h2>{selectedId === null ? "อัปเดตล่าสุด" : "ข่าวประชาสัมพันธ์"}</h2><span className="news-feed-total">{news.length} เรื่อง</span></div></div>
-            {selectedId !== null ? (
-              <NewsExpanded item={news.find((item) => item.id === selectedId)} onClose={() => changeSelection(null)} />
-            ) : (
-              <div className="news-grid">
-                {news.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} />)}
-              </div>
-            )}
-          </section>
-        )}
+        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
+          const selectedItem = section.items.find((item) => item.id === selectedId);
+          return (
+            <section key={section.key} className="news-feed" aria-labelledby={`news-section-${section.key}`}>
+              <div className="news-feed-heading"><div><span className="news-feed-line" /><h2 id={`news-section-${section.key}`}>{section.title}</h2><span className="news-feed-total">{section.items.length} เรื่อง</span></div></div>
+              {selectedItem ? (
+                <NewsExpanded key={selectedItem.id} item={selectedItem} onClose={() => changeSelection(null)} />
+              ) : section.items.length > 0 ? (
+                <div className="news-grid">
+                  {section.items.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} />)}
+                </div>
+              ) : <div className="news-page-state">{section.empty}</div>}
+            </section>
+          );
+        })}
       </div>
     </div>
   );
