@@ -167,9 +167,9 @@ export default function AdminProgressOverview() {
     const avgPost = mean(presetRows.map((r) => r.post?.avgPct).filter((v) => v != null));
     const avgGrowth = mean(presetRows.map((r) => r.growth?.growth).filter((v) => v != null));
     const improved = presetRows.reduce((s, r) => s + (r.improvement?.improved || 0), 0);
-    const comparableStudents = presetRows.reduce((s, r) => s + (r.improvement?.comparable || 0), 0);
-    const improvedPct = comparableStudents ? r1((improved / comparableStudents) * 100) : null;
-    return { groups: presetRows.length, comparableGroups, avgPost, avgGrowth, improved, comparableStudents, improvedPct };
+    const comparableResults = presetRows.reduce((s, r) => s + (r.improvement?.comparable || 0), 0);
+    const improvedPct = comparableResults ? r1((improved / comparableResults) * 100) : null;
+    return { groups: presetRows.length, comparableGroups, avgPost, avgGrowth, improved, comparableResults, improvedPct };
   }, [presetRows]);
 
   // จัดกลุ่มเป็นการ์ดต่อคอร์ส (หนึ่งคอร์สอาจมีหลายวิชา และหลายติวเตอร์สอนวิชาเดียวกันได้)
@@ -228,7 +228,7 @@ export default function AdminProgressOverview() {
 
       <PageHeader
         title="ภาพรวมพัฒนาการ"
-        subtitle="ผลสอบ Pre / Mid / Post ของทุกคอร์สและทุกวิชา"
+        subtitle="ผลสอบ Pre / Mid / Post แยกตามคอร์ส วิชา และติวเตอร์"
       />
 
       {/* แบนเนอร์โทนส้ม */}
@@ -237,9 +237,9 @@ export default function AdminProgressOverview() {
           <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
             <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
           </span>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">สรุปพัฒนาการรายวิชา</h2>
+          <h2 className="mt-2 text-lg font-bold text-slate-900">สรุปผลพัฒนาการ</h2>
           <p className={PAGE_SUBTITLE}>
-            เปรียบเทียบคะแนนก่อนเรียนและหลังเรียนของนักเรียน
+            เปรียบเทียบคะแนนเฉลี่ยก่อนเรียนและหลังเรียนของแต่ละรายการสอน
             {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
           </p>
         </div>
@@ -248,15 +248,28 @@ export default function AdminProgressOverview() {
       {/* Stats — สรุปพัฒนาการเท่านั้น */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: "วิชาที่เทียบผล Pre–Post ได้", value: summary.comparableGroups, unit: `/ ${summary.groups} วิชา`, color: "bg-orange-600", icon: BookOpen },
-          { label: "คะแนนหลังเรียนเฉลี่ยรายกลุ่ม", note: "% ของคะแนนเต็มแต่ละรอบ", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
           {
-            label: "สัดส่วนนักเรียนที่คะแนนดีขึ้น",
+            label: "รายการวิชาที่เทียบผลได้",
+            note: "แยกตามคอร์ส วิชา และติวเตอร์",
+            value: summary.comparableGroups,
+            unit: `/ ${summary.groups} รายการ`,
+            color: "bg-orange-600", icon: BookOpen,
+          },
+          { label: "คะแนนหลังเรียนเฉลี่ยต่อรายการ", note: "% ของคะแนนเต็มแต่ละรอบ", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
+          {
+            label: "สัดส่วนผลคะแนนที่ดีขึ้น",
+            note: "นับแยกตามรายการสอน",
             value: summary.improvedPct,
-            unit: `% (${summary.improved}/${summary.comparableStudents} คน)`,
+            unit: `% (${summary.improved}/${summary.comparableResults} ผล)`,
             color: "bg-purple-500", icon: Users,
           },
-          { label: "อัตราพัฒนาการเฉลี่ย", value: summary.avgGrowth, unit: "%", color: "bg-blue-500", icon: TrendingUp },
+          {
+            label: "อัตราพัฒนาการเฉลี่ยต่อรายการ",
+            note: "เฉลี่ยจากรายการที่มีผล Pre–Post",
+            value: summary.avgGrowth,
+            unit: "%",
+            color: "bg-blue-500", icon: TrendingUp,
+          },
         ].map((card, i) => (
           <StatTile key={i} card={card} ready={!loading} />
         ))}
@@ -307,7 +320,7 @@ export default function AdminProgressOverview() {
                         <Users className="h-3.5 w-3.5 text-slate-400" />
                         {c.studentsEnrolled} คน
                       </span>
-                      <span className="text-xs text-slate-500">· {c.items.length} วิชา</span>
+                      <span className="text-xs text-slate-500">· {c.items.length} รายการสอน</span>
                     </div>
                   </div>
 

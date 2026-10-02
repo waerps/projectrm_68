@@ -126,7 +126,7 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   const reasons = [];
   if (!latest) reasons.push("ยังไม่ได้เข้าสอบ");
   if (below) reasons.push(`คะแนนสอบล่าสุด ${fmtIndividualPct(latest)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
-  if (weak) reasons.push(`ควรทบทวน ${weak} หมวด (คะแนนรายหมวดไม่ถึงครึ่ง)`);
+  if (weak) reasons.push(`ควรทบทวน ${weak} หมวดหมู่ (คะแนนรายหมวดต่ำกว่า 50%)`);
   if (change != null && change < 0) reasons.push("คะแนนสอบลดลงจากรอบแรก");
   if (missedRounds) reasons.push(`ขาดสอบ ${missedRounds} รอบ`);
   if (misconceptionCount >= 2) reasons.push(`เข้าใจผิด ${misconceptionCount} เรื่อง`);
@@ -137,8 +137,8 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   return { key, level: STUDENT_STATUS[key].level, reasons, change, weakCount: weak };
 }
 
-// คำนวณคะแนนเฉลี่ยรายหัวข้อจากข้อมูลจริง (topic-breakdown) — ไม่ใช้ TOPICS ที่ hardcode
-// เพราะ category เป็น free text ที่ติวเตอร์พิมพ์เอง ต้องดึงชื่อหมวดจาก data จริงเท่านั้น
+// คำนวณคะแนนเฉลี่ยรายหมวดจากข้อมูลจริง (topic-breakdown) — ไม่ใช้ TOPICS ที่ hardcode
+// เพราะ category เป็น free text ที่ติวเตอร์พิมพ์เอง ต้องดึงชื่อหมวดหมู่จาก data จริงเท่านั้น
 const computeTopicStatsReal = (topicBreakdown) => {
   if (!topicBreakdown || topicBreakdown.length === 0) return [];
   const catSet = new Set();
@@ -390,13 +390,13 @@ function buildCohortComparison(examResults, topicResults) {
   }));
 
   const GAIN_BINS = [
-    { label: "ลดลง > 10", test: (g) => g < -10, tone: "down" },
-    { label: "ลดลง 0–10", test: (g) => g < 0 && g >= -10, tone: "down" },
+    { label: "ลดลงมากกว่า 10%", test: (g) => g < -10, tone: "down" },
+    { label: "ลดลง 0–10%", test: (g) => g < 0 && g >= -10, tone: "down" },
     { label: "เท่าเดิม", test: (g) => g === 0, tone: "flat" },
-    { label: "+0–10", test: (g) => g > 0 && g <= 10, tone: "up" },
-    { label: "+10–20", test: (g) => g > 10 && g <= 20, tone: "up" },
-    { label: "+20–30", test: (g) => g > 20 && g <= 30, tone: "up" },
-    { label: "มากกว่า +30", test: (g) => g > 30, tone: "up" },
+    { label: "เพิ่มขึ้น 0–10%", test: (g) => g > 0 && g <= 10, tone: "up" },
+    { label: "เพิ่มขึ้น 10–20%", test: (g) => g > 10 && g <= 20, tone: "up" },
+    { label: "เพิ่มขึ้น 20–30%", test: (g) => g > 20 && g <= 30, tone: "up" },
+    { label: "เพิ่มขึ้นมากกว่า 30%", test: (g) => g > 30, tone: "up" },
   ];
   const gainBins = GAIN_BINS.map((b) => ({ label: b.label, tone: b.tone, count: gains.filter(b.test).length }));
 
@@ -577,11 +577,18 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   }
 
   if (!results || stats.stat.length === 0) {
+    const hasExcludedResults = !!results && stats.excludedCount > 0;
     return (
       <div className="flex flex-col items-center text-center gap-3 bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-10">
         <BarChart2 className="h-10 w-10 text-slate-300" />
-        <p className="text-sm font-semibold text-slate-600">ยังไม่มีข้อมูลผลสอบรอบนี้</p>
-        <p className="text-xs text-slate-500">ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คน</p>
+        <p className="text-sm font-semibold text-slate-600">
+          {hasExcludedResults ? "มีผลสอบรายคน แต่ยังไม่มีข้อมูลสำหรับสถิติห้อง" : "ยังไม่มีผลสอบรอบนี้"}
+        </p>
+        <p className="text-xs text-slate-500 max-w-md">
+          {hasExcludedResults
+            ? "ผู้ส่งข้อสอบทั้งหมดไม่ยินยอมให้ใช้ข้อมูลพฤติกรรม จึงดูผลรายคนได้ แต่ระบบไม่นำมาคำนวณสถิติห้อง"
+            : "ต้องมีนักเรียนส่งข้อสอบอย่างน้อย 1 คน"}
+        </p>
       </div>
     );
   }
@@ -646,20 +653,20 @@ function OverviewTab({ results, topicBreakdown, loading }) {
           {topicStats.length === 0 ? (
             <div className="flex flex-col items-center text-center gap-2 py-10">
               <Info className="h-6 w-6 text-slate-300" />
-              <p className="text-xs text-slate-500">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
+              <p className="text-xs text-slate-500">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
             </div>
           ) : (
             <>
-              <p className="text-xs text-slate-500 mb-3">คะแนนเฉลี่ยรายหมวดเทียบคะแนนเต็มของหมวดนั้น</p>
+              <p className="text-xs text-slate-500 mb-3">คะแนนเฉลี่ยรายหมวดเทียบคะแนนเต็มของหมวดหมู่นั้น</p>
               <div className="flex items-center gap-4 mb-4 flex-wrap">
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> คะแนนหมวด ≥70% ระดับดี
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> คะแนนรายหมวด ≥70% ระดับดี
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" /> คะแนนหมวด 50–69% พอใช้
+                  <span className="h-2 w-2 rounded-full bg-amber-400" /> คะแนนรายหมวด 50–69% พอใช้
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-red-400" /> ควรทบทวน (คะแนนหมวดนี้ไม่ถึงครึ่ง)
+                  <span className="h-2 w-2 rounded-full bg-red-400" /> ควรทบทวน (คะแนนรายหมวดต่ำกว่า 50%)
                 </span>
               </div>
 
@@ -694,7 +701,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                       return (
                         <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
                           <p className="font-semibold text-slate-700 mb-1">{label}</p>
-                          <p className="text-slate-600">คะแนนเฉลี่ยหมวด {fmtPct(pct)}</p>
+                          <p className="text-slate-600">คะแนนเฉลี่ยรายหมวด {fmtPct(pct)}</p>
                           <p className="text-slate-500">{topicStats.find((t) => t.topic === label)?.scoreText}</p>
                           <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
                             → {msg}
@@ -704,7 +711,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                     }}
                     cursor={{ fill: "#f8fafc" }}
                   />
-                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ยหมวด">
+                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ยรายหมวด">
                     {topicStats.map((entry, i) => (
                       <Cell
                         key={i}
@@ -814,7 +821,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                     </span>
                     <span className="min-w-0">
                       <span className="block font-bold truncate">{nick || full.split(" ")[0]} <span className="font-normal text-slate-500 text-xs">{nick ? full.split(" ")[0] : ""}</span></span>
-                      <span className={`block ${STAT_NUM} text-emerald-300`}>{signed(s.scoreChange)}</span>
+                      <span className={`block ${STAT_NUM} text-emerald-300`}>คะแนนสอบ {signed(s.scoreChange)}</span>
                     </span>
                   </button>
                 );
@@ -895,7 +902,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
                 <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPctText ?? "—"}</span>
                 <span className="text-[10px] text-slate-500">คะแนนสอบล่าสุด</span>
                 <span className={`tabular-nums text-[11px] font-bold ${s.scoreChange > 0 ? "text-emerald-600" : s.scoreChange < 0 ? "text-rose-500" : "text-slate-300"}`}>
-                  {s.scoreChange == null ? "ยังเทียบไม่ได้" : signed(s.scoreChange)}
+                  {s.scoreChange == null ? "ยังเทียบไม่ได้" : `${signed(s.scoreChange)} จากรอบแรก`}
                 </span>
               </span>
             </button>
@@ -957,7 +964,7 @@ const buildAiFullText = (row, parentMessage) => {
   L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
   if (row.overview) L.push("", "ภาพรวม", row.overview);
   if (row.byCategory?.length) {
-    L.push("", "รายหมวด");
+    L.push("", "คะแนนรายหมวด");
     row.byCategory.forEach((c) => L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`));
   }
   if (row.misconceptions?.length) {
@@ -1095,7 +1102,7 @@ function PaceGauge({ ratio }) {
 const MODAL_SECTIONS = [
   ["sec-sum", "สรุป", Sparkles],
   ["sec-score", "คะแนน", TrendingUp],
-  ["sec-topic", "รายหมวด", BookOpen],
+  ["sec-topic", "คะแนนรายหมวด", BookOpen],
   ["sec-help", "สิ่งที่ต้องช่วย", LifeBuoy],
   ["sec-parent", "ผู้ปกครอง", MessageCircle],
 ];
@@ -1174,8 +1181,8 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const topicVals = Object.values(topicPcts).filter((v) => v != null);
   const badges = [];
   if (improvedEveryRound) badges.push([TrendingUp, "ดีขึ้นทุกรอบ"]);
-  if (fastestTopic) badges.push([Flame, `พัฒนาเร็วสุด: ${fastestTopic.topic} +${Math.round(fastestTopic.delta * 100)}%`]);
-  if (topicVals.length) badges.push([CheckCircle, `ถึง 50% แล้ว ${topicVals.filter((v) => v >= 0.5).length}/${topicVals.length} หมวด`]);
+  if (fastestTopic) badges.push([Flame, `คะแนนรายหมวดเพิ่มมากสุด: ${fastestTopic.topic} +${Math.round(fastestTopic.delta * 100)}% จากรอบแรก`]);
+  if (topicVals.length) badges.push([CheckCircle, `คะแนนถึง 50% แล้ว ${topicVals.filter((v) => v >= 0.5).length}/${topicVals.length} หมวดหมู่`]);
 
   // ── รายหมวด
   const aiTopicMap = new Map((aiRow?.byCategory || []).filter((c) => c.topic).map((c) => [c.topic, c]));
@@ -1195,7 +1202,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const aiOnlyTopics = topics.length === 0 ? (aiRow?.byCategory || []).filter((c) => c.topic && (c.comment || c.trend)) : [];
   // ตัวเลขใน AI ที่ไม่ตรงกับคะแนนจริง (ตรวจฝั่ง backend) — แสดงสั้น ๆ ให้ครูตรวจก่อนส่ง
   const numberWarnings = Array.isArray(aiRow?.numberWarnings) ? aiRow.numberWarnings : [];
-  const warnFieldLabel = (f) => (f === "overview" ? "ภาพรวม" : f === "parentMessage" ? "ข้อความถึงผู้ปกครอง" : f === "behavior" ? "พฤติกรรม" : /^byCategory/.test(f || "") ? "รายหมวด" : f);
+  const warnFieldLabel = (f) => (f === "overview" ? "ภาพรวม" : f === "parentMessage" ? "ข้อความถึงผู้ปกครอง" : f === "behavior" ? "พฤติกรรม" : /^byCategory/.test(f || "") ? "คะแนนรายหมวด" : f);
   const warnText = (w) => (typeof w === "string" ? w : [w?.text ? `“${w.text}”` : null, w?.field ? `(${warnFieldLabel(w.field)})` : null].filter(Boolean).join(" ") || "ตัวเลขไม่ตรง");
   const canSelfCompare = first && first !== latest;
   const mode = radarMode === "self" && canSelfCompare ? "self" : "class";
@@ -1409,7 +1416,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               {/* ── 3) รายหมวด ── */}
               <div id="sec-topic" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".14s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><BookOpen className="h-4 w-4 text-orange-500" /> รายหมวด · {latest.label}</h3>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><BookOpen className="h-4 w-4 text-orange-500" /> คะแนนรายหมวด · {latest.label}</h3>
                   {topics.length >= 3 && canSelfCompare && (
                     <div className="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 text-xs font-bold">
                       {[["class", "เทียบค่าเฉลี่ยห้อง"], ["self", `เทียบตัวเองตอน ${first.label}`]].map(([k, l]) => (
@@ -1433,7 +1440,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                     <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะความเห็นจาก AI</p>
                   </div>
                 ) : topics.length === 0 ? (
-                  <p className="text-xs text-slate-500">ยังไม่มีข้อมูลรายหมวด — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
+                  <p className="text-xs text-slate-500">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
                 ) : (
                   <div className={`grid gap-5 items-center ${topics.length >= 3 ? "lg:grid-cols-[18rem_1fr]" : ""}`}>
                     {topics.length >= 3 && (
@@ -1472,15 +1479,15 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                               <div className="text-right tabular-nums leading-tight w-20 sm:w-24">
                                 <p className="text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</p>
                                 {t.points && <p className="text-[10px] text-slate-500">{t.points}</p>}
-                                {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} จากห้อง</p>}
-                                {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} จาก {first.label.replace(/-test$/i, "")}</p>}
+                                {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} เทียบค่าเฉลี่ยห้อง</p>}
+                                {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
                               </div>
                             </summary>
                             {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">AI:</b> {t.comment}</p>}
                           </details>
                         );
                       })}
-                      <p className="text-[10.5px] text-slate-400 pl-1">ขีดดำ = ค่าเฉลี่ยห้อง{topics.some((t) => t.comment) ? " · กดที่หมวดเพื่ออ่านคำอธิบายจาก AI" : ""}</p>
+                      <p className="text-[10.5px] text-slate-400 pl-1">ขีดดำ = ค่าเฉลี่ยห้อง{topics.some((t) => t.comment) ? " · กดหมวดหมู่เพื่ออ่านคำอธิบายจาก AI" : ""}</p>
                     </div>
                   </div>
                 )}
@@ -1706,7 +1713,7 @@ function GainSwarm({ people, fromLabel, toLabel, onOpenStudent }) {
         {dots.map((d) => (
           <g key={d.userId} className="cursor-pointer" tabIndex={0} role="button"
             onClick={() => onOpenStudent(d.userId)} onKeyDown={(e) => e.key === "Enter" && onOpenStudent(d.userId)}>
-            <title>{`${d.name} ${signed(d.gain)} (${fromLabel} → ${toLabel})`}</title>
+            <title>{`${d.name} · คะแนนสอบเปลี่ยนไป ${signed(d.gain)} (${fromLabel} → ${toLabel})`}</title>
             <circle cx={d.x} cy={d.y} r="11" fill={d.gain > 0 ? "#10b981" : d.gain < 0 ? "#f43f5e" : "#94a3b8"} stroke="#fff" strokeWidth="2.5" />
             <text x={d.x} y={d.y + 4} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#fff">{initialOf(d.name)}</text>
           </g>
@@ -1814,7 +1821,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             <p className="text-sm text-white/90 mt-3">{cmp.fromLabel} → {cmp.toLabel} · จากนักเรียน <b>{cmp.cohortSize} คน</b> ที่สอบครบทุกรอบ</p>
             <div className="mt-4 flex flex-wrap gap-2">
               {best && best.delta > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Flame className="h-3.5 w-3.5" /> ขึ้นมากสุด: {best.topic} {signed(best.delta)}</span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Flame className="h-3.5 w-3.5" /> คะแนนรายหมวดเพิ่มมากสุด: {best.topic} {signed(best.delta)}</span>
               )}
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> ดีขึ้น {cmp.improved}/{cmp.cohortSize} คน</span>
             </div>
@@ -1822,7 +1829,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <div className="bg-white/10 rounded-2xl border border-white/20 backdrop-blur-sm p-3 overflow-x-auto sa-scroll">
             <JourneyChart roundAvg={cmp.roundAvg} />
             <p className="text-[11px] text-white/85 px-1">
-              ค่าเฉลี่ย % ของกลุ่มเดียวกันทุกรอบ{cmp.excludedCount > 0 ? ` · ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ` : ""} และคนที่ไม่ยินยอมให้เก็บข้อมูลพฤติกรรม (ค่าจึงอาจต่างจากแท็บภาพรวมที่นับทุกคนในรอบนั้น)
+              คะแนนเฉลี่ยของกลุ่มเดียวกันทุกรอบ{cmp.excludedCount > 0 ? ` · ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ` : ""} และไม่นับผู้ที่ไม่ยินยอมให้ใช้ข้อมูลพฤติกรรม (ค่าจึงอาจต่างจากแท็บภาพรวม ซึ่งใช้ผู้ยินยอมของแต่ละรอบ)
             </p>
           </div>
         </div>
@@ -1885,14 +1892,14 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
       {cmp.topicRows.length === 0 ? (
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-2xl p-4">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700">ยังไม่มีข้อมูลรายหัวข้อ — ต้องตั้งค่า Category ในข้อสอบก่อน</p>
+          <p className="text-xs text-blue-700">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
         </div>
       ) : (
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการรายหมวด</h3>
-              <p className="text-xs text-slate-500 mt-0.5">เรียงจากหมวดที่เปลี่ยนแปลงน้อยที่สุด แถวบนสุดควรพิจารณาปรับวิธีสอนหรือเพิ่มเวลา</p>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการคะแนนรายหมวด</h3>
+              <p className="text-xs text-slate-500 mt-0.5">เรียงจากหมวดหมู่ที่คะแนนเปลี่ยนแปลงน้อยที่สุด แถวบนสุดควรพิจารณาปรับวิธีสอนหรือเพิ่มเวลา</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-[11px] text-slate-500">
               <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-emerald-400" />70%+</span>
@@ -1903,9 +1910,9 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <div className="overflow-x-auto sa-scroll">
             <div className="min-w-[520px] space-y-2">
               <div className="grid gap-2 text-[11px] font-semibold text-slate-500 px-1" style={{ gridTemplateColumns: `10rem repeat(${cmp.labels.length}, 1fr) 9rem` }}>
-                <span>หมวด</span>
+                <span>หมวดหมู่</span>
                 {cmp.labels.map((l) => <span key={l} className="text-center">{l}</span>)}
-                <span className="text-right">เปลี่ยนไป</span>
+                <span className="text-right">คะแนนเปลี่ยนไป</span>
               </div>
               {cmp.topicRows.map((row, i) => {
                 const isWorst = i === 0;
@@ -2105,7 +2112,7 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     <p style="color:#6b7280;font-size:11px;margin:-16px 0 16px;">เข้าสอบ ${rs.submittedCount}${rs.enrolledCount ? `/${rs.enrolledCount}` : ""} คน · ขาดสอบ ${rs.absentCount} คน${rs.excludedCount ? ` · ตัวเลขสรุปไม่นับ ${rs.excludedCount} คนที่ไม่ยินยอมให้เก็บข้อมูลพฤติกรรม` : ""}</p>
     <div class="two-col">
       <div><h2>การกระจายตัวของคะแนน</h2><table><thead><tr><th>ช่วงคะแนน</th><th style="text-align:right">จำนวนนักเรียน</th></tr></thead><tbody>${distRows}</tbody></table></div>
-      <div><h2>คะแนนเฉลี่ยรายหมวดของห้อง</h2><table><thead><tr><th>หัวข้อ</th><th style="text-align:right">คะแนนเฉลี่ยหมวด (%)</th></tr></thead><tbody>${topicRows || '<tr><td colspan="2">ไม่มีข้อมูลหมวดหมู่</td></tr>'}</tbody></table></div>
+      <div><h2>คะแนนเฉลี่ยรายหมวดของห้อง</h2><table><thead><tr><th>หมวดหมู่</th><th style="text-align:right">คะแนนเฉลี่ยรายหมวด (%)</th></tr></thead><tbody>${topicRows || '<tr><td colspan="2">ไม่มีข้อมูลหมวดหมู่</td></tr>'}</tbody></table></div>
     </div>
     <h2>รายชื่อนักเรียน</h2>
     <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:right">คะแนนสอบ (%)</th><th style="text-align:center">ผล</th></tr></thead>
@@ -2138,7 +2145,7 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
 
   const topicRows = !noCohort && cmp.topicRows.length
     ? cmp.topicRows.map((r) => `<tr><td>${esc(r.topic)}</td>${r.values.map((v) => `<td style="text-align:right">${v != null ? `${Math.round(v * 100)}%` : "—"}</td>`).join("")}<td style="text-align:right">${r.delta == null ? "—" : `${r.delta > 0 ? "+" : ""}${r.delta}%`}</td></tr>`).join("")
-    : `<tr><td colspan="${cmp.labels.length + 2}" style="text-align:center;color:#94a3b8">ยังไม่มีข้อมูลรายหัวข้อ</td></tr>`;
+    : `<tr><td colspan="${cmp.labels.length + 2}" style="text-align:center;color:#94a3b8">ยังไม่มีคะแนนรายหมวด</td></tr>`;
 
   const printWindow = window.open("", "_blank");
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
@@ -2158,8 +2165,8 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
     <div class="header"><div><h1>เปรียบเทียบพัฒนาการทั้งห้อง (${esc(cmp.labels.join(" → "))})</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <h2>ภาพรวมพัฒนาการ</h2>
     ${summaryBlock}
-    <h2>พัฒนาการรายหมวด (เรียงจากขยับน้อยสุด)</h2>
-    <table><thead><tr><th>หมวด</th>${cmp.labels.map((l) => `<th style="text-align:right">${esc(l)}</th>`).join("")}<th style="text-align:right">เปลี่ยนไป</th></tr></thead>
+    <h2>พัฒนาการคะแนนรายหมวด (เรียงจากขยับน้อยสุด)</h2>
+    <table><thead><tr><th>หมวดหมู่</th>${cmp.labels.map((l) => `<th style="text-align:right">${esc(l)}</th>`).join("")}<th style="text-align:right">คะแนนเปลี่ยนไป (%)</th></tr></thead>
     <tbody>${topicRows}</tbody></table>
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
     <script>window.onload = () => window.print();</script></body></html>`);
@@ -2279,7 +2286,7 @@ function buildHighlightCardsHtml(topicPcts) {
   const weak = entries.filter(([, p]) => p < 0.5).sort((a, b) => a[1] - b[1]).slice(0, 3);
   const strengthHtml = strengths.length
     ? strengths.map(([t]) => `<li>${esc(t)}</li>`).join("")
-    : `<li style="color:#94a3b8;list-style:none;">ยังไม่มีหมวดที่โดดเด่นเป็นพิเศษ</li>`;
+    : `<li style="color:#94a3b8;list-style:none;">ยังไม่มีหมวดหมู่ที่โดดเด่นเป็นพิเศษ</li>`;
   const weakHtml = weak.length
     ? weak.map(([t]) => `<li>${esc(t)}</li>`).join("")
     : `<li style="color:#94a3b8;list-style:none;">ไม่มีเรื่องที่น่าเป็นห่วงเป็นพิเศษ 🎉</li>`;
@@ -2298,7 +2305,7 @@ function buildHighlightCardsHtml(topicPcts) {
 // เนื้อหาข้อความเต็มด้านล่าง — โครงเดียวกับที่ AiSummaryDetail แสดงในแอป แต่ประกอบเป็น HTML ธรรมดา
 function buildAiTextSectionHtml(row) {
   const byCategoryHtml = (row.byCategory || []).length
-    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">รายหมวด</h3>
+    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">คะแนนรายหมวด</h3>
       <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
         <tbody>${row.byCategory.map((c) => `<tr>
           <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#374151;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(c.topic)}${c.trend ? ` (${esc(c.trend)})` : ""}</td>

@@ -112,7 +112,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
     setLoading(true);
     fetchBankCategories(subjectId)
       .then((rows) => setCategories(Array.isArray(rows) ? rows : []))
-      .catch((err) => { console.error("Fetch bank categories failed:", err); setError("โหลดรายชื่อหมวดไม่สำเร็จ"); })
+      .catch((err) => { console.error("Fetch bank categories failed:", err); setError("โหลดรายชื่อหมวดหมู่ไม่สำเร็จ"); })
       .finally(() => setLoading(false));
   }, [subjectId]);
 
@@ -141,7 +141,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Tags className="h-4 w-4 text-white" /> จัดการหมวดหมู่
             </h3>
-            <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดให้ตรงกัน หรือรวมหลายหมวดที่ความจริงคืออันเดียวกัน</p>
+            <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดหมู่ให้ตรงกัน หรือรวมหมวดหมู่ที่เป็นเนื้อหาเดียวกัน</p>
           </div>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
         </div>
@@ -152,7 +152,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
           ) : error ? (
             <p className="text-sm text-red-600 py-6 text-center">{error}</p>
           ) : !categories.length ? (
-            <p className="text-sm text-slate-500 py-6 text-center">ยังไม่มีหมวดในคลังวิชานี้</p>
+            <p className="text-sm text-slate-500 py-6 text-center">ยังไม่มีหมวดหมู่ในคลังวิชานี้</p>
           ) : (
             <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
               {categories.map((c) => (
@@ -163,11 +163,11 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
                         autoFocus
                         value={renameTo}
                         onChange={(e) => setRenameTo(e.target.value)}
-                        placeholder="ชื่อใหม่ หรือพิมพ์ชื่อหมวดที่มีอยู่เพื่อรวมเข้าด้วยกัน"
+                        placeholder="ชื่อใหม่ หรือชื่อหมวดหมู่ที่ต้องการรวม"
                         className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                       />
                       {findSimilarCategory(renameTo, categories) && (
-                        <p className="text-[11px] text-amber-700">จะถูกรวมเข้ากับหมวด "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
+                        <p className="text-[11px] text-amber-700">จะรวมเข้ากับหมวดหมู่ "{findSimilarCategory(renameTo, categories)}" ที่มีอยู่แล้ว</p>
                       )}
                       <div className="flex gap-2">
                         <button onClick={confirmRename} disabled={saving} className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}>
@@ -359,7 +359,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 autoFocus
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                placeholder="ชื่อหมวดใหม่"
+                placeholder="ชื่อหมวดหมู่ใหม่"
                 className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
               {newCategory.trim() && (() => {
@@ -394,7 +394,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                     }}
                     className="text-[11px] font-semibold text-amber-800 underline"
                   >
-                    ใช้หมวดเดิมแทน
+                    ใช้หมวดหมู่เดิมแทน
                   </button>
                 </div>
               )}
@@ -405,7 +405,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                   onClick={() => { patch({ category: newCategory.trim() }); setAddingCategory(false); setNewCategory(""); }}
                   className={`${BTN.primary} text-xs font-semibold disabled:opacity-40 rounded-xl px-3 py-1.5`}
                 >
-                  ใช้หมวดนี้
+                  ใช้หมวดหมู่นี้
                 </button>
                 <button type="button" onClick={() => { setAddingCategory(false); setNewCategory(""); }} className="text-xs text-slate-500 px-2">ยกเลิก</button>
               </div>
@@ -417,7 +417,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 onChange={(e) => patch({ category: e.target.value })}
                 className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
               >
-                <option value="">เลือกหมวด</option>
+                <option value="">เลือกหมวดหมู่</option>
                 {(categoryOptions || []).map((c) => (
                   <option key={c.category} value={c.category}>{c.category}</option>
                 ))}
@@ -430,7 +430,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 onClick={() => setAddingCategory(true)}
                 className="flex-shrink-0 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
               >
-                + หมวดใหม่
+                + หมวดหมู่ใหม่
               </button>
             </div>
           )}
@@ -693,7 +693,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           {unknownCats.length > 0 && (
             <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
               <p className="text-xs font-semibold text-amber-800">
-                มี {unknownCats.length} หมวดในไฟล์ที่ยังไม่มีในคลัง — เลือกว่าจะใช้หมวดเดิมหรือสร้างใหม่
+                มี {unknownCats.length} หมวดหมู่ในไฟล์ที่ยังไม่มีในคลัง — เลือกว่าจะใช้หมวดหมู่เดิมหรือสร้างใหม่
               </p>
               {unknownCats.map((cat) => {
                 const similar = findSimilarCategory(cat, categoryOptions);
@@ -706,7 +706,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                       onChange={(e) => setCatMap((m) => ({ ...m, [cat]: e.target.value }))}
                       className="border border-slate-200 rounded-xl px-2 py-1 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
                     >
-                      <option value="">สร้างเป็นหมวดใหม่</option>
+                      <option value="">สร้างเป็นหมวดหมู่ใหม่</option>
                       {(categoryOptions || []).map((c) => (
                         <option key={c.category} value={c.category}>ใช้ {c.category}</option>
                       ))}
@@ -760,10 +760,10 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                       )}
                     </p>
                     {q.category?.trim() && catMap[q.category.trim()] && (
-                      <p className="text-[11px] text-green-600 mt-0.5">จะบันทึกเป็นหมวด "{catMap[q.category.trim()]}"</p>
+                      <p className="text-[11px] text-green-600 mt-0.5">จะบันทึกเป็นหมวดหมู่ "{catMap[q.category.trim()]}"</p>
                     )}
                     {q.category?.trim() && !catMap[q.category.trim()] && knownCategories.size > 0 && !knownCategories.has(normCategory(q.category)) && (
-                      <p className="text-[11px] text-amber-600 mt-0.5">หมวด "{q.category}" ยังไม่มีในคลัง จะถูกสร้างเป็นหมวดใหม่</p>
+                      <p className="text-[11px] text-amber-600 mt-0.5">หมวดหมู่ "{q.category}" ยังไม่มีในคลัง จะสร้างเป็นหมวดหมู่ใหม่</p>
                     )}
                     {(() => {
                       const eff = effGradeId(i);
@@ -933,7 +933,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
     const n = selectedIds.length;
     if (!bulkPending) return "";
     if (bulkPending.type === "delete") return `ลบ ${n} ข้อออกจากคลัง? (ผลสอบเก่าไม่กระทบ)`;
-    if (bulkPending.type === "category") return `ย้าย ${n} ข้อไปหมวด "${bulkPending.value}"?`;
+    if (bulkPending.type === "category") return `ย้าย ${n} ข้อไปหมวดหมู่ "${bulkPending.value}"?`;
     return bulkPending.value === null
       ? `ล้างระดับชั้นของ ${n} ข้อ ให้ใช้ได้ทุกระดับชั้น?`
       : `เปลี่ยนระดับชั้นของ ${n} ข้อเป็น "${bulkPending.label}"?`;
@@ -948,7 +948,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
       runBulk(
         () => bulkUpdateBankQuestions(selectedIds, { category: bulkPending.value }),
         `ย้าย ${n} ข้อแล้ว`,
-        `ไปหมวด "${bulkPending.value}"`
+        `ไปหมวดหมู่ "${bulkPending.value}"`
       );
     } else {
       runBulk(
@@ -1120,7 +1120,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
             />
           </div>
           <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
-            <option value="">ทุกหมวด</option>
+            <option value="">ทุกหมวดหมู่</option>
             {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
           </select>
           <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
@@ -1248,7 +1248,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวด"}</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวดหมู่"}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
                       {it.gradeDetail && (
                         <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{it.gradeDetail}</span>
@@ -1295,7 +1295,7 @@ function shuffleArr(arr) {
 function summarizeByCategory(items) {
   const map = new Map();
   for (const it of items || []) {
-    const cat = it.category || "ไม่ระบุหมวด";
+    const cat = it.category || "ไม่ระบุหมวดหมู่";
     if (!map.has(cat)) map.set(cat, { category: cat, "ง่าย": 0, "ปานกลาง": 0, "ยาก": 0 });
     const row = map.get(cat);
     const lv = BANK_LEVELS.includes(it.level) ? it.level : "ปานกลาง";
@@ -1325,7 +1325,7 @@ function SetSummaryTable({ items }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-xs">
-              <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
+              <th className="text-left px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่เนื้อหา</th>
               {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2 w-20">{lv}</th>)}
               <th className="text-center px-3 py-2 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
             </tr>
@@ -1590,7 +1590,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <table className="w-full min-w-[480px] text-sm">
                   <thead>
                     <tr className="bg-slate-50 text-slate-500 text-xs">
-                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดเนื้อหา</th>
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">หมวดหมู่เนื้อหา</th>
                       {BANK_LEVELS.map((lv) => <th key={lv} className="text-center font-semibold px-3 py-2.5 w-28">{lv}</th>)}
                       <th className="text-center px-3 py-2.5 w-16 text-xs font-semibold text-slate-500 uppercase tracking-wide">รวม</th>
                     </tr>
@@ -1637,7 +1637,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                 <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
                   <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700">
-                    หมวด {thinCategories.join(", ")} มีน้อยกว่า {MIN_PER_CATEGORY} ข้อ กราฟพัฒนาการรายหมวดของหมวดนี้จะยังตีความไม่ได้ (จัดชุดได้ตามปกติ)
+                    หมวดหมู่ {thinCategories.join(", ")} มีน้อยกว่า {MIN_PER_CATEGORY} ข้อ กราฟพัฒนาการคะแนนรายหมวดของหมวดหมู่นี้จะยังตีความไม่ได้ (จัดชุดได้ตามปกติ)
                   </p>
                 </div>
               )}
@@ -1686,7 +1686,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
 
                     {swapIndex === idx && (
                       <div className="mt-3 ml-9 border border-orange-200 bg-orange-50/40 rounded-xl p-3 max-h-56 overflow-y-auto space-y-1">
-                        <p className="text-xs text-slate-500 mb-1">เลือกข้ออื่นในหมวด {it.category} ระดับ {it.level}</p>
+                        <p className="text-xs text-slate-500 mb-1">เลือกข้ออื่นในหมวดหมู่ {it.category} ระดับ {it.level}</p>
                         {gradeFilteredBank
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
@@ -2383,7 +2383,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
 // UI ปรับให้ยึด StudentModal ของ TutorExamAnalytics.jsx เป็น visual reference
 // แต่ข้อมูลทั้งหมดมาจาก fetchExamJoinDetail() จริง (ไม่ใช้ mock)
 //
-// หมายเหตุเรื่อง "คะแนนรายหัวข้อ": response ของ fetchExamJoinDetail ที่ให้มา
+// หมายเหตุเรื่อง "คะแนนรายหมวด": response ของ fetchExamJoinDetail ที่ให้มา
 // ไม่มี field หมวดหมู่ (category) ต่อข้อคำถามโดยตรง — เรา join ข้อมูลนี้จาก
 // exam.questions ที่ parent component โหลดไว้แล้ว (ข้อมูลจริงจาก backend
 // เดียวกัน ไม่ใช่ mock) โดยจับคู่ด้วย question id แทนที่จะเรียก API เพิ่ม
@@ -2533,7 +2533,7 @@ function StudentDetailModal({
             </div>
           </div>
 
-          {/* แท็บในโมดัล: ภาพรวม (สถิติ/ธง/รายหัวข้อ) กับ รายข้อ (คำตอบทีละข้อ) */}
+          {/* แท็บในโมดัล: ภาพรวม (สถิติ/ธง/คะแนนรายหมวด) กับ รายข้อ (คำตอบทีละข้อ) */}
           <div className="flex gap-1.5 mb-5 border-b border-slate-200">
             {[
               ["overview", "ภาพรวม"],
@@ -2681,7 +2681,7 @@ function StudentDetailModal({
 
           {modalTab === "overview" && topicBreakdown && (
             <div className="mb-6">
-              <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหัวข้อ</p>
+              <p className="text-sm font-bold text-slate-800 mb-3">คะแนนรายหมวด</p>
               <div className="space-y-2.5">
                 {topicBreakdown.map((t) => (
                   <div key={t.category} className="flex items-center gap-3">

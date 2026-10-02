@@ -234,7 +234,7 @@ function buildActionChips(items, extra = []) {
 }
 
 /* ═════════ HERO ═════════ */
-function HealthRing({ score, active }) {
+function HealthRing({ score, active, label, unit }) {
   const p = useProgress(active, 1500);
   const cx = 110, cy = 62, rO = 96, rI = 70, t = 0.42, depth = 14;
   const val = score === null ? 0 : (score / 100) * ease(p);
@@ -247,7 +247,7 @@ function HealthRing({ score, active }) {
     if (val > 0) layers.push(<path key={`p${k}`} d={prog} transform={`translate(0 ${k})`} fill={shade("#f97316", -0.25 - (k / depth) * 0.2)} />);
   }
   return (
-    <svg viewBox="0 0 220 150" className="w-full overflow-visible" role="img" aria-label={score === null ? "ยังไม่มีคะแนนสุขภาพการดำเนินงาน" : `คะแนนสุขภาพการดำเนินงาน ${score} จาก 100 คะแนน`}>
+    <svg viewBox="0 0 220 150" className="w-full overflow-visible" role="img" aria-label={score === null ? "ยังไม่มีข้อมูลสรุป" : `${label} ${score}${unit === "%" ? " เปอร์เซ็นต์" : " คะแนน"}`}>
       <defs>
         <radialGradient id="dashHealthGrad" cx="35%" cy="30%" r="75%">
           <stop offset="0" stopColor="#fcd34d" /><stop offset="1" stopColor="#f59e0b" />
@@ -259,13 +259,13 @@ function HealthRing({ score, active }) {
       {val > 0 && <path d={prog} fill="url(#dashHealthGrad)" stroke="rgba(255,255,255,.55)" strokeWidth="1" />}
       <text x={cx} y={cy + 9} textAnchor="middle" fontSize="30" fontWeight="700" fill="#fff">
         {score === null ? "—" : Math.round(score * ease(p))}
-        {score !== null && <tspan dx="5" fontSize="10" fontWeight="500" fill="#cbd5e1">คะแนน</tspan>}
+        {score !== null && <tspan dx="5" fontSize="10" fontWeight="500" fill="#cbd5e1">{unit}</tspan>}
       </text>
     </svg>
   );
 }
 
-function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, metrics, score }) {
+function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionItemCount, actionCategoryCount, metrics, score, scoreLabel, scoreUnit }) {
   const [ref, inView] = useInView();
   const heroRef = useRef(null);
   const onMove = (e) => {
@@ -289,7 +289,7 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 text-emerald-300 px-2.5 py-1 font-semibold">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 sa-blink" /> ข้อมูลสด
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> ข้อมูลล่าสุด
               </span>
               <span className="text-slate-400">
                 {today}
@@ -301,7 +301,7 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
             </h1>
             <p className="mt-2 text-sm sm:text-base text-slate-400">
               {greet}{userName ? ` คุณ${userName}` : ""} — วันนี้มี <b className="text-white">{sessionsTotal} คาบ</b>
-              {actionCount > 0 ? <> และมี <b className="text-amber-300">{actionCount} เรื่อง</b> ที่รอจัดการ</> : " และไม่มีเรื่องค้างให้จัดการ"}
+              {actionItemCount > 0 ? <> และมี <b className="text-amber-300">{actionItemCount} รายการ</b> จาก <b className="text-amber-300">{actionCategoryCount} ประเภท</b> ที่รอจัดการ</> : " และไม่มีรายการค้างให้จัดการ"}
             </p>
             <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
               <div className="rounded-2xl bg-white/10 border border-white/10 p-3 sm:p-4">
@@ -315,14 +315,16 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
               <div className="rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 p-3 sm:p-4 relative overflow-hidden shadow-lg shadow-orange-500/30">
                 <span className="absolute inset-0 sa-shine" />
                 <p className="relative text-[11px] sm:text-xs text-orange-50 flex items-center gap-1"><BellRing className="h-3.5 w-3.5" /> ต้องจัดการ</p>
-                <p className="relative tabular-nums text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionCount} /> <span className="text-xs font-medium text-orange-50">เรื่อง</span></p>
+                <p className="relative tabular-nums text-2xl sm:text-3xl font-bold mt-1"><CountUp value={actionItemCount} /> <span className="text-xs font-medium text-orange-50">รายการ</span></p>
+                <p className="relative text-[10px] text-orange-100 mt-0.5">{actionCategoryCount} ประเภท</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 shrink-0">
             <div className="relative w-[230px] shrink-0 sa-float" style={{ animationDuration: "5s" }}>
-              <HealthRing score={score} active={inView} />
+              <HealthRing score={score} active={inView} label={scoreLabel} unit={scoreUnit} />
+              <p className="-mt-2 text-center text-xs font-semibold text-slate-300">{scoreLabel}</p>
             </div>
             <div className="space-y-3 text-xs w-full sm:w-[180px]">
               {metrics.map((m, i) => (
@@ -340,10 +342,10 @@ function Hero({ generatedAt, userName, sessionsTotal, liveRooms, actionCount, me
 }
 
 /* ═════════ สิ่งที่ต้องจัดการ ═════════ */
-// จอใหญ่แสดงแถวเดียวเสมอ: คอลัมน์ = จำนวนการ์ด (สูงสุด 5) ถ้าเกินให้ช่องสุดท้ายรวมเป็น "อีก N เรื่อง"
+// จอใหญ่แสดงแถวเดียวเสมอ: คอลัมน์ = จำนวนการ์ด (สูงสุด 5) ถ้าเกินให้ช่องสุดท้ายรวมเป็น "อีก N ประเภท"
 const ACTION_COLS = { 1: "lg:grid-cols-1", 2: "lg:grid-cols-2", 3: "lg:grid-cols-3", 4: "lg:grid-cols-4", 5: "lg:grid-cols-5" };
 const ACTION_MAX = 5;
-function ActionSection({ chips, onNavigate }) {
+function ActionSection({ chips, totalCount, onNavigate }) {
   const overflow = chips.length > ACTION_MAX;
   const shown = overflow ? chips.slice(0, ACTION_MAX - 1) : chips;
   const hidden = chips.length - shown.length;
@@ -352,7 +354,8 @@ function ActionSection({ chips, onNavigate }) {
       <div className="flex items-end justify-between mb-3">
         <h2 className={`${T.title} flex items-center gap-2`}>
           <ListChecks className="h-4 w-4 text-orange-500" />
-          ต้องจัดการ <span className="text-orange-600">{chips.length}</span> รายการ
+          ต้องจัดการ <span className="text-orange-600">{totalCount}</span> รายการ
+          <span className="text-sm font-semibold text-slate-500">จาก {chips.length} ประเภท</span>
         </h2>
         {chips.length > 1 && <span className="text-xs text-slate-400 hidden sm:block">เรื่องเร่งด่วนขึ้นก่อน</span>}
       </div>
@@ -389,7 +392,7 @@ function ActionSection({ chips, onNavigate }) {
             <button onClick={() => onNavigate("/admin/notification")}
               className="sa-rise snap-start shrink-0 w-[200px] lg:w-auto flex items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 text-sm font-semibold text-orange-600 hover:bg-orange-100 transition p-4"
               style={{ animationDelay: `${0.05 + shown.length * 0.05}s` }}>
-              <Bell className="h-4 w-4" /> อีก {hidden} เรื่อง <ArrowRight className="h-4 w-4" />
+              <Bell className="h-4 w-4" /> อีก {hidden} ประเภท <ArrowRight className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -1112,7 +1115,8 @@ export default function AdminDashboard() {
     roomMaintenance?.cnt > 0 && { id: "rooms-maintenance", title: "ห้องปิดปรับปรุง", message: `${roomMaintenance.cnt} ห้องปิดปรับปรุง`, count: roomMaintenance.cnt, link: "/admin/rooms" },
   ].filter(Boolean)), [data, counts.missed, roomMaintenance]);
 
-  // คะแนนสุขภาพ = ค่าเฉลี่ยของตัวชี้วัดที่มีข้อมูลจริงเท่านั้น
+  const actionItemCount = chips.reduce((sum, item) => sum + Number(item.count || 0), 0);
+  // ถ้ามีตัวชี้วัดเดียว ให้แสดงชื่อจริงของตัวชี้วัดนั้น; หลายตัวจึงเฉลี่ยเป็นคะแนนภาพรวม
   const facTotal = Math.max(Number(facilities.total ?? 0), Number(facilities.ready ?? 0) + Number(facilities.lowStock ?? 0) + Number(facilities.outOfStock ?? 0));
   const startedCount = sessions.filter((s) => s.started).length;
   const metrics = [
@@ -1121,6 +1125,8 @@ export default function AdminDashboard() {
     facTotal > 0 && { label: "อุปกรณ์พร้อมใช้", value: Math.round((Number(facilities.ready ?? 0) / facTotal) * 100) },
   ].filter(Boolean);
   const score = metrics.length ? Math.round(metrics.reduce((a, m) => a + m.value, 0) / metrics.length) : null;
+  const scoreLabel = metrics.length === 1 ? metrics[0].label : metrics.length > 1 ? "คะแนนภาพรวม" : "ยังไม่มีข้อมูลสรุป";
+  const scoreUnit = metrics.length === 1 ? "%" : "คะแนน";
 
   const userName = (() => { try { return JSON.parse(localStorage.getItem("user") || "null")?.firstname || ""; } catch { return ""; } })();
 
@@ -1143,9 +1149,9 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6 px-4 lg:px-0 overflow-x-clip">
       <Hero generatedAt={data?.generatedAt} userName={userName} sessionsTotal={scheduleToday.total ?? sessions.length}
-        liveRooms={liveRooms} actionCount={chips.length} metrics={metrics} score={score} />
+        liveRooms={liveRooms} actionItemCount={actionItemCount} actionCategoryCount={chips.length} metrics={metrics} score={score} scoreLabel={scoreLabel} scoreUnit={scoreUnit} />
 
-      <ActionSection chips={chips} onNavigate={goTo} />
+      <ActionSection chips={chips} totalCount={actionItemCount} onNavigate={goTo} />
 
       <Reveal className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="คอร์สที่เปิดสอนอยู่" value={kpi.activeCourses ?? 0} unit="คอร์ส" sub={`ทั้งหมด ${kpi.totalCourses ?? 0} คอร์ส`} icon={BookOpen} color="bg-blue-500" spark={series.courses} sparkColor="#3b82f6" delay={0.1} />
