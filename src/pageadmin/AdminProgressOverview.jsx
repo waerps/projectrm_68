@@ -5,7 +5,7 @@ import { PROGRESS_ORIGINS } from "./progressOrigins";
 import axios from "axios";
 import {
   TrendingUp, BookOpen, Search, Loader2, ChevronLeft, ChevronRight,
-  BarChart2, GraduationCap, Calendar, Users,
+  BarChart2, GraduationCap, Calendar, Users, CircleHelp,
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_SUBTITLE } from "../components/ui/tokens";
@@ -86,16 +86,29 @@ function StatTile({ card, ready }) {
     <div
       onMouseMove={tiltMove}
       onMouseLeave={tiltLeave}
-      className="sa-tilt relative overflow-hidden flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-orange-200 transition"
+      className="sa-tilt relative flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:z-20 focus-within:z-20 hover:shadow-lg hover:border-orange-200 transition"
     >
-      <span className="sa-glow" />
-      <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50 pointer-events-none" />
+      <span className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <span className="sa-glow" />
+        <Icon className="absolute -right-3 -top-3 h-14 w-14 text-slate-50" />
+      </span>
       <div className={`relative h-10 w-10 rounded-xl ${card.color} flex items-center justify-center shrink-0 shadow-sm`}>
         <Icon className="h-5 w-5 text-white" />
       </div>
       <div className="relative min-w-0">
-        <p className={STAT_LABEL}>{card.label}</p>
-        {card.note && <p className="text-[10px] text-slate-500">{card.note}</p>}
+        <div className="flex items-center gap-1">
+          <p className={`${STAT_LABEL} min-w-0 truncate`}>{card.label}</p>
+          {card.help && (
+            <span className="group/help relative inline-flex shrink-0">
+              <button type="button" aria-label={`คำอธิบาย ${card.label}`} className="rounded-full text-slate-400 hover:text-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-300">
+                <CircleHelp className="h-3.5 w-3.5" />
+              </button>
+              <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-52 -translate-x-1/2 rounded-xl bg-slate-900 px-3 py-2 text-left text-[11px] font-medium leading-relaxed text-white opacity-0 shadow-lg transition group-hover/help:opacity-100 group-focus-within/help:opacity-100">
+                {card.help}
+              </span>
+            </span>
+          )}
+        </div>
         <p className={`${STAT_VALUE} break-words`}>
           {hasValue ? shown.toLocaleString() : "—"}
           {hasValue && card.unit && <span className={STAT_UNIT}>{card.unit}</span>}
@@ -237,11 +250,13 @@ export default function AdminProgressOverview() {
           <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
             <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
           </span>
-          <h2 className="mt-2 text-lg font-bold text-slate-900">สรุปผลพัฒนาการ</h2>
-          <p className={PAGE_SUBTITLE}>
-            เปรียบเทียบคะแนนเฉลี่ยก่อนเรียนและหลังเรียนของแต่ละรายการสอน
-            {presetLabel && ` · กรองเฉพาะ ${presetLabel}`}
-          </p>
+          <h2 className="mt-2 flex items-center gap-1.5 text-lg font-bold text-slate-900">
+            สรุปพัฒนาการ
+            <button type="button" title="เปรียบเทียบคะแนน Pre-test และ Post-test แยกตามคอร์ส วิชา และติวเตอร์" aria-label="คำอธิบายสรุปพัฒนาการ" className="rounded-full text-slate-400 hover:text-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-300">
+              <CircleHelp className="h-4 w-4" />
+            </button>
+          </h2>
+          {presetLabel && <p className={PAGE_SUBTITLE}>กรองเฉพาะ {presetLabel}</p>}
         </div>
       </div>
 
@@ -249,23 +264,23 @@ export default function AdminProgressOverview() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           {
-            label: "รายการวิชาที่เทียบผลได้",
-            note: "แยกตามคอร์ส วิชา และติวเตอร์",
+            label: "รายการที่เทียบได้",
+            help: "จำนวนรายการสอนที่มีทั้งคะแนน Pre-test และ Post-test โดยหนึ่งรายการแยกตามคอร์ส วิชา และติวเตอร์",
             value: summary.comparableGroups,
             unit: `/ ${summary.groups} รายการ`,
             color: "bg-orange-600", icon: BookOpen,
           },
-          { label: "คะแนนหลังเรียนเฉลี่ยต่อรายการ", note: "% ของคะแนนเต็มแต่ละรอบ", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
+          { label: "คะแนนหลังเรียนเฉลี่ย", help: "ค่าเฉลี่ยคะแนน Post-test ของแต่ละรายการ คิดเป็นร้อยละของคะแนนเต็ม", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
           {
-            label: "สัดส่วนผลคะแนนที่ดีขึ้น",
-            note: "นับแยกตามรายการสอน",
+            label: "ผลคะแนนดีขึ้น",
+            help: `สัดส่วนผลสอบที่คะแนน Post-test สูงกว่า Pre-test โดยนับแยกตามรายการสอน (${summary.improved} จาก ${summary.comparableResults} ผล)`,
             value: summary.improvedPct,
-            unit: `% (${summary.improved}/${summary.comparableResults} ผล)`,
+            unit: "%",
             color: "bg-purple-500", icon: Users,
           },
           {
-            label: "อัตราพัฒนาการเฉลี่ยต่อรายการ",
-            note: "เฉลี่ยจากรายการที่มีผล Pre–Post",
+            label: "พัฒนาการเฉลี่ย",
+            help: "ค่าเฉลี่ยอัตราพัฒนาการจากรายการที่มีทั้งคะแนน Pre-test และ Post-test",
             value: summary.avgGrowth,
             unit: "%",
             color: "bg-blue-500", icon: TrendingUp,

@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import axios from "axios";
 import { ArrowUpRight, CalendarDays, Image as ImageIcon, Newspaper, Pause, Play } from "lucide-react";
 import { API_URL } from "../config";
+import { newsAuthConfig } from "../utils/newsApi";
 import { NewsExpanded } from "./News";
 import "./NewsMarqueeArchive.css";
 
@@ -86,7 +87,11 @@ export default function NewsMarqueeArchive({ role = "public", items = null, embe
     const controller = new AbortController();
     setLoading(true);
     setError(false);
-    axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
+    axios.get(`${API_URL}/api/news`, {
+      params: { role },
+      signal: controller.signal,
+      ...newsAuthConfig(role),
+    })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => {
         if (requestError.code !== "ERR_CANCELED") {
@@ -176,4 +181,3 @@ export default function NewsMarqueeArchive({ role = "public", items = null, embe
     </div>
   );
 }
-

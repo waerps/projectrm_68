@@ -27,8 +27,7 @@ import NewsMarqueeArchive from "./NewsMarqueeArchive";
 import VirtualTourSection from "../components/VirtualTourSection";
 import PrivateCourseTeaser from "../components/PrivateCourseTeaser";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
-
-const API_URL = import.meta.env.VITE_API_URL;
+import { API_URL } from "../config";
 
 /** ---------- ค่าคงที่อ้างอิงจาก DB (status_course, term) ----------
  * ⚠️ ค่าพวกนี้อิงจากข้อมูลในตารางที่ส่งมาให้ดู ถ้าใน DB จริงมีการเพิ่ม/แก้ค่า
@@ -574,6 +573,7 @@ export default function Home() {
   const [newsItems, setNewsItems] = useState([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [newsLoaded, setNewsLoaded] = useState(false);
+  const [newsError, setNewsError] = useState(false);
   const [heroIndex, setHeroIndex] = useState(0);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
 
@@ -618,10 +618,14 @@ export default function Home() {
   useEffect(() => {
     axios
       .get(`${API_URL}/api/news`, { params: { role: "public" } })
-      .then((res) => setNewsItems(Array.isArray(res.data) ? res.data.slice(0, 6) : []))
+      .then((res) => {
+        setNewsItems(Array.isArray(res.data) ? res.data.slice(0, 6) : []);
+        setNewsError(false);
+      })
       .catch((err) => {
         console.error("Error loading news:", err);
         setNewsItems([]);
+        setNewsError(true);
       })
       .finally(() => setNewsLoaded(true));
   }, []);
@@ -886,7 +890,15 @@ export default function Home() {
             ข่าวประชาสัมพันธ์
           </SectionTitle>
 
-          {newsItems.length > 0 ? (
+          {!newsLoaded ? (
+            <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm" role="status">
+              กำลังโหลดข่าวประชาสัมพันธ์...
+            </div>
+          ) : newsError ? (
+            <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm" role="alert">
+              โหลดข่าวประชาสัมพันธ์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
+            </div>
+          ) : newsItems.length > 0 ? (
             <NewsMarqueeArchive items={newsItems} embedded />
           ) : (
             <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm">

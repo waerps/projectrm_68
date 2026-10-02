@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import axios from "axios";
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Image as ImageIcon, Newspaper, X } from "lucide-react";
 import { API_URL } from "../config";
+import { newsAuthConfig } from "../utils/newsApi";
 import "./NewsMarqueeArchive.css";
 import "./News.css";
 
@@ -61,12 +62,15 @@ export function NewsExpanded({ item, onClose }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    axios.get(`${API_URL}/api/news/${item.id}`, { signal: controller.signal })
+    axios.get(`${API_URL}/api/news/${item.id}`, {
+      signal: controller.signal,
+      ...newsAuthConfig(item.type),
+    })
       .then((response) => setDetail(response.data))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [item.id]);
+  }, [item.id, item.type]);
 
   useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
 
@@ -124,7 +128,11 @@ export default function News({ role = "public", embedded = false }) {
     setLoading(true);
     setError(false);
     setSelectedId(null);
-    axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
+    axios.get(`${API_URL}/api/news`, {
+      params: { role },
+      signal: controller.signal,
+      ...newsAuthConfig(role),
+    })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
