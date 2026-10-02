@@ -27,6 +27,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import { fmtScore } from "../utils/examScore";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -806,15 +807,20 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
     if (!e.MaxScore || Number(e.MaxScore) <= 0) return;
     const key = e.SubjectName || "ไม่ระบุวิชา";
     if (!scoresBySubject[key]) scoresBySubject[key] = { pre: [], mid: [], post: [] };
-    const pct = Math.round((Number(e.Score) / Number(e.MaxScore)) * 100);
+    const pct = (Number(e.Score) / Number(e.MaxScore)) * 100;
     const bucket = { "pre-test": "pre", "mid-test": "mid", "post-test": "post" }[e.TypeSlug];
-    if (bucket) scoresBySubject[key][bucket].push(pct);
+    if (bucket) scoresBySubject[key][bucket].push({ pct, score: Number(e.Score), max: Number(e.MaxScore) });
   });
-  const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null);
+  const avg = arr => (arr.length ? Math.round(arr.reduce((a, b) => a + b.pct, 0) / arr.length) : null);
+  const points = arr => {
+    if (!arr.length) return null;
+    if (!arr.every((item) => item.max === arr[0].max)) return "คะแนนเต็มต่างกัน";
+    return `${fmtScore(arr.reduce((sum, item) => sum + item.score, 0) / arr.length)}/${fmtScore(arr[0].max)} คะแนน`;
+  };
   const subjectSummaries = Object.entries(scoresBySubject).map(([subject, v]) => {
     const pre = avg(v.pre), mid = avg(v.mid), post = avg(v.post);
     const improvement = pre !== null && post !== null ? post - pre : null;
-    return { subject, pre, mid, post, improvement };
+    return { subject, pre, mid, post, improvement, prePoints: points(v.pre), midPoints: points(v.mid), postPoints: points(v.post) };
   });
 
   const trendOf = (imp) => imp > 0 ? "up" : imp < 0 ? "down" : "stable";
@@ -1098,13 +1104,14 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: "ก่อนเรียน", value: sub.pre },
-                      { label: "กลางภาค", value: sub.mid },
-                      { label: "หลังเรียน", value: sub.post },
-                    ].map(({ label, value }) => (
+                      { label: "คะแนนก่อนเรียน", value: sub.pre, points: sub.prePoints },
+                      { label: "คะแนนกลางภาค", value: sub.mid, points: sub.midPoints },
+                      { label: "คะแนนหลังเรียน", value: sub.post, points: sub.postPoints },
+                    ].map(({ label, value, points }) => (
                       <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
                         <p className="text-[11px] text-slate-500 mb-1">{label}</p>
                         <p className="text-sm font-bold text-slate-800">{value !== null ? `${value}%` : "—"}</p>
+                        {points && <p className="text-[10px] text-slate-500">{points}</p>}
                       </div>
                     ))}
                   </div>
@@ -1135,7 +1142,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
             {subjectSummaries.length > 0 && (
               <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                <p className="text-sm font-bold text-slate-800 mb-3">พัฒนาการรายวิชา</p>
+                <p className="text-sm font-bold text-slate-800 mb-3">คะแนนหลังเรียนรายวิชา</p>
                 <div className="space-y-2">
                   {subjectSummaries.map(sub => (
                     <div key={sub.subject} className="flex items-center gap-3">
@@ -1143,7 +1150,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                       <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                         <div className="h-full bg-orange-500 rounded-full" style={{ width: `${sub.post ?? 0}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-slate-700 w-10 text-right">{sub.post !== null ? `${sub.post}%` : "—"}</span>
+                      <span className="text-xs font-bold text-slate-700 min-w-20 text-right">{sub.post !== null ? `${sub.post}%` : "—"}{sub.postPoints && <span className="block text-[10px] font-normal text-slate-500">{sub.postPoints}</span>}</span>
                     </div>
                   ))}
                 </div>
@@ -1668,7 +1675,7 @@ function ScoreBar({ label, value, sub, weight }) {
           <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, v)}%` }} />
         </div>
         <span className={`text-sm font-bold w-11 text-right ${textColor}`}>
-          {value == null ? '—' : Math.round(value)}
+          {value == null ? '—' : `${Math.round(value)}%`}
         </span>
       </div>
       {sub && <p className="text-xs text-slate-500 ml-[7.75rem] sm:ml-[11.75rem] mt-1">{sub}</p>}
@@ -1743,9 +1750,9 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
         {isExcellence ? (
           board.eligible(s) ? (
             <>
-              <ScoreBar label="Post-test" value={s.PostTestScore} weight={70}
+              <ScoreBar label="คะแนนหลังเรียน" value={s.PostTestScore} weight={70}
                 sub={`คะแนนเฉลี่ยรอบหลังเรียน (สอบแล้ว ${s.PostTestCount} ครั้ง)`} />
-              <ScoreBar label="ค่าเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
+              <ScoreBar label="คะแนนเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
                 sub={`ตัวชี้ว่าสูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
             </>
           ) : (
@@ -1754,9 +1761,9 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
         ) : (
           s.ImprovementScore != null ? (
             <>
-              <ScoreBar label="พัฒนาการ" value={s.ImprovementGrowth} weight={80}
-                sub={`${s.PreTestScore}% → ${s.PostTestScore}% (เพิ่มขึ้น ${s.ImprovementDelta > 0 ? '+' : ''}${s.ImprovementDelta}% จากช่องว่างที่มีอยู่ ${s.ImprovementRoom}%)`} />
-              <ScoreBar label="เข้าเรียน" value={s.AttendanceRate} weight={20}
+              <ScoreBar label="อัตราพัฒนาการ" value={s.ImprovementGrowth} weight={80}
+                sub={`คะแนนก่อนเรียน ${s.PreTestScore}% → หลังเรียน ${s.PostTestScore}% · เพิ่ม ${s.ImprovementDelta > 0 ? "+" : ""}${s.ImprovementDelta}% ของช่องว่างเดิม`} />
+              <ScoreBar label="อัตราเข้าเรียน" value={s.AttendanceRate} weight={20}
                 sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
               {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}
               {!s.ImprovementEligible && (
@@ -1794,9 +1801,9 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
       {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
       <p className="text-xs text-slate-500 pt-3 border-t border-slate-200">
         เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
-        {s.PreTestScore != null ? ` · Pre ${s.PreTestScore}%` : ''}
-        {s.MidTestScore != null ? ` · Mid ${s.MidTestScore}%` : ''}
-        {s.PostTestScore != null ? ` · Post ${s.PostTestScore}%` : ''}
+        {s.PreTestScore != null ? ` · คะแนนก่อนเรียน ${s.PreTestScore}%` : ''}
+        {s.MidTestScore != null ? ` · คะแนนกลางภาค ${s.MidTestScore}%` : ''}
+        {s.PostTestScore != null ? ` · คะแนนหลังเรียน ${s.PostTestScore}%` : ''}
       </p>
     </div>
   );

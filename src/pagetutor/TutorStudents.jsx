@@ -93,7 +93,7 @@ export default function TutorStudents() {
                 </td>
                 <td>${student.totalVideos ? Math.round((student.videoViews / student.totalVideos) * 100) + '%' : '-'}</td>
                 <td>${student.gpa ?? "-"}</td>
-                <td>${getAverageImprovement(student)}</td>
+                <td>${student.exam?.improvement ? `${getAverageImprovement(student)} คะแนน` : "—"}</td>
             </tr>`;
         }).join("");
         printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -103,7 +103,7 @@ export default function TutorStudents() {
             </head><body>
             <h1>รายงานนักเรียน: ${esc(courseInfo.name)}</h1>
             <p>จำนวนนักเรียน: ${filteredStudents.length} คน | วันที่: ${new Date().toLocaleDateString("th-TH")}</p>
-            <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>GPA</th><th>พัฒนาการ</th></tr></thead>
+            <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>GPA</th><th>คะแนนสอบที่เพิ่มขึ้น</th></tr></thead>
             <tbody>${rows}</tbody></table>
             <script>window.onload=()=>window.print();</script></body></html>`);
         printWindow.document.close();

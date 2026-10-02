@@ -95,6 +95,7 @@ function StatTile({ card, ready }) {
       </div>
       <div className="relative min-w-0">
         <p className={STAT_LABEL}>{card.label}</p>
+        {card.note && <p className="text-[10px] text-slate-500">{card.note}</p>}
         <p className={`${STAT_VALUE} break-words`}>
           {hasValue ? shown.toLocaleString() : "—"}
           {hasValue && card.unit && <span className={STAT_UNIT}>{card.unit}</span>}
@@ -248,14 +249,14 @@ export default function AdminProgressOverview() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: "วิชาที่เทียบผล Pre–Post ได้", value: summary.comparableGroups, unit: `/ ${summary.groups} วิชา`, color: "bg-orange-600", icon: BookOpen },
-          { label: "คะแนนเฉลี่ย Post-test", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
+          { label: "คะแนนหลังเรียนเฉลี่ยรายกลุ่ม", note: "% ของคะแนนเต็มแต่ละรอบ", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
           {
-            label: "นักเรียนที่คะแนนดีขึ้น",
+            label: "สัดส่วนนักเรียนที่คะแนนดีขึ้น",
             value: summary.improvedPct,
             unit: `% (${summary.improved}/${summary.comparableStudents} คน)`,
             color: "bg-purple-500", icon: Users,
           },
-          { label: "พัฒนาการเฉลี่ย", value: summary.avgGrowth, unit: "%", color: "bg-blue-500", icon: TrendingUp },
+          { label: "อัตราพัฒนาการเฉลี่ย", value: summary.avgGrowth, unit: "%", color: "bg-blue-500", icon: TrendingUp },
         ].map((card, i) => (
           <StatTile key={i} card={card} ready={!loading} />
         ))}

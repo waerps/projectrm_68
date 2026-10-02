@@ -7,6 +7,24 @@
 // (แพ็กเกจ 5 วิชา = 100 คะแนน, 4 วิชา = 80 คะแนน)
 export const EXAM_SCORE_CAP = 20;
 
+// เกณฑ์ผ่านผลสอบแต่ละรอบ: ได้อย่างน้อยครึ่งหนึ่งของคะแนนเต็ม
+export const PASS_PCT = 50;
+// ปัดลงเพื่อไม่ให้ 49.95% แสดงเป็น 50.0% ทั้งที่ยังไม่ผ่าน
+export function displayExamPercent(totalScore, maxScore) {
+  const score = Number(totalScore);
+  const max = Number(maxScore);
+  if (totalScore == null || maxScore == null || !Number.isFinite(score) || !Number.isFinite(max) || max <= 0) return null;
+  const pct = (score / max) * 100;
+  return pct < PASS_PCT ? Math.floor(pct * 10) / 10 : Math.round(pct * 10) / 10;
+}
+
+export function isPassingScore(totalScore, maxScore) {
+  const score = Number(totalScore);
+  const max = Number(maxScore);
+  return totalScore != null && maxScore != null && Number.isFinite(score)
+    && Number.isFinite(max) && max > 0 && score * 100 >= max * PASS_PCT;
+}
+
 // แบ่งคะแนนเต็มให้ข้อสอบ n ข้อเท่า ๆ กัน โดยผลรวมต้องเท่ากับ cap "เป๊ะ"
 // วิธี: คิดเป็นหน่วยสตางค์เพื่อเลี่ยงปัญหาทศนิยมลอยตัว แล้วแจกเศษที่เหลือ
 // ให้ข้อแรก ๆ ทีละ 0.01 — เช่น 30 ข้อ จะได้ 0.67 x 20 ข้อ + 0.66 x 10 ข้อ = 20.00 พอดี

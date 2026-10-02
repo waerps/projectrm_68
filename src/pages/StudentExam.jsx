@@ -1,7 +1,7 @@
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Check, AlertCircle, Clock, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
-import { fmtScore } from "../utils/examScore";
+import { fmtScore, displayExamPercent } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
@@ -410,7 +410,7 @@ const ENCOURAGEMENTS = [
 ];
 
 function ResultCard({ result }) {
-  const pct = result.percentage ?? (result.maxScore ? Math.round((result.totalScore / result.maxScore) * 100) : 0);
+  const pct = displayExamPercent(result.totalScore, result.maxScore) ?? result.percentage ?? 0;
   // สุ่มครั้งเดียวตอน mount — ไม่ผูกกับคะแนน ข้อความจึงไม่ "ตัดสิน" ว่าคะแนนดีหรือไม่ดี
   const [msg] = useState(() => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)]);
 
@@ -420,11 +420,11 @@ function ResultCard({ result }) {
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
         <h1 className="text-lg font-bold text-slate-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
         <div className="bg-slate-50 rounded-xl p-5">
-          <p className="text-sm text-slate-500 mb-1">คะแนน</p>
+          <p className="text-sm text-slate-500 mb-1">คะแนนสอบรอบนี้</p>
           <p className="text-3xl font-bold text-orange-600">
-            {fmtScore(result.totalScore)}/{fmtScore(result.maxScore)}
+            {fmtScore(result.totalScore)}/{fmtScore(result.maxScore)} <span className="text-sm">คะแนน</span>
           </p>
-          <p className="text-sm text-slate-500 mt-1">{pct}%</p>
+          <p className="text-sm text-slate-500 mt-1">{pct}% ของคะแนนเต็ม</p>
         </div>
         {result.correctCount != null && (
           <p className="text-sm text-slate-500">ตอบถูก {result.correctCount}/{result.totalQuestions} ข้อ</p>

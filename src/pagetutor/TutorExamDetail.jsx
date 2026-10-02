@@ -22,7 +22,7 @@ import {
   assembleExamSet, applyExamSet,
   fetchAiSummaries,
 } from "../utils/examShared";
-import { EXAM_SCORE_CAP, sumScores, fmtScore } from "../utils/examScore";
+import { EXAM_SCORE_CAP, PASS_PCT, isPassingScore, displayExamPercent, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";
@@ -31,9 +31,6 @@ import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
-
-// เกณฑ์ผ่าน — อ้างอิง logic เดียวกับ TutorExamAnalytics.jsx (PASS_PCT = 60)
-const PASS_PCT = 60;
 
 // ─── small shared bits ───────────────────────────────────────────────────────
 
@@ -2472,8 +2469,8 @@ function StudentDetailModal({
     });
   }, [enrichedQuestions]);
 
-  const pct = student?.maxScore ? Math.round((student.totalScore / student.maxScore) * 100) : null;
-  const passed = student?.submittedAt && pct != null ? pct >= PASS_PCT : null;
+  const pct = displayExamPercent(student?.totalScore, student?.maxScore);
+  const passed = student?.submittedAt && pct != null ? isPassingScore(student.totalScore, student.maxScore) : null;
   const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
   const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
 
@@ -2504,7 +2501,7 @@ function StudentDetailModal({
               )}
               <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
                 <p className={STAT_NUM}>{student?.totalScore ?? "—"}/{student?.maxScore ?? "—"}<span className="ml-1 text-xs font-medium text-orange-100">คะแนน</span></p>
-                <p className="text-xs font-medium text-orange-100">{pct != null ? `${pct}%` : "—"}</p>
+                <p className="text-xs font-medium text-orange-100">{pct != null ? `คะแนนสอบ ${pct}%` : "—"}</p>
               </div>
             </div>
           </div>
@@ -2742,12 +2739,12 @@ function StudentDetailModal({
 const exportResultsPdf = (exam, results, courseName, subjectName) => {
   if (!results) return;
 
-  const submitted = results.students.filter((s) => s.submittedAt && s.maxScore);
+  const submitted = results.students.filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
   const avgTimeList = results.students.filter((s) => s.submittedAt && s.secondsUsed != null);
   const avgTimeSec = avgTimeList.length
     ? Math.round(avgTimeList.reduce((sum, s) => sum + s.secondsUsed, 0) / avgTimeList.length)
     : null;
-  const passedCount = submitted.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
+  const passedCount = submitted.filter((s) => isPassingScore(s.totalScore, s.maxScore)).length;
   const passRatePct = submitted.length ? Math.round((passedCount / submitted.length) * 1000) / 10 : null;
   const joinedPct = results.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
   const submittedPct = results.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
@@ -2760,13 +2757,13 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
   });
 
   const studentRows = ranked.map((s, i) => {
-    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
-    const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+    const pct = displayExamPercent(s.totalScore, s.maxScore);
+    const passed = s.submittedAt && pct != null ? isPassingScore(s.totalScore, s.maxScore) : null;
     return `<tr>
       <td>${i + 1}</td>
       <td>${esc(s.name)}</td>
       <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
-      <td style="text-align:right">${pct != null ? `${s.totalScore}/${s.maxScore} (${pct}%)` : "—"}</td>
+      <td style="text-align:right">${pct != null ? `${fmtScore(s.totalScore)}/${fmtScore(s.maxScore)} คะแนน (${pct}%)` : "—"}</td>
       <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
       <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
       <td>${esc(s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"))}</td>
@@ -2796,12 +2793,12 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     <div class="summary-grid">
       <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
       <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>
-      <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${results.averageScorePct}%</div></div>
-      <div class="summary-card"><div class="label">ผ่านเกณฑ์</div><div class="value">${passRatePct != null ? `${passRatePct}%` : "—"}</div></div>
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ยห้อง</div><div class="value">${results.averageScorePct}%</div><div class="sub">${submitted.length ? `${fmtScore(submitted.reduce((sum, s) => sum + Number(s.totalScore), 0) / submitted.length)} / ${fmtScore(submitted[0].maxScore)} คะแนน` : "—"}</div></div>
+      <div class="summary-card"><div class="label">สัดส่วนผู้สอบผ่าน</div><div class="value">${passRatePct != null ? `${passRatePct}%` : "—"}</div><div class="sub">${passedCount}/${submitted.length} คน · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม</div></div>
       <div class="summary-card"><div class="label">เวลาเฉลี่ย</div><div class="value">${avgTimeSec != null ? formatTime(avgTimeSec) : "—"}</div></div>
     </div>
     <h2>รายชื่อนักเรียน</h2>
-    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนน</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
     ${absentRows ? `<h2>นักเรียนที่ขาดสอบ (${results.absentStudents.length} คน)</h2><table><tbody>${absentRows}</tbody></table>` : ""}
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
@@ -2987,7 +2984,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     if (filterPass === "ผ่าน" || filterPass === "ไม่ผ่าน") {
       base = base.filter((s) => {
         if (!s.submittedAt || !s.maxScore) return false;
-        const isPass = (s.totalScore / s.maxScore) * 100 >= PASS_PCT;
+        const isPass = isPassingScore(s.totalScore, s.maxScore);
         return filterPass === "ผ่าน" ? isPass : !isPass;
       });
     }
@@ -3046,7 +3043,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   // ใช้กลุ่มเดียวกับ averageScorePct ของ backend และหน้าวิเคราะห์ (ส่งแล้ว + มีคะแนนเต็ม + ไม่ได้
   // ปฏิเสธความยินยอม exam_behavior) — เดิมอัตราผ่านนับทุกคน ตัวเลขการ์ดข้างกันจึงมาจากคนละกลุ่ม
   const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
-  const passedCount = passEligible.filter((s) => (s.totalScore / s.maxScore) * 100 >= PASS_PCT).length;
+  const passedCount = passEligible.filter((s) => isPassingScore(s.totalScore, s.maxScore)).length;
   const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
   const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
   const submittedPct = results?.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
@@ -3092,16 +3089,16 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
         />
         <StatCard
           icon={Award}
-          label="คะแนนเฉลี่ย"
+          label="คะแนนเฉลี่ยห้อง"
           value={`${results.averageScorePct}%`}
-          sub={avgScoreRaw != null ? `${avgScoreRaw.toFixed(1)} / ${examMaxScore} คะแนน` : "ยังไม่มีผู้ส่ง"}
+          sub={avgScoreRaw != null ? `${fmtScore(avgScoreRaw)}/${fmtScore(examMaxScore)} คะแนนเฉลี่ย` : "ยังไม่มีผู้ส่ง"}
           color="bg-orange-500"
         />
         <StatCard
           icon={CheckCircle}
-          label="ผ่านเกณฑ์"
+          label="สัดส่วนผู้สอบผ่าน"
           value={passRatePct != null ? `${passRatePct}%` : "—"}
-          sub={passRatePct != null ? `${passedCount} จาก ${passEligible.length} คน` : "ยังไม่มีผู้ส่ง"}
+          sub={passRatePct != null ? `${passedCount}/${passEligible.length} คน · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม` : "ยังไม่มีผู้ส่ง"}
           color="bg-emerald-500"
         />
         <StatCard
@@ -3183,8 +3180,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
         {/* มือถือ/แท็บเล็ต: การ์ดรายนักเรียน (ตารางแสดงบนจอใหญ่) */}
         <div className="lg:hidden grid gap-2.5 md:grid-cols-2">
           {displayedStudents.map((s) => {
-            const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
-            const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+            const pct = displayExamPercent(s.totalScore, s.maxScore);
+            const passed = s.submittedAt && pct != null ? isPassingScore(s.totalScore, s.maxScore) : null;
             return (
               <div key={s.examJoinId} className="min-w-0 rounded-xl border border-slate-100 bg-white p-3.5">
                 <div className="flex items-center gap-3">
@@ -3202,10 +3199,10 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                 {pct != null && (
                   <div className="mt-3 flex items-center gap-2">
                     <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : isPassingScore(s.totalScore, s.maxScore) ? "#f97316" : "#ef4444" }} />
                     </div>
-                    <span className="text-sm font-semibold text-slate-700">{pct}%</span>
-                    <span className="text-xs text-slate-500">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</span>
+                    <span className="text-sm font-semibold text-slate-700" title="คะแนนสอบเทียบคะแนนเต็ม">{pct}%</span>
+                    <span className="text-xs text-slate-500">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)} คะแนน</span>
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -3238,7 +3235,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                     ["rank", "อันดับ"],
                     ["name", "ชื่อนักเรียน"],
                     [null, "เข้าสอบเมื่อ"],
-                    ["score", "คะแนน"],
+                    ["score", "คะแนนสอบ"],
                     [null, "ตอบ/ไม่ตอบ"],
                     ["time", "เวลาที่ใช้"],
                     [null, "สถานะ"],
@@ -3257,8 +3254,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
               </thead>
               <tbody>
                 {displayedStudents.map((s) => {
-                  const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 100) : null;
-                  const passed = s.submittedAt && pct != null ? pct >= PASS_PCT : null;
+                  const pct = displayExamPercent(s.totalScore, s.maxScore);
+                  const passed = s.submittedAt && pct != null ? isPassingScore(s.totalScore, s.maxScore) : null;
                   return (
                     <tr key={s.examJoinId} className="group border-b border-slate-50 hover:bg-slate-50 transition">
                       <td className="px-4 py-3">
@@ -3282,11 +3279,11 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                           <>
                             <div className="flex items-center gap-2">
                               <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : pct >= 60 ? "#f97316" : "#ef4444" }} />
+                                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? "#22c55e" : isPassingScore(s.totalScore, s.maxScore) ? "#f97316" : "#ef4444" }} />
                               </div>
-                              <span className="font-semibold text-slate-700">{pct}%</span>
+                              <span className="font-semibold text-slate-700" title="คะแนนสอบเทียบคะแนนเต็ม">{pct}%</span>
                             </div>
-                            <p className="text-slate-500 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)}</p>
+                            <p className="text-slate-500 mt-0.5 text-xs">{fmtScore(s.totalScore)}/{fmtScore(s.maxScore)} คะแนน</p>
                           </>
                         ) : "—"}
                       </td>

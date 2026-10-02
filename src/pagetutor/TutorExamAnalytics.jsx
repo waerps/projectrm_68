@@ -13,7 +13,7 @@ import {
   Map as MapIcon, FileSpreadsheet, FileText,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { fmtScore } from "../utils/examScore";
+import { fmtScore, PASS_PCT, isPassingScore, displayExamPercent } from "../utils/examScore";
 import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWithAi } from "../utils/examShared";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE } from "../components/ui/tokens";
@@ -23,8 +23,6 @@ import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-
-const PASS_PCT = 60;
 
 const TOPICS = [
   "พีชคณิต", "เรขาคณิต", "ตรีโกณมิติ",
@@ -52,6 +50,7 @@ const EXAMS_META = [
 const avg = arr => arr.reduce((s, v) => s + v, 0) / arr.length;
 const sdev = arr => { const m = avg(arr); return Math.sqrt(arr.reduce((s, v) => s + (v - m) ** 2, 0) / arr.length); };
 const fmtPct = v => `${(v * 100).toFixed(1)}%`;
+const fmtIndividualPct = (e) => { const pct = displayExamPercent(e?.totalScore, e?.maxScore); return pct == null ? "—" : `${pct}%`; };
 
 // ─── กติกากลางของตัวเลข (ใช้ทุกแท็บ + ทุก PDF — แก้ที่นี่ที่เดียว) ─────────────
 // 1) "สถิติระดับห้อง" (ค่าเฉลี่ย/อัตราผ่าน/สูง-ต่ำ/กราฟกระจาย/รายหมวดเฉลี่ย/ค่าเฉลี่ยห้องที่ใช้เทียบ)
@@ -75,7 +74,7 @@ function computeRoundStats(results, topicBreakdown) {
   const stat = classStatStudents(results);
   const statIds = new Set(stat.map((s) => s.userId));
   const pcts = stat.map((s) => s.totalScore / s.maxScore);
-  const passCount = pcts.filter((p) => p * 100 >= PASS_PCT).length;
+  const passCount = stat.filter((s) => isPassingScore(s.totalScore, s.maxScore)).length;
   return {
     stat,
     pcts,
@@ -126,7 +125,7 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   const below = latest?.pct != null && latest.pct * 100 < PASS_PCT;
   const reasons = [];
   if (!latest) reasons.push("ยังไม่ได้เข้าสอบ");
-  if (below) reasons.push(`คะแนนสอบล่าสุด ${fmtPct(latest.pct)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
+  if (below) reasons.push(`คะแนนสอบล่าสุด ${fmtIndividualPct(latest)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
   if (weak) reasons.push(`ควรทบทวน ${weak} หมวด (คะแนนรายหมวดไม่ถึงครึ่ง)`);
   if (change != null && change < 0) reasons.push("คะแนนสอบลดลงจากรอบแรก");
   if (missedRounds) reasons.push(`ขาดสอบ ${missedRounds} รอบ`);
@@ -147,12 +146,16 @@ const computeTopicStatsReal = (topicBreakdown) => {
   return Array.from(catSet).map((cat) => {
     const rows = topicBreakdown.map((u) => u.topics.find((t) => t.category === cat)).filter(Boolean);
     const avgPct = rows.length ? avg(rows.map((r) => r.pct)) : 0;
-    return { topic: cat, avgPct, color: TOPIC_COLORS[cat] || "#94a3b8" };
+    const sameMax = rows.length > 0 && Number(rows[0].maxSc) > 0 && rows.every((r) => Number(r.maxSc) === Number(rows[0].maxSc));
+    const scoreText = sameMax
+      ? `${fmtScore(avg(rows.map((r) => Number(r.sc))))}/${fmtScore(rows[0].maxSc)} คะแนน`
+      : "คะแนนเต็มรายหมวดต่างกัน";
+    return { topic: cat, avgPct, scoreText, color: TOPIC_COLORS[cat] || "#94a3b8" };
   });
 };
 
 const buildHistogram = (data) => {
-  const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
+  const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${i === 9 ? 100 : (i + 1) * 10 - 1}%`, count: 0 }));
   data.forEach(s => { bins[Math.min(9, Math.floor(s.pct * 10))].count++; });
   return bins;
 };
@@ -162,6 +165,15 @@ function topicPctsForUser(topicBreakdown, userId) {
   const entry = topicBreakdown.find((u) => u.userId === userId);
   if (!entry) return null;
   return entry.topics.reduce((acc, t) => { acc[t.category] = t.pct; return acc; }, {});
+}
+
+function topicScoresForUser(topicBreakdown, userId) {
+  const entry = topicBreakdown?.find((u) => u.userId === userId);
+  if (!entry) return null;
+  return entry.topics.reduce((acc, t) => {
+    acc[t.category] = `${fmtScore(t.sc)}/${fmtScore(t.maxSc)} คะแนน`;
+    return acc;
+  }, {});
 }
 
 // ─── ชิ้นส่วน UI ร่วมของแท็บเปรียบเทียบ / รายคน / หน้าต่างรายคน ───────────────────
@@ -330,6 +342,7 @@ function buildRealCrossExamData(examResults, topicResults) {
           totalStudents: sorted.length,
           avgTimePerQuestion: s.secondsUsed != null && s.totalQuestions ? s.secondsUsed / s.totalQuestions : null,
           topicPcts: topicPctsForUser(topicResults[examId], s.userId),
+          topicScores: topicScoresForUser(topicResults[examId], s.userId),
         };
       }
     });
@@ -338,7 +351,7 @@ function buildRealCrossExamData(examResults, topicResults) {
   return Array.from(userMap.values()).map((u) => {
     const exams = u.exams.map((e, i) => e || {
       label: EXAMS_META[i].label, submitted: false, pct: null, totalScore: null, consent: true,
-      maxScore: null, topicPcts: null, rank: null, totalStudents: null, avgTimePerQuestion: null,
+      maxScore: null, topicPcts: null, topicScores: null, rank: null, totalStudents: null, avgTimePerQuestion: null,
     });
     return {
       studentId: u.userId,
@@ -443,6 +456,7 @@ function buildProgressRows(crossExamData, aiSummaries) {
       submittedCount: submittedList.length,
       totalExams: d.roundsWithData.length,
       latestPct: latest?.pct ?? null,
+      latestPctText: latest ? fmtIndividualPct(latest) : null,
       latestLabel: latest?.label ?? null,
       scoreChange: status.change,
       status: status.key,
@@ -541,7 +555,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
   const stats = useMemo(() => computeRoundStats(results, topicBreakdown), [results, topicBreakdown]);
 
   const hist = useMemo(() => {
-    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${(i + 1) * 10}%`, count: 0 }));
+    const bins = Array.from({ length: 10 }, (_, i) => ({ range: `${i * 10}–${i === 9 ? 100 : (i + 1) * 10 - 1}%`, count: 0 }));
     stats.pcts.forEach((p) => { bins[Math.min(9, Math.floor(p * 10))].count++; });
     return bins;
   }, [stats]);
@@ -583,12 +597,12 @@ function OverviewTab({ results, topicBreakdown, loading }) {
           label="คะแนนเฉลี่ยของห้อง"
           value={pctNum(avgPct)}
           unit="%"
-          sub={`มัธยฐาน ${medianPct != null ? fmtPct(medianPct) : "—"} · ${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน`}
+          sub={`คะแนนเฉลี่ย ${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน · มัธยฐาน ${medianPct != null ? fmtPct(medianPct) : "—"}`}
           color="bg-orange-500"
-          tooltip={`ค่าเฉลี่ยคำนวณจากคะแนนของนักเรียนทุกคน ส่วนมัธยฐานคือคะแนนของผู้ที่อยู่ลำดับกึ่งกลาง หากสองค่านี้ต่างกันมาก แสดงว่ามีคะแนนที่สูงหรือต่ำผิดปกติ · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ค่ายิ่งมาก คะแนนในห้องยิ่งกระจายตัว)`}
+          tooltip={`ค่าเฉลี่ยคำนวณจากนักเรียนที่ส่งข้อสอบและยินยอมให้ใช้ข้อมูลพฤติกรรม ส่วนมัธยฐานคือคะแนนของผู้ที่อยู่ลำดับกึ่งกลาง หากสองค่านี้ต่างกันมาก แสดงว่ามีคะแนนที่สูงหรือต่ำผิดปกติ · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ค่ายิ่งมาก คะแนนในห้องยิ่งกระจายตัว)`}
         />
-        <StatCard icon={CheckCircle} label="นักเรียนที่สอบผ่าน" value={`${passCount}/${stats.stat.length}`} unit="คน" sub={`คิดเป็น ${pctNum(passRate)}% ของผู้มีผลสอบ · เกณฑ์ผ่าน ${PASS_PCT}%`} color="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="สูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
+        <StatCard icon={CheckCircle} label="นักเรียนที่สอบผ่าน" value={`${passCount}/${stats.stat.length}`} unit="คน" sub={`สัดส่วนผู้สอบผ่าน ${pctNum(passRate)}% · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม`} color="bg-emerald-500" />
+        <StatCard icon={TrendingUp} label="คะแนนสอบสูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
         <StatCard
           icon={Users}
           label="การเข้าสอบ"
@@ -608,7 +622,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SectionCard title="การกระจายตัวของคะแนน" icon={BarChart2}>
+        <SectionCard title="การกระจายคะแนนสอบ (% ของคะแนนเต็ม)" icon={BarChart2}>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={hist} barCategoryGap="15%">
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -616,19 +630,19 @@ function OverviewTab({ results, topicBreakdown, loading }) {
               <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
               <Tooltip content={<ChartTooltip formatValue={(v) => `${v} คน`} />} cursor={{ fill: "#f8fafc" }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
-                {hist.map((entry, i) => <Cell key={i} fill={i >= 6 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
+                {hist.map((entry, i) => <Cell key={i} fill={i >= 5 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 justify-center mt-2 flex-wrap">
-            {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–59% ใกล้ผ่าน"], ["#22c55e", "60%+ ผ่าน"]].map(([c, l]) => (
+            {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–49% ใกล้ผ่าน"], ["#22c55e", "50% ขึ้นไป ผ่าน"]].map(([c, l]) => (
               <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
                 <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: c }} />{l}
               </span>
             ))}
           </div>
         </SectionCard>
-        <SectionCard title="คะแนนเฉลี่ยรายหัวข้อ" icon={BookOpen}>
+        <SectionCard title="คะแนนเฉลี่ยรายหมวดของห้อง" icon={BookOpen}>
           {topicStats.length === 0 ? (
             <div className="flex flex-col items-center text-center gap-2 py-10">
               <Info className="h-6 w-6 text-slate-300" />
@@ -636,13 +650,13 @@ function OverviewTab({ results, topicBreakdown, loading }) {
             </div>
           ) : (
             <>
-              <p className="text-xs text-slate-500 mb-3">ห้องนี้เข้าใจเรื่องไหนดี และเรื่องไหนที่ควรสอนซ้ำ</p>
+              <p className="text-xs text-slate-500 mb-3">คะแนนเฉลี่ยรายหมวดเทียบคะแนนเต็มของหมวดนั้น</p>
               <div className="flex items-center gap-4 mb-4 flex-wrap">
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> 70%+ ผ่านเกณฑ์ดี
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> คะแนนหมวด ≥70% ระดับดี
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" /> 50–69% พอใช้
+                  <span className="h-2 w-2 rounded-full bg-amber-400" /> คะแนนหมวด 50–69% พอใช้
                 </span>
                 <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
                   <span className="h-2 w-2 rounded-full bg-red-400" /> ควรทบทวน (คะแนนหมวดนี้ไม่ถึงครึ่ง)
@@ -652,7 +666,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={topicStats} layout="vertical" barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <ReferenceLine x={0.6} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
+                  <ReferenceLine x={0.5} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
                   <XAxis
                     type="number"
                     domain={[0, 1]}
@@ -674,13 +688,14 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                       if (!active || !payload?.length) return null;
                       const pct = payload[0].value;
                       const msg =
-                        pct >= 0.7 ? "ผ่านเกณฑ์ดี ไม่ต้องสอนซ้ำ" :
+                        pct >= 0.7 ? "ระดับดี ไม่ต้องสอนซ้ำ" :
                           pct >= 0.5 ? "พอใช้ ควรทบทวนเล็กน้อย" :
                             "ควรสอนซ้ำบทนี้";
                       return (
                         <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
                           <p className="font-semibold text-slate-700 mb-1">{label}</p>
-                          <p className="text-slate-600">{fmtPct(pct)}</p>
+                          <p className="text-slate-600">คะแนนเฉลี่ยหมวด {fmtPct(pct)}</p>
+                          <p className="text-slate-500">{topicStats.find((t) => t.topic === label)?.scoreText}</p>
                           <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
                             → {msg}
                           </p>
@@ -689,7 +704,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                     }}
                     cursor={{ fill: "#f8fafc" }}
                   />
-                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ย">
+                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ยหมวด">
                     {topicStats.map((entry, i) => (
                       <Cell
                         key={i}
@@ -877,7 +892,8 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
               </span>
               <span className="relative flex flex-col items-end gap-1 flex-shrink-0">
                 <Sparkline values={s.rounds.map((r) => r.pct)} color={STATUS_HEX[s.status]} />
-                <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPct != null ? fmtPct(s.latestPct) : "—"}</span>
+                <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPctText ?? "—"}</span>
+                <span className="text-[10px] text-slate-500">คะแนนสอบล่าสุด</span>
                 <span className={`tabular-nums text-[11px] font-bold ${s.scoreChange > 0 ? "text-emerald-600" : s.scoreChange < 0 ? "text-rose-500" : "text-slate-300"}`}>
                   {s.scoreChange == null ? "ยังเทียบไม่ได้" : signed(s.scoreChange)}
                 </span>
@@ -1169,7 +1185,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
     const firstPct = first && first !== latest ? first.topicPcts?.[topic] : null;
     const ai = aiTopicMap.get(topic);
     return {
-      topic, pct, cls, firstPct,
+      topic, pct, cls, firstPct, points: latest?.topicScores?.[topic] ?? null,
       vsClass: pct != null && cls != null ? Math.round((pct - cls) * 100) : null,
       sinceFirst: pct != null && firstPct != null ? Math.round((pct - firstPct) * 100) : null,
       trend: ai?.trend || null, comment: ai?.comment || null,
@@ -1284,15 +1300,16 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <div className="relative">
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <p className={STAT_NUM}>{Math.round(latest.pct * 100)}%</p>
+                    <p className={STAT_NUM}>{fmtIndividualPct(latest)}</p>
                     <p className="text-[11px] text-white/80">คะแนนสอบล่าสุด</p>
+                    <p className="text-[10px] text-white/75">{fmtScore(latest.totalScore)}/{fmtScore(latest.maxScore)} คะแนน</p>
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-lg font-bold tabular-nums">{change == null ? "—" : `${fmtPct(first.pct)} → ${fmtPct(latest.pct)}`}</p>
+                  <p className="text-lg font-bold tabular-nums">{change == null ? "—" : `${fmtIndividualPct(first)} → ${fmtIndividualPct(latest)}`}</p>
                   <p className="text-xs text-white/85">{change == null ? "สอบอีกรอบถึงจะเทียบได้" : `${first.label} → ${latest.label}`}</p>
                   <p className={`text-xs font-semibold px-2.5 py-0.5 rounded-full inline-block ${latest.pct * 100 >= PASS_PCT ? "bg-white/25" : "bg-slate-900/35"}`}>
-                    {latest.pct * 100 >= PASS_PCT ? "สอบผ่าน" : "ยังไม่ผ่าน"} · เกณฑ์ผ่าน {PASS_PCT}%
+                    {latest.pct * 100 >= PASS_PCT ? "สอบผ่าน" : "ยังไม่ผ่าน"} · เกณฑ์ {PASS_PCT}% ของคะแนนเต็ม
                   </p>
 
                 </div>
@@ -1370,7 +1387,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                         <div>
                           <p className="text-[11px] font-bold text-slate-500">{e.label}</p>
                           {e.submitted
-                            ? <p className={`tabular-nums text-lg font-bold ${e.pct * 100 >= PASS_PCT ? "text-slate-900" : "text-rose-500"}`}>{fmtPct(e.pct)}</p>
+                            ? <p className={`tabular-nums text-lg font-bold ${e.pct * 100 >= PASS_PCT ? "text-slate-900" : "text-rose-500"}`}>{fmtIndividualPct(e)}</p>
                             : <p className="text-xs text-slate-300">{data.roundsWithData.includes(i) ? "ขาดสอบ" : "ยังไม่มีรอบนี้"}</p>}
                         </div>
                         {e.submitted && (
@@ -1454,6 +1471,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                               </div>
                               <div className="text-right tabular-nums leading-tight w-20 sm:w-24">
                                 <p className="text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</p>
+                                {t.points && <p className="text-[10px] text-slate-500">{t.points}</p>}
                                 {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} จากห้อง</p>}
                                 {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} จาก {first.label.replace(/-test$/i, "")}</p>}
                               </div>
@@ -1581,7 +1599,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                           </div>
                         )}
                         {aiRow.facts?.pct != null && (
-                          <p className="text-xs font-semibold text-slate-600">คะแนนจริง {aiRow.facts.pct}%{aiRow.facts.classAvgPct != null ? ` · ค่าเฉลี่ยห้อง ${aiRow.facts.classAvgPct}%` : ""}</p>
+                          <p className="text-xs font-semibold text-slate-600">คะแนนสอบรายคน {aiRow.facts.pct}%{aiRow.facts.classAvgPct != null ? ` · คะแนนเฉลี่ยห้อง ${aiRow.facts.classAvgPct}%` : ""}</p>
                         )}
                       </div>
                     )}
@@ -1789,7 +1807,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         <Confetti fire={cmp.avgGain > 0} />
         <div className="relative grid lg:grid-cols-[18rem_1fr] gap-4 lg:gap-6 p-4 sm:p-5">
           <div>
-            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "คะแนนเฉลี่ยของห้องเพิ่มขึ้น" : "คะแนนเฉลี่ยของห้องเปลี่ยนแปลง"}</p>
+            <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "คะแนนสอบเฉลี่ยของห้องเพิ่มขึ้น" : "คะแนนสอบเฉลี่ยของห้องเปลี่ยนแปลง"}</p>
             <p className="tabular-nums text-3xl sm:text-4xl font-bold leading-none mt-2 drop-shadow-sm">
               <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
@@ -1842,7 +1860,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               </div>
             ); })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">เทียบคะแนนรวม % ของแต่ละคนเองระหว่าง {cmp.fromLabel} กับ {cmp.toLabel} ไม่ได้เทียบกับเพื่อน</p>
+          <p className="text-[11px] text-slate-500 mt-3">เทียบคะแนนสอบ (% ของคะแนนเต็ม) ของแต่ละคนระหว่าง {cmp.fromLabel} กับ {cmp.toLabel} ไม่ได้เทียบกับเพื่อน</p>
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
@@ -1859,7 +1877,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           {view === "swarm"
             ? <GainSwarm people={cmp.people} fromLabel={cmp.fromLabel} toLabel={cmp.toLabel} onOpenStudent={onOpenStudent} />
             : <GainSlope people={cmp.people} fromLabel={cmp.fromLabel} toLabel={cmp.toLabel} onOpenStudent={onOpenStudent} />}
-          {view === "swarm" && <p className="text-[11px] text-slate-500 text-center">แกนนอน = คะแนนรวมที่เปลี่ยนไป (%) จาก {cmp.fromLabel} ถึง {cmp.toLabel}</p>}
+          {view === "swarm" && <p className="text-[11px] text-slate-500 text-center">แกนนอน = คะแนนสอบที่เปลี่ยนไป (%) จาก {cmp.fromLabel} ถึง {cmp.toLabel}</p>}
         </div>
       </div>
 
@@ -1941,19 +1959,18 @@ const buildExcelRows = (results) => {
   const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
 
   return results.students.map((s) => {
-    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
+    const pct = displayExamPercent(s.totalScore, s.maxScore);
     // (แก้บั๊ก) ตัดสิน "ผ่าน/ไม่ผ่าน" ด้วยเปอร์เซ็นต์ดิบ (ไม่ปัดเศษ) — ปัดเศษไว้ใช้แค่แสดงผลใน
-    // คอลัมน์ "เปอร์เซ็นต์" เท่านั้น เดิมใช้ pct ที่ปัดเศษแล้วตัดสิน ทำให้คนที่ได้เช่น 59.95%
-    // อาจถูกปัดขึ้นเป็น 60.0% แล้วโชว์ว่า "ผ่าน" ทั้งที่จริงไม่ผ่านเกณฑ์
+    // คอลัมน์ "คะแนนสอบ (%)" เท่านั้น และปัดลงก่อนถึงเกณฑ์เพื่อไม่ให้ตัวเลขขัดกับผลสอบ
     const rawPct = s.maxScore ? (s.totalScore / s.maxScore) * 100 : null;
     return {
       "อันดับ": rankByJoinId.get(s.examJoinId) ?? "—",
       "ชื่อนักเรียน": s.name,
       "สถานะ": s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"),
-      "คะแนนรวม": s.totalScore ?? "—",
+      "คะแนนที่ได้": s.totalScore ?? "—",
       "คะแนนเต็ม": s.maxScore ?? "—",
-      "เปอร์เซ็นต์": pct != null ? `${pct}%` : "—",
-      "ผล": rawPct != null ? (rawPct >= PASS_PCT ? "ผ่าน" : "ไม่ผ่าน") : "—",
+      "คะแนนสอบ (%)": pct != null ? `${pct}%` : "—",
+      "ผล": rawPct != null ? (isPassingScore(s.totalScore, s.maxScore) ? "ผ่าน" : "ไม่ผ่าน") : "—",
       "เวลาที่ใช้ (นาที)": s.secondsUsed != null ? Math.round(s.secondsUsed / 60) : "—",
     };
   });
@@ -2043,12 +2060,12 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
   const rankByJoinId = new Map(ranked.map((s, i) => [s.examJoinId, i + 1]));
 
   const studentRows = results.students.map((s) => {
-    const pct = s.maxScore ? Math.round((s.totalScore / s.maxScore) * 1000) / 10 : null;
+    const pct = displayExamPercent(s.totalScore, s.maxScore);
     // (แก้บั๊ก) ใช้เปอร์เซ็นต์ดิบตัดสินผ่าน/ไม่ผ่าน ให้สอดคล้องกับ passRate ด้านบนที่ใช้เศษ
     // ส่วนดิบเหมือนกัน — เดิมใช้ pct ที่ปัดเศษแล้ว ทำให้บางแถวโชว์ "ผ่าน" แต่ไม่ถูกนับในอัตรา
     // ผ่านของสรุปด้านบนในรายงานเดียวกัน
     const rawPct = s.maxScore ? (s.totalScore / s.maxScore) * 100 : null;
-    const passed = s.submittedAt && rawPct != null ? rawPct >= PASS_PCT : null;
+    const passed = s.submittedAt && rawPct != null ? isPassingScore(s.totalScore, s.maxScore) : null;
     return `<tr>
       <td>${rankByJoinId.get(s.examJoinId) ?? "—"}</td>
       <td>${esc(s.name)}</td>
@@ -2060,7 +2077,7 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
   }).join("");
 
   const distRows = hist.map((b) => `<tr><td>${b.range}</td><td style="text-align:right">${b.count} คน</td></tr>`).join("");
-  const topicRows = topicStats.map((t) => `<tr><td>${esc(t.topic)}</td><td style="text-align:right">${fmtPct(t.avgPct)}</td></tr>`).join("");
+  const topicRows = topicStats.map((t) => `<tr><td>${esc(t.topic)}</td><td style="text-align:right">${fmtPct(t.avgPct)} · ${esc(t.scoreText)}</td></tr>`).join("");
 
   const printWindow = window.open("", "_blank");
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
@@ -2080,18 +2097,18 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     @media print{body{padding:16px;}}</style></head><body>
     <div class="header"><div><h1>วิเคราะห์ข้อสอบ: ${esc(examLabel)}</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <div class="summary-grid">
-      <div class="summary-card"><div class="label">คะแนนเฉลี่ย</div><div class="value">${fmtPct(avgPct)}</div></div>
-      <div class="summary-card"><div class="label">อัตราผ่าน</div><div class="value">${fmtPct(passRate)}</div></div>
-      <div class="summary-card"><div class="label">สูงสุด / ต่ำสุด</div><div class="value">${fmtPct(maxPct)} / ${fmtPct(minPct)}</div></div>
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ยห้อง</div><div class="value">${fmtPct(avgPct)}</div><div style="font-size:10px;color:#9a3412">${fmtScore(avgPct * rs.maxScore)}/${fmtScore(rs.maxScore)} คะแนน</div></div>
+      <div class="summary-card"><div class="label">สัดส่วนผู้สอบผ่าน</div><div class="value">${fmtPct(passRate)}</div><div style="font-size:10px;color:#9a3412">${rs.passCount}/${rs.stat.length} คน · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม</div></div>
+      <div class="summary-card"><div class="label">คะแนนสอบสูงสุด / ต่ำสุด</div><div class="value">${fmtPct(maxPct)} / ${fmtPct(minPct)}</div></div>
       <div class="summary-card"><div class="label">มัธยฐาน · SD</div><div class="value">${rs.medianPct != null ? fmtPct(rs.medianPct) : "—"} · ${fmtPct(sdPct)}</div></div>
     </div>
     <p style="color:#6b7280;font-size:11px;margin:-16px 0 16px;">เข้าสอบ ${rs.submittedCount}${rs.enrolledCount ? `/${rs.enrolledCount}` : ""} คน · ขาดสอบ ${rs.absentCount} คน${rs.excludedCount ? ` · ตัวเลขสรุปไม่นับ ${rs.excludedCount} คนที่ไม่ยินยอมให้เก็บข้อมูลพฤติกรรม` : ""}</p>
     <div class="two-col">
       <div><h2>การกระจายตัวของคะแนน</h2><table><thead><tr><th>ช่วงคะแนน</th><th style="text-align:right">จำนวนนักเรียน</th></tr></thead><tbody>${distRows}</tbody></table></div>
-      <div><h2>คะแนนเฉลี่ยรายหัวข้อ</h2><table><thead><tr><th>หัวข้อ</th><th style="text-align:right">คะแนนเฉลี่ย</th></tr></thead><tbody>${topicRows || '<tr><td colspan="2">ไม่มีข้อมูลหมวดหมู่</td></tr>'}</tbody></table></div>
+      <div><h2>คะแนนเฉลี่ยรายหมวดของห้อง</h2><table><thead><tr><th>หัวข้อ</th><th style="text-align:right">คะแนนเฉลี่ยหมวด (%)</th></tr></thead><tbody>${topicRows || '<tr><td colspan="2">ไม่มีข้อมูลหมวดหมู่</td></tr>'}</tbody></table></div>
     </div>
     <h2>รายชื่อนักเรียน</h2>
-    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนน</th><th style="text-align:right">เปอร์เซ็นต์</th><th style="text-align:center">ผล</th></tr></thead>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:right">คะแนนสอบ (%)</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
     <script>window.onload = () => window.print();</script></body></html>`);
@@ -2105,8 +2122,8 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
   const summaryBlock = noCohort
     ? `<p style="color:#6b7280;font-size:12px;">ยังไม่มีนักเรียนที่สอบครบทุกรอบ (${esc(cmp.labels.join(", "))})</p>`
     : `<div class="summary-grid">
-        <div class="summary-card"><div class="label">คะแนนเพิ่มเฉลี่ย (${esc(cmp.fromLabel)} → ${esc(cmp.toLabel)})</div><div class="value">${cmp.avgGain > 0 ? "+" : ""}${cmp.avgGain}%</div></div>
-        ${cmp.roundAvg.map((r) => `<div class="summary-card"><div class="label">ค่าเฉลี่ยกลุ่มนี้ · ${esc(r.label)}</div><div class="value">${r.pct != null ? fmtPct(r.pct) : "—"}</div></div>`).join("")}
+        <div class="summary-card"><div class="label">คะแนนสอบเพิ่มเฉลี่ย (${esc(cmp.fromLabel)} → ${esc(cmp.toLabel)})</div><div class="value">${cmp.avgGain > 0 ? "+" : ""}${cmp.avgGain}%</div></div>
+        ${cmp.roundAvg.map((r) => `<div class="summary-card"><div class="label">คะแนนสอบเฉลี่ยกลุ่มนี้ · ${esc(r.label)}</div><div class="value">${r.pct != null ? fmtPct(r.pct) : "—"}</div></div>`).join("")}
       </div>
       <table><thead><tr><th>ผล</th><th style="text-align:right">จำนวนคน</th><th style="text-align:right">สัดส่วน</th></tr></thead><tbody>
         <tr><td>ดีขึ้น</td><td style="text-align:right">${cmp.improved} คน</td><td style="text-align:right">${cmp.improvedPct}%</td></tr>
@@ -2114,8 +2131,8 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
         <tr><td>เท่าเดิม</td><td style="text-align:right">${cmp.same} คน</td><td style="text-align:right">${cmp.samePct}%</td></tr>
       </tbody></table>
       <p style="color:#9ca3af;font-size:11px;margin-top:6px;">นับเฉพาะนักเรียน ${cmp.cohortSize} คนที่สอบครบทุกรอบ${cmp.excludedCount ? ` (ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ)` : ""} และไม่นับคนที่ไม่ยินยอมให้เก็บข้อมูลพฤติกรรมระหว่างสอบ</p>
-      <h2>คะแนนรวมเปลี่ยนไปเท่าไร</h2>
-      <table><thead><tr><th>ช่วงที่เปลี่ยนไป (%)</th><th style="text-align:right">จำนวนคน</th></tr></thead><tbody>
+      <h2>คะแนนสอบเปลี่ยนไปเท่าไร</h2>
+      <table><thead><tr><th>คะแนนสอบที่เปลี่ยนไป (%)</th><th style="text-align:right">จำนวนคน</th></tr></thead><tbody>
         ${cmp.gainBins.map((b) => `<tr><td>${b.label}</td><td style="text-align:right">${b.count} คน</td></tr>`).join("")}
       </tbody></table>`;
 
@@ -2184,7 +2201,7 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
     <div class="header"><div><h1>พัฒนาการรายคน (Pre → Mid → Post)</h1><p>${esc(courseName)}${subjectName ? ` · ${esc(subjectName)}` : ""} &nbsp;|&nbsp; ออกรายงานวันที่: ${today}</p></div></div>
     <table><thead><tr><th>ชื่อ</th><th style="text-align:center">สอบแล้ว</th><th style="text-align:right">คะแนนล่าสุด</th><th style="text-align:center">แนวโน้ม</th><th>สถานะ</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <p style="color:#9ca3af;font-size:11px;">แนวโน้ม = คะแนนรวมรอบแรกที่สอบ → รอบล่าสุดที่สอบ (%)</p>
+    <p style="color:#9ca3af;font-size:11px;">แนวโน้ม = คะแนนสอบรอบแรกเทียบรอบล่าสุด (% ของคะแนนเต็ม)</p>
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
     <script>window.onload = () => window.print();</script></body></html>`);
   printWindow.document.close();
@@ -2204,7 +2221,7 @@ const GAUGE_R = 52;
 const GAUGE_CIRC = 2 * Math.PI * GAUGE_R;
 
 function scoreColor(pct) {
-  return pct >= 0.8 ? "#22c55e" : pct >= 0.6 ? "#f97316" : "#ef4444";
+  return pct >= 0.8 ? "#22c55e" : pct >= PASS_PCT / 100 ? "#f97316" : "#ef4444";
 }
 
 function buildScoreGaugeSvg(pct) {
@@ -2215,8 +2232,8 @@ function buildScoreGaugeSvg(pct) {
     <circle cx="60" cy="60" r="${GAUGE_R}" fill="none" stroke="#f1f5f9" stroke-width="12" />
     <circle cx="60" cy="60" r="${GAUGE_R}" fill="none" stroke="${color}" stroke-width="12" stroke-linecap="round"
       stroke-dasharray="${GAUGE_CIRC}" stroke-dashoffset="${offset}" transform="rotate(-90 60 60)" />
-    <text x="60" y="58" text-anchor="middle" font-size="26" font-weight="800" fill="${color}" font-family="Sarabun,sans-serif">${Math.round(safePct * 100)}%</text>
-    <text x="60" y="76" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="Sarabun,sans-serif">คะแนนรวม</text>
+    <text x="60" y="58" text-anchor="middle" font-size="26" font-weight="800" fill="${color}" font-family="Sarabun,sans-serif">${displayExamPercent(safePct, 1)}%</text>
+    <text x="60" y="76" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="Sarabun,sans-serif">คะแนนสอบ</text>
   </svg>`;
 }
 
@@ -2238,7 +2255,7 @@ function topicTrendArrowHtml(curPct, prevPct) {
     : `<span style="color:#dc2626;">▼ ${Math.round(Math.abs(delta) * 100)}%</span>`;
 }
 
-function buildTopicBarsHtml(topicPcts, prevTopicPcts) {
+function buildTopicBarsHtml(topicPcts, prevTopicPcts, topicScores) {
   const topics = Object.keys(topicPcts || {});
   if (!topics.length) return `<p style="font-size:11px;color:#94a3b8;">ยังไม่มีข้อมูลคะแนนรายหมวด</p>`;
   return topics.map((t) => {
@@ -2247,7 +2264,7 @@ function buildTopicBarsHtml(topicPcts, prevTopicPcts) {
     return `<div style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
         <span style="color:#475569;font-weight:600;">${esc(t)}</span>
-        <span>${Math.round(pct * 100)}% ${topicTrendArrowHtml(pct, prev)}</span>
+        <span>${Math.round(pct * 100)}% · ${topicScores?.[t] ?? "—"} ${topicTrendArrowHtml(pct, prev)}</span>
       </div>
       <div style="height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;">
         <div style="height:100%;width:${Math.round(pct * 100)}%;background:${scoreColor(pct)};border-radius:4px;"></div>
@@ -2310,7 +2327,7 @@ function buildAiTextSectionHtml(row) {
 // สร้าง HTML "1 หน้า" ของนักเรียน 1 คน — ใช้ประกอบเป็นรายงานเดี่ยวหรือรวมทั้งห้องก็ได้
 function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, examInfo, prevTopicPcts, aiRow, today }) {
   const pct = examInfo?.pct ?? null;
-  const passed = pct != null ? (pct * 100) >= PASS_PCT : null;
+  const passed = examInfo ? isPassingScore(examInfo.totalScore, examInfo.maxScore) : null;
   return `<div class="report-page">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #f97316;padding-bottom:14px;margin-bottom:18px;">
       <div>
@@ -2323,14 +2340,14 @@ function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, 
       ${buildScoreGaugeSvg(pct)}
       ${passed != null ? buildPassStamp(passed) : ""}
       <div style="flex:1;min-width:180px;">
-        <p style="font-size:12px;color:#475569;">คะแนนที่ได้: <b>${examInfo ? `${fmtScore(examInfo.totalScore)} / ${fmtScore(examInfo.maxScore)}` : "—"}</b></p>
+        <p style="font-size:12px;color:#475569;">คะแนนสอบ: <b>${examInfo ? `${fmtScore(examInfo.totalScore)} / ${fmtScore(examInfo.maxScore)} คะแนน` : "—"}</b> · เกณฑ์ผ่าน ${PASS_PCT}% ของคะแนนเต็ม</p>
         ${examInfo?.rank != null ? `<p style="font-size:12px;color:#475569;margin-top:2px;">อันดับในห้อง: <b>${examInfo.rank} / ${examInfo.totalStudents}</b></p>` : ""}
       </div>
     </div>
 
     ${examInfo?.topicPcts ? `<div style="margin-bottom:18px;">
       <p style="font-size:12px;font-weight:700;color:#1f2937;margin-bottom:8px;">คะแนนรายหมวด</p>
-      ${buildTopicBarsHtml(examInfo.topicPcts, prevTopicPcts)}
+      ${buildTopicBarsHtml(examInfo.topicPcts, prevTopicPcts, examInfo.topicScores)}
     </div>
     <div style="margin-bottom:18px;">${buildHighlightCardsHtml(examInfo.topicPcts)}</div>` : ""}
 
