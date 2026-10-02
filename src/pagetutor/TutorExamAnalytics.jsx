@@ -1083,6 +1083,22 @@ function TopicRadar({ topics, mine, refVals, refColor }) {
   );
 }
 
+function PaceGauge({ ratio }) {
+  const clamped = Math.max(0.5, Math.min(1.5, ratio));
+  const ang = -90 + (clamped - 0.5) * 180; // -90 = เร็วมาก, +90 = ช้ามาก
+  return (
+    <svg viewBox="0 0 200 118" className="w-full max-w-[260px] mx-auto" aria-hidden="true">
+      <defs><linearGradient id="saPace" x1="0" x2="1"><stop offset="0" stopColor="#60a5fa" /><stop offset=".5" stopColor="#e2e8f0" /><stop offset="1" stopColor="#fb7185" /></linearGradient></defs>
+      <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="url(#saPace)" strokeWidth="16" strokeLinecap="round" />
+      <line x1="100" y1="16" x2="100" y2="30" stroke="#64748b" strokeWidth="2" />
+      <g transform={`rotate(${ang} 100 100)`}><line x1="100" y1="100" x2="100" y2="34" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" /></g>
+      <circle cx="100" cy="100" r="8" fill="#0f172a" />
+      <text x="20" y="116" fontSize="12" fill="#3b82f6" fontWeight="700">เร็ว</text>
+      <text x="180" y="116" fontSize="12" textAnchor="end" fill="#f43f5e" fontWeight="700">ช้า</text>
+    </svg>
+  );
+}
+
 const formatSecondsPerQuestion = (value) => Number(value).toLocaleString("th-TH", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
@@ -1214,14 +1230,18 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   // ── จังหวะการทำข้อสอบ
   const myPace = latest?.avgTimePerQuestion ?? null;
   const roomPace = latestIndex != null ? classPace(latestIndex) : null;
-  const roomTimeDelta = myPace != null && roomPace != null ? myPace - roomPace : null;
+  const paceRatio = myPace != null && roomPace ? myPace / roomPace : null;
+  const paceDiff = paceRatio != null ? Math.round((paceRatio - 1) * 100) : null;
   const prevDone = done.length >= 2 ? done[done.length - 2] : null;
   const timeDelta = prevDone && myPace != null && prevDone.avgTimePerQuestion != null ? myPace - prevDone.avgTimePerQuestion : null;
-  const compareTimeText = (delta) => {
-    if (delta == null) return "—";
-    if (Math.abs(delta) < 0.05) return "ใกล้เคียงกัน";
-    return `${delta < 0 ? "เร็วกว่า" : "ช้ากว่า"} ${formatSecondsPerQuestion(Math.abs(delta))} วินาที/ข้อ`;
-  };
+  const pctDelta = prevDone ? latest.pct - prevDone.pct : null;
+  const timeDeltaDisplay = timeDelta == null ? null : formatSecondsPerQuestion(Math.abs(timeDelta));
+  const paceNote = timeDelta == null ? null
+    : Math.abs(timeDelta) < 0.05 ? { cls: "bg-white text-slate-500", text: `ใช้เวลาใกล้เคียง ${prevDone.label}` }
+      : timeDelta < 0 && pctDelta > 0 ? { cls: "bg-emerald-100 text-emerald-700", text: "เร็วขึ้นและคะแนนดีขึ้น" }
+        : timeDelta < 0 && pctDelta === 0 ? { cls: "bg-blue-50 text-blue-700", text: "เร็วขึ้น โดยคะแนนคงเดิม" }
+          : timeDelta < 0 ? { cls: "bg-rose-100 text-rose-600", text: "เร็วขึ้นแต่คะแนนลด — อาจรีบหรือเดา" }
+            : { cls: "bg-white text-slate-500", text: `ช้าลง ${timeDeltaDisplay} วินาที/ข้อ จาก ${prevDone.label}` };
   const aiPaceSeconds = aiAverageSecondsPerQuestion(aiRow?.behavior);
   const aiPaceMismatch = aiPaceSeconds != null
     && myPace != null
@@ -1503,7 +1523,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               {/* ── 4) สิ่งที่ต้องช่วย ── */}
               <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
-                <div className={`grid gap-5 items-start ${myPace != null ? "lg:grid-cols-[minmax(0,1fr)_22rem]" : ""}`}>
+                <div className={`grid gap-5 items-start ${paceRatio != null ? "lg:grid-cols-[minmax(0,1fr)_20rem]" : ""}`}>
                   <div className="space-y-2.5">
                     <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
                       <AlertTriangle className="h-3.5 w-3.5 text-rose-500" /> เรื่องที่อาจเข้าใจผิด <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">วิเคราะห์โดย AI</span>
@@ -1524,47 +1544,28 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                           );
                         })}
                   </div>
-                  {myPace != null && (
-                    <div className="self-start rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Timer className="h-4 w-4 text-blue-500" />
-                        <p className="text-sm font-bold">เวลาเฉลี่ยต่อข้อ · {latest.label}</p>
-                        <span title="เวลาเฉลี่ยต่อข้อ = เวลาที่ใช้ทำข้อสอบทั้งหมด ÷ จำนวนข้อ" aria-label="วิธีคำนวณเวลาเฉลี่ยต่อข้อ" className="ml-auto cursor-help">
-                          <Info className="h-4 w-4 text-slate-400" />
+                  {paceRatio != null && (
+                    <div className="self-start rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5 text-center shadow-sm">
+                      <p className="text-sm font-bold text-slate-600 flex items-center justify-center gap-1.5">
+                        <Timer className="h-4 w-4" /> จังหวะการทำข้อสอบ · {latest.label}
+                        <span title="เวลาเฉลี่ยต่อข้อ = เวลาที่ใช้ทำข้อสอบทั้งหมด ÷ จำนวนข้อ" aria-label="วิธีคำนวณเวลาเฉลี่ยต่อข้อ" className="cursor-help">
+                          <Info className="h-3.5 w-3.5 text-slate-400" />
                         </span>
-                      </div>
-
-                      <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-4 text-center">
-                        <p className="text-xs font-semibold text-blue-700">นักเรียนใช้เวลาเฉลี่ย</p>
-                        <p className="mt-1 tabular-nums text-4xl font-bold text-slate-900">
-                          {formatSecondsPerQuestion(myPace)}
-                          <span className="ml-1.5 text-sm font-semibold text-slate-600">วินาที/ข้อ</span>
-                        </p>
-                      </div>
-
-                      <dl className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white px-3 text-sm">
-                        <div className="flex items-center justify-between gap-3 py-2.5">
-                          <dt className="text-slate-500">ค่าเฉลี่ยห้อง</dt>
-                          <dd className="tabular-nums font-bold text-slate-800">{roomPace == null ? "—" : `${formatSecondsPerQuestion(roomPace)} วินาที/ข้อ`}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-3 py-2.5">
-                          <dt className="text-slate-500">เทียบกับห้อง</dt>
-                          <dd className="text-right font-bold text-slate-800">{compareTimeText(roomTimeDelta)}</dd>
-                        </div>
-                        <div className="flex items-center justify-between gap-3 py-2.5">
-                          <dt className="text-slate-500">เทียบ {prevDone?.label || "รอบก่อน"}</dt>
-                          <dd className="text-right font-bold text-slate-800">{prevDone ? compareTimeText(timeDelta) : "ยังไม่มีรอบก่อนหน้า"}</dd>
-                        </div>
-                      </dl>
-
+                      </p>
+                      <PaceGauge ratio={paceRatio} />
+                      <p className="-mt-1 tabular-nums text-3xl sm:text-4xl font-bold text-slate-900">
+                        {formatSecondsPerQuestion(myPace)}
+                        <span className="ml-1 text-sm font-semibold text-slate-500">วินาที/ข้อ</span>
+                      </p>
+                      <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-600">
+                        {paceDiff === 0 ? "ใกล้เคียงค่าเฉลี่ยห้อง" : paceDiff > 0 ? `ช้ากว่าห้อง ${paceDiff}%` : `เร็วกว่าห้อง ${Math.abs(paceDiff)}%`} · ห้องเฉลี่ย {formatSecondsPerQuestion(roomPace)} วินาที/ข้อ
+                      </p>
+                      {paceNote && <p className={`text-sm font-bold leading-relaxed mt-3 rounded-xl px-3 py-2 ${paceNote.cls}`}>{paceNote.text}</p>}
                       {aiRow?.behavior && !aiPaceMismatch && (
-                        <details className="group mt-3 rounded-xl border border-orange-100 bg-white px-3 py-2.5 text-left">
-                          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-bold text-orange-700">
-                            <Sparkles className="h-3.5 w-3.5" /> ข้อสังเกตเรื่องเวลา · วิเคราะห์โดย AI
-                            <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-                          </summary>
-                          <p className="mt-2 border-t border-orange-100 pt-2 text-sm leading-relaxed text-slate-600">{aiRow.behavior}</p>
-                        </details>
+                        <div className="mt-3 rounded-xl border border-orange-100 bg-white px-3 py-3 text-left">
+                          <p className="text-xs font-bold text-orange-700">ข้อสังเกตเรื่องเวลา · วิเคราะห์โดย AI</p>
+                          <p className="mt-1 text-sm leading-relaxed text-slate-600">{aiRow.behavior}</p>
+                        </div>
                       )}
                       {aiRow?.behavior && aiPaceMismatch && (
                         <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-relaxed text-amber-700">
