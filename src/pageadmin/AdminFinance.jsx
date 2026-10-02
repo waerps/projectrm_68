@@ -70,7 +70,8 @@ const formatDate = (d) => {
     } catch { return '—'; }
 };
 
-const formatMoney = (v) => `฿${Number(v || 0).toLocaleString()}`;
+const formatNumber = (v) => Number(v || 0).toLocaleString('th-TH');
+const formatMoney = (v) => `฿${formatNumber(v)}`;
 
 /* ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/TutorExamAnalytics) ── */
 const tiltMove = (e) => {
@@ -209,7 +210,7 @@ function SectionCard({ title, icon: Icon, action, children, className = '', body
 
 /* ─── Shared: KPICard — สี icon square ตามระดับความสำคัญ (tone) เหมือน
    StatCard ในหน้า Dashboard / การ์ดสรุปในหน้านักเรียน-ติวเตอร์ ─────────── */
-function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
+function KPICard({ label, value, unit, sub, icon: Icon, tone = 'neutral' }) {
     const toneBg = {
         neutral: 'bg-slate-400',
         green: 'bg-emerald-500',
@@ -234,7 +235,9 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
             )}
             <div className="relative min-w-0 flex-1">
                 <p className={`${T.label} leading-snug`}>{label}</p>
-                <p className={`${STAT_VALUE} truncate mt-0.5`}>{value}</p>
+                <p className={`${STAT_VALUE} truncate mt-0.5`}>
+                    {value}{unit && <span className={STAT_UNIT}>{unit}</span>}
+                </p>
                 {sub && <p className={`${STAT_SUB} mt-0.5 line-clamp-2 leading-snug`}>{sub}</p>}
             </div>
         </div>
@@ -242,7 +245,7 @@ function KPICard({ label, value, sub, icon: Icon, tone = 'neutral' }) {
 }
 
 /* ─── Donut3D — โทนเดียวกับ CourseStatusDonut ใน Dashboard ──────────── */
-function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v) => v, size = 200 }) {
+function Donut3D({ idPrefix, data, centerValue, centerUnit, centerLabel, valueFormatter = (v) => v, size = 200 }) {
     const [hoverIdx, setHoverIdx] = useState(null);
     if (!data.length) return <EmptyState message="ยังไม่มีข้อมูล" />;
     const sorted = [...data].sort((a, b) => b.value - a.value);
@@ -297,7 +300,9 @@ function Donut3D({ idPrefix, data, centerValue, centerLabel, valueFormatter = (v
                     </RePieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <p className={STAT_VALUE}>{centerValue}</p>
+                    <p className={STAT_VALUE}>
+                        {centerValue}{centerUnit && <span className={STAT_UNIT}>{centerUnit}</span>}
+                    </p>
                     <p className={STAT_SUB}>{centerLabel}</p>
                 </div>
             </div>
@@ -330,7 +335,7 @@ function HeroStat({ label, icon: Icon, value, tone, ready }) {
                 {Icon && <Icon className="h-3.5 w-3.5" />}{label}
             </p>
             <p className={`${STAT_NUM} mt-1 ${tone || 'text-slate-900'}`}>
-                ฿{Number(shown).toLocaleString()}
+                {formatNumber(shown)}<span className={STAT_UNIT}>บาท</span>
             </p>
         </div>
     );
@@ -702,10 +707,10 @@ export default function AdminFinance() {
             {/* ── Secondary KPIs ── */}
             <ApiState loading={summaryLoading} error={summaryError} onRetry={fetchSummary} minHeight="h-28" skeletonHeight="h-28">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-                    <KPICard label="รายรับสะสม" value={formatMoney(totalRevenueAllTime)} icon={Banknote} tone="orange" />
-                    <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatMoney(outstandingTotalAmount)} icon={Clock} tone="blue" />
-                    <KPICard label="นักเรียนที่ชำระแล้ว" value={<>{paidEnrollCount} / {totalEnrollCount}<span className={STAT_UNIT}>คน</span></>} icon={Users} tone="purple" />
-                    <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : <>{onTimePaymentRate}<span className="ml-0.5 text-xs font-medium text-slate-500">%</span></>} icon={CheckCircle} tone="green" />
+                    <KPICard label="รายรับสะสม" value={formatNumber(totalRevenueAllTime)} unit="บาท" icon={Banknote} tone="orange" />
+                    <KPICard label="ยอดคงเหลือ (ผ่อน)" value={formatNumber(outstandingTotalAmount)} unit="บาท" icon={Clock} tone="blue" />
+                    <KPICard label="นักเรียนที่ชำระแล้ว" value={`${paidEnrollCount} / ${totalEnrollCount}`} unit="คน" icon={Users} tone="purple" />
+                    <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : onTimePaymentRate} unit="%" icon={CheckCircle} tone="green" />
                 </div>
             </ApiState>
 
@@ -756,7 +761,7 @@ export default function AdminFinance() {
                                 {revenueBySingleBundle.length === 0 ? (
                                     <EmptyState message="ยังไม่มีข้อมูลรายรับ" suggestion="ข้อมูลจะแสดงเมื่อมีการชำระเงินเข้ามาในระบบ" />
                                 ) : (
-                                    <Donut3D idPrefix="singleBundleDonut" data={revenueBySingleBundle} centerValue={singleRevenueShare === null ? '—' : `${singleRevenueShare}%`} centerLabel="สัดส่วนคอร์สเดี่ยว" valueFormatter={formatMoney} />
+                                    <Donut3D idPrefix="singleBundleDonut" data={revenueBySingleBundle} centerValue={singleRevenueShare === null ? '—' : singleRevenueShare} centerUnit="%" centerLabel="สัดส่วนคอร์สเดี่ยว" valueFormatter={formatMoney} />
                                 )}
                             </ApiState>
                         </SectionCard>
@@ -766,7 +771,7 @@ export default function AdminFinance() {
                                 {installmentStatusData.length === 0 ? (
                                     <EmptyState message="ยังไม่มีแผนผ่อนที่เริ่มชำระ" suggestion="ไม่นับรายการที่เพียงสร้าง QR แล้วออก" />
                                 ) : (
-                                    <Donut3D idPrefix="installmentDonut" data={installmentStatusData} centerValue={installmentTotalCount} centerLabel="งวดทั้งหมด" valueFormatter={(v) => `${v} งวด`} />
+                                    <Donut3D idPrefix="installmentDonut" data={installmentStatusData} centerValue={installmentTotalCount} centerUnit="งวด" centerLabel="งวดผ่อนทั้งหมด" valueFormatter={(v) => `${v} งวด`} />
                                 )}
                             </ApiState>
                         </SectionCard>
@@ -1142,8 +1147,8 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
                     <ApiState loading={loading} error={error} minHeight="h-64">
                         {data && <div className="space-y-5">
                             <div className="grid md:grid-cols-3 gap-3">
-                                <KPICard label="ยอดรับครั้งนี้" value={formatMoney(data.Amount)} icon={Banknote} tone="green" />
-                                <KPICard label="ยอดรับสะสม Order" value={formatMoney(data.PaidAmount)} sub={`จาก ${formatMoney(data.TotalAmount)}`} icon={Wallet} tone="blue" />
+                                <KPICard label="ยอดรับครั้งนี้" value={formatNumber(data.Amount)} unit="บาท" icon={Banknote} tone="green" />
+                                <KPICard label="ยอดรับสะสม Order" value={formatNumber(data.PaidAmount)} unit="บาท" sub={`จาก ${formatNumber(data.TotalAmount)} บาท`} icon={Wallet} tone="blue" />
                                 <KPICard label="รูปแบบ" value={data.PaymentPlan === 'full' ? 'เต็มจำนวน' : `ผ่อน งวด ${data.InstallmentNo}`} icon={CreditCard} tone="orange" />
                             </div>
                             <div className="grid md:grid-cols-2 gap-4 text-sm">
@@ -1184,7 +1189,9 @@ function TutorPaymentDetailModal({ item, onClose }) {
                     <div className="mb-5 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>ยอดรวม</p>
-                            <p className={`mt-1 ${STAT_NUM} text-orange-600`}>{formatMoney(item.amount)}</p>
+                            <p className={`mt-1 ${STAT_NUM} text-orange-600`}>
+                                {formatNumber(item.amount)}<span className={STAT_UNIT}>บาท</span>
+                            </p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                             <p className={T.label}>จำนวนคาบ</p>
@@ -1281,7 +1288,9 @@ function TutorPayoutModal({ item, onClose, onSuccess }) {
             <div className="p-4 sm:p-6 space-y-4">
                 <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
                     <p className={T.label}>ยอดที่ต้องโอน</p>
-                    <p className="tabular-nums text-2xl sm:text-3xl font-bold text-orange-600">{formatMoney(item.amount)}</p>
+                    <p className="tabular-nums text-2xl sm:text-3xl font-bold text-orange-600">
+                        {formatNumber(item.amount)}<span className={STAT_UNIT}>บาท</span>
+                    </p>
                     <p className={T.caption}>{item.sessionCount} คาบ · {item.courses.join(', ')}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
