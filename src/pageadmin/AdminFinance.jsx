@@ -342,7 +342,7 @@ function HeroStat({ label, icon: Icon, value, tone, ready }) {
 }
 
 /* ─── Hero: ไล่เฉดอ่อนๆ + การ์ดกระจกลอย + เลขวิ่งขึ้น (สอดคล้องกับดีไซน์ที่ตกลงกัน) ── */
-function HeroSummary({ loading, error, onRetry, revenue, revenueGrowth, cashNet, cashMargin, tutorPayable, tutorAccrued, overdue, overdueCount }) {
+function HeroSummary({ loading, error, onRetry, revenue, cashNet, tutorPayable, overdue }) {
     const ready = !loading && !error;
     return (
         <div className="admin-summary-banner p-5 sm:p-6">
@@ -582,34 +582,9 @@ export default function AdminFinance() {
     const paidEnrollCount = summary?.paidEnrollCount ?? 0;
     const totalEnrollCount = summary?.totalEnrollCount ?? 0;
     const outstandingTotalAmount = summary?.outstandingTotalAmount ?? 0;
-    const outstandingEnrollCount = summary?.outstandingEnrollCount ?? 0;
-    const monthlyPayingStudentCount = summary?.monthlyPayingStudentCount ?? 0;
     const tutorPayableOutstanding = summary?.tutorPayableOutstanding ?? 0;
-    const monthlyTutorAccrued = summary?.monthlyTutorAccrued ?? 0;
     const overdueAmount = summary?.overdueAmount ?? 0;
-    const overdueInstallmentCount = summary?.overdueInstallmentCount ?? 0;
     const onTimePaymentRate = summary?.onTimePaymentRate ?? null;
-    const paymentPlanMix = summary?.paymentPlanMix || {
-        full: { orderCount: 0, paidAmount: 0 },
-        installment: { orderCount: 0, paidAmount: 0 },
-    };
-
-    const profitMargin = monthlyRevenue > 0
-        ? Math.round((monthlyProfit / monthlyRevenue) * 1000) / 10
-        : null;
-
-    const revenueGrowth = (() => {
-        if (monthly.length < 2) return null;
-        const prev = monthly[monthly.length - 2].revenue;
-        const curr = monthly[monthly.length - 1].revenue;
-        if (!prev) return null;
-        return Math.round(((curr - prev) / prev) * 1000) / 10;
-    })();
-
-    const avgRevenuePerStudent = monthlyPayingStudentCount > 0
-        ? Math.round(monthlyRevenue / monthlyPayingStudentCount)
-        : 0;
-    const paidRate = totalEnrollCount > 0 ? Math.round((paidEnrollCount / totalEnrollCount) * 100) : 0;
 
     const monthlyChartData = monthly.map(m => ({
         month: m.label,
@@ -654,11 +629,6 @@ export default function AdminFinance() {
         revenue: Number(c.revenue) || 0,
     }));
 
-    const fullOrderCount = Number(paymentPlanMix.full?.orderCount || 0);
-    const installmentOrderCount = Number(paymentPlanMix.installment?.orderCount || 0);
-    const activeOrderCount = fullOrderCount + installmentOrderCount;
-    const fullPlanPercent = activeOrderCount > 0 ? Math.round((fullOrderCount / activeOrderCount) * 100) : 0;
-
     const totalPages = txPagination.totalPages || 1;
     const currentPageNum = txPagination.page || 1;
     const totalTx = txPagination.total || 0;
@@ -695,13 +665,9 @@ export default function AdminFinance() {
                 error={summaryError}
                 onRetry={fetchSummary}
                 revenue={monthlyRevenue}
-                revenueGrowth={revenueGrowth}
                 cashNet={monthlyProfit}
-                cashMargin={profitMargin}
                 tutorPayable={tutorPayableOutstanding}
-                tutorAccrued={monthlyTutorAccrued}
                 overdue={overdueAmount}
-                overdueCount={overdueInstallmentCount}
             />
 
             {/* ── Secondary KPIs ── */}
@@ -718,7 +684,7 @@ export default function AdminFinance() {
             {selectedTab === 'overview' && (
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <SectionCard title="รายรับ - เงินจ่ายติวเตอร์ (6 เดือน)" icon={BarChart3}>
+                        <SectionCard title="รายรับ - เงินจ่ายติวเตอร์ 6 เดือน (บาท)" icon={BarChart3}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
                                     <BarChart data={monthlyChartData} barGap={4}>
@@ -735,7 +701,7 @@ export default function AdminFinance() {
                             </ApiState>
                         </SectionCard>
 
-                        <SectionCard title="แนวโน้มกระแสเงินสดสุทธิ" icon={TrendingUp}>
+                        <SectionCard title="แนวโน้มกระแสเงินสดสุทธิ (บาท)" icon={TrendingUp}>
                             <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                                 <ResponsiveContainer width="100%" height={T.chartHeight}>
                                     <LineChart data={monthlyChartData}>
@@ -777,7 +743,7 @@ export default function AdminFinance() {
                         </SectionCard>
                     </div>
 
-                    <SectionCard title="แนวโน้มรายรับ 6 เดือน (คอร์สรวม vs คอร์สเดี่ยว)" icon={BarChart3}>
+                    <SectionCard title="แนวโน้มรายรับ 6 เดือน: คอร์สรวมเทียบคอร์สเดี่ยว (บาท)" icon={BarChart3}>
                         <p className={`${T.caption} -mt-2 mb-2`}>ใหม่ — แยกให้เห็นว่าคอร์สเดี่ยวสมทบรายรับเท่าไรในแต่ละเดือน</p>
                         <ApiState loading={monthlyLoading} error={monthlyError} onRetry={fetchMonthly} minHeight="h-64" skeletonHeight="h-64">
                             <ResponsiveContainer width="100%" height={T.chartHeight}>

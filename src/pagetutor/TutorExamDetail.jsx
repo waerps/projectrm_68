@@ -2563,14 +2563,14 @@ function StudentDetailModal({
                   ส่วนแบบละเอียด (รายหมวด/จุดเข้าใจผิด/แผนทำต่อ/แก้ข้อความ) อยู่หน้าวิเคราะห์ แท็บ "รายคน" ที่เดียว */}
               <div className="flex flex-wrap lg:flex-nowrap items-start justify-between gap-3">
                 <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
-                  <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
+                  <Zap className="h-3.5 w-3.5" /> บทวิเคราะห์โดย AI
                   {aiSummary.misconceptions?.length > 0 && (
                     <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
                       จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
                     </span>
                   )}
                 </p>
-                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โดย {aiSummary.model}</span>}
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โมเดล: {aiSummary.model}</span>}
               </div>
               <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
@@ -2594,7 +2594,7 @@ function StudentDetailModal({
                     type="button"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(`${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
+                        await navigator.clipboard.writeText(`ข้อความร่างโดย AI — ติวเตอร์ควรตรวจสอบก่อนส่ง\n${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
                         setCopiedMsg(true);
                         setTimeout(() => setCopiedMsg(false), 2000);
                       } catch (err) { console.error("Copy failed:", err); }
@@ -2912,11 +2912,11 @@ function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }
       <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
       <p className="text-xs text-slate-500 min-w-0 lg:truncate">
         {loading
-          ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
+          ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
           : summaries.length > 0
-            ? `AI วิเคราะห์แล้ว ${summaries.length} จาก ${submittedCount || 0} คน — ดูบทวิเคราะห์ได้ที่ปุ่ม "ดูผล" ของนักเรียนแต่ละคน`
+            ? `มีผลวิเคราะห์โดย AI ${summaries.length} จาก ${submittedCount || 0} คน — ดูบทวิเคราะห์ได้ที่ปุ่ม "ดูผล" ของนักเรียนแต่ละคน`
             : submittedCount
-              ? "ยังไม่มีผลวิเคราะห์ AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียด/สั่งวิเคราะห์ใหม่ได้ที่หน้าวิเคราะห์เชิงลึก)"
+              ? "ยังไม่มีผลวิเคราะห์โดย AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียดหรือกดวิเคราะห์ใหม่ด้วย AI ได้ที่หน้าวิเคราะห์เชิงลึก)"
               : "ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้"}
       </p>
     </div>
@@ -3266,9 +3266,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                           {s.name}
                           {status === "closed" && s.submittedAt && (
                             aiByUserId.get(s.userId) ? (
-                              <span title="วิเคราะห์ AI แล้ว — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
+                              <span title="มีผลวิเคราะห์โดย AI — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
                             ) : (
-                              <span title="กำลังวิเคราะห์ AI" className="text-slate-300 text-xs leading-none">⏳</span>
+                              <span title="กำลังประมวลผลด้วย AI" className="text-slate-300 text-xs leading-none">⏳</span>
                             )
                           )}
                         </span>
