@@ -88,8 +88,8 @@ export default function Navbar() {
                                 />
                             </div>
                             <div className="hidden flex-col md:flex">
-                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-slate-800"}`}>SORNSERM</span>
-                                <span className={`font-bold text-xs transition-colors ${isActive("/admin/dashboard") || isActive("/admin") ? "text-orange-500" : "text-slate-800"}`}>TUTOR</span>
+                                <span className="font-bold text-xs text-slate-800">SORNSERM</span>
+                                <span className="font-bold text-xs text-slate-800">TUTOR</span>
                             </div>
                         </div>
                     </Link>

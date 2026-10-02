@@ -498,7 +498,7 @@ function StatCard({ icon, label, value, unit, sub, color = "bg-orange-500", tool
           )}
         </div>
         <p className={STAT_VALUE}>{value}{unit && <Unit>{unit}</Unit>}</p>
-        {sub && <p className={`${STAT_SUB} mt-0.5 line-clamp-2 lg:line-clamp-none lg:truncate`}>{sub}</p>}
+        {sub && <p className={`${STAT_SUB} mt-0.5 line-clamp-2`}>{sub}</p>}
       </div>
     </div>
   );
@@ -586,7 +586,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
     );
   }
 
-  const { avgPct, medianPct, sdPct, passRate, passCount, maxPct, minPct, maxScore, maxRawScore, minRawScore } = stats;
+  const { avgPct, passRate, passCount, maxPct, minPct, maxScore, maxRawScore, minRawScore } = stats;
   const notSubmitted = Math.max(0, stats.joinedCount - stats.submittedCount);
 
   return (
@@ -594,18 +594,18 @@ function OverviewTab({ results, topicBreakdown, loading }) {
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={Award}
-          label="คะแนนเฉลี่ยของห้อง"
+          label="คะแนนเฉลี่ยห้อง"
           value={pctNum(avgPct)}
           unit="%"
-          sub={`คะแนนเฉลี่ย ${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน · มัธยฐาน ${medianPct != null ? fmtPct(medianPct) : "—"}`}
+          sub={`${fmtScore(avgPct * maxScore)}/${fmtScore(maxScore)} คะแนน`}
           color="bg-orange-500"
-          tooltip={`ค่าเฉลี่ยคำนวณจากนักเรียนที่ส่งข้อสอบและยินยอมให้ใช้ข้อมูลพฤติกรรม ส่วนมัธยฐานคือคะแนนของผู้ที่อยู่ลำดับกึ่งกลาง หากสองค่านี้ต่างกันมาก แสดงว่ามีคะแนนที่สูงหรือต่ำผิดปกติ · ส่วนเบี่ยงเบนมาตรฐาน ${fmtPct(sdPct)} (ค่ายิ่งมาก คะแนนในห้องยิ่งกระจายตัว)`}
+          tooltip="เฉลี่ยคะแนนของผู้ส่งข้อสอบที่ยินยอมให้ใช้ข้อมูลพฤติกรรม"
         />
-        <StatCard icon={CheckCircle} label="นักเรียนที่สอบผ่าน" value={`${passCount}/${stats.stat.length}`} unit="คน" sub={`สัดส่วนผู้สอบผ่าน ${pctNum(passRate)}% · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม`} color="bg-emerald-500" />
-        <StatCard icon={TrendingUp} label="คะแนนสอบสูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} - ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
+        <StatCard icon={CheckCircle} label="ผู้สอบผ่าน" value={`${passCount}/${stats.stat.length}`} unit="คน" sub={`${pctNum(passRate)}% · เกณฑ์ ${fmtScore(maxScore * PASS_PCT / 100)}/${fmtScore(maxScore)} คะแนน`} color="bg-emerald-500" />
+        <StatCard icon={TrendingUp} label="คะแนนสอบสูงสุด / ต่ำสุด" value={<>{pctNum(maxPct)}<Unit>%</Unit> / {pctNum(minPct)}<Unit>%</Unit></>} sub={`${fmtScore(maxRawScore)}/${fmtScore(maxScore)} · ${fmtScore(minRawScore)}/${fmtScore(maxScore)} คะแนน`} color="bg-blue-500" />
         <StatCard
           icon={Users}
-          label="การเข้าสอบ"
+          label="ส่งข้อสอบแล้ว"
           value={stats.enrolledCount ? `${stats.submittedCount}/${stats.enrolledCount}` : `${stats.submittedCount}`}
           unit="คน"
           sub={`ขาดสอบ ${stats.absentCount} คน${notSubmitted ? ` · ยังไม่ส่ง ${notSubmitted} คน` : ""}`}

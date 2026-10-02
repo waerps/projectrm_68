@@ -80,20 +80,6 @@ const formatDate = (d) => {
   } catch { return "—"; }
 };
 
-// ─── FIX #8: handle calcAge ให้ปลอดภัยกว่าเดิม
-const calcAge = (dob) => {
-  if (!dob) return null;
-  try {
-    const today = new Date();
-    const b = new Date(dob.includes("T") ? dob : dob + "T00:00:00");
-    if (isNaN(b.getTime())) return null;
-    let age = today.getFullYear() - b.getFullYear();
-    if (today.getMonth() < b.getMonth() ||
-      (today.getMonth() === b.getMonth() && today.getDate() < b.getDate())) age--;
-    return age >= 0 && age < 150 ? age : null;
-  } catch { return null; }
-};
-
 // ★ เพิ่ม: format เบอร์โทร (ใช้ร่วมกันหลายจุด — ผู้ปกครอง/นักเรียน)
 const formatPhone = (v) => {
   const d = (v || "").replace(/\D/g, "").slice(0, 10);
@@ -783,8 +769,6 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   const totalClasses = attendance.length;
   const attended = attendance.filter(a => a.Status === "1").length;
   const attRate = totalClasses > 0 ? Math.round((attended / totalClasses) * 100) : 0;
-  const attColor = attRate >= 80 ? "text-emerald-600" : attRate >= 60 ? "text-amber-500" : "text-red-500";
-  const attBarColor = attRate >= 80 ? "bg-emerald-500" : attRate >= 60 ? "bg-amber-400" : "bg-red-500";
 
   const watchedVideos = videoProgress.filter(v => v.WatchPercent >= VIDEO_WATCHED_PERCENT).length;
   const totalVideos = videoProgress.length;
