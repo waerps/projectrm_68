@@ -1,0 +1,13 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+const source=await readFile(new URL('../src/utils/examAnalysisDisplay.js',import.meta.url),'utf8');
+const {isVerifiedAiSummary,examTimingForDisplay,formatSecondsPerQuestion,parentMessageAttribution,parentMessageParts}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const valid={validation:{status:'passed'},analysisAvailable:true};
+test('only verified available current AI can appear',()=>{assert.equal(isVerifiedAiSummary(valid),true);for(const row of [null,{}, {...valid,stale:true},{...valid,analysisAvailable:false},{validation:{status:'passed'}},{...valid,validation:{status:'legacy'}},{...valid,numberWarnings:['mismatch']}])assert.equal(isVerifiedAiSummary(row),false)});
+test('verified zero seconds remain zero',()=>{const r=examTimingForDisplay({timingStatus:'complete',avgTimePerQuestion:0,secondsUsed:0,totalQuestions:10});assert.equal(r.avgTimePerQuestion,0);assert.equal(r.secondsUsed,0)});
+test('incomplete and legacy timing never becomes a fabricated average',()=>{for(const timingStatus of ['partial','invalid','unavailable','not_consented',undefined])assert.equal(examTimingForDisplay({timingStatus,secondsUsed:24,totalQuestions:10,avgTimePerQuestion:2.4}).avgTimePerQuestion,null)});
+test('explicit null average is not reconstructed from total',()=>assert.equal(examTimingForDisplay({timingStatus:'complete',avgTimePerQuestion:null,secondsUsed:24,totalQuestions:10}).avgTimePerQuestion,null));
+test('class null stays null and decimal formatting keeps 1.6 seconds',()=>{assert.equal(examTimingForDisplay({timingStatus:'complete',avgTimePerQuestion:1.6,classAvgTimePerQuestion:null}).classAvgTimePerQuestion,null);assert.equal(formatSecondsPerQuestion(1.6),'1.6');for(const value of [null,undefined,-1,true,'',NaN])assert.equal(formatSecondsPerQuestion(value),'—')});
+test('teacher-edited messages have distinct attribution',()=>{assert.match(parentMessageAttribution({teacherEdited:true}),/ผู้สอนปรับแก้/);assert.equal(parentMessageAttribution({}), 'ร่างโดย AI')});
+test('parent editor separates immutable system facts from editable text',()=>{const prefix='ผลสอบได้ 10/20 คะแนน (50%)';assert.deepEqual(parentMessageParts({overview:prefix},prefix+'\nทบทวนพันธะเคมี'),{prefix,editable:'ทบทวนพันธะเคมี'})});

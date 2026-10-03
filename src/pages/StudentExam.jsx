@@ -7,7 +7,7 @@ import { ToastContainer } from "../components/Toast";
 import {
   getCurrentUserId, formatTime,
   fetchExamByToken, startExam, saveAnswer, submitExam,
-  logQuestionEnter, logIntegrityEvent,
+  logQuestionEnter, logQuestionLeave, logIntegrityEvent,
   markExamActive, clearExamActive,
 } from "../utils/studentExamShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
@@ -160,28 +160,76 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const [error, setError] = useState("");
   const submittedRef = useRef(false);
-  const didInitialLog = useRef(false); // ข้อแรกถูก log ไว้แล้วตอน /start ที่ backend
+  const timingSessionRef = useRef(null);
+  if (!timingSessionRef.current) timingSessionRef.current = crypto.randomUUID();
+  const timingQueueRef = useRef(Promise.resolve());
+  const timingCompleteRef = useRef(true);
+  const currentVisitRef = useRef(null);
+  const answerQueueRef = useRef(Promise.resolve());
+  const unsavedAnswersRef = useRef(new Map());
   // (แก้บั๊ก) ใช้แจ้งเตือนตอน autosave คำตอบล้มเหลว — ดูจุดแก้ที่ pickAnswer ด้านล่าง
   const { toasts, showToast, removeToast } = useToast();
 
   const current = questions[activeIdx];
   const answeredCount = questions.filter((q) => q.selected !== null && q.selected !== undefined).length;
 
+  // Serialize transitions so a delayed enter cannot overtake the next question.
+  // Each retry uses the same visit ID, making requests safe to repeat.
+  const queueTiming = useCallback((operation) => {
+    timingQueueRef.current = timingQueueRef.current.then(async () => {
+      try { await operation(); }
+      catch {
+        try { await operation(); }
+        catch { timingCompleteRef.current = false; }
+      }
+    });
+    return timingQueueRef.current;
+  }, []);
+
+  const closeVisit = useCallback((keepalive = false) => {
+    const visit = currentVisitRef.current;
+    if (!visit) return timingQueueRef.current;
+    currentVisitRef.current = null;
+    // Capture before any network work: saving an answer must not add question time.
+    const durationMs = Math.floor(performance.now() - visit.startedMono);
+    const payload = { examJoinId: visit.examJoinId, questionId: visit.questionId, visitId: visit.visitId, sessionId: visit.sessionId };
+    return queueTiming(() => logQuestionLeave({ ...payload, durationMs }, keepalive));
+  }, [queueTiming]);
+
+  const openVisit = useCallback((questionId) => {
+    if (!questionId || examBehaviorConsent === false || submittedRef.current || document.hidden || currentVisitRef.current) return;
+    const visit = { examJoinId, questionId, visitId: crypto.randomUUID(), sessionId: timingSessionRef.current };
+    currentVisitRef.current = { ...visit, startedMono: performance.now() };
+    queueTiming(() => logQuestionEnter(visit));
+  }, [examJoinId, examBehaviorConsent, queueTiming]);
+
   const doSubmit = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
+    const closingVisit = closeVisit();
     try {
-      const result = await submitExam(examJoinId, userId);
+      // A last click must finish saving before the backend locks and grades the attempt.
+      await answerQueueRef.current;
+      for (const [questionId, selected] of unsavedAnswersRef.current) {
+        await saveAnswer({ examJoinId, userId, questionId, selected });
+        unsavedAnswersRef.current.delete(questionId);
+      }
+      await closingVisit;
+      const result = await submitExam(examJoinId, userId, {
+        timingSessionId: timingSessionRef.current,
+        timingComplete: examBehaviorConsent !== false && timingCompleteRef.current,
+      });
       onSubmitted(result);
     } catch (err) {
       console.error("Submit failed:", err);
       setError("ส่งข้อสอบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
       submittedRef.current = false;
+      openVisit(current?.id);
     } finally {
       setSubmitting(false);
     }
-  }, [examJoinId, userId, onSubmitted]);
+  }, [examJoinId, userId, onSubmitted, examBehaviorConsent, closeVisit, openVisit, current?.id]);
 
   // Countdown — auto-submits the moment time runs out.
   useEffect(() => {
@@ -192,19 +240,21 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   }, [remainingSec, doSubmit, questions.length]);
 
   useEffect(() => {
-    if (!current) return;
-    if (!didInitialLog.current) {
-      // ข้อแรก (activeIdx=0 ตอน mount) backend เปิด log ให้แล้วตอน /start — ข้ามรอบนี้ไป
-      didInitialLog.current = true;
-      return;
-    }
-    logQuestionEnter({ examJoinId, userId, questionId: current.id }).catch((err) => {
-      console.error('log enter failed:', err);
-    });
-    // ผูกกับ current?.id (ตัวเลข) ไม่ใช่ current (object) — เพราะ pickAnswer สร้าง object ใหม่
-    // ทุกครั้งที่นักเรียนเลือกคำตอบ ถ้าผูกกับ object effect จะยิง log ซ้ำสำหรับข้อเดิม
-    // ทำให้ backend ปิดช่วงเวลาเดิมแล้วเปิดใหม่ กลายเป็น "กลับมาทำซ้ำ 2 ครั้ง" ทั้งที่ไม่ได้ย้อนกลับ
-  }, [activeIdx, current?.id, examJoinId, userId]);
+    if (!current?.id || examBehaviorConsent === false) return;
+    openVisit(current.id);
+    const onVisibility = () => document.hidden ? closeVisit(true) : openVisit(current.id);
+    const onPageHide = () => closeVisit(true);
+    const onPageShow = () => openVisit(current.id);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('pageshow', onPageShow);
+      closeVisit(true);
+    };
+  }, [current?.id, examBehaviorConsent, openVisit, closeVisit]);
 
   // ── ธงคุณภาพข้อมูล: บันทึกการออกจากหน้าสอบ และการคัดลอกข้อความ ──────────────
   // ไม่บล็อกอะไรทั้งสิ้น แค่บันทึกไว้ให้ติวเตอร์ประกอบการอ่านคะแนน (เบราว์เซอร์ไม่มีทางรู้ว่า
@@ -244,21 +294,21 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   }, [examJoinId, examBehaviorConsent]);
 
   const pickAnswer = (optIdx) => {
+    if (submittedRef.current) return;
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
     const questionId = current.id;
-    // (แก้บั๊ก) เดิม autosave fail แล้วแค่ console.error เงียบๆ หน้าจอยังโชว์ว่าเลือกคำตอบแล้ว
-    // ทั้งที่ยังไม่ถูกบันทึกจริง นักเรียนไม่รู้ตัวจนกว่าจะเห็นคะแนนตอนจบ — ลองบันทึกซ้ำอีกครั้ง
-    // เผื่อเป็นแค่เน็ตสะดุดชั่วคราว ถ้ายังไม่สำเร็จอีกรอบค่อยแจ้งเตือนผู้ใช้จริงๆ
-    const trySave = (isRetry) =>
-      saveAnswer({ examJoinId, userId, questionId, selected: optIdx }).catch((err) => {
+    // Preserve answer order, including rapid changes to the same question.
+    unsavedAnswersRef.current.set(questionId, optIdx);
+    answerQueueRef.current = answerQueueRef.current.then(async () => {
+      try {
+        try { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
+        catch { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
+        if (unsavedAnswersRef.current.get(questionId) === optIdx) unsavedAnswersRef.current.delete(questionId);
+      } catch (err) {
         console.error("Autosave failed:", err);
-        if (!isRetry) {
-          trySave(true);
-          return;
-        }
-        showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "กรุณาเลือกคำตอบข้อนี้ใหม่อีกครั้ง เช็คสัญญาณอินเทอร์เน็ตของคุณด้วย");
-      });
-    trySave(false);
+        showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "ระบบจะลองบันทึกอีกครั้งก่อนส่งข้อสอบ");
+      }
+    });
   };
 
   // Guard: exam has no questions at all — show a clear message instead of
