@@ -1042,7 +1042,12 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         <HoursSuggestionBar remaining={remainingForSuggestion} perItem={suggestedPerSubject} onApply={applySuggestedToAll} busy={applyingAll} />
       )}
 
-      <p className="text-xs font-bold text-slate-600">วิชาในคอร์สนี้ ({subjects.length})</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-bold text-slate-600">วิชาในคอร์สนี้ ({subjects.length})</p>
+        {subjects.length > 0 && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${subjects.every((s) => s.TeachingTopics?.length) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+          ระบุหัวข้อแล้ว {subjects.filter((s) => s.TeachingTopics?.length).length}/{subjects.length} วิชา
+        </span>}
+      </div>
 
       {subjects.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
@@ -1079,6 +1084,21 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                   <Trash2 className="h-3.5 w-3.5" /> ลบ
                 </button>
               </div>
+            </div>
+
+            <div className={`mt-3 rounded-xl border px-3 py-3 ${s.TeachingTopics?.length ? "border-orange-100 bg-gradient-to-br from-orange-50 to-white" : "border-dashed border-slate-200 bg-slate-50"}`}>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-bold text-slate-700">หัวข้อที่ติวเตอร์เตรียมสอน</p>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.TeachingTopics?.length ? "bg-orange-100 text-orange-700" : "bg-white text-slate-500"}`}>
+                  {s.TeachingTopics?.length ? `${s.TeachingTopics.length} หัวข้อ` : "ยังไม่ระบุ"}
+                </span>
+              </div>
+              {s.TeachingTopics?.length ? <ol className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1">
+                {s.TeachingTopics.map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-xs leading-5 text-slate-700">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white font-bold text-orange-600">{index + 1}</span>
+                  <span className="break-words">{topic.title}</span>
+                </li>)}
+              </ol> : <p className="mt-2 text-xs text-slate-500">ติวเตอร์ยังไม่ได้บันทึกภาพรวมหัวข้อของวิชานี้</p>}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">

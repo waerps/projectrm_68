@@ -32,7 +32,12 @@ export default function CoursesPage() {
 
   const navigateToAction = (course, subject, action) => {
     if (action === "content") {
-      navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+      const params = new URLSearchParams({
+        courseId: String(course.id), subjectId: String(subject.subjectId),
+        courseName: course.name, subjectName: subject.subjectName,
+      });
+      if (subject.assignmentId) params.set("assignmentId", String(subject.assignmentId));
+      navigate(`/tutor/manage?${params.toString()}`);
     } else if (action === "exam") {
       // ⚠️ ปรับ path ให้ตรงกับ route จริงของหน้า TutorExamManagement ในระบบ router ของคุณ
       navigate(`/tutor/exam?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
@@ -122,7 +127,7 @@ export default function CoursesPage() {
           c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
           c.VideoCount += row.VideoCount || 0;
           c.FileCount += row.FileCount || 0;
-          c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName });
+          c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, assignmentId: row.TutorCourseDetailId });
         });
 
         const formattedData = Array.from(courseMap.values()).map(c => ({

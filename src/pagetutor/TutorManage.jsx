@@ -15,11 +15,13 @@ import { Folder as LuFolder } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
+import TutorTeachingTopics from "./TutorTeachingTopics";
 
 export default function TutorCourseManagePage() {
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get("courseId") || "";
   const subjectId = searchParams.get("subjectId") || "";
+  const assignmentId = searchParams.get("assignmentId") || "";
   const courseName = searchParams.get("courseName") || "คอร์สรวม (แพ็กเกจ)";
   const subjectName = searchParams.get("subjectName") || "";
   const adminId = JSON.parse(localStorage.getItem("user"))?.id;
@@ -209,6 +211,8 @@ export default function TutorCourseManagePage() {
     {courseName} {subjectName ? `• ${subjectName}` : ""}
   </p>
 </div>
+
+        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} assignmentId={assignmentId} subjectName={subjectName} />
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
