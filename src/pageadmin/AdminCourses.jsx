@@ -877,6 +877,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const [editingRateId, setEditingRateId] = useState(null);
   const [manualIds, setManualIds] = useState(new Set());
   const [applyingAll, setApplyingAll] = useState(false);
+  const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
@@ -1025,9 +1026,58 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
   }));
+  const topicsReady = subjects.filter((s) => s.TeachingTopics?.length).length;
+  const toggleTopics = (id) => setExpandedTopicIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
 
   return (
     <div className="space-y-3">
+      <section className="overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-[0_12px_30px_-20px_rgba(194,65,12,0.55)]">
+        <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 px-4 py-4 text-white sm:px-5">
+          <BookOpen className="pointer-events-none absolute -right-3 -top-5 h-28 w-28 rotate-12 text-white/10" aria-hidden="true" />
+          <div className="relative flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20"><BookOpen className="h-5 w-5" /></span>
+              <div>
+                <h4 className="text-base font-bold">แผนหัวข้อการสอน</h4>
+                <p className="mt-0.5 text-xs leading-5 text-white/85">ภาพรวมที่ติวเตอร์เตรียมสอน แยกตามวิชาและผู้สอน</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">{topicsReady}/{subjects.length} วิชาระบุแล้ว</span>
+          </div>
+          <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-label="ความครบถ้วนของแผนหัวข้อการสอน" aria-valuemin={0} aria-valuemax={subjects.length} aria-valuenow={topicsReady}>
+            <div className="h-full rounded-full bg-white transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${subjects.length ? (topicsReady / subjects.length) * 100 : 0}%` }} />
+          </div>
+        </div>
+        <div className="space-y-2 p-3 sm:p-4">
+          {subjects.length === 0 && <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">เมื่อเพิ่มวิชาและติวเตอร์แล้ว แผนหัวข้อจะปรากฏที่นี่</p>}
+          {subjects.map((s) => {
+            const topics = s.TeachingTopics || [];
+            const expanded = expandedTopicIds.has(s.TutorCourseDetailId);
+            return <div key={`outline-${s.TutorCourseDetailId}`} className="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-3 transition-colors duration-200 hover:border-orange-200 hover:bg-orange-50/30 sm:px-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
+                  <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-800">{s.SubjectName}</p><p className="truncate text-xs text-slate-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p></div>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${topics.length ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{topics.length ? `${topics.length} หัวข้อ` : "รอติวเตอร์ระบุ"}</span>
+              </div>
+              {topics.length ? <>
+                <ol className={`mt-3 space-y-1.5 overflow-y-auto ${expanded ? "max-h-64" : "max-h-none"}`}>
+                  {(expanded ? topics : topics.slice(0, 2)).map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-sm leading-6 text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-bold text-orange-600 shadow-sm">{index + 1}</span><span className="min-w-0 break-words">{topic.title}</span></li>)}
+                </ol>
+                {topics.length > 2 && <button type="button" onClick={() => toggleTopics(s.TutorCourseDetailId)} aria-expanded={expanded} className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-100">{expanded ? "ย่อรายการ" : `ดูอีก ${topics.length - 2} หัวข้อ`}<ChevronDown className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} /></button>}
+              </> : <p className="mt-2 text-xs text-slate-500">ติวเตอร์ยังไม่ได้บันทึกหัวข้อของวิชานี้</p>}
+            </div>;
+          })}
+          {subjects.length > 0 && <p className="flex items-start gap-1.5 px-1 pt-1 text-xs leading-5 text-slate-500"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />หัวข้อระดับคอร์สจะแสดงที่นี่หลังติวเตอร์บันทึกจากหน้าจัดการเนื้อหา</p>}
+        </div>
+      </section>
+
       <SubjectAddForm
         newRow={newRow}
         setNewRow={setNewRow}
@@ -1042,12 +1092,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         <HoursSuggestionBar remaining={remainingForSuggestion} perItem={suggestedPerSubject} onApply={applySuggestedToAll} busy={applyingAll} />
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-bold text-slate-600">วิชาในคอร์สนี้ ({subjects.length})</p>
-        {subjects.length > 0 && <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${subjects.every((s) => s.TeachingTopics?.length) ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-          ระบุหัวข้อแล้ว {subjects.filter((s) => s.TeachingTopics?.length).length}/{subjects.length} วิชา
-        </span>}
-      </div>
+      <p className="text-xs font-bold text-slate-600">วิชาในคอร์สนี้ ({subjects.length})</p>
 
       {subjects.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
@@ -1084,21 +1129,6 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                   <Trash2 className="h-3.5 w-3.5" /> ลบ
                 </button>
               </div>
-            </div>
-
-            <div className={`mt-3 rounded-xl border px-3 py-3 ${s.TeachingTopics?.length ? "border-orange-100 bg-gradient-to-br from-orange-50 to-white" : "border-dashed border-slate-200 bg-slate-50"}`}>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-bold text-slate-700">หัวข้อที่ติวเตอร์เตรียมสอน</p>
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.TeachingTopics?.length ? "bg-orange-100 text-orange-700" : "bg-white text-slate-500"}`}>
-                  {s.TeachingTopics?.length ? `${s.TeachingTopics.length} หัวข้อ` : "ยังไม่ระบุ"}
-                </span>
-              </div>
-              {s.TeachingTopics?.length ? <ol className="mt-2 max-h-44 space-y-1.5 overflow-y-auto pr-1">
-                {s.TeachingTopics.map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-xs leading-5 text-slate-700">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-white font-bold text-orange-600">{index + 1}</span>
-                  <span className="break-words">{topic.title}</span>
-                </li>)}
-              </ol> : <p className="mt-2 text-xs text-slate-500">ติวเตอร์ยังไม่ได้บันทึกภาพรวมหัวข้อของวิชานี้</p>}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">
@@ -1859,7 +1889,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
 // ส่งต้นทุน/ชั่วโมงกลับมาคำนวณได้แม้ผู้ใช้ยังไม่ได้เปิดขั้นนั้น
 const COURSE_FORM_STEPS = [
   { key: "basic", label: "ข้อมูลคอร์ส", short: "ข้อมูลคอร์ส", icon: BookOpen, desc: "ชื่อคอร์ส ช่วงเวลาเรียน และการตั้งค่า" },
-  { key: "subjects", label: "วิชาและติวเตอร์", short: "วิชา/ติวเตอร์", icon: Tag, desc: "กำหนดวิชา ติวเตอร์ และชั่วโมงเรียน" },
+  { key: "subjects", label: "วิชา ติวเตอร์ และแผนการสอน", short: "วิชา/แผน", icon: Tag, desc: "ดูแผนหัวข้อ กำหนดวิชา ติวเตอร์ และชั่วโมงเรียน" },
   { key: "pricing", label: "ราคาและที่นั่ง", short: "ราคา/ที่นั่ง", icon: DollarSign, desc: "ราคา จำนวนที่นั่ง และการผ่อนชำระ" },
   { key: "students", label: "นักเรียน", short: "นักเรียน", icon: Users, desc: "เพิ่มนักเรียนเข้าคอร์ส (ไม่บังคับ)" },
   { key: "media", label: "สื่อประกอบ", short: "สื่อ", icon: ImagePlus, desc: "รูปปก รูปประกาศ และคลิปตัวอย่าง" },
@@ -2390,7 +2420,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               </div>
             </FormSection>
 
-            <FormSection title="วิชาและติวเตอร์">
+            <FormSection title="วิชา ติวเตอร์ และแผนการสอน">
               {isEdit
                 ? <CourseSubjects
                   courseId={initial.CourseID}
