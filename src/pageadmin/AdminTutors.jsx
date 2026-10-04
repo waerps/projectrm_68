@@ -430,6 +430,11 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
           <p className="text-sm text-slate-800">{application.Occupation || "—"}</p>
         </div>
         <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">การศึกษา</p>
+          <p className="text-sm text-slate-800">{[application.Faculty, application.Major, application.University].filter(Boolean).join(" · ") || "—"}</p>
+          {application.StudyStatus && <p className="mt-1 text-xs text-slate-500">{application.StudyStatus === "studying" ? `กำลังศึกษา ปี ${application.StudyYear || "—"}` : "สำเร็จการศึกษาแล้ว"}</p>}
+        </div>
+        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
           <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">วันที่สมัคร</p>
           <p className="text-sm text-slate-800">{formatDate(application.Created_at)}</p>
         </div>

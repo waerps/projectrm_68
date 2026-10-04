@@ -74,6 +74,15 @@ export async function submitParentProfile(token, payload) {
   }
 }
 
+export async function updateParentProfile(token, payload) {
+  try {
+    const res = await apiClient.put("/api/student/profile/parent", payload, withAuth(token));
+    return res.data;
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 // ─── Courses (enrolled) ───────────────────────────────────────────────────────
 
 export async function getStudentCourses(token) {

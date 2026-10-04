@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { useChat } from "./ChatProvider"
 import ReactMarkdown from 'react-markdown';
-import "./ChatWidget.css";
 
 export default function ChatWidget() {
   const {
@@ -20,7 +19,6 @@ export default function ChatWidget() {
   } = useChat()
 
   const scrollContainerRef = useRef(null)
-  const launcherRef = useRef(null)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
   const [showTooltip, setShowTooltip] = useState(() => !localStorage.getItem("sornserm_tooltip_seen"))
 
@@ -38,25 +36,6 @@ export default function ChatWidget() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleLauncherMove = (event) => {
-    if (event.pointerType !== "mouse") return
-    const { left, top, width, height } = event.currentTarget.getBoundingClientRect()
-    const x = ((event.clientX - left) / width - 0.5) * 2
-    const y = ((event.clientY - top) / height - 0.5) * 2
-    event.currentTarget.style.setProperty("--chat-tilt-x", `${-y * 13}deg`)
-    event.currentTarget.style.setProperty("--chat-tilt-y", `${x * 13}deg`)
-    event.currentTarget.style.setProperty("--chat-light-x", `${50 + x * 18}%`)
-    event.currentTarget.style.setProperty("--chat-light-y", `${28 + y * 14}%`)
-  }
-
-  const resetLauncher = () => {
-    if (!launcherRef.current) return
-    launcherRef.current.style.removeProperty("--chat-tilt-x")
-    launcherRef.current.style.removeProperty("--chat-tilt-y")
-    launcherRef.current.style.removeProperty("--chat-light-x")
-    launcherRef.current.style.removeProperty("--chat-light-y")
-  }
-
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIndex((i) => (i + 1) % placeholders.length)
@@ -66,42 +45,23 @@ export default function ChatWidget() {
 
   if (!isOpen && !isFullscreen) {
     return (
-      <div className="chat-launcher-wrap">
+      <div className="fixed bottom-6 right-10 z-50">
         {showTooltip && (
-          <div className="chat-launcher-tooltip" aria-hidden="true">
-            <span className="chat-launcher-tooltip__dot" />
+          <div className="absolute bottom-full right-0 mb-1.5 whitespace-nowrap bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
             มีอะไรให้น้องศรเสริมช่วยไหมครับ 😊
           </div>
         )}
         <button
-          ref={launcherRef}
-          type="button"
-          aria-label={unreadCount > 0 ? `เปิดแชตกับศรเสริม มีข้อความใหม่ ${unreadCount} ข้อความ` : "เปิดแชตกับศรเสริม"}
-          onPointerMove={handleLauncherMove}
-          onPointerLeave={resetLauncher}
           onClick={() => {
-            resetLauncher()
             openChat()
             setShowTooltip(false)
             localStorage.setItem("sornserm_tooltip_seen", "1")
           }}
-          className="chat-launcher"
+          className="h-16 w-16 rounded-full bg-transparent text-white shadow-2xl flex items-center justify-center transition-transform duration-300 hover:scale-110 hover:rotate-6 animate-botFloat relative"
         >
-          <span className="chat-launcher__orbit" aria-hidden="true" />
-          <span className="chat-launcher__orb" aria-hidden="true">
-            <span className="chat-launcher__shine" />
-            <svg className="chat-launcher__face" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-              <path d="M32 8v6M26 8h12" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-              <path d="M20 20h24c7.2 0 12 5 12 12v8c0 7.2-4.8 12-12 12H34l-8 6v-6h-6C12.8 52 8 47.2 8 40v-8c0-7 4.8-12 12-12Z" fill="white" />
-              <circle cx="24" cy="35" r="2.4" fill="#F25A18" />
-              <circle cx="40" cy="35" r="2.4" fill="#F25A18" />
-              <path d="M27 43c2.8 3 7.2 3 10 0" stroke="#F25A18" strokeWidth="2.6" strokeLinecap="round" />
-            </svg>
-          </span>
-          <span className="chat-launcher__spark chat-launcher__spark--one" aria-hidden="true" />
-          <span className="chat-launcher__spark chat-launcher__spark--two" aria-hidden="true" />
+          <img src="/chatbot.png" alt="Chatbot" className="h-14 w-14 select-none pointer-events-none" draggable="false" />
           {unreadCount > 0 && (
-            <span className="chat-launcher__unread">
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
               {unreadCount}
             </span>
           )}

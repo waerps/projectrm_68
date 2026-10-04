@@ -1,13 +1,12 @@
 // src/pages/Home.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import {
   ChevronLeft,
   ChevronRight,
   Percent,
   GraduationCap,
-  X,
   Calendar,
   Sparkles,
   Heart,
@@ -569,7 +568,6 @@ function Features() {
 /** ---------- main page ---------- */
 
 export default function Home() {
-  const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
   const [coursesLoaded, setCoursesLoaded] = useState(false);
@@ -578,14 +576,9 @@ export default function Home() {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
 
   const { cart, favorites, toggleCart, toggleFavorite } = useShop();
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [buyNowCourse, setBuyNowCourse] = useState(null);
 
   const handleBuyNow = (course) => {
-    if (!localStorage.getItem("student_token")) {
-      setLoginPromptOpen(true);
-      return;
-    }
     setBuyNowCourse(course);
   };
 
@@ -803,9 +796,9 @@ export default function Home() {
         <section className="mt-14">
           <div className="max-w-3xl">
             <Reveal>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
+              {/* <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
                 <BadgeCheck className="h-3.5 w-3.5" /> ทีมสอนจากคณะครุศาสตร์ มข. อันดับต้น 3 ปีซ้อน
-              </span>
+              </span> */}
               <h2
                 className="mt-4 text-[28px] font-extrabold text-orange-500 md:text-[34px]"
                 style={{ fontFamily: "'Kanit', sans-serif" }}
@@ -813,12 +806,13 @@ export default function Home() {
                 ศรเสริมติวเตอร์
               </h2>
               <p className="mt-3 text-[17px] font-bold leading-relaxed text-[#14213D] md:text-[19px]">
-                "ติวจริง ติวตรง มีผลงาน ใส่ใจทุกๆพัฒนาการของนักเรียน"
+                "ติวจริง ติดจริง ใส่ใจทุกพัฒนาการ"
               </p>
               <p className="mt-3 text-gray-600 leading-relaxed">
-                รับติวตั้งแต่ระดับ ม.1 - ม.6 ทั้งเพิ่มเกรด / สอบเข้า / สอบแข่งขัน /
-                สอบสนามเฉพาะ โดยทีมสอนที่จบคณะครุศาตร์อันดับต้น ๆ
-                จากมหาวิทยาลัยขอนแก่น (3 ปีซ้อน)
+                รับติวตั้งแต่ระดับ ป.2 - ม.6 คณิต-วิทย์-อังกฤษ-ไทย-สังคม
+                ติวสอบเข้า ม.1 / ม.4 / NETSAT
+                รองรับการสอนทั้ง ออนไลน์ และออนไซด์
+                โดยทีมสอน ครูกวาง เกียรตินิยม 1 มหาวิทยาลัยขอนแก่น (3 ปีครึ่ง)
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <button
@@ -906,20 +900,6 @@ export default function Home() {
         />
       )}
 
-      {loginPromptOpen && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="login-required-title" onClick={() => setLoginPromptOpen(false)}>
-          <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <button type="button" onClick={() => setLoginPromptOpen(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="ปิด">
-              <X className="h-5 w-5" />
-            </button>
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500"><Users className="h-7 w-7" /></span>
-            <h2 id="login-required-title" className="mt-5 text-xl font-extrabold text-[#14213D]">กรุณาเข้าสู่ระบบก่อนซื้อคอร์ส</h2>
-            <p className="mt-2 text-sm leading-relaxed text-gray-500">เข้าสู่ระบบนักเรียนเพื่อดำเนินการชำระเงินและบันทึกคอร์สไว้ในบัญชีของคุณ</p>
-            <button type="button" onClick={() => navigate("/login", { state: { returnTo: "/" } })} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600">ไปหน้าเข้าสู่ระบบ</button>
-            <button type="button" onClick={() => setLoginPromptOpen(false)} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-500 transition hover:bg-gray-50">เลือกดูคอร์สต่อ</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

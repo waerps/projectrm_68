@@ -3,7 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
-import { CourseCard, LoginRequiredModal, toCardItem } from "./Promotion"
+import { CourseCard, toCardItem } from "./Promotion"
 
 // ── ต้องตรงกับตัวเลือกใน Navbar.jsx ──
 const SUBJECT_OPTIONS = [
@@ -67,10 +67,8 @@ export default function CourseSearch() {
   const [allCourses, setAllCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
 
   const buyNow = (item) => {
-    if (!localStorage.getItem("student_token")) return setLoginPromptOpen(true)
     addToCart(item)
     navigate("/cart", { state: { openCheckout: true } })
   }
@@ -285,7 +283,6 @@ export default function CourseSearch() {
           )}
         </div>
       </div>
-      <LoginRequiredModal open={loginPromptOpen} onClose={() => setLoginPromptOpen(false)} onLogin={() => navigate("/login", { state: { returnTo: `/courses${searchParams.toString() ? `?${searchParams.toString()}` : ""}` } })} />
     </div>
   )
 }

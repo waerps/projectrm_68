@@ -6,10 +6,10 @@ const emptyGoogleForm = profile => ({
   firstname: profile?.firstname || "",
   lastname: profile?.lastname || "",
   nickname: "", phoneNo: "", schoolName: "", lineId: "", birthOfDate: "",
-  gradeLevelId: "", genderId: "", gpa: "",
+  gradeLevelId: "", genderId: "",
 });
 
-export default function GoogleRegistrationForm({ pending, onCancel }) {
+export default function GoogleRegistrationForm({ pending, onCancel, onComplete }) {
   const navigate = useNavigate();
   const [form, setForm] = useState(() => emptyGoogleForm(pending?.profile));
   const [busy, setBusy] = useState(false);
@@ -34,7 +34,8 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
       const data = await postStudentAuth("/auth/google/register", {
         ...form, registrationToken: pending.registrationToken,
       });
-      finishStudentLogin(data, navigate, pending);
+      if (onComplete) onComplete(data);
+      else finishStudentLogin(data, navigate, pending);
     } catch (failure) {
       setError(failure.message || "สมัครบัญชีไม่สำเร็จ กรุณาลองใหม่");
       if (failure.code === "REGISTRATION_EXPIRED" || failure.code === "GOOGLE_ACCOUNT_EXISTS") {
@@ -82,7 +83,6 @@ export default function GoogleRegistrationForm({ pending, onCancel }) {
               <div><label htmlFor="google-grade">ระดับชั้น</label><select id="google-grade" className="auth-input" name="gradeLevelId" value={form.gradeLevelId} onChange={change}><option value="">เลือกระดับชั้น</option>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={String(index + 1)}>{index < 6 ? "ประถมศึกษาปีที่ " + (index + 1) : "มัธยมศึกษาปีที่ " + (index - 5)}</option>)}</select></div>
             </div>
             <div className="auth-two-columns">
-              <div><label htmlFor="google-gpa">เกรดเฉลี่ย</label><input id="google-gpa" className="auth-input" type="number" min="0" max="4" step="0.01" name="gpa" value={form.gpa} onChange={change} /></div>
               <div><label htmlFor="google-line">LINE ID</label><input id="google-line" className="auth-input" name="lineId" value={form.lineId} onChange={change} maxLength={100} /></div>
             </div>
           </div>

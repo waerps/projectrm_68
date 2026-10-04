@@ -2,13 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
 import { getCourseById, getCourseSchedule, getCourseSubjects } from "../callapi/callusers";
-import { getConsentCatalog, saveConsents, getMyConsents, getStudentProfile, getParentProfileTypes, submitParentProfile } from "../callapi/callusers_student";
+import { getConsentCatalog, saveConsents, getMyConsents, getStudentProfile, getParentProfileTypes, submitParentProfile, updateParentProfile, updateStudentProfile } from "../callapi/callusers_student";
+import CheckoutIdentity from "./CheckoutIdentity";
 import { getFileUrl } from "../utils/fileUrl";
 import {
   AlertTriangle,
   ArrowLeft,
   BadgeCheck,
   Banknote,
+  BookOpen,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -151,11 +153,10 @@ const normalizeCartItem = (item) => {
     studentCount,
     seatsLeft: item.AvailableSeats ?? availableSeats,
     capacity: Number.isFinite(maxStudents) ? maxStudents : null,
-    image:
-      item.img ??
-      item.image ??
-      (item.CourseImage ? getFileUrl(item.CourseImage) : null) ??
-      "/gray.jpg",
+    image: (() => {
+      const image = item.img ?? item.image ?? (item.CourseImage ? getFileUrl(item.CourseImage) : null);
+      return image === "/gray.jpg" ? null : image;
+    })(),
     price,
     salePrice,
     installments: installmentCount,
@@ -178,6 +179,32 @@ const money = (value) =>
 
 const cn = (...classes) => classes.filter(Boolean).join(" ");
 
+/**
+ * รูปคอร์ส + fallback เมื่อไม่มีรูป/โหลดไม่สำเร็จ
+ * สำคัญ: ขนาดของ fallback ต้องมาจาก className ที่ส่งเข้ามาเท่านั้น
+ * (ถ้าไม่ส่งมาค่อยใช้ h-full w-full) — ห้ามฮาร์ดโค้ด w-full ปนกับ className
+ * ไม่งั้น w-full จะชนะ w-20 แล้วกล่องรูปขยายเต็มแถวจนเนื้อหาข้างๆ ถูกบีบ
+ */
+function CourseArtwork({ src, alt, className = "", iconClassName = "h-14 w-14" }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) {
+    return (
+      <div
+        role="img"
+        aria-label={alt}
+        className={cn(
+          "flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100",
+          className || "h-full w-full"
+        )}
+      >
+        <BookOpen className={cn("text-orange-300", iconClassName)} />
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+}
+
 function CourseCard({ item, onRemove }) {
   const saved = item.price - item.salePrice;
 
@@ -185,9 +212,9 @@ function CourseCard({ item, onRemove }) {
     <article className="group overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_16px_50px_-32px_rgba(15,23,42,.35)] transition hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-[0_22px_55px_-28px_rgba(234,88,12,.24)]">
       <div className="grid sm:grid-cols-[210px_1fr]">
         <div className="relative min-h-44 overflow-hidden bg-orange-50 sm:min-h-full">
-          <img
+          <CourseArtwork
             src={item.image}
-            alt=""
+            alt={item.title}
             className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent" />
@@ -301,7 +328,7 @@ function Summary({ items, onCheckout }) {
           [CircleHelp, "มีเจ้าหน้าที่ดูแล"],
         ].map(([Icon, label]) => (
           <div key={label} className="rounded-2xl border border-slate-200 bg-white px-2 py-3">
-            <Icon className="mx-auto mb-1.5 h-4 w-4 text-orange-500" />{label}
+            {React.createElement(Icon, { className: "mx-auto mb-1.5 h-4 w-4 text-orange-500" })}{label}
           </div>
         ))}
       </div>
@@ -309,14 +336,14 @@ function Summary({ items, onCheckout }) {
   );
 }
 
-const PAYMENT_STEPS = ["ตรวจสอบ", "รูปแบบชำระ", "ชำระเงิน", "สำเร็จ"];
+const PAYMENT_STEPS = ["คอร์สและการชำระ", "ข้อมูลผู้ซื้อ", "ชำระเงิน", "สำเร็จ"];
 
-function Stepper({ step }) {
+function Stepper({ step, maxReached, onSelect }) {
   return (
     <div className="flex items-start justify-between px-5 pb-4 pt-5 sm:px-8">
       {PAYMENT_STEPS.map((label, index) => (
         <React.Fragment key={label}>
-          <div className="flex min-w-0 flex-col items-center gap-1.5">
+          <button type="button" onClick={() => onSelect(index)} disabled={step === 3 || index > maxReached || index === 3} aria-current={index === step ? "step" : undefined} className="flex min-w-0 flex-col items-center gap-1.5 disabled:cursor-not-allowed">
             <span className={cn(
               "grid h-8 w-8 place-items-center rounded-full border-2 text-xs font-black transition",
               index < step && "border-orange-500 bg-orange-500 text-white",
@@ -325,8 +352,8 @@ function Stepper({ step }) {
             )}>
               {index < step ? <Check className="h-4 w-4" /> : index + 1}
             </span>
-            <span className={cn("hidden text-[10px] font-bold sm:block", index <= step ? "text-[#14213D]" : "text-slate-300")}>{label}</span>
-          </div>
+            <span className={cn("text-[10px] font-bold sm:text-xs", index <= maxReached ? "text-slate-700" : "text-slate-300")}>{label}</span>
+          </button>
           {index < PAYMENT_STEPS.length - 1 && <span className={cn("mt-4 h-0.5 flex-1", index < step ? "bg-orange-500" : "bg-slate-200")} />}
         </React.Fragment>
       ))}
@@ -346,7 +373,7 @@ function PaymentChoice({ icon: Icon, active, title, price, detail, badge, onClic
     >
       {badge && <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white">{badge}</span>}
       <div className="flex items-start gap-3">
-        <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", active ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500")}><Icon className="h-5 w-5" /></span>
+        <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", active ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500")}>{React.createElement(Icon, { className: "h-5 w-5" })}</span>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3"><strong className="text-sm text-[#14213D]">{title}</strong><strong className="shrink-0 text-sm text-orange-600">{price}</strong></div>
           <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
@@ -405,11 +432,18 @@ function SlipToast({ toast, onClose }) {
 
 export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [step, setStep] = useState(0);
+  const [maxReached, setMaxReached] = useState(0);
+  const [checkoutToken, setCheckoutToken] = useState(() => localStorage.getItem("student_token"));
+  const [pendingUser, setPendingUser] = useState(null);
+  const [checkoutAccount, setCheckoutAccount] = useState({ firstname: "", lastname: "", username: "", password: "", confirmPassword: "" });
+  const [studentForm, setStudentForm] = useState({ firstname: "", lastname: "", phoneNo: "", schoolName: "" });
+  const [purchaseNotes, setPurchaseNotes] = useState({});
   const [payPlan, setPayPlan] = useState("full");
   const [slipFile, setSlipFile] = useState(null);
   const [slipName, setSlipName] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [qrError, setQrError] = useState("");
+  const [purchaseNoteWarning, setPurchaseNoteWarning] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
   const [checkingSlip, setCheckingSlip] = useState(false);
   const [paymentIndex, setPaymentIndex] = useState(0);
@@ -418,6 +452,9 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [lineLinked, setLineLinked] = useState(false);
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
   const fileRef = useRef(null);
+  const bodyRef = useRef(null);
+
+  useEffect(() => { bodyRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [step]);
 
   // ── PDPA: ข้อมูลผู้ปกครอง + ความยินยอมบันทึกพฤติกรรมระหว่างสอบ — ทั้งสองอย่างเก็บ "ครั้งเดียวต่อนักเรียน"
   // ไม่ถามซ้ำทุกครั้งที่ซื้อคอร์ส: ข้อมูลผู้ปกครองถามเฉพาะตอนยังไม่มีผู้ปกครองผูกไว้ (ParentId ว่าง)
@@ -444,7 +481,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   useEffect(() => {
     let cancelled = false;
-    const token = localStorage.getItem("student_token");
+    const token = checkoutToken;
     (async () => {
       try {
         const [catalog, profile, types] = await Promise.all([
@@ -473,12 +510,19 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           })
         );
         if (!cancelled) {
-          setExamConsentByCourse(
-            Object.fromEntries(statusEntries.map(([courseId, status]) => [courseId, { status, granted: false }]))
+          setExamConsentByCourse((previous) =>
+            Object.fromEntries(statusEntries.map(([courseId, status]) => [courseId, {
+              status,
+              granted: status === "not_answered" ? !!previous[courseId]?.granted : status === "granted",
+            }]))
           );
         }
 
         setStudentParentId(profile ? (profile.parentId ?? null) : null);
+        if (profile) {
+          setStudentForm((current) => ({ firstname: current.firstname || profile.firstname || "", lastname: current.lastname || profile.lastname || "", phoneNo: current.phoneNo || profile.phoneNo || "", schoolName: current.schoolName || profile.schoolName || "" }));
+          setParentForm((current) => ({ firstname: current.firstname || profile.parent?.firstname || "", lastname: current.lastname || profile.parent?.lastname || "", nickname: current.nickname || profile.parent?.nickname || "", phoneNo: current.phoneNo || profile.parent?.phoneNo || "", lineId: current.lineId || profile.parent?.lineId || "", birthOfDate: current.birthOfDate || profile.parent?.birthOfDate || "", parentProfilesTypeId: current.parentProfilesTypeId || profile.parent?.parentProfilesTypeId || "" }));
+        }
         setParentTypes(Array.isArray(types) ? types : []);
       } catch (err) {
         console.error("โหลดข้อมูลก่อนชำระเงินไม่สำเร็จ:", err);
@@ -492,40 +536,95 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [items]);
+  }, [items, checkoutToken]);
+
+  const handleCheckoutAuthenticated = (data) => {
+    if (!data?.token || data.user?.role !== "student") {
+      setStep1Error("เข้าสู่ระบบนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง");
+      return;
+    }
+    setPendingUser(data.user);
+    setProfileLoading(true);
+    setCheckoutToken(data.token);
+    setStep1Error("");
+  };
 
   const examConsentItem = enrollConsentItems[0] || null;
-  const needsParentForm = !profileLoading && studentParentId === null && !parentSubmitted;
+  const needsParentForm = !profileLoading;
   // คอร์สไหนในตะกร้ารอบนี้ที่ยังไม่เคยตอบความยินยอมบ้าง ต้องบันทึกให้ครบก่อนไปขั้นตอนถัดไป
   const coursesNeedingExamConsent = examConsentItem
     ? items.filter((item) => (examConsentByCourse[item.id]?.status || "not_answered") === "not_answered")
     : [];
 
   const handleContinueFromStep1 = async () => {
-    if (needsParentForm) {
-      if (!parentForm.firstname.trim() || !parentForm.lastname.trim()) {
-        setStep1Error("กรุณากรอกชื่อและนามสกุลผู้ปกครองก่อน");
-        return;
-      }
-      if (!parentAcknowledged) {
-        setStep1Error("กรุณายืนยันว่ารับทราบเรื่องการเก็บข้อมูลผู้ปกครองก่อน");
-        return;
-      }
+    const buyer = checkoutToken ? studentForm : checkoutAccount;
+    if (!buyer.firstname.trim() || !buyer.lastname.trim()) {
+      setStep1Error("กรุณากรอกชื่อและนามสกุลนักเรียน");
+      return;
+    }
+    if (!checkoutToken && (!checkoutAccount.username.trim() || !checkoutAccount.password || checkoutAccount.password !== checkoutAccount.confirmPassword)) {
+      setStep1Error("กรุณากรอกชื่อผู้ใช้ รหัสผ่าน และยืนยันรหัสผ่านให้ตรงกัน");
+      return;
+    }
+    if (!checkoutToken && checkoutAccount.password.length < 8) {
+      setStep1Error("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+      return;
+    }
+    if (checkoutToken && studentParentId === null && (!parentForm.firstname.trim() || !parentForm.lastname.trim() || !parentAcknowledged)) {
+      setStep1Error("กรุณากรอกชื่อผู้ปกครองและรับทราบการเก็บข้อมูลก่อน");
+      return;
     }
 
-    const token = localStorage.getItem("student_token");
     setSavingStep1(true);
     setStep1Error("");
     try {
-      if (token && needsParentForm) {
-        await submitParentProfile(token, { ...parentForm, acknowledged: true });
+      let token = checkoutToken;
+      if (!token) {
+        const credentials = { username: checkoutAccount.username.trim(), password: checkoutAccount.password };
+        const login = () => fetch(`${API_BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(credentials) });
+        let response = await login();
+        if (response.status === 401) {
+          const registration = new FormData();
+          for (const key of ["firstname", "lastname", "username", "password"]) registration.append(key, checkoutAccount[key].trim());
+          const registered = await fetch(`${API_BASE}/auth/register`, { method: "POST", body: registration });
+          const registeredBody = await registered.json().catch(() => ({}));
+          if (!registered.ok) throw new Error(registeredBody.message?.includes("ถูกใช้งานแล้ว") ? "ชื่อผู้ใช้นี้มีอยู่แล้ว แต่รหัสผ่านไม่ตรง กรุณาตรวจสอบอีกครั้ง" : registeredBody.message || "สร้างบัญชีไม่สำเร็จ");
+          response = await login();
+        }
+        const session = await response.json().catch(() => ({}));
+        if (!response.ok || !session.token || session.user?.role !== "student") throw new Error(session.message || "เตรียมบัญชีนักเรียนไม่สำเร็จ");
+        token = session.token;
+        setPendingUser(session.user);
+        setCheckoutToken(token);
+      }
+      const profile = await getStudentProfile(token);
+      const parentId = profile?.parentId ?? null;
+      setStudentParentId(parentId);
+      if (parentId === null && (!parentForm.firstname.trim() || !parentForm.lastname.trim() || !parentAcknowledged)) {
+        throw new Error("กรุณากรอกชื่อผู้ปกครองและรับทราบการเก็บข้อมูลก่อน");
+      }
+      await updateStudentProfile(token, {
+        firstname: buyer.firstname.trim(),
+        lastname: buyer.lastname.trim(),
+        phoneNo: studentForm.phoneNo || profile.phoneNo || "",
+        schoolName: studentForm.schoolName || profile.schoolName || "",
+      });
+      if (parentForm.firstname.trim() && parentForm.lastname.trim()) {
+        if (parentId === null && !parentSubmitted) await submitParentProfile(token, { ...parentForm, acknowledged: true });
+        else await updateParentProfile(token, parentForm);
         setParentSubmitted(true);
+      } else if (parentId === null) {
+        throw new Error("กรุณากรอกชื่อและนามสกุลผู้ปกครองก่อน");
       }
       if (token && examConsentItem && coursesNeedingExamConsent.length) {
         // ถามแยกเป็นรายคอร์ส — บันทึกทีละคอร์สที่ยังไม่เคยตอบ ใช้ค่าที่ติ๊กไว้ของคอร์สนั้น
         // (ไม่ติ๊ก = ไม่ยินยอม เหมือนพฤติกรรมเดิม)
+        const unanswered = (await Promise.all(coursesNeedingExamConsent.map(async (courseItem) => {
+          const current = await getMyConsents(token, courseItem.id);
+          return (current?.consents?.[examConsentItem.key] || "not_answered") === "not_answered" ? courseItem : null;
+        }))).filter(Boolean);
         await Promise.all(
-          coursesNeedingExamConsent.map((courseItem) =>
+          unanswered.map((courseItem) =>
             saveConsents(
               token,
               courseItem.id,
@@ -536,14 +635,15 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
         );
         setExamConsentByCourse((prev) => {
           const next = { ...prev };
-          coursesNeedingExamConsent.forEach((courseItem) => {
+          unanswered.forEach((courseItem) => {
             const granted = !!prev[courseItem.id]?.granted;
             next[courseItem.id] = { status: granted ? "granted" : "denied", granted };
           });
           return next;
         });
       }
-      setStep((value) => value + 1);
+      setStep(2);
+      setMaxReached((value) => Math.max(value, 2));
     } catch (err) {
       setStep1Error(typeof err === "string" ? err : (err?.message || "บันทึกข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"));
     } finally {
@@ -573,13 +673,13 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   }, [items]);
 
   useEffect(() => {
-    const token = localStorage.getItem("student_token");
+    const token = checkoutToken;
     if (!token) return;
     fetch(`${API_BASE}/api/line/login/status`, { headers: { Authorization: `Bearer ${token}` } })
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((result) => setLineLinked(Boolean(result.linked)))
       .catch(() => setLineLinked(false));
-  }, [API_BASE]);
+  }, [API_BASE, checkoutToken]);
 
   const installmentEnabled = items.some((item) => item.installmentEligible);
   const installmentCount = installmentRows.length;
@@ -608,17 +708,23 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
       setQrError("");
       setQrLoading(true);
       try {
-        const token = localStorage.getItem("student_token");
+        const token = checkoutToken;
         const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
         let orderId;
         const orderResponse = await fetch(`${API_BASE}/api/payments/orders`, {
           method: "POST", headers,
           body: JSON.stringify({
             courseId: paymentItem.id,
+            purchaseNote: (purchaseNotes[paymentItem.id] || "").trim(),
             paymentPlan: payPlan === "installment" && paymentItem.installmentEligible ? "installment" : "full",
           }),
         });
         const orderResult = await orderResponse.json().catch(() => ({}));
+        if (orderResult.purchaseNoteSaved === false && active) {
+          setPurchaseNoteWarning("หมายเหตุการเรียนยังบันทึกไม่ได้ในขณะนี้ กรุณาแจ้งเจ้าหน้าที่โดยตรงหากต้องการให้ติวเตอร์ทราบ");
+        } else if (active) {
+          setPurchaseNoteWarning("");
+        }
         if (orderResponse.ok) {
           orderId = orderResult.orderId;
         } else if (orderResponse.status === 409) {
@@ -648,14 +754,26 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
     createQr();
     return () => { active = false; };
-  }, [API_BASE, payPlan, paymentIndex, paymentItem, step]);
+  }, [API_BASE, checkoutToken, payPlan, paymentIndex, paymentItem, purchaseNotes, step]);
 
-  const downloadQr = () => {
-    if (!qrDataUrl) return;
-    const link = document.createElement("a");
-    link.href = qrDataUrl;
-    link.download = `promptpay-${Math.round(dueNow * 100) / 100}.png`;
-    link.click();
+  const downloadQr = async () => {
+    if (!activeInstallment) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/payments/installments/${activeInstallment.installmentId}/qr-download`, {
+        headers: { Authorization: `Bearer ${checkoutToken}` },
+      });
+      if (!response.ok) throw new Error("ดาวน์โหลด QR ไม่สำเร็จ");
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `promptpay-${activeInstallment.installmentId}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+    } catch (error) {
+      setSlipToast({ type: "error", message: error.message || "ดาวน์โหลด QR ไม่สำเร็จ" });
+    }
   };
 
   const handleSlipFileChange = (event) => {
@@ -669,7 +787,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     try {
       setLineLoading(true);
       setSlipToast(null);
-      const token = localStorage.getItem("student_token");
+      const token = checkoutToken;
       const response = await fetch(`${API_BASE}/api/line/login/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -693,7 +811,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     setSlipToast(null);
 
     try {
-      const token = localStorage.getItem("student_token"); // ปรับ key ให้ตรงกับที่ระบบ auth ของคุณเก็บไว้จริง
+      const token = checkoutToken;
 
       const formData = new FormData();
       formData.append("slipImage", slipFile);
@@ -729,8 +847,15 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           setSlipFile(null);
           setSlipName("");
         } else {
+          if (pendingUser && checkoutToken) {
+            localStorage.setItem("student_token", checkoutToken);
+            localStorage.setItem("user_role", "student");
+            localStorage.setItem("user", JSON.stringify(pendingUser));
+            window.dispatchEvent(new Event("student-profile-updated"));
+          }
           onEnrollmentComplete(items.map((item) => item.id));
           setStep(3);
+          setMaxReached(3);
         }
       }, 900);
 
@@ -745,51 +870,65 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-[#0B1224]/70 p-2 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-label="ขั้นตอนชำระเงิน">
+    <div className="fixed inset-0 z-[90] grid place-items-center overflow-hidden bg-[#0B1224]/65 p-0 backdrop-blur-sm sm:p-5" role="dialog" aria-modal="true" aria-label="ขั้นตอนชำระเงิน">
       <button className="fixed inset-0 cursor-default" onClick={onClose} aria-label="ปิดหน้าต่าง" />
 
       <SlipToast toast={slipToast} onClose={() => setSlipToast(null)} />
 
-      <div className="relative flex h-[96dvh] w-full max-w-[1440px] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl sm:h-[92dvh] sm:rounded-[30px]">
+      <div className="relative flex h-dvh w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[90dvh] sm:max-w-4xl sm:rounded-[24px]">
         <div className="border-b border-slate-100">
-          <Stepper step={step} />
-          <button onClick={onClose} className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200" aria-label="ปิด"><X className="h-4 w-4" /></button>
+          <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-orange-600 to-amber-500 px-5 py-4 text-white sm:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20"><ShoppingBag className="h-5 w-5" /></span>
+              <div className="min-w-0"><p className="truncate text-base font-bold sm:text-lg">ซื้อคอร์สเรียน</p><p className="text-xs text-white/85">ตรวจสอบข้อมูลและชำระเงินอย่างปลอดภัย</p></div>
+            </div>
+            <button onClick={onClose} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20 hover:bg-white/30" aria-label="ปิด"><X className="h-5 w-5" /></button>
+          </div>
+          <Stepper step={step} maxReached={maxReached} onSelect={(index) => {
+            if (index > maxReached || index >= 3) return;
+            if (step === 1 && index === 2) handleContinueFromStep1();
+            else setStep(index);
+          }} />
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8 lg:px-12 lg:py-9">
+        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 p-4 sm:p-6 lg:px-9 lg:py-7">
           {step === 0 && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-600">Review order</p>
-              <h2 className="mt-1 text-2xl font-black text-[#14213D]">ตรวจสอบรายการก่อนชำระ</h2>
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+              <h2 className="text-xl font-bold text-slate-900">คอร์สที่เลือก</h2>
+              <p className="mt-1 text-sm text-slate-500">ตรวจสอบคอร์สและยอดชำระก่อนดำเนินการต่อ</p>
               <div className="mt-5 space-y-3">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3">
-                    <img src={item.image} alt="" className="h-16 w-20 rounded-xl object-cover" />
+                    <CourseArtwork
+                      src={item.image}
+                      alt={item.title}
+                      className="h-16 w-20 shrink-0 rounded-xl object-cover"
+                      iconClassName="h-7 w-7"
+                    />
                     <div className="min-w-0 flex-1"><p className="line-clamp-2 text-sm font-bold text-[#14213D]">{item.title}</p><p className="mt-1 text-xs text-slate-500">{item.termName || "ไม่ระบุเทอม"} · ชั่วโมงรวม {item.lessons}</p></div>
-                    <strong className="text-sm text-orange-600">{money(item.salePrice)}</strong>
+                    <strong className="shrink-0 text-sm text-orange-600">{money(item.salePrice)}</strong>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-end justify-between rounded-2xl bg-[#14213D] p-4 text-white">
-                <span><b className="block text-sm">ยอดรวมสุทธิ</b><small className="text-white/55">{items.length} คอร์สเรียน</small></span>
-                <strong className="text-2xl">{money(total)}</strong>
+              <div className="mt-4 flex items-end justify-between rounded-xl border border-orange-100 bg-orange-50 p-4 text-slate-900">
+                <span><b className="block text-sm">ยอดรวมสุทธิ</b><small className="text-slate-500">{items.length} คอร์สเรียน</small></span>
+                <strong className="text-2xl text-orange-600">{money(total)}</strong>
               </div>
-            </div>
+            </section>
           )}
 
-          {step === 1 && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-600">Payment plan</p>
-              <h2 className="mt-1 text-2xl font-black text-[#14213D]">เลือกรูปแบบการชำระ</h2>
-              <p className="mt-2 text-sm text-slate-500">เห็นยอดที่ต้องจ่ายและกำหนดชำระครบถ้วนก่อนยืนยัน</p>
-              <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          {step === 0 && (
+            <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+              <h2 className="text-xl font-bold text-slate-900">รูปแบบการชำระ</h2>
+              <p className="mt-1 text-sm text-slate-500">เลือกชำระเต็มจำนวนหรือผ่อนตามแผนคอร์ส</p>
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
                 <PaymentChoice icon={Banknote} active={payPlan === "full"} title="ชำระเต็มจำนวน" price={money(total)} detail="ชำระครั้งเดียว เริ่มดำเนินการลงทะเบียนทันทีหลังตรวจสอบยอด" badge="แนะนำ" onClick={() => setPayPlan("full")} />
                 {installmentEnabled && <PaymentChoice icon={WalletCards} active={payPlan === "installment"} title="ผ่อนชำระตามแผนคอร์ส" price={`งวดแรก ${money(installmentRows[0]?.amount ?? total)}`} detail={`รวมแผนผ่อนที่ผู้ดูแลกำหนด สูงสุด ${installmentCount} งวด`} onClick={() => setPayPlan("installment")} />}
               </div>
 
               {payPlan === "installment" && (
                 <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
-                  <div className="flex flex-wrap items-center justify-between gap-3"><strong className="text-sm text-[#14213D]">ตารางผ่อนจาก Admin Courses</strong><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{installmentCount} งวด</span></div>
+                  <div className="flex flex-wrap items-center justify-between gap-3"><strong className="text-sm text-slate-900">ตารางผ่อนชำระ</strong><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700">{installmentCount} งวด</span></div>
                   <div className="mt-4 divide-y divide-slate-100">
                     {installmentRows.map((row) => (
                       <div key={row.no} className="py-4 text-sm">
@@ -813,78 +952,14 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                 </div>
               )}
 
-              {!profileLoading && needsParentForm && (
-                <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
-                  <strong className="text-sm text-[#14213D]">ข้อมูลผู้ปกครอง</strong>
-                  <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                    สถาบันเก็บชื่อ ชื่อเล่น เบอร์โทร LINE ID วันเกิด และความสัมพันธ์ของผู้ปกครองไว้เพื่อระบุตัวผู้ใช้อำนาจปกครอง
-                    และใช้ติดต่อเรื่องการเรียน/การชำระเงินของนักเรียนเท่านั้น เก็บครั้งเดียว ใช้ได้กับทุกคอร์สที่ซื้อในภายหลัง ไม่ต้องกรอกซ้ำอีก
-                  </p>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <input
-                      value={parentForm.firstname}
-                      onChange={(e) => setParentForm((f) => ({ ...f, firstname: e.target.value }))}
-                      placeholder="ชื่อผู้ปกครอง *"
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
-                    />
-                    <input
-                      value={parentForm.lastname}
-                      onChange={(e) => setParentForm((f) => ({ ...f, lastname: e.target.value }))}
-                      placeholder="นามสกุลผู้ปกครอง *"
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
-                    />
-                    <input
-                      value={parentForm.nickname}
-                      onChange={(e) => setParentForm((f) => ({ ...f, nickname: e.target.value }))}
-                      placeholder="ชื่อเล่น"
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
-                    />
-                    <input
-                      value={parentForm.phoneNo}
-                      onChange={(e) => setParentForm((f) => ({ ...f, phoneNo: e.target.value }))}
-                      placeholder="เบอร์โทร"
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
-                    />
-                    <input
-                      value={parentForm.lineId}
-                      onChange={(e) => setParentForm((f) => ({ ...f, lineId: e.target.value }))}
-                      placeholder="LINE ID"
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
-                    />
-                    <input
-                      type="date"
-                      value={parentForm.birthOfDate}
-                      onChange={(e) => setParentForm((f) => ({ ...f, birthOfDate: e.target.value }))}
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none"
-                    />
-                    <select
-                      value={parentForm.parentProfilesTypeId}
-                      onChange={(e) => setParentForm((f) => ({ ...f, parentProfilesTypeId: e.target.value }))}
-                      className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none sm:col-span-2"
-                    >
-                      <option value="">ความสัมพันธ์กับนักเรียน</option>
-                      {parentTypes.map((t) => (
-                        <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>{t.ParentProfilesType_Name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl bg-slate-50 px-3 py-2.5">
-                    <input
-                      type="checkbox"
-                      checked={parentAcknowledged}
-                      onChange={(e) => setParentAcknowledged(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
-                    />
-                    <span className="text-xs font-semibold text-slate-700">
-                      รับทราบเรื่องการเก็บข้อมูลผู้ปกครองตามที่แจ้งไว้ข้างต้น
-                    </span>
-                  </label>
-                </div>
-              )}
+            </section>
+          )}
 
+          {step === 0 && (
+            <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
               {/* ── PDPA: ยินยอมบันทึกพฤติกรรมระหว่างสอบ — ถามแยกเป็นรายคอร์สที่กำลังซื้อรอบนี้ ── */}
-              <div className="mt-6 rounded-2xl border border-slate-200 p-4 sm:p-5 lg:p-6">
-                <strong className="text-sm text-[#14213D]">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
+              <div>
+                <strong className="text-base text-slate-900">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
                 {enrollConsentLoading ? (
                   <p className="mt-3 text-sm text-slate-400">กำลังโหลด...</p>
                 ) : examConsentItem ? (
@@ -937,6 +1012,92 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   <p className="mt-2 text-xs font-semibold text-red-600">{step1Error}</p>
                 )}
               </div>
+            </section>
+          )}
+
+          {step === 1 && (
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">ข้อมูลผู้ซื้อ</h2>
+              <p className="mt-1 text-sm text-slate-500">ข้อมูลนี้ใช้ติดต่อเรื่องการเรียนและการชำระเงิน</p>
+              {!checkoutToken ? <CheckoutIdentity account={checkoutAccount} onChange={setCheckoutAccount} onAuthenticated={handleCheckoutAuthenticated} error={step1Error} busy={savingStep1} /> : (
+                <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3"><h3 className="font-bold text-slate-900">ข้อมูลนักเรียน</h3><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{pendingUser ? "ยืนยันตัวตนแล้ว" : "เข้าสู่ระบบแล้ว"}</span></div>
+                  <p className="mt-3 text-xs text-slate-500">ตรวจสอบและแก้ไขข้อมูลติดต่อก่อนชำระเงิน</p>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <label className="text-sm font-semibold text-slate-700">ชื่อ <span className="text-orange-600">*</span><input value={studentForm.firstname} onChange={(e) => setStudentForm((f) => ({ ...f, firstname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                    <label className="text-sm font-semibold text-slate-700">นามสกุล <span className="text-orange-600">*</span><input value={studentForm.lastname} onChange={(e) => setStudentForm((f) => ({ ...f, lastname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                    <label className="text-sm font-semibold text-slate-700">เบอร์โทรศัพท์<input type="tel" value={studentForm.phoneNo} onChange={(e) => setStudentForm((f) => ({ ...f, phoneNo: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                    <label className="text-sm font-semibold text-slate-700">โรงเรียน<input value={studentForm.schoolName} onChange={(e) => setStudentForm((f) => ({ ...f, schoolName: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                  </div>
+                </section>
+              )}
+              {!profileLoading && needsParentForm && (
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                  <div className="border-b border-slate-100 pb-3"><strong className="text-base text-slate-900">ข้อมูลผู้ปกครอง</strong><p className="mt-1 text-xs text-slate-500">ใช้ติดต่อเรื่องการเรียนและการชำระเงิน ข้อมูลนี้เก็บไว้ใช้กับคอร์สถัดไป</p></div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label className="text-sm font-semibold text-slate-700">ชื่อผู้ปกครอง <span className="text-orange-600">*</span><input
+                      value={parentForm.firstname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, firstname: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700">นามสกุลผู้ปกครอง <span className="text-orange-600">*</span><input
+                      value={parentForm.lastname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, lastname: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700">ชื่อเล่น<input
+                      value={parentForm.nickname}
+                      onChange={(e) => setParentForm((f) => ({ ...f, nickname: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700">เบอร์โทรศัพท์<input type="tel"
+                      value={parentForm.phoneNo}
+                      onChange={(e) => setParentForm((f) => ({ ...f, phoneNo: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700">LINE ID<input
+                      value={parentForm.lineId}
+                      onChange={(e) => setParentForm((f) => ({ ...f, lineId: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700">วันเกิด<input
+                      type="date"
+                      value={parentForm.birthOfDate}
+                      onChange={(e) => setParentForm((f) => ({ ...f, birthOfDate: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none"
+                    /></label>
+                    <label className="text-sm font-semibold text-slate-700 sm:col-span-2">ความสัมพันธ์กับนักเรียน<select
+                      value={parentForm.parentProfilesTypeId}
+                      onChange={(e) => setParentForm((f) => ({ ...f, parentProfilesTypeId: e.target.value }))}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-600 focus:border-orange-400 focus:outline-none"
+                    >
+                      <option value="">ความสัมพันธ์กับนักเรียน</option>
+                      {parentTypes.map((t) => (
+                        <option key={t.ParentProfilesType_Id} value={t.ParentProfilesType_Id}>{t.ParentProfilesType_Name}</option>
+                      ))}
+                    </select></label>
+                  </div>
+                  <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl bg-slate-50 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={parentAcknowledged}
+                      onChange={(e) => setParentAcknowledged(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+                    />
+                    <span className="text-xs font-semibold text-slate-700">
+                      รับทราบเรื่องการเก็บข้อมูลผู้ปกครองตามที่แจ้งไว้ข้างต้น
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <div className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+                <div><h3 className="text-sm font-bold text-[#14213D]">สิ่งที่อยากให้เน้นในการเรียน</h3><p className="mt-1 text-xs text-slate-500">ระบุแยกตามคอร์ส เช่น วิชาหรือเรื่องที่อยากเตรียมสอบเป็นพิเศษ</p></div>
+                {items.map((item) => <label key={item.id} className="block text-sm font-semibold text-slate-700">{item.title}
+                  <textarea rows={2} maxLength={1000} value={purchaseNotes[item.id] || ""} onChange={(e) => setPurchaseNotes((notes) => ({ ...notes, [item.id]: e.target.value }))} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-orange-400" />
+                </label>)}
+              </div>
+              {step1Error && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{step1Error}</p>}
             </div>
           )}
 
@@ -945,6 +1106,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
               <p className="text-xs font-bold uppercase tracking-[.16em] text-orange-600">Secure payment</p>
               <h2 className="mt-1 text-2xl font-black text-[#14213D]">ชำระ {money(dueNow)}</h2>
               <p className="mt-2 text-sm text-slate-500">คอร์ส {paymentIndex + 1}/{items.length}: {paymentItem?.title} · {payPlan === "full" || !paymentItem?.installmentEligible ? "ยอดชำระเต็มจำนวน" : "งวดแรก"}</p>
+              {purchaseNoteWarning && <p role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{purchaseNoteWarning}</p>}
               <div className="mt-4 rounded-2xl border border-slate-200 p-5 text-center">
                   <>
                     <div className="mx-auto grid h-52 w-52 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md sm:h-64 sm:w-64">
@@ -1003,8 +1165,8 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           {step > 0 && step < 3 ? <button onClick={() => setStep((value) => value - 1)} className="flex items-center gap-2 px-2 py-3 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />ย้อนกลับ</button> : <span />}
           {step < 2 && (
             <button
-              onClick={step === 1 ? handleContinueFromStep1 : () => setStep((value) => value + 1)}
-              disabled={savingStep1 || (step === 1 && profileLoading)}
+              onClick={step === 1 ? handleContinueFromStep1 : () => { setStep(1); setMaxReached((value) => Math.max(value, 1)); }}
+              disabled={savingStep1 || (step === 1 && !!checkoutToken && profileLoading)}
               className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {step === 1 && savingStep1 ? "กำลังบันทึก..." : "ดำเนินการต่อ"} <ChevronRight className="h-4 w-4" />
@@ -1065,13 +1227,7 @@ export default function Cart() {
     [cart, courseDetails]
   );
   const [checkoutTotal, setCheckoutTotal] = useState(null);
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-
   const requestCheckout = (total) => {
-    if (!localStorage.getItem("student_token")) {
-      setLoginPromptOpen(true);
-      return;
-    }
     setCheckoutTotal(total);
   };
 
@@ -1080,7 +1236,7 @@ export default function Cart() {
     const total = items.reduce((sum, item) => sum + item.salePrice, 0);
     requestCheckout(total);
     navigate(location.pathname, { replace: true, state: {} });
-  }, [items.length, location.state?.openCheckout]);
+  }, [items, location.pathname, location.state?.openCheckout, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -1133,18 +1289,6 @@ export default function Cart() {
       </div>
 
       {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} onEnrollmentComplete={removeManyFromCart} />}
-      {loginPromptOpen && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-[#0B1224]/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cart-login-title" onClick={() => setLoginPromptOpen(false)}>
-          <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <button type="button" onClick={() => setLoginPromptOpen(false)} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="ปิด"><X className="h-5 w-5" /></button>
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500"><LockKeyhole className="h-7 w-7" /></span>
-            <h2 id="cart-login-title" className="mt-5 text-xl font-extrabold text-[#14213D]">กรุณาเข้าสู่ระบบก่อนชำระเงิน</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-500">ระบบจะเก็บรายการในตะกร้าไว้ให้คุณ หลังเข้าสู่ระบบแล้วสามารถกลับมาชำระเงินต่อได้ทันที</p>
-            <button type="button" onClick={() => navigate("/login", { state: { returnTo: "/cart", openCheckout: true } })} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600">ไปหน้าเข้าสู่ระบบ</button>
-            <button type="button" onClick={() => setLoginPromptOpen(false)} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">กลับไปดูตะกร้า</button>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

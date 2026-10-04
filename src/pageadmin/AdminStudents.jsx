@@ -237,7 +237,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     lineId: initial.LineID || initial.lineId || "",
     birthOfDate: initial.BirthOfDate || initial.birthOfDate || "",
     remark: initial.Remark || initial.remark || "",
-    gpa: initial.GPA || initial.gpa || "",
     gradeLevelId: initial.GradeLevelId || initial.gradeLevelId || "",
     genderId: initial.GenderId || initial.genderId || "",
     username: initial.Username || initial.username || "",
@@ -273,14 +272,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
     });
   };
 
-  const formatGPA = (raw) => {
-    const digits = raw.replace(/[^\d]/g, "").slice(0, 3); // เก็บแค่ตัวเลข ไม่เกิน 3 หลัก
-    if (digits.length === 0) return "";
-    const formatted = digits.length === 1 ? digits : `${digits[0]}.${digits.slice(1)}`;
-    if (parseFloat(formatted) > 4) return "4.00"; // กันไม่ให้เกิน 4.00 ตั้งแต่กำลังพิมพ์
-    return formatted;
-  };
-
   const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
   const lbl = "block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide";
 
@@ -303,7 +294,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
         lineId: st?.LineID ?? f.lineId,
         birthOfDate: st?.BirthOfDate ?? f.birthOfDate,
         remark: st?.Remark ?? f.remark,
-        gpa: st?.GPA ?? f.gpa,
         photo: st?.Photo ?? f.photo,
         gradeLevelId: st?.GradeLevelId ?? f.gradeLevelId,
         genderId: st?.GenderId ?? f.genderId,
@@ -376,7 +366,7 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
           <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>ระดับชั้น</label>
           <select className={inp} value={form.gradeLevelId || ""} onChange={e => set("gradeLevelId", e.target.value)}>
@@ -390,23 +380,6 @@ function StudentForm({ initial = {}, onSave, onCancel, isSubmitting, gradeLevels
             <option value="">ไม่ระบุ</option>
             {genders.map(g => <option key={g.GenderId} value={g.GenderId}>{g.GenderName}</option>)}
           </select>
-        </div>
-        <div>
-          <label className={lbl}>GPA</label>
-          <input
-            type="text" inputMode="decimal" className={inp}
-            value={form.gpa || ""}
-            onChange={e => set("gpa", formatGPA(e.target.value))}
-            onBlur={e => {
-              if (!e.target.value) return;
-              let n = parseFloat(e.target.value);
-              if (isNaN(n)) return set("gpa", "");
-              n = Math.min(4, Math.max(0, n));
-              set("gpa", n.toFixed(2));
-            }}
-            placeholder="0.00"
-            maxLength={4}
-          />
         </div>
       </div>
 
@@ -862,7 +835,6 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             {s.GradeDetail && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">{s.GradeDetail}</span>}
             {s.SchoolName && <span className="bg-white/15 text-orange-100 px-2 py-0.5 rounded-full">{s.SchoolName}</span>}
             {s.PhoneNo && <span className="bg-white/15 text-orange-100 px-2 py-0.5 rounded-full">{s.PhoneNo}</span>}
-            {s.GPA && <span className="bg-white/20 text-white px-2 py-0.5 rounded-full font-semibold">GPA {s.GPA}</span>}
           </div>
         </div>
         <div className="flex gap-3 shrink-0">
@@ -2375,9 +2347,6 @@ export default function AdminStudentsPage() {
                     {s.Nickname && <p className="text-xs text-slate-500 truncate">{s.Firstname} {s.Lastname}</p>}
                     <p className="text-[11px] text-slate-500">#{s.UserId}</p>
                   </div>
-                  {s.GPA ? (
-                    <span className="shrink-0 px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">GPA {s.GPA}</span>
-                  ) : null}
                 </button>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-600">
                   {s.SchoolName && (
@@ -2418,7 +2387,6 @@ export default function AdminStudentsPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">โรงเรียน / ระดับชั้น / เพศ</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">คอร์ส</th>
-                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">GPA</th>
                   <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                 </tr>
               </thead>
@@ -2485,16 +2453,6 @@ export default function AdminStudentsPage() {
                         )}
                       </td>
 
-                      {/* คอลัมน์: GPA */}
-                      <td className="px-4 py-3 text-center">
-                        {s.GPA ? (
-                          <span className="inline-block px-2.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full text-xs font-semibold">
-                            {s.GPA}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-300">—</span>
-                        )}
-                      </td>
 
                       {/* คอลัมน์: ปุ่มจัดการ */}
                       <td className="sticky right-0 bg-white lg:static lg:bg-transparent px-4 py-3">

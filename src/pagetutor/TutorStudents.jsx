@@ -65,7 +65,6 @@ export default function TutorStudents() {
             ? `${student.totalAttended}/${student.totalClassHeld} (${getAttendanceRate(student)}%)`
             : "ไม่มีข้อมูล",
         ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
-        GPA: student.gpa ?? "-",
         คะแนนสอบ: student.exam?.improvement
             ? `ก่อนเรียน ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
             : "ยังไม่มีข้อมูลสอบ",
@@ -78,7 +77,7 @@ export default function TutorStudents() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "รายงานนักเรียน");
-        ws["!cols"] = [{ wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 8 }, { wch: 12 }];
+        ws["!cols"] = [{ wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 12 }];
         XLSX.writeFile(wb, `รายงานนักเรียน_${courseInfo.name}.xlsx`);
     };
 
@@ -92,7 +91,6 @@ export default function TutorStudents() {
                     ${rate !== null ? `${student.totalAttended}/${student.totalClassHeld} (${rate}%)` : "ไม่มีข้อมูล"}
                 </td>
                 <td>${student.totalVideos ? Math.round((student.videoViews / student.totalVideos) * 100) + '%' : '-'}</td>
-                <td>${student.gpa ?? "-"}</td>
                 <td>${student.exam?.improvement ? `${getAverageImprovement(student)} คะแนน` : "—"}</td>
             </tr>`;
         }).join("");
@@ -103,7 +101,7 @@ export default function TutorStudents() {
             </head><body>
             <h1>รายงานนักเรียน: ${esc(courseInfo.name)}</h1>
             <p>จำนวนนักเรียน: ${filteredStudents.length} คน | วันที่: ${new Date().toLocaleDateString("th-TH")}</p>
-            <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>GPA</th><th>คะแนนสอบที่เพิ่มขึ้น</th></tr></thead>
+            <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>คะแนนสอบที่เพิ่มขึ้น</th></tr></thead>
             <tbody>${rows}</tbody></table>
             <script>window.onload=()=>window.print();</script></body></html>`);
         printWindow.document.close();
@@ -144,7 +142,7 @@ export default function TutorStudents() {
                         phone: std.PhoneNo || std.phoneNo || "ไม่มีเบอร์โทร",
                         school: std.SchoolName || std.schoolName || "ไม่ระบุโรงเรียน",
                         gradeLevel: std.gradeLevel || 'ไม่ระบุชั้น',
-                        gpa: std.gpa ?? '-',
+                        purchaseNote: std.PurchaseNote || '',
                         birthDate: std.BirthOfDate ?? null,
                         totalAttended: std.totalAttended ?? 0,
                         totalClassHeld: std.totalClassHeld ?? 0,
@@ -251,7 +249,6 @@ export default function TutorStudents() {
             if (sortBy === "improvement") return (getGrowth(b) ?? -1) - (getGrowth(a) ?? -1);
             if (sortBy === "videoProgress") return (b.videoViews / b.totalVideos) - (a.videoViews / a.totalVideos);
             if (sortBy === "attendance") return (getAttendanceRate(b) ?? -1) - (getAttendanceRate(a) ?? -1);
-            if (sortBy === "gpa") return (parseFloat(b.gpa) || 0) - (parseFloat(a.gpa) || 0);
             return 0;
         });
 
@@ -312,7 +309,6 @@ export default function TutorStudents() {
                             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px] max-w-full md:max-w-[240px] truncate">
                             <option value="name">เรียงตามชื่อ</option>
                             <option value="attendance">เรียงตามการเข้าเรียน</option>
-                            <option value="gpa">เรียงตามเกรด</option>
                             <option value="improvement">เรียงตามพัฒนาการ</option>
                             <option value="videoProgress">เรียงตามการดูคลิป</option>
                         </select>
@@ -372,12 +368,8 @@ export default function TutorStudents() {
                                                 <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">{student.gradeLevel}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">อายุ {calculateAge(student.birthDate)} ปี</div>
-                                                {/* GPA เป็นเกรดจากโรงเรียนของนักเรียน ไม่ใช่ผลจากระบบเรา จึงย้ายมาอยู่กับข้อมูลโปรไฟล์
-                                                    ไม่ให้ปนกับตัวชี้วัดผลการเรียนของสถาบัน (เข้าเรียน/ดูคลิป/พัฒนาการ) */}
-                                                {student.gpa && student.gpa !== '-' && (
-                                                    <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</div>
-                                                )}
                                             </div>
+                                            {student.purchaseNote && <p className="mt-2 rounded-lg border border-orange-100 bg-white/80 px-3 py-2 text-xs text-orange-900">สิ่งที่อยากให้เน้น: {student.purchaseNote}</p>}
                                         </div>
                                     </div>
 

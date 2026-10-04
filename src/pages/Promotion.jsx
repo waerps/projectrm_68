@@ -122,7 +122,6 @@ export default function Promotion() {
   const navigate = useNavigate()
   const [allCourses, setAllCourses] = useState([])
   const [loading, setLoading] = useState(true)
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const { cart, favorites, addToCart, toggleFavorite } = useShop()
   useEffect(() => { getCourses().then((data) => setAllCourses(Array.isArray(data) ? data : [])).finally(() => setLoading(false)) }, [])
   const promotionCourses = useMemo(
@@ -130,7 +129,6 @@ export default function Promotion() {
     [allCourses]
   )
   const buyNow = (item) => {
-    if (!localStorage.getItem("student_token")) return setLoginPromptOpen(true)
     addToCart(item)
     navigate("/cart", { state: { openCheckout: true } })
   }
@@ -157,7 +155,6 @@ export default function Promotion() {
           })}
         </div>
       )}
-      <LoginRequiredModal open={loginPromptOpen} onClose={() => setLoginPromptOpen(false)} onLogin={() => navigate("/login", { state: { returnTo: "/promotion" } })} />
     </div>
   )
 }
