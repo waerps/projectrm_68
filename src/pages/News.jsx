@@ -3,6 +3,7 @@ import { flushSync } from "react-dom";
 import axios from "axios";
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Image as ImageIcon, Newspaper, X } from "lucide-react";
 import { API_URL } from "../config";
+import { newsAuthConfig } from "../utils/newsApi";
 import "./NewsMarqueeArchive.css";
 import "./News.css";
 import PublicPageHero from "../components/PublicPageHero";
@@ -77,7 +78,7 @@ export function NewsExpanded({ item, onClose }) {
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [item.id]);
+  }, [item.id, item.type]);
 
   useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
 

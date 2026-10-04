@@ -31,6 +31,7 @@ import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
+import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
 
@@ -2557,20 +2558,20 @@ function StudentDetailModal({
               สรุปสั้นๆ + แนวโน้มรายหมวดให้เห็นภาพเร็วๆ (โดยเฉพาะเวลาผู้ปกครองมาดู)
               บทวิเคราะห์แบบละเอียด (สาเหตุ/จุดที่เข้าใจผิด/คำแนะนำ) กดขยายดูได้ที่ปุ่มด้านล่าง
               ไม่บังคับเปิดให้เห็นตลอด กันหน้าจอรกเกินไปสำหรับคนที่แค่อยากดูสรุปเร็วๆ */}
-          {modalTab === "overview" && aiSummary && (
+          {modalTab === "overview" && isVerifiedAiSummary(aiSummary) && (
             <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
               {/* หน้านี้ = ดูเร็วหลังสอบ: AI แบบสั้น (สรุป 3 บรรทัด + คัดลอกข้อความถึงผู้ปกครอง)
                   ส่วนแบบละเอียด (รายหมวด/จุดเข้าใจผิด/แผนทำต่อ/แก้ข้อความ) อยู่หน้าวิเคราะห์ แท็บ "รายคน" ที่เดียว */}
               <div className="flex flex-wrap lg:flex-nowrap items-start justify-between gap-3">
                 <p className="text-xs font-bold text-orange-700 flex items-center gap-1.5 mb-1">
-                  <Zap className="h-3.5 w-3.5" /> สรุปโดย AI
+                  <Zap className="h-3.5 w-3.5" /> สรุปจากผลสอบ
                   {aiSummary.misconceptions?.length > 0 && (
                     <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
-                      จุดที่ควรระวัง {aiSummary.misconceptions.length} เรื่อง
+                      เรื่องที่ควรทบทวน {aiSummary.misconceptions.length} เรื่อง
                     </span>
                   )}
                 </p>
-                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โดย {aiSummary.model}</span>}
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โมเดล: {aiSummary.model}</span>}
               </div>
               <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
@@ -2594,7 +2595,7 @@ function StudentDetailModal({
                     type="button"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(`${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
+                        await navigator.clipboard.writeText(`ข้อความถึงผู้ปกครอง · ${parentMessageAttribution(aiSummary)} — ผู้สอนควรตรวจสอบก่อนส่ง\n${aiSummary.nickname || aiSummary.studentName}\n\n${aiSummary.parentMessage}`);
                         setCopiedMsg(true);
                         setTimeout(() => setCopiedMsg(false), 2000);
                       } catch (err) { console.error("Copy failed:", err); }
@@ -2607,6 +2608,10 @@ function StudentDetailModal({
                 )}
               </div>
             </div>
+          )}
+
+          {modalTab === "overview" && aiSummary && !isVerifiedAiSummary(aiSummary) && (
+            <p className="mb-6 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">{aiAnalysisNotice(aiSummary)}</p>
           )}
 
           {/* ── ธงคุณภาพข้อมูล ──────────────────────────────────────────────
@@ -2904,6 +2909,9 @@ function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }
 
   useEffect(() => { load(); }, [load]);
 
+  const verifiedCount = summaries.filter(isVerifiedAiSummary).length;
+  const unavailableCount = summaries.length - verifiedCount;
+
   // สอบยังไม่ปิด ยังไม่มีอะไรให้วิเคราะห์ (auto-trigger ทำงานตอนปิดสอบเท่านั้น) — ไม่ต้องโชว์แถบนี้เลย
   if (examStatus !== "closed") return null;
 
@@ -2912,11 +2920,13 @@ function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }
       <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
       <p className="text-xs text-slate-500 min-w-0 lg:truncate">
         {loading
-          ? "กำลังตรวจสอบสถานะวิเคราะห์ AI…"
-          : summaries.length > 0
-            ? `AI วิเคราะห์แล้ว ${summaries.length} จาก ${submittedCount || 0} คน — ดูบทวิเคราะห์ได้ที่ปุ่ม "ดูผล" ของนักเรียนแต่ละคน`
+          ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
+          : verifiedCount > 0
+            ? `ผลวิเคราะห์โดย AI ผ่านการตรวจสอบ ${verifiedCount} จาก ${submittedCount || 0} คน${unavailableCount ? ` · ต้องวิเคราะห์ใหม่ ${unavailableCount} คน` : ""}`
+            : unavailableCount > 0
+              ? `ผลวิเคราะห์โดย AI ของ ${unavailableCount} คนยังไม่ผ่านการตรวจสอบ กรุณาวิเคราะห์ใหม่ที่หน้าภาพรวมพัฒนาการ`
             : submittedCount
-              ? "ยังไม่มีผลวิเคราะห์ AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียด/สั่งวิเคราะห์ใหม่ได้ที่หน้าวิเคราะห์เชิงลึก)"
+              ? "ยังไม่มีผลวิเคราะห์โดย AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียดหรือกดวิเคราะห์ใหม่ด้วย AI ได้ที่หน้าวิเคราะห์เชิงลึก)"
               : "ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้"}
       </p>
     </div>
@@ -3265,10 +3275,10 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                         <span className="inline-flex items-center gap-1.5">
                           {s.name}
                           {status === "closed" && s.submittedAt && (
-                            aiByUserId.get(s.userId) ? (
-                              <span title="วิเคราะห์ AI แล้ว — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
+                            isVerifiedAiSummary(aiByUserId.get(s.userId)) ? (
+                              <span title="มีผลวิเคราะห์โดย AI — ดูได้ที่ปุ่ม 'ดูผล'" className="text-emerald-500 text-xs leading-none">✓</span>
                             ) : (
-                              <span title="กำลังวิเคราะห์ AI" className="text-slate-300 text-xs leading-none">⏳</span>
+                              <span title={aiByUserId.get(s.userId) ? aiAnalysisNotice(aiByUserId.get(s.userId)) : "ยังไม่มีผลวิเคราะห์โดย AI"} className="text-slate-300 text-xs leading-none">⏳</span>
                             )
                           )}
                         </span>

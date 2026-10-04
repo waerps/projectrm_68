@@ -18,7 +18,11 @@ export default function NewsMarqueeArchive({ role = "public", items = null, embe
     const controller = new AbortController();
     setLoading(true);
     setError(false);
-    axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
+    axios.get(`${API_URL}/api/news`, {
+      params: { role },
+      signal: controller.signal,
+      ...newsAuthConfig(role),
+    })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => {
         if (requestError.code !== "ERR_CANCELED") {

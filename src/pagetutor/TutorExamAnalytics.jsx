@@ -8,9 +8,9 @@ import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
   CheckCircle, Search, Award, Clock, BookOpen, Info,
   X, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
-  Target, Timer, MessageCircle, Copy, Pencil, Check, Flame,
+  Target, MessageCircle, Copy, Pencil, Check, Flame,
   PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
-  Map as MapIcon, FileSpreadsheet, FileText,
+  FileSpreadsheet, FileText,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { fmtScore, PASS_PCT, isPassingScore, displayExamPercent } from "../utils/examScore";
@@ -21,6 +21,8 @@ import Breadcrumb from "../components/ui/Breadcrumb";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
+import ExamSupportPanel from "../components/exam/ExamSupportPanel";
+import { aiAnalysisNotice, examTimingForDisplay, isVerifiedAiSummary, parentMessageAttribution, parentMessageParts } from "../utils/examAnalysisDisplay";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -129,11 +131,11 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   if (weak) reasons.push(`ควรทบทวน ${weak} หมวดหมู่ (คะแนนรายหมวดต่ำกว่า 50%)`);
   if (change != null && change < 0) reasons.push("คะแนนสอบลดลงจากรอบแรก");
   if (missedRounds) reasons.push(`ขาดสอบ ${missedRounds} รอบ`);
-  if (misconceptionCount >= 2) reasons.push(`เข้าใจผิด ${misconceptionCount} เรื่อง`);
+  if (misconceptionCount >= 2) reasons.push(`ข้อสังเกตโดย AI: ควรทบทวน ${misconceptionCount} เรื่อง`);
   let key = "ok";
   if (!latest || below || weak >= 2 || (change != null && change <= -5)) key = "care";
   else if (weak === 1 || misconceptionCount >= 2 || (change != null && change < 0) || missedRounds > 0) key = "watch";
-  if (key === "ok") reasons.push("ผ่านเกณฑ์ ไม่มีเรื่องที่น่ากังวล");
+  if (key === "ok") reasons.push("คะแนนสอบล่าสุดผ่านเกณฑ์");
   return { key, level: STUDENT_STATUS[key].level, reasons, change, weakCount: weak };
 }
 
@@ -340,7 +342,7 @@ function buildRealCrossExamData(examResults, topicResults) {
           maxScore: s.maxScore,
           rank: rankByUser.get(s.userId),
           totalStudents: sorted.length,
-          avgTimePerQuestion: s.secondsUsed != null && s.totalQuestions ? s.secondsUsed / s.totalQuestions : null,
+          ...examTimingForDisplay(s),
           topicPcts: topicPctsForUser(topicResults[examId], s.userId),
           topicScores: topicScoresForUser(topicResults[examId], s.userId),
         };
@@ -450,7 +452,7 @@ function buildProgressRows(crossExamData, aiSummaries) {
     const latest = submittedList[submittedList.length - 1] ?? null;
     const latestIndex = [2, 1, 0].find((i) => d.exams[i]?.submitted) ?? null;
     const ai = latestIndex != null ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === d.studentId) : null;
-    const status = computeStudentStatus({ exams: d.exams, missedRounds: d.missedRounds, misconceptionCount: ai?.misconceptions?.length || 0 });
+    const status = computeStudentStatus({ exams: d.exams, missedRounds: d.missedRounds, misconceptionCount: isVerifiedAiSummary(ai) ? ai.misconceptions?.length || 0 : 0 });
     return {
       studentId: d.studentId, name: d.name,
       submittedCount: submittedList.length,
@@ -936,50 +938,31 @@ const aiHeadline = (text) => {
   return aiSnippet(t.split(/(?<=[.!?])\s+|\n+/)[0], 140);
 };
 
-// ดึงเลขข้อจากหลักฐานของ AI เช่น "ข้อ 12, 18 และ 24" → ["12","18","24"]
-const aiQuestionRefs = (text) => {
-  const out = [];
-  const re = /ข้อ(?:ที่)?\s*(\d+(?:\s*(?:,|และ)\s*\d+)*)/g;
-  let m;
-  while ((m = re.exec(String(text || ""))) !== null) {
-    m[1].split(/\s*(?:,|และ)\s*/).forEach((n) => {
-      if (n && !out.includes(n)) out.push(n);
-    });
-  }
-  return out.slice(0, 8);
-};
-
-
-const aiTimeHint = (text) => {
-  const m = String(text || "").match(/\d+\s*(?:นาที|ชั่วโมง|ชม\.?|ครั้ง|วัน)(?:\s*(?:\/|ต่อ)\s*(?:วัน|สัปดาห์|อาทิตย์|ครั้ง))?/);
-  return m ? m[0].replace(/\s+/g, " ") : null;
-};
-
 const aiAvg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null);
 
 
 // ข้อความทั้งฉบับสำหรับปุ่ม "คัดลอกทั้งหมด" (ย้ายมาจาก AiSummaryDetail ที่เลิกใช้แล้ว)
 const buildAiFullText = (row, parentMessage) => {
+  if (!isVerifiedAiSummary(row)) return aiAnalysisNotice(row);
   const L = [];
   L.push(row.nickname ? `${row.studentName} (${row.nickname})` : row.studentName);
-  if (row.overview) L.push("", "ภาพรวม", row.overview);
+  if (row.overview) L.push("", "สรุปจากผลสอบ", row.overview);
   if (row.byCategory?.length) {
-    L.push("", "คะแนนรายหมวด");
+    L.push("", "ข้อสังเกตรายหมวด (วิเคราะห์โดย AI)");
     row.byCategory.forEach((c) => L.push(`- ${c.topic}${c.trend ? ` · ${c.trend}` : ""} — ${c.comment}`));
   }
   if (row.misconceptions?.length) {
-    L.push("", "เรื่องที่น่าจะเข้าใจผิด");
+    L.push("", "เรื่องที่ควรทบทวน (วิเคราะห์โดย AI)");
     row.misconceptions.forEach((m) => {
       L.push(`- ${m.topic} — ${m.pattern}`);
       if (m.evidence) L.push(`  หลักฐาน: ${m.evidence}`);
     });
   }
-  if (row.behavior) L.push("", "ข้อสังเกตจากเวลาที่ใช้", row.behavior);
   if (row.focusNext?.length) {
-    L.push("", "ควรทำต่อ เรียงตามลำดับ");
+    L.push("", "แนวทางที่ควรทำต่อ (วิเคราะห์โดย AI)");
     row.focusNext.forEach((f, i) => L.push(typeof f === "string" ? `${i + 1}. ${f}` : `${i + 1}. ${f.action}${f.why ? ` — ${f.why}` : ""}`));
   }
-  if (parentMessage) L.push("", "ข้อความสำหรับผู้ปกครอง", parentMessage);
+  if (parentMessage) L.push("", `ข้อความถึงผู้ปกครอง · ${parentMessageAttribution(row)}`, parentMessage);
   return L.join("\n");
 };
 
@@ -1015,7 +998,7 @@ function ScoreLineChart({ exams, classAvgs, name, roundsWithData = [] }) {
   const area = mp.length > 1 ? `${toPath(mine)} L${mp[mp.length - 1][0]},${H - B} L${mp[0][0]},${H - B} Z` : "";
   const pass = PASS_PCT / 100;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`คะแนนข้ามรอบของ ${name}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`คะแนนสอบแต่ละรอบของ ${name}`}>
       <defs>
         <linearGradient id="saLineArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#f97316" stopOpacity=".35" /><stop offset="1" stopColor="#f97316" stopOpacity="0" /></linearGradient>
       </defs>
@@ -1083,22 +1066,6 @@ function TopicRadar({ topics, mine, refVals, refColor }) {
   );
 }
 
-function PaceGauge({ ratio }) {
-  const clamped = Math.max(0.5, Math.min(1.5, ratio));
-  const ang = -90 + (clamped - 0.5) * 180; // -90 = เร็วมาก, +90 = ช้ามาก
-  return (
-    <svg viewBox="0 0 200 118" className="w-full max-w-[220px] mx-auto" aria-hidden="true">
-      <defs><linearGradient id="saPace" x1="0" x2="1"><stop offset="0" stopColor="#60a5fa" /><stop offset=".5" stopColor="#e2e8f0" /><stop offset="1" stopColor="#fb7185" /></linearGradient></defs>
-      <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="url(#saPace)" strokeWidth="16" strokeLinecap="round" />
-      <line x1="100" y1="16" x2="100" y2="30" stroke="#64748b" strokeWidth="2" />
-      <g transform={`rotate(${ang} 100 100)`}><line x1="100" y1="100" x2="100" y2="34" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" /></g>
-      <circle cx="100" cy="100" r="8" fill="#0f172a" />
-      <text x="20" y="116" fontSize="10" fill="#3b82f6" fontWeight="600">เร็ว</text>
-      <text x="180" y="116" fontSize="10" textAnchor="end" fill="#f43f5e" fontWeight="600">ช้า</text>
-    </svg>
-  );
-}
-
 const MODAL_SECTIONS = [
   ["sec-sum", "สรุป", Sparkles],
   ["sec-score", "คะแนน", TrendingUp],
@@ -1112,6 +1079,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const [draft, setDraft] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(null);
   const [showFullOverview, setShowFullOverview] = useState(false);
@@ -1122,7 +1090,8 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
 
   const data = crossExamData.find((d) => d.studentId === studentId) || null;
   const latestIndex = data ? ([2, 1, 0].find((i) => data.exams[i]?.submitted) ?? null) : null;
-  const aiRow = data && latestIndex != null ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === studentId) || null : null;
+  const rawAiRow = data && latestIndex != null ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === studentId) || null : null;
+  const aiRow = isVerifiedAiSummary(rawAiRow) ? rawAiRow : null;
   const baseMessage = savedMessage ?? aiRow?.parentMessage ?? "";
 
   useEffect(() => {
@@ -1155,7 +1124,6 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const callName = nick || fullName.split(" ")[0];
 
   const misconceptions = aiRow?.misconceptions || [];
-  const focusNext = aiRow?.focusNext || [];
   const status = computeStudentStatus({ exams, missedRounds: data.missedRounds, misconceptionCount: misconceptions.length });
   const st = STUDENT_STATUS[status.key];
   const change = status.change;
@@ -1207,32 +1175,28 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const canSelfCompare = first && first !== latest;
   const mode = radarMode === "self" && canSelfCompare ? "self" : "class";
 
-  // ── จังหวะการทำข้อสอบ
-  const myPace = latest?.avgTimePerQuestion ?? null;
-  const roomPace = latestIndex != null ? classPace(latestIndex) : null;
-  const paceRatio = myPace != null && roomPace ? myPace / roomPace : null;
-  const paceDiff = paceRatio != null ? Math.round((paceRatio - 1) * 100) : null;
+  // Backend's explicit null means comparison is unavailable; do not reconstruct it.
+  const roomPace = latest && Object.prototype.hasOwnProperty.call(latest, "classAvgTimePerQuestion")
+    ? latest.classAvgTimePerQuestion : latestIndex != null ? classPace(latestIndex) : null;
   const prevDone = done.length >= 2 ? done[done.length - 2] : null;
-  const timeDelta = prevDone && myPace != null && prevDone.avgTimePerQuestion != null ? myPace - prevDone.avgTimePerQuestion : null;
-  const pctDelta = prevDone ? latest.pct - prevDone.pct : null;
-  const paceNote = timeDelta == null ? null
-    : timeDelta < 0 && pctDelta >= 0 ? { cls: "bg-emerald-100 text-emerald-700", text: "เร็วขึ้นและแม่นขึ้น — เข้าใจจริง ไม่ใช่เดา" }
-      : timeDelta < 0 ? { cls: "bg-rose-100 text-rose-600", text: "เร็วขึ้นแต่คะแนนลด — อาจรีบหรือเดา" }
-        : { cls: "bg-white text-slate-500", text: timeDelta > 0 ? `ช้าลง ${Math.round(timeDelta)} วิ/ข้อ จาก${prevDone.label}` : `ใช้เวลาเท่ากับ${prevDone.label}` };
 
   // ── ข้อความถึงผู้ปกครอง
   const parentMessage = draft ?? baseMessage;
+  const parentParts = parentMessageParts(aiRow, parentMessage);
+  const savedAiRow = aiRow ? { ...aiRow, teacherEdited: savedMessage != null || aiRow.teacherEdited } : null;
   const dirty = draft != null && draft !== baseMessage;
   const bubbleText = typed != null && draft == null ? parentMessage.slice(0, typed) : parentMessage;
   const saveMessage = async () => {
     if (!aiRow) return;
     setSaving(true);
+    setSaveError("");
     try {
       await updateAiSummary(aiRow.id, { parentMessage });
       setSavedMessage(parentMessage);
       setDraft(null);
     } catch (err) {
       console.error("Update AI summary failed:", err);
+      setSaveError(err.response?.data?.message || "บันทึกไม่สำเร็จ กรุณาลองใหม่");
     } finally { setSaving(false); }
   };
   const copyText = async (text, mark) => {
@@ -1243,7 +1207,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const headline = aiHeadline(aiRow?.overview);
   const hasMoreOverview = !!aiRow?.overview && aiRow.overview.trim() !== headline;
   const noAiNote = latest
-    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${latest.label} ระบบจะวิเคราะห์อัตโนมัติหลังปิดสอบ หรือกด "วิเคราะห์ใหม่" ในแท็บรายคน`
+    ? rawAiRow ? aiAnalysisNotice(rawAiRow) : `ยังไม่มีผลวิเคราะห์โดย AI ของรอบ ${latest.label} กด "วิเคราะห์ใหม่ด้วย AI" ในแท็บรายคน`
     : `${callName} ยังไม่ได้เข้าสอบรอบใด ควรติดต่อผู้ปกครองก่อนรอบถัดไป`;
 
   const jumpTo = (id) => {
@@ -1267,7 +1231,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
     subjectName,
     examInfo: latest,
     prevTopicPcts: latestIndex > 0 ? exams[latestIndex - 1]?.topicPcts : null,
-    aiRow: { ...aiRow, parentMessage: baseMessage },
+    aiRow: savedAiRow ? { ...savedAiRow, parentMessage: baseMessage } : rawAiRow,
   });
 
   return (
@@ -1290,6 +1254,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
                 <h2 className="text-xl font-bold leading-tight break-words">{fullName}</h2>
                 <p className="text-sm text-white/90">{nick ? `ชื่อเล่น ${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
+                {latest && <span className="mt-3 inline-flex items-center rounded-full bg-white text-orange-700 px-3 py-1 text-xs font-bold shadow-sm">ผลสอบรอบ {latest.label}{aiRow ? " · มีข้อเสนอจากการวิเคราะห์โดย AI" : " · ยังไม่มีผลวิเคราะห์โดย AI"}</span>}
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
                     <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
@@ -1308,7 +1273,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <p className={STAT_NUM}>{fmtIndividualPct(latest)}</p>
-                    <p className="text-[11px] text-white/80">คะแนนสอบล่าสุด</p>
+                    <p className="text-[11px] text-white/80">คะแนนรอบ {latest.label}</p>
                     <p className="text-[10px] text-white/75">{fmtScore(latest.totalScore)}/{fmtScore(latest.maxScore)} คะแนน</p>
                   </div>
                 </div>
@@ -1346,10 +1311,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
             <div className={`sa-rise relative overflow-hidden rounded-2xl p-5 text-white bg-gradient-to-br ${STATUS_GRAD[status.key]}`}>
               <div className="absolute inset-0 sa-grain opacity-40" />
               <div className="relative">
-                <div className="inline-flex gap-2 bg-slate-900/25 rounded-full px-2.5 py-2">
-                  {[2, 1, 0].map((l) => <span key={l} className={`h-4 w-4 rounded-full ${l === st.level ? "bg-white shadow-[0_0_12px_rgba(255,255,255,.9)]" : "bg-white/25"}`} />)}
-                </div>
-                <p className="text-xl font-bold mt-3">{st.label}</p>
+                <p className="text-xl font-bold">{st.label}</p>
                 <ul className="mt-2 space-y-1">
                   {status.reasons.map((r) => <li key={r} className="text-xs text-white/95 flex gap-1.5 before:content-['•'] before:opacity-70">{r}</li>)}
                 </ul>
@@ -1358,7 +1320,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
             <div className="sa-rise relative rounded-2xl bg-slate-900 text-white p-5 overflow-hidden" style={{ animationDelay: ".06s" }}>
               <Quote className="absolute right-5 top-4 h-16 w-16 text-orange-500/25" />
               <p className="relative text-[11px] font-bold text-orange-300 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> สรุปจาก AI{aiRow ? ` · ${latest.label}` : ""}{aiRow?.model ? ` · ${aiRow.model}` : ""}
+                <Sparkles className="h-3.5 w-3.5" /> สรุปจากผลสอบ{aiRow ? ` · ${latest.label}` : ""}
               </p>
               {aiRow ? (
                 <>
@@ -1375,10 +1337,10 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
 
           {latest && (
             <>
-              {/* ── 2) คะแนนข้ามรอบ ── */}
+              {/* ── 2) คะแนนสอบแต่ละรอบ ── */}
               <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".1s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนสอบแต่ละรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1"><span className="h-1 w-5 rounded bg-orange-500" />{callName}</span>
                     <span className="flex items-center gap-1"><span className="h-0 w-5 border-t-2 border-dashed border-slate-400" />ค่าเฉลี่ยห้อง</span>
@@ -1432,12 +1394,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       <div key={`${c.topic}-${i}`} className="rounded-2xl bg-slate-50 px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <p className="text-sm font-bold text-slate-800">{c.topic}</p>
-                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">AI: {c.trend}</span>}
+                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">ข้อสังเกตจากการวิเคราะห์โดย AI: {c.trend}</span>}
                         </div>
-                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">AI:</b> {c.comment}</p>}
+                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {c.comment}</p>}
                       </div>
                     ))}
-                    <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะความเห็นจาก AI</p>
+                    <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะผลวิเคราะห์โดย AI</p>
                   </div>
                 ) : topics.length === 0 ? (
                   <p className="text-xs text-slate-500">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
@@ -1468,7 +1430,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
                                   <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
                                   {t.trend && (
-                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>AI: {t.trend}</span>
+                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจากการวิเคราะห์โดย AI: {t.trend}</span>
                                   )}
                                 </div>
                                 <div className="relative h-3 rounded-full bg-white mt-1.5">
@@ -1476,107 +1438,38 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                   {t.cls != null && <span className="absolute -top-1 -bottom-1 w-[3px] rounded bg-slate-700" style={{ left: `calc(${Math.round(t.cls * 100)}% - 1px)` }} title={`ค่าเฉลี่ยห้อง ${fmtPct(t.cls)}`} />}
                                 </div>
                               </div>
-                              <div className="text-right tabular-nums leading-tight w-20 sm:w-24">
+                              <div className="min-w-[7.75rem] text-right tabular-nums leading-tight">
                                 <p className="text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</p>
                                 {t.points && <p className="text-[10px] text-slate-500">{t.points}</p>}
-                                {t.vsClass != null && <p className={`text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} เทียบค่าเฉลี่ยห้อง</p>}
-                                {t.sinceFirst != null && <p className={`text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
+                                {t.vsClass != null && <p title={`${signed(t.vsClass)} เทียบค่าเฉลี่ยห้อง`} className={`whitespace-nowrap text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} เทียบห้อง</p>}
+                                {t.sinceFirst != null && <p title={`${signed(t.sinceFirst)} เทียบคะแนน ${first.label}`} className={`whitespace-nowrap text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
                               </div>
                             </summary>
-                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">AI:</b> {t.comment}</p>}
+                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {t.comment}</p>}
                           </details>
                         );
                       })}
-                      <p className="text-[10.5px] text-slate-400 pl-1">ขีดดำ = ค่าเฉลี่ยห้อง{topics.some((t) => t.comment) ? " · กดหมวดหมู่เพื่ออ่านคำอธิบายจาก AI" : ""}</p>
+                      <p className="text-[10.5px] text-slate-400 pl-1">ขีดดำ = ค่าเฉลี่ยห้อง{topics.some((t) => t.comment) ? " · กดหมวดหมู่เพื่ออ่านผลวิเคราะห์โดย AI" : ""}</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* ── 4) สิ่งที่ต้องช่วย ── */}
-              <div id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
-                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
-                <div className={`grid gap-4 ${paceRatio != null ? "lg:grid-cols-[1fr_17rem]" : ""}`}>
-                  <div className="space-y-2.5">
-                    <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5 text-rose-500" /> เรื่องที่น่าจะเข้าใจผิด <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
-                    </p>
-                    {!aiRow ? <p className="text-xs text-slate-500">{noAiNote}</p>
-                      : misconceptions.length === 0 ? <p className="text-xs text-slate-500">AI ไม่พบรูปแบบการตอบผิดที่ซ้ำกัน</p>
-                        : misconceptions.map((m, i) => {
-                          const refs = aiQuestionRefs(m.evidence);
-                          const severity = Math.min(3, Math.max(1, refs.length));
-                          return (
-                            <div key={i} className="relative rounded-2xl bg-gradient-to-br from-rose-50 to-white border border-rose-100 p-4 pl-5 overflow-hidden">
-                              <div className="absolute left-0 inset-y-0 w-1.5 bg-gradient-to-b from-rose-400 to-red-500" />
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-sm font-bold text-rose-800">{m.topic}</p>
-                                <span className="flex items-center gap-1 text-[11px] font-bold text-rose-500" title="วัดจากจำนวนข้อที่ผิดรูปแบบเดียวกัน">
-                                  ความรุนแรง {[1, 2, 3].map((l) => <span key={l} className={`h-2 w-2 rounded-full ${l <= severity ? "bg-rose-500" : "bg-rose-200"}`} />)}
-                                </span>
-                              </div>
-                              <p className="text-sm text-rose-900/80 leading-relaxed mt-1">{m.pattern}</p>
-                              {refs.length > 0
-                                ? <div className="flex flex-wrap gap-1 mt-2">{refs.map((n) => <span key={n} className="text-[10.5px] font-bold bg-white border border-rose-200 text-rose-600 rounded-lg px-2 py-0.5">ข้อ {n}</span>)}</div>
-                                : m.evidence ? <p className="text-[11px] text-rose-700/70 mt-1">หลักฐาน: {m.evidence}</p> : null}
-                            </div>
-                          );
-                        })}
-                  </div>
-                  {paceRatio != null && (
-                    <div className="rounded-2xl bg-slate-50 p-4 text-center">
-                      <p className="text-[11px] font-bold text-slate-500 flex items-center justify-center gap-1.5"><Timer className="h-3.5 w-3.5" /> จังหวะการทำข้อสอบ · {latest.label}</p>
-                      <PaceGauge ratio={paceRatio} />
-                      <p className={`${STAT_VALUE} -mt-1`}>{Math.round(myPace)}<span className={STAT_UNIT}>วิ/ข้อ</span></p>
-                      <p className="text-xs font-semibold text-slate-600">
-                        {paceDiff === 0 ? "ใกล้เคียงค่าเฉลี่ยห้อง" : paceDiff > 0 ? `ช้ากว่าห้อง ${paceDiff}%` : `เร็วกว่าห้อง ${Math.abs(paceDiff)}%`} · ห้องเฉลี่ย {Math.round(roomPace)} วิ
-                      </p>
-                      {paceNote && <p className={`text-[11px] font-bold mt-2 rounded-xl px-2 py-1.5 ${paceNote.cls}`}>{paceNote.text}</p>}
-                      {aiRow?.behavior && <p className="text-[11px] text-slate-500 mt-2">AI: {aiRow.behavior}</p>}
-                    </div>
-                  )}
-                </div>
-
-                {focusNext.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 mb-3">
-                      <MapIcon className="h-3.5 w-3.5 text-orange-500" /> แผนที่ควรทำต่อ <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-1.5">AI</span>
-                    </p>
-                    <ol className={`relative grid gap-3 ${focusNext.length >= 3 ? "sm:grid-cols-3" : focusNext.length === 2 ? "sm:grid-cols-2" : ""}`}>
-                      {focusNext.length >= 2 && <div className="hidden sm:block absolute top-5 left-[16%] right-[16%] h-1 rounded-full bg-gradient-to-r from-orange-200 via-orange-300 to-amber-300" />}
-                      {focusNext.map((f, i) => {
-                        const action = typeof f === "string" ? f : f.action;
-                        const why = typeof f === "string" ? null : f.why;
-                        const time = aiTimeHint(action) || aiTimeHint(why);
-                        return (
-                          <li key={i} className="relative flex flex-col items-center text-center">
-                            <span className="relative z-10 h-10 w-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 text-white text-base font-bold flex items-center justify-center shadow-sm ring-4 ring-white">{i + 1}</span>
-                            <div className="mt-2 bg-orange-50/70 border border-orange-100 rounded-2xl p-3 w-full h-full">
-                              <p className="text-sm font-bold text-slate-800 leading-snug">{action}</p>
-                              {why && <p className="text-[11px] text-slate-500 mt-1">{why}</p>}
-                              {time && <span className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-700 bg-white border border-orange-200 rounded-full px-1.5 py-0.5 mt-1.5"><Clock className="h-3 w-3" /> {time}</span>}
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ol>
-                  </div>
-                )}
-              </div>
+              <ExamSupportPanel latest={latest} roomPace={roomPace} previous={prevDone} aiRow={aiRow} notice={noAiNote} />
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap px-4 sm:px-6 pt-5">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><MessageCircle className="h-4 w-4 text-orange-500" /> ข้อความถึงผู้ปกครอง</h3>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 flex-wrap"><MessageCircle className="h-4 w-4 text-orange-500" /> ข้อความถึงผู้ปกครอง {aiRow && <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">{parentMessageAttribution(savedAiRow)}</span>}</h3>
                   {aiRow && (
                     <div className="flex gap-2 items-center flex-wrap">
-                      <button type="button" onClick={() => copyText(buildAiFullText(aiRow, parentMessage), "all")} className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2">
+                      <button type="button" disabled={dirty} onClick={() => copyText(buildAiFullText(savedAiRow, baseMessage), "all")} className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-2 disabled:opacity-40">
                         {copied === "all" ? "คัดลอกทั้งฉบับแล้ว" : copied === "all-fail" ? "คัดลอกไม่ได้" : "คัดลอกทั้งฉบับ"}
                       </button>
                       <button type="button" onClick={() => { setEditing((v) => !v); setTyped(null); }} className="flex items-center gap-1 text-xs font-bold text-orange-700 bg-white border border-orange-200 hover:bg-orange-50 rounded-xl px-3 py-1.5">
                         <Pencil className="h-3.5 w-3.5" /> {editing ? "ปิดการแก้ไข" : "แก้ไข"}
                       </button>
-                      <button type="button" disabled={!parentMessage} onClick={() => copyText(`${aiRow.nickname || aiRow.studentName}\n\n${parentMessage}`, "msg")}
+                      <button type="button" disabled={!baseMessage || dirty} onClick={() => copyText(`ข้อความถึงผู้ปกครอง · ${parentMessageAttribution(savedAiRow)} — ผู้สอนควรตรวจสอบก่อนส่ง\n${aiRow.nickname || aiRow.studentName}\n\n${baseMessage}`, "msg")}
                         className={`${BTN.primary} flex items-center gap-1 text-xs font-bold rounded-xl px-3 py-1.5 disabled:opacity-40`}>
                         {copied === "msg" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === "msg" ? "คัดลอกแล้ว" : copied === "msg-fail" ? "คัดลอกไม่ได้" : "คัดลอกข้อความ"}
                       </button>
@@ -1590,14 +1483,14 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                         {aiRow.stale && (
                           <div className={`${CALLOUT.box} ${CALLOUT.warning}`} role="alert">
                             <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${CALLOUT_ICON.warning}`} />
-                            <p>ข้อสอบมีการแก้ไขหลังการวิเคราะห์ กรุณากด “วิเคราะห์ใหม่” ก่อนใช้ข้อความนี้</p>
+                            <p>ข้อสอบมีการแก้ไขหลังการวิเคราะห์ กรุณากด “วิเคราะห์ใหม่ด้วย AI” ก่อนใช้ข้อความนี้</p>
                           </div>
                         )}
                         {numberWarnings.length > 0 && (
                           <div className={`${CALLOUT.box} ${CALLOUT.warning}`} role="alert">
                             <AlertTriangle className={`h-5 w-5 flex-shrink-0 ${CALLOUT_ICON.warning}`} />
                             <div className="min-w-0">
-                              <p className="font-semibold">ตัวเลขในข้อความ AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบก่อนส่ง</p>
+                              <p className="font-semibold">ตัวเลขในผลวิเคราะห์โดย AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบก่อนส่ง</p>
                               <ul className="mt-1 list-disc pl-4 text-xs space-y-0.5">
                                 {numberWarnings.slice(0, 5).map((w, i) => <li key={i} className="break-words">{warnText(w)}</li>)}
                                 {numberWarnings.length > 5 && <li>และอีก {numberWarnings.length - 5} รายการ</li>}
@@ -1619,12 +1512,17 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                         </div>
                       </div>
                       {editing && (
-                        <textarea value={parentMessage} rows={5} onChange={(e) => setDraft(e.target.value)} aria-label="แก้ข้อความถึงผู้ปกครอง"
-                          className="w-full mt-3 rounded-2xl border-0 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        <div className="mt-3 rounded-2xl bg-white p-3">
+                          <p className="text-xs text-slate-500">คะแนนและข้อมูลผลสอบแก้ไขไม่ได้ · แก้คำแนะนำด้านล่างแล้วบันทึกก่อนคัดลอก</p>
+                          <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{parentParts.prefix}</p>
+                          <textarea value={parentParts.editable} rows={5} onChange={(e) => setDraft(`${parentParts.prefix}\n${e.target.value}`)} aria-label="แก้คำแนะนำถึงผู้ปกครอง"
+                            className="w-full mt-2 rounded-xl border border-slate-200 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                        </div>
                       )}
                     </div>
+                    {saveError && <p role="alert" className="px-4 sm:px-6 pb-3 text-xs font-semibold text-rose-600">{saveError}</p>}
                     <div className="px-4 sm:px-6 pb-5 -mt-2 flex items-center justify-between gap-2 flex-wrap">
-                      <span className="text-[10.5px] text-slate-400">{parentMessage.length} ตัวอักษร · AI ร่างให้ ครูอ่านทบทวนก่อนส่งทุกครั้ง · กด "วิเคราะห์ใหม่" จะเขียนทับข้อความที่แก้ไว้</span>
+                      <span className="text-[10.5px] text-slate-400">{parentMessage.length} ตัวอักษร · {parentMessageAttribution(savedAiRow)} — ผู้สอนควรตรวจสอบก่อนส่ง · กด "วิเคราะห์ใหม่ด้วย AI" จะเขียนทับข้อความที่แก้ไว้</span>
                       {dirty && (
                         <button type="button" onClick={saveMessage} disabled={saving}
                           className="flex items-center gap-1 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-xl px-3 py-1.5 disabled:opacity-40">
@@ -2304,8 +2202,9 @@ function buildHighlightCardsHtml(topicPcts) {
 
 // เนื้อหาข้อความเต็มด้านล่าง — โครงเดียวกับที่ AiSummaryDetail แสดงในแอป แต่ประกอบเป็น HTML ธรรมดา
 function buildAiTextSectionHtml(row) {
+  if (!isVerifiedAiSummary(row)) return `<p style="font-size:11px;color:#64748b;">${esc(aiAnalysisNotice(row))}</p>`;
   const byCategoryHtml = (row.byCategory || []).length
-    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">คะแนนรายหมวด</h3>
+    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">ข้อสังเกตรายหมวด · วิเคราะห์โดย AI</h3>
       <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
         <tbody>${row.byCategory.map((c) => `<tr>
           <td style="padding:4px 8px;font-size:11px;font-weight:600;color:#374151;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${esc(c.topic)}${c.trend ? ` (${esc(c.trend)})` : ""}</td>
@@ -2314,25 +2213,22 @@ function buildAiTextSectionHtml(row) {
       </table>`
     : "";
   const misconceptionsHtml = (row.misconceptions || []).length
-    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">เรื่องที่น่าจะเข้าใจผิด</h3>
+    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">เรื่องที่ควรทบทวน · วิเคราะห์โดย AI</h3>
       <ul style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.misconceptions.map((m) => `<li style="margin-bottom:3px;"><b>${esc(m.topic)}</b> — ${esc(m.pattern)}${m.evidence ? ` <span style="color:#9ca3af;">(หลักฐาน: ${esc(m.evidence)})</span>` : ""}</li>`).join("")}</ul>`
     : "";
   const focusNextHtml = (row.focusNext || []).length
-    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">คำแนะนำ — ควรทำต่อ เรียงตามลำดับ</h3>
+    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">แนวทางที่ควรทำต่อ · วิเคราะห์โดย AI</h3>
       <ol style="font-size:11px;color:#374151;padding-left:18px;margin:0;">${row.focusNext.map((f) => `<li style="margin-bottom:3px;">${esc(typeof f === "string" ? f : f.action)}${typeof f !== "string" && f.why ? ` <span style="color:#9ca3af;">— ${esc(f.why)}</span>` : ""}</li>`).join("")}</ol>`
     : "";
-  const parentMessageHtml = row.parentMessage
-    ? `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:14px 0 6px;">ข้อความถึงผู้ปกครอง</h3>
-      <p style="font-size:11px;color:#374151;white-space:pre-line;background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;">${esc(row.parentMessage)}</p>`
-    : "";
-  return `<h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:0 0 6px;">ภาพรวม</h3>
+  return `<p style="font-size:10px;font-weight:700;color:#c2410c;background:#fff7ed;border:1px solid #fed7aa;border-radius:999px;display:inline-block;padding:3px 8px;margin:0 0 8px;">ผลสอบและคำแนะนำโดย AI${row.model ? ` · โมเดล ${esc(row.model)}` : ""}</p>
+    <h3 style="font-size:12px;font-weight:700;color:#1f2937;margin:0 0 6px;">สรุปจากผลสอบ</h3>
     <p style="font-size:11px;color:#374151;line-height:1.6;">${esc(row.overview || "—")}</p>
-    ${byCategoryHtml}${misconceptionsHtml}${focusNextHtml}${parentMessageHtml}
-    ${row.model ? `<p style="font-size:10px;color:#9ca3af;margin-top:10px;">วิเคราะห์โดย ${esc(row.model)}</p>` : ""}`;
+    ${byCategoryHtml}${misconceptionsHtml}${focusNextHtml}`;
 }
 
 // สร้าง HTML "1 หน้า" ของนักเรียน 1 คน — ใช้ประกอบเป็นรายงานเดี่ยวหรือรวมทั้งห้องก็ได้
 function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, examInfo, prevTopicPcts, aiRow, today }) {
+  const verifiedAi = isVerifiedAiSummary(aiRow) ? aiRow : null;
   const pct = examInfo?.pct ?? null;
   const passed = examInfo ? isPassingScore(examInfo.totalScore, examInfo.maxScore) : null;
   return `<div class="report-page">
@@ -2358,14 +2254,14 @@ function buildStudentReportPageHtml({ name, examLabel, courseName, subjectName, 
     </div>
     <div style="margin-bottom:18px;">${buildHighlightCardsHtml(examInfo.topicPcts)}</div>` : ""}
 
-    ${aiRow?.parentMessage ? `<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
-      <p style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:4px;">📩 สรุปถึงผู้ปกครอง</p>
-      <p style="font-size:12px;color:#78350f;line-height:1.7;white-space:pre-line;">${esc(aiRow.parentMessage)}</p>
+    ${verifiedAi?.parentMessage ? `<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
+      <p style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:4px;">📩 ข้อความถึงผู้ปกครอง · ${esc(parentMessageAttribution(verifiedAi))}</p>
+      <p style="font-size:12px;color:#78350f;line-height:1.7;white-space:pre-line;">${esc(verifiedAi.parentMessage)}</p>
     </div>` : ""}
 
     <div style="border-top:1px dashed #d1d5db;margin:20px 0;"></div>
     <p style="font-size:10px;color:#9ca3af;text-align:center;margin-bottom:12px;">— รายละเอียดฉบับเต็ม —</p>
-    ${aiRow ? buildAiTextSectionHtml(aiRow) : `<p style="font-size:11px;color:#94a3b8;">ยังไม่มีบทวิเคราะห์ AI สำหรับนักเรียนคนนี้</p>`}
+    ${aiRow ? buildAiTextSectionHtml(aiRow) : `<p style="font-size:11px;color:#94a3b8;">ยังไม่มีบทวิเคราะห์โดย AI สำหรับนักเรียนคนนี้</p>`}
   </div>`;
 }
 
@@ -2392,7 +2288,7 @@ const exportStudentAiReportPdf = ({ name, examLabel, courseName, subjectName, ex
 // ส่งออกเฉพาะคนที่มีผลวิเคราะห์ AI ของรอบนั้นแล้วเท่านั้น (คนที่ยังไม่มีจะข้ามไป ไม่ error)
 const exportRoomAiReportPdf = (crossExamData, examId, aiSummariesForRound, courseName, subjectName, examLabel) => {
   const today = new Date().toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
-  const aiByUserId = new Map((aiSummariesForRound || []).map((r) => [r.userId, r]));
+  const aiByUserId = new Map((aiSummariesForRound || []).filter(isVerifiedAiSummary).map((r) => [r.userId, r]));
   const pages = crossExamData
     .filter((d) => d.exams[examId]?.submitted && aiByUserId.has(d.studentId))
     .map((d) => buildStudentReportPageHtml({
@@ -2600,6 +2496,8 @@ export function ExamAnalyticsView({
 
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
+  const verifiedAiCount = (aiSummaries[examId] || []).filter(isVerifiedAiSummary).length;
+  const unavailableAiCount = (aiSummaries[examId] || []).length - verifiedAiCount;
 
   // ข้อมูลสำหรับปุ่ม Export PDF ของแท็บ "เปรียบเทียบ"/"รายคน" — ย้ายปุ่มมาอยู่แถวเดียวกับ
   // แท็บนำทางแล้ว (เดิมปุ่มอยู่ในตัว ComparisonTab/StudentProgressTab เอง) เลยต้องคำนวณ
@@ -2629,12 +2527,12 @@ export function ExamAnalyticsView({
         return next;
       });
       const notes = [];
-      if (res?.failed > 0) notes.push(`วิเคราะห์สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่เพื่อลองอีกครั้ง`);
-      if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในข้อความ AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
+      if (res?.failed > 0) notes.push(`AI ประมวลผลสำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่ด้วย AI เพื่อลองอีกครั้ง`);
+      if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในผลวิเคราะห์โดย AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
       if (notes.length) setReanalyzeError(notes.join(" · "));
     } catch (err) {
       console.error("Analyze failed:", err);
-      setReanalyzeError(err.response?.data?.message || "วิเคราะห์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      setReanalyzeError(err.response?.data?.message || "ประมวลผลด้วย AI ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setReanalyzing(false);
     }
@@ -2705,10 +2603,10 @@ export function ExamAnalyticsView({
               },
               {
                 id: "parent-pdf", icon: FileText, label: "รายงานผู้ปกครองทั้งห้อง (PDF)",
-                desc: aiSummaries[examId]?.length
-                  ? `รอบ ${examLabel} · ${aiSummaries[examId].length} คนที่มีผลวิเคราะห์ AI`
-                  : `รอบ ${examLabel} · ยังไม่มีผลวิเคราะห์ AI`,
-                disabled: !(aiSummaries[examId]?.length),
+                desc: verifiedAiCount
+                  ? `รอบ ${examLabel} · ${verifiedAiCount} คนที่ผลวิเคราะห์ผ่านการตรวจสอบ`
+                  : `รอบ ${examLabel} · ยังไม่มีผลวิเคราะห์โดย AI`,
+                disabled: !verifiedAiCount,
                 onClick: () => exportRoomAiReportPdf(crossExamDataForExport, examId, aiSummaries[examId], courseName, subjectName, examLabel),
               },
             ]} />
@@ -2724,11 +2622,13 @@ export function ExamAnalyticsView({
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
               {aiSummaries[examId] == null
-                ? "กำลังตรวจสอบสถานะการวิเคราะห์ AI…"
-                : aiSummaries[examId].length > 0
-                  ? `AI วิเคราะห์แล้ว ${aiSummaries[examId].length} จาก ${examResults[examId]?.submittedCount || 0} คน ของรอบ ${examLabel}`
+                ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
+                : verifiedAiCount > 0
+                  ? `ผลวิเคราะห์โดย AI ผ่านการตรวจสอบ ${verifiedAiCount} จาก ${examResults[examId]?.submittedCount || 0} คน${unavailableAiCount ? ` · ต้องวิเคราะห์ใหม่ ${unavailableAiCount} คน` : ""}`
+                  : unavailableAiCount > 0
+                    ? `ผลวิเคราะห์โดย AI ของ ${unavailableAiCount} คนยังไม่ผ่านการตรวจสอบ กรุณาวิเคราะห์ใหม่`
                   : examResults[examId]?.submittedCount
-                    ? `ยังไม่มีผลวิเคราะห์ AI ของรอบ ${examLabel} ระบบจะวิเคราะห์อัตโนมัติหลังปิดสอบ`
+                    ? `ยังไม่มีผลวิเคราะห์โดย AI ของรอบ ${examLabel} ระบบจะวิเคราะห์อัตโนมัติหลังปิดสอบ`
                     : `ยังไม่มีนักเรียนส่งคำตอบรอบ ${examLabel} จึงยังวิเคราะห์ไม่ได้`}
             </p>
           </div>
@@ -2738,7 +2638,7 @@ export function ExamAnalyticsView({
             className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition flex-shrink-0"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            {reanalyzing ? "กำลังวิเคราะห์…" : "วิเคราะห์ใหม่"}
+            {reanalyzing ? "กำลังประมวลผลด้วย AI…" : "วิเคราะห์ใหม่ด้วย AI"}
           </button>
           {reanalyzeError && <p className="w-full text-[11px] text-amber-600">{reanalyzeError}</p>}
         </div>

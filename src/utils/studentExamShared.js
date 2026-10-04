@@ -105,8 +105,8 @@ export async function saveAnswer({ examJoinId, userId, questionId, selected }) {
 }
 
 // POST /api/student/exam/:examJoinId/submit → final grading
-export async function submitExam(examJoinId, userId) {
-    const { data } = await axios.post(`${API_BASE}/${examJoinId}/submit`, { userId }, { headers: authHeaders() });
+export async function submitExam(examJoinId, userId, timing = {}) {
+    const { data } = await axios.post(`${API_BASE}/${examJoinId}/submit`, { userId, ...timing }, { headers: authHeaders() });
     return data;
 }
 
@@ -117,8 +117,8 @@ export async function fetchExamResult(examJoinId, userId) {
 }
 
 // POST /api/student/exam/question/enter — log ว่านักเรียนเริ่มดูข้อนี้เมื่อไหร่
-export async function logQuestionEnter({ examJoinId, userId, questionId }) {
-    const { data } = await axios.post(`${API_BASE}/question/enter`, { examJoinId, userId, questionId }, { headers: authHeaders() });
+export async function logQuestionEnter(payload) {
+    const { data } = await axios.post(`${API_BASE}/question/enter`, payload, { headers: authHeaders() });
     return data;
 }
 
@@ -131,5 +131,19 @@ export async function logIntegrityEvent({ examJoinId, eventType, durationSec = n
         { examJoinId, eventType, durationSec, questionId },
         { headers: authHeaders() }
     );
+    return data;
+}
+
+// keepalive permits the final visible period to close when the page is hidden/unloaded.
+export async function logQuestionLeave(payload, keepalive = false) {
+    if (keepalive) {
+        const response = await fetch(`${API_BASE}/question/leave`, {
+            method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload), keepalive: true,
+        });
+        if (!response.ok) throw new Error('Unable to close question visit');
+        return response.json();
+    }
+    const { data } = await axios.post(`${API_BASE}/question/leave`, payload, { headers: authHeaders() });
     return data;
 }
