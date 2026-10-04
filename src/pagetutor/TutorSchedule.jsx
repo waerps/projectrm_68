@@ -41,6 +41,36 @@ const SUBJECT_COLOR = (name) => {
 // slotKey ใช้ระบุ slot เดียวกันในทุก state
 const slotKey = (day, time) => `${day}||${time}`
 
+function PhotoConsentWarning({ roster, loading, error, confirmed, onConfirm }) {
+  const denied = (roster || []).filter(student => student.status === 'denied')
+  const unanswered = (roster || []).filter(student => student.status === 'not_answered')
+  if (error) return <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700">โหลดสถานะความยินยอมไม่สำเร็จ กรุณาปิดแล้วเปิดคาบนี้ใหม่ก่อนส่งรูป</p>
+  if (loading || !roster) return <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">กำลังตรวจสถานะความยินยอมก่อนถ่ายรูป…</p>
+  return <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+    <p className="font-bold">ตรวจกรอบภาพก่อนถ่ายและส่งรูป</p>
+    {denied.length > 0 && <p className="mt-2">ไม่ยินยอม: <strong>{denied.map(student => student.name).join(', ')}</strong></p>}
+    {unanswered.length > 0 && <p className="mt-2">ยังไม่ตอบ: <strong>{unanswered.map(student => student.name).join(', ')}</strong></p>}
+    {denied.length + unanswered.length > 0
+      ? <p className="mt-2">กรุณาแจ้งนักเรียนรายชื่อข้างต้นให้ขยับออกจากกรอบภาพก่อนถ่ายรูป นักเรียนยังเช็กชื่อเข้าเรียนได้ตามปกติ</p>
+      : <p className="mt-2">ไม่มีนักเรียนในคอร์สนี้ที่ปฏิเสธหรือยังไม่ตอบเรื่องการปรากฏในรูป</p>}
+    <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg bg-white p-3">
+      <input type="checkbox" checked={confirmed} onChange={event => onConfirm(event.target.checked)} className="mt-0.5 h-4 w-4" />
+      <span>ฉันตรวจกรอบภาพแล้ว และนักเรียนที่ไม่ยินยอมหรือยังไม่ตอบไม่อยู่ในภาพที่จะส่ง</span>
+    </label>
+  </div>
+}
+
+function SelectedPhotoPreview({ file }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!file) { setUrl(null); return undefined }
+    const nextUrl = URL.createObjectURL(file)
+    setUrl(nextUrl)
+    return () => URL.revokeObjectURL(nextUrl)
+  }, [file])
+  return url ? <img src={url} alt="ภาพที่จะส่งสำหรับบันทึกคาบเรียน" className="mt-3 max-h-64 w-full rounded-xl border border-slate-200 object-contain bg-slate-50" /> : null
+}
+
 // เลื่อนวันที่ไป n วัน (เอามาจาก AdminSchedule.jsx)
 function addDays(date, n) {
   const d = new Date(date)
@@ -216,6 +246,10 @@ export default function TutorSchedule() {
 
   // ── Phase 2 ────────────────────────────────────────────────────
   const [endPhoto, setEndPhoto] = useState(null)
+  const [photoConsentRoster, setPhotoConsentRoster] = useState(null)
+  const [photoConsentLoading, setPhotoConsentLoading] = useState(false)
+  const [photoConsentError, setPhotoConsentError] = useState(false)
+  const [photoReviewConfirmed, setPhotoReviewConfirmed] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
   const [lineLinked, setLineLinked] = useState(false)
@@ -363,6 +397,47 @@ export default function TutorSchedule() {
     fetchSchedule()
   }, [tutorId, scheduleVersion, referenceDate, token])
 
+  const fetchPhotoConsentRoster = async (scheduleDetailId) => {
+    const response = await axios.get(`${API_URL}/api/tutor/record-teaching/${scheduleDetailId}/photo-consent`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data.students || []
+  }
+
+  const loadPhotoConsentRoster = async (scheduleDetailId) => {
+    setPhotoConsentRoster(null)
+    setPhotoConsentLoading(true)
+    setPhotoConsentError(false)
+    setPhotoReviewConfirmed(false)
+    try {
+      setPhotoConsentRoster(await fetchPhotoConsentRoster(scheduleDetailId))
+    } catch (error) {
+      setPhotoConsentError(true)
+      showToast('error', 'โหลดความยินยอมไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองเปิดคาบอีกครั้ง')
+    } finally {
+      setPhotoConsentLoading(false)
+    }
+  }
+
+  const photoReviewHeaders = async () => {
+    if (!photoReviewConfirmed || !photoConsentRoster) {
+      showToast('warning', 'กรุณาตรวจกรอบภาพ', 'ตรวจรายชื่อและยืนยันก่อนส่งรูป')
+      return null
+    }
+    const latest = await fetchPhotoConsentRoster(selectedClass.courseScheduleDetailId)
+    const signature = rows => JSON.stringify(rows.map(student => [student.userId, student.status]))
+    if (signature(latest) !== signature(photoConsentRoster)) {
+      setPhotoConsentRoster(latest)
+      setPhotoReviewConfirmed(false)
+      showToast('warning', 'สถานะความยินยอมเปลี่ยน', 'กรุณาตรวจรายชื่อใหม่ก่อนถ่ายและส่งรูป')
+      return null
+    }
+    return {
+      'X-Photo-Consent-Reviewed': 'true',
+      'X-Photo-Excluded-Student-Ids': latest.filter(student => student.status !== 'granted').map(student => student.userId).sort((a, b) => a - b).join(','),
+    }
+  }
+
   // ── กดเปิด Modal ───────────────────────────────────────────────
   const handleClick = async (day, time, data) => {
     const status = getSlotStatus(data, slotPhases, clockNow)
@@ -403,6 +478,7 @@ export default function TutorSchedule() {
 
     setSelectedClass({ day, time, ...data, courseId: cId })
     setEndPhoto(null)
+    loadPhotoConsentRoster(data.courseScheduleDetailId)
 
     // ── Phase 2: ถ่ายรูปท้ายคาบ ────────────────────────────────
     if (status === 'phase1_done') {
@@ -479,6 +555,8 @@ export default function TutorSchedule() {
 
     setIsSaving(true)
     try {
+      const reviewHeaders = await photoReviewHeaders()
+      if (!reviewHeaders) return
       const formData = new FormData()
       formData.append('adminId', tutorId)
       formData.append('courseScheduleDetailId', selectedClass.courseScheduleDetailId)
@@ -493,9 +571,9 @@ export default function TutorSchedule() {
 
       // API คืน recordId กลับมาเพื่อใช้ในขั้นที่ 2
       const res = await axios.post(
-        `${API_URL}/api/tutor/record-teaching/start`,
+        `${API_URL}/api/tutor/record-teaching/${selectedClass.courseScheduleDetailId}/start`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}`, ...reviewHeaders } }
       )
 
       const key = slotKey(selectedClass.day, selectedClass.time)
@@ -526,6 +604,8 @@ export default function TutorSchedule() {
 
     setIsSaving(true)
     try {
+      const reviewHeaders = await photoReviewHeaders()
+      if (!reviewHeaders) return
       const formData = new FormData()
       formData.append('recordId', recordId)
       formData.append('photoEnd', endPhoto)
@@ -533,7 +613,7 @@ export default function TutorSchedule() {
       await axios.put(
         `${API_URL}/api/tutor/record-teaching/${recordId}/end`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}`, ...reviewHeaders } }
       )
 
       setSlotPhases(prev => ({
@@ -865,6 +945,7 @@ export default function TutorSchedule() {
                   </div>
 
                   {/* ถ่ายรูปต้นคาบ — บังคับ */}
+                  <PhotoConsentWarning roster={photoConsentRoster} loading={photoConsentLoading} error={photoConsentError} confirmed={photoReviewConfirmed} onConfirm={setPhotoReviewConfirmed} />
                   <div>
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายต้นคาบ
@@ -872,7 +953,7 @@ export default function TutorSchedule() {
                     </label>
                     <div className="relative group">
                       <input type="file" accept="image/*" capture="environment"
-                        onChange={e => setStartPhoto(e.target.files[0])}
+                        onChange={e => { setStartPhoto(e.target.files[0]); setPhotoReviewConfirmed(false) }}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-24 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors
                       ${startPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
@@ -881,6 +962,7 @@ export default function TutorSchedule() {
                         </span>
                       </div>
                     </div>
+                    <SelectedPhotoPreview file={startPhoto} />
                   </div>
 
                   {/* สรุปเนื้อหา */}
@@ -956,6 +1038,7 @@ export default function TutorSchedule() {
                   </div>
 
                   {/* ถ่ายรูปท้ายคาบ */}
+                  <PhotoConsentWarning roster={photoConsentRoster} loading={photoConsentLoading} error={photoConsentError} confirmed={photoReviewConfirmed} onConfirm={setPhotoReviewConfirmed} />
                   <div>
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายท้ายคาบ
@@ -963,7 +1046,7 @@ export default function TutorSchedule() {
                     </label>
                     <div className="relative group">
                       <input type="file" accept="image/*" capture="environment"
-                        onChange={e => setEndPhoto(e.target.files[0])}
+                        onChange={e => { setEndPhoto(e.target.files[0]); setPhotoReviewConfirmed(false) }}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors
                       ${endPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
@@ -973,6 +1056,7 @@ export default function TutorSchedule() {
                         </span>
                       </div>
                     </div>
+                    <SelectedPhotoPreview file={endPhoto} />
                   </div>
 
                   {/* แจ้งเตือนถ้ายังไม่ถ่าย — warning ไม่ใช่ error */}
