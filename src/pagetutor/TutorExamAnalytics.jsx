@@ -446,13 +446,15 @@ function buildCohortComparison(examResults, topicResults) {
 
 // ─── แท็บ "รายคน": 1 แถวต่อนักเรียน — ใช้ทั้งตารางในแท็บและ Export PDF ───────────
 function buildProgressRows(crossExamData, selectedExamIndex = null) {
+  const roundIndex = Number.isInteger(selectedExamIndex) && selectedExamIndex >= 0 && selectedExamIndex < EXAMS_META.length
+    ? selectedExamIndex : null;
   return crossExamData.map((d) => {
-    const visibleExams = selectedExamIndex == null ? d.exams : d.exams.map((exam, index) => index <= selectedExamIndex ? exam : { ...exam, submitted: false });
+    const visibleExams = roundIndex == null ? d.exams : d.exams.map((exam, index) => index <= roundIndex ? exam : { ...exam, submitted: false });
     const submittedList = visibleExams.filter(e => e.submitted);
-    const latest = selectedExamIndex == null ? submittedList.at(-1) ?? null : visibleExams[selectedExamIndex]?.submitted ? visibleExams[selectedExamIndex] : null;
-    const missedRounds = d.roundsWithData.filter((index) => (selectedExamIndex == null || index <= selectedExamIndex) && !d.exams[index].submitted).length;
-    const status = selectedExamIndex != null && !latest
-      ? { key: "care", level: STUDENT_STATUS.care.level, reasons: [`ยังไม่มีผลสอบรอบ ${EXAMS_META[selectedExamIndex].label}`], change: null }
+    const latest = roundIndex == null ? submittedList.at(-1) ?? null : visibleExams[roundIndex]?.submitted ? visibleExams[roundIndex] : null;
+    const missedRounds = d.roundsWithData.filter((index) => (roundIndex == null || index <= roundIndex) && !d.exams[index].submitted).length;
+    const status = roundIndex != null && !latest
+      ? { key: "care", level: STUDENT_STATUS.care.level, reasons: [`ยังไม่มีผลสอบรอบ ${EXAMS_META[roundIndex].label}`], change: null }
       : computeStudentStatus({ exams: visibleExams, missedRounds });
     return {
       studentId: d.studentId, name: d.name,
@@ -2524,7 +2526,7 @@ export function ExamAnalyticsView({
   const crossExamDataForExport = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
   const comparisonForExport = useMemo(() => buildCohortComparison(examResults, topicResults), [examResults, topicResults]);
   // หมายเหตุ: export ฝั่ง "รายคน" เป็นรายชื่อทั้งหมดเสมอ ไม่ได้กรองตามช่องค้นหา/ตัวกรองในแท็บ
-  const progressRowsForExport = useMemo(() => buildProgressRows(crossExamDataForExport, aiSummaries), [crossExamDataForExport, aiSummaries]);
+  const progressRowsForExport = useMemo(() => buildProgressRows(crossExamDataForExport, examId), [crossExamDataForExport, examId]);
 
   // ── ปุ่ม "วิเคราะห์ใหม่" ของห้อง (ย้ายมาจาก TutorExamDetail.jsx ตามที่ตกลงกัน — ฟังก์ชัน
   // เกี่ยวกับประมวลผล AI ทั้งหมดอยู่หน้านี้ที่เดียว) สโคปตามรอบที่เลือกอยู่ (examId) เท่านั้น
