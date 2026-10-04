@@ -1134,3 +1134,25 @@ to {
   .virtual-tour-page .scene-label { top: auto; }
 }
 
+
+/* Compact interactive scene used inside the home page preview. */
+.virtual-tour-page.is-embedded .intro,
+.virtual-tour-page.is-embedded .sidebar,
+.virtual-tour-page.is-embedded .scene-label,
+.virtual-tour-page.is-embedded #hotspots,
+.virtual-tour-page.is-embedded .toolbar,
+.virtual-tour-page.is-embedded .hint,
+.virtual-tour-page.is-embedded .model-note,
+.virtual-tour-page.is-embedded .panel,
+.virtual-tour-page.is-embedded .toast { display: none; }
+
+/* Keep the space details comfortable to read in the full tour. */
+.virtual-tour-page .panel h2 { font-size: 25px; }
+.virtual-tour-page .panel p { font-size: 14px; }
+.virtual-tour-page .panel .eyebrow { font-size: 12px; }
+.virtual-tour-page .panel .detail { font-size: 13px; }
+@media (max-width: 799px) {
+  .virtual-tour-page .panel h2 { font-size: 23px; }
+  .virtual-tour-page .panel p { font-size: 13px; }
+  .virtual-tour-page .panel .detail { font-size: 12px; }
+}

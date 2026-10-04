@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { Outlet, useLocation, useNavigate } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import Navbar from "../components/Navbar.jsx"
 import Footer from "../components/footer.jsx"
 import ChatWidget from "../components/Chat/ChatWidget"
@@ -12,20 +12,12 @@ import {
 
 export default function AppShell() {
   const location = useLocation()
-  const navigate = useNavigate()
-
-  const current = location.pathname === "/" ? "home" : location.pathname.slice(1)
-
-  const handleMenu = (id) => {
-    if (id === "home") navigate("/")
-    else navigate("/" + id)
-  }
-
   // role ที่เป็นไปได้: null (guest) | 'student' | 'tutor' | 'admin'
   let currentRole = null
   try {
     const storedUser = JSON.parse(localStorage.getItem("user") || "null")
-    currentRole = storedUser?.role || null
+    const roleId = Number(storedUser?.roleId ?? localStorage.getItem("user_role"))
+    currentRole = storedUser?.role || (roleId === 1 ? "admin" : roleId === 2 ? "tutor" : roleId === 3 ? "student" : null)
   } catch {
     currentRole = null
   }
@@ -105,7 +97,7 @@ export default function AppShell() {
             <Outlet />
           </div>
         </main>
-        {!isTourPage && <Footer />}
+        {!isTourPage && <Footer role={currentRole} />}
       </div>
 
       {canUseChat && !isTourPage && (

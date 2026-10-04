@@ -1,10 +1,10 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
-import { useSearchParams, useParams } from "react-router-dom";
+import { Link, useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   Users, Calendar, Video, FileText, Download, BarChart2, PlayCircle,
-  CheckCircle, XCircle, Clock,
+  CheckCircle, XCircle, Clock, ChevronRight,
   WalletCards,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";

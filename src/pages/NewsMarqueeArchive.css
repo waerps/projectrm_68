@@ -103,9 +103,8 @@
   .archive-news-page.is-embedded { padding: 0; }
 }
 
-.archive-news-page.is-embedded .archive-news-story-cover { height: 160px; }
-.archive-news-page.is-embedded .archive-news-story-content { min-height: 180px; }
-.archive-news-page.is-embedded .archive-news-marquee-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-@media (max-width: 767px) {
-  .archive-news-page.is-embedded .archive-news-story-cover { height: 205px; }
-}
+
+
+.archive-news-more-link { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 9px 13px; border: 1px solid #fed7aa; border-radius: 999px; background: #fff; color: #c2410c; font-size: 12px; font-weight: 700; transition: background .2s, transform .2s; }
+.archive-news-more-link:hover { transform: translateY(-2px); background: #fff7ed; }
+.archive-news-more-link:focus-visible { outline: 3px solid #f97316; outline-offset: 3px; }

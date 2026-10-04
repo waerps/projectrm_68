@@ -3,7 +3,7 @@
 .virtual-tour-eyebrow { display: inline-flex; align-items: center; gap: 7px; color: #a45b26; font-size: 12px; }
 .virtual-tour-heading h2 { font-size: clamp(26px, 3vw, 32px); font-weight: 700; margin-top: 6px; }
 .virtual-tour-tag { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #e8e9ed; padding: 8px 12px; border-radius: 100px; color: #687386; font-size: 12px; }
-.virtual-tour-card { display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; border: 1px solid #f0e7df; border-radius: 28px; background: #fffaf5; box-shadow: 0 12px 45px -30px #8d643c44; }
+.virtual-tour-card { display: grid; grid-template-columns: .7fr 1.3fr; overflow: hidden; border: 1px solid #f0e7df; border-radius: 28px; background: #fffaf5; box-shadow: 0 12px 45px -30px #8d643c44; }
 .virtual-tour-copy { padding: 48px 0 42px 40px; position: relative; z-index: 1; }
 .virtual-tour-kicker { display: inline-flex; align-items: center; gap: 8px; color: #9d6135; font-size: 12px; }
 .virtual-tour-kicker > span { width: 6px; height: 6px; background: #f97316; border-radius: 50%; }
@@ -15,13 +15,10 @@
 .virtual-tour-start svg:last-child { margin-left: 9px; }
 .virtual-tour-tip { display: flex; align-items: center; gap: 6px; color: #85868b; font-size: 11px; margin-top: 14px; }
 .virtual-tour-preview { position: relative; display: flex; align-items: center; min-height: 400px; margin: 18px 18px 18px 0; overflow: hidden; border-radius: 20px; background: #fff7ed; }
-.virtual-tour-preview img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .65s; }
-.virtual-tour-preview:hover img { transform: scale(1.045); }
+.virtual-tour-preview iframe { display: block; width: 100%; height: 100%; min-height: 400px; border: 0; }
 .virtual-tour-preview-label { position: absolute; top: 18px; left: 20px; display: inline-flex; align-items: center; gap: 7px; z-index: 1; color: #626b79; font-size: 11px; }
 .virtual-tour-preview-label > span { height: 6px; width: 6px; border-radius: 50%; background: #f97316; }
-.virtual-tour-preview-footer { position: absolute; inset: auto 20px 17px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: #ffffffec; border: 1px solid #fff; border-radius: 14px; color: #14213d; font-size: 13px; backdrop-filter: blur(8px); }
-.virtual-tour-preview-footer small { display: block; margin-top: 3px; color: #8a8e97; font-size: 10px; }
-.virtual-tour-preview-arrow { display: grid; place-items: center; width: 37px; height: 37px; border-radius: 50%; background: #14213d; color: white; flex-shrink: 0; }
+
 .virtual-tour-floors { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); background: white; border-top: 1px solid #f0e7df; padding: 12px 22px; }
 .virtual-tour-floors a { display: flex; align-items: center; gap: 13px; padding: 11px 18px; font-size: 13px; border-radius: 12px; transition: background .2s; }
 .virtual-tour-floors a:hover { background: #fff7ed; }
@@ -34,6 +31,7 @@
   .virtual-tour-copy { padding: 30px 26px 22px; }
   .virtual-tour-copy h3 { font-size: 36px; }
   .virtual-tour-preview { margin: 0 16px 16px; min-height: 0; aspect-ratio: 4 / 3; }
+  .virtual-tour-preview iframe { min-height: 0; }
   .virtual-tour-floors { padding: 10px; }
   .virtual-tour-floors a { flex-wrap: wrap; gap: 4px 7px; padding: 7px 10px; font-size: 11px; }
   .virtual-tour-floor-number { font-size: 18px; }
@@ -47,7 +45,6 @@
   .virtual-tour-copy h3 { font-size: 32px; }
   .virtual-tour-copy p { font-size: 13px; }
   .virtual-tour-desktop-break { display: none; }
-  .virtual-tour-preview-footer { inset-inline: 12px; bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .virtual-tour-section *, .virtual-tour-section *::before { transition: none; }

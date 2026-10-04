@@ -4,10 +4,11 @@ import { BadgeCheck, BookOpen, Calendar, Heart, Loader2, LockKeyhole, ShoppingCa
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
+import PublicPageHero from "../components/PublicPageHero"
 
 const API_URL = import.meta.env.VITE_API_URL
 const STATUS_BADGE = {
-  1: { label: "เปิดรับสมัคร", cls: "bg-blue-50/95 text-blue-600 border border-blue-100" },
+  1: { label: "เปิดรับสมัคร", cls: "bg-orange-50/95 text-orange-700 border border-orange-100" },
   2: { label: "กำลังสอน", cls: "bg-emerald-50/95 text-emerald-600 border border-emerald-100" },
   3: { label: "ปิดรับสมัคร", cls: "bg-amber-50/95 text-amber-600 border border-amber-100" },
 }
@@ -82,8 +83,8 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
         </div>
         <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
           {item.discount > 0 && <span className="sa-pop3d inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm"><Sparkles className="h-3 w-3" /> โปรโมชัน</span>}
-          <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{item.courseType}</span>
-          <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{item.availabilityName}</span>
+          <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">{item.courseType}</span>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{item.availabilityName}</span>
         </div>
         <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
           <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onBuyNow() }} disabled={!canEnroll} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300">
@@ -104,11 +105,11 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
 export function LoginRequiredModal({ open, onClose, onLogin }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="course-login-title" onClick={onClose}>
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-neutral-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="course-login-title" onClick={onClose}>
       <div className="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={onClose} className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700" aria-label="ปิด"><X className="h-5 w-5" /></button>
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-orange-50 text-orange-500"><LockKeyhole className="h-7 w-7" /></span>
-        <h2 id="course-login-title" className="mt-5 text-xl font-extrabold text-[#14213D]">กรุณาเข้าสู่ระบบก่อนซื้อคอร์ส</h2>
+        <h2 id="course-login-title" className="mt-5 text-xl font-extrabold text-neutral-900">กรุณาเข้าสู่ระบบก่อนซื้อคอร์ส</h2>
         <p className="mt-2 text-sm leading-relaxed text-gray-500">เข้าสู่ระบบนักเรียนเพื่อดำเนินการชำระเงินและบันทึกคอร์สไว้ในบัญชีของคุณ</p>
         <button type="button" onClick={onLogin} className="mt-6 w-full rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600">ไปหน้าเข้าสู่ระบบ</button>
         <button type="button" onClick={onClose} className="mt-2 w-full rounded-xl px-5 py-2.5 text-sm font-semibold text-gray-500 transition hover:bg-gray-50">เลือกดูคอร์สต่อ</button>
@@ -136,11 +137,15 @@ export default function Promotion() {
 
   return (
     <div className="mx-auto mt-[110px] max-w-[1200px] px-4 pb-16 md:px-6">
-      <div className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-10 text-white">
-        <Sparkles className="absolute -right-4 -top-4 h-32 w-32 text-white/10" />
-        <div className="relative mb-2 flex items-center gap-2"><Tag className="h-5 w-5" /><span className="text-sm font-semibold uppercase tracking-widest text-orange-100">Promotion</span></div>
-        <h1 className="relative mb-2 text-3xl font-bold">โปรโมชันคอร์สเรียน</h1>
-        <p className="relative text-sm text-orange-50">{loading ? "กำลังโหลด..." : `พบ ${promotionCourses.length} คอร์สที่มีส่วนลดพิเศษตอนนี้`}</p>
+      <div className="mb-8">
+        <PublicPageHero
+          eyebrow="โปรโมชันศรเสริมติวเตอร์"
+          title="คอร์สที่ใช่"
+          highlight="ในราคาพิเศษ"
+          description="เลือกคอร์สเรียนที่สนใจ พร้อมดูรายละเอียดและส่วนลดของแต่ละคอร์สได้เลย"
+          icon={Tag}
+          note={loading ? "กำลังโหลดคอร์สที่มีส่วนลด..." : `พบ ${promotionCourses.length} คอร์สที่มีส่วนลดพิเศษตอนนี้`}
+        />
       </div>
       {loading ? <div className="flex h-64 items-center justify-center text-orange-500"><Loader2 className="h-6 w-6 animate-spin" /></div> : promotionCourses.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-gray-200 bg-white py-20 text-center"><Tag className="mx-auto mb-3 h-12 w-12 text-gray-200" /><p className="font-medium text-gray-500">ยังไม่มีคอร์สที่มีโปรโมชันในขณะนี้</p></div>

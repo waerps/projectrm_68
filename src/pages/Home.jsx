@@ -895,15 +895,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* ========== CTA ========== */}
-        <div className="mt-8 text-center">
-          <Link
-            to="/news"
-            className="inline-block rounded-full bg-orange-500 px-6 py-2 text-white shadow transition hover:bg-orange-600"
-          >
-            อ่านเพิ่มเติม
-          </Link>
-        </div>
 
         <VirtualTourSection contentReady={coursesLoaded && newsLoaded} />
       </div>
