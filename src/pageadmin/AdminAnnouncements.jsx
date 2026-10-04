@@ -46,6 +46,7 @@ const EMPTY_FORM = {
     // รูปเพิ่มเติม (มีอยู่แล้ว — กรณีแก้ไข)
     existingExtras: [],        // [{ImageId, ImagePath}]
     removedExtraIds: [],       // ImageId[] ที่จะลบ
+    publicityReviewConfirmed: false,
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -288,6 +289,16 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                     multiple className="hidden" onChange={handleExtraChange} />
             </div>
 
+            {(formData.coverPreview || totalExtras > 0) && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">ตรวจความยินยอมก่อนใช้ภาพนักเรียนประชาสัมพันธ์</p>
+                <p className="mt-1">หากรูปหรือวิดีโอระบุตัวนักเรียนได้ ให้ตรวจสถานะ “การใช้ภาพนักเรียนเพื่อประชาสัมพันธ์” ของนักเรียนแต่ละคนในคอร์สนั้นที่หน้าแอดมินนักเรียน ผู้ที่ไม่ยินยอมหรือยังไม่ตอบต้องไม่ปรากฏในสื่อที่จะเผยแพร่ รวมถึงเพจภายนอก ความยินยอมรูปบันทึกคาบเรียนใช้แทนกันไม่ได้</p>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 font-medium">
+                    <input type="checkbox" className="mt-1" checked={formData.publicityReviewConfirmed}
+                        onChange={e => setFormData(f => ({ ...f, publicityReviewConfirmed: e.target.checked }))} />
+                    <span>ตรวจภาพและสถานะความยินยอมแล้ว หรือภาพนี้ไม่มีนักเรียนที่ระบุตัวได้</span>
+                </label>
+            </div>}
+
             {/* Buttons */}
             <div className="flex justify-end gap-3 pt-2">
                 <button onClick={onCancel}
@@ -394,6 +405,7 @@ export default function AdminAnnouncements() {
     // ── CRUD ───────────────────────────────────────────────────────────────────
     const handleAdd = async () => {
         if (!formData.title.trim()) return toast('กรุณาระบุหัวข้อข่าว');
+        if ((formData.coverPreview || formData.newExtraFiles.length || formData.existingExtras.length) && !formData.publicityReviewConfirmed) return toast('กรุณาตรวจภาพและความยินยอมก่อนบันทึกข่าว');
         setSubmitting(true);
         try {
             const res = await fetch(API_BASE, { method: 'POST', body: buildMultipart() });
@@ -409,6 +421,7 @@ export default function AdminAnnouncements() {
 
     const handleEdit = async () => {
         if (!formData.title.trim()) return toast('กรุณาระบุหัวข้อข่าว');
+        if ((formData.coverPreview || formData.newExtraFiles.length || formData.existingExtras.length) && !formData.publicityReviewConfirmed) return toast('กรุณาตรวจภาพและความยินยอมก่อนบันทึกข่าว');
         setSubmitting(true);
         try {
             const res = await fetch(`${API_BASE}/${selectedNews.NewsId}`, { method: 'PUT', body: buildMultipart() });
