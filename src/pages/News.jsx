@@ -68,7 +68,11 @@ export function NewsExpanded({ item, onClose }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    axios.get(`${API_URL}/api/news/${item.id}`, { signal: controller.signal })
+    const token = item.type === "tutor" ? localStorage.getItem("student_token") : null;
+    axios.get(`${API_URL}/api/news/${item.id}`, {
+      signal: controller.signal,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((response) => setDetail(response.data))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") setError(true); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -131,7 +135,12 @@ export default function News({ role = "public", embedded = false }) {
     setLoading(true);
     setError(false);
     setSelectedId(null);
-    axios.get(`${API_URL}/api/news`, { params: { role }, signal: controller.signal })
+    const token = role === "tutor" ? localStorage.getItem("student_token") : null;
+    axios.get(`${API_URL}/api/news`, {
+      params: { role },
+      signal: controller.signal,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });

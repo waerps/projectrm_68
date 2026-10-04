@@ -75,7 +75,10 @@ export default function TutorMain() {
 
   useEffect(() => {
     setLoadError(false);
-    axios.get(`${SERVER_URL}/api/news?role=tutor`)
+    const token = localStorage.getItem("student_token");
+    axios.get(`${SERVER_URL}/api/news?role=tutor`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
       .catch((err) => { console.error(err); setLoadError(true); })
       .finally(() => setLoading(false));
