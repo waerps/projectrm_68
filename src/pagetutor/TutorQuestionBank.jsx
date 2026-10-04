@@ -11,6 +11,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
+import ExamRightsNotice from "./ExamRightsNotice";
 
 // ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
 // เดิมกว่าจะเข้าถึงคลังได้ต้องไล่ คอร์ส → วิชา → รอบสอบ → แท็บคลัง ทั้งที่คลังข้อสอบ
@@ -101,6 +102,8 @@ export default function TutorQuestionBank() {
             <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนวิชา
           </button>
         </div>
+
+        <ExamRightsNotice standaloneBank />
 
         <BankTab
           subjectId={subjectId}

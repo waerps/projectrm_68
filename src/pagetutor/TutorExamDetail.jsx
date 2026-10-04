@@ -32,6 +32,7 @@ import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
+import ExamRightsNotice from "./ExamRightsNotice";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
 
@@ -3479,6 +3480,8 @@ export default function TutorExamDetail() {
           </div>
         </div>
       </div>
+
+      {exam.courseType === "single" && <ExamRightsNotice />}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
