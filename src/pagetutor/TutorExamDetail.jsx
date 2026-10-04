@@ -33,6 +33,7 @@ import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
 import ExamRightsNotice from "./ExamRightsNotice";
+import { API_URL } from "../config";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
 
@@ -841,7 +842,7 @@ function scaleScoresLocal(items, totalScore) {
 // ทุก endpoint หน้าจอนี้จึงไม่ต้องกรองเองและไม่ต้องส่ง id ของครูไปไหน)
 // คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-export function BankTab({ subjectId, showToast, subjectName }) {
+export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = null }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -1010,6 +1011,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
 
   return (
     <div className="space-y-4">
+      {rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-slate-900">คลังข้อสอบของฉัน</p>
@@ -3401,6 +3403,7 @@ export default function TutorExamDetail() {
   const examId = searchParams.get("examId");
 
   const [exam, setExam] = useState(null);
+  const [fallbackCourseType, setFallbackCourseType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState("questions");
@@ -3421,6 +3424,32 @@ export default function TutorExamDetail() {
   }, [examId]);
 
   useEffect(() => { setLoading(true); reload(); }, [reload]);
+
+  // รองรับ Backend รุ่นที่ยังไม่ส่ง courseType ในข้อมูลสอบ โดยอ่านจากรายการคอร์ส
+  // ที่ติวเตอร์คนนี้สอนจริง แทนการเดาประเภทคอร์สจากชื่อหรือ URL
+  useEffect(() => {
+    setFallbackCourseType(null);
+    if (!exam?.courseId || exam.courseType) return;
+    const tutorId = JSON.parse(localStorage.getItem("user") || "null")?.id;
+    const token = localStorage.getItem("student_token");
+    if (!tutorId || !token) return;
+    let cancelled = false;
+    fetch(`${API_URL}/coursestutor?adminId=${tutorId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((rows) => {
+        if (!cancelled) {
+          const course = (Array.isArray(rows) ? rows : []).find((row) => String(row.CourseID) === String(exam.courseId));
+          setFallbackCourseType(course?.Course_Type || null);
+        }
+      })
+      .catch((err) => console.error("Load course type failed:", err));
+    return () => { cancelled = true; };
+  }, [exam?.courseId, exam?.courseType]);
 
   const backToExamList = () => {
     const params = new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName });
@@ -3443,6 +3472,8 @@ export default function TutorExamDetail() {
   const meta = EXAM_TYPES.find((t) => t.value === exam.type);
   const status = deriveStatus(exam);
   const sb = STATUS_BADGE[status];
+  const courseType = exam.courseType || fallbackCourseType;
+  const rightsNoticeMode = courseType === "single" ? "single" : courseType === "bundle" ? null : "unknown";
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -3481,7 +3512,7 @@ export default function TutorExamDetail() {
         </div>
       </div>
 
-      {exam.courseType === "single" && <ExamRightsNotice />}
+      {tab !== "questions" && rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
@@ -3502,7 +3533,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} />
+          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} rightsNoticeMode={rightsNoticeMode} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />

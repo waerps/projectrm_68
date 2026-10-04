@@ -30,6 +30,16 @@ const fmtDate = (v) => {
   return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
 };
 
+function CourseTypeBadges({ types = [] }) {
+  if (!types.length) return <span className="text-[11px] text-slate-400">ไม่มีคอร์สที่สอนอยู่</span>;
+  return (
+    <span className="inline-flex flex-wrap gap-1">
+      {types.includes("single") && <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700">คอร์สเดี่ยว</span>}
+      {types.includes("bundle") && <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">คอร์สรวม</span>}
+    </span>
+  );
+}
+
 export default function TutorQuestionBank() {
   const { toasts, showToast, removeToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -39,6 +49,7 @@ export default function TutorQuestionBank() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [courseTypeFilter, setCourseTypeFilter] = useState("all");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -55,17 +66,21 @@ export default function TutorQuestionBank() {
 
   const selected = subjects.find((s) => String(s.subjectId) === String(subjectId));
 
+  const typeSubjects = useMemo(() => subjects.filter((s) =>
+    courseTypeFilter === "all" || s.courseTypes?.includes(courseTypeFilter)
+  ), [subjects, courseTypeFilter]);
+
   const stats = useMemo(() => ({
-    questions: subjects.reduce((a, s) => a + s.total, 0),
-    ready: subjects.filter((s) => s.total > 0).length,
-    empty: subjects.filter((s) => s.total === 0).length,
-  }), [subjects]);
+    questions: typeSubjects.reduce((a, s) => a + s.total, 0),
+    ready: typeSubjects.filter((s) => s.total > 0).length,
+    empty: typeSubjects.filter((s) => s.total === 0).length,
+  }), [typeSubjects]);
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    if (!kw) return subjects;
-    return subjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
-  }, [subjects, search]);
+    if (!kw) return typeSubjects;
+    return typeSubjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
+  }, [typeSubjects, search]);
 
   const openSubject = (id) => setSearchParams({ subjectId: String(id) });
   const backToList = () => {
@@ -94,6 +109,7 @@ export default function TutorQuestionBank() {
               คลังข้อสอบ{selected?.subjectName ? ` — ${selected.subjectName}` : ""}
             </h1>
             <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดหมวดหมู่ข้อสอบของคุณในวิชานี้</p>
+            {selected && <div className="mt-2"><CourseTypeBadges types={selected.courseTypes} /></div>}
           </div>
           <button
             onClick={backToList}
@@ -103,7 +119,10 @@ export default function TutorQuestionBank() {
           </button>
         </div>
 
-        <ExamRightsNotice standaloneBank />
+        {selected?.courseTypes?.includes("single") && <ExamRightsNotice standaloneBank />}
+        {selected?.courseTypes?.includes("single") && selected?.courseTypes?.includes("bundle") && (
+          <p className="text-xs text-slate-500">วิชานี้ใช้คลังข้อสอบชุดเดียวกันทั้งคอร์สเดี่ยวและคอร์สรวม</p>
+        )}
 
         <BankTab
           subjectId={subjectId}
@@ -168,8 +187,18 @@ export default function TutorQuestionBank() {
               className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
+          <select
+            aria-label="กรองประเภทคอร์ส"
+            value={courseTypeFilter}
+            onChange={(e) => setCourseTypeFilter(e.target.value)}
+            className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700 focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200"
+          >
+            <option value="all">ทุกประเภทคอร์ส</option>
+            <option value="single">คอร์สเดี่ยว</option>
+            <option value="bundle">คอร์สรวม</option>
+          </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {subjects.length} วิชา</p>
+        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {typeSubjects.length} วิชา</p>
       </div>
 
       {error && <p className="text-sm text-red-500">{error}</p>}
@@ -178,9 +207,9 @@ export default function TutorQuestionBank() {
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
           <p className="text-base font-semibold text-slate-700">
-            {search.trim() ? "ไม่พบวิชาที่ค้นหา" : "ยังไม่มีวิชาที่คุณสอน"}
+            {search.trim() ? "ไม่พบวิชาที่ค้นหา" : courseTypeFilter !== "all" ? "ไม่มีวิชาในประเภทคอร์สนี้" : "ยังไม่มีวิชาที่คุณสอน"}
           </p>
-          {!search.trim() && (
+          {!search.trim() && courseTypeFilter === "all" && (
             <p className="text-xs text-slate-500 mt-1">
               วิชาจะแสดงที่นี่เมื่อผู้ดูแลระบบมอบหมายการสอน
             </p>
@@ -196,8 +225,9 @@ export default function TutorQuestionBank() {
                 className="min-w-0 text-left bg-white rounded-2xl border border-slate-200 shadow-sm p-4 active:bg-orange-50/60">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || `วิชา #${s.subjectId}`}</p>
-                    <p className="text-[11px] text-slate-500">#{s.subjectId}{fmtDate(s.lastUpdatedAt) ? ` · ${fmtDate(s.lastUpdatedAt)}` : ""}</p>
+                    <p className="font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || "ไม่ระบุชื่อวิชา"}</p>
+                    <div className="mt-1"><CourseTypeBadges types={s.courseTypes} /></div>
+                    {fmtDate(s.lastUpdatedAt) && <p className="mt-1 text-[11px] text-slate-500">แก้ไขล่าสุด {fmtDate(s.lastUpdatedAt)}</p>}
                   </div>
                   {s.total > 0 ? (
                     <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
@@ -229,8 +259,8 @@ export default function TutorQuestionBank() {
                   {filtered.map((s) => (
                     <tr key={s.subjectId} className="hover:bg-orange-50/40 transition-colors">
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-900 text-sm">{s.subjectName || `วิชา #${s.subjectId}`}</p>
-                        <p className="text-[11px] text-slate-500">#{s.subjectId}</p>
+                        <p className="font-semibold text-slate-900 text-sm">{s.subjectName || "ไม่ระบุชื่อวิชา"}</p>
+                        <div className="mt-1"><CourseTypeBadges types={s.courseTypes} /></div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="text-sm font-bold text-slate-900">{s.total}</span>
