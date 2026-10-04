@@ -30,6 +30,7 @@ import { PAGE_TITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ExamMathText from "../components/ExamMathText";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
@@ -313,7 +314,16 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       <div>
         <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
         <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
-        <p className="mt-1 text-xs text-slate-500">พิมพ์ข้อความ แนบรูปโจทย์ หรือใช้ทั้งสองอย่างร่วมกัน</p>
+        <p className="mt-1 text-xs text-slate-500">พิมพ์สัญลักษณ์ได้ตรง ๆ หรือครอบ LaTeX ด้วย $...$ เช่น $\frac{1}{2}$ (สูตรเดี่ยวพิมพ์ \frac{1}{2} ได้) แนบรูปโจทย์ร่วมกันได้</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {[["เศษส่วน", "$\\frac{a}{b}$"], ["ยกกำลัง", "$x^{2}$"], ["ราก", "$\\sqrt{x}$"], ["สูตรหลายบรรทัด", "$$\\begin{aligned}a&=b+c\\\\d&=e+f\\end{aligned}$$"]].map(([label, snippet]) => (
+            <button key={label} type="button" onClick={() => patch({ text: `${q.text}${q.text ? " " : ""}${snippet}` })} className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-orange-300 hover:text-orange-700">+ {label}</button>
+          ))}
+        </div>
+        {/[\\$]/.test(q.text) && <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
+          <p className="mb-1 text-xs font-semibold text-blue-700">ตัวอย่างที่นักเรียนจะเห็น</p>
+          <ExamMathText text={q.text} />
+        </div>}
         {q.imagePath && <div className="mt-3 rounded-xl border border-slate-200 p-3">
           <img src={q.imagePath} alt="รูปประกอบโจทย์" className="max-h-72 w-auto max-w-full rounded-lg object-contain" />
           <button type="button" onClick={() => patch({ imagePath: null })} className="mt-2 text-xs font-semibold text-red-600">นำรูปออกจากข้อนี้</button>
@@ -335,7 +345,10 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
               <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-slate-800" />
+              <div className="min-w-0 flex-1">
+                <textarea value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} rows={2} className="w-full text-sm bg-transparent border-none outline-none text-slate-800 resize-y" />
+                {/[\\$]/.test(q.options[optIdx]) && <div className="mt-1 border-t border-slate-200 pt-1 text-sm text-slate-700 whitespace-pre-wrap break-words"><ExamMathText text={q.options[optIdx]} /></div>}
+              </div>
             </div>
           );
         })}
@@ -352,6 +365,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           rows={2}
           className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
         />
+        {/[\\$]/.test(q.explanation || "") && <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-slate-800 whitespace-pre-wrap break-words"><ExamMathText text={q.explanation} /></div>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -769,7 +783,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                 <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || (q.imagePath ? "โจทย์เป็นรูปภาพ" : "(ไม่มีโจทย์)")}</p>
+                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : "(ไม่มีโจทย์)"}</p>
                     {q.imagePath && <img src={q.imagePath} alt={`รูปโจทย์แถวที่ ${i + 1}`} className="mt-2 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                     {plan.mode === "update" && (
                       <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
@@ -1282,7 +1296,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
                     className="mt-1 accent-orange-500 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-slate-800 line-clamp-2">{it.text || (it.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                    <p className="text-sm text-slate-800 line-clamp-2">{it.text ? <ExamMathText text={it.text} /> : it.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
                     {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวดหมู่"}</span>
@@ -1708,7 +1722,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <div className="flex items-start gap-3">
                       <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{it.text || (it.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{it.text ? <ExamMathText text={it.text} /> : it.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
                         {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-32 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category}</span>
@@ -1730,7 +1744,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
                             <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5">
-                              <span className="block line-clamp-2">{b.text || (b.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</span>
+                              <span className="block line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</span>
                               {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-1 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                             </button>
                           ))}
@@ -1804,7 +1818,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
                       <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{b.text || (b.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
                         {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
@@ -1918,7 +1932,7 @@ function PreviewTab({ exam, goToAssemble }) {
 
         <div className="flex items-baseline gap-3 mb-5">
           <span className="text-xl font-bold text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || (!current.imagePath && <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>)}</p>
+          <p className="text-base font-medium text-slate-900 leading-relaxed whitespace-pre-wrap break-words">{current.text ? <ExamMathText text={current.text} /> : !current.imagePath && <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
         </div>
         {current.imagePath && <img src={current.imagePath} alt="รูปโจทย์" className="mb-5 max-h-96 max-w-full rounded-xl border border-slate-200 object-contain" />}
 
@@ -1928,7 +1942,7 @@ function PreviewTab({ exam, goToAssemble }) {
             return (
               <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200"}`}>
                 <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-                <span className="text-sm text-slate-800">{current.options?.[optIdx] || <span className="text-slate-300 italic">ว่าง</span>}</span>
+                <span className="text-sm text-slate-800 whitespace-pre-wrap break-words">{current.options?.[optIdx] ? <ExamMathText text={current.options[optIdx]} /> : <span className="text-slate-300 italic">ว่าง</span>}</span>
                 {isCorrect && <Check className="h-4 w-4 text-green-600 ml-auto" />}
               </div>
             );
@@ -1940,7 +1954,7 @@ function PreviewTab({ exam, goToAssemble }) {
             <LuLightbulb className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
-              <p className="text-xs text-blue-700/90 leading-relaxed">{current.explanation}</p>
+              <p className="text-xs text-blue-700/90 leading-relaxed whitespace-pre-wrap break-words"><ExamMathText text={current.explanation} /></p>
             </div>
           </div>
         ) : (
@@ -2755,9 +2769,9 @@ function StudentDetailModal({
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
-                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed">
+                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed whitespace-pre-wrap break-words">
                         <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
-                        {q.text || (q.imagePath ? "โจทย์เป็นรูปภาพ" : "")}
+                        {q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : ""}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}

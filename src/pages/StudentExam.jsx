@@ -12,6 +12,7 @@ import {
 } from "../utils/studentExamShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
+import ExamMathText from "../components/ExamMathText";
 import { Sprout as LuSprout } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 
@@ -330,7 +331,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 mb-5">
             <div className="flex min-w-0 items-baseline gap-3">
               <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
-              {current.text && <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>}
+              {current.text && <p className="text-lg font-medium text-slate-900 leading-relaxed whitespace-pre-wrap break-words"><ExamMathText text={current.text} /></p>}
             </div>
             <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
@@ -347,7 +348,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                   className={`w-full flex items-center gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
                 >
                   <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-                  <span className="min-w-0 flex-1 break-words text-base text-slate-800">{current.options?.[optIdx]}</span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-base text-slate-800"><ExamMathText text={current.options?.[optIdx]} /></span>
                   {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto flex-shrink-0" />}
                 </button>
               );
