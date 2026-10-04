@@ -1036,9 +1036,10 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
 export function CourseCheckoutModal({ course, onClose }) {
   const item = useMemo(() => normalizeCartItem(course), [course]);
+  const checkoutItems = useMemo(() => [item], [item]);
   return (
     <CheckoutModal
-      items={[item]}
+      items={checkoutItems}
       total={item.salePrice}
       onClose={onClose}
       // Do not close the direct-purchase modal here. CheckoutModal advances to
