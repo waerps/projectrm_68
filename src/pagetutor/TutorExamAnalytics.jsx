@@ -998,7 +998,7 @@ function ScoreLineChart({ exams, classAvgs, name, roundsWithData = [] }) {
   const area = mp.length > 1 ? `${toPath(mine)} L${mp[mp.length - 1][0]},${H - B} L${mp[0][0]},${H - B} Z` : "";
   const pass = PASS_PCT / 100;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`คะแนนข้ามรอบของ ${name}`}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`คะแนนสอบแต่ละรอบของ ${name}`}>
       <defs>
         <linearGradient id="saLineArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#f97316" stopOpacity=".35" /><stop offset="1" stopColor="#f97316" stopOpacity="0" /></linearGradient>
       </defs>
@@ -1254,6 +1254,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
                 <h2 className="text-xl font-bold leading-tight break-words">{fullName}</h2>
                 <p className="text-sm text-white/90">{nick ? `ชื่อเล่น ${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
+                {latest && <span className="mt-3 inline-flex items-center rounded-full bg-white text-orange-700 px-3 py-1 text-xs font-bold shadow-sm">ผลสอบรอบ {latest.label}{aiRow ? " · มีข้อเสนอจากการวิเคราะห์โดย AI" : " · ยังไม่มีผลวิเคราะห์โดย AI"}</span>}
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
                     <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
@@ -1272,7 +1273,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                   <ScoreRing pct={latest.pct} />
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <p className={STAT_NUM}>{fmtIndividualPct(latest)}</p>
-                    <p className="text-[11px] text-white/80">คะแนนสอบล่าสุด</p>
+                    <p className="text-[11px] text-white/80">คะแนนรอบ {latest.label}</p>
                     <p className="text-[10px] text-white/75">{fmtScore(latest.totalScore)}/{fmtScore(latest.maxScore)} คะแนน</p>
                   </div>
                 </div>
@@ -1310,10 +1311,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
             <div className={`sa-rise relative overflow-hidden rounded-2xl p-5 text-white bg-gradient-to-br ${STATUS_GRAD[status.key]}`}>
               <div className="absolute inset-0 sa-grain opacity-40" />
               <div className="relative">
-                <div className="inline-flex gap-2 bg-slate-900/25 rounded-full px-2.5 py-2">
-                  {[2, 1, 0].map((l) => <span key={l} className={`h-4 w-4 rounded-full ${l === st.level ? "bg-white shadow-[0_0_12px_rgba(255,255,255,.9)]" : "bg-white/25"}`} />)}
-                </div>
-                <p className="text-xl font-bold mt-3">{st.label}</p>
+                <p className="text-xl font-bold">{st.label}</p>
                 <ul className="mt-2 space-y-1">
                   {status.reasons.map((r) => <li key={r} className="text-xs text-white/95 flex gap-1.5 before:content-['•'] before:opacity-70">{r}</li>)}
                 </ul>
@@ -1339,10 +1337,10 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
 
           {latest && (
             <>
-              {/* ── 2) คะแนนข้ามรอบ ── */}
+              {/* ── 2) คะแนนสอบแต่ละรอบ ── */}
               <div id="sec-score" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".1s" }}>
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนข้ามรอบ</h3>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-500" /> คะแนนสอบแต่ละรอบ</h3>
                   <div className="flex gap-3 text-[11px] text-slate-500">
                     <span className="flex items-center gap-1"><span className="h-1 w-5 rounded bg-orange-500" />{callName}</span>
                     <span className="flex items-center gap-1"><span className="h-0 w-5 border-t-2 border-dashed border-slate-400" />ค่าเฉลี่ยห้อง</span>
@@ -1396,9 +1394,9 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       <div key={`${c.topic}-${i}`} className="rounded-2xl bg-slate-50 px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <p className="text-sm font-bold text-slate-800">{c.topic}</p>
-                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">วิเคราะห์โดย AI: {c.trend}</span>}
+                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">ข้อสังเกตจากการวิเคราะห์โดย AI: {c.trend}</span>}
                         </div>
-                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">วิเคราะห์โดย AI:</b> {c.comment}</p>}
+                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {c.comment}</p>}
                       </div>
                     ))}
                     <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะผลวิเคราะห์โดย AI</p>
@@ -1432,7 +1430,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
                                   <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
                                   {t.trend && (
-                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>วิเคราะห์โดย AI: {t.trend}</span>
+                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจากการวิเคราะห์โดย AI: {t.trend}</span>
                                   )}
                                 </div>
                                 <div className="relative h-3 rounded-full bg-white mt-1.5">
@@ -1447,7 +1445,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 {t.sinceFirst != null && <p title={`${signed(t.sinceFirst)} เทียบคะแนน ${first.label}`} className={`whitespace-nowrap text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
                               </div>
                             </summary>
-                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">วิเคราะห์โดย AI:</b> {t.comment}</p>}
+                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {t.comment}</p>}
                           </details>
                         );
                       })}

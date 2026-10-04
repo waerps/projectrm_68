@@ -16,7 +16,7 @@ function PaceGauge({ ratio }) {
   );
 }
 
-const AiLabel = () => <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">วิเคราะห์โดย AI</span>;
+const AiLabel = () => <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">ข้อเสนอจากการวิเคราะห์โดย AI</span>;
 const questionRefs = (item) => {
   const numbers = item.questionNos || item.questionNumbers;
   if (Array.isArray(numbers)) return [...new Set(numbers)].slice(0, 12);
