@@ -16,7 +16,7 @@ function PaceGauge({ ratio }) {
   );
 }
 
-const AiLabel = () => <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">ข้อเสนอจากการวิเคราะห์โดย AI</span>;
+const AiLabel = ({ model }) => <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">เขียนโดย Google Gemini ({model || "ไม่ทราบรุ่น"})</span>;
 const questionRefs = (item) => {
   const numbers = item.questionNos || item.questionNumbers;
   if (Array.isArray(numbers)) return [...new Set(numbers)].slice(0, 12);
@@ -52,10 +52,11 @@ export default function ExamSupportPanel({ latest, roomPace, previous, aiRow, no
       : `${timeDelta < 0 ? "เร็วขึ้น" : "ช้าลง"} ${formatSecondsPerQuestion(Math.abs(timeDelta))} วินาที/ข้อ จาก ${previous.label}`;
 
   return (
-    <section id="sec-help" className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-5" style={{ animationDelay: ".18s" }}>
+    <div id="sec-help" className="sa-rise grid lg:grid-cols-2 gap-4 items-stretch" style={{ animationDelay: ".18s" }}>
+      <section className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-5">
       <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
       <div className="space-y-3">
-        <p className="text-xs font-bold text-slate-500 flex flex-wrap items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-rose-500" /> เรื่องที่ควรทบทวน <AiLabel /></p>
+        <p className="text-xs font-bold text-slate-500 flex flex-wrap items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-rose-500" /> เรื่องที่ควรทบทวน {aiRow && <AiLabel model={aiRow.model} />}</p>
         {!aiRow || misconceptions.length === 0 ? (
           <p className="rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-600">
             {!aiRow ? notice : "ผลวิเคราะห์รอบนี้ไม่มีข้อสังเกตเพิ่มเติมในส่วนนี้"}
@@ -76,14 +77,33 @@ export default function ExamSupportPanel({ latest, roomPace, previous, aiRow, no
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 sm:p-5">
+      {focusNext.length > 0 && <div>
+        <p className="text-xs font-bold text-slate-500 flex flex-wrap items-center gap-1.5 mb-3"><MapIcon className="h-4 w-4 text-orange-500" /> แนวทางที่ควรทำต่อ <AiLabel model={aiRow?.model} /></p>
+        <ol className="grid gap-3">
+          {focusNext.map((item, index) => <li key={index} className="flex gap-3 rounded-xl bg-orange-50/70 border border-orange-100 p-4">
+            <span className="shrink-0 h-7 w-7 rounded-lg bg-orange-500 text-white text-sm font-bold flex items-center justify-center">{index + 1}</span>
+            <div className="min-w-0"><p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">{typeof item === "string" ? item : item.action}</p>{typeof item !== "string" && item.why && <p className="text-xs text-slate-500 leading-relaxed mt-1 break-words">{item.why}</p>}</div>
+          </li>)}
+        </ol>
+      </div>}
+      </section>
+
+      <section className="min-w-0 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white shadow-sm p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-sm font-bold text-slate-600 flex items-center gap-1.5"><Timer className="h-4 w-4" /> จังหวะการทำข้อสอบ · {latest?.label || "—"}
             <span title="รวมเวลาที่อยู่ในแต่ละข้อทุกครั้งที่เปิด แล้วหารด้วยจำนวนข้อทั้งหมด รวมข้อที่มีเวลา 0 วินาทีเฉพาะเมื่อข้อมูลครบ" aria-label="วิธีคำนวณเวลาเฉลี่ยต่อข้อ" tabIndex={0} className="cursor-help"><Info className="h-3.5 w-3.5 text-slate-400" /></span>
           </h4>
           <span className="text-[11px] font-semibold rounded-full bg-slate-200/70 px-2 py-0.5 text-slate-600">ข้อมูลจากการทำข้อสอบ</span>
         </div>
-        <div className="mt-4 grid items-center gap-5 md:grid-cols-2">
+        {!timeAvailable ? <div className="mt-6 rounded-2xl border border-amber-100 bg-amber-50 p-5 space-y-3">
+          <p className="text-sm font-bold text-amber-900">ยังไม่มีเวลารายข้อที่ตรวจสอบได้</p>
+          <p className="text-sm text-amber-800 leading-relaxed">{timeMessage}</p>
+          {latest?.timingStatus !== "not_consented" && latest?.elapsedSeconds != null && <div className="rounded-xl bg-white p-4">
+            <p className="text-xs font-semibold text-slate-500">เวลาตั้งแต่เริ่มทำจนส่งข้อสอบ</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{formatSecondsPerQuestion(latest.elapsedSeconds)} <span className="text-sm font-medium text-slate-500">วินาที</span></p>
+            <p className="mt-1 text-xs text-slate-500">ค่านี้อาจรวมช่วงที่ไม่ได้อยู่ในข้อสอบ จึงไม่ใช้แทนเวลารายข้อ</p>
+          </div>}
+        </div> : <div className="mt-4 grid items-center gap-5">
           <div className="text-center min-w-0">
             <PaceGauge ratio={ratio} />
             <p className="mt-1 tabular-nums text-4xl font-bold text-slate-900">{formatSecondsPerQuestion(myPace)}<span className="ml-1 text-sm font-semibold text-slate-500">วินาที/ข้อ</span></p>
@@ -97,19 +117,9 @@ export default function ExamSupportPanel({ latest, roomPace, previous, aiRow, no
             <p className={`rounded-xl px-4 py-3 text-sm font-semibold leading-relaxed ${timeAvailable ? "bg-white border border-slate-100 text-slate-700" : "bg-amber-50 text-amber-800"}`}>{timeMessage}</p>
             {timeAvailable && <p className="text-sm text-slate-600 leading-relaxed flex items-start gap-2"><Clock className="h-4 w-4 mt-0.5 shrink-0" />{previousMessage}</p>}
           </div>
-        </div>
+        </div>}
 
-      </div>
-
-      {focusNext.length > 0 && <div>
-        <p className="text-xs font-bold text-slate-500 flex flex-wrap items-center gap-1.5 mb-3"><MapIcon className="h-4 w-4 text-orange-500" /> แนวทางที่ควรทำต่อ <AiLabel /></p>
-        <ol className="grid gap-3 md:grid-cols-2">
-          {focusNext.map((item, index) => <li key={index} className={`flex gap-3 rounded-xl bg-orange-50/70 border border-orange-100 p-4 ${focusNext.length % 2 === 1 && index === focusNext.length - 1 ? "md:col-span-2" : ""}`}>
-            <span className="shrink-0 h-7 w-7 rounded-lg bg-orange-500 text-white text-sm font-bold flex items-center justify-center">{index + 1}</span>
-            <div className="min-w-0"><p className="text-sm font-semibold text-slate-800 leading-relaxed break-words">{typeof item === "string" ? item : item.action}</p>{typeof item !== "string" && item.why && <p className="text-xs text-slate-500 leading-relaxed mt-1 break-words">{item.why}</p>}</div>
-          </li>)}
-        </ol>
-      </div>}
-    </section>
+      </section>
+    </div>
   );
 }
