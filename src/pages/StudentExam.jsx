@@ -330,12 +330,13 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 mb-5">
             <div className="flex min-w-0 items-baseline gap-3">
               <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>
+              {current.text && <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>}
             </div>
             <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
             </span>
           </div>
+          {current.imagePath && <img src={current.imagePath} alt={`รูปประกอบโจทย์ข้อที่ ${activeIdx + 1}`} className="mb-5 max-h-[28rem] max-w-full rounded-xl border border-slate-200 object-contain" />}
           <div className="space-y-3">
             {OPTION_LABELS.map((label, optIdx) => {
               const isSelected = current.selected === optIdx;

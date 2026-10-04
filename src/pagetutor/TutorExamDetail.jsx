@@ -18,6 +18,7 @@ import {
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
   fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  uploadBankQuestionImage,
   bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
   assembleExamSet, applyExamSet,
   fetchAiSummaries,
@@ -279,9 +280,28 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [q, setQ] = useState(initial || emptyQuestion());
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
-  const complete = q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
+  const complete = (q.text.trim() || q.imagePath) && q.options.every((o) => o.trim()) && q.correct !== null;
+  const handleImage = async (file) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageError("รองรับเฉพาะ JPG, PNG หรือ WEBP ขนาดไม่เกิน 5 MB");
+      return;
+    }
+    setUploadingImage(true);
+    setImageError("");
+    try {
+      const imagePath = await uploadBankQuestionImage(file);
+      patch({ imagePath });
+    } catch (err) {
+      setImageError(err.response?.data?.message || "อัปโหลดรูปโจทย์ไม่สำเร็จ");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   return (
     <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
@@ -293,6 +313,17 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       <div>
         <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
         <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+        <p className="mt-1 text-xs text-slate-500">พิมพ์ข้อความ แนบรูปโจทย์ หรือใช้ทั้งสองอย่างร่วมกัน</p>
+        {q.imagePath && <div className="mt-3 rounded-xl border border-slate-200 p-3">
+          <img src={q.imagePath} alt="รูปประกอบโจทย์" className="max-h-72 w-auto max-w-full rounded-lg object-contain" />
+          <button type="button" onClick={() => patch({ imagePath: null })} className="mt-2 text-xs font-semibold text-red-600">นำรูปออกจากข้อนี้</button>
+        </div>}
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700">
+          <Upload className="h-4 w-4" /> {uploadingImage ? "กำลังอัปโหลด…" : q.imagePath ? "เปลี่ยนรูปโจทย์" : "แนบรูปโจทย์"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImage}
+            onChange={(e) => { handleImage(e.target.files?.[0]); e.target.value = ""; }} className="sr-only" />
+        </label>
+        {imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}
       </div>
 
       <div className="space-y-2.5">
@@ -468,7 +499,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3">ยกเลิก</button>
         <button
           onClick={() => onSave(q)}
-          disabled={!complete || saving}
+          disabled={!complete || saving || uploadingImage}
           className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-4 py-2 text-sm font-semibold transition`}
         >
           {saving ? "กำลังบันทึก…" : (saveLabel || "บันทึก")}
@@ -513,7 +544,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       // กันแถวที่ข้อมูลไม่ครบ (ไม่มีโจทย์/ตัวเลือก/ยังไม่เลือกเฉลย) ออกจากที่จะส่งเข้าคลังจริง
       // กดยืนยันแล้วส่งไปทั้งแถวที่เสีย จึงกรองออกตั้งแต่ฝั่ง frontend ก่อนส่ง แล้วแจ้งจำนวนที่
       // ถูกข้ามให้ผู้สอนเห็นหลังนำเข้าเสร็จ (ดู onImported ด้านล่าง)
-      const isInvalidRow = (q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+      const isInvalidRow = (q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
 
       const mappedAll = rows.map((r, i) => ({
         ...r,
@@ -544,7 +575,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     }
   };
 
-  const invalidCount = rows.filter((q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null).length;
+  const invalidCount = rows.filter((q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null).length;
 
   // หมวดในไฟล์ที่ยังไม่มีในคลัง — ให้ครูเลือกก่อนว่าจะแมปเข้าหมวดเดิมหรือสร้างใหม่
   // กันกรณีพิมพ์ชื่อหมวดคนละแบบใน Excel แล้วคลังแตกเป็นหลายหมวดที่ความจริงคืออันเดียวกัน
@@ -730,7 +761,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           )}
           <div className="border border-slate-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-slate-50">
             {rows.map((q, i) => {
-              const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+              const bad = (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
               const dup = dupFlags[i];
               const skipped = skipDup && dup;
               const plan = rowPlan[i] || { mode: "new" };
@@ -738,7 +769,8 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                 <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
+                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || (q.imagePath ? "โจทย์เป็นรูปภาพ" : "(ไม่มีโจทย์)")}</p>
+                    {q.imagePath && <img src={q.imagePath} alt={`รูปโจทย์แถวที่ ${i + 1}`} className="mt-2 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                     {plan.mode === "update" && (
                       <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
                     )}
@@ -1250,7 +1282,8 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
                     className="mt-1 accent-orange-500 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                    <p className="text-sm text-slate-800 line-clamp-2">{it.text || (it.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                    {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวดหมู่"}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
@@ -1479,6 +1512,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   const replaceAt = (idx, bankItem) => {
     setWorking((prev) => prev.map((it, i) => (i === idx ? {
       bankQuestionId: bankItem.id, text: bankItem.text, options: bankItem.options,
+      imagePath: bankItem.imagePath,
       correct: bankItem.correct, level: bankItem.level, category: bankItem.category,
       explanation: bankItem.explanation, reused: false,
     } : it)));
@@ -1674,7 +1708,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <div className="flex items-start gap-3">
                       <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{it.text || (it.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                        {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-32 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
@@ -1694,8 +1729,9 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                         {gradeFilteredBank
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
-                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5 line-clamp-2">
-                              {b.text}
+                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5">
+                              <span className="block line-clamp-2">{b.text || (b.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</span>
+                              {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-1 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                             </button>
                           ))}
                         {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
@@ -1768,7 +1804,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
                       <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{b.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{b.text || (b.imagePath ? "โจทย์เป็นรูปภาพ" : "")}</p>
+                        {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
@@ -1864,7 +1901,7 @@ function PreviewTab({ exam, goToAssemble }) {
           <p className="text-sm text-amber-700">
             ยังไม่พร้อมเปิดสอบ
             {target > 0 && questions.length < target && ` — มี ${questions.length}/${target} ข้อ`}
-            {questions.some((q) => !q.text?.trim() || q.options?.some((o) => !o.trim()) || q.correct === null) && " — มีข้อที่ยังไม่สมบูรณ์"}
+            {questions.some((q) => (!q.text?.trim() && !q.imagePath) || q.options?.some((o) => !o.trim()) || q.correct === null) && " — มีข้อที่ยังไม่สมบูรณ์"}
           </p>
         </div>
       )}
@@ -1881,8 +1918,9 @@ function PreviewTab({ exam, goToAssemble }) {
 
         <div className="flex items-baseline gap-3 mb-5">
           <span className="text-xl font-bold text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
+          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || (!current.imagePath && <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>)}</p>
         </div>
+        {current.imagePath && <img src={current.imagePath} alt="รูปโจทย์" className="mb-5 max-h-96 max-w-full rounded-xl border border-slate-200 object-contain" />}
 
         <div className="space-y-2.5">
           {OPTION_LABELS.map((label, optIdx) => {
@@ -2719,7 +2757,7 @@ function StudentDetailModal({
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
                       <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed">
                         <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
-                        {q.text}
+                        {q.text || (q.imagePath ? "โจทย์เป็นรูปภาพ" : "")}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
@@ -2729,6 +2767,7 @@ function StudentDetailModal({
                         <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
+                    {q.imagePath && <img src={q.imagePath} alt="รูปโจทย์" className="mb-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <QuestionPeriods periods={q.periods} />
                   </div>
                 ))}
