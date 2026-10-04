@@ -131,21 +131,21 @@ function ClassroomTour({ floor }) {
   );
 }
 
-function TourScene({ floor, classroom }) {
+function TourScene({ floor, classroom, embedded = false }) {
   const [error, setError] = useState("");
   useEffect(() => {
     let disposed = false;
     let cleanup;
     loadThree().then(() => {
       if (disposed) return;
-      try { cleanup = classroom ? mountClassroomScene() : mountWelcomeScene(); }
+      try { cleanup = classroom ? mountClassroomScene() : mountWelcomeScene({ embedded }); }
       catch (cause) { console.error("เปิดทัวร์ไม่สำเร็จ", cause); setError("ยังเปิดภาพ 3D บนอุปกรณ์นี้ไม่ได้"); }
     }).catch(() => { if (!disposed) setError("โหลดภาพ 3D ไม่สำเร็จ"); });
     return () => { disposed = true; cleanup?.(); };
-  }, [classroom, floor]);
+  }, [classroom, floor, embedded]);
 
   return (
-    <div className={`virtual-tour-page ${classroom ? "classroom-tour" : "welcome-tour"}`} id="virtual-tour-page">
+    <div className={`virtual-tour-page ${classroom ? "classroom-tour" : "welcome-tour"} ${embedded ? "is-embedded" : ""}`} id="virtual-tour-page">
       {classroom ? <ClassroomTour floor={floor} /> : <WelcomeTour />}
       <div className="toast" id="toast" role="status" />
       <div className="loading" id="loading" hidden={Boolean(error)}><span className="loader" /><strong>กำลังเตรียมพื้นที่…</strong><small>สำรวจศรเสริมในมุมมอง 3D</small></div>
@@ -154,12 +154,12 @@ function TourScene({ floor, classroom }) {
   );
 }
 
-export default function VirtualTour() {
+export default function VirtualTour({ embedded = false }) {
   const { search } = useLocation();
   const params = new URLSearchParams(search);
   const room = rooms.find((item) => item.id === Number(params.get("room")));
   const requestedFloor = Number(params.get("floor"));
   const floor = room?.floor ?? ([2, 3].includes(requestedFloor) ? requestedFloor : 1);
   const classroom = Boolean(room) || floor !== 1;
-  return <TourScene key={`${floor}-${room?.id ?? "lobby"}-${classroom}`} floor={floor} classroom={classroom} />;
+  return <TourScene key={`${floor}-${room?.id ?? "lobby"}-${classroom}`} floor={floor} classroom={classroom} embedded={embedded} />;
 }

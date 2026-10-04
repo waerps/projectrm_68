@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Video, FileText, Download, Loader2, PlayCircle, X,
-  ClipboardList, BookOpen,
+  ClipboardList, BookOpen, ChevronRight,
 } from "lucide-react";
 import {
   getCourseBasic,

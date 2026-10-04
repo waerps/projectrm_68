@@ -1,6 +1,6 @@
 import { zones } from './welcomeContent';
 // Original room geometry retained from the approved Sornserm tour.
-export function mountWelcomeScene() {
+export function mountWelcomeScene({ embedded = false } = {}) {
   const THREE = window.THREE;
   let stopped = false;
   let animationFrame;
@@ -723,7 +723,7 @@ export function mountWelcomeScene() {
   canvas.addEventListener('pointerup', e => {
     if (totalMove < 6 && pointers.size === 1) {
       const h = hit(e);
-      if (h) selectZone(h.object.userData.zone);
+      if (h && !embedded) selectZone(h.object.userData.zone);
     }
     pointers.delete(e.pointerId);
     last = null;

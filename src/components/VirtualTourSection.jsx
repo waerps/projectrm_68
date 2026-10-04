@@ -1,4 +1,4 @@
-import { ArrowRight, Box, Building2, MousePointer2, MoveUpRight } from "lucide-react";
+import { ArrowRight, Box, Building2, MousePointer2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import "./VirtualTourSection.css";
@@ -37,14 +37,13 @@ export default function VirtualTourSection({ contentReady }) {
           <Link className="virtual-tour-start" to="/virtual-tour?floor=1">
             <Box size={19} /> เริ่มพาชมสถาบัน <ArrowRight size={19} />
           </Link>
-          <span className="virtual-tour-tip"><MousePointer2 size={14} /> หมุนมุมมอง · ซูมเข้าใกล้ · คลิกสำรวจ</span>
+          <span className="virtual-tour-tip"><MousePointer2 size={14} /> ลากเพื่อหมุน · เลื่อนเพื่อซูม · กดเริ่มพาชมเพื่อสำรวจ</span>
         </div>
 
-        <Link className="virtual-tour-preview" to="/virtual-tour?floor=1" aria-label="เปิดทัวร์ 3D พื้นที่ต้อนรับชั้น 1">
+        <div className="virtual-tour-preview">
           <span className="virtual-tour-preview-label"><span /> ศรเสริม ติวเตอร์ / ชั้น 1</span>
-          <img src="/tour/welcome-preview.png" alt="โมเดลสามมิติพื้นที่ต้อนรับของศรเสริม ติวเตอร์" loading="lazy" width="1200" height="800" />
-          <span className="virtual-tour-preview-footer"><span>พื้นที่จริง ในมุมมองใหม่<small>แตะเพื่อเริ่มสำรวจห้อง</small></span><span className="virtual-tour-preview-arrow"><MoveUpRight size={23} /></span></span>
-        </Link>
+          <iframe src="/tour-preview?preview=1" title="หมุนและซูมโมเดล 3D พื้นที่ต้อนรับของศรเสริม ติวเตอร์" loading="lazy" />
+        </div>
 
         <nav className="virtual-tour-floors" aria-label="เลือกชั้นที่ต้องการพาชม">
           {floors.map((floor) => (

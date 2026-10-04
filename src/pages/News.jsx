@@ -6,6 +6,7 @@ import { API_URL } from "../config";
 import { newsAuthConfig } from "../utils/newsApi";
 import "./NewsMarqueeArchive.css";
 import "./News.css";
+import PublicPageHero from "../components/PublicPageHero";
 
 const newsUrl = (path) => {
   if (!path) return null;
@@ -13,30 +14,36 @@ const newsUrl = (path) => {
   return `${API_URL.replace(/\/$/, "")}/${String(path).replace(/^\//, "")}`;
 };
 
-function NewsImage({ src, alt, className = "" }) {
+function NewsImage({ src, alt, className = "", onLoad }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
 
   if (!src || failed) {
     return <div className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></div>;
   }
-  return <img className={className} src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+  return <img className={className} src={src} alt={alt} loading="lazy" onLoad={onLoad} onError={() => setFailed(true)} />;
 }
 
-function NewsTile({ item, index, onOpen, balanced = false }) {
-  const featured = !balanced && index === 0;
-  const wide = !balanced && index > 0 && index % 6 === 4;
+export function NewsTile({ item, index, onOpen, balanced = false, isWide, onImageAspect }) {
   const summary = item.sub?.trim();
+  const featured = !balanced && index === 0;
+  const wide = !balanced && (isWide ?? (index > 0 && index % 6 === 4));
+
+  const measureImage = (event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+    if (naturalWidth && naturalHeight) onImageAspect?.(item.id, naturalWidth / naturalHeight);
+  };
   return (
     <button
       type="button"
       className={`archive-news-story-card news-tile ${featured ? "news-tile-featured" : ""} ${wide ? "news-tile-wide" : ""}`}
       onClick={(event) => onOpen(item.id, event.currentTarget)}
       aria-label={`อ่านข่าว ${item.title || "ข่าวประชาสัมพันธ์"}`}
+      data-news-id={item.id}
       style={{ "--tile-order": Math.min(index, 9) }}
     >
       <span className="archive-news-story-cover news-tile-photo">
-        <NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} className="archive-news-story-image" />
+        <NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} className="archive-news-story-image" onLoad={onImageAspect ? measureImage : undefined} />
         <span className="archive-news-story-image-mark"><ImageIcon size={14} aria-hidden="true" /> ดูภาพและรายละเอียด</span>
       </span>
       <span className="archive-news-story-content news-tile-content">
@@ -62,9 +69,10 @@ export function NewsExpanded({ item, onClose }) {
 
   useEffect(() => {
     const controller = new AbortController();
+    const token = item.type === "tutor" ? localStorage.getItem("student_token") : null;
     axios.get(`${API_URL}/api/news/${item.id}`, {
       signal: controller.signal,
-      ...newsAuthConfig(item.type),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((response) => setDetail(response.data))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") setError(true); })
@@ -128,10 +136,11 @@ export default function News({ role = "public", embedded = false }) {
     setLoading(true);
     setError(false);
     setSelectedId(null);
+    const token = role === "tutor" ? localStorage.getItem("student_token") : null;
     axios.get(`${API_URL}/api/news`, {
       params: { role },
       signal: controller.signal,
-      ...newsAuthConfig(role),
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
@@ -158,7 +167,13 @@ export default function News({ role = "public", embedded = false }) {
   return (
     <div className={`news-page${embedded ? " news-page-embedded" : ""}`}>
       <div className="news-page-inner">
-        <header className="news-page-heading"><span className="news-page-kicker"><Newspaper size={16} aria-hidden="true" /> เรื่องเล่าจากศรเสริม</span><h1>ข่าว<span>ประชาสัมพันธ์</span></h1><p>ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน</p></header>
+        <PublicPageHero
+          eyebrow="เรื่องเล่าจากศรเสริม"
+          title="ข่าว"
+          highlight="ประชาสัมพันธ์"
+          description="ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน"
+          icon={Newspaper}
+        />
         {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
           const selectedItem = section.items.find((item) => item.id === selectedId);
           return (

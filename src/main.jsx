@@ -119,6 +119,7 @@ const router = createBrowserRouter(
     { path: "forgot-password", element: <ForgotPassword /> },
     { path: "reset-password", element: <ResetPassword /> },
     { path: "setup-credentials", element: <ResetPassword setupRoute /> },
+    { path: "tour-preview", element: <VirtualTour embedded /> },
     {
       path: "/",
       element: (
