@@ -5,13 +5,17 @@ import { API_URL } from "../config";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 import { clearGoogleRegistration, finishStudentLogin, readGoogleRegistration, saveGoogleRegistration, studentReturnContext } from "../utils/studentSession";
 import GoogleRegistrationForm from "./GoogleRegistrationForm";
+import TutorApply from "./TutorApply";
+import { getParentProfileTypes } from "../callapi/callusers_student";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 import "./AuthPage.css";
 
 const emptyRegistration = {
   firstname: "", lastname: "", nickname: "", phoneNo: "", schoolName: "",
   lineId: "", birthOfDate: "", remark: "", username: "", password: "",
-  confirmPassword: "", gpa: "", gradeLevelId: "", genderId: "",
+  confirmPassword: "", gradeLevelId: "", genderId: "",
+  parentFirstname: "", parentLastname: "", parentNickname: "", parentPhoneNo: "",
+  parentLineId: "", parentBirthOfDate: "", parentProfilesTypeId: "", parentAcknowledged: "false",
 };
 const grades = [
   ...Array.from({ length: 6 }, (_, index) => `ประถมศึกษาปีที่ ${index + 1}`),
@@ -20,14 +24,15 @@ const grades = [
 const inputClass = "auth-input";
 
 export function Login({ initialMode = "login" }) {
-  const [mode, setMode] = useState(initialMode);
+  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).get("apply") === "tutor" ? "tutorApply" : initialMode);
   const [pendingGoogle, setPendingGoogle] = useState(() => initialMode === "google" ? readGoogleRegistration() : null);
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState(() => new URLSearchParams(window.location.search).get("apply") === "tutor" ? "admin" : "user");
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registration, setRegistration] = useState(emptyRegistration);
   const [registrationPhoto, setRegistrationPhoto] = useState(null);
   const [registrationPhotoPreview, setRegistrationPhotoPreview] = useState(null);
   const [pdpaAcknowledged, setPdpaAcknowledged] = useState(false);
+  const [parentTypes, setParentTypes] = useState([]);
   const [loginBusy, setLoginBusy] = useState(false);
   const [registerBusy, setRegisterBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -36,7 +41,8 @@ export function Login({ initialMode = "login" }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => setMode(initialMode), [initialMode]);
+  useEffect(() => setMode(new URLSearchParams(location.search).get("apply") === "tutor" ? "tutorApply" : initialMode), [initialMode, location.search]);
+  useEffect(() => { getParentProfileTypes().then(setParentTypes).catch(() => setParentTypes([])); }, []);
   useEffect(() => () => {
     if (registrationPhotoPreview) URL.revokeObjectURL(registrationPhotoPreview);
   }, [registrationPhotoPreview]);
@@ -66,6 +72,7 @@ export function Login({ initialMode = "login" }) {
     setLoginError("");
     setRegisterError("");
     if (next === "register") setRole("user");
+    if (next === "tutorApply") setRole("admin");
   }
 
   async function handleLogin(event) {
@@ -104,6 +111,10 @@ export function Login({ initialMode = "login" }) {
     }
     if (registration.password !== registration.confirmPassword) {
       setRegisterError("รหัสผ่านทั้งสองช่องไม่ตรงกัน");
+      return;
+    }
+    if ((registration.parentFirstname || registration.parentLastname) && (!registration.parentFirstname.trim() || !registration.parentLastname.trim() || registration.parentAcknowledged !== "true")) {
+      setRegisterError("กรุณากรอกชื่อและนามสกุลผู้ปกครอง พร้อมรับทราบการเก็บข้อมูล");
       return;
     }
     setRegisterBusy(true);
@@ -173,16 +184,16 @@ export function Login({ initialMode = "login" }) {
               {loginError && <p className="auth-error" role="alert">{loginError}</p>}
               <button className="auth-primary" disabled={loginBusy} type="submit">{loginBusy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}</button>
             </form>
-            <div className={role === "user" ? "auth-google-area" : "auth-google-area auth-hidden-slot"} aria-hidden={role !== "user"} inert={role !== "user"}>
+            <div className="auth-google-area">
               <div className="auth-divider"><span>หรือ</span></div>
-              {role === "user" && mode === "login" && <GoogleSignInButton disabled={googleBusy} onBusyChange={setGoogleBusy} onAuthenticated={handleGoogleAuthenticated} />}
+              {role === "user" && mode === "login" ? <GoogleSignInButton disabled={googleBusy} onBusyChange={setGoogleBusy} onAuthenticated={handleGoogleAuthenticated} /> : <button type="button" className="auth-tutor-apply-link" onClick={() => switchMode("tutorApply")}>สมัครเป็นติวเตอร์ <ArrowRight size={16} /></button>}
             </div>
-            <p className="auth-mobile-switch">ยังไม่มีบัญชี? <button type="button" onClick={() => switchMode("register")}>สมัครบัญชี</button></p>
+            {role === "user" && <p className="auth-mobile-switch">ยังไม่มีบัญชี? <button type="button" onClick={() => switchMode("register")}>สมัครบัญชี</button></p>}
           </div>
         </section>
 
         <section className="auth-pane auth-pane-register" aria-hidden={mode === "login"} inert={mode === "login"}>
-          {mode === "google" ? <GoogleRegistrationForm pending={pendingGoogle} onCancel={() => switchMode("login")} /> : mode === "forgot" ? <ForgotPasswordForm onBack={() => switchMode("login")} /> : <div className="auth-pane-inner">
+          {mode === "google" ? <GoogleRegistrationForm pending={pendingGoogle} onCancel={() => switchMode("login")} /> : mode === "forgot" ? <ForgotPasswordForm onBack={() => switchMode("login")} /> : mode === "tutorApply" ? <div className="auth-pane-inner"><TutorApply embedded /><p className="auth-mobile-switch">มีบัญชีแล้ว? <button type="button" onClick={() => switchMode("login")}>เข้าสู่ระบบติวเตอร์</button></p></div> : <div className="auth-pane-inner">
             <span className="auth-eyebrow">เริ่มต้นเรียนรู้ไปด้วยกัน</span>
             <h1 className="auth-heading">สร้างบัญชี</h1>
             <p className="auth-intro">กรอกข้อมูลนักเรียนเพื่อสมัครใช้งาน</p>
@@ -212,9 +223,24 @@ export function Login({ initialMode = "login" }) {
                     <div><label htmlFor="register-gender">เพศ</label><select id="register-gender" className={inputClass} name="genderId" value={registration.genderId} onChange={updateRegistration}><option value="">เลือกเพศ</option><option value="1">ชาย</option><option value="2">หญิง</option><option value="3">ไม่ระบุ</option></select></div>
                     <div><label htmlFor="register-birth">วันเกิด</label><input id="register-birth" className={inputClass} name="birthOfDate" type="date" value={registration.birthOfDate} onChange={updateRegistration} /></div>
                   </div>
-                  <div className="auth-two-columns">
-                    <div><label htmlFor="register-gpa">เกรดเฉลี่ย</label><input id="register-gpa" className={inputClass} name="gpa" type="number" min="0" max="4" step="0.01" value={registration.gpa} onChange={updateRegistration} /></div>
-                    <div><label htmlFor="register-line">LINE ID</label><input id="register-line" className={inputClass} name="lineId" value={registration.lineId} onChange={updateRegistration} /></div>
+                  <div><label htmlFor="register-line">LINE ID</label><input id="register-line" className={inputClass} name="lineId" value={registration.lineId} onChange={updateRegistration} /></div>
+                  <div className="auth-parent-fields">
+                    <strong>ข้อมูลผู้ปกครอง</strong>
+                    <p>เพิ่มตอนนี้หรือภายหลังได้ เพื่อใช้ติดต่อเรื่องการเรียนและการชำระเงิน</p>
+                    <div className="auth-two-columns">
+                      <div><label htmlFor="register-parent-firstname">ชื่อผู้ปกครอง</label><input id="register-parent-firstname" className={inputClass} name="parentFirstname" value={registration.parentFirstname} onChange={updateRegistration} /></div>
+                      <div><label htmlFor="register-parent-lastname">นามสกุลผู้ปกครอง</label><input id="register-parent-lastname" className={inputClass} name="parentLastname" value={registration.parentLastname} onChange={updateRegistration} /></div>
+                    </div>
+                    <div className="auth-two-columns">
+                      <div><label htmlFor="register-parent-nickname">ชื่อเล่น</label><input id="register-parent-nickname" className={inputClass} name="parentNickname" value={registration.parentNickname} onChange={updateRegistration} /></div>
+                      <div><label htmlFor="register-parent-phone">เบอร์โทร</label><input id="register-parent-phone" className={inputClass} name="parentPhoneNo" value={registration.parentPhoneNo} onChange={updateRegistration} /></div>
+                    </div>
+                    <div className="auth-two-columns">
+                      <div><label htmlFor="register-parent-line">LINE ID</label><input id="register-parent-line" className={inputClass} name="parentLineId" value={registration.parentLineId} onChange={updateRegistration} /></div>
+                      <div><label htmlFor="register-parent-birth">วันเกิด</label><input id="register-parent-birth" type="date" className={inputClass} name="parentBirthOfDate" value={registration.parentBirthOfDate} onChange={updateRegistration} /></div>
+                    </div>
+                    <label htmlFor="register-parent-type">ความสัมพันธ์</label><select id="register-parent-type" className={inputClass} name="parentProfilesTypeId" value={registration.parentProfilesTypeId} onChange={updateRegistration}><option value="">เลือกความสัมพันธ์</option>{parentTypes.map((type) => <option key={type.ParentProfilesType_Id} value={type.ParentProfilesType_Id}>{type.ParentProfilesType_Name}</option>)}</select>
+                    {(registration.parentFirstname || registration.parentLastname) && <label className="auth-parent-consent"><input type="checkbox" checked={registration.parentAcknowledged === "true"} onChange={(event) => setRegistration((current) => ({ ...current, parentAcknowledged: event.target.checked ? "true" : "false" }))} />รับทราบเรื่องการเก็บข้อมูลผู้ปกครองเพื่อดูแลการเรียนและการชำระเงิน</label>}
                   </div>
                   <div className="auth-photo-upload">
                     <label htmlFor="register-photo">รูปโปรไฟล์ <span className="auth-optional-label">ไม่บังคับ</span></label>
@@ -261,8 +287,8 @@ export function Login({ initialMode = "login" }) {
               <span className="auth-learning-art-dot" />
             </div>
             <p className="auth-grade-pill">{mode === "forgot" ? <><Sparkles size={16} strokeWidth={2} /> กู้คืนบัญชี</> : <><GraduationCap size={16} strokeWidth={2} /> สถาบันศรเสริมติวเตอร์ ขอนแก่น</>}</p>
-            <h2 className="auth-learning-title">{mode === "forgot" ? <>กลับมาเรียนต่อ<br /><span>ได้อีกครั้ง</span></> : mode === "google" ? <>อีกนิดเดียว<br /><span>ก็พร้อมเรียน</span></> : <>พร้อมเรียนต่อ<br /><span>ไปด้วยกันไหม?</span></>}</h2>
-            <p className="auth-swipe-description">{mode === "forgot" ? "ให้เจ้าหน้าที่ช่วยตรวจสอบบัญชี แล้วกลับมาเรียนต่อได้อีกครั้ง" : mode === "google" ? "เติมข้อมูลนักเรียนให้ครบ แล้วเริ่มเรียนรู้ไปด้วยกัน" : "บทเรียนที่สนใจยังรออยู่ เข้าสู่ระบบแล้วกลับไปเรียนต่อกัน"}</p>
+            <h2 className="auth-learning-title">{mode === "tutorApply" ? <>ส่งต่อความรู้<br /><span>ไปด้วยกัน</span></> : mode === "forgot" ? <>กลับมาเรียนต่อ<br /><span>ได้อีกครั้ง</span></> : mode === "google" ? <>อีกนิดเดียว<br /><span>ก็พร้อมเรียน</span></> : <>พร้อมเรียนต่อ<br /><span>ไปด้วยกันไหม?</span></>}</h2>
+            <p className="auth-swipe-description">{mode === "tutorApply" ? "กรอกประวัติและช่องทางติดต่อ ทีมงานจะพิจารณาใบสมัครของคุณ" : mode === "forgot" ? "ให้เจ้าหน้าที่ช่วยตรวจสอบบัญชี แล้วกลับมาเรียนต่อได้อีกครั้ง" : mode === "google" ? "เติมข้อมูลนักเรียนให้ครบ แล้วเริ่มเรียนรู้ไปด้วยกัน" : "บทเรียนที่สนใจยังรออยู่ เข้าสู่ระบบแล้วกลับไปเรียนต่อกัน"}</p>
             <button type="button" onClick={() => switchMode("login")} tabIndex={mode !== "login" ? 0 : -1}><ArrowLeft size={16} /> {mode === "forgot" ? "กลับไปเข้าสู่ระบบ" : mode === "google" ? "ยกเลิก" : "เข้าสู่ระบบ"}</button>
           </div>
           <BookOpen className="auth-swipe-book" size={210} strokeWidth={0.7} aria-hidden="true" />

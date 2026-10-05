@@ -70,6 +70,35 @@
 .auth-role-switch { display: flex; gap: 4px; margin-bottom: 22px; padding: 4px; border: 1px solid #f0e8e1; border-radius: 12px; background: #faf8f6; }
 .auth-role-switch button { flex: 1; min-height: 40px; border-radius: 9px; color: #7d746e; font-size: 12px; font-weight: 700; transition: background .2s, color .2s, box-shadow .2s; }
 .auth-role-switch button.active { background: #fff; color: #ea580c; box-shadow: 0 2px 8px rgba(91,48,22,.1); }
+.auth-tutor-apply-link { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; gap: 8px; border: 1px solid #fed7aa; border-radius: 12px; color: #ea580c; font-weight: 800; background: #fff7ed; }
+.auth-tutor-apply-link:hover { background: #ffedd5; }
+.auth-parent-fields { display: grid; gap: 12px; margin-top: 14px; padding: 16px; border: 1px solid #fed7aa; border-radius: 16px; background: #fffaf5; }
+.auth-parent-fields > p { margin: 0; color: #78716c; font-size: 12px; }
+.auth-parent-consent { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.5; }
+.auth-pane-register #tutor-application { padding-bottom: 24px; }
+.auth-tutor-apply .auth-tutor-heading .auth-intro { margin-bottom: 12px; }
+.auth-tutor-apply > .mt-8 { margin-top: 0; }
+.auth-tutor-apply > .mt-9 { margin-top: 9px; padding-top: 19px; }
+.auth-tutor-apply .grid { gap: 12px; }
+.auth-tutor-apply .mb-5 { margin-bottom: 12px; }
+.auth-tutor-apply .auth-tutor-field { display: block; min-width: 0; color: #374151; font-size: 12px; font-weight: 700; }
+.auth-tutor-apply .auth-tutor-field .auth-input { margin-top: 7px; }
+.auth-tutor-apply .auth-tutor-field > span:not(.text-orange-600) { color: #a3a3a3; font-weight: 500; }
+.auth-tutor-apply .mb-5 > span { width: 28px; height: 28px; border-radius: 9px; }
+.auth-tutor-apply .mb-5 > span svg { width: 17px; height: 17px; }
+.auth-tutor-apply .mb-5 h3 { font-size: 14px; line-height: 1.4; }
+.auth-tutor-apply label[for="tutor-resume"] { margin-top: 14px; padding: 14px; border-radius: 12px; }
+.auth-tutor-apply label[for="tutor-resume"] > span { gap: 10px; }
+.auth-tutor-apply label[for="tutor-resume"] > span > span:first-child { width: 36px; height: 36px; border-radius: 10px; }
+.auth-tutor-apply label[for="tutor-resume"] > span > span:first-child svg { width: 19px; height: 19px; }
+.auth-tutor-apply label[for="tutor-resume"] .mt-3 { margin-top: 7px; }
+.auth-tutor-apply label[for="tutor-consent"] span { color: #57534e; font-size: 12px; line-height: 1.6; font-weight: 400; }
+.auth-tutor-apply > button[type="submit"] { min-height: 47px; margin-top: 7px; padding: 10px 13px; border-radius: 10px; font-size: 14px; }
+.auth-tutor-apply > p:last-child { margin-top: 6px; }
+@media (max-width: 720px) {
+  .auth-tutor-apply .grid { grid-template-columns: minmax(0, 1fr); }
+  .auth-tutor-apply .grid > .sm\:col-span-2 { grid-column: auto; }
+}
 
 .auth-form { display: flex; flex-direction: column; gap: 9px; }
 .auth-form label, .auth-optional label { color: #374151; font-size: 12px; font-weight: 700; }

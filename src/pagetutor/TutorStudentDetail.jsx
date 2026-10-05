@@ -234,10 +234,6 @@ export default function TutorStudentDetail() {
                             <span className="inline-flex max-w-full min-w-0 items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuSchool className="h-3.5 w-3.5 shrink-0 text-slate-400" /> <span className="truncate">{student.school}</span></span>
                             <span className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-0.5"><LuPhone className="h-3.5 w-3.5 text-slate-400" /> {student.phone}</span>
                             <span className="bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5">{student.gradeLevel}</span>
-                            {/* GPA จากโรงเรียน — อยู่กับข้อมูลโปรไฟล์ ไม่ปนกับตัวชี้วัดของสถาบัน */}
-                            {student.gpa && student.gpa !== '-' && (
-                                <span className="bg-white border border-slate-200 rounded-full px-2.5 py-0.5" title="เกรดเฉลี่ยจากโรงเรียนของนักเรียน">GPA {student.gpa}</span>
-                            )}
                         </div>
                     </div>
                     </div>

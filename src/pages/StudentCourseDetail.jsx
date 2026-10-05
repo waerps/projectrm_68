@@ -46,6 +46,7 @@ export default function StudentCourseDetail() {
   const [courseName, setCourseName] = useState(
     searchParams.get("courseName") || "คอร์สเรียน"
   );
+  const [courseType, setCourseType] = useState("bundle");
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -88,6 +89,9 @@ export default function StudentCourseDetail() {
           GradeDetail: profile.gradeDetail ?? profile.GradeDetail ?? "ไม่ระบุระดับชั้น",
         });
         setCourseName(detail.course?.courseName ?? detail.course?.CourseName ?? "คอร์สเรียน");
+        const type = detail.course?.courseType ?? detail.course?.Course_Type ?? "bundle";
+        setCourseType(type);
+        setActiveTab(type === "single" ? "attendance" : "videos");
         setAttendance((detail.schedule ?? []).map((item) => ({
           StudentAttendanceId: item.attendanceId ?? item.AttendanceId ?? item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
           CourseScheduleDetailId: item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
@@ -180,11 +184,11 @@ export default function StudentCourseDetail() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-            <div className="min-w-0 bg-white border border-green-200 rounded-xl px-2 py-2 text-center sm:px-4">
+            {courseType === "single" && <div className="min-w-0 bg-white border border-green-200 rounded-xl px-2 py-2 text-center sm:px-4">
               <p className="text-xs text-neutral-500 mb-0.5">เข้าเรียน</p>
               <p className={`text-lg font-bold ${rateText}`}>{attendanceRateLabel}</p>
               <p className="text-xs text-neutral-400">{attendedCount}/{recordedCount} คาบที่บันทึก</p>
-            </div>
+            </div>}
             <div className="min-w-0 bg-white border border-orange-200 rounded-xl px-2 py-2 text-center sm:px-4">
               <p className="text-xs text-neutral-500 mb-0.5">ดูคลิป</p>
               <p className="text-lg font-bold text-orange-600">{videoRateLabel}</p>
@@ -196,10 +200,10 @@ export default function StudentCourseDetail() {
 
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-3 lg:flex lg:flex-wrap">
         {[
-          { key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> },
+          ...(courseType === "single" ? [{ key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> }] : []),
           { key: "videos", label: "รายการคลิป", icon: <Video className="h-4 w-4" /> },
           { key: "files", label: "เอกสารประกอบ", icon: <FileText className="h-4 w-4" /> },
-          { key: "overview", label: "ภาพรวม", icon: <BarChart2 className="h-4 w-4" /> },
+          ...(courseType === "single" ? [{ key: "overview", label: "ภาพรวม", icon: <BarChart2 className="h-4 w-4" /> }] : []),
           { key: "payments", label: "ค่าชำระคอร์ส", icon: <WalletCards className="h-4 w-4" /> },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -211,7 +215,7 @@ export default function StudentCourseDetail() {
         ))}
       </div>
 
-      {activeTab === "attendance" && (
+      {courseType === "single" && activeTab === "attendance" && (
         <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
           <div className="flex flex-col gap-2 border-b border-neutral-100 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
@@ -370,7 +374,7 @@ export default function StudentCourseDetail() {
         </div>
       )}
 
-      {activeTab === "overview" && (
+      {courseType === "single" && activeTab === "overview" && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[

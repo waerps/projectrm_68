@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   ImagePlus,
   Users,
-  Clock,
   BookOpen,
   ShieldCheck,
   Check,
@@ -18,6 +17,9 @@ import {
 import {
   getStudentProfile,
   updateStudentProfile,
+  submitParentProfile,
+  updateParentProfile,
+  getParentProfileTypes,
 } from "../callapi/callusers_student";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
@@ -44,6 +46,9 @@ export default function StudentProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const [studentId, setStudentId] = useState(null);
   const [authMethods, setAuthMethods] = useState(null);
+  const [parentId, setParentId] = useState(null);
+  const [parentTypes, setParentTypes] = useState([]);
+  const [parentAcknowledged, setParentAcknowledged] = useState(false);
   const [alertModal, setAlertModal] = useState({ show: false, fields: [] });
 
   const token = localStorage.getItem("student_token");
@@ -55,13 +60,18 @@ export default function StudentProfile() {
     gradeDetail: "",
     genderName: "",
     schoolName: "",
-    gpa: null,
     phone: "",
     lineId: "",
     username: "",
     parentName: "",
+    parentFirstname: "",
+    parentLastname: "",
+    parentNickname: "",
     parentRelationship: "",
     parentPhone: "",
+    parentLineId: "",
+    parentBirthDate: "",
+    parentProfilesTypeId: "",
     remark: "",
     photo: null,
   });
@@ -76,7 +86,7 @@ export default function StudentProfile() {
       setAuthMethods(basicData.authMethods ?? null);
       const resolvedStudentId = basicData.userId ?? basicData.UserId ?? basicData.studentId ?? basicData.StudentId ?? null;
       let detailData = {};
-      let parentDetailData = null;
+      let parentDetailData = basicData.parent ?? null;
       if (resolvedStudentId) {
         try {
           const detailResponse = await axios.get(`${API_URL}/api/admin/students/${resolvedStudentId}`, {
@@ -85,7 +95,7 @@ export default function StudentProfile() {
           detailData = detailResponse.data?.student ?? detailResponse.data?.data?.student ?? detailResponse.data?.data ?? {};
           // ★ แก้: /api/admin/students/:id ส่งข้อมูลผู้ปกครองแยกไว้ที่ key "parent" ต่างหาก
           //   (ไม่ได้ฝังอยู่ใน "student") เดิมโค้ดนี้อ่านแต่ .student จึงไม่เคยเห็นข้อมูลผู้ปกครองเลย
-          parentDetailData = detailResponse.data?.parent ?? detailResponse.data?.data?.parent ?? null;
+          parentDetailData = parentDetailData ?? detailResponse.data?.parent ?? detailResponse.data?.data?.parent ?? null;
         } catch (detailError) {
           console.warn("โหลดรูปโปรไฟล์จากข้อมูลนักเรียนไม่สำเร็จ:", detailError);
         }
@@ -104,24 +114,30 @@ export default function StudentProfile() {
         genderName: dbData.genderName ?? dbData.GenderName ?? "",
 
         schoolName: dbData.schoolName ?? dbData.SchoolName ?? "",
-        gpa: dbData.gpa ?? dbData.GPA ?? dbData.Gpa ?? null,
         phone: dbData.phoneNo ?? dbData.PhoneNo ?? "",
         lineId: dbData.lineId ?? dbData.LineId ?? dbData.LineID ?? "",
         username: dbData.username ?? dbData.Username ?? "",
         remark: dbData.remark ?? dbData.Remark ?? "",
 
         parentName: parentDetailData
-          ? `${parentDetailData.Firstname ?? ""} ${parentDetailData.Lastname ?? ""}`.trim() || (parentDetailData.Nickname ?? "")
+          ? `${parentDetailData.firstname ?? parentDetailData.Firstname ?? ""} ${parentDetailData.lastname ?? parentDetailData.Lastname ?? ""}`.trim() || (parentDetailData.nickname ?? parentDetailData.Nickname ?? "")
           : (dbData.parentName ?? dbData.ParentName ?? ""),
+        parentFirstname: parentDetailData?.firstname ?? parentDetailData?.Firstname ?? "",
+        parentLastname: parentDetailData?.lastname ?? parentDetailData?.Lastname ?? "",
+        parentNickname: parentDetailData?.nickname ?? parentDetailData?.Nickname ?? "",
         parentRelationship: parentDetailData
-          ? (parentDetailData.ParentProfilesType_Name ?? parentDetailData.Relationship ?? "")
+          ? (parentDetailData.ParentProfilesType_Name ?? parentDetailData.relationship ?? parentDetailData.Relationship ?? "")
           : (dbData.parentRelationship ?? dbData.ParentRelationship ?? dbData.ParentProfileTypeName ?? ""),
         parentPhone: parentDetailData
-          ? (parentDetailData.PhoneNo ?? "")
+          ? (parentDetailData.phoneNo ?? parentDetailData.PhoneNo ?? "")
           : (dbData.parentPhone ?? dbData.ParentPhone ?? dbData.ParentPhoneNo ?? ""),
+        parentLineId: parentDetailData?.lineId ?? parentDetailData?.LineID ?? "",
+        parentBirthDate: (parentDetailData?.birthOfDate ?? parentDetailData?.BirthOfDate ?? "").toString().split("T")[0],
+        parentProfilesTypeId: parentDetailData?.parentProfilesTypeId ?? parentDetailData?.ParentProfilesType_Id ?? "",
         photo: dbData.photo ?? dbData.Photo ?? dbData.profileImage ?? dbData.ProfileImage ?? dbData.imageUrl ?? null,
       };
       setStudentId(resolvedStudentId);
+      setParentId(basicData.parentId ?? null);
       setFormData(mappedData);
       setOriginalData(mappedData);
       const savedUser = JSON.parse(localStorage.getItem("user") || "null");
@@ -138,6 +154,7 @@ export default function StudentProfile() {
   }, [token]);
 
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => { getParentProfileTypes().then(setParentTypes).catch(() => setParentTypes([])); }, []);
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -172,7 +189,6 @@ export default function StudentProfile() {
         lineId: formData.lineId,
         birthOfDate: formData.birthDate || null,
         remark: formData.remark,
-        gpa: formData.gpa,
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
       if (putRes.data?.photoBlocked) {
@@ -232,12 +248,24 @@ export default function StudentProfile() {
         lastname: formData.lastname,
         nickname: formData.nickname,
         birthOfDate: formData.birthDate || null,
-        gpa: formData.gpa === "" ? null : formData.gpa,
         phoneNo: formData.phone,
         schoolName: formData.schoolName,
         lineId: formData.lineId,
         remark: formData.remark,
       });
+      if (formData.parentFirstname.trim() && formData.parentLastname.trim()) {
+        const parentPayload = {
+          firstname: formData.parentFirstname, lastname: formData.parentLastname,
+          nickname: formData.parentNickname, phoneNo: formData.parentPhone,
+          lineId: formData.parentLineId, birthOfDate: formData.parentBirthDate,
+          parentProfilesTypeId: formData.parentProfilesTypeId,
+        };
+        if (parentId) await updateParentProfile(token, parentPayload);
+        else {
+          if (!parentAcknowledged) throw new Error("กรุณารับทราบเรื่องการเก็บข้อมูลผู้ปกครองก่อน");
+          await submitParentProfile(token, { ...parentPayload, acknowledged: true });
+        }
+      }
       await fetchProfile();
       setIsEditing(false);
     } catch (error) {
@@ -353,12 +381,6 @@ export default function StudentProfile() {
                     <Users className="h-4 w-4" />
                     {formData.schoolName || "ไม่ระบุโรงเรียน"}
                   </div>
-                  {formData.gpa != null && (
-                    <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1">
-                      <Clock className="h-4 w-4" />
-                      เกรดเฉลี่ย {Number(formData.gpa).toFixed(2)}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -397,15 +419,6 @@ export default function StudentProfile() {
               type="date"
             />
             <InfoRow label="ระดับชั้น" value={formData.gradeDetail} isEditing={false} />
-            <InfoRow
-              label="เกรดเฉลี่ย"
-              name="gpa"
-              value={formData.gpa ?? ""}
-              displayValue={formData.gpa != null ? Number(formData.gpa).toFixed(2) : ""}
-              isEditing={isEditing}
-              onChange={handleChange}
-              type="number"
-            />
           </SectionCard>
 
           {/* ข้อมูลติดต่อ */}
@@ -469,12 +482,19 @@ export default function StudentProfile() {
             icon={<AlertTriangle className="h-4.5 w-4.5 text-red-500" />}
             isEditing={isEditing}
           >
-            <InfoRow label="ชื่อผู้ปกครอง" value={formData.parentName} isEditing={false} />
-            <InfoRow label="ความสัมพันธ์" value={formData.parentRelationship} isEditing={false} />
-            <InfoRow label="เบอร์โทร" value={formData.parentPhone} isEditing={false} />
-            <p className="mt-4 text-xs text-slate-500 text-center">
-              * ข้อมูลผู้ปกครองแก้ไขได้จากฝ่ายบริหารเท่านั้น
-            </p>
+            <InfoRow label="ชื่อ" name="parentFirstname" value={formData.parentFirstname} isEditing={isEditing} onChange={handleChange} />
+            <InfoRow label="นามสกุล" name="parentLastname" value={formData.parentLastname} isEditing={isEditing} onChange={handleChange} />
+            <InfoRow label="ชื่อเล่น" name="parentNickname" value={formData.parentNickname} isEditing={isEditing} onChange={handleChange} />
+            <InfoRow label="เบอร์โทร" name="parentPhone" value={formData.parentPhone} isEditing={isEditing} onChange={handleChange} />
+            <InfoRow label="LINE ID" name="parentLineId" value={formData.parentLineId} isEditing={isEditing} onChange={handleChange} />
+            <InfoRow label="วันเกิด" name="parentBirthDate" value={formData.parentBirthDate} isEditing={isEditing} onChange={handleChange} type="date" />
+            {isEditing ? <label className="block py-3 text-xs font-semibold text-slate-500">ความสัมพันธ์
+              <select name="parentProfilesTypeId" value={formData.parentProfilesTypeId} onChange={handleChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
+                <option value="">เลือกความสัมพันธ์</option>
+                {parentTypes.map((type) => <option key={type.ParentProfilesType_Id} value={type.ParentProfilesType_Id}>{type.ParentProfilesType_Name}</option>)}
+              </select>
+            </label> : <InfoRow label="ความสัมพันธ์" value={parentTypes.find((type) => String(type.ParentProfilesType_Id) === String(formData.parentProfilesTypeId))?.ParentProfilesType_Name || formData.parentRelationship} isEditing={false} />}
+            {isEditing && !parentId && <label className="mt-3 flex items-start gap-2 text-xs text-slate-600"><input type="checkbox" checked={parentAcknowledged} onChange={(event) => setParentAcknowledged(event.target.checked)} className="mt-0.5 accent-orange-500" />รับทราบเรื่องการเก็บข้อมูลผู้ปกครองเพื่อดูแลการเรียนและการชำระเงิน</label>}
           </SectionCard>
           {authMethods && (
             <SectionCard title="วิธีเข้าสู่ระบบ" icon={<Users className="h-4.5 w-4.5 text-orange-500" />} isEditing={false}>

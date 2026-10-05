@@ -15,6 +15,11 @@ const initialForm = {
   phone: "",
   line: "",
   occupation: "",
+  faculty: "",
+  major: "",
+  university: "",
+  studyStatus: "graduated",
+  studyYear: "",
   resume: null,
   consent: false,
 };
@@ -33,8 +38,10 @@ function isValidPhone(value) {
   return /^0\d{2}-\d{3}-\d{4}$/.test(value);
 }
 
-export default function TutorApply() {
+export default function TutorApply({ embedded = false }) {
   const [form, setForm] = useState(initialForm);
+  const inputClass = embedded ? "auth-input" : fieldClass;
+  const formLabelClass = embedded ? "auth-tutor-field" : labelClass;
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const { toasts, showToast, removeToast } = useToast();
@@ -76,6 +83,11 @@ export default function TutorApply() {
       fd.append("phone", form.phone);
       fd.append("line", form.line);
       fd.append("occupation", form.occupation);
+      fd.append("faculty", form.faculty);
+      fd.append("major", form.major);
+      fd.append("university", form.university);
+      fd.append("studyStatus", form.studyStatus);
+      fd.append("studyYear", form.studyStatus === "studying" ? form.studyYear : "");
       fd.append("consent", form.consent ? "true" : "false");
       if (form.resume) fd.append("resume", form.resume);
 
@@ -93,28 +105,32 @@ export default function TutorApply() {
   };
 
   return (
-    <main className="min-h-screen bg-white pb-16 pt-[110px] text-neutral-900">
+    <main className={embedded ? "text-neutral-900" : "min-h-screen bg-white pb-16 pt-[110px] text-neutral-900"}>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <div className="mx-auto max-w-[1200px] px-4 md:px-6">
-        <PublicPageHero
+      <div className={embedded ? "" : "mx-auto max-w-[1200px] px-4 md:px-6"}>
+        {!embedded && <PublicPageHero
           eyebrow="ร่วมเป็นส่วนหนึ่งของศรเสริมติวเตอร์"
           title="ส่งต่อความรู้"
           highlight="ในแบบของคุณ"
           description="สนใจร่วมสอนกับเรา? ฝากข้อมูลติดต่อและประวัติของคุณไว้ เพื่อให้ทีมงานพิจารณาใบสมัครและติดต่อกลับ"
           icon={GraduationCap}
           action={<a href="#tutor-application" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3 font-bold text-white shadow-lg shadow-orange-500/20 transition hover:from-orange-600 hover:to-orange-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">กรอกใบสมัคร <ArrowRight className="h-4 w-4" aria-hidden="true" /></a>}
-        />
+        />}
 
-        <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_310px]">
-          <form id="tutor-application" onSubmit={onSubmit} className="min-w-0 rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-[0_16px_48px_-35px_rgba(234,88,12,0.3)] sm:p-8 lg:p-10">
-            <div className="flex items-start gap-4 border-b border-neutral-100 pb-7">
+        <div className={embedded ? "" : "mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_280px] xl:grid-cols-[minmax(0,1fr)_310px]"}>
+          <form id="tutor-application" onSubmit={onSubmit} className={embedded ? "auth-form auth-register-form auth-tutor-apply" : "min-w-0 rounded-[1.75rem] border border-orange-100 bg-white p-5 shadow-[0_16px_48px_-35px_rgba(234,88,12,0.3)] sm:p-8 lg:p-10"}>
+            {embedded ? <header className="auth-tutor-heading">
+              <span className="auth-eyebrow">ร่วมเป็นส่วนหนึ่งของศรเสริมติวเตอร์</span>
+              <h2 className="auth-heading">สมัครเป็นติวเตอร์</h2>
+              <p className="auth-intro">กรอกข้อมูลเพื่อให้ทีมงานพิจารณาและติดต่อกลับ</p>
+            </header> : <div className="flex items-start gap-4 border-b border-neutral-100 pb-7">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"><ClipboardList className="h-6 w-6" aria-hidden="true" /></span>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-600">APPLICATION FORM</p>
                 <h2 className="mt-1 text-2xl font-bold text-neutral-900 sm:text-3xl">สมัครเป็นติวเตอร์</h2>
                 <p className="mt-1 text-sm leading-6 text-neutral-500">กรอกข้อมูลให้ครบถ้วนเพื่อให้เราติดต่อกลับได้สะดวก</p>
               </div>
-            </div>
+            </div>}
 
             <div className="mt-8">
               <div className="mb-5 flex items-center gap-3">
@@ -122,14 +138,14 @@ export default function TutorApply() {
                 <h3 className="text-lg font-bold text-neutral-900">ข้อมูลส่วนตัว</h3>
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className={labelClass} htmlFor="tutor-firstname">ชื่อจริง <span className="text-orange-600">*</span>
-                  <input id="tutor-firstname" name="firstname" autoComplete="given-name" required value={form.firstname} onChange={onChange} placeholder="กรอกชื่อจริง" className={fieldClass} />
+                <label className={formLabelClass} htmlFor="tutor-firstname">ชื่อจริง <span className="text-orange-600">*</span>
+                  <input id="tutor-firstname" name="firstname" autoComplete="given-name" required value={form.firstname} onChange={onChange} placeholder="กรอกชื่อจริง" className={inputClass} />
                 </label>
-                <label className={labelClass} htmlFor="tutor-lastname">นามสกุล <span className="text-orange-600">*</span>
-                  <input id="tutor-lastname" name="lastname" autoComplete="family-name" required value={form.lastname} onChange={onChange} placeholder="กรอกนามสกุล" className={fieldClass} />
+                <label className={formLabelClass} htmlFor="tutor-lastname">นามสกุล <span className="text-orange-600">*</span>
+                  <input id="tutor-lastname" name="lastname" autoComplete="family-name" required value={form.lastname} onChange={onChange} placeholder="กรอกนามสกุล" className={inputClass} />
                 </label>
-                <label className={`${labelClass} sm:col-span-2`} htmlFor="tutor-nickname">ชื่อเล่น <span className="font-normal text-neutral-400">(ถ้ามี)</span>
-                  <input id="tutor-nickname" name="nickname" value={form.nickname} onChange={onChange} placeholder="ชื่อที่อยากให้เราเรียก" className={fieldClass} />
+                <label className={`${formLabelClass} sm:col-span-2`} htmlFor="tutor-nickname">ชื่อเล่น <span className="font-normal text-neutral-400">(ถ้ามี)</span>
+                  <input id="tutor-nickname" name="nickname" value={form.nickname} onChange={onChange} placeholder="ชื่อที่อยากให้เราเรียก" className={inputClass} />
                 </label>
               </div>
             </div>
@@ -140,11 +156,11 @@ export default function TutorApply() {
                 <h3 className="text-lg font-bold text-neutral-900">ช่องทางติดต่อ</h3>
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className={labelClass} htmlFor="tutor-phone">เบอร์โทรศัพท์ <span className="text-orange-600">*</span>
-                  <input id="tutor-phone" name="phone" type="tel" autoComplete="tel" inputMode="numeric" required value={form.phone} onChange={onChange} placeholder="098-888-8888" className={fieldClass} />
+                <label className={formLabelClass} htmlFor="tutor-phone">เบอร์โทรศัพท์ <span className="text-orange-600">*</span>
+                  <input id="tutor-phone" name="phone" type="tel" autoComplete="tel" inputMode="numeric" required value={form.phone} onChange={onChange} placeholder="098-888-8888" className={inputClass} />
                 </label>
-                <label className={labelClass} htmlFor="tutor-line">LINE ID <span className="font-normal text-neutral-400">(ถ้ามี)</span>
-                  <input id="tutor-line" name="line" autoComplete="off" value={form.line} onChange={onChange} placeholder="กรอก LINE ID" className={fieldClass} />
+                <label className={formLabelClass} htmlFor="tutor-line">LINE ID <span className="font-normal text-neutral-400">(ถ้ามี)</span>
+                  <input id="tutor-line" name="line" autoComplete="off" value={form.line} onChange={onChange} placeholder="กรอก LINE ID" className={inputClass} />
                 </label>
               </div>
             </div>
@@ -154,9 +170,30 @@ export default function TutorApply() {
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-orange-600"><BriefcaseBusiness className="h-5 w-5" aria-hidden="true" /></span>
                 <h3 className="text-lg font-bold text-neutral-900">ประสบการณ์และเอกสาร</h3>
               </div>
-              <label className={labelClass} htmlFor="tutor-occupation">อาชีพปัจจุบัน <span className="font-normal text-neutral-400">(ถ้ามี)</span>
-                <input id="tutor-occupation" name="occupation" value={form.occupation} onChange={onChange} placeholder="เช่น ครู นักศึกษา หรืออาชีพอื่น ๆ" className={fieldClass} />
+              <label className={formLabelClass} htmlFor="tutor-occupation">อาชีพปัจจุบัน <span className="font-normal text-neutral-400">(ถ้ามี)</span>
+                <input id="tutor-occupation" name="occupation" value={form.occupation} onChange={onChange} placeholder="เช่น ครู นักศึกษา หรืออาชีพอื่น ๆ" className={inputClass} />
               </label>
+              <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                <label className={formLabelClass} htmlFor="tutor-faculty">คณะ <span className="text-orange-600">*</span>
+                  <input id="tutor-faculty" name="faculty" required value={form.faculty} onChange={onChange} placeholder="คณะ" className={inputClass} />
+                </label>
+                <label className={formLabelClass} htmlFor="tutor-major">สาขา <span className="text-orange-600">*</span>
+                  <input id="tutor-major" name="major" required value={form.major} onChange={onChange} placeholder="สาขาวิชา" className={inputClass} />
+                </label>
+                <label className={formLabelClass} htmlFor="tutor-university">มหาวิทยาลัย <span className="text-orange-600">*</span>
+                  <input id="tutor-university" name="university" required value={form.university} onChange={onChange} placeholder="มหาวิทยาลัย" className={inputClass} />
+                </label>
+                <label className={formLabelClass} htmlFor="tutor-study-status">สถานะการศึกษา
+                  <select id="tutor-study-status" name="studyStatus" value={form.studyStatus} onChange={onChange} className={inputClass}>
+                    <option value="graduated">สำเร็จการศึกษาแล้ว</option><option value="studying">กำลังศึกษาอยู่</option>
+                  </select>
+                </label>
+                {form.studyStatus === "studying" && <label className={formLabelClass} htmlFor="tutor-study-year">ชั้นปี <span className="text-orange-600">*</span>
+                  <select id="tutor-study-year" name="studyYear" required value={form.studyYear} onChange={onChange} className={inputClass}>
+                    <option value="">เลือกชั้นปี</option>{[1, 2, 3, 4, 5, 6].map((year) => <option key={year} value={year}>ปี {year}</option>)}
+                  </select>
+                </label>}
+              </div>
               <label htmlFor="tutor-resume" className="mt-5 block cursor-pointer rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/60 p-5 transition hover:border-orange-400 hover:bg-orange-50 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-100 sm:p-6">
                 <span className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-orange-600 shadow-sm"><UploadCloud className="h-6 w-6" aria-hidden="true" /></span>
@@ -185,7 +222,7 @@ export default function TutorApply() {
             <p className="mt-4 text-center text-xs leading-5 text-neutral-500">กรอกข้อมูลที่มีเครื่องหมาย * และยินยอมการใช้ข้อมูลก่อนส่งใบสมัคร</p>
           </form>
 
-          <aside className="grid gap-4 sm:grid-cols-2 lg:sticky lg:top-32 lg:grid-cols-1">
+          {!embedded && <aside className="grid gap-4 sm:grid-cols-2 lg:sticky lg:top-32 lg:grid-cols-1">
             <div className="rounded-[1.5rem] border border-orange-100 bg-[#fff7ed] p-6">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-orange-600 shadow-sm"><GraduationCap className="h-6 w-6" aria-hidden="true" /></span>
               <h2 className="mt-5 text-xl font-bold text-neutral-900">เริ่มต้นง่าย ๆ</h2>
@@ -201,7 +238,7 @@ export default function TutorApply() {
               <p className="mt-3 text-sm leading-7 text-neutral-600">ข้อมูลที่กรอกจะใช้ประกอบการพิจารณาใบสมัครและการติดต่อกลับจากทีมงาน</p>
               <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-orange-700"><BadgeCheck className="h-4 w-4" aria-hidden="true" /> ตรวจสอบข้อมูลก่อนกดส่งได้</div>
             </div>
-          </aside>
+          </aside>}
         </div>
       </div>
     </main>

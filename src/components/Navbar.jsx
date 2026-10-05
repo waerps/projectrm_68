@@ -41,7 +41,6 @@ const TERM_OPTIONS = [
 const MAIN_NAV_LINKS = [
   { to: "/", label: "หน้าแรก", icon: Home },
   { to: "/private-courses", label: "คอร์สเดี่ยว", icon: UserPlus },
-  { to: "/apply-tutor", label: "สมัครติวเตอร์", icon: UserPlus },
   { to: "/news", label: "ข่าวประชาสัมพันธ์", icon: Newspaper },
   { to: "/promotion", label: "โปรโมชัน", icon: Tag },
   { to: "/about", label: "เกี่ยวกับสถาบัน", icon: Info },
@@ -288,16 +287,6 @@ const cartTotal = cart.reduce((sum, item) => {
               }`}
             >
               คอร์สเดี่ยว
-            </Link>
-            <Link
-              to="/apply-tutor"
-              className={`font-medium transition-colors text-xs ${
-                isActive("/apply-tutor")
-                  ? "text-orange-500 pb-1"
-                  : "text-gray-700 hover:text-orange-500"
-              }`}
-            >
-              สมัครติวเตอร์
             </Link>
             <Link
               to="/news"

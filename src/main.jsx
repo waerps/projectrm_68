@@ -38,7 +38,6 @@ import VirtualTour from "./pages/VirtualTour.jsx"
 import Schedule from "./pages/Schedule.jsx"
 import CourseDetail from "./pages/Courses.jsx"
 import Profile from "./pages/Profile.jsx"
-import TutorApply from "./pages/TutorApply.jsx"
 
 import Notifications from "./pages/Notifications.jsx"
 import StudentCourses from "./pages/StudentCourses.jsx"
@@ -140,7 +139,7 @@ const router = createBrowserRouter(
         { path: "favorites", element: <Favorites /> },
         { path: "about", element: <About /> },
         { path: "promotion", element: <Promotion /> },
-        { path: "apply-tutor", element: <TutorApply /> },
+        { path: "apply-tutor", element: <Navigate to="/login?apply=tutor" replace /> },
         { path: "exam/:token", element: <StudentExam /> }, //เป้วทำ
 
         // เส้นทาง Profile (Nested Layout)
