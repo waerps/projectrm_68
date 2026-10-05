@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { PRIVATE_STARTING_PRICE } from "../config/privateCourses";
+import { PRIVATE_PRICING } from "../config/privateCourses";
 
 // การ์ดสำรองตอนยังไม่มีรายวิชา (หรือกำลังโหลด)
-const FALLBACK = [{ key: "all", generic: true, name: "ทุกวิชาที่น้องต้องการ", icon: "other", levels: [], price: PRIVATE_STARTING_PRICE, note: "ประเมินก่อนเรียน · เลือกครูได้" }];
+const FALLBACK = [{ key: "all", generic: true, name: "ทุกวิชาที่น้องต้องการ", icon: "other", levels: [], note: "ประเมินก่อนเรียน · เลือกครูได้" }];
 
 /* การ์ดวิชาคอร์สเดี่ยวซ้อนกัน เลื่อนเปลี่ยนเองทุก 3.8 วินาที
    (ภาษาเดียวกับ AboutFlashcard ในหน้าแรก) — ใช้ในแบนเนอร์หน้าคอร์สเดี่ยว */
@@ -44,9 +44,7 @@ export default function PrivateSubjectStack({ subjects, iconOf, onSelect, classN
             {s.note && <p className="relative mt-0.5 line-clamp-1 text-xs text-gray-500">{s.note}</p>}
             <div className="relative mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "rgba(20,33,61,.07)" }}>
               <span className="truncate text-[11px] text-gray-500">{s.levels.length ? s.levels.join(" · ") : "ทุกระดับชั้น"}</span>
-              {s.price
-                ? <span className="shrink-0 text-sm font-bold text-green-700">เริ่มต้น {s.price}/ชม.</span>
-                : <span className="shrink-0 text-sm font-bold text-orange-500">สอบถามราคา</span>}
+              <span className="shrink-0 text-xs font-bold text-orange-600">ออนไลน์เริ่ม {PRIVATE_PRICING[0].modes[1].starting}/ชม.</span>
             </div>
           </button>
         );

@@ -14,7 +14,7 @@ import UIErrorState from "../components/ui/ErrorState";
 import { BTN, INPUT } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { toast, confirmDialog } from "../components/ui/dialogs";
-import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, privateIconOf } from "../config/privateCourses";
+import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, PRIVATE_PRICING, privateIconOf } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
    แอดมิน · คอร์สเดี่ยว (ตัวต่อตัว 1 วิชา 1 นักเรียน) — แท็บ "คอร์สเดี่ยว" ในหน้าจัดการคอร์ส (/admin/courses?type=single)
@@ -161,17 +161,18 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 function InquiriesTab({ inquiries, search, error, onRetry, onContacted }) {
   if (error) return <UIErrorState message={error} onRetry={onRetry} />;
   const query = search.trim().toLowerCase();
-  const list = inquiries.filter((item) => !query || [item.SubjectName, item.StudentName, item.ContactName, item.ContactPhone, item.GradeLevel]
+  const list = inquiries.filter((item) => !query || [item.SubjectName, item.StudentName, item.StudentNickname, item.SchoolName, item.ContactName, item.ContactPhone, item.GradeLevel, item.GradeOther]
     .some((value) => String(value || "").toLowerCase().includes(query)));
   if (!list.length) return <EmptyState icon={UserRoundCheck} title={query ? "ไม่พบคำขอที่ค้นหา" : "ยังไม่มีคำขอคอร์สเดี่ยว"} />;
   const format = { online: "ออนไลน์", onsite: "ออนไซต์", either: "ได้ทั้งสองแบบ" };
   return <div className="space-y-3">
     {list.map((item) => <article key={item.InquiryId} className={`${card} p-4 sm:p-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div><h3 className="font-bold text-slate-900">{item.SubjectName} · {item.StudentName}</h3><p className="mt-1 text-xs text-slate-500">{item.GradeLevel} · อยากเริ่ม {item.DesiredStartDate} · {format[item.LearningFormat] || item.LearningFormat}</p></div>
+        <div><h3 className="font-bold text-slate-900">{item.SubjectName} · {item.StudentName}{item.StudentNickname && <span className="font-medium text-slate-500"> ({item.StudentNickname})</span>}</h3><p className="mt-1 text-xs text-slate-500">{item.GradeLevel}{item.GradeOther && `: ${item.GradeOther}`} · {item.LearnerCount || 1} คน · อยากเริ่ม {item.DesiredStartDate} · {format[item.LearningFormat] || item.LearningFormat}</p>{item.SchoolName && <p className="mt-1 text-xs text-slate-500">โรงเรียน {item.SchoolName}</p>}</div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.Status === "pending" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>{item.Status === "pending" ? "รอติดต่อ" : "ติดต่อแล้ว"}</span>
       </div>
       <p className="mt-3 text-sm text-slate-700"><b>เป้าหมาย:</b> {item.Goal}</p>
+      {Number(item.LearnerCount) === 2 && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">ต้องการเรียนคู่ กรุณาประสานข้อมูลนักเรียนอีกคนและจัดคอร์สให้ครบทั้งสองบัญชี</p>}
       <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700"><b>สิ่งที่ต้องการ:</b> {item.LearningNeeds}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
         <span className="text-slate-600">ผู้ติดต่อ {item.ContactName}</span>
@@ -425,7 +426,7 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
 function CreateCourseModal({ offers, lookups, onClose, onDone }) {
   const latestYear = lookups.years[lookups.years.length - 1]?.YearId || "";
   const [f, setF] = useState({
-    OfferId: "", SubjectId: "", UserId: "", AdminId: "", TotalHours: 10, StudentRatePerHour: 350, TutorRatePerHour: 140,
+    OfferId: "", SubjectId: "", UserId: "", AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
     customPrice: false, Price: "", StartDate: todayStr(), LastDate: addMonths(todayStr(), 3), YearId: latestYear,
     Course_Availability_Id: "", Remark: "", enrollNow: true,
   });
@@ -442,7 +443,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
 
   const pickOffer = (id) => {
     const o = offers.find((x) => String(x.OfferId) === String(id));
-    setF((p) => ({ ...p, OfferId: id, SubjectId: o?.SubjectId ? String(o.SubjectId) : p.SubjectId, StudentRatePerHour: o?.StartingPrice || p.StudentRatePerHour }));
+    setF((p) => ({ ...p, OfferId: id, SubjectId: o?.SubjectId ? String(o.SubjectId) : p.SubjectId }));
   };
   const pickTutor = (id) => {
     const t = lookups.tutors.find((x) => String(x.AdminId) === String(id));
@@ -489,7 +490,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
             <label className={labelCls}>สร้างจากรายวิชาบนเว็บไซต์ (ไม่บังคับ)</label>
             <select value={f.OfferId} onChange={(e) => pickOffer(e.target.value)} className={INPUT}>
               <option value="">— ไม่ระบุ —</option>
-              {offers.map((o) => <option key={o.OfferId} value={o.OfferId}>{o.Title}{o.StartingPrice ? ` · เริ่มต้น ${o.StartingPrice}/ชม.` : ""}</option>)}
+              {offers.map((o) => <option key={o.OfferId} value={o.OfferId}>{o.Title}</option>)}
             </select>
           </div>
           <div>
@@ -509,6 +510,18 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
 
         <section className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
           <p className="mb-3 flex items-center gap-1.5 text-sm font-bold text-slate-800"><CalcIcon className="h-4 w-4 text-orange-500" />ราคาที่ตกลง</p>
+          <label className={labelCls}>ใช้ราคาแพ็กเกจที่แสดงหน้าเว็บ</label>
+          <select defaultValue="" onChange={(e) => {
+            const [learners, modeKey, hours] = e.target.value.split(":");
+            const group = PRIVATE_PRICING.find((entry) => entry.learners === Number(learners));
+            const mode = group?.modes.find((entry) => entry.key === modeKey);
+            const pack = mode?.packages.find((entry) => entry.hours === Number(hours));
+            if (pack) setF((current) => ({ ...current, TotalHours: pack.hours, StudentRatePerHour: Number((pack.price / pack.hours).toFixed(2)), customPrice: true, Price: String(pack.price) }));
+          }} className={`${INPUT} mb-3`}>
+            <option value="">— เลือกแพ็กเกจ หรือกรอกราคาที่ตกลงเอง —</option>
+            {PRIVATE_PRICING.flatMap((group) => group.modes.flatMap((mode) => mode.packages.map((pack) => <option key={`${group.learners}:${mode.key}:${pack.hours}`} value={`${group.learners}:${mode.key}:${pack.hours}`}>{group.label} · {mode.label} · {pack.hours} ชม. · {money(pack.price)}{group.learners === 2 ? "/คน" : ""}</option>)))}
+          </select>
+          <p className="mb-3 text-xs text-slate-500">ราคาเรียนคู่เป็นราคาต่อคน ระบบสร้างคอร์สให้นักเรียนทีละบัญชี</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className={labelCls}>ชั่วโมงเรียนรวม *</label>
@@ -654,7 +667,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
   const [f, setF] = useState(() => ({
     Title: offer?.Title || "", SubjectId: offer?.SubjectId ? String(offer.SubjectId) : "", IconKey: offer?.IconKey || "math",
     Levels: offer?.Levels || [], Note: offer?.Note || "",
-    askPrice: offer ? offer.StartingPrice === null : false, StartingPrice: offer?.StartingPrice ?? 350,
+    askPrice: offer ? offer.StartingPrice === null : false, StartingPrice: offer?.StartingPrice ?? PRIVATE_PRICING[0].modes[0].starting,
     SortOrder: offer?.SortOrder ?? 0, IsActive: offer ? offer.IsActive : true,
   }));
   const [saving, setSaving] = useState(false);
