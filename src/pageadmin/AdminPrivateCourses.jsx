@@ -18,7 +18,7 @@ import { toast, confirmDialog } from "../components/ui/dialogs";
 import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, PRIVATE_PRICING, privateIconOf } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
-   แอดมิน · คอร์สเดี่ยว (ตัวต่อตัว 1 วิชา 1 นักเรียน) — แท็บ "คอร์สเดี่ยว" ในหน้าจัดการคอร์ส (/admin/courses?type=single)
+   แอดมิน · คอร์สเดี่ยว (1–2 นักเรียนต่อคลาส) — แท็บ "คอร์สเดี่ยว" ในหน้าจัดการคอร์ส (/admin/courses?type=single)
    แท็บ 1  คอร์สของนักเรียน   : สร้างคอร์สให้นักเรียนหลังพี่กวางประเมินแล้ว → ลงทะเบียน → บันทึกรับเงิน
    แท็บ 2  รายวิชาที่โชว์หน้าเว็บ : สิ่งที่คนทั่วไปเห็นในหน้า /private-courses (ไม่มีปุ่มซื้อ)
    แท็บ 3  คำขอจากนักเรียน : ข้อมูลที่ผู้สนใจฝากไว้เพื่อให้สถาบันติดต่อกลับ
@@ -100,7 +100,8 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
   const stats = useMemo(() => {
     const active = courses.filter((c) => [1, 2].includes(Number(c.Status_Course_Id))).length;
-    const outstanding = courses.reduce((s, c) => s + Math.max(0, Number(c.FullCost || 0) - Number(c.PaidAmount || 0)), 0);
+    const outstanding = courses.reduce((sum, course) => sum + (course.Students || []).reduce((studentSum, student) =>
+      studentSum + Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost || 0) - Number(student.PaidAmount || 0)), 0), 0);
     return { active, outstanding, shownOffers: offers.filter((o) => o.IsActive).length };
   }, [courses, offers]);
 
@@ -189,7 +190,7 @@ function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacte
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.Status === "pending" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>{item.Status === "pending" ? "รอติดต่อ" : "ติดต่อแล้ว"}</span>
       </div>
       <p className="mt-3 text-sm text-slate-700"><b>เป้าหมาย:</b> {item.Goal}</p>
-      {Number(item.LearnerCount) === 2 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">ต้องการเรียนคู่: ยืนยันข้อมูลทั้งสองคนและราคาแยกต่อคนก่อนเปิดเรียน ระบบคอร์สเดี่ยวปัจจุบันยังไม่รวมสองคนเป็นคลาสเดียว จึงควรประสานการจัดตารางและค่าติวเตอร์กับสถาบันก่อนสร้างคอร์ส</p>}
+      {Number(item.LearnerCount) === 2 && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">ต้องการเรียนคู่: เลือกนักเรียนทั้งสองบัญชีตอนสร้างคลาส ราคาและยอดชำระจะแยกต่อคน ส่วนตารางเรียนเป็นคลาสเดียวกัน</p>}
       <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700"><b>สิ่งที่ต้องการ:</b> {item.LearningNeeds}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
         <span className="text-slate-600">ผู้ติดต่อ {item.ContactName}</span>
@@ -215,19 +216,12 @@ function Stat({ icon, color, label, value, unit, sub, className = "" }) {
 }
 
 /* ═════════ แท็บ 1 · คอร์สของนักเรียน ═════════ */
-function payState(c) {
-  const total = Number(c.FullCost || 0), paid = Number(c.PaidAmount || 0);
-  if (!c.EnrollId) return { tone: "neutral", label: "ยังไม่ลงทะเบียน", pct: 0 };
-  if (paid >= total && total > 0) return { tone: "success", label: "ชำระครบ", pct: 100 };
-  if (paid > 0) return { tone: "warning", label: "ชำระบางส่วน", pct: (paid / total) * 100 };
-  return { tone: "danger", label: "ยังไม่ชำระ", pct: 0 };
-}
-
 function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll }) {
   const list = courses.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return [c.CourseName, c.SubjectName, personName(c, "Student"), personName(c, "Tutor"), c.StudentFirstname, c.TutorFirstname]
+    return [c.CourseName, c.SubjectName, personName(c, "Student"), personName(c, "Tutor"), c.StudentFirstname, c.TutorFirstname,
+      ...(c.Students || []).flatMap((student) => [student.Firstname, student.Lastname, student.Nickname])]
       .filter(Boolean).some((t) => String(t).toLowerCase().includes(q));
   });
 
@@ -241,9 +235,10 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
 
   const Actions = ({ c }) => (
     <div className="flex flex-wrap gap-2">
-      {!c.EnrollId
-        ? <button type="button" onClick={() => onEnroll(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><UserPlus className="h-3.5 w-3.5" />ลงทะเบียนนักเรียน</button>
-        : payState(c).pct < 100 && <button type="button" onClick={() => onPay(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><Wallet className="h-3.5 w-3.5" />บันทึกรับเงิน</button>}
+      {(c.Students || []).length < Number(c.MaxStudents || 1) &&
+        <button type="button" onClick={() => onEnroll(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><UserPlus className="h-3.5 w-3.5" />ลงทะเบียนนักเรียน</button>}
+      {(c.Students || []).some((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost || 0)) &&
+        <button type="button" onClick={() => onPay(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><Wallet className="h-3.5 w-3.5" />บันทึกรับเงิน</button>}
       {onManage && (
         <button type="button" onClick={() => onManage(c.CourseID)} title="วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส" className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}>
           <Settings2 className="h-3.5 w-3.5" />จัดการคอร์ส
@@ -252,16 +247,18 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
     </div>
   );
   const PayCell = ({ c }) => {
-    const st = payState(c);
     return (
-      <div className="min-w-[140px]">
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <Badge tone={st.tone}>{st.label}</Badge>
-          <span className="tabular-nums text-slate-500">{money(c.PaidAmount)} / {money(c.FullCost)}</span>
-        </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className={`h-full rounded-full ${st.pct >= 100 ? "bg-emerald-500" : "bg-amber-400"}`} style={{ width: `${Math.min(st.pct, 100)}%` }} />
-        </div>
+      <div className="min-w-[190px] space-y-1.5">
+        {(c.Students || []).length ? c.Students.map((student) => {
+          const total = Number(student.OrderId ? student.TotalAmount : c.FullCost || 0);
+          const paid = Number(student.PaidAmount || 0);
+          const label = paid >= total && total > 0 ? "ครบ" : paid > 0 ? "บางส่วน" : "ยังไม่ชำระ";
+          return <div key={student.EnrollId} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs">
+            <span className="max-w-[80px] truncate font-medium text-slate-700" title={fullName(student)}>{student.Nickname || student.Firstname}</span>
+            <span className="tabular-nums text-slate-600">{money(paid)} / {money(total)}</span>
+            <span className={paid >= total && total > 0 ? "text-emerald-700" : "text-amber-700"}>{label}</span>
+          </div>;
+        }) : <Badge tone="neutral">ยังไม่ลงทะเบียน</Badge>}
       </div>
     );
   };
@@ -285,7 +282,8 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
             {list.map((c) => (
               <tr key={c.CourseID} className="align-middle hover:bg-orange-50/30">
                 <td className="px-4 py-3">
-                  <p className="font-semibold text-slate-800">{c.EnrollId ? personName(c, "Student") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
+                  <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
+                  <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
                   <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""}</p>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
@@ -309,7 +307,8 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
           <div key={c.CourseID} className={`${card} space-y-3 p-4`}>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate font-semibold text-slate-800">{c.EnrollId ? personName(c, "Student") : "ยังไม่มีนักเรียน"}</p>
+                <p className="truncate font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : "ยังไม่มีนักเรียน"}</p>
+                <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
                 <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")}</p>
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
@@ -443,11 +442,12 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
 function CreateCourseModal({ offers, lookups, onClose, onDone }) {
   const latestYear = lookups.years[lookups.years.length - 1]?.YearId || "";
   const [f, setF] = useState({
-    OfferId: "", SubjectId: "", UserId: "", AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
+    OfferId: "", SubjectId: "", UserId: "", SecondUserId: "", LearnerCount: 1, AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
     customPrice: false, Price: "", StartDate: todayStr(), LastDate: addMonths(todayStr(), 3), YearId: latestYear,
     Course_Availability_Id: "", Remark: "", enrollNow: true,
   });
   const [saving, setSaving] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState("");
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   useEffect(() => { if (!f.YearId && latestYear) set("YearId", latestYear); }, [latestYear, f.YearId]);
 
@@ -455,8 +455,8 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
   const autoPrice = Math.round(hours * (Number(f.StudentRatePerHour) || 0) * 100) / 100;
   const price = f.customPrice ? Number(f.Price) || 0 : autoPrice;
   const tutorCost = Math.round(hours * (Number(f.TutorRatePerHour) || 0) * 100) / 100;
-  const margin = price - tutorCost;
-  const lossRate = Number(f.StudentRatePerHour) > 0 && Number(f.TutorRatePerHour) > Number(f.StudentRatePerHour);
+  const margin = price * f.LearnerCount - tutorCost;
+  const lossRate = price > 0 && margin < 0;
 
   const pickOffer = (id) => {
     const o = offers.find((x) => String(x.OfferId) === String(id));
@@ -469,24 +469,17 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
 
   const submit = async () => {
     if (!f.UserId) return toast("กรุณาเลือกนักเรียน");
+    if (f.LearnerCount === 2 && (!f.SecondUserId || String(f.UserId) === String(f.SecondUserId))) return toast("กรุณาเลือกนักเรียนคนที่สองโดยไม่ซ้ำกับคนแรก");
     setSaving(true);
     try {
       const res = await axios.post(`${API}/private-courses`, {
-        OfferId: f.OfferId || null, SubjectId: f.SubjectId, UserId: f.UserId, AdminId: f.AdminId,
+        OfferId: f.OfferId || null, SubjectId: f.SubjectId, UserIds: [f.UserId, ...(f.LearnerCount === 2 ? [f.SecondUserId] : [])], LearnerCount: f.LearnerCount, EnrollNow: f.enrollNow, AdminId: f.AdminId,
         TotalHours: f.TotalHours, StudentRatePerHour: f.StudentRatePerHour, TutorRatePerHour: f.TutorRatePerHour,
         Price: f.customPrice ? f.Price : undefined, StartDate: f.StartDate, LastDate: f.LastDate, YearId: f.YearId,
         Course_Availability_Id: f.Course_Availability_Id || null, Remark: f.Remark,
       }, auth());
       let msg = `สร้าง "${res.data.CourseName}" แล้ว`;
-      if (f.enrollNow) {
-        // ลงทะเบียนด้วย API ลงทะเบียนของแอดมินตัวเดิมของระบบ
-        try {
-          await axios.post(`${API}/enroll`, { UserId: f.UserId, CourseID: res.data.CourseID }, auth());
-          msg += " และลงทะเบียนนักเรียนแล้ว";
-        } catch (e) {
-          msg += `\nแต่ลงทะเบียนนักเรียนไม่สำเร็จ: ${errMsg(e, "ลองกด \"ลงทะเบียนนักเรียน\" อีกครั้ง")}`;
-        }
-      }
+      if (f.enrollNow) msg += ` และลงทะเบียนนักเรียน ${f.LearnerCount} คนแล้ว`;
       await onDone(msg);
     } catch (e) {
       toast(errMsg(e, "สร้างคอร์สเดี่ยวไม่สำเร็จ"));
@@ -521,24 +514,36 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
               {lookups.availability.map((a) => <option key={a.Course_Availability_Id} value={a.Course_Availability_Id}>{a.Course_Availability_Name}</option>)}
             </select>
           </div>
-          <Combobox required label="นักเรียน *" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => set("UserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          <div>
+            <label className={labelCls}>จำนวนผู้เรียน *</label>
+            <select value={f.LearnerCount} onChange={(e) => {
+              const count = Number(e.target.value);
+              setSelectedPackage("");
+              setF((current) => ({ ...current, LearnerCount: count, SecondUserId: "", enrollNow: count === 2 ? true : current.enrollNow, StudentRatePerHour: PRIVATE_PRICING.find((group) => group.learners === count)?.modes[0].starting || current.StudentRatePerHour, customPrice: false, Price: "" }));
+            }} className={INPUT}>
+              <option value={1}>เรียน 1 คน</option><option value={2}>เรียน 2 คนในคลาสเดียว</option>
+            </select>
+          </div>
+          <Combobox required label="นักเรียนคนที่ 1 *" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => setF((current) => ({ ...current, UserId: v, SecondUserId: String(current.SecondUserId) === String(v) ? "" : current.SecondUserId }))} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          {f.LearnerCount === 2 && <Combobox required label="นักเรียนคนที่ 2 *" options={lookups.students.filter((student) => String(student.UserId) !== String(f.UserId))} idKey="UserId" labelOf={fullName} value={f.SecondUserId} onChange={(v) => set("SecondUserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />}
           <Combobox required label="ติวเตอร์ *" options={lookups.tutors} idKey="AdminId" labelOf={fullName} value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
         </section>
 
         <section className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
           <p className="mb-3 flex items-center gap-1.5 text-sm font-bold text-slate-800"><CalcIcon className="h-4 w-4 text-orange-500" />ราคาที่ตกลง</p>
           <label className={labelCls}>ใช้ราคาแพ็กเกจที่แสดงหน้าเว็บ</label>
-          <select defaultValue="" onChange={(e) => {
+          <select value={selectedPackage} onChange={(e) => {
+            setSelectedPackage(e.target.value);
             const [learners, modeKey, hours] = e.target.value.split(":");
             const group = PRIVATE_PRICING.find((entry) => entry.learners === Number(learners));
             const mode = group?.modes.find((entry) => entry.key === modeKey);
             const pack = mode?.packages.find((entry) => entry.hours === Number(hours));
-            if (pack) setF((current) => ({ ...current, TotalHours: pack.hours, StudentRatePerHour: Number((pack.price / pack.hours).toFixed(2)), customPrice: true, Price: String(pack.price) }));
+            if (pack) setF((current) => ({ ...current, LearnerCount: group.learners, SecondUserId: group.learners === 1 ? "" : current.SecondUserId, enrollNow: group.learners === 2 ? true : current.enrollNow, TotalHours: pack.hours, StudentRatePerHour: Number((pack.price / pack.hours).toFixed(2)), customPrice: true, Price: String(pack.price) }));
           }} className={`${INPUT} mb-3`}>
             <option value="">— เลือกแพ็กเกจ หรือกรอกราคาที่ตกลงเอง —</option>
-            {PRIVATE_PRICING.flatMap((group) => group.modes.flatMap((mode) => mode.packages.map((pack) => <option key={`${group.learners}:${mode.key}:${pack.hours}`} value={`${group.learners}:${mode.key}:${pack.hours}`} disabled={group.learners === 2}>{group.label} · {mode.label} · {pack.hours} ชม. · {money(pack.price)}{group.learners === 2 ? "/คน · รอรองรับคอร์สคู่" : ""}</option>)))}
+            {PRIVATE_PRICING.flatMap((group) => group.modes.flatMap((mode) => mode.packages.map((pack) => <option key={`${group.learners}:${mode.key}:${pack.hours}`} value={`${group.learners}:${mode.key}:${pack.hours}`}>{group.label} · {mode.label} · {pack.hours} ชม. · {money(pack.price)}{group.learners === 2 ? "/คน" : ""}</option>)))}
           </select>
-          <p className="mb-3 text-xs text-slate-500">ราคาเรียนคู่เป็นราคาต่อคน แต่ฟอร์มสร้างคอร์สนี้ยังรองรับเพียงนักเรียนหนึ่งคนต่อคลาส เพื่อไม่ให้นับตารางและค่าติวเตอร์ซ้ำ จึงยังไม่เปิดให้เลือกแพ็กเกจคู่ที่นี่</p>
+          <p className="mb-3 text-xs text-slate-500">ราคาที่กรอกเป็นราคาต่อคน นักเรียนแต่ละคนมียอดชำระของตนเอง ตารางสอนและค่าติวเตอร์นับเป็นคลาสเดียว</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className={labelCls}>ชั่วโมงเรียนรวม *</label>
@@ -553,7 +558,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
               <input type="number" min="0" value={f.TutorRatePerHour} onChange={(e) => set("TutorRatePerHour", e.target.value)} className={`${INPUT} ${lossRate ? "border-red-300 ring-2 ring-red-200" : ""}`} />
             </div>
           </div>
-          {lossRate && <p className="mt-2 text-xs font-semibold text-red-600">ค่าติวเตอร์/ชม. สูงกว่าราคาขาย/ชม. จะทำให้ขาดทุน</p>}
+          {lossRate && <p className="mt-2 text-xs font-semibold text-red-600">รายรับรวมของคลาสต่ำกว่าค่าติวเตอร์</p>}
 
           <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
             <input type="checkbox" checked={f.customPrice} onChange={(e) => setF((p) => ({ ...p, customPrice: e.target.checked, Price: e.target.checked ? String(autoPrice) : "" }))} className="accent-orange-500" />
@@ -563,7 +568,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
 
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl border border-slate-100 bg-white px-2 py-2">
-              <p className="text-[11px] text-slate-500">ราคาคอร์ส</p>
+              <p className="text-[11px] text-slate-500">ราคาต่อคน</p>
               <p className="font-bold text-slate-900 tabular-nums">{money(price)}</p>
               {!f.customPrice && <p className="text-[10px] text-slate-400">{hours} ชม. × {money(f.StudentRatePerHour)}</p>}
             </div>
@@ -572,7 +577,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
               <p className="font-bold text-slate-900 tabular-nums">{money(tutorCost)}</p>
             </div>
             <div className={`rounded-xl border px-2 py-2 ${margin >= 0 ? "border-emerald-100 bg-emerald-50" : "border-red-100 bg-red-50"}`}>
-              <p className="text-[11px] text-slate-500">สถาบันได้</p>
+              <p className="text-[11px] text-slate-500">สถาบันได้ ({f.LearnerCount} คน)</p>
               <p className={`font-bold tabular-nums ${margin >= 0 ? "text-emerald-700" : "text-red-600"}`}>{money(margin)}</p>
             </div>
           </div>
@@ -601,8 +606,8 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
         </section>
 
         <label className="flex items-start gap-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-          <input type="checkbox" checked={f.enrollNow} onChange={(e) => set("enrollNow", e.target.checked)} className="mt-0.5 accent-orange-500" />
-          <span>ลงทะเบียนนักเรียนเข้าคอร์สทันที<span className="block text-xs text-slate-500">คอร์สจะแสดงในหน้า "คอร์สเรียนของฉัน" ของนักเรียน และจัดตารางสอนได้ที่หน้าตารางเรียน</span></span>
+          <input type="checkbox" checked={f.enrollNow} disabled={f.LearnerCount === 2} onChange={(e) => set("enrollNow", e.target.checked)} className="mt-0.5 accent-orange-500" />
+          <span>ลงทะเบียนนักเรียนเข้าคอร์สทันที<span className="block text-xs text-slate-500">{f.LearnerCount === 2 ? "คอร์สเรียนคู่ลงทะเบียนทั้งสองคนพร้อมกันในคลาสเดียว" : "คอร์สจะแสดงในหน้า 'คอร์สเรียนของฉัน' ของนักเรียน และจัดตารางสอนได้ที่หน้าตารางเรียน"}</span></span>
         </label>
       </div>
     </Modal>
@@ -627,32 +632,45 @@ function EnrollModal({ course, students, onClose, onDone }) {
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "ลงทะเบียน"}</button>
       </>}>
-      <Combobox required label="นักเรียน" options={students} idKey="UserId" labelOf={fullName} value={userId} onChange={setUserId} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+      <Combobox required label="นักเรียน" options={students.filter((student) => !(course.Students || []).some((enrolled) => Number(enrolled.UserId) === Number(student.UserId)))} idKey="UserId" labelOf={fullName} value={userId} onChange={setUserId} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
     </Modal>
   );
 }
 
 /* ═════════ Modal · บันทึกรับเงิน ═════════ */
 function PaymentModal({ course, onClose, onDone }) {
-  const remaining = Math.max(0, Number(course.FullCost || 0) - Number(course.PaidAmount || 0));
-  const [f, setF] = useState({ Amount: remaining, PaidDate: todayStr(), Note: "" });
+  const [selectedUserId, setSelectedUserId] = useState(String((course.Students || []).find((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : course.FullCost || 0))?.UserId || ""));
+  const selectedStudent = (course.Students || []).find((student) => String(student.UserId) === selectedUserId);
+  const total = Number(selectedStudent?.OrderId ? selectedStudent.TotalAmount : course.FullCost || 0);
+  const paid = Number(selectedStudent?.PaidAmount || 0);
+  const remaining = Math.max(0, total - paid);
+  const [f, setF] = useState({ Amount: "", PaidDate: todayStr(), Note: "" });
   const [saving, setSaving] = useState(false);
   const submit = async () => {
+    if (!selectedUserId) return toast("กรุณาเลือกนักเรียน");
+    if (!Number(f.Amount) || Number(f.Amount) > remaining) return toast("กรุณาระบุยอดรับเงินไม่เกินยอดค้างของนักเรียนคนนี้");
     setSaving(true);
     try {
-      const res = await axios.post(`${API}/private-courses/${course.CourseID}/payments`, f, auth());
+      const res = await axios.post(`${API}/private-courses/${course.CourseID}/payments`, { ...f, UserId: Number(selectedUserId) }, auth());
       await onDone(res.data.message);
     } catch (e) { toast(errMsg(e, "บันทึกรับเงินไม่สำเร็จ")); } finally { setSaving(false); }
   };
   return (
-    <Modal title="บันทึกรับเงิน" subtitle={`${personName(course, "Student")} · ${course.SubjectName || ""}`} icon={Wallet} onClose={onClose}
+    <Modal title="บันทึกรับเงิน" subtitle={`${course.CourseName} · ${course.SubjectName || ""}`} icon={Wallet} onClose={onClose}
       footer={<>
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "บันทึก"}</button>
       </>}>
       <div className="space-y-4">
+        <div>
+          <label className={labelCls}>นักเรียนที่ชำระ *</label>
+          <select value={selectedUserId} onChange={(e) => { setSelectedUserId(e.target.value); setF((current) => ({ ...current, Amount: "" })); }} className={INPUT}>
+            <option value="">— เลือกนักเรียน —</option>
+            {(course.Students || []).map((student) => <option key={student.UserId} value={student.UserId}>{fullName(student)} · ค้าง {money(Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost || 0) - Number(student.PaidAmount || 0)))}</option>)}
+          </select>
+        </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          {[["ราคาคอร์ส", course.FullCost, "text-slate-900"], ["รับแล้ว", course.PaidAmount, "text-emerald-700"], ["ค้างชำระ", remaining, "text-amber-600"]].map(([l, v, cls]) => (
+          {[["ราคาต่อคน", total, "text-slate-900"], ["รับแล้ว", paid, "text-emerald-700"], ["ค้างชำระ", remaining, "text-amber-600"]].map(([l, v, cls]) => (
             <div key={l} className="rounded-xl border border-slate-100 bg-slate-50 px-2 py-2">
               <p className="text-[11px] text-slate-500">{l}</p>
               <p className={`font-bold tabular-nums ${cls}`}>{money(v)}</p>
