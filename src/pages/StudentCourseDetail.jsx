@@ -47,6 +47,7 @@ export default function StudentCourseDetail() {
     searchParams.get("courseName") || "คอร์สเรียน"
   );
   const [courseType, setCourseType] = useState("bundle");
+  const [fullCost, setFullCost] = useState(0);
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [videos, setVideos] = useState([]);
@@ -91,6 +92,7 @@ export default function StudentCourseDetail() {
         setCourseName(detail.course?.courseName ?? detail.course?.CourseName ?? "คอร์สเรียน");
         const type = detail.course?.courseType ?? detail.course?.Course_Type ?? "bundle";
         setCourseType(type);
+        setFullCost(Number(detail.course?.fullCost ?? detail.course?.FullCost ?? 0));
         setActiveTab(type === "single" ? "attendance" : "videos");
         setAttendance((detail.schedule ?? []).map((item) => ({
           StudentAttendanceId: item.attendanceId ?? item.AttendanceId ?? item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
@@ -435,7 +437,7 @@ export default function StudentCourseDetail() {
         </div>
       )}
 
-      {activeTab === "payments" && <CoursePaymentsTab courseId={courseId} />}
+      {activeTab === "payments" && <CoursePaymentsTab courseId={courseId} courseType={courseType} fullCost={fullCost} />}
     </div>
   );
 }
