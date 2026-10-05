@@ -133,22 +133,22 @@ export default function StudentCourses() {
             sum + safeCount(subject.attendedSessions ?? subject.AttendedSessions), 0);
           const totalSessions = Math.max(courseSchedules.length, apiTotalSessions, subjectTotalSessions);
 
+          const courseType = c.courseType ?? c.CourseType ?? c.Course_Type ?? "bundle";
           const derivedCompletedSessions = courseSchedules.filter((item) => {
-            const status = String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase();
-            if (["present", "absent", "1", "0", "มา", "ขาด"].includes(status)) return true;
             const date = new Date(item.StartDateTime ?? item.startDateTime ?? item.ClassDate ?? item.classDate);
             return !Number.isNaN(date.getTime()) && date < new Date();
           }).length;
           const completedSessions = courseSchedules.length
             ? derivedCompletedSessions
-            : Math.max(safeCount(c.completedSessions ?? c.CompletedSessions), subjectAttendedSessions);
+            : courseType === "single" ? Math.max(safeCount(c.completedSessions ?? c.CompletedSessions), subjectAttendedSessions) : 0;
 
           const statusInfo = mapStatus(startDate, lastDate);
 
-          const progress = calcProgress(
-            completedSessions,
-            totalSessions
-          );
+          const plannedTopicCount = safeCount(c.plannedTopicCount ?? c.PlannedTopicCount);
+          const taughtTopicCount = safeCount(c.taughtTopicCount ?? c.TaughtTopicCount);
+          const progress = courseType === "bundle"
+            ? calcProgress(taughtTopicCount, plannedTopicCount)
+            : calcProgress(completedSessions, totalSessions);
 
           return {
             id: courseId,
@@ -166,6 +166,8 @@ export default function StudentCourses() {
             totalSessions,
 
             completedSessions: Math.min(totalSessions, completedSessions),
+            plannedTopicCount,
+            taughtTopicCount,
 
             totalVideos:
               courseContent.videos.length || safeCount(c.totalVideos ?? c.TotalVideos),
@@ -178,7 +180,7 @@ export default function StudentCourses() {
             totalFiles:
               courseContent.files.length || safeCount(c.totalFiles ?? c.TotalFiles),
 
-            courseType: c.courseType ?? c.CourseType ?? c.Course_Type ?? "bundle",
+            courseType,
 
             statusId: statusInfo.id,
             statusText: statusInfo.text,
@@ -315,7 +317,7 @@ export default function StudentCourses() {
                   <div className="space-y-2 bg-neutral-50 p-3 rounded-xl border border-neutral-100">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-neutral-600 font-bold">
-                        ความคืบหน้า <span className="text-neutral-400 font-medium ml-1">({course.completedSessions}/{course.totalSessions} คาบ)</span>
+                        {course.courseType === "bundle" ? "ความคืบหน้าแผนการสอน" : "ความคืบหน้า"} <span className="text-neutral-400 font-medium ml-1">{course.courseType === "bundle" ? `(${course.taughtTopicCount}/${course.plannedTopicCount} หัวข้อ)` : `(${course.completedSessions}/${course.totalSessions} คาบ)`}</span>
                       </span>
                       <span className="font-black text-orange-600">{course.progress}%</span>
                     </div>
@@ -332,8 +334,8 @@ export default function StudentCourses() {
                       <Clock className="w-4 h-4" />
                     </div>
                     <div>
-                      <p className="font-bold text-neutral-900 leading-none">{course.completedSessions}/{course.totalSessions}</p>
-                      <p className="text-[9px] text-neutral-500 font-medium mt-1 uppercase">คาบเรียน</p>
+                      <p className="font-bold text-neutral-900 leading-none">{course.courseType === "bundle" ? `${course.taughtTopicCount}/${course.plannedTopicCount}` : `${course.completedSessions}/${course.totalSessions}`}</p>
+                      <p className="text-[9px] text-neutral-500 font-medium mt-1 uppercase">{course.courseType === "bundle" ? "หัวข้อที่สอน" : "คาบเรียน"}</p>
                     </div>
                   </div>
 

@@ -967,6 +967,11 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
         <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบในเทอม</p>
       )}
 
+      <div className="mt-1 border-t border-slate-100 pt-1 text-[11px] leading-4">
+        <p className="font-semibold text-slate-600">แผนคาบ: {entry.PlannedTopics?.length ? entry.PlannedTopics.join(', ') : 'ยังไม่จัดหัวข้อ'}</p>
+        {entry.TaughtTopics?.length > 0 && <p className="mt-0.5 font-semibold text-emerald-700">สอนจริง: {entry.TaughtTopics.join(', ')}</p>}
+      </div>
+
       {/* Actions */}
       <div className="absolute top-1 right-1 opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition flex gap-1">
         <button aria-label="แก้ไข"

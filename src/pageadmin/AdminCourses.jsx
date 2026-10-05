@@ -1027,6 +1027,9 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     Photo: t.Photo,
   }));
   const topicsReady = subjects.filter((s) => s.TeachingTopics?.length).length;
+  const allPlanTopics = subjects.flatMap((subject) => subject.TeachingTopics || []);
+  const scheduledPlanTopics = allPlanTopics.filter((topic) => topic.isScheduled).length;
+  const taughtPlanTopics = allPlanTopics.filter((topic) => topic.isTaught).length;
   const toggleTopics = (id) => setExpandedTopicIds((current) => {
     const next = new Set(current);
     if (next.has(id)) next.delete(id);
@@ -1053,6 +1056,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
             <div className="h-full rounded-full bg-white transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${subjects.length ? (topicsReady / subjects.length) * 100 : 0}%` }} />
           </div>
         </div>
+        <div className="grid grid-cols-3 gap-2 border-b border-orange-100 bg-orange-50/50 p-3 text-center text-xs sm:p-4"><div><p className="text-lg font-bold text-slate-900">{allPlanTopics.length}</p><p className="text-slate-600">หัวข้อในแผน</p></div><div><p className="text-lg font-bold text-orange-700">{scheduledPlanTopics}</p><p className="text-slate-600">จัดลงคาบแล้ว</p></div><div><p className="text-lg font-bold text-emerald-700">{taughtPlanTopics}</p><p className="text-slate-600">สอนจริงแล้ว</p></div></div>
         <div className="space-y-2 p-3 sm:p-4">
           {subjects.length === 0 && <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">เมื่อเพิ่มวิชาและติวเตอร์แล้ว แผนหัวข้อจะปรากฏที่นี่</p>}
           {subjects.map((s) => {
@@ -1068,7 +1072,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
               </div>
               {topics.length ? <>
                 <ol className={`mt-3 space-y-1.5 overflow-y-auto ${expanded ? "max-h-64" : "max-h-none"}`}>
-                  {(expanded ? topics : topics.slice(0, 2)).map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-sm leading-6 text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-bold text-orange-600 shadow-sm">{index + 1}</span><span className="min-w-0 break-words">{topic.title}</span></li>)}
+                  {(expanded ? topics : topics.slice(0, 2)).map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-sm leading-6 text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-bold text-orange-600 shadow-sm">{index + 1}</span><span className="min-w-0 flex-1 break-words">{topic.title}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${topic.isTaught ? 'bg-emerald-50 text-emerald-700' : topic.isScheduled ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}>{topic.isTaught ? 'สอนแล้ว' : topic.isScheduled ? 'ยังไม่สอน' : 'ยังไม่จัดคาบ'}</span></li>)}
                 </ol>
                 {topics.length > 2 && <button type="button" onClick={() => toggleTopics(s.TutorCourseDetailId)} aria-expanded={expanded} className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-100">{expanded ? "ย่อรายการ" : `ดูอีก ${topics.length - 2} หัวข้อ`}<ChevronDown className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} /></button>}
               </> : <p className="mt-2 text-xs text-slate-500">ติวเตอร์ยังไม่ได้บันทึกหัวข้อของวิชานี้</p>}
@@ -3044,6 +3048,22 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showPlan, setShowPlan] = useState(false);
+  const [planSubjects, setPlanSubjects] = useState([]);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState('');
+  const togglePlan = async () => {
+    if (showPlan) { setShowPlan(false); return; }
+    setPlanLoading(true);
+    setPlanError('');
+    setShowPlan(true);
+    try {
+      const response = await axios.get(`${API_BASE}/courses/${course.CourseID}/subjects`);
+      setPlanSubjects(response.data || []);
+    } catch (error) {
+      setPlanError(error.response?.data?.message || 'โหลดแผนการสอนไม่สำเร็จ');
+    } finally { setPlanLoading(false); }
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-orange-400 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
@@ -3134,6 +3154,15 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
               {s.trim()}
             </span>
           ))}
+        </div>
+
+        <div className="mb-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3 text-xs text-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-1"><span className="font-bold">แผนการสอน</span><span className="font-semibold text-orange-700">{course.PlannedTopicCount || 0} หัวข้อ</span></div>
+          <p className="mt-1">จัดลงคาบแล้ว {course.ScheduledTopicCount || 0} · สอนจริงแล้ว {course.TaughtTopicCount || 0} · ยังไม่จัดคาบ {Math.max(0, Number(course.PlannedTopicCount || 0) - Number(course.ScheduledTopicCount || 0))}</p>
+          <button type="button" onClick={togglePlan} aria-expanded={showPlan} className="mt-2 font-bold text-orange-700 hover:underline">{showPlan ? 'ซ่อนรายละเอียด' : 'ดูหัวข้อและความคืบหน้า'}</button>
+          {showPlan && <div className="mt-3 max-h-64 space-y-2 overflow-y-auto border-t border-orange-100 pt-3 pr-1">
+            {planLoading ? <p>กำลังโหลด…</p> : planError ? <p className="text-red-600">{planError}</p> : planSubjects.length ? planSubjects.map(subject => <div key={subject.TutorCourseDetailId} className="rounded-lg bg-white p-2.5"><p className="font-bold text-slate-800">{subject.SubjectName} · {subject.Nickname || [subject.Firstname, subject.Lastname].filter(Boolean).join(' ')}</p><ul className="mt-1.5 space-y-1">{subject.TeachingTopics?.length ? subject.TeachingTopics.map(topic => <li key={topic.id} className="flex flex-wrap justify-between gap-1"><span>{topic.title}</span><span className={`font-semibold ${topic.isTaught ? 'text-emerald-700' : topic.isScheduled ? 'text-orange-700' : 'text-slate-500'}`}>{topic.isTaught ? 'สอนแล้ว' : topic.isScheduled ? 'จัดลงคาบ' : 'ยังไม่จัดคาบ'}</span></li>) : <li className="text-slate-500">ยังไม่มีหัวข้อ</li>}</ul></div>) : <p>ยังไม่มีวิชาในคอร์ส</p>}
+          </div>}
         </div>
 
         <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">

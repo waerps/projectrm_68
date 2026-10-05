@@ -32,9 +32,9 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(({ data }) => {
       if (!active) return;
-      const names = (data.topics || []).map((topic) => topic.title);
-      setTopics(names);
-      setSavedTopics(names);
+      const loaded = (data.topics || []).map((topic) => ({ id: topic.id, title: topic.title }));
+      setTopics(loaded);
+      setSavedTopics(loaded);
       setLoadFailed(false);
     }).catch((err) => {
       if (active) {
@@ -45,7 +45,7 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
     return () => { active = false; };
   }, [courseId, subjectId, requestData, reloadKey]);
 
-  const updateAt = (index, title) => setTopics((items) => items.map((item, i) => i === index ? title : item));
+  const updateAt = (index, title) => setTopics((items) => items.map((item, i) => i === index ? { ...item, title } : item));
   const move = (index, direction) => setTopics((items) => {
     const next = [...items];
     const target = index + direction;
@@ -54,7 +54,7 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
     return next;
   });
   const save = async () => {
-    if (topics.some((title) => !title.trim())) {
+    if (topics.some((item) => !item.title.trim())) {
       setError("กรุณากรอกชื่อหัวข้อให้ครบ หรือลบรายการที่ว่าง");
       return;
     }
@@ -62,13 +62,14 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
     setError("");
     try {
       const token = localStorage.getItem("student_token");
-      const cleaned = topics.map((title) => title.trim());
-      await axios.put(`${API_URL}/api/tutor-content/teaching-topics`,
+      const cleaned = topics.map((item) => ({ id: item.id, title: item.title.trim() }));
+      const response = await axios.put(`${API_URL}/api/tutor-content/teaching-topics`,
         { ...requestData, topics: cleaned },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
-      setTopics(cleaned);
-      setSavedTopics(cleaned);
+      const savedItems = response.data.topics.map(({ id, title }) => ({ id, title }));
+      setTopics(savedItems);
+      setSavedTopics(savedItems);
       setSaved(true);
       setEditing(false);
       window.setTimeout(() => setSaved(false), 3000);
@@ -108,10 +109,10 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
         </div> : editing ? <>
           <div className="mb-3 flex items-start gap-2 rounded-xl bg-orange-50 px-3 py-2 text-xs leading-5 text-orange-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />ระบุหัวข้อหลักพอสังเขป แอดมินจะเห็นรายการนี้ในภาพรวมคอร์ส</div>
           <ol className="max-h-80 space-y-2 overflow-y-auto pr-1.5 overscroll-contain">
-            {topics.map((title, index) => <li key={index} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2 sm:items-center">
+            {topics.map((item, index) => <li key={item.id || index} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2 sm:items-center">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-sm font-bold text-orange-600 shadow-sm">{index + 1}</span>
               <input
-                value={title}
+                value={item.title}
                 onChange={(event) => updateAt(index, event.target.value)}
                 maxLength={MAX_TITLE_LENGTH}
                 placeholder={`หัวข้อที่ ${index + 1}`}
@@ -126,7 +127,7 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
             </li>)}
           </ol>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <button type="button" onClick={() => setTopics((items) => [...items, ""])} disabled={topics.length >= MAX_TOPICS || saving} className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-40"><Plus className="h-4 w-4" /> เพิ่มหัวข้อ</button>
+            <button type="button" onClick={() => setTopics((items) => [...items, { id: null, title: "" }])} disabled={topics.length >= MAX_TOPICS || saving} className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-40"><Plus className="h-4 w-4" /> เพิ่มหัวข้อ</button>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-xs ${changed ? "font-semibold text-amber-700" : "text-slate-500"}`}>{changed ? "● ยังไม่บันทึก" : `${topics.length}/${MAX_TOPICS} หัวข้อ`}</span>
               <button type="button" onClick={cancelEdit} disabled={saving} className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-40"><X className="h-4 w-4" /> ยกเลิก</button>
@@ -139,8 +140,8 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
           {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
         </> : savedTopics.length ? <>
           <ol className={`space-y-1.5 ${showAll ? "max-h-64 overflow-y-auto overscroll-contain pr-1" : ""}`}>
-            {(showAll ? savedTopics : savedTopics.slice(0, 3)).map((title, index) => <li key={index} className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 transition-colors hover:bg-orange-50/60">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 break-words leading-6">{title}</span>
+            {(showAll ? savedTopics : savedTopics.slice(0, 3)).map((item, index) => <li key={item.id || index} className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 transition-colors hover:bg-orange-50/60">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 break-words leading-6">{item.title}</span>
             </li>)}
           </ol>
           {savedTopics.length > 3 && <button type="button" aria-expanded={showAll} onClick={() => setShowAll((value) => !value)} className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-50">
