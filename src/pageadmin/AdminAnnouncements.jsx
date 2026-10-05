@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import UIModal from "../components/ui/Modal";
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Megaphone, Plus, Search, Filter, Pencil, Trash2, Eye,
+    Megaphone, Plus, Search, Filter, Pencil, Trash2,
     Image as ImageIcon, Calendar, Users, X, Save,
     TrendingUp, Bell, BookOpen, PartyPopper, AlertCircle,
     ChevronLeft, ChevronRight, Loader2, Inbox, Images,
@@ -496,7 +496,7 @@ export default function AdminAnnouncements() {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                     { label: 'ข่าวทั้งหมด', value: stats.total, color: 'bg-blue-600', Icon: Megaphone },
-                    { label: 'ข่าวสำหรับติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Eye },
+                    { label: 'ข่าวสำหรับติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Users },
                     { label: 'ข่าวสำหรับนักเรียน', value: stats.studentCount ?? 0, color: 'bg-purple-500', Icon: TrendingUp },
                 ].map(({ label, value, color, Icon }) => (
                     <div key={label} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 flex items-center gap-3">
@@ -602,9 +602,6 @@ export default function AdminAnnouncements() {
                                             <TargetBadge target={item.TargetAudience} />
                                             <span className="text-xs text-slate-500 flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />{formatThaiDate(item.Created_at)}
-                                            </span>
-                                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                <Eye className="h-3 w-3" />{item.Views ?? 0} ครั้ง
                                             </span>
                                         </div>
 

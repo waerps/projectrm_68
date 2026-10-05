@@ -2016,25 +2016,15 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       : distributeInstallments(fullCost, installmentsCount))
     : [];
   const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
-  const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
+  const installmentMismatch = isInstallmentEnabled && form.Price !== "" && form.Price !== null && Math.abs(fullCost - installmentSum) > 0.01;
 
   // ── ช่องที่ยังไม่ครบ/ไม่ถูกต้อง (กติกาเดียวกับตอนบันทึกและฝั่ง backend) ──
   const errors = {};
   if (!String(form.CourseName || "").trim()) errors.CourseName = "กรุณากรอกชื่อคอร์ส";
-  if (!form.StartDate) errors.StartDate = "กรุณาเลือกวันเริ่มสอน";
-  if (!form.LastDate) errors.LastDate = "กรุณาเลือกวันสิ้นสุด";
-  if (form.StartDate && form.LastDate) {
-    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
-      errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง กรุณาลบแล้วเลือกวันที่ใหม่จากปฏิทิน";
-    } else if (new Date(form.StartDate) >= new Date(form.LastDate)) {
-      errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
-    }
-  }
-  if (!form.YearId) errors.YearId = "กรุณาเลือกปีการศึกษา";
-  if (hoursMismatch) {
-    errors.hours = `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินชั่วโมงรวมของคอร์ส"} (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`;
-  }
-  if (!form.Price || Number(form.Price) <= 0) errors.Price = "กรุณากรอกราคาเต็มให้มากกว่า 0";
+  if (form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) errors.StartDate = "รูปแบบวันที่ไม่ถูกต้อง";
+  if (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง";
+  if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
+  if (form.Price !== "" && form.Price !== null && (!Number.isFinite(Number(form.Price)) || Number(form.Price) < 0)) errors.Price = "ราคาที่กรอกต้องไม่ติดลบ";
   if (form.Discount !== "" && Number(form.Discount || 0) > Number(form.Price || 0) && Number(form.Price) > 0) {
     errors.Discount = "ส่วนลดต้องไม่มากกว่าราคาเต็ม";
   }
@@ -2076,26 +2066,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (firstErrorStep >= 0) goTo(firstErrorStep);
 
     if (!form.CourseName.trim()) return toast("กรุณากรอกชื่อคอร์ส");
-    if (!form.StartDate || !form.LastDate) return toast("กรุณากรอกวันเริ่มและวันสิ้นสุด");
-    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+    if ((form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) || (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10)))) {
       return showToast(
         "error",
         "รูปแบบวันที่ไม่ถูกต้อง",
         "กรุณาลบข้อมูลในช่องวันเริ่มสอน/วันสิ้นสุด แล้วเลือกวันที่ใหม่จากปฏิทินอีกครั้ง"
       );
     }
-    if (new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
-    if (!form.Price || Number(form.Price) <= 0) return toast("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
-    if (!form.YearId) return toast("กรุณากรอกปีการศึกษา");
+    if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    if (errors.Price) return toast(errors.Price);
     if (errors.Discount) return toast(errors.Discount);
-
-    if (hoursMismatch) {
-      return showToast(
-        "error",
-        hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
-        `กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
-      );
-    }
 
     // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
     if (installmentMismatch) {
@@ -2110,7 +2090,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       ...form,
       FullCost: fullCost,
       // ★ แปลงเป็น Number ให้ชัวร์ก่อนส่ง กันกรณีมีข้อความดิบค้าง เช่น "8." หลุดเข้ามาตอนยังไม่ blur
-      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts.map(v => Number(v || 0)) : null,
+      InstallmentAmounts: isInstallmentEnabled && form.Price !== "" && form.Price !== null ? currentInstallmentAmounts.map(v => Number(v || 0)) : null,
       pendingSubjects,
       pendingStudents,
     });
@@ -2149,7 +2129,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       step: 2, title: "ราคาและที่นั่ง", rows: [
         { label: "ราคาเต็ม", value: Number(form.Price) > 0 ? `฿${formatPrice(form.Price)}` : null, err: errors.Price },
         { label: "ส่วนลด", value: `฿${formatPrice(form.Discount)}`, err: errors.Discount },
-        { label: "ราคาสุทธิ", value: `฿${formatPrice(fullCost)}` },
+        { label: "ราคาสุทธิ", value: form.Price === "" || form.Price === null ? null : `฿${formatPrice(fullCost)}` },
         { label: "จำนวนที่นั่ง", value: form.MaxStudents ? `${form.MaxStudents} คน` : "ไม่จำกัด" },
         { label: "การชำระเงิน", value: isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว", err: errors.installments },
       ],
@@ -2169,7 +2149,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   ];
 
   const stepWarn = stepHasError(step) && touchedSteps.has(step) && step !== lastStep;
-  const hoursTone = !hoursMismatch ? "success" : hoursDiff > 0 ? "warning" : "danger";
+  const hoursTone = !hoursMismatch ? "success" : "warning";
   const hoursPct = targetCourseHours > 0 ? Math.min(100, Math.round((addedSubjectHours / targetCourseHours) * 100)) : 0;
 
   // layout: [stepper ตรึงบน] · [เนื้อหาเลื่อนได้] · [แถบปุ่มตรึงล่าง] — ใช้คู่กับ Modal bodyClassName="p-0 flex flex-col"
@@ -2258,18 +2238,18 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     placeholder="เช่น คอร์สรวม ป.3 ทั้งหมด 4 วิชา"
                   />
                 </FormField>
-                <FormField label="วันเริ่มสอน" required error={errOf("StartDate")}>
+                <FormField label="วันเริ่มสอน" optional error={errOf("StartDate")}>
                   <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls(errOf("StartDate"))} />
                 </FormField>
                 <FormField
-                  label="วันสิ้นสุด" required
+                  label="วันสิ้นสุด" optional
                   error={errOf("LastDate") || (form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) ? "วันสิ้นสุดต้องมาหลังวันเริ่มสอน" : undefined)}
                   hint={monthsSpanned > 0 ? `ระยะเวลาประมาณ ${monthsSpanned} เดือน` : undefined}
                 >
                   <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
                 </FormField>
-                <FormField label="ปีการศึกษา (พ.ศ.)" required error={errOf("YearId")}>
-                  <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
+                <FormField label="ปีการศึกษา (พ.ศ.)" optional error={errOf("YearId")}>
+                  <select value={form.YearId ?? ""} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
                     <option value="">เลือกปีการศึกษา</option>
                     {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
                   </select>
@@ -2358,13 +2338,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 <FormField
                   label="ชั่วโมงรวมของคอร์ส (ชม.)" optional
                   hint={!monthsSpanned
-                    ? "ถ้ากรอก ชั่วโมงรายวิชาต้องรวมได้เท่าค่านี้"
+                    ? "ระบุภายหลังได้ ชั่วโมงรายวิชาที่จัดไว้จะแสดงด้านข้าง"
                     : !form.TotalCourseHours
                       ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
                       : `เฉลี่ย ${formatHoursLabel(avgHoursPerMonth)}/เดือน (${monthsSpanned} เดือน)`}
                 >
                   <input
-                    type="number" min="0" step="0.5" value={form.TotalCourseHours}
+                    type="number" min="0" step="0.5" value={form.TotalCourseHours ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2393,10 +2373,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                       {hoursMismatch && (
                         <p className={`mt-1.5 text-xs ${errOf("hours") ? "text-red-600 font-medium" : "text-slate-600"}`}>
                           {tutorCount === 0
-                            ? "ยังไม่มีวิชา เพิ่มวิชาและติวเตอร์ด้านล่าง"
+                            ? "ยังไม่มีวิชาและติวเตอร์ สามารถบันทึกเป็นร่างแล้วเพิ่มภายหลังได้"
                             : hoursDiff > 0
-                              ? "เพิ่มวิชา หรือแก้ชั่วโมงรายวิชาให้ครบ"
-                              : "ลดชั่วโมงรายวิชา หรือเพิ่มชั่วโมงรวม"}
+                              ? "ชั่วโมงรายวิชายังไม่ครบ สามารถบันทึกเป็นร่างได้"
+                              : "ชั่วโมงรายวิชาเกินชั่วโมงรวม ตรวจสอบเมื่อได้ข้อมูลครบ"}
                         </p>
                       )}
                     </div>
@@ -2454,7 +2434,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <div className={step === 2 ? "space-y-4" : "hidden"}>
             <FormSection title="ราคา">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-4">
-                <FormField label="ราคาเต็ม (บาท)" required error={errOf("Price")}>
+                <FormField label="ราคาเต็ม (บาท)" optional error={errOf("Price")}>
                   <input
                     type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
                     onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
@@ -2468,7 +2448,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 </FormField>
                 <FormField label="ราคาสุทธิ" hint="ราคาเต็ม − ส่วนลด">
                   <div className="h-10 flex items-center px-3 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600 tabular-nums">
-                    ฿{formatPrice(fullCost)}
+                    {form.Price === "" || form.Price === null ? "ยังไม่ระบุ" : `฿${formatPrice(fullCost)}`}
                   </div>
                 </FormField>
               </div>
@@ -2478,7 +2458,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <div className={FORM_GRID}>
                 <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint="เว้นว่าง = ไม่จำกัด">
                   <input
-                    type="number" min="0" step="1" value={form.MaxStudents}
+                    type="number" min="0" step="1" value={form.MaxStudents ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2493,7 +2473,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     : "1 = จ่ายครั้งเดียว"}
                 >
                   <input
-                    type="number" min="0" step="1" value={form.Installments}
+                    type="number" min="0" step="1" value={form.Installments ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2505,8 +2485,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     }}
                     className={inputCls()} />
                 </FormField>
-                {isInstallmentEnabled && (
-                  <FormField label="ยอดผ่อนแต่ละงวด" required error={errOf("installments")} hint="ยอดรวมต้องเท่ากับราคาสุทธิ" className="sm:col-span-2">
+                {isInstallmentEnabled && form.Price !== "" && form.Price !== null && (
+                  <FormField label="ยอดผ่อนแต่ละงวด" error={errOf("installments")} hint="ยอดรวมต้องเท่ากับราคาสุทธิ" className="sm:col-span-2">
                     <InstallmentAmountsEditor
                       installments={installmentsCount}
                       fullCost={fullCost}
@@ -2630,7 +2610,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ) : (
               <div className={`${CALLOUT.box} ${CALLOUT.success}`}>
                 <Check className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.success}`} />
-                <p>ข้อมูลครบแล้ว กด “{isEdit ? "บันทึกการแก้ไข" : "สร้างคอร์ส"}” เพื่อบันทึก</p>
+                <p>บันทึกเป็นร่างได้ ข้อมูลที่ยังไม่แน่ใจเพิ่มภายหลังได้</p>
               </div>
             )}
 
@@ -3289,8 +3269,8 @@ export default function AdminCoursesPage() {
     setIsSubmitting(true);
     const { pendingSubjects, pendingStudents, ...courseData } = data;
     try {
-      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData)
-      showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ");
+      const result = await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData);
+      showToast("success", result.data?.drafted ? "บันทึกฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม" : "บันทึกข้อมูลคอร์สร่างแล้ว");
       setEditingCourse(null);
       fetchAll();
     } catch (e) {
