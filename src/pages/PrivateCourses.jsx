@@ -109,6 +109,7 @@ const Eyebrow = ({ children, light }) => (
 );
 
 const baht = (price) => new Intl.NumberFormat("th-TH").format(price);
+const hourlyAverage = (price, hours) => new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(price / hours);
 const phoneMask = (value) => {
   const digits = value.replace(/\D/g, "").slice(0, 10);
   return [digits.slice(0, 3), digits.slice(3, 6), digits.slice(6)].filter(Boolean).join("-");
@@ -133,8 +134,9 @@ function PrivatePricing({ onInquire }) {
           {group.modes.map((mode) => <div key={mode.key} className="rounded-2xl border border-orange-100 bg-[#fffaf5] p-4">
             <div className="flex items-start justify-between gap-2"><div><p className="text-xs font-bold text-orange-600">{mode.key === "online" ? "เรียนจากที่ไหนก็ได้" : "พบครูที่สถาบัน"}</p><h4 className="text-lg font-extrabold text-[#14213D]">{mode.label}</h4></div>
               {mode.starting && <span className="rounded-xl bg-white px-2 py-1 text-right text-[11px] font-bold text-orange-600 shadow-sm">เริ่ม {baht(mode.starting)}<br />บาท/ชม.</span>}</div>
-            <div className="mt-4 space-y-2">{mode.packages.map((pack) => <div key={pack.hours} className={`flex items-baseline justify-between gap-2 rounded-xl px-3 py-2.5 ${pack.hours === 20 ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "bg-white text-slate-700"}`}>
-              <span className="text-sm font-bold">{pack.hours} ชั่วโมง</span><span className="text-right text-base font-extrabold tabular-nums">{baht(pack.price)} <small className="text-[11px] font-semibold">บาท{group.learners === 2 ? "/คน" : ""}</small></span>
+            <div className="mt-4 space-y-2">{mode.packages.map((pack) => <div key={pack.hours} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-slate-700">
+              <div className="flex items-baseline justify-between gap-2"><span className="text-sm font-bold">{pack.hours} ชั่วโมง</span><span className="text-right text-base font-extrabold tabular-nums">{baht(pack.price)} <small className="text-[11px] font-semibold">บาท{group.learners === 2 ? "/คน" : ""}</small></span></div>
+              <p className="mt-0.5 text-right text-[11px] font-medium text-slate-500">(เฉลี่ย ≈ {hourlyAverage(pack.price, pack.hours)} บาท/{group.learners === 2 ? "คน/" : ""}ชม.)</p>
             </div>)}</div>
           </div>)}
         </div>
