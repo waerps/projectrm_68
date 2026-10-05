@@ -44,7 +44,7 @@ const labelCls = "mb-1 block text-xs font-semibold text-slate-600";
 // onManageCourse(courseId) : เปิดฟอร์มจัดการคอร์สเต็มของหน้าคอร์ส (วิชา/นักเรียน/ตาราง/คลิป)
 // version                  : เปลี่ยนเมื่อหน้าคอร์สโหลดข้อมูลใหม่ → แท็บนี้โหลดตาม
 // onDataChanged()          : แจ้งหน้าคอร์สว่ามีการสร้าง/ลงทะเบียน/รับเงิน
-export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDataChanged }) {
+export default function PrivateCoursesPanel({ onManageCourse, onViewTeachingPlan, version = 0, onDataChanged }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") === "inquiries" ? "inquiries" : searchParams.get("tab") === "offers" ? "offers" : "courses";
   const [tab, setTab] = useState(requestedTab);
@@ -154,7 +154,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ) : error ? (
         <UIErrorState message={error} onRetry={load} />
       ) : tab === "courses" ? (
-        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })}
+        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onViewTeachingPlan={onViewTeachingPlan} onCreate={() => setModal({ type: "create" })}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
       ) : tab === "offers" ? (
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
@@ -216,7 +216,7 @@ function Stat({ icon, color, label, value, unit, sub, className = "" }) {
 }
 
 /* ═════════ แท็บ 1 · คอร์สของนักเรียน ═════════ */
-function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll }) {
+function CoursesTab({ courses, search = "", onManage, onViewTeachingPlan, onCreate, onPay, onEnroll }) {
   const list = courses.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -285,6 +285,8 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
                   <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
                   <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
                   <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""}</p>
+                  <p className={`mt-1 text-xs font-semibold ${Number(c.TopicCount) ? "text-emerald-700" : "text-amber-700"}`}>แผนการสอน: {Number(c.TopicCount) ? `${Number(c.TopicCount)} หัวข้อ` : "รอติวเตอร์ระบุ"}</p>
+                  <button type="button" onClick={() => onViewTeachingPlan(c)} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm font-bold text-orange-700 hover:bg-orange-100"><BookOpen className="h-4 w-4" />ดูแผนการสอน</button>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.TotalHours ?? "—"}</td>
@@ -312,6 +314,10 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
                 <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")}</p>
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-2 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
+              <div><p className="text-sm font-bold text-slate-800">แผนหัวข้อการสอน</p><p className={`text-sm ${Number(c.TopicCount) ? "text-emerald-700" : "text-amber-700"}`}>{Number(c.TopicCount) ? `${Number(c.TopicCount)} หัวข้อ` : "รอติวเตอร์ระบุ"}</p></div>
+              <button type="button" onClick={() => onViewTeachingPlan(c)} className="shrink-0 rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm font-bold text-orange-700 hover:bg-orange-100">ดูแผน</button>
             </div>
             <p className="text-xs text-slate-500">ราคาขาย <b className="text-slate-800">{money(c.StudentRate)}</b>/ชม. · ค่าติวเตอร์ {money(c.TutorRate)}/ชม.</p>
             <PayCell c={c} />
