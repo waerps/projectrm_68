@@ -968,8 +968,9 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
       )}
 
       <div className="mt-1 border-t border-slate-100 pt-1 text-[11px] leading-4">
-        <p className="font-semibold text-slate-600">แผนคาบ: {entry.PlannedTopics?.length ? entry.PlannedTopics.join(', ') : 'ยังไม่จัดหัวข้อ'}</p>
+        {entry.PlannedTopics?.length > 0 && <p className="font-semibold text-slate-600">คาดว่าจะสอน: {entry.PlannedTopics.join(', ')}</p>}
         {entry.TaughtTopics?.length > 0 && <p className="mt-0.5 font-semibold text-emerald-700">สอนจริง: {entry.TaughtTopics.join(', ')}</p>}
+        {entry.TaughtTopics?.length > 0 && entry.LessonDetail && <p className="mt-0.5 text-slate-600 line-clamp-2">รายละเอียด: {entry.LessonDetail}</p>}
       </div>
 
       {/* Actions */}

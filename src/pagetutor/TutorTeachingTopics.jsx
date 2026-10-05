@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { ArrowDown, ArrowUp, BookOpenText, Check, ChevronDown, Info, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpenText, CalendarDays, Check, ChevronDown, Info, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { API_URL } from "../config";
 
 const MAX_TOPICS = 30;
@@ -17,6 +17,8 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [lessons, setLessons] = useState([]);
+  const [courseDates, setCourseDates] = useState(null);
   const changed = JSON.stringify(topics) !== JSON.stringify(savedTopics);
   const requestData = useMemo(() => ({ courseId, subjectId, ...(assignmentId ? { assignmentId } : {}) }), [courseId, subjectId, assignmentId]);
 
@@ -32,7 +34,10 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(({ data }) => {
       if (!active) return;
-      const loaded = (data.topics || []).map((topic) => ({ id: topic.id, title: topic.title }));
+      const scheduled = data.lessons || [];
+      const loaded = (data.topics || []).map((topic) => ({ id: topic.id, title: topic.title, plannedLessonIds: scheduled.filter(lesson => lesson.plannedTopicIds?.includes(topic.id)).map(lesson => lesson.id) }));
+      setLessons(scheduled);
+      setCourseDates(data.course || null);
       setTopics(loaded);
       setSavedTopics(loaded);
       setLoadFailed(false);
@@ -46,6 +51,10 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
   }, [courseId, subjectId, requestData, reloadKey]);
 
   const updateAt = (index, title) => setTopics((items) => items.map((item, i) => i === index ? { ...item, title } : item));
+  const addLesson = (index, lessonId) => setTopics(items => items.map((item, i) => i === index && !item.plannedLessonIds.includes(lessonId) ? { ...item, plannedLessonIds: [...item.plannedLessonIds, lessonId] } : item));
+  const removeLesson = (index, lessonId) => setTopics(items => items.map((item, i) => i === index ? { ...item, plannedLessonIds: item.plannedLessonIds.filter(id => id !== lessonId) } : item));
+  const lessonLabel = lesson => `${new Date(`${lesson.classDate}T12:00:00`).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' })} ${lesson.startTime}–${lesson.endTime}`;
+  const scheduleSummary = useMemo(() => [...new Set(lessons.map(lesson => `${new Date(`${lesson.classDate}T12:00:00`).toLocaleDateString('th-TH', { weekday: 'short' })} ${lesson.startTime}–${lesson.endTime}`))].join(' · '), [lessons]);
   const move = (index, direction) => setTopics((items) => {
     const next = [...items];
     const target = index + direction;
@@ -62,12 +71,12 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
     setError("");
     try {
       const token = localStorage.getItem("student_token");
-      const cleaned = topics.map((item) => ({ id: item.id, title: item.title.trim() }));
+      const cleaned = topics.map((item) => ({ id: item.id, title: item.title.trim(), plannedLessonIds: item.plannedLessonIds || [] }));
       const response = await axios.put(`${API_URL}/api/tutor-content/teaching-topics`,
         { ...requestData, topics: cleaned },
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
-      const savedItems = response.data.topics.map(({ id, title }) => ({ id, title }));
+      const savedItems = response.data.topics.map(({ id, title }, index) => ({ id, title, plannedLessonIds: cleaned[index].plannedLessonIds }));
       setTopics(savedItems);
       setSavedTopics(savedItems);
       setSaved(true);
@@ -107,9 +116,11 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
           <p className="text-sm text-red-700">{error}</p>
           <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-700 shadow-sm hover:bg-red-100">ลองโหลดใหม่</button>
         </div> : editing ? <>
-          <div className="mb-3 flex items-start gap-2 rounded-xl bg-orange-50 px-3 py-2 text-xs leading-5 text-orange-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />ระบุหัวข้อหลักพอสังเขป แอดมินจะเห็นรายการนี้ในภาพรวมคอร์ส</div>
+          <div className="mb-3 flex items-start gap-2 rounded-xl bg-orange-50 px-3 py-2 text-xs leading-5 text-orange-800"><Info className="mt-0.5 h-4 w-4 shrink-0" />ระบุหัวข้อหลักและคาบที่คาดว่าจะสอนเมื่อมีตารางแล้ว วันสอนจริงยังเลือกหัวข้ออื่นหรือเลือกซ้ำได้</div>
+          <p className="mb-3 flex items-start gap-2 text-xs leading-5 text-slate-600"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" /><span>ช่วงคอร์ส {courseDates?.startDate || 'ยังไม่ระบุ'} – {courseDates?.lastDate || 'ยังไม่ระบุ'} · {Number(courseDates?.totalHours || 0)} ชม.<br />{lessons.length ? `ตารางที่จัดแล้ว ${scheduleSummary} (${lessons.length} คาบ)` : 'แอดมินยังไม่ได้จัดคาบสำหรับวิชานี้'}</span></p>
           <ol className="max-h-80 space-y-2 overflow-y-auto pr-1.5 overscroll-contain">
-            {topics.map((item, index) => <li key={item.id || index} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2 sm:items-center">
+            {topics.map((item, index) => <li key={item.id || index} className="rounded-xl border border-slate-200 bg-slate-50/70 p-2">
+              <div className="flex items-start gap-2 sm:items-center">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-sm font-bold text-orange-600 shadow-sm">{index + 1}</span>
               <input
                 value={item.title}
@@ -124,10 +135,15 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
                 <button type="button" onClick={() => move(index, 1)} disabled={index === topics.length - 1} aria-label={`ย้ายหัวข้อที่ ${index + 1} ลง`} className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-orange-600 disabled:opacity-30"><ArrowDown className="h-4 w-4" /></button>
                 <button type="button" onClick={() => setTopics((items) => items.filter((_, i) => i !== index))} aria-label={`ลบหัวข้อที่ ${index + 1}`} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
               </div>
+              </div>
+              {lessons.length > 0 && <div className="ml-11 mt-2 flex flex-wrap items-center gap-1.5">
+                {(item.plannedLessonIds || []).map(id => { const lesson = lessons.find(entry => Number(entry.id) === Number(id)); return lesson && <span key={id} className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-[11px] text-orange-800">{lessonLabel(lesson)}{!lesson.started && <button type="button" onClick={() => removeLesson(index, id)} aria-label={`ลบคาบ ${lessonLabel(lesson)}`}><X className="h-3 w-3" /></button>}</span>; })}
+                <select aria-label={`เพิ่มคาบที่คาดว่าจะสอนหัวข้อที่ ${index + 1}`} value="" onChange={event => addLesson(index, Number(event.target.value))} className="max-w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600"><option value="">+ เลือกคาบที่คาดว่าจะสอน</option>{lessons.filter(lesson => !lesson.started && !(item.plannedLessonIds || []).includes(lesson.id)).map(lesson => <option key={lesson.id} value={lesson.id}>{lessonLabel(lesson)}</option>)}</select>
+              </div>}
             </li>)}
           </ol>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <button type="button" onClick={() => setTopics((items) => [...items, { id: null, title: "" }])} disabled={topics.length >= MAX_TOPICS || saving} className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-40"><Plus className="h-4 w-4" /> เพิ่มหัวข้อ</button>
+            <button type="button" onClick={() => setTopics((items) => [...items, { id: null, title: "", plannedLessonIds: [] }])} disabled={topics.length >= MAX_TOPICS || saving} className="inline-flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-40"><Plus className="h-4 w-4" /> เพิ่มหัวข้อ</button>
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-xs ${changed ? "font-semibold text-amber-700" : "text-slate-500"}`}>{changed ? "● ยังไม่บันทึก" : `${topics.length}/${MAX_TOPICS} หัวข้อ`}</span>
               <button type="button" onClick={cancelEdit} disabled={saving} className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 disabled:opacity-40"><X className="h-4 w-4" /> ยกเลิก</button>
@@ -141,7 +157,7 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
         </> : savedTopics.length ? <>
           <ol className={`space-y-1.5 ${showAll ? "max-h-64 overflow-y-auto overscroll-contain pr-1" : ""}`}>
             {(showAll ? savedTopics : savedTopics.slice(0, 3)).map((item, index) => <li key={item.id || index} className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-700 transition-colors hover:bg-orange-50/60">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 break-words leading-6">{item.title}</span>
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 break-words leading-6">{item.title}{item.plannedLessonIds?.length > 0 && <span className="block text-xs text-slate-500">คาดว่า {item.plannedLessonIds.map(id => lessons.find(lesson => Number(lesson.id) === Number(id))).filter(Boolean).map(lessonLabel).join(' · ')}</span>}</span>
             </li>)}
           </ol>
           {savedTopics.length > 3 && <button type="button" aria-expanded={showAll} onClick={() => setShowAll((value) => !value)} className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-50">

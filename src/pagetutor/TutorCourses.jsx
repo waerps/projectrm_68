@@ -109,6 +109,9 @@ export default function CoursesPage() {
               startDate: row.StartDate
                 ? new Date(row.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
                 : "ไม่ระบุ",
+              lastDate: row.LastDate
+                ? new Date(row.LastDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+                : "ไม่ระบุ",
               totalHours: 0,
               completedHours: 0,
               StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
@@ -119,6 +122,7 @@ export default function CoursesPage() {
               statusColor: statusInfo.colorClass,
               courseType: row.Course_Type || "bundle",
               subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
+              schedulePatterns: [],
             });
           }
 
@@ -128,6 +132,10 @@ export default function CoursesPage() {
           c.VideoCount += row.VideoCount || 0;
           c.FileCount += row.FileCount || 0;
           c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, assignmentId: row.TutorCourseDetailId });
+          for (const slot of row.schedulePatterns || []) {
+            const key = `${slot.dayOfWeek}:${slot.startTime}:${slot.endTime}`;
+            if (!c.schedulePatterns.some(existing => existing.key === key)) c.schedulePatterns.push({ ...slot, key });
+          }
         });
 
         const formattedData = Array.from(courseMap.values()).map(c => ({
@@ -312,8 +320,11 @@ export default function CoursesPage() {
                         {course.name}
                       </h2>
                       <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                        <Clock className="w-3 h-3" /> เริ่มสอน: {course.startDate}
+                        <Clock className="w-3 h-3" /> {course.startDate} – {course.lastDate}
                       </p>
+                      {course.schedulePatterns.length > 0 && <p className="mt-1 text-xs text-slate-500">
+                        ตารางที่จัดแล้ว: {course.schedulePatterns.sort((a, b) => Number(a.dayOfWeek) - Number(b.dayOfWeek) || a.startTime.localeCompare(b.startTime)).map(slot => `${['', 'อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'][Number(slot.dayOfWeek)] || 'วันอื่น'} ${slot.startTime}–${slot.endTime}`).join(' · ')}
+                      </p>}
 
                       {course.subjects && course.subjects.length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">

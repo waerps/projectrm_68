@@ -54,7 +54,7 @@ export default function StudentCourseDetail() {
   const [files, setFiles] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [teachingTopics, setTeachingTopics] = useState([]);
-  const [activeTab, setActiveTab] = useState("attendance");
+  const [activeTab, setActiveTab] = useState("plan");
 
   useEffect(() => {
     let cancelled = false;
@@ -95,7 +95,7 @@ export default function StudentCourseDetail() {
         const type = detail.course?.courseType ?? detail.course?.Course_Type ?? "bundle";
         setCourseType(type);
         setFullCost(Number(detail.course?.fullCost ?? detail.course?.FullCost ?? 0));
-        setActiveTab(type === "single" ? "attendance" : "plan");
+        setActiveTab("plan");
         setSubjects(detail.subjects ?? []);
         setTeachingTopics(detail.teachingTopics ?? []);
         setAttendance((detail.schedule ?? []).map((item) => ({
@@ -208,7 +208,7 @@ export default function StudentCourseDetail() {
 
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-3 lg:flex lg:flex-wrap">
         {[
-          ...(courseType === "bundle" ? [{ key: "plan", label: "แผนการสอน", icon: <BookOpen className="h-4 w-4" /> }] : []),
+          { key: "plan", label: "แผนการสอน", icon: <BookOpen className="h-4 w-4" /> },
           ...(courseType === "single" ? [{ key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> }] : []),
           { key: "videos", label: "รายการคลิป", icon: <Video className="h-4 w-4" /> },
           { key: "files", label: "เอกสารประกอบ", icon: <FileText className="h-4 w-4" /> },
@@ -224,7 +224,7 @@ export default function StudentCourseDetail() {
         ))}
       </div>
 
-      {courseType === "bundle" && activeTab === "plan" && (
+      {activeTab === "plan" && (
         <section className="overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-sm">
           <header className="bg-gradient-to-r from-orange-50 to-amber-50 px-5 py-4">
             <h2 className="flex items-center gap-2 font-bold text-slate-900"><BookOpen className="h-5 w-5 text-orange-600" />แผนการสอนของคอร์ส</h2>
@@ -237,7 +237,7 @@ export default function StudentCourseDetail() {
               const subjectFiles = files.filter(file => Number(file.subjectId) === Number(subject.subjectId));
               return <article key={`${subject.subjectId}-${subject.tutorId}`} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-bold text-slate-900">{subject.subjectName}</h3><p className="text-xs text-slate-500">ติวเตอร์ {subject.tutorName || 'ยังไม่ระบุ'}</p></div><span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">{topicList.length} หัวข้อ</span></div>
-                {topicList.length ? <ol className="mt-4 grid gap-2 sm:grid-cols-2">{topicList.map((topic, index) => <li key={topic.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 flex-1 break-words">{topic.title}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${topic.isTaught ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{topic.isTaught ? 'สอนแล้ว' : 'ในแผน'}</span></li>)}</ol> : <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-500">ติวเตอร์ยังไม่ได้ระบุหัวข้อ</p>}
+                {topicList.length ? <ol className="mt-4 grid gap-2 sm:grid-cols-2">{topicList.map((topic, index) => <li key={topic.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 flex-1 break-words">{topic.title}{topic.plannedLessons?.length > 0 && <span className="block text-xs text-slate-500">คาดว่า {topic.plannedLessons.map(lesson => `${lesson.date} ${lesson.startTime}–${lesson.endTime}`).join(' · ')}</span>}{topic.taughtLessons?.map((lesson, lessonIndex) => <span key={lessonIndex} className="block text-xs text-emerald-700">สอน {lesson.date}{lesson.detail ? ` · ${lesson.detail}` : ''}</span>)}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${topic.isTaught ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{topic.isTaught ? 'สอนแล้ว' : 'ในแผน'}</span></li>)}</ol> : <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-500">ติวเตอร์ยังไม่ได้ระบุหัวข้อ</p>}
                 <div className="mt-4 rounded-xl bg-white px-3 py-3 text-sm"><p className="font-semibold text-slate-700">สื่อประกอบของวิชานี้</p><div className="mt-2 flex flex-wrap gap-2">{subjectVideos.map(video => <button key={`video-${video.id}`} type="button" onClick={() => setActiveTab('videos')} className="rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">▶ {video.title}</button>)}{subjectFiles.map(file => <button key={`file-${file.fileId}`} type="button" onClick={() => setActiveTab('files')} className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">▤ {file.fileName}</button>)}{!subjectVideos.length && !subjectFiles.length && <span className="text-xs text-slate-500">ยังไม่มีสื่อประกอบ</span>}</div></div>
               </article>;
             }) : <p className="py-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูลวิชาในคอร์สนี้</p>}

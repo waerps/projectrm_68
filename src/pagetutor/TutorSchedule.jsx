@@ -152,7 +152,7 @@ const STATUS_STYLE = {
 
 // ─── Component ──────────────────────────────────────────────────────
 // มุมมองรายวันสำหรับมือถือ — ใช้ข้อมูล/สถานะ/การกดเหมือนตารางรายสัปดาห์ทุกอย่าง
-function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, clockNow, onPick, onPlan }) {
+function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, clockNow, onPick }) {
   const todayName = DAYS_GRID.find(d => weekDates[d]?.iso === todayDate)
   const [day, setDay] = useState(todayName || DAYS_GRID[0])
   useEffect(() => { if (todayName) setDay(todayName) }, [todayName])
@@ -194,7 +194,7 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
                 <div className="min-w-0 flex-1">
                   <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
                   <p className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</p>
-                  <p className="mt-1 text-xs text-orange-700 line-clamp-2">หัวข้อ: {cls.plannedTopicsText || 'ยังไม่จัดหัวข้อ'}</p>
+                  {cls.plannedTopicsText && <p className="mt-1 text-xs text-orange-700 line-clamp-2">คาดว่าจะสอน: {cls.plannedTopicsText}</p>}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
@@ -207,7 +207,6 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
                   )}
                 </div>
               </button>
-              <button type="button" onClick={() => onPlan(cls)} className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-left text-xs font-bold text-orange-700">แผนหัวข้อของคาบนี้</button>
               </div>
             )
           })}
@@ -249,8 +248,6 @@ export default function TutorSchedule() {
   const [plannedTopicIds, setPlannedTopicIds] = useState([])
   const [taughtTopicIds, setTaughtTopicIds] = useState([])
   const [topicsLoading, setTopicsLoading] = useState(false)
-  const [planClass, setPlanClass] = useState(null)
-  const [planSaving, setPlanSaving] = useState(false)
   const [studentsList, setStudentsList] = useState([])
   const [attendance, setAttendance] = useState({})
 
@@ -430,24 +427,6 @@ export default function TutorSchedule() {
       showToast('error', 'โหลดหัวข้อไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่')
       return false
     } finally { setTopicsLoading(false) }
-  }
-
-  const openPlan = async (data) => {
-    if (!data?.courseScheduleDetailId) return
-    if (await loadLessonTopics(data.courseScheduleDetailId)) setPlanClass(data)
-  }
-
-  const savePlan = async () => {
-    setPlanSaving(true)
-    try {
-      await axios.put(`${API_URL}/api/tutor/schedule/${planClass.courseScheduleDetailId}/topics`,
-        { topicIds: plannedTopicIds }, { headers: { Authorization: `Bearer ${token}` } })
-      setPlanClass(null)
-      setScheduleVersion(value => value + 1)
-      showToast('success', 'บันทึกแผนรายคาบแล้ว', 'หัวข้อที่เลือกจะแสดงเมื่อเช็กอินคาบนี้')
-    } catch (error) {
-      showToast('error', 'บันทึกแผนไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่')
-    } finally { setPlanSaving(false) }
   }
 
   const toggleTopic = (setter, id) => setter(items => items.includes(id) ? items.filter(item => item !== id) : [...items, id])
@@ -788,7 +767,7 @@ export default function TutorSchedule() {
 
         {/* มือถือ: มุมมองรายวัน */}
         <MobileDayView weekDates={weekDates} todayDate={todayDate} slots={derivedTimeSlots} scheduleMap={scheduleMap}
-          slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} onPlan={openPlan} />
+          slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
 
         {/* Grid ตาราง (แท็บเล็ตขึ้นไป) */}
         <div className="hidden lg:block bg-slate-50 rounded-2xl p-2 sm:p-4 overflow-x-auto border border-slate-100">
@@ -848,7 +827,7 @@ export default function TutorSchedule() {
                               <div className="text-[11px] text-slate-500 line-clamp-1 leading-tight mt-0.5">
                                 {cls.courseName}
                               </div>
-                              <p className="text-[11px] text-orange-700 line-clamp-2">หัวข้อ: {cls.plannedTopicsText || 'ยังไม่จัดหัวข้อ'}</p>
+                              {cls.plannedTopicsText && <p className="text-[11px] text-orange-700 line-clamp-2">คาดว่าจะสอน: {cls.plannedTopicsText}</p>}
                             </div>
 
                             {/* ส่วนข้อมูลล่าง: ห้องเรียน และ ไอคอนจำนวนนักเรียน */}
@@ -865,7 +844,6 @@ export default function TutorSchedule() {
                               </div>
                             </div>
 
-                            <button type="button" onClick={event => { event.stopPropagation(); openPlan(cls) }} className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-2 py-1 text-[11px] font-bold text-orange-700 hover:bg-orange-50">แผนหัวข้อรายคาบ</button>
                             {/* ป้ายสถานะ */}
                             {style && (
                               <div className={`mt-2 px-2.5 py-0.5 rounded-full border text-xs font-semibold flex items-center justify-center gap-1 leading-tight ${style.badge}`}>
@@ -968,21 +946,6 @@ export default function TutorSchedule() {
           </div>
         </div>
       )}
-      {planClass && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-        <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
-          <div className="flex items-center justify-between bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-4 text-white">
-            <div><h2 className="font-bold">แผนหัวข้อรายคาบ</h2><p className="text-xs text-white/80">{planClass.subjectName} · {planClass.classDate} · {planClass.time}</p></div>
-            <button type="button" onClick={() => setPlanClass(null)} aria-label="ปิด" className="rounded-lg p-2 hover:bg-white/20"><X className="h-5 w-5" /></button>
-          </div>
-          <div className="space-y-2 overflow-y-auto p-5">
-            <p className="text-sm text-slate-600">เลือกหัวข้อจากแผนคอร์สที่จะสอนในคาบนี้ หัวข้อเดิมเลือกซ้ำในวันอื่นได้</p>
-            {lessonTopics.length ? lessonTopics.map(item => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-3 text-sm hover:border-orange-300">
-              <input type="checkbox" checked={plannedTopicIds.includes(item.id)} onChange={() => toggleTopic(setPlannedTopicIds, item.id)} className="h-4 w-4 accent-orange-500" /><span>{item.title}</span>
-            </label>) : <p className="rounded-xl bg-orange-50 p-4 text-sm text-orange-800">ยังไม่มีหัวข้อในแผนคอร์ส กรุณาเพิ่มจากหน้าจัดการเนื้อหาก่อน</p>}
-          </div>
-          <div className="flex justify-end gap-2 border-t p-4"><button type="button" onClick={() => setPlanClass(null)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600">ยกเลิก</button><button type="button" disabled={planSaving} onClick={savePlan} className="rounded-xl bg-orange-500 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{planSaving ? 'กำลังบันทึก...' : 'บันทึกแผนคาบ'}</button></div>
-        </div>
-      </div>}
       {
         showModal && selectedClass && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
