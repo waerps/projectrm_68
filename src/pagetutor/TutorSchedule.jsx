@@ -248,6 +248,8 @@ export default function TutorSchedule() {
   const [taughtTopicIds, setTaughtTopicIds] = useState([])
   const [topicsLoading, setTopicsLoading] = useState(false)
   const [studentsList, setStudentsList] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError] = useState('')
   const [attendance, setAttendance] = useState({})
 
   // ── Phase 2 ────────────────────────────────────────────────────
@@ -521,16 +523,24 @@ export default function TutorSchedule() {
     setRemark('')
     setShowModal(true)
 
-    // ดึงรายชื่อนักเรียน
+    // ดึงรายชื่อนักเรียนของคอร์สจาก API สำหรับติวเตอร์
+    setStudentsList([])
+    setStudentsError('')
+    setStudentsLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/courses/${cId}/students`)
+      const res = await axios.get(`${API_URL}/coursestutor/${cId}/students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const students = res.data.students || []
       setStudentsList(students)
       const init = {}
       students.forEach(s => { init[s.UserId || s.id] = false })
       setAttendance(init)
-    } catch {
+    } catch (error) {
       setStudentsList([])
+      setStudentsError(error.response?.data?.message || 'โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองเปิดคาบนี้ใหม่')
+    } finally {
+      setStudentsLoading(false)
     }
   }
 
@@ -572,6 +582,10 @@ export default function TutorSchedule() {
 
   // ── Phase 1: บันทึกต้นคาบ ──────────────────────────────────────
   const handleSavePhase1 = async () => {
+    if (studentsLoading || studentsError || studentsList.length === 0) {
+      showToast('error', 'ยังเช็กชื่อไม่ได้', studentsError || (studentsLoading ? 'กำลังโหลดรายชื่อนักเรียน' : 'คอร์สนี้ยังไม่มีนักเรียนที่ลงทะเบียน'))
+      return
+    }
     if (!startPhoto) {
       showToast('warning', 'ยังไม่มีรูปต้นคาบ', 'กรุณาถ่ายรูปต้นคาบก่อนบันทึก')
       return
@@ -688,6 +702,8 @@ export default function TutorSchedule() {
     setPlannedTopicIds([])
     setTaughtTopicIds([])
     setStudentsList([])
+    setStudentsError('')
+    setStudentsLoading(false)
     setAttendance({})
   }
 
@@ -1036,9 +1052,13 @@ export default function TutorSchedule() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-2">
-                      {studentsList.length === 0 ? (
+                      {studentsLoading ? (
+                        <div className="text-center py-8 bg-slate-50 rounded-2xl text-slate-500 text-sm">กำลังโหลดรายชื่อนักเรียน...</div>
+                      ) : studentsError ? (
+                        <div role="alert" className="text-center py-8 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-sm">{studentsError}</div>
+                      ) : studentsList.length === 0 ? (
                         <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-sm">
-                          ไม่มีข้อมูลรายชื่อนักเรียน
+                          คอร์สนี้ยังไม่มีนักเรียนที่ลงทะเบียน
                         </div>
                       ) : studentsList.map(student => {
                         const sId = student.UserId || student.id
@@ -1134,9 +1154,9 @@ export default function TutorSchedule() {
                       <span className="tabular-nums text-2xl font-bold text-green-600">{presentCount}</span>
                       <span className="text-sm font-bold text-slate-500">/ {studentsList.length} <span className="text-xs font-medium text-slate-500">คน</span></span>
                     </div>
-                    <button onClick={handleSavePhase1} disabled={isSaving}
+                    <button onClick={handleSavePhase1} disabled={isSaving || studentsLoading || !!studentsError || studentsList.length === 0}
                       className={`w-full md:w-auto px-10 py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95
-                      ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
+                      ${(isSaving || studentsLoading || studentsError || studentsList.length === 0) ? 'bg-slate-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
                       {isSaving ? 'กำลังบันทึก...' : 'บันทึกต้นคาบ'}
                     </button>
                   </div>
