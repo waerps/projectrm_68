@@ -1,6 +1,6 @@
 // Soft two-note notification chime generated with the Web Audio API (no audio file).
-// Browsers block audio until a user gesture, so the AudioContext is created/resumed
-// lazily on the first pointerdown/keydown and every failure is swallowed silently.
+// Browsers block audio until a user gesture. Retry on later gestures if the
+// AudioContext is suspended again after a tab or device change.
 
 const MIN_GAP_MS = 5000;
 const STORAGE_PREFIX = 'notify_sound_muted_';
@@ -22,14 +22,14 @@ const getCtx = () => {
   return ctx;
 };
 
-const unlock = () => {
-  unlocked = true;
+const unlock = async () => {
   try {
     const c = getCtx();
-    if (c && c.state === 'suspended') c.resume().catch(() => {});
-  } catch { /* ignore */ }
-  window.removeEventListener('pointerdown', unlock, true);
-  window.removeEventListener('keydown', unlock, true);
+    if (!c) return false;
+    if (c.state !== 'running') await c.resume();
+    unlocked = c.state === 'running';
+    return unlocked;
+  } catch { unlocked = false; return false; }
 };
 
 export const initNotifySound = () => {
@@ -50,16 +50,16 @@ export const setNotifySoundMuted = (role, muted) => {
   } catch { /* ignore */ }
 };
 
-export const playNotifySound = () => {
+export const playNotifySound = async ({ preview = false } = {}) => {
   try {
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    if (!unlocked) return;
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return false;
+    if (!unlocked && !(preview && await unlock())) return false;
     const now = Date.now();
-    if (now - lastPlayedAt < MIN_GAP_MS) return;
+    if (!preview && now - lastPlayedAt < MIN_GAP_MS) return false;
     const c = getCtx();
-    if (!c) return;
-    if (c.state === 'suspended') c.resume().catch(() => {});
-    if (c.state !== 'running' && c.state !== 'suspended') return;
+    if (!c) return false;
+    if (c.state !== 'running') await c.resume();
+    if (c.state !== 'running') { unlocked = false; return false; }
     lastPlayedAt = now;
 
     const start = c.currentTime + 0.01;
@@ -82,5 +82,6 @@ export const playNotifySound = () => {
       osc.start(t);
       osc.stop(t + 0.2);
     });
-  } catch { /* fail silently */ }
+    return true;
+  } catch { unlocked = false; return false; }
 };

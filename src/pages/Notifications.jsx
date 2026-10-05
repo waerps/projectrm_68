@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, ChevronRight, Calendar, DollarSign, AlertCircle, Megaphone, PlayCircle, Trash2, Check, Loader2 } from 'lucide-react';
+import { Bell, ChevronRight, Calendar, DollarSign, AlertCircle, Megaphone, PlayCircle, Trash2, Check, Loader2, Search } from 'lucide-react';
 
 const API=`${API_URL}/api/student/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
@@ -45,9 +45,9 @@ const pillClass = (active) =>
   }`;
 
 export default function StudentNotifications(){
-  const navigate=useNavigate();const [filter,setFilter]=useState('all');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
+  const navigate=useNavigate();const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
   const load=useCallback(async()=>{setLoading(true);setError('');try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);useEffect(()=>{load();},[load]);
-  const unread=items.filter(x=>!x.isRead).length;const filtered=useMemo(()=>items.filter(x=>filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter),[items,filter]);const types=[...new Set(items.map(x=>x.type))];
+  const unread=items.filter(x=>!x.isRead).length;const filtered=useMemo(()=>items.filter(x=>{const query=search.trim().toLocaleLowerCase('th-TH');return (filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter)&&(!query||[x.title,x.message,meta[x.type]?.label].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(query)));}),[items,filter,search]);const types=[...new Set(items.map(x=>x.type))];
   const mark=async id=>{setBusy(id);try{await axios.patch(`${API}/${encodeURIComponent(id)}/read`,{},auth());setItems(xs=>xs.map(x=>x.id===id?{...x,isRead:true}:x));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
   const markAll=async()=>{setBusy('all');try{await axios.patch(`${API}/read-all`,{},auth());setItems(xs=>xs.map(x=>({...x,isRead:true})));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
   const dismiss=async id=>{setBusy(id);try{await axios.delete(`${API}/${encodeURIComponent(id)}`,auth());setItems(xs=>xs.filter(x=>x.id!==id));}catch(err){setError(err.response?.data?.message||'ซ่อนรายการไม่สำเร็จ');}finally{setBusy('');}};
@@ -56,7 +56,7 @@ export default function StudentNotifications(){
   const grouped = useMemo(()=>groupByDate(filtered),[filtered]);
 
   return (
-    <div className="space-y-6 mt-[90px]">
+    <div className="mt-[90px] space-y-4">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -82,6 +82,7 @@ export default function StudentNotifications(){
 
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+        <label className="relative mb-3 block"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาการแจ้งเตือน" aria-label="ค้นหาการแจ้งเตือน" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-400" /></label>
         <div className="flex flex-wrap gap-2">
           <button onClick={()=>setFilter('all')} className={pillClass(filter==='all')}>ทั้งหมด ({items.length})</button>
           <button onClick={()=>setFilter('unread')} className={pillClass(filter==='unread')}>ยังไม่ได้อ่าน ({unread})</button>
@@ -106,7 +107,7 @@ export default function StudentNotifications(){
           <p className="text-sm text-slate-400 mt-1">หากไม่มีค่างวดหรืองานที่ต้องจัดการ หน้านี้ว่างได้เป็นปกติ</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {grouped.map(([groupLabel, groupItems]) => (
             <div key={groupLabel}>
               <div className="flex items-center gap-3 mb-3">
@@ -115,7 +116,7 @@ export default function StudentNotifications(){
                 <span className="text-[11px] text-slate-400">{groupItems.length} รายการ</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {groupItems.map(item=>{
                   const m=meta[item.type]||fallbackMeta;
                   return (

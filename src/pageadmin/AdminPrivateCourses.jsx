@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
   UserRoundCheck, Plus, Search, Wallet, UserPlus, Settings2, Pencil, Trash2, Eye, EyeOff,
@@ -44,7 +45,18 @@ const labelCls = "mb-1 block text-xs font-semibold text-slate-600";
 // version                  : เปลี่ยนเมื่อหน้าคอร์สโหลดข้อมูลใหม่ → แท็บนี้โหลดตาม
 // onDataChanged()          : แจ้งหน้าคอร์สว่ามีการสร้าง/ลงทะเบียน/รับเงิน
 export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDataChanged }) {
-  const [tab, setTab] = useState("courses");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab") === "inquiries" ? "inquiries" : searchParams.get("tab") === "offers" ? "offers" : "courses";
+  const [tab, setTab] = useState(requestedTab);
+  useEffect(() => { setTab(requestedTab); }, [requestedTab]);
+  const changeTab = (next) => {
+    setTab(next);
+    const params = new URLSearchParams(searchParams);
+    params.set("type", "single");
+    params.set("tab", next);
+    if (next !== "inquiries") params.delete("inquiry");
+    setSearchParams(params, { replace: true });
+  };
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState([]);
   const [offers, setOffers] = useState([]);
@@ -120,7 +132,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
       {/* แถวเดียว: สลับแท็บ (ซ้าย) · ค้นหา (กลาง ใช้ได้ทั้งสองแท็บ) · ปุ่มเพิ่ม (ขวา) */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <SegmentedControl size="sm" stretchMobile value={tab} onChange={setTab} className="shrink-0" options={[
+        <SegmentedControl size="sm" stretchMobile value={tab} onChange={changeTab} className="shrink-0" options={[
           { id: "courses", label: "คอร์สของนักเรียน", short: "คอร์สนักเรียน", count: courses.length },
           { id: "offers", label: "รายวิชาบนเว็บไซต์", short: "รายวิชาบนเว็บ", count: offers.length },
           { id: "inquiries", label: "คำขอจากนักเรียน", short: "คำขอ", count: inquiries.filter((item) => item.Status === "pending").length },
@@ -147,7 +159,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
           onEdit={(o) => setModal({ type: "offer", data: o })} onChanged={load} />
       ) : (
-        <InquiriesTab inquiries={inquiries} search={search} error={inquiryError} onRetry={load} onContacted={markContacted} />
+        <InquiriesTab inquiries={inquiries} search={search} focusedId={Number(searchParams.get("inquiry"))} error={inquiryError} onRetry={load} onContacted={markContacted} />
       )}
 
       {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} onClose={close} onDone={done} />}
@@ -158,7 +170,12 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   );
 }
 
-function InquiriesTab({ inquiries, search, error, onRetry, onContacted }) {
+function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacted }) {
+  useEffect(() => {
+    if (focusedId && inquiries.some((item) => Number(item.InquiryId) === focusedId)) {
+      document.getElementById(`private-inquiry-${focusedId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [focusedId, inquiries]);
   if (error) return <UIErrorState message={error} onRetry={onRetry} />;
   const query = search.trim().toLowerCase();
   const list = inquiries.filter((item) => !query || [item.SubjectName, item.StudentName, item.StudentNickname, item.SchoolName, item.ContactName, item.ContactPhone, item.GradeLevel, item.GradeOther]
@@ -166,13 +183,13 @@ function InquiriesTab({ inquiries, search, error, onRetry, onContacted }) {
   if (!list.length) return <EmptyState icon={UserRoundCheck} title={query ? "ไม่พบคำขอที่ค้นหา" : "ยังไม่มีคำขอคอร์สเดี่ยว"} />;
   const format = { online: "ออนไลน์", onsite: "ออนไซต์", either: "ได้ทั้งสองแบบ" };
   return <div className="space-y-3">
-    {list.map((item) => <article key={item.InquiryId} className={`${card} p-4 sm:p-5`}>
+    {list.map((item) => <article key={item.InquiryId} id={`private-inquiry-${item.InquiryId}`} className={`${card} p-4 sm:p-5 ${Number(item.InquiryId) === focusedId ? "ring-2 ring-orange-400" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div><h3 className="font-bold text-slate-900">{item.SubjectName} · {item.StudentName}{item.StudentNickname && <span className="font-medium text-slate-500"> ({item.StudentNickname})</span>}</h3><p className="mt-1 text-xs text-slate-500">{item.GradeLevel}{item.GradeOther && `: ${item.GradeOther}`} · {item.LearnerCount || 1} คน · อยากเริ่ม {item.DesiredStartDate} · {format[item.LearningFormat] || item.LearningFormat}</p>{item.SchoolName && <p className="mt-1 text-xs text-slate-500">โรงเรียน {item.SchoolName}</p>}</div>
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.Status === "pending" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>{item.Status === "pending" ? "รอติดต่อ" : "ติดต่อแล้ว"}</span>
       </div>
       <p className="mt-3 text-sm text-slate-700"><b>เป้าหมาย:</b> {item.Goal}</p>
-      {Number(item.LearnerCount) === 2 && <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-blue-800">ต้องการเรียนคู่ กรุณาประสานข้อมูลนักเรียนอีกคนและจัดคอร์สให้ครบทั้งสองบัญชี</p>}
+      {Number(item.LearnerCount) === 2 && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">ต้องการเรียนคู่: ยืนยันข้อมูลทั้งสองคนและราคาแยกต่อคนก่อนเปิดเรียน ระบบคอร์สเดี่ยวปัจจุบันยังไม่รวมสองคนเป็นคลาสเดียว จึงควรประสานการจัดตารางและค่าติวเตอร์กับสถาบันก่อนสร้างคอร์ส</p>}
       <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700"><b>สิ่งที่ต้องการ:</b> {item.LearningNeeds}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
         <span className="text-slate-600">ผู้ติดต่อ {item.ContactName}</span>
@@ -519,9 +536,9 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
             if (pack) setF((current) => ({ ...current, TotalHours: pack.hours, StudentRatePerHour: Number((pack.price / pack.hours).toFixed(2)), customPrice: true, Price: String(pack.price) }));
           }} className={`${INPUT} mb-3`}>
             <option value="">— เลือกแพ็กเกจ หรือกรอกราคาที่ตกลงเอง —</option>
-            {PRIVATE_PRICING.flatMap((group) => group.modes.flatMap((mode) => mode.packages.map((pack) => <option key={`${group.learners}:${mode.key}:${pack.hours}`} value={`${group.learners}:${mode.key}:${pack.hours}`}>{group.label} · {mode.label} · {pack.hours} ชม. · {money(pack.price)}{group.learners === 2 ? "/คน" : ""}</option>)))}
+            {PRIVATE_PRICING.flatMap((group) => group.modes.flatMap((mode) => mode.packages.map((pack) => <option key={`${group.learners}:${mode.key}:${pack.hours}`} value={`${group.learners}:${mode.key}:${pack.hours}`} disabled={group.learners === 2}>{group.label} · {mode.label} · {pack.hours} ชม. · {money(pack.price)}{group.learners === 2 ? "/คน · รอรองรับคอร์สคู่" : ""}</option>)))}
           </select>
-          <p className="mb-3 text-xs text-slate-500">ราคาเรียนคู่เป็นราคาต่อคน ระบบสร้างคอร์สให้นักเรียนทีละบัญชี</p>
+          <p className="mb-3 text-xs text-slate-500">ราคาเรียนคู่เป็นราคาต่อคน แต่ฟอร์มสร้างคอร์สนี้ยังรองรับเพียงนักเรียนหนึ่งคนต่อคลาส เพื่อไม่ให้นับตารางและค่าติวเตอร์ซ้ำ จึงยังไม่เปิดให้เลือกแพ็กเกจคู่ที่นี่</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className={labelCls}>ชั่วโมงเรียนรวม *</label>
