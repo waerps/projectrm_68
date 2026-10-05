@@ -2285,24 +2285,9 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
                   </select>
                 </FormField>
-                <FormField label="ประเภทคอร์ส" hint="คอร์สเดี่ยวจะไม่แสดงบนหน้าเว็บไซต์">
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: "bundle", label: "คอร์สรวม" },
-                      { value: "single", label: "คอร์สเดี่ยว" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => set("Course_Type", opt.value)}
-                        className={`h-10 rounded-xl text-sm font-semibold border transition
-                        ${form.Course_Type === opt.value
-                            ? "bg-orange-500 text-white border-orange-500"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                <FormField label="ประเภทคอร์ส" hint="สร้างคอร์สเดี่ยวพร้อมนักเรียนและติวเตอร์ได้ในแท็บคอร์สเดี่ยว">
+                  <div className="flex h-10 items-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-sm font-semibold text-orange-700">
+                    {form.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}
                   </div>
                 </FormField>
                 <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้กรองข้อสอบจากคลัง ไม่จำกัดผู้สมัคร">
