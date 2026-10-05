@@ -55,6 +55,9 @@ export const PRIVATE_ICONS = {
   tech: { label: "เทคโนโลยี", Icon: Cpu },
   other: { label: "อื่นๆ", Icon: BookOpen },
 };
+export const PRIVATE_SUBJECT_OPTIONS = Object.entries(PRIVATE_ICONS)
+  .filter(([key]) => key !== "other")
+  .map(([key, subject]) => ({ key, name: subject.label }));
 export const privateIconOf = (key) => (PRIVATE_ICONS[key] || PRIVATE_ICONS.other).Icon;
 
 // ข้อความสำเร็จรูปสำหรับทักพี่กวาง

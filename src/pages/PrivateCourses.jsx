@@ -10,7 +10,7 @@ import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
 import PrivateSubjectStack from "../components/PrivateSubjectStack";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import {
-  PRIVATE_CONTACT as C, PRIVATE_PRICING, PRIVATE_GRADE_OPTIONS, PRIVATE_LEVELS, privateIconOf, privateInquiryMessage,
+  PRIVATE_CONTACT as C, PRIVATE_PRICING, PRIVATE_GRADE_OPTIONS, PRIVATE_SUBJECT_OPTIONS, PRIVATE_LEVELS, privateIconOf, privateInquiryMessage,
 } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -166,11 +166,17 @@ export function PrivateContactButtons({ className = "", compact = false }) {
 }
 
 /* ─── Modal ติดต่อ ─── */
-function ContactModal({ subject, onClose }) {
+function ContactModal({ subject, subjects, onClose }) {
   const [msg, setMsg] = useState(() => privateInquiryMessage(subject?.generic ? "" : subject?.name));
   const [copied, setCopied] = useState(false);
+  const offerNames = new Set(subjects.map((item) => item.name));
+  const subjectOptions = [
+    ...subjects.map((item) => ({ value: `offer:${item.key}`, name: item.name, offerId: item.key })),
+    ...PRIVATE_SUBJECT_OPTIONS.filter((item) => !offerNames.has(item.name)).map((item) => ({ value: `catalog:${item.key}`, name: item.name, offerId: null })),
+  ];
   const [inquiry, setInquiry] = useState({
-    subjectName: subject?.generic ? "" : subject?.name || "",
+    subjectChoice: subject?.generic ? "" : `offer:${subject.key}`,
+    subjectName: subject?.generic ? "" : subject?.name || "", subjectOther: "",
     studentFirstName: "", studentLastName: "", studentNickname: "", gradeLevel: "", gradeOther: "", schoolName: "", learnerCount: "1", goal: "", desiredStartDate: "",
     learningFormat: "", learningNeeds: "", contactName: "", contactPhone: "",
     privacyAcknowledged: false,
@@ -193,6 +199,15 @@ function ContactModal({ subject, onClose }) {
   const Icon = iconOf(subject);
   const updateInquiry = (event) => {
     const { name, value, type, checked } = event.target;
+    if (name === "subjectChoice") {
+      const chosen = subjectOptions.find((item) => item.value === value);
+      setInquiry((current) => ({ ...current, subjectChoice: value, subjectName: chosen?.name || "", subjectOther: "" }));
+      return;
+    }
+    if (name === "subjectOther") {
+      setInquiry((current) => ({ ...current, subjectOther: value, subjectName: value }));
+      return;
+    }
     setInquiry((current) => ({ ...current, [name]: type === "checkbox" ? checked : name === "contactPhone" ? phoneMask(value) : value, ...(name === "gradeLevel" && value !== "อื่น ๆ" ? { gradeOther: "" } : {}) }));
   };
   const sendInquiry = async (event) => {
@@ -200,9 +215,11 @@ function ContactModal({ subject, onClose }) {
     setSending(true);
     setSendError("");
     try {
+      const selectedOffer = subjectOptions.find((item) => item.value === inquiry.subjectChoice);
       await axios.post(`${API_URL}/api/private-courses/inquiries`, {
         ...inquiry,
-        offerId: subject?.generic ? null : subject?.key,
+        subjectName: inquiry.subjectName.trim(),
+        offerId: selectedOffer?.offerId || null,
       });
       setSent(true);
     } catch (error) {
@@ -225,7 +242,7 @@ function ContactModal({ subject, onClose }) {
             <span className="grid h-12 w-12 place-items-center rounded-2xl text-white" style={{ background: TILE_GRAD }}><Icon className="h-6 w-6" /></span>
             <div className="leading-tight">
               <p className="text-[11px] font-semibold text-gray-500">คอร์สเดี่ยว · เรียนส่วนตัว 1–2 คน</p>
-              <h3 id="pc-modal-title" className="text-xl font-extrabold" style={{ color: NAVY }}>{subject.name}</h3>
+              <h3 id="pc-modal-title" className="text-xl font-extrabold" style={{ color: NAVY }}>{inquiry.subjectName || "ฝากข้อมูลคอร์สเดี่ยว"}</h3>
             </div>
           </div>
           <div className="relative mt-4 flex items-center justify-between gap-3">
@@ -255,7 +272,8 @@ function ContactModal({ subject, onClose }) {
               </div>
               <div className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm">
                 <p className="mb-3 text-sm font-extrabold text-[#14213D]">02 / แผนการเรียน</p>
-                <div className="space-y-3"><label className="block text-xs font-semibold text-gray-700">วิชา *<input name="subjectName" required maxLength={150} value={inquiry.subjectName} onChange={updateInquiry} readOnly={!subject?.generic} className={inputClass} /></label>
+                <div className="space-y-3"><label className="block text-xs font-semibold text-gray-700">วิชา *<select name="subjectChoice" required value={inquiry.subjectChoice} onChange={updateInquiry} className={inputClass}><option value="">เลือกวิชา</option>{subjectOptions.map((item) => <option key={item.value} value={item.value}>{item.name}</option>)}<option value="other">อื่น ๆ (ระบุวิชา)</option></select></label>
+                {inquiry.subjectChoice === "other" && <label className="block text-xs font-semibold text-gray-700">ระบุวิชา *<input name="subjectOther" required maxLength={150} placeholder="พิมพ์ชื่อวิชาที่ต้องการเรียน" value={inquiry.subjectOther} onChange={updateInquiry} className={inputClass} /></label>}
                 <label className="block text-xs font-semibold text-gray-700">จำนวนนักเรียน *<select name="learnerCount" required value={inquiry.learnerCount} onChange={updateInquiry} className={inputClass}><option value="1">เรียน 1 คน</option><option value="2">เรียน 2 คน</option></select></label>
               <label className="block text-xs font-semibold text-gray-700">เป้าหมายการเรียน *<textarea name="goal" required maxLength={500} rows={2} placeholder="เช่น เพิ่มเกรด หรือเตรียมสอบเข้า" value={inquiry.goal} onChange={updateInquiry} className={inputClass} /></label>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -524,7 +542,7 @@ export default function PrivateCourses() {
         </div>
       </div>
 
-      {selected && <ContactModal subject={selected} onClose={() => setSelected(null)} />}
+      {selected && <ContactModal subject={selected} subjects={subjects} onClose={() => setSelected(null)} />}
     </div>
   );
 }
