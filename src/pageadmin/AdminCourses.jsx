@@ -27,7 +27,6 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import PageHeader from "../components/ui/PageHeader";
 import { UsersRound as LuUsersRound, UserRoundCheck as LuUserRoundCheck } from "lucide-react";
 import PrivateCoursesPanel from "./AdminPrivateCourses";
-import AdminTeachingPlanModal from "./AdminTeachingPlanModal";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -3041,7 +3040,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 }
 
 // ─── Course Card ─────────────────────────────────────────────────────────────
-function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate, onViewTeachingPlan }) {
+function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -3137,17 +3136,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
           ))}
         </div>
 
-        <div className="mt-auto mb-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3">
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-800">แผนหัวข้อการสอน</p>
-            <p className="mt-0.5 text-sm text-slate-600">{Number(course.TeachingSubjectCount) ? `${Number(course.TopicsReadyCount || 0)}/${Number(course.TeachingSubjectCount)} วิชาระบุแล้ว` : "ยังไม่ได้กำหนดวิชา"}</p>
-          </div>
-          <button type="button" onClick={() => onViewTeachingPlan(course)} className="mt-2 w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm font-bold text-orange-700 transition hover:bg-orange-100">
-            ดูแผนการสอน
-          </button>
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t border-slate-100">
+        <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">
           <button
             onClick={() => onEdit(course)}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
@@ -3202,7 +3191,6 @@ export default function AdminCoursesPage() {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [teachingPlanCourse, setTeachingPlanCourse] = useState(null);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState([]);
@@ -3429,14 +3417,14 @@ export default function AdminCoursesPage() {
           <h2 className="mt-2 text-lg font-bold text-slate-900">{courseTab === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}</h2>
           <p className={PAGE_SUBTITLE}>
             {courseTab === "single"
-              ? "เรียนส่วนตัว 1–2 คน ไม่เปิดจำหน่ายบนเว็บไซต์ ผู้สนใจต้องติดต่อสถาบันเพื่อประเมินก่อน"
+              ? "เรียนตัวต่อตัว 1 วิชาต่อนักเรียน 1 คน ไม่เปิดจำหน่ายบนเว็บไซต์ ผู้สนใจต้องติดต่อสถาบันเพื่อประเมินก่อน"
               : "คอร์สเรียนกลุ่มที่เปิดจำหน่ายบนเว็บไซต์ เพิ่ม แก้ไข และจัดการคอร์สได้ที่หน้านี้"}
           </p>
         </div>
       </div>
 
       {courseTab === "single" ? (
-        <PrivateCoursesPanel onManageCourse={openManageCourse} onViewTeachingPlan={setTeachingPlanCourse} version={dataVersion} onDataChanged={fetchAll} />
+        <PrivateCoursesPanel onManageCourse={openManageCourse} version={dataVersion} onDataChanged={fetchAll} />
       ) : (<>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -3521,7 +3509,6 @@ export default function AdminCoursesPage() {
               onStatusChange={fetchAll}
               statusOptions={statusOptions}
               onDuplicate={handleDuplicate}
-              onViewTeachingPlan={setTeachingPlanCourse}
             />
           ))}
         </div>
@@ -3562,8 +3549,6 @@ export default function AdminCoursesPage() {
           />
         </Modal>
       )}
-
-      {teachingPlanCourse && <AdminTeachingPlanModal course={teachingPlanCourse} onClose={() => setTeachingPlanCourse(null)} />}
 
       {deletingCourse && (
         <ConfirmDialog
