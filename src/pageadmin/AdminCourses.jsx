@@ -3044,7 +3044,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 }
 
 // ─── Course Card ─────────────────────────────────────────────────────────────
-function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
+function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -3068,9 +3068,10 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
         <select
           value={course.Status_Course_Id}
           onChange={async (e) => {
-            await axios.patch(`${API_BASE}/courses/${course.CourseID}/status`, {
+            const response = await axios.patch(`${API_BASE}/courses/${course.CourseID}/status`, {
               Status_Course_Id: Number(e.target.value)
             });
+            if (response.data?.drafted) toast(response.data.message);
             onStatusChange();
           }}
           className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer ${status.color}`}
@@ -3085,6 +3086,10 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${course.IsPublished && !Number(course.PendingDraftActions) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>{course.IsPublished ? Number(course.PendingDraftActions) ? `มีร่าง ${course.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span>
+          {(!course.IsPublished || Number(course.PendingDraftActions) > 0) && <button type="button" onClick={() => onPublish(course)} className="rounded-lg bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700">เผยแพร่</button>}
+        </div>
         <h3 className="font-bold text-slate-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
         </h3>
@@ -3269,7 +3274,7 @@ export default function AdminCoursesPage() {
           `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
         );
       } else {
-        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้");
+        showToast("success", "บันทึกคอร์สฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม");
       }
       setShowAddModal(false);
       fetchAll();
@@ -3511,6 +3516,18 @@ export default function AdminCoursesPage() {
               onEdit={(c) => setEditingCourse(c)}
               onDelete={(c) => setDeletingCourse(c)}
               onStatusChange={fetchAll}
+              onPublish={async (c) => {
+                try {
+                  const { data: drafts } = await axios.get(`${API_BASE}/courses/${c.CourseID}/drafts`);
+                  const summary = drafts.length ? `มีการแก้ไขรอเผยแพร่ ${drafts.length} รายการ\n` : '';
+                  if (!await confirmDialog(`${summary}เผยแพร่คอร์ส "${c.CourseName}" ให้คนอื่นเห็นตอนนี้?`)) return;
+                  await axios.post(`${API_BASE}/courses/${c.CourseID}/publish`);
+                  showToast('success', 'เผยแพร่คอร์สแล้ว');
+                  fetchAll();
+                } catch (error) {
+                  showToast('error', error.response?.data?.message || 'เผยแพร่คอร์สไม่สำเร็จ');
+                }
+              }}
               statusOptions={statusOptions}
               onDuplicate={handleDuplicate}
             />

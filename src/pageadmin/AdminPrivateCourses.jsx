@@ -154,7 +154,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ) : error ? (
         <UIErrorState message={error} onRetry={load} />
       ) : tab === "courses" ? (
-        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })}
+        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })} onChanged={load}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
       ) : tab === "offers" ? (
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
@@ -216,7 +216,7 @@ function Stat({ icon, color, label, value, unit, sub, className = "" }) {
 }
 
 /* ═════════ แท็บ 1 · คอร์สของนักเรียน ═════════ */
-function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll }) {
+function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll, onChanged }) {
   const list = courses.filter((c) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
@@ -235,6 +235,14 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
 
   const Actions = ({ c }) => (
     <div className="flex flex-wrap gap-2">
+      {(!c.IsPublished || Number(c.PendingDraftActions) > 0) && <button type="button" onClick={async () => {
+        try {
+          if (!await confirmDialog(`เผยแพร่คอร์ส "${c.CourseName}" ให้ผู้เรียนและติวเตอร์เห็นตอนนี้?`)) return;
+          await axios.post(`${API}/courses/${c.CourseID}/publish`, {}, auth());
+          toast('เผยแพร่คอร์สแล้ว');
+          onChanged();
+        } catch (e) { toast(errMsg(e, 'เผยแพร่คอร์สไม่สำเร็จ')); }
+      }} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}>เผยแพร่คอร์ส</button>}
       {(c.Students || []).length < Number(c.MaxStudents || 1) &&
         <button type="button" onClick={() => onEnroll(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><UserPlus className="h-3.5 w-3.5" />ลงทะเบียนนักเรียน</button>}
       {(c.Students || []).some((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost || 0)) &&
@@ -284,7 +292,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
                   <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
-                  <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""}</p>
+                  <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.TotalHours ?? "—"}</td>
@@ -309,7 +317,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
               <div className="min-w-0">
                 <p className="truncate font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : "ยังไม่มีนักเรียน"}</p>
                 <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
-                <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")}</p>
+                <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
             </div>
@@ -328,8 +336,12 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll 
 function OffersTab({ offers, search = "", subjects, onAdd, onEdit, onChanged }) {
   const toggle = async (o) => {
     try {
-      await axios.put(`${API}/private-courses/offers/${o.OfferId}`, { ...o, IsActive: !o.IsActive }, auth());
-      toast(o.IsActive ? "ซ่อนจากหน้าเว็บแล้ว" : "แสดงบนหน้าเว็บแล้ว");
+      if (o.IsActive && !o.HasDraft) {
+        await axios.post(`${API}/private-courses/offers/${o.OfferId}/unpublish`, {}, auth());
+      } else {
+        await axios.post(`${API}/private-courses/offers/${o.OfferId}/publish`, {}, auth());
+      }
+      toast(o.IsActive && !o.HasDraft ? "ซ่อนจากหน้าเว็บแล้ว" : "เผยแพร่บนหน้าเว็บแล้ว");
       onChanged();
     } catch (e) { toast(errMsg(e, "บันทึกไม่สำเร็จ")); }
   };
@@ -368,7 +380,7 @@ function OffersTab({ offers, search = "", subjects, onAdd, onEdit, onChanged }) 
                 <p className="truncate font-semibold text-slate-800">{o.Title}</p>
                 <p className="truncate text-xs text-slate-500">{o.Note || "—"}</p>
               </div>
-              <Badge tone={o.IsActive ? "success" : "neutral"}>{o.IsActive ? "แสดงอยู่" : "ซ่อนอยู่"}</Badge>
+              <Badge tone={o.HasDraft || !o.IsActive ? "neutral" : "success"}>{o.HasDraft ? 'มีฉบับร่าง' : o.IsActive ? "เผยแพร่แล้ว" : "ฉบับร่าง"}</Badge>
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {o.Levels.map((l) => <Badge key={l} tone="info">{l}</Badge>)}
@@ -381,7 +393,7 @@ function OffersTab({ offers, search = "", subjects, onAdd, onEdit, onChanged }) 
             <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
               <button type="button" onClick={() => onEdit(o)} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><Pencil className="h-3.5 w-3.5" />แก้ไข</button>
               <button type="button" onClick={() => toggle(o)} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}>
-                {o.IsActive ? <><EyeOff className="h-3.5 w-3.5" />ซ่อน</> : <><Eye className="h-3.5 w-3.5" />แสดง</>}
+                {o.IsActive && !o.HasDraft ? <><EyeOff className="h-3.5 w-3.5" />ซ่อน</> : <><Eye className="h-3.5 w-3.5" />เผยแพร่</>}
               </button>
               <button type="button" onClick={() => remove(o)} className={`${BTN.base} ${BTN.ghost} ${BTN.sm} text-red-600 hover:bg-red-50`}><Trash2 className="h-3.5 w-3.5" />ลบ</button>
             </div>
@@ -478,7 +490,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
         Price: f.customPrice ? f.Price : undefined, StartDate: f.StartDate, LastDate: f.LastDate, YearId: f.YearId,
         Course_Availability_Id: f.Course_Availability_Id || null, Remark: f.Remark,
       }, auth());
-      let msg = `สร้าง "${res.data.CourseName}" แล้ว`;
+      let msg = `บันทึก "${res.data.CourseName}" เป็นฉบับร่างแล้ว`;
       if (f.enrollNow) msg += ` และลงทะเบียนนักเรียน ${f.LearnerCount} คนแล้ว`;
       await onDone(msg);
     } catch (e) {
@@ -703,7 +715,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
     Title: offer?.Title || "", SubjectId: offer?.SubjectId ? String(offer.SubjectId) : "", IconKey: offer?.IconKey || "math",
     Levels: offer?.Levels || [], Note: offer?.Note || "",
     askPrice: offer ? offer.StartingPrice === null : false, StartingPrice: offer?.StartingPrice ?? PRIVATE_PRICING[0].modes[0].starting,
-    SortOrder: offer?.SortOrder ?? 0, IsActive: offer ? offer.IsActive : true,
+    SortOrder: offer?.SortOrder ?? 0, IsActive: false,
   }));
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -722,7 +734,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
     try {
       if (offer) await axios.put(`${API}/private-courses/offers/${offer.OfferId}`, body, auth());
       else await axios.post(`${API}/private-courses/offers`, body, auth());
-      await onDone(offer ? "บันทึกรายวิชาแล้ว" : "เพิ่มรายวิชาแล้ว");
+      await onDone("บันทึกฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม");
     } catch (e) { toast(errMsg(e, "บันทึกรายวิชาไม่สำเร็จ")); } finally { setSaving(false); }
   };
 
@@ -802,10 +814,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
             <input type="number" value={f.SortOrder} onChange={(e) => set("SortOrder", e.target.value)} className={INPUT} />
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={f.IsActive} onChange={(e) => set("IsActive", e.target.checked)} className="accent-orange-500" />
-          แสดงบนหน้าเว็บ
-        </label>
+        <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">บันทึกแล้วจะเป็นฉบับร่าง กด “เผยแพร่” จากการ์ดรายวิชาเมื่อตรวจเรียบร้อย</p>
         <p className="flex items-start gap-1.5 text-xs text-slate-500"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />ราคานี้เป็นราคาเริ่มต้นที่แสดงบนเว็บไซต์ ราคาจริงของนักเรียนแต่ละคนกำหนดเมื่อสร้างคอร์ส</p>
       </div>
     </Modal>

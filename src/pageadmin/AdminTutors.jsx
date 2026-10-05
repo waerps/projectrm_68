@@ -966,6 +966,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
         AdminId: tutorId,
         Assignments: selected.map(x => ({ CourseID: x.CourseID, SubjectId: x.SubjectId })),
       });
+      if (res.data?.drafted) {
+        showToast('success', res.data.message);
+        setSelected([]); setAdding(false); setSearch('');
+        onAdded();
+        return;
+      }
       const { success = [], skipped = [], failed = [] } = res.data;
       let msg = `เพิ่มสำเร็จ ${success.length} รายการ`;
       if (skipped.length) msg += ` · ข้าม ${skipped.length} รายการ (มีอยู่แล้ว)`;

@@ -315,6 +315,8 @@ export default function AdminSchedule() {
         throw new Error(d.message);
       }
 
+      if (d.drafted) toast(d.message);
+
       setShowAdd(false);
       await fetchSchedule(weekStart);
     } catch (e) {
@@ -352,6 +354,8 @@ export default function AdminSchedule() {
         throw new Error(d.message);
       }
 
+      if (d.drafted) toast(d.message);
+
       setShowEdit(false);
       setSelected(null);
       await fetchSchedule(weekStart);
@@ -388,6 +392,7 @@ export default function AdminSchedule() {
       }
 
       setShowDelete(false);
+      if (d.drafted) toast(d.message);
       setSelected(null);
       await fetchSchedule(weekStart);
     } catch (e) {
