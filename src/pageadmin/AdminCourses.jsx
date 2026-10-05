@@ -3048,22 +3048,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [showPlan, setShowPlan] = useState(false);
-  const [planSubjects, setPlanSubjects] = useState([]);
-  const [planLoading, setPlanLoading] = useState(false);
-  const [planError, setPlanError] = useState('');
-  const togglePlan = async () => {
-    if (showPlan) { setShowPlan(false); return; }
-    setPlanLoading(true);
-    setPlanError('');
-    setShowPlan(true);
-    try {
-      const response = await axios.get(`${API_BASE}/courses/${course.CourseID}/subjects`);
-      setPlanSubjects(response.data || []);
-    } catch (error) {
-      setPlanError(error.response?.data?.message || 'โหลดแผนการสอนไม่สำเร็จ');
-    } finally { setPlanLoading(false); }
-  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-orange-400 hover:shadow-md transition-all duration-300 overflow-hidden flex flex-col">
@@ -3154,15 +3138,6 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
               {s.trim()}
             </span>
           ))}
-        </div>
-
-        <div className="mb-3 rounded-xl border border-orange-100 bg-orange-50/60 p-3 text-xs text-slate-700">
-          <div className="flex flex-wrap items-center justify-between gap-1"><span className="font-bold">แผนการสอน</span><span className="font-semibold text-orange-700">{course.PlannedTopicCount || 0} หัวข้อ</span></div>
-          <p className="mt-1">จัดลงคาบแล้ว {course.ScheduledTopicCount || 0} · สอนจริงแล้ว {course.TaughtTopicCount || 0} · ยังไม่จัดคาบ {Math.max(0, Number(course.PlannedTopicCount || 0) - Number(course.ScheduledTopicCount || 0))}</p>
-          <button type="button" onClick={togglePlan} aria-expanded={showPlan} className="mt-2 font-bold text-orange-700 hover:underline">{showPlan ? 'ซ่อนรายละเอียด' : 'ดูหัวข้อและความคืบหน้า'}</button>
-          {showPlan && <div className="mt-3 max-h-64 space-y-2 overflow-y-auto border-t border-orange-100 pt-3 pr-1">
-            {planLoading ? <p>กำลังโหลด…</p> : planError ? <p className="text-red-600">{planError}</p> : planSubjects.length ? planSubjects.map(subject => <div key={subject.TutorCourseDetailId} className="rounded-lg bg-white p-2.5"><p className="font-bold text-slate-800">{subject.SubjectName} · {subject.Nickname || [subject.Firstname, subject.Lastname].filter(Boolean).join(' ')}</p><ul className="mt-1.5 space-y-1">{subject.TeachingTopics?.length ? subject.TeachingTopics.map(topic => <li key={topic.id} className="flex flex-wrap justify-between gap-1"><span>{topic.title}</span><span className={`font-semibold ${topic.isTaught ? 'text-emerald-700' : topic.isScheduled ? 'text-orange-700' : 'text-slate-500'}`}>{topic.isTaught ? 'สอนแล้ว' : topic.isScheduled ? 'จัดลงคาบ' : 'ยังไม่จัดคาบ'}</span></li>) : <li className="text-slate-500">ยังไม่มีหัวข้อ</li>}</ul></div>) : <p>ยังไม่มีวิชาในคอร์ส</p>}
-          </div>}
         </div>
 
         <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">
