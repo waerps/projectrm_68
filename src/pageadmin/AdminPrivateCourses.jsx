@@ -20,6 +20,7 @@ import { PRIVATE_ICONS, PRIVATE_GRADE_GROUPS, privateIconOf } from "../config/pr
    แอดมิน · คอร์สเดี่ยว (ตัวต่อตัว 1 วิชา 1 นักเรียน) — แท็บ "คอร์สเดี่ยว" ในหน้าจัดการคอร์ส (/admin/courses?type=single)
    แท็บ 1  คอร์สของนักเรียน   : สร้างคอร์สให้นักเรียนหลังพี่กวางประเมินแล้ว → ลงทะเบียน → บันทึกรับเงิน
    แท็บ 2  รายวิชาที่โชว์หน้าเว็บ : สิ่งที่คนทั่วไปเห็นในหน้า /private-courses (ไม่มีปุ่มซื้อ)
+   แท็บ 3  คำขอจากนักเรียน : ข้อมูลที่ผู้สนใจฝากไว้เพื่อให้สถาบันติดต่อกลับ
    คอร์สที่สร้างเป็นคอร์สปกติ (Course_Type = single) จัดตารางสอน/เช็กอิน/ข้อสอบ ที่หน้าคอร์สและตารางเรียนได้ตามเดิม
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -47,6 +48,8 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   const [search, setSearch] = useState("");
   const [courses, setCourses] = useState([]);
   const [offers, setOffers] = useState([]);
+  const [inquiries, setInquiries] = useState([]);
+  const [inquiryError, setInquiryError] = useState("");
   const [lookups, setLookups] = useState({ subjects: [], tutors: [], students: [], years: [], availability: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,6 +64,13 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ]);
       setCourses(c.data || []);
       setOffers(o.data || []);
+      try {
+        const response = await axios.get(`${API}/private-courses/inquiries`, auth());
+        setInquiries(response.data || []);
+        setInquiryError("");
+      } catch (inquiryLoadError) {
+        setInquiryError(errMsg(inquiryLoadError, "โหลดคำขอคอร์สเดี่ยวไม่สำเร็จ"));
+      }
     } catch (e) {
       setError(errMsg(e, "โหลดข้อมูลคอร์สเดี่ยวไม่สำเร็จ"));
     } finally {
@@ -83,6 +93,16 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   }, [courses, offers]);
 
   const close = () => setModal(null);
+  const markContacted = async (id) => {
+    try {
+      await axios.patch(`${API}/private-courses/inquiries/${id}/contacted`, {}, auth());
+      setInquiries((current) => current.map((item) => item.InquiryId === id
+        ? { ...item, Status: "contacted", ContactedAt: new Date().toISOString() } : item));
+      toast("บันทึกว่าติดต่อแล้ว");
+    } catch (error) {
+      toast(errMsg(error, "บันทึกสถานะไม่สำเร็จ"));
+    }
+  };
   const done = async (msg) => {
     toast(msg);
     close();
@@ -103,16 +123,17 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
         <SegmentedControl size="sm" stretchMobile value={tab} onChange={setTab} className="shrink-0" options={[
           { id: "courses", label: "คอร์สของนักเรียน", short: "คอร์สนักเรียน", count: courses.length },
           { id: "offers", label: "รายวิชาบนเว็บไซต์", short: "รายวิชาบนเว็บ", count: offers.length },
+          { id: "inquiries", label: "คำขอจากนักเรียน", short: "คำขอ", count: inquiries.filter((item) => item.Status === "pending").length },
         ]} />
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="ค้นหา"
-            placeholder={tab === "courses" ? "ค้นหาชื่อนักเรียน ติวเตอร์ หรือวิชา" : "ค้นหาชื่อรายวิชา ระดับชั้น หรือคำอธิบาย"}
+            placeholder={tab === "courses" ? "ค้นหาชื่อนักเรียน ติวเตอร์ หรือวิชา" : tab === "offers" ? "ค้นหาชื่อรายวิชา ระดับชั้น หรือคำอธิบาย" : "ค้นหาชื่อนักเรียน วิชา หรือเบอร์โทร"}
             className={`${INPUT} pl-9`} />
         </div>
         {tab === "courses"
           ? <button type="button" onClick={() => setModal({ type: "create" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full shrink-0 lg:w-auto`}><Plus className="h-4 w-4" />สร้างคอร์สให้นักเรียน</button>
-          : <button type="button" onClick={() => setModal({ type: "offer" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full shrink-0 lg:w-auto`}><Plus className="h-4 w-4" />เพิ่มรายวิชา</button>}
+          : tab === "offers" ? <button type="button" onClick={() => setModal({ type: "offer" })} className={`${BTN.base} ${BTN.primary} ${BTN.md} w-full shrink-0 lg:w-auto`}><Plus className="h-4 w-4" />เพิ่มรายวิชา</button> : null}
       </div>
 
       {loading ? (
@@ -122,9 +143,11 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ) : tab === "courses" ? (
         <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
-      ) : (
+      ) : tab === "offers" ? (
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
           onEdit={(o) => setModal({ type: "offer", data: o })} onChanged={load} />
+      ) : (
+        <InquiriesTab inquiries={inquiries} search={search} error={inquiryError} onRetry={load} onContacted={markContacted} />
       )}
 
       {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} onClose={close} onDone={done} />}
@@ -133,6 +156,30 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       {modal?.type === "offer" && <OfferModal offer={modal.data} subjects={lookups.subjects} onClose={close} onDone={done} />}
     </div>
   );
+}
+
+function InquiriesTab({ inquiries, search, error, onRetry, onContacted }) {
+  if (error) return <UIErrorState message={error} onRetry={onRetry} />;
+  const query = search.trim().toLowerCase();
+  const list = inquiries.filter((item) => !query || [item.SubjectName, item.StudentName, item.ContactName, item.ContactPhone, item.GradeLevel]
+    .some((value) => String(value || "").toLowerCase().includes(query)));
+  if (!list.length) return <EmptyState icon={UserRoundCheck} title={query ? "ไม่พบคำขอที่ค้นหา" : "ยังไม่มีคำขอคอร์สเดี่ยว"} />;
+  const format = { online: "ออนไลน์", onsite: "ออนไซต์", either: "ได้ทั้งสองแบบ" };
+  return <div className="space-y-3">
+    {list.map((item) => <article key={item.InquiryId} className={`${card} p-4 sm:p-5`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><h3 className="font-bold text-slate-900">{item.SubjectName} · {item.StudentName}</h3><p className="mt-1 text-xs text-slate-500">{item.GradeLevel} · อยากเริ่ม {item.DesiredStartDate} · {format[item.LearningFormat] || item.LearningFormat}</p></div>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${item.Status === "pending" ? "bg-orange-100 text-orange-700" : "bg-emerald-100 text-emerald-700"}`}>{item.Status === "pending" ? "รอติดต่อ" : "ติดต่อแล้ว"}</span>
+      </div>
+      <p className="mt-3 text-sm text-slate-700"><b>เป้าหมาย:</b> {item.Goal}</p>
+      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700"><b>สิ่งที่ต้องการ:</b> {item.LearningNeeds}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
+        <span className="text-slate-600">ผู้ติดต่อ {item.ContactName}</span>
+        <a href={`tel:${item.ContactPhone}`} className="font-bold text-orange-600 hover:underline">{item.ContactPhone}</a>
+        {item.Status === "pending" && <button type="button" onClick={() => onContacted(item.InquiryId)} className="ml-auto rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white">บันทึกว่าติดต่อแล้ว</button>}
+      </div>
+    </article>)}
+  </div>;
 }
 
 function Stat({ icon, color, label, value, unit, sub, className = "" }) {

@@ -14,7 +14,7 @@ import {
 } from "../config/privateCourses";
 
 /* ─────────────────────────────────────────────────────────────────────────
-   หน้าคอร์สเดี่ยว (เรียนตัวต่อตัว 1:1) — หน้าโชว์ ไม่มีปุ่มซื้อ ให้ติดต่อพี่กวางแทน
+   หน้าคอร์สเดี่ยว (เรียนตัวต่อตัว 1:1) — ไม่มีปุ่มซื้อ ฝากข้อมูลให้แอดมินติดต่อกลับได้
    ภาษาดีไซน์เดียวกับหน้าแรก: การ์ดขาว→ครีม #FFF3E8, หัวข้อกรมท่า #14213D, ส้มเป็นจุดเน้น
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -25,6 +25,7 @@ const CREAM = "linear-gradient(160deg,#ffffff 0%,#FFF3E8 100%)";
 const SOFT_CARD = { border: "1px solid rgba(20,33,61,.07)", background: "linear-gradient(160deg,#ffffff,#FFFBF6)" };
 
 const iconOf = (s) => privateIconOf(s?.icon);
+const GENERAL_INQUIRY = { generic: true, name: "ปรึกษาคอร์สเดี่ยว", levels: [], price: null, icon: "other" };
 
 // รายวิชาที่แอดมินเพิ่มไว้ (private_course_offers) → รูปแบบที่หน้านี้ใช้
 const toSubject = (o) => ({
@@ -55,7 +56,7 @@ const FEATURES = [
   { icon: LineChart, t: "ติดตามผลในระบบ", d: "ตารางเรียน การเข้าเรียน และคะแนนสอบ ดูได้ในบัญชีน้อง" },
 ];
 const STEPS = [
-  { icon: PhoneCall, t: "ติดต่อพี่กวาง", d: "บอกวิชา ระดับชั้น และเป้าหมาย" },
+  { icon: PhoneCall, t: "ฝากข้อมูลหรือโทรปรึกษา", d: "บอกวิชา ระดับชั้น และเป้าหมาย" },
   { icon: ClipboardCheck, t: "ประเมินพื้นฐาน", d: "คุยและประเมินระดับของน้อง" },
   { icon: UsersRound, t: "จับคู่ครู", d: "แนะนำครูที่เหมาะ หรือเลือกเอง" },
   { icon: Rocket, t: "เริ่มเรียน", d: "ตกลงราคา–เวลา โอนแล้วคอร์สขึ้นในบัญชี" },
@@ -145,6 +146,15 @@ export function PrivateContactButtons({ className = "", compact = false }) {
 function ContactModal({ subject, onClose }) {
   const [msg, setMsg] = useState(() => privateInquiryMessage(subject?.generic ? "" : subject?.name));
   const [copied, setCopied] = useState(false);
+  const [inquiry, setInquiry] = useState({
+    subjectName: subject?.generic ? "" : subject?.name || "",
+    studentName: "", gradeLevel: "", goal: "", desiredStartDate: "",
+    learningFormat: "", learningNeeds: "", contactName: "", contactPhone: "",
+    privacyAcknowledged: false,
+  });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState("");
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -158,6 +168,27 @@ function ContactModal({ subject, onClose }) {
     setTimeout(() => setCopied(false), 1400);
   };
   const Icon = iconOf(subject);
+  const updateInquiry = (event) => {
+    const { name, value, type, checked } = event.target;
+    setInquiry((current) => ({ ...current, [name]: type === "checkbox" ? checked : value }));
+  };
+  const sendInquiry = async (event) => {
+    event.preventDefault();
+    setSending(true);
+    setSendError("");
+    try {
+      await axios.post(`${API_URL}/api/private-courses/inquiries`, {
+        ...inquiry,
+        offerId: subject?.generic ? null : subject?.key,
+      });
+      setSent(true);
+    } catch (error) {
+      setSendError(error?.response?.data?.message || "ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setSending(false);
+    }
+  };
+  const inputClass = "mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-orange-400";
 
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pc-modal-title" onClick={onClose}>
@@ -181,6 +212,34 @@ function ContactModal({ subject, onClose }) {
         </div>
 
         <div className="space-y-3 p-5">
+          {sent ? (
+            <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+              ส่งข้อมูลให้สถาบันแล้ว เจ้าหน้าที่จะติดต่อกลับตามเบอร์ที่ระบุ
+            </div>
+          ) : (
+            <form onSubmit={sendInquiry} className="space-y-3 rounded-2xl border border-orange-100 bg-orange-50/50 p-4">
+              <h4 className="font-bold text-[#14213D]">ฝากข้อมูลคอร์สเดี่ยว</h4>
+              <p className="text-xs text-gray-600">ระบุความต้องการไว้ก่อน เจ้าหน้าที่จะติดต่อกลับเพื่อประเมินและนัดเรียน</p>
+              <label className="block text-xs font-semibold text-gray-700">วิชา *<input name="subjectName" required maxLength={150} value={inquiry.subjectName} onChange={updateInquiry} readOnly={!subject?.generic} className={inputClass} /></label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold text-gray-700">ชื่อนักเรียน *<input name="studentName" required maxLength={120} value={inquiry.studentName} onChange={updateInquiry} className={inputClass} /></label>
+                <label className="block text-xs font-semibold text-gray-700">ระดับชั้น *<input name="gradeLevel" required maxLength={50} placeholder="เช่น ม.3" value={inquiry.gradeLevel} onChange={updateInquiry} className={inputClass} /></label>
+              </div>
+              <label className="block text-xs font-semibold text-gray-700">เป้าหมายการเรียน *<textarea name="goal" required maxLength={500} rows={2} placeholder="เช่น เพิ่มเกรด หรือเตรียมสอบเข้า" value={inquiry.goal} onChange={updateInquiry} className={inputClass} /></label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold text-gray-700">วันที่อยากเริ่มเรียน *<input type="date" name="desiredStartDate" required value={inquiry.desiredStartDate} onChange={updateInquiry} className={inputClass} /></label>
+                <label className="block text-xs font-semibold text-gray-700">รูปแบบเรียน *<select name="learningFormat" required value={inquiry.learningFormat} onChange={updateInquiry} className={inputClass}><option value="">เลือกรูปแบบ</option><option value="online">ออนไลน์</option><option value="onsite">ออนไซต์</option><option value="either">ได้ทั้งสองแบบ</option></select></label>
+              </div>
+              <label className="block text-xs font-semibold text-gray-700">สิ่งที่ต้องการให้ช่วยเป็นพิเศษ *<textarea name="learningNeeds" required maxLength={1000} rows={2} placeholder="เรื่องที่ยังไม่เข้าใจหรือสิ่งที่อยากให้ติวเตอร์เน้น" value={inquiry.learningNeeds} onChange={updateInquiry} className={inputClass} /></label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs font-semibold text-gray-700">ชื่อผู้ติดต่อ *<input name="contactName" required maxLength={120} value={inquiry.contactName} onChange={updateInquiry} className={inputClass} /></label>
+                <label className="block text-xs font-semibold text-gray-700">เบอร์โทรติดต่อ *<input type="tel" name="contactPhone" required inputMode="numeric" pattern="0[0-9]{9}" title="เบอร์โทร 10 หลัก" placeholder="08xxxxxxxx" value={inquiry.contactPhone} onChange={updateInquiry} className={inputClass} /></label>
+              </div>
+              <label className="flex items-start gap-2 text-xs text-gray-600"><input type="checkbox" name="privacyAcknowledged" required checked={inquiry.privacyAcknowledged} onChange={updateInquiry} className="mt-0.5" />รับทราบว่าสถาบันจะใช้ข้อมูลนี้เพื่อติดต่อกลับเรื่องคอร์สเดี่ยว</label>
+              {sendError && <p role="alert" className="text-xs font-semibold text-red-600">{sendError}</p>}
+              <button type="submit" disabled={sending} className="w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{sending ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้สถาบัน"}</button>
+            </form>
+          )}
           <a href={C.tel} className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-orange-300">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style={{ background: ORANGE_GRAD }}><Phone className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1 leading-tight">
@@ -254,6 +313,7 @@ export default function PrivateCourses() {
                 <span className="text-[11px] text-gray-400">ราคาจริงขึ้นกับวิชาและจำนวนชั่วโมง · สอบถามราคาได้</span>
               </div>
               <PrivateContactButtons className="mt-6" />
+              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="mt-3 rounded-2xl border border-orange-300 bg-white px-5 py-3 text-sm font-bold text-orange-600 transition hover:bg-orange-50">ฝากข้อมูลคอร์สเดี่ยวให้ติดต่อกลับ</button>
             </div>
             <PrivateCourseOrbit variant="hero" orbitCoin>
               <PrivateSubjectStack subjects={subjects} iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
@@ -330,6 +390,7 @@ export default function PrivateCourses() {
                 บอกวิชา ระดับชั้น และเป้าหมายของน้องกับ{C.name}ได้เลย แล้วเราจะหาครูที่เหมาะให้
               </p>
               <PrivateContactButtons compact className="justify-center" />
+              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-orange-600">ฝากข้อมูลให้ติดต่อกลับ</button>
             </div>
           )}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -355,7 +416,7 @@ export default function PrivateCourses() {
                     </div>
                     <div className="mt-auto border-t border-neutral-100 pt-3">
                       <span className="flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition group-hover:bg-orange-600">
-                        <MessageCircle className="h-3.5 w-3.5" />ติดต่อสอบถาม
+                        <MessageCircle className="h-3.5 w-3.5" />ฝากข้อมูล / ติดต่อสอบถาม
                       </span>
                     </div>
                   </div>
