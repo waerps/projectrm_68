@@ -194,7 +194,6 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
                 <div className="min-w-0 flex-1">
                   <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
                   <p className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</p>
-                  {cls.plannedTopicsText && <p className="mt-1 text-xs text-orange-700 line-clamp-2">คาดว่าจะสอน: {cls.plannedTopicsText}</p>}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
@@ -810,7 +809,7 @@ export default function TutorSchedule() {
 
                     return (
                       <div key={d + slot.label}
-                        className={`min-h-[100px] p-2.5 rounded-xl border-2 transition-all duration-300 ${style ? style.card : 'bg-transparent border-transparent'}`}
+                        className={`min-h-[100px] min-w-0 overflow-hidden p-2.5 rounded-xl border-2 transition-all duration-300 ${style ? style.card : 'bg-transparent border-transparent'}`}
                         onClick={() => cls && handleClick(d, slot.label, cls)}>
 
                         {cls && (
@@ -820,14 +819,13 @@ export default function TutorSchedule() {
                             <div className="mb-1 space-y-1"> {/* <-- เพิ่ม space-y-1 เพื่อให้ป้ายสีกับชื่อคอร์สไม่ชิดกันเกินไป */}
 
                               {/* 👇 แก้ไขบล็อกนี้: เปลี่ยนให้เป็นป้ายสีแบบแอดมิน */}
-                              <div className={`text-[11px] font-bold text-white px-1.5 py-0.5 rounded w-fit line-clamp-1 ${SUBJECT_COLOR(cls.subjectName)}`}>
+                              <div className={`max-w-full truncate text-[11px] font-bold text-white px-1.5 py-0.5 rounded w-fit ${SUBJECT_COLOR(cls.subjectName)}`} title={cls.subjectName}>
                                 {cls.subjectName}
                               </div>
 
-                              <div className="text-[11px] text-slate-500 line-clamp-1 leading-tight mt-0.5">
+                              <div className="text-[11px] text-slate-600 line-clamp-2 break-words leading-tight mt-0.5" title={cls.courseName}>
                                 {cls.courseName}
                               </div>
-                              {cls.plannedTopicsText && <p className="text-[11px] text-orange-700 line-clamp-2">คาดว่าจะสอน: {cls.plannedTopicsText}</p>}
                             </div>
 
                             {/* ส่วนข้อมูลล่าง: ห้องเรียน และ ไอคอนจำนวนนักเรียน */}
