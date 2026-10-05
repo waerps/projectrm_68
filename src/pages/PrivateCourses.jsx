@@ -212,6 +212,7 @@ function ContactModal({ subject, subjects, onClose }) {
   };
   const sendInquiry = async (event) => {
     event.preventDefault();
+    if (!inquiry.privacyAcknowledged) return;
     setSending(true);
     setSendError("");
     try {
@@ -288,7 +289,7 @@ function ContactModal({ subject, subjects, onClose }) {
               </div></div>
               <label className="flex items-start gap-2 text-xs text-gray-600"><input type="checkbox" name="privacyAcknowledged" required checked={inquiry.privacyAcknowledged} onChange={updateInquiry} className="mt-0.5" />รับทราบว่าสถาบันจะใช้ข้อมูลนี้เพื่อติดต่อกลับเรื่องคอร์สเดี่ยว</label>
               {sendError && <p role="alert" className="text-xs font-semibold text-red-600">{sendError}</p>}
-              <button type="submit" disabled={sending} className="w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{sending ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้สถาบัน"}</button>
+              <button type="submit" disabled={sending || !inquiry.privacyAcknowledged} className="w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">{sending ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้สถาบัน"}</button>
             </form>
           )}
           <a href={C.tel} className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-orange-300">
