@@ -73,7 +73,6 @@ import TutorCourses from "./pagetutor/TutorCourses.jsx"
 import TutorStudents from "./pagetutor/TutorStudents.jsx"
 import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"
 import TutorManage from "./pagetutor/TutorManage.jsx"
-import Test from "./pagetutor/Test.jsx"
 import TutorIncome from "./pagetutor/TutorIncome.jsx"
 import TutorNotification from "./pagetutor/TutorNotification.jsx"
 import TutorExam from "./pagetutor/TutorExam.jsx"
@@ -171,7 +170,6 @@ const router = createBrowserRouter(
             { path: "students", element: <TutorStudents /> },
             { path: "students/detail", element: <TutorStudentDetail /> },
             { path: "incidents", element: <TutorIncidents /> },
-            { path: "test", element: <Test /> },
             { path: "income", element: <TutorIncome /> },
             { path: "notification", element: <TutorNotification /> },
             { path: "exam", element: <TutorExam /> },
