@@ -6,8 +6,9 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
   Pencil, Save, X, Camera, ImagePlus, Phone, User, ShieldCheck,
-  KeyRound, Eye, EyeOff, Loader2, CalendarDays, AlertTriangle,
+  KeyRound, Eye, EyeOff, Loader2, CalendarDays, AlertTriangle, Trash2,
 } from "lucide-react";
+import { confirmDialog } from "../components/ui/dialogs";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 
@@ -15,7 +16,7 @@ const API = `${API_URL}/api/admin/profile`;
 
 // ─── helper: ดึง AdminId ของคนที่ล็อกอินอยู่ตอนนี้ ─────────────────────────
 // pattern เดียวกับ TutorProfile.jsx / AdminManagement.jsx
-// เมื่อมี JWT middleware ฝั่ง backend แล้ว ควรเปลี่ยนไปใช้ค่าจาก token แทน
+// backend ตรวจว่า id นี้ตรงกับ token (ถ้าไม่ตรงได้ 403)
 function getCurrentAdminId() {
   try {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -218,6 +219,7 @@ export default function AdminProfile() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
+    e.target.value = "";
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       return showToast("error", "อัปโหลดไม่สำเร็จ", "ไฟล์ต้องไม่เกิน 5MB");
@@ -229,9 +231,22 @@ export default function AdminProfile() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
+      setOriginalData(prev => ({ ...prev, photo: res.data.imageUrl }));
       showToast("success", "อัปโหลดรูปสำเร็จ");
     } catch (e) {
       showToast("error", "อัปโหลดไม่สำเร็จ", e.response?.data?.message);
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    if (!await confirmDialog("ลบรูปโปรไฟล์? ระบบจะแสดงตัวอักษรย่อแทน", { title: "ลบรูปโปรไฟล์", confirmText: "ลบรูป", danger: true })) return;
+    try {
+      await axios.delete(`${API}/${ADMIN_ID}/delete-profile`);
+      setFormData(prev => ({ ...prev, photo: null }));
+      setOriginalData(prev => ({ ...prev, photo: null }));
+      showToast("success", "ลบรูปโปรไฟล์แล้ว");
+    } catch (e) {
+      showToast("error", "ลบรูปไม่สำเร็จ", e.response?.data?.message);
     }
   };
 
@@ -313,6 +328,12 @@ export default function AdminProfile() {
                 className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-orange-500 shadow-lg hover:scale-110 transition-transform border-2 border-orange-100">
                 <ImagePlus className="h-4.5 w-4.5" />
               </button>
+              {formData.photo && (
+                <button aria-label="ลบรูป" title="ลบรูปโปรไฟล์" onClick={handleDeletePhoto}
+                  className="absolute -top-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-red-500 shadow-lg hover:scale-110 transition-transform border-2 border-red-100">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
 
             {/* ชื่อ + badge */}

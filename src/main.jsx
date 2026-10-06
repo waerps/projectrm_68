@@ -95,8 +95,6 @@ import AdminNotification from "./pageadmin/AdminNotification.jsx"
 import AdminPasswordResets from "./pageadmin/AdminPasswordResets.jsx"
 import AdminRooms from "./pageadmin/AdminRooms.jsx"
 import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
-import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
-import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
 import AdminManagement from "./pageadmin/AdminManagement.jsx"
 import AdminProfile from "./pageadmin/AdminProfile.jsx"
 import AdminIncidents from "./pageadmin/AdminIncidents.jsx"
@@ -197,8 +195,6 @@ const router = createBrowserRouter(
             { path: "announcements", element: <AdminAnnouncements /> },
             { path: "notification", element: <AdminNotification /> },
             { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
-            { path: "create-tutor", element: <CreateTutorForm /> },
-            { path: "attendance", element: <div className="px-4 lg:px-0"><AdminAttendanceDashboard /></div> },
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },

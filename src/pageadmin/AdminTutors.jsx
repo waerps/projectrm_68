@@ -2356,7 +2356,10 @@ export default function AdminTutorsPage() {
   const [resetPwdTutor, setResetPwdTutor] = useState(null);
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [viewTutor, setViewTutor] = useState(null);
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['list', 'attendance', 'applications'].includes(t) ? t : 'list';
+  });
   const [loadError, setLoadError] = useState(false);
   const [applications, setApplications] = useState([]);
 
