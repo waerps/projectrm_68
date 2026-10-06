@@ -203,37 +203,6 @@ export async function updateExamSettings(examId, settings) {
   return data;
 }
 
-// POST /api/exam/:examId/questions → adds question(s) to the EXISTING exam.
-// `questions` is always an array (manual add sends length-1 arrays too).
-export async function addQuestions(examId, questions) {
-  const { data } = await axios.post(`${API_BASE}/${examId}/questions`, { questions }, { headers: authHeaders() });
-  return data;
-}
-
-// PUT /api/exam/questions/:questionId
-export async function updateQuestion(questionId, patch) {
-  const { data } = await axios.put(`${API_BASE}/questions/${questionId}`, patch, { headers: authHeaders() });
-  return data;
-}
-
-// DELETE /api/exam/questions/:questionId
-// PUT /api/exam/:examId/questions/scores — อัปเดตคะแนนหลายข้อพร้อมกัน (ปุ่มแบ่งคะแนนอัตโนมัติ)
-export async function bulkUpdateQuestionScores(examId, scores) {
-    const { data } = await axios.put(`${API_BASE}/${examId}/questions/scores`, { scores }, { headers: authHeaders() });
-    return data;
-}
-
-// DELETE /api/exam/:examId/questions — ลบข้อสอบทั้งชุดในครั้งเดียว
-export async function deleteAllQuestions(examId) {
-    const { data } = await axios.delete(`${API_BASE}/${examId}/questions`, { headers: authHeaders() });
-    return data;
-}
-
-export async function deleteQuestion(questionId) {
-  const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`, { headers: authHeaders() });
-  return data;
-}
-
 // POST /api/exam/:examId/session/open → { status, sessionId, examLink }
 export async function openExamSession(examId) {
   const { data } = await axios.post(`${API_BASE}/${examId}/session/open`, {}, { headers: authHeaders() });
@@ -307,14 +276,6 @@ export async function fetchTopicBreakdown(examId) {
   return data;
 }
 
-
-// GET /api/exam/subject/:subjectId/categories?adminId= → หมวดทั้งหมดที่เคยใช้ในวิชานี้ (ข้าม 3 รอบ)
-export async function fetchSubjectCategories({ subjectId, adminId }) {
-  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/categories`, { params: { adminId }, headers: authHeaders() });
-  return data;
-}
-
-
 // ── คลังข้อสอบของวิชา (/api/bank) ─────────────────────────────────────────────
 // คลังแยกจากชุดที่ใช้สอบจริง แก้ข้อในคลังไม่กระทบข้อสอบที่เคยใช้ไปแล้ว
 const BANK_BASE = `${API_URL}/api/bank`;
@@ -322,18 +283,6 @@ const BANK_BASE = `${API_URL}/api/bank`;
 // GET /api/bank?subjectId= → [{ id, text, options, correct, level, category, explanation, usedCount, lastUsed }]
 export async function fetchBank(subjectId) {
   const { data } = await axios.get(BANK_BASE, { params: { subjectId }, headers: authHeaders() });
-  return data;
-}
-
-// GET /api/bank/summary?subjectId= → [{ category, level, count }] ใช้เติมตารางตอนกรอกเงื่อนไข
-export async function fetchBankSummary(subjectId) {
-  const { data } = await axios.get(`${BANK_BASE}/summary`, { params: { subjectId }, headers: authHeaders() });
-  return data;
-}
-
-// GET /api/bank/usage-history?subjectId= → ชุดข้อสอบที่เคยใช้ไปแล้วในวิชานี้
-export async function fetchBankUsageHistory(subjectId) {
-  const { data } = await axios.get(`${BANK_BASE}/usage-history`, { params: { subjectId }, headers: authHeaders() });
   return data;
 }
 
@@ -429,12 +378,6 @@ export async function applyExamSet({ examId, bankQuestionIds, applyTo = "all", t
     { examId, bankQuestionIds, applyTo, totalScore },
     { headers: authHeaders() }
   );
-  return data;
-}
-
-// PUT /api/exam/subject/:subjectId/categories/rename → รวม/เปลี่ยนชื่อหมวด (cascade ทุก exam ของวิชานี้)
-export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
-  const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to }, { headers: authHeaders() });
   return data;
 }
 
