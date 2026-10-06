@@ -249,7 +249,7 @@ function ContactModal({ subject, subjects, onClose }) {
             </div>
           </div>
           <div className="relative mt-4 flex items-center justify-between gap-3">
-            <span className="text-xs font-semibold text-orange-600">ออนไลน์เริ่ม {ONLINE_START} · ออนไซต์เริ่ม {ONSITE_START} บาท/ชม.</span>
+            <span className="text-xs font-semibold text-orange-600">สอบถามราคากับแอดมิน</span>
             <span className="text-[11px] text-gray-400">{subject.levels.join(" · ")}</span>
           </div>
         </div>
@@ -462,7 +462,7 @@ export default function PrivateCourses() {
                   <div className="flex flex-1 flex-col p-3.5">
                     <h3 className="text-[13.5px] font-bold leading-snug text-neutral-800">คอร์สเดี่ยว · {s.name}</h3>
                     {s.note && <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{s.note}</p>}
-                    <div className="mt-2 text-[11px] font-semibold text-orange-600">ออนไลน์เริ่ม {ONLINE_START} · ออนไซต์เริ่ม {ONSITE_START} บาท/ชม.</div>
+                    <div className="mt-2 text-[11px] font-semibold text-orange-600">สอบถามราคากับแอดมิน</div>
                     <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
                       {s.levels.map((l) => <span key={l} className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{l}</span>)}
                     </div>

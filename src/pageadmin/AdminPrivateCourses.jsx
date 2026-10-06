@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
   UserRoundCheck, Plus, Search, Wallet, UserPlus, Settings2, Pencil, Trash2, Eye, EyeOff,
-  BookOpen, Calculator as CalcIcon, CheckCircle2, Clock, Layers, Info,
+  BookOpen, Calculator as CalcIcon, CheckCircle2, Layers, Info,
 } from "lucide-react";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import Badge from "../components/ui/Badge";
@@ -386,10 +386,7 @@ function OffersTab({ offers, search = "", subjects, onAdd, onEdit, onChanged }) 
               {o.Levels.map((l) => <Badge key={l} tone="info">{l}</Badge>)}
               {subjectName(o.SubjectId) && <Badge tone="neutral">วิชาในระบบ: {subjectName(o.SubjectId)}</Badge>}
             </div>
-            <p className="mt-3 text-sm">
-              {o.StartingPrice ? <>เริ่มต้น <b className="text-green-700">{money(o.StartingPrice)}</b>/ชม.</> : <b className="text-orange-500">สอบถามราคา</b>}
-              <span className="ml-2 text-xs text-slate-400">ลำดับ {o.SortOrder}</span>
-            </p>
+            <p className="mt-3 text-xs text-slate-400">ลำดับการแสดง {o.SortOrder}</p>
             <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
               <button type="button" onClick={() => onEdit(o)} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><Pencil className="h-3.5 w-3.5" />แก้ไข</button>
               <button type="button" onClick={() => toggle(o)} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}>
@@ -714,7 +711,6 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
   const [f, setF] = useState(() => ({
     Title: offer?.Title || "", SubjectId: offer?.SubjectId ? String(offer.SubjectId) : "", IconKey: offer?.IconKey || "math",
     Levels: offer?.Levels || [], Note: offer?.Note || "",
-    askPrice: offer ? offer.StartingPrice === null : false, StartingPrice: offer?.StartingPrice ?? PRIVATE_PRICING[0].modes[0].starting,
     SortOrder: offer?.SortOrder ?? 0, IsActive: false,
   }));
   const [saving, setSaving] = useState(false);
@@ -730,7 +726,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
 
   const submit = async () => {
     setSaving(true);
-    const body = { ...f, SubjectId: f.SubjectId || null, StartingPrice: f.askPrice ? null : f.StartingPrice };
+    const body = { ...f, SubjectId: f.SubjectId || null };
     try {
       if (offer) await axios.put(`${API}/private-courses/offers/${offer.OfferId}`, body, auth());
       else await axios.post(`${API}/private-courses/offers`, body, auth());
@@ -799,23 +795,12 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
             })}
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="sm:col-span-2">
-            <label className={labelCls}>ราคาเริ่มต้น / ชม.</label>
-            <div className="flex items-center gap-3">
-              <input type="number" min="0" value={f.askPrice ? "" : f.StartingPrice} disabled={f.askPrice} onChange={(e) => set("StartingPrice", e.target.value)} className={`${INPUT} max-w-[160px] disabled:bg-slate-50`} />
-              <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" checked={f.askPrice} onChange={(e) => set("askPrice", e.target.checked)} className="accent-orange-500" />แสดงเป็น "สอบถามราคา"
-              </label>
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>ลำดับการแสดง</label>
-            <input type="number" value={f.SortOrder} onChange={(e) => set("SortOrder", e.target.value)} className={INPUT} />
-          </div>
+        <div className="sm:max-w-[200px]">
+          <label className={labelCls}>ลำดับการแสดง</label>
+          <input type="number" value={f.SortOrder} onChange={(e) => set("SortOrder", e.target.value)} className={INPUT} />
         </div>
         <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-800">บันทึกแล้วจะเป็นฉบับร่าง กด “เผยแพร่” จากการ์ดรายวิชาเมื่อตรวจเรียบร้อย</p>
-        <p className="flex items-start gap-1.5 text-xs text-slate-500"><Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" />ราคานี้เป็นราคาเริ่มต้นที่แสดงบนเว็บไซต์ ราคาจริงของนักเรียนแต่ละคนกำหนดเมื่อสร้างคอร์ส</p>
+        <p className="flex items-start gap-1.5 text-xs text-slate-500"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />การ์ดรายวิชาไม่แสดงราคา ผู้ปกครองติดต่อแอดมินเพื่อสอบถามราคา ราคาจริงของนักเรียนแต่ละคนกำหนดตอนสร้างคอร์ส</p>
       </div>
     </Modal>
   );
