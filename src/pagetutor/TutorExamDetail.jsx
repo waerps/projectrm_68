@@ -2429,7 +2429,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
                     <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันการปิดสอบ?</h3>
-                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
+                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบไม่ได้อีก และคนที่ยังทำอยู่จะถูกส่งข้อสอบทันทีด้วยคำตอบที่บันทึกไว้</p>
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => setConfirmClose(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>

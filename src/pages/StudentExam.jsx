@@ -204,6 +204,20 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     queueTiming(() => logQuestionEnter(visit));
   }, [examJoinId, examBehaviorConsent, queueTiming]);
 
+  // ติวเตอร์ปิดสอบ/หมดเวลา ระหว่างที่ยังทำอยู่ — server ส่งข้อสอบให้แล้ว (ตอบ 409)
+  // ดึงคะแนนที่ส่งไว้มาแสดงแทนการเด้ง error
+  const handleClosedByServer = useCallback(async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    try {
+      const result = await submitExam(examJoinId, userId, { timingSessionId: timingSessionRef.current, timingComplete: false });
+      onSubmitted({ ...result, closedByServer: true });
+    } catch {
+      submittedRef.current = false;
+      setError("การสอบถูกปิดแล้ว กรุณารีเฟรชหน้าเพื่อดูคะแนน");
+    }
+  }, [examJoinId, userId, onSubmitted]);
+
   const doSubmit = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
@@ -213,7 +227,12 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       // A last click must finish saving before the backend locks and grades the attempt.
       await answerQueueRef.current;
       for (const [questionId, selected] of unsavedAnswersRef.current) {
-        await saveAnswer({ examJoinId, userId, questionId, selected });
+        try {
+          await saveAnswer({ examJoinId, userId, questionId, selected });
+        } catch (err) {
+          // ถูกส่งไปแล้วฝั่ง server (ปิดสอบ/หมดเวลา) — ข้ามไปส่งเพื่อรับคะแนน
+          if (err.response?.status !== 409) throw err;
+        }
         unsavedAnswersRef.current.delete(questionId);
       }
       await closingVisit;
@@ -306,6 +325,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
         catch { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
         if (unsavedAnswersRef.current.get(questionId) === optIdx) unsavedAnswersRef.current.delete(questionId);
       } catch (err) {
+        if (err.response?.status === 409) { handleClosedByServer(); return; }
         console.error("Autosave failed:", err);
         showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "ระบบจะลองบันทึกอีกครั้งก่อนส่งข้อสอบ");
       }
@@ -471,6 +491,7 @@ function ResultCard({ result }) {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
         <h1 className="text-lg font-bold text-slate-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
+        {result.closedByServer && <p className="text-sm text-slate-500">ติวเตอร์ปิดการสอบแล้ว ระบบส่งข้อสอบให้ด้วยคำตอบที่บันทึกไว้</p>}
         <div className="bg-slate-50 rounded-xl p-5">
           <p className="text-sm text-slate-500 mb-1">คะแนนสอบรอบนี้</p>
           <p className="text-3xl font-bold text-orange-600">
