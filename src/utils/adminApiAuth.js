@@ -49,8 +49,15 @@ export function installAdminApiAuth() {
     }
     return config;
   });
+  // API แอดมินตอบ 202 = บันทึกเป็นฉบับร่างรอเผยแพร่ → แจ้งทุกจุดที่แสดงรายการร่างให้โหลดใหม่
+  const notifyDraft = (status) => {
+    if (status === 202) window.dispatchEvent(new Event("course-drafts-changed"));
+  };
   axios.interceptors.response.use(
-    (res) => res,
+    (res) => {
+      if (isAdminApi(res?.config?.url) || isAdminApi(`${res?.config?.baseURL || ""}${res?.config?.url || ""}`)) notifyDraft(res.status);
+      return res;
+    },
     (err) => {
       const url = err?.config?.url;
       if (isAdminApi(url) || isAdminApi(`${err?.config?.baseURL || ""}${url || ""}`)) onUnauthorized(err?.response?.status);
@@ -67,6 +74,7 @@ export function installAdminApiAuth() {
     if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
     const res = await originalFetch(input, { ...(init || {}), headers });
     onUnauthorized(res.status);
+    notifyDraft(res.status);
     return res;
   };
 }

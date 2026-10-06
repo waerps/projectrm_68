@@ -655,7 +655,7 @@ export default function AdminFinance() {
             {missingPriceCount > 0 && (
                 <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
                     <AlertCircle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
-                    <p>พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ</p>
+                    <p>พบ {missingPriceCount} คำสั่งซื้อที่ยอดเป็น 0 บาท (เกิดจากคอร์สที่ยังไม่ได้ตั้งราคาตอนนักเรียนสั่งซื้อ) — ไม่ถูกนับใน "จ่ายแล้ว" และ "ค้างชำระ" กรุณาตรวจสอบและติดต่อนักเรียนเพื่อจัดการรายการเหล่านี้</p>
                 </div>
             )}
 

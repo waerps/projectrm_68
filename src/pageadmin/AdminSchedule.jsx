@@ -11,6 +11,7 @@ import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbu
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import { PendingDraftsCallout } from "../components/CourseDrafts";
 
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -443,6 +444,10 @@ export default function AdminSchedule() {
             </button>
           </div>
         </div>
+
+        {/* ── การแก้ไขตารางที่รอเผยแพร่ (ยังไม่แสดงในตารางด้านล่าง) ── */}
+        <PendingDraftsCallout category="schedule" what="ตารางสอน" className="mb-4"
+          onChanged={() => fetchSchedule(weekStart)} />
 
         {/* ── Error ── */}
         {error && (
@@ -1313,9 +1318,13 @@ function ScheduleModal({
               className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
             >
               <option value="">เลือกติวเตอร์</option>
-              {meta.tutors.map(t => (
-                <option key={t.AdminId} value={t.AdminId}>{t.Nickname}</option>
-              ))}
+              {meta.tutors
+                .filter(t => Number(t.Status_Tutor_Id) === 1 || String(t.AdminId) === String(formData.AdminId))
+                .map(t => (
+                  <option key={t.AdminId} value={t.AdminId}>
+                    {t.Nickname}{Number(t.Status_Tutor_Id) === 1 ? '' : ' (ไม่ได้สอนแล้ว)'}
+                  </option>
+                ))}
             </select>
           </div>
 

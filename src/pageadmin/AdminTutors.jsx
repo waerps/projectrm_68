@@ -24,6 +24,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import { PendingDraftsCallout } from "../components/CourseDrafts";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -1382,6 +1383,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
       {isEdit && (
         <div>
           <label className={lbl}>คอร์สที่สอน</label>
+          <PendingDraftsCallout tutorId={initial.AdminId} what="การสอนของติวเตอร์คนนี้" className="mb-3" onChanged={loadCourses} />
           <AddCourseToTutor
             tutorId={initial.AdminId}
             assignedCourses={courses}
@@ -1394,7 +1396,8 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             compact
             onRemoveSubject={async (tutorCourseDetailId) => {
               try {
-                await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                if (res.data?.drafted) showToast("success", res.data.message);
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
@@ -1402,7 +1405,8 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             }}
             onUpdateHours={async (tutorCourseDetailId, hours) => {
               try {
-                await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                const res = await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                if (res.data?.drafted) showToast("success", res.data.message);
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
@@ -2275,6 +2279,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         <>
           {tab === 'courses' && (
             <div className="space-y-3">
+              <PendingDraftsCallout tutorId={tutor.AdminId} what="การสอนของติวเตอร์คนนี้" onChanged={loadDetail} />
               <AddCourseToTutor
                 tutorId={tutor.AdminId}
                 assignedCourses={data.courses}
@@ -2287,7 +2292,8 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                 onRemoveSubject={async (tutorCourseDetailId, label) => {
                   if (!await confirmDialog(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
                   try {
-                    await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                    const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                    if (res.data?.drafted) showToast("success", res.data.message);
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
@@ -2295,7 +2301,8 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                 }}
                 onUpdateHours={async (tutorCourseDetailId, hours) => {
                   try {
-                    await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                    const res = await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                    if (res.data?.drafted) showToast("success", res.data.message);
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");

@@ -15,6 +15,7 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import UIModal from "../components/ui/Modal";
 import { confirmDialog, toast } from "../components/ui/dialogs";
+import { CoursePublishModal, PendingDraftsCallout } from "../components/CourseDrafts";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
@@ -1021,7 +1022,8 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
-  const tutorOptions = allTutors.map(t => ({
+  // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
+  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
@@ -2921,7 +2923,8 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   const inp = "px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-[13px] outline-none";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4)
-  const tutorOptions = allTutors.map(t => ({
+  // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
+  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
@@ -3184,6 +3187,7 @@ export default function AdminCoursesPage() {
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState([]);
   const [duplicatingCourse, setDuplicatingCourse] = useState(null);
+  const [publishingCourse, setPublishingCourse] = useState(null);
 
   // แท็บบนสุด: คอร์สรวม (เรียนกลุ่ม) | คอร์สเดี่ยว (ตัวต่อตัว) — จำไว้ใน URL (?type=single)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -3223,46 +3227,110 @@ export default function AdminCoursesPage() {
   const handleCreate = async (data) => {
     setIsSubmitting(true);
     const { pendingSubjects = [], pendingStudents = [], ...courseData } = data;
+
+    // ช่วงที่ 1: สร้างตัวคอร์ส — ถ้าพังตรงนี้ แปลว่ายังไม่มีคอร์สเกิดขึ้น ให้คงหน้าต่างไว้แก้แล้วกดใหม่ได้
+    let CourseID;
     try {
       const res = await axios.post(`${API_BASE}/courses`, courseData);
-      const CourseID = res.data.CourseID;
+      CourseID = res.data.CourseID;
+    } catch (e) {
+      showToast("error", "สร้างคอร์สไม่สำเร็จ", e.response?.data?.message);
+      setIsSubmitting(false);
+      return;
+    }
 
+    // ช่วงที่ 2: เพิ่มวิชา/นักเรียน — คอร์สมีอยู่แล้ว ห้ามปล่อยให้ error หลุดไปจนหน้าต่างค้าง
+    // (เดิมแอดมินจะเข้าใจว่ายังไม่ได้สร้าง แล้วกดบันทึกซ้ำจนได้คอร์สซ้ำ)
+    const failedSubjects = []; // { item, reason }
+    const failedStudents = []; // { userId, reason }
+    let studentsSkippedDueToStatus = false;
+    try {
       const subjectResults = await Promise.allSettled(
         pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
       );
-      const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
+      subjectResults.forEach((r, i) => {
+        if (r.status === "rejected") {
+          failedSubjects.push({ item: pendingSubjects[i], reason: r.reason?.response?.data?.message || "" });
+        }
+      });
 
       const canEnrollNow = [1, 2].includes(Number(courseData.Status_Course_Id));
-      const studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
-      let enrollFailed = 0;
+      studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
       if (canEnrollNow && pendingStudents.length > 0) {
-        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
-          UserIds: pendingStudents,
-          CourseID,
-        });
-        enrollFailed = (enrollRes.data?.failed || []).length;
+        try {
+          const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, { UserIds: pendingStudents, CourseID });
+          for (const f of enrollRes.data?.failed || []) {
+            if (f.UserId) failedStudents.push({ userId: f.UserId, reason: f.message || "" });
+            else pendingStudents.forEach(userId => failedStudents.push({ userId, reason: f.message || "" }));
+          }
+        } catch (e) {
+          const reason = e.response?.data?.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ";
+          pendingStudents.forEach(userId => failedStudents.push({ userId, reason }));
+        }
       }
 
-      if (studentsSkippedDueToStatus) {
+      if (failedSubjects.length || failedStudents.length) {
+        await showCreateFailures(courseData.CourseName, failedSubjects, failedStudents);
+      } else if (studentsSkippedDueToStatus) {
         showToast(
           "error",
           "สร้างคอร์สสำเร็จ แต่ยังไม่ได้เพิ่มนักเรียน",
           "เนื่องจากสถานะคอร์สไม่ใช่เปิดรับสมัคร/กำลังสอน กรุณาเปลี่ยนสถานะก่อนแล้วเพิ่มนักเรียนภายหลัง"
         );
-      } else if (subjectFailed > 0 || enrollFailed > 0) {
-        showToast("error", "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
-          `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
-        );
       } else {
         showToast("success", "บันทึกคอร์สฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม");
       }
+    } catch (e) {
+      showToast("error", "สร้างคอร์สฉบับร่างแล้ว แต่เพิ่มวิชา/นักเรียนไม่ครบ", "กด \"แก้ไข\" ที่คอร์สนี้เพื่อตรวจและเพิ่มรายการที่ขาด");
+    } finally {
+      // คอร์สถูกสร้างแล้วเสมอในช่วงนี้ → ปิดหน้าต่างและรีเฟรช เพื่อกันการกดบันทึกซ้ำ
       setShowAddModal(false);
       fetchAll();
-    } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
-    } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // แสดงชื่อวิชา/นักเรียนที่เพิ่มไม่สำเร็จ ในกล่องที่ค้างไว้จนแอดมินกดรับทราบ (toast หายเร็วเกินไปสำหรับรายชื่อ)
+  const showCreateFailures = async (courseName, failedSubjects, failedStudents) => {
+    let subjects = [], tutors = [], students = [];
+    try {
+      const [sRes, tRes, stRes] = await Promise.all([
+        failedSubjects.length ? axios.get(`${API_BASE}/subjects`) : { data: [] },
+        failedSubjects.length ? axios.get(`${API_BASE}/tutors`) : { data: [] },
+        failedStudents.length ? axios.get(`${API_BASE}/students`) : { data: [] },
+      ]);
+      subjects = sRes.data || []; tutors = tRes.data || []; students = stRes.data || [];
+    } catch { /* ดึงชื่อไม่ได้ → แสดงเป็นรหัสแทน */ }
+
+    const personName = (p) => p.Nickname || `${p.Firstname || ""} ${p.Lastname || ""}`.trim();
+    const subjectLabel = ({ item, reason }) => {
+      const subj = subjects.find(x => String(x.SubjectId) === String(item.SubjectId));
+      const tut = tutors.find(x => String(x.AdminId) === String(item.AdminId));
+      const name = `${subj?.SubjectName || `วิชารหัส ${item.SubjectId}`} (${tut ? personName(tut) : `ติวเตอร์รหัส ${item.AdminId}`})`;
+      return reason ? `${name} — ${reason}` : name;
+    };
+    const studentLabel = ({ userId, reason }) => {
+      const st = students.find(x => String(x.UserId) === String(userId));
+      const name = st ? personName(st) : `นักเรียนรหัส ${userId}`;
+      return reason ? `${name} — ${reason}` : name;
+    };
+    const listOf = (rows, label) => {
+      const shown = rows.slice(0, 5).map(r => `• ${label(r)}`);
+      if (rows.length > 5) shown.push(`และอีก ${rows.length - 5} รายการ`);
+      return shown.join("\n");
+    };
+
+    const parts = [];
+    if (failedSubjects.length) parts.push(`วิชาที่เพิ่มไม่สำเร็จ:\n${listOf(failedSubjects, subjectLabel)}`);
+    if (failedStudents.length) parts.push(`นักเรียนที่เพิ่มไม่สำเร็จ:\n${listOf(failedStudents, studentLabel)}`);
+    parts.push(`กด "แก้ไข" ที่คอร์ส "${courseName}" เพื่อเพิ่มรายการที่ขาด`);
+
+    await confirmDialog(parts.join("\n\n"), {
+      title: "สร้างคอร์สฉบับร่างแล้ว แต่ยังเพิ่มไม่ครบ",
+      confirmText: "รับทราบ",
+      cancelText: null,
+      danger: false,
+    });
   };
 
   const handleUpdate = async (data) => {
@@ -3496,18 +3564,7 @@ export default function AdminCoursesPage() {
               onEdit={(c) => setEditingCourse(c)}
               onDelete={(c) => setDeletingCourse(c)}
               onStatusChange={fetchAll}
-              onPublish={async (c) => {
-                try {
-                  const { data: drafts } = await axios.get(`${API_BASE}/courses/${c.CourseID}/drafts`);
-                  const summary = drafts.length ? `มีการแก้ไขรอเผยแพร่ ${drafts.length} รายการ\n` : '';
-                  if (!await confirmDialog(`${summary}เผยแพร่คอร์ส "${c.CourseName}" ให้คนอื่นเห็นตอนนี้?`)) return;
-                  await axios.post(`${API_BASE}/courses/${c.CourseID}/publish`);
-                  showToast('success', 'เผยแพร่คอร์สแล้ว');
-                  fetchAll();
-                } catch (error) {
-                  showToast('error', error.response?.data?.message || 'เผยแพร่คอร์สไม่สำเร็จ');
-                }
-              }}
+              onPublish={(c) => setPublishingCourse(c)}
               statusOptions={statusOptions}
               onDuplicate={handleDuplicate}
             />
@@ -3534,8 +3591,17 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
+      {publishingCourse && (
+        <CoursePublishModal course={publishingCourse} onClose={() => setPublishingCourse(null)} onPublished={fetchAll} />
+      )}
+
       {editingCourse && (
         <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Pencil} onClose={() => setEditingCourse(null)} wide bodyClassName="p-0 flex flex-col">
+          {Number(editingCourse.PendingDraftActions) > 0 && (
+            <div className="shrink-0 px-4 pt-4 sm:px-6">
+              <PendingDraftsCallout courseId={editingCourse.CourseID} what="ของคอร์สนี้" onChanged={fetchAll} />
+            </div>
+          )}
           <CourseForm
             initial={editingCourse}
             onSave={handleUpdate}

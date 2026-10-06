@@ -70,7 +70,6 @@ import TutorMain from "./pagetutor/TutorMain.jsx"
 import TutorSchedule from "./pagetutor/TutorSchedule.jsx"
 import TutorProfile from "./pagetutor/TutorProfile.jsx"
 import TutorCourses from "./pagetutor/TutorCourses.jsx"
-// import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
 import TutorStudents from "./pagetutor/TutorStudents.jsx"
 import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"
 import TutorManage from "./pagetutor/TutorManage.jsx"
@@ -169,7 +168,6 @@ const router = createBrowserRouter(
             { path: "schedule", element: <TutorSchedule /> },
             { path: "profile", element: <TutorProfile /> },
             { path: "courses", element: <TutorCourses /> },
-            // { path: "analytics", element: <TutorAnalytics /> },
             { path: "students", element: <TutorStudents /> },
             { path: "students/detail", element: <TutorStudentDetail /> },
             { path: "incidents", element: <TutorIncidents /> },
