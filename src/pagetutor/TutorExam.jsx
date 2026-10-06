@@ -51,7 +51,7 @@ export default function TutorExam() {
     setError("");
     fetchExams({ courseId, subjectId, adminId })
       .then((data) => { if (!cancelled) setExams(data); })
-      .catch((err) => { console.error("Error fetching exams:", err); if (!cancelled) setError("โหลดข้อมูลการสอบไม่สำเร็จ"); })
+      .catch((err) => { console.error("Error fetching exams:", err); if (!cancelled) setError(err.response?.data?.message || "โหลดข้อมูลการสอบไม่สำเร็จ"); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [courseId, subjectId, adminId]);

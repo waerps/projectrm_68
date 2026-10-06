@@ -2011,6 +2011,11 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const [error, setError] = useState("");
 
   const handleSave = async () => {
+    if (settingsLocked) return;
+    if (!(Number(form.duration) >= 1)) {
+      setError("เวลาสอบต้องอย่างน้อย 1 นาที");
+      return;
+    }
     setSaving(true);
     setError("");
     const mode = isClosed ? "manual" : (form.openMode === "auto" ? "auto" : "manual");
@@ -2058,6 +2063,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const ready = isExamReady(exam);
   // ตั้งเปิดอัตโนมัติไว้จริง (มีทั้งวันและเวลา) และยังไม่เคยเปิด/ปิด — เงื่อนไขเดียวกับที่
   // ใช้ซ่อนปุ่ม "เปิดสอบ" หลัก แล้วโชว์การ์ดนับถอยหลังแทน
+  // ระหว่างเปิดสอบห้ามแก้ตั้งค่า — เวลาหมดของนักเรียนคำนวณจากค่านี้ แก้กลางทางแล้วหน้าจอนักเรียนไม่รู้
+  const settingsLocked = status === "active";
   const isScheduledAuto = status !== "active" && !isClosed && settings.openMode === "auto" && !!settings.date && !!settings.time;
 
   // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
@@ -2176,11 +2183,18 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           <p className="text-xs text-blue-700 leading-relaxed">ส่วนนี้คุมเวลาและวันสอบเท่านั้น จำนวนข้อและคะแนนมาจากชุดที่จัดไว้ในกล่องด้านบน ส่วนเนื้อข้อสอบแก้ได้ที่แท็บคลังข้อสอบ</p>
         </div>
 
+        {settingsLocked && (
+          <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700 leading-relaxed">กำลังเปิดสอบอยู่ จึงแก้เวลาสอบ วันที่ และวิธีเปิดสอบไม่ได้ ต้องปิดสอบก่อน</p>
+          </div>
+        )}
+        <fieldset disabled={settingsLocked} className="contents">
         {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
             ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสอบ (นาที)</label>
-          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <input type="number" min={1} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
@@ -2233,9 +2247,11 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           )}
         </div>
 
+        </fieldset>
+
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+        <button onClick={handleSave} disabled={saving || settingsLocked} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
           {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
         </button>
       </div>
