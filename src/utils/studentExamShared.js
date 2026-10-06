@@ -110,12 +110,6 @@ export async function submitExam(examJoinId, userId, timing = {}) {
     return data;
 }
 
-// GET /api/student/exam/:examJoinId/result?userId= → full per-question review
-export async function fetchExamResult(examJoinId, userId) {
-    const { data } = await axios.get(`${API_BASE}/${examJoinId}/result`, { params: { userId }, headers: authHeaders() });
-    return data;
-}
-
 // POST /api/student/exam/question/enter — log ว่านักเรียนเริ่มดูข้อนี้เมื่อไหร่
 export async function logQuestionEnter(payload) {
     const { data } = await axios.post(`${API_BASE}/question/enter`, payload, { headers: authHeaders() });
