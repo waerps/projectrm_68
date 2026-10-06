@@ -192,7 +192,7 @@ export default function StudentProfile() {
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
       if (putRes.data?.photoBlocked) {
-        // ไม่ยินยอมเรื่องรูป (เช่น เพิ่งถอนความยินยอมไปในแท็บอื่น) — เซิร์ฟเวอร์ไม่ได้บันทึกรูปใหม่จริง
+        // ไม่ยินยอมเรื่องรูป — เซิร์ฟเวอร์ไม่ได้บันทึกรูปใหม่จริง
         // แม้ request จะสำเร็จก็ตาม ต้องคืนค่ารูปเดิมแทนที่จะโชว์เหมือนบันทึกสำเร็จ
         URL.revokeObjectURL(previewUrl);
         setFormData((prev) => ({ ...prev, photo: previousPhoto }));

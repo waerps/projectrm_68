@@ -1011,7 +1011,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                                     </>
                                   ) : (
                                     <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                                      เคยตอบเรื่องนี้ไว้แล้วสำหรับคอร์สนี้ ({state.status === "granted" ? "ยินยอม" : "ไม่ยินยอม"}) — เปลี่ยนใจภายหลังติดต่อเจ้าหน้าที่ได้
+                                      เคยตอบเรื่องนี้ไว้แล้วสำหรับคอร์สนี้ ({state.status === "granted" ? "ยินยอม" : "ไม่ยินยอม"}) — คำตอบนี้ใช้ตลอดคอร์ส เปลี่ยนไม่ได้
                                     </p>
                                   )}
                                 </div>
