@@ -63,7 +63,7 @@ export default function ResetPassword({ setupRoute = false }) {
   }
 
   return (
-    <main className="auth-page reset-page">
+    <div className="auth-page reset-page">
       <div className="auth-page-glow auth-page-glow-one" aria-hidden="true" />
       <div className="auth-page-glow auth-page-glow-two" aria-hidden="true" />
       <div className={`auth-stage reset-stage${isSetup ? " reset-stage--credentials" : ""}`}>
@@ -127,6 +127,6 @@ export default function ResetPassword({ setupRoute = false }) {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

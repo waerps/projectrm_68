@@ -105,7 +105,7 @@ export default function TutorApply({ embedded = false }) {
   };
 
   return (
-    <main className={embedded ? "text-neutral-900" : "min-h-screen bg-white pb-16 pt-[110px] text-neutral-900"}>
+    <div className={embedded ? "text-neutral-900" : "min-h-screen bg-white pb-16 pt-[110px] text-neutral-900"}>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className={embedded ? "" : "mx-auto max-w-[1200px] px-4 md:px-6"}>
         {!embedded && <PublicPageHero
@@ -241,6 +241,6 @@ export default function TutorApply({ embedded = false }) {
           </aside>}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

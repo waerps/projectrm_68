@@ -60,17 +60,17 @@ export default function Navbar() {
     ]
 
     const avatar = (size) => (
-        <div className={`${size} rounded-full overflow-hidden shrink-0`}>
+        <span className={`block ${size} rounded-full overflow-hidden shrink-0`}>
             {user?.photo ? (
                 <img src={getFileUrl(user.photo)} alt="imgProfile" className="h-full w-full object-cover" />
             ) : (
-                <div className="h-full w-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
+                <span className="h-full w-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold select-none">
                         {user?.firstname?.charAt(0)?.toUpperCase() || "A"}
                     </span>
-                </div>
+                </span>
             )}
-        </div>
+        </span>
     )
 
     return (
