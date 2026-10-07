@@ -30,12 +30,12 @@ export default function IncidentReportButton({ role }) {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-              <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+              <h2 className="flex items-center gap-2.5 text-base font-bold text-white">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
                   <AlertOctagon className="h-4 w-4 text-white" />
                 </span>
                 แจ้งปัญหา / ร้องเรียน
-              </h3>
+              </h2>
               <button aria-label="ปิด" onClick={() => setOpen(false)} className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
                 <X className="h-5 w-5" />
               </button>

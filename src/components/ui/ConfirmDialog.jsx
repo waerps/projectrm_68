@@ -14,7 +14,7 @@ export function ConfirmDialog({ title, message, confirmText = "ยืนยั�
         <div className={`mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full ${danger ? "bg-red-100" : "bg-orange-100"}`}>
           <Icon className={`h-7 w-7 ${danger ? "text-red-600" : "text-orange-600"}`} />
         </div>
-        <h3 className="mb-1 text-lg font-bold text-slate-900">{title}</h3>
+        <h2 className="mb-1 text-lg font-bold text-slate-900">{title}</h2>
         <p className="whitespace-pre-line text-sm text-slate-500">{message}</p>
       </div>
       <div className="flex flex-col-reverse gap-2 px-5 pb-5 sm:flex-row sm:px-6 sm:pb-6">
