@@ -1,6 +1,6 @@
 import { createElement, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { ChevronDown, Heart, Loader2, MessageSquare, Star, Users } from "lucide-react";
+import { ChevronDown, Heart, Loader2, Medal, MessageSquare, Star, Users } from "lucide-react";
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 
@@ -16,6 +16,36 @@ function FeedbackStatTile({ label, value, unit, color, icon, description }) {
     <div className="relative min-w-0"><p className="text-xs font-medium text-slate-500">{label}</p><p className={STAT_VALUE}>{value}<span className={STAT_UNIT}>{unit}</span></p></div>
     </div>
     {description && <p className="relative border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500">{description}</p>}
+  </div>;
+}
+
+function ReviewPodium({ tutors }) {
+  const groups = [];
+  for (const tutor of tutors) {
+    const rating = score(tutor.filteredAverage);
+    const group = groups[groups.length - 1];
+    if (group?.rating === rating) group.tutors.push(tutor);
+    else {
+      if (groups.length === 3) break;
+      groups.push({ rating, tutors: [tutor] });
+    }
+  }
+  return <div className="space-y-3">
+    <div><h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><Medal size={18} className="text-orange-500" />อันดับติวเตอร์จากคะแนนรีวิว</h3><p className="mt-1 text-xs leading-relaxed text-slate-500">เรียงตามคะแนนเฉลี่ยในเดือนและวิชาที่เลือก คะแนนเท่ากันได้อันดับร่วมกัน ดูจำนวนรีวิวประกอบ</p></div>
+    <div className="grid items-end gap-3 sm:grid-cols-3">{[2, 1, 3].map(rank => {
+      const group = groups[rank - 1];
+      const tone = rank === 1 ? 'border-amber-200 bg-amber-50/50' : rank === 2 ? 'border-slate-200 bg-slate-50/60' : 'border-orange-200 bg-orange-50/40';
+      return <div key={rank} className={'relative rounded-2xl border p-5 text-center ' + (group ? tone : 'border-dashed border-slate-200 bg-slate-50/50') + ' ' + (rank === 1 ? 'order-first sm:order-none sm:min-h-64' : 'sm:min-h-56')}>
+        <div className={'mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ' + (rank === 1 ? 'bg-amber-100 text-amber-700' : rank === 2 ? 'bg-slate-200 text-slate-600' : 'bg-orange-100 text-orange-700')} aria-label={'อันดับ ' + rank}>{rank}</div>
+        {group ? <div className="space-y-4">{group.tutors.map(tutor => <div key={tutor.tutorId}>
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white bg-white shadow-sm">{tutor.photo ? <img src={getFileUrl(tutor.photo)} alt="" className="h-full w-full object-cover" /> : <Users aria-hidden="true" className="h-6 w-6 text-slate-400" />}</div>
+          <p className="break-words text-sm font-bold text-slate-900">{tutor.tutorName}</p>
+          <p className="mt-2 text-xl font-bold text-orange-600">{group.rating}<span className="ml-1 text-xs font-medium text-slate-500">/ 5 ดาว</span></p>
+          <p className="mt-1 text-xs text-slate-500">{tutor.filteredCount.toLocaleString()} รีวิว</p>
+          {tutor.filteredCount < 5 && <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700">ข้อมูลยังน้อย</span>}
+        </div>)}</div> : <div className="py-5 text-slate-400"><Users aria-hidden="true" className="mx-auto mb-3 h-8 w-8 text-slate-300" /><p className="text-sm">ยังไม่มีติวเตอร์ในอันดับนี้</p><p className="mt-2 text-xl font-semibold">—</p></div>}
+      </div>;
+    })}</div>
   </div>;
 }
 
@@ -42,7 +72,7 @@ export default function AdminTutorFeedback() {
     const selected = t.subjects.filter(s => subject === 'all' || String(s.subjectId) === subject);
     const count = selected.reduce((sum,s) => sum+s.count,0);
     return { ...t, subjects: selected, filteredCount: count, filteredAverage: count ? selected.reduce((sum,s) => sum+s.average*s.count,0)/count : 0 };
-  }).filter(t => t.filteredCount).sort((a,b) => b.filteredAverage-a.filteredAverage);
+  }).filter(t => t.filteredCount).sort((a,b) => Number(score(b.filteredAverage))-Number(score(a.filteredAverage)) || b.filteredCount-a.filteredCount || String(a.tutorId).localeCompare(String(b.tutorId)));
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const currentPage = Math.min(page, Math.max(1, totalPages));
   const visibleTutors = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -52,6 +82,7 @@ export default function AdminTutorFeedback() {
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-6"><h2 className="flex items-center gap-2 text-base font-bold text-slate-900"><Heart size={22} className="text-orange-500" />รีวิวการสอนจากนักเรียน</h2><p className="text-xs text-slate-500">ความพึงพอใจหลังเรียนจบคอร์ส</p></div>
     <div className="space-y-5 p-4 sm:p-6"><div className="flex flex-col items-start gap-2 sm:items-end"><div className="flex flex-wrap items-center gap-2"><label className="text-xs text-slate-500">เดือนที่ได้รับรีวิว<input aria-label="เดือนที่ได้รับรีวิว" type="month" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="ml-2 min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3" /></label><button onClick={() => { setMonth(''); setPage(1); }} className={`min-h-10 rounded-xl border px-3 text-xs ${!month ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-slate-200 text-slate-600'}`}>ทุกเดือน</button><select aria-label="วิชาของรีวิว" value={subject} onChange={e => { setSubject(e.target.value); setPage(1); }} className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm"><option value="all">ทุกวิชา</option>{subjects.map(([id,name]) => <option value={id} key={id}>{name}</option>)}</select></div><p className="text-xs leading-relaxed text-slate-500">เดือนที่ได้รับรีวิวอ้างอิงวันที่ส่งครั้งแรก การแก้ไขรีวิวไม่นับเป็นรีวิวใหม่</p></div>
       {loading ? <div role="status" className="flex justify-center gap-2 py-10 text-slate-500"><Loader2 className="animate-spin" />กำลังโหลดรีวิว</div> : error ? <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button className="ml-3 underline" onClick={() => setRetry(n => n+1)}>ลองอีกครั้ง</button></div> : <>
+        <ReviewPodium tutors={filtered} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <FeedbackStatTile label="คะแนนรีวิวเฉลี่ย" value={average === null ? '— / 5' : `${score(average)} / 5`} unit="ดาว" color="bg-orange-500" icon={Star} description="คำนวณจากดาวรวม ÷ จำนวนรีวิว ในเดือนและวิชาที่เลือก" />
           <FeedbackStatTile label="จำนวนรีวิว" value={count.toLocaleString()} unit="รีวิว" color="bg-emerald-500" icon={MessageSquare} />
