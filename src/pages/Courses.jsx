@@ -623,42 +623,41 @@ export default function CourseDetail() {
           ) : (
             <div className="flex gap-4 overflow-x-auto snap-x-mandatory no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
               {videos.map((v, i) => (
-                <button
+                // การ์ดเป็น <div> (W3C: ห้ามมี <button> ซ้อนใน <button>) — ปุ่มเล่นด้านในครอบรูปทั้งใบอยู่แล้ว
+                <div
                   key={v.VideoId}
                   id={`clip-${i}`}
-                  onClick={() => scrollToVideo(i)}
                   onDoubleClick={() => setPlayingVideo(v)}
-                  aria-pressed={openIdx === i}
-                  className={`group relative shrink-0 w-64 md:w-72 snap-center rounded-2xl overflow-hidden bg-neutral-900 text-left shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] ring-2 transition-all duration-200 focus:outline-none
+                  className={`group relative shrink-0 w-64 md:w-72 snap-center rounded-2xl overflow-hidden bg-neutral-900 text-left shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] ring-2 transition-all duration-200 focus-within:ring-orange-300
                     ${openIdx === i ? "ring-orange-500 scale-[1.02]" : "ring-transparent hover:ring-neutral-200"}`}
                 >
-                  <div className="relative aspect-[4/3] w-full">
+                  <span className="block relative aspect-[4/3] w-full">
                     {getThumbnail(v) ? (
                       <img src={getThumbnail(v)} alt={v.VideoTitle} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-neutral-800">
+                      <span className="w-full h-full flex items-center justify-center bg-neutral-800">
                         <PlayCircle className="h-10 w-10 text-neutral-600" />
-                      </div>
+                      </span>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    <span className="block absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setPlayingVideo(v); }}
+                      onClick={(e) => { e.stopPropagation(); scrollToVideo(i); setPlayingVideo(v); }}
                       aria-label={`เล่น ${v.VideoTitle}`}
                       className="absolute inset-0 flex items-center justify-center"
                     >
                       <PlayCircle className="h-12 w-12 text-white/90 scale-90 opacity-80 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 drop-shadow-lg" />
                     </button>
-                    <div className="absolute top-2 left-2">
+                    <span className="block absolute top-2 left-2">
                       {v.VideoType === "youtube" ? <Youtube className="h-4 w-4 text-red-400" />
                         : v.VideoType === "drive" ? <FolderOpen className="h-4 w-4 text-blue-400" />
                         : <Video className="h-4 w-4 text-purple-400" />}
-                    </div>
-                    <p className="absolute bottom-2 left-3 right-3 text-sm font-semibold text-white truncate">
+                    </span>
+                    <span className="block absolute bottom-2 left-3 right-3 text-sm font-semibold text-white truncate">
                       {v.VideoTitle}
-                    </p>
-                  </div>
-                </button>
+                    </span>
+                  </span>
+                </div>
               ))}
             </div>
           )}

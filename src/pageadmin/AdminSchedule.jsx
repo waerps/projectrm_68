@@ -597,9 +597,9 @@ export default function AdminSchedule() {
                   return (
                     <button key={dow} type="button" onClick={() => setMobileDow(dow)}
                       className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : holiday ? 'bg-red-50 border-red-200 text-red-700' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
-                      <div className="text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</div>
-                      <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</div>
-                      <div className={`mt-0.5 text-[11px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</div>
+                      <span className="block text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</span>
+                      <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
+                      <span className={`block mt-0.5 text-[11px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</span>
                     </button>
                   );
                 })}
@@ -1493,17 +1493,17 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
                       ? 'border-orange-300 bg-white hover:bg-orange-50'
                       : 'border-slate-200 bg-white hover:bg-slate-50'}`}
               >
-                <div>
-                  <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
+                <span className="block">
+                  <span className={`block text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
                     {isTop ? 'ห้องที่แนะนำ' : `ตัวเลือกที่ ${r.rank}`}
-                  </p>
-                  <p className="text-[11px] text-slate-600">
+                  </span>
+                  <span className="block text-[11px] text-slate-600">
                     {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
                     {r.isOversized && (
                       <span className="text-amber-600"> · ที่นั่งเกินความจำเป็น {r.extraSeats} ที่นั่ง</span>
                     )}
-                  </p>
-                </div>
+                  </span>
+                </span>
                 {isSelected && <CheckCircle className="h-4 w-4 text-orange-600 shrink-0" />}
               </button>
             );

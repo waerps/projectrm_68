@@ -30,25 +30,27 @@ function avatarCls(idx) {
 }
 
 // ── Avatar ติวเตอร์ (ใช้รูปโปรไฟล์จริงถ้ามี ไม่มีค่อย fallback เป็นตัวอักษร) ──
+// ใช้ <span> เพื่อวางใน <button> ได้ (W3C) · ใส่ block ให้เมื่อ className ไม่ได้กำหนด display เอง
+const blockIfNeeded = (cls = "") => (/(^|\s)(hidden|flex|inline-flex|grid|inline-grid|block|inline-block|inline|contents)(\s|$)/.test(cls) ? "" : "block ");
 function TutorAvatar({ tutor, idx = 0, className = 'w-9 h-9 rounded-xl' }) {
   const [imgErr, setImgErr] = useState(false);
   const av = avatarCls(idx);
   if (tutor.Photo && !imgErr) {
     return (
-      <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+      <span className={`${blockIfNeeded(className)}overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
         <img
           src={getFileUrl(tutor.Photo)}
           alt={tutor.Nickname}
           onError={() => setImgErr(true)}
           className="w-full h-full object-cover"
         />
-      </div>
+      </span>
     );
   }
   return (
-    <div className={`flex items-center justify-center text-xs font-bold shrink-0 ${av.bg} ${av.color} ${className}`}>
+    <span className={`flex items-center justify-center text-xs font-bold shrink-0 ${av.bg} ${av.color} ${className}`}>
       {tutor.Nickname?.slice(0, 2) || '?'}
-    </div>
+    </span>
   );
 }
 
@@ -1433,12 +1435,12 @@ function TutorReleaseRanking({ selectedMonth }) {
               className="w-full flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-3 hover:bg-amber-50/30 transition text-left">
               <span className="text-xs font-bold text-slate-500 w-5">{i + 1}</span>
               <TutorAvatar tutor={t} idx={i} className="w-9 h-9 rounded-xl" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{t.Nickname}</p>
-                <p className="text-[11px] text-slate-500">
+              <span className="block flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-slate-800 truncate">{t.Nickname}</span>
+                <span className="block text-[11px] text-slate-500">
                   มีผู้รับสอน {t.AcceptedCount} ครั้ง · ไม่มีผู้รับสอน {t.UnfilledCount} ครั้ง
-                </p>
-              </div>
+                </span>
+              </span>
               <span className="shrink-0 whitespace-nowrap px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
                 {t.ReleaseCount} ครั้ง
               </span>

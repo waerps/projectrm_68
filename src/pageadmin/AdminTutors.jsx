@@ -204,11 +204,13 @@ const initialsOf = (name) => {
   const second = parts.length > 1 ? parts[1][0] : "";
   return (first + second).toUpperCase();
 };
+// ใช้ <span> เพื่อวางใน <button> ได้ (W3C) · ใส่ block ให้เมื่อ className ไม่ได้กำหนด display เอง
+const blockIfNeeded = (cls = "") => (/(^|\s)(hidden|flex|inline-flex|grid|inline-grid|block|inline-block|inline|contents)(\s|$)/.test(cls) ? "" : "block ");
 function InitialsAvatar({ name, seed, className = "" }) {
   return (
-    <div className={`flex items-center justify-center font-bold text-white select-none ${colorForSeed(seed ?? name)} ${className}`}>
+    <span className={`flex items-center justify-center font-bold text-white select-none ${colorForSeed(seed ?? name)} ${className}`}>
       {initialsOf(name)}
-    </div>
+    </span>
   );
 }
 // รูปโปรไฟล์ติวเตอร์: ถ้ามีรูป → แสดงรูป, ถ้าไม่มี/โหลดพัง → fallback เป็นตัวอักษรแรกของชื่อ
@@ -217,14 +219,14 @@ function TutorAvatar({ tutor, className = "h-10 w-10 rounded-xl" }) {
   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
   if (tutor.Photo && !imgErr) {
     return (
-      <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+      <span className={`${blockIfNeeded(className)}overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
         <img
           src={getFileUrl(tutor.Photo)}
           alt={displayName}
           onError={() => setImgErr(true)}
           className="w-full h-full object-cover"
         />
-      </div>
+      </span>
     );
   }
   return (
@@ -1622,11 +1624,11 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
     <div className={`min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col ${isInactive ? "opacity-60" : ""}`}>
       <button onClick={() => setViewTutor(t)} className="flex items-start gap-3 text-left">
         <TutorAvatar tutor={t} className="h-11 w-11 rounded-xl text-sm shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
-          {t.Nickname && displayName !== fullName && <p className="text-xs text-slate-500 truncate">{fullName}</p>}
-          <p className="text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</p>
-        </div>
+        <span className="block min-w-0 flex-1">
+          <span className="block font-semibold text-slate-900 text-sm leading-snug">{displayName}</span>
+          {t.Nickname && displayName !== fullName && <span className="block text-xs text-slate-500 truncate">{fullName}</span>}
+          <span className="block text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</span>
+        </span>
         <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}

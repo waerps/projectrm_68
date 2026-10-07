@@ -171,9 +171,9 @@ function Avatar({ photo, size = "w-6 h-6", name, seed }) {
   }
   if (name) {
     return (
-      <div className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
+      <span className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
         <span className="text-[11px] leading-none">{initialsOf(name)}</span>
-      </div>
+      </span>
     );
   }
   return <span className={`${size} rounded-full bg-slate-200 shrink-0`} />;
@@ -580,9 +580,9 @@ function StudentPreviewModal({ course, onClose }) {
                         ) : (
                           <PlayCircle className="h-10 w-10 text-slate-300" />
                         )}
-                        <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+                        <span className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                           <PlayCircle className="h-12 w-12 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
-                        </div>
+                        </span>
                       </button>
                     </div>
                   )}
@@ -1470,9 +1470,9 @@ function CoursePreviewVideos({ courseId, showToast }) {
               ) : (
                 <PlayCircle className="h-5 w-5 text-slate-300" />
               )}
-              <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+              <span className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                 <PlayCircle className="h-5 w-5 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
-              </div>
+              </span>
             </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 truncate">{v.VideoTitle}</p>

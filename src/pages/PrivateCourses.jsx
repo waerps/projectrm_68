@@ -461,24 +461,24 @@ export default function PrivateCourses() {
                   className="sa-card3d group flex h-full w-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white text-left shadow-sm hover:border-orange-300 hover:shadow-xl"
                   style={cardIdleDelay(i)}>
                   <span className="sa-glow3d" />
-                  <div className="relative h-28 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
+                  <span className="block relative h-28 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
                     <Icon className="sa-parallax absolute -bottom-5 -right-4 h-28 w-28 text-orange-200/70" />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2"><span className="sa-pop3d grid h-12 w-12 place-items-center rounded-2xl bg-white text-orange-500 shadow-sm"><Icon className="h-6 w-6" /></span></span>
                     <span className="sa-pop3d absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full border border-orange-100 bg-white/95 px-2.5 py-1 text-[10px] font-bold text-orange-600"><UserRound className="h-3 w-3" />1–2 คน</span>
-                  </div>
-                  <div className="flex flex-1 flex-col p-3.5">
-                    <h3 className="text-[13.5px] font-bold leading-snug text-neutral-800">คอร์สเดี่ยว · {s.name}</h3>
-                    {s.note && <p className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{s.note}</p>}
-                    <div className="mt-2 text-[11px] font-semibold text-orange-600">สอบถามราคากับแอดมิน</div>
-                    <div className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
+                  </span>
+                  <span className="flex flex-1 flex-col p-3.5">
+                    <span className="block text-[13.5px] font-bold leading-snug text-neutral-800">คอร์สเดี่ยว · {s.name}</span>
+                    {s.note && <span className="mt-1 line-clamp-1 text-[11px] text-neutral-500">{s.note}</span>}
+                    <span className="block mt-2 text-[11px] font-semibold text-orange-600">สอบถามราคากับแอดมิน</span>
+                    <span className="mb-3 mt-2.5 flex flex-wrap gap-1.5">
                       {s.levels.map((l) => <span key={l} className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700">{l}</span>)}
-                    </div>
-                    <div className="mt-auto border-t border-neutral-100 pt-3">
+                    </span>
+                    <span className="block mt-auto border-t border-neutral-100 pt-3">
                       <span className="flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition group-hover:bg-orange-600">
                         <MessageCircle className="h-3.5 w-3.5" />ฝากข้อมูลให้ติดต่อกลับ
                       </span>
-                    </div>
-                  </div>
+                    </span>
+                  </span>
                 </button>
               );
             })}

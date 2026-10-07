@@ -441,8 +441,8 @@ export default function StudentCourses() {
                   onClick={() => navigate(`/exam/${c.token}`, c.examState)}
                   className="w-full text-left border-2 border-neutral-200 hover:border-green-300 hover:bg-green-50 rounded-xl px-4 py-3 transition"
                 >
-                  <p className="font-semibold text-neutral-800 text-sm">{c.subjectName}</p>
-                  <p className="text-xs text-neutral-500">{c.examName}</p>
+                  <span className="block font-semibold text-neutral-800 text-sm">{c.subjectName}</span>
+                  <span className="block text-xs text-neutral-500">{c.examName}</span>
                 </button>
               ))}
             </div>

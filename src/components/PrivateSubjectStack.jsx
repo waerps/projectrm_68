@@ -33,18 +33,18 @@ export default function PrivateSubjectStack({ subjects, iconOf, onSelect, classN
             }}
             aria-hidden={!top}>
             <Icon className="absolute -bottom-6 -right-6 h-32 w-32 text-orange-100" />
-            <div className="relative flex items-center justify-between">
+            <span className="relative flex items-center justify-between">
               <span className="grid h-12 w-12 place-items-center rounded-2xl text-white" style={{ background: "linear-gradient(135deg,#FDBA74,#F97316)" }}>
                 <Icon className="h-6 w-6" />
               </span>
-            </div>
-            <p className="relative mt-4 text-[11px] font-semibold text-gray-400">คอร์สเดี่ยว</p>
-            <p className="relative text-[20px] font-extrabold" style={{ color: "#14213D" }}>{s.name}</p>
-            {s.note && <p className="relative mt-0.5 line-clamp-1 text-xs text-gray-500">{s.note}</p>}
-            <div className="relative mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "rgba(20,33,61,.07)" }}>
+            </span>
+            <span className="block relative mt-4 text-[11px] font-semibold text-gray-400">คอร์สเดี่ยว</span>
+            <span className="block relative text-[20px] font-extrabold" style={{ color: "#14213D" }}>{s.name}</span>
+            {s.note && <span className="relative mt-0.5 line-clamp-1 text-xs text-gray-500">{s.note}</span>}
+            <span className="relative mt-4 flex items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "rgba(20,33,61,.07)" }}>
               <span className="truncate text-[11px] text-gray-500">{s.levels.length ? s.levels.join(" · ") : "ทุกระดับชั้น"}</span>
               <span className="shrink-0 text-xs font-bold text-orange-600">สอบถามราคา</span>
-            </div>
+            </span>
           </button>
         );
       })}

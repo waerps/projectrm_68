@@ -86,15 +86,15 @@ function AddMethodPicker({ onPick }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <button onClick={() => onPick("manual")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
-        <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</p>
-        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
+        <span className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></span>
+        <span className="block text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</span>
+        <span className="block text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</span>
       </button>
 
       <button onClick={() => onPick("excel")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
-        <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-slate-800">Import จาก Excel</p>
-        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
+        <span className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></span>
+        <span className="block text-sm font-semibold text-slate-800">Import จาก Excel</span>
+        <span className="block text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</span>
       </button>
     </div>
   );

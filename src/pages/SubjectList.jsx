@@ -150,12 +150,12 @@ export default function SubjectList() {
               onClick={() => navigate(`/profile/course/${courseId}/subject/${subj.subjectId}`)}
               className="group flex w-full items-center gap-4 rounded-2xl border border-neutral-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-sm font-bold text-neutral-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
                 {String(index + 1).padStart(2, "0")}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-neutral-800 group-hover:text-orange-700">{subj.subjectName || "ไม่ระบุชื่อวิชา"}</p>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-400">
+              </span>
+              <span className="block flex-1 min-w-0">
+                <span className="block text-sm font-semibold text-neutral-800 group-hover:text-orange-700">{subj.subjectName || "ไม่ระบุชื่อวิชา"}</span>
+                <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-neutral-400">
                   <span className="flex items-center gap-1"><Video className="h-3 w-3" /> {subj.watchedVideos}/{subj.totalVideos} คลิป ({videoPct}%)</span>
                   <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> {subj.totalFiles} ไฟล์</span>
                   <span>{subj.attendedSessions}/{subj.totalSessions} คาบ ({attendPct}%)</span>
@@ -164,8 +164,8 @@ export default function SubjectList() {
                       <Trophy className="h-3 w-3" /> {subj.latestExam.score}/{subj.latestExam.maxScore}
                     </span>
                   )}
-                </div>
-              </div>
+                </span>
+              </span>
               <ChevronRight className="h-5 w-5 shrink-0 text-neutral-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-orange-500" />
             </button>
           );

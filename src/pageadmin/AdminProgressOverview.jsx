@@ -351,7 +351,7 @@ export default function AdminProgressOverview() {
                         onClick={() => openDetail(r)}
                         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-orange-50/40 transition-colors"
                       >
-                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className="min-w-0 flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-slate-800">
                             {r.subjectName || `วิชา #${r.subjectId}`}
                           </span>
@@ -359,10 +359,10 @@ export default function AdminProgressOverview() {
                             <GraduationCap className="h-3 w-3 text-slate-400" />
                             {r.tutorName || "—"}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 shrink-0">
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 shrink-0">
                           <BarChart2 className="h-4 w-4 text-slate-400 shrink-0" /> ดูพัฒนาการ <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
-                        </div>
+                        </span>
                       </button>
                     ))}
                   </div>

@@ -165,13 +165,13 @@ export default function AdminNotifications() {
           <button key={key} type="button" aria-pressed={filterStatus === key}
             onClick={() => setFilterStatus(filterStatus === key && key !== 'all' ? 'all' : key)}
             className={`flex min-w-0 items-center gap-3 p-3 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterStatus === key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
-            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+            <span className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               {key === 'all' ? <Bell className="h-5 w-5 text-white" /> : key === 'unread' ? <Filter className="h-5 w-5 text-white" /> : <AlertTriangle className="h-5 w-5 text-white" />}
-            </div>
-            <div className="min-w-0">
-              <p className={STAT_LABEL}>{label}</p>
-              <p className={STAT_VALUE}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></p>
-            </div>
+            </span>
+            <span className="block min-w-0">
+              <span className={`block ${STAT_LABEL}`}>{label}</span>
+              <span className={`block ${STAT_VALUE}`}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></span>
+            </span>
           </button>
         ))}
       </div>

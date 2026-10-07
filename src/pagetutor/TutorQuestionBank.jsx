@@ -225,22 +225,22 @@ export default function TutorQuestionBank() {
             {filtered.map((s) => (
               <button key={s.subjectId} onClick={() => openSubject(s.subjectId)}
                 className="min-w-0 text-left bg-white rounded-2xl border border-slate-200 shadow-sm p-4 active:bg-orange-50/60">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || "ไม่ระบุชื่อวิชา"}</p>
-                    <div className="mt-1"><CourseTypeBadges types={s.courseTypes} /></div>
-                    {fmtDate(s.lastUpdatedAt) && <p className="mt-1 text-[11px] text-slate-500">แก้ไขล่าสุด {fmtDate(s.lastUpdatedAt)}</p>}
-                  </div>
+                <span className="flex items-start justify-between gap-3">
+                  <span className="block min-w-0">
+                    <span className="block font-semibold text-slate-900 text-sm leading-snug">{s.subjectName || "ไม่ระบุชื่อวิชา"}</span>
+                    <span className="block mt-1"><CourseTypeBadges types={s.courseTypes} /></span>
+                    {fmtDate(s.lastUpdatedAt) && <span className="block mt-1 text-[11px] text-slate-500">แก้ไขล่าสุด {fmtDate(s.lastUpdatedAt)}</span>}
+                  </span>
                   {s.total > 0 ? (
                     <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">มีข้อสอบแล้ว</span>
                   ) : (
                     <span className="shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-amber-50 text-amber-700 border-amber-200">ยังไม่มีข้อสอบ</span>
                   )}
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <p className="text-xs text-slate-500"><span className="text-sm font-bold text-slate-900">{s.total}</span> ข้อ{s.categories > 0 ? ` · หมวดหมู่ ${s.categories}` : ""}</p>
+                </span>
+                <span className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <span className="block text-xs text-slate-500"><span className="text-sm font-bold text-slate-900">{s.total}</span> ข้อ{s.categories > 0 ? ` · หมวดหมู่ ${s.categories}` : ""}</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-orange-600"><Settings2 className="h-4 w-4" /> จัดการคลัง</span>
-                </div>
+                </span>
               </button>
             ))}
           </div>

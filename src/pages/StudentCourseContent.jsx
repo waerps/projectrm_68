@@ -380,11 +380,11 @@ export default function StudentCourseContent() {
                     {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
                       <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="h-full w-20 object-cover sm:w-28" />
                     ) : (
-                      <div className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></div>
+                      <span className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></span>
                     )}
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                       <PlayCircle className="h-8 w-8 text-white" />
-                    </div>
+                    </span>
                   </button>
 
                   <div className="flex min-w-0 flex-1 flex-col justify-between px-2 py-3 sm:px-3">

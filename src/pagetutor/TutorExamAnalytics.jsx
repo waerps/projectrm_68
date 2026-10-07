@@ -845,19 +845,19 @@ function StudentProgressTab({ crossExamData, selectedExamIndex, loading, onOpenS
             <button key={k} type="button" onClick={() => setStatusFilter(on ? "all" : k)} aria-pressed={on}
               className={`sa-rise relative overflow-hidden text-left rounded-2xl p-4 sm:p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
               style={{ animationDelay: `${i * 0.06}s` }}>
-              {on && <><div className={`absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><div className="absolute inset-0 sa-grain opacity-50" /></>}
-              <div className="relative flex items-center justify-between gap-2">
-                <div className="flex gap-1.5">
+              {on && <><span className={`block absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><span className="block absolute inset-0 sa-grain opacity-50" /></>}
+              <span className="relative flex items-center justify-between gap-2">
+                <span className="flex gap-1.5">
                   {[2, 1, 0].map((l) => (
                     <span key={l} className={`h-3.5 w-3.5 rounded-full ${l === st.level ? `${on ? "bg-white" : STATUS_DOT[k]}${k === "care" ? " sa-pulse-red" : ""}` : on ? "bg-white/30" : "bg-slate-200"}`} />
                   ))}
-                </div>
+                </span>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
-              </div>
-              <p className={`relative ${STAT_NUM} mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+              </span>
+              <span className={`block relative ${STAT_NUM} mt-3 ${on ? "text-white" : "text-slate-900"}`}>
                 {counts[k]}<span className={`ml-1 text-xs font-medium ${on ? "text-white/80" : "text-slate-500"}`}>คน</span>
-              </p>
-              <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
+              </span>
+              <span className={`block relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</span>
             </button>
           );
         })}

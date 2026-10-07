@@ -372,13 +372,13 @@ function PaymentChoice({ icon: Icon, active, title, price, detail, badge, onClic
       )}
     >
       {badge && <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white">{badge}</span>}
-      <div className="flex items-start gap-3">
+      <span className="flex items-start gap-3">
         <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", active ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500")}>{React.createElement(Icon, { className: "h-5 w-5" })}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3"><strong className="text-sm text-[#14213D]">{title}</strong><strong className="shrink-0 text-sm text-orange-600">{price}</strong></div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
-        </div>
-      </div>
+        <span className="block min-w-0 flex-1">
+          <span className="flex items-start justify-between gap-3"><strong className="text-sm text-[#14213D]">{title}</strong><strong className="shrink-0 text-sm text-orange-600">{price}</strong></span>
+          <span className="block mt-1 text-xs leading-relaxed text-slate-500">{detail}</span>
+        </span>
+      </span>
     </button>
   );
 }

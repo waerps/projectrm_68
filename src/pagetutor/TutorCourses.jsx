@@ -516,19 +516,19 @@ export default function CoursesPage() {
                       className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
                     >
                       {/* Number */}
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
                         {String(index + 1).padStart(2, "0")}
-                      </div>
+                      </span>
 
                       {/* Subject name */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800 group-hover:text-orange-700">
+                      <span className="block min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-slate-800 group-hover:text-orange-700">
                           {subject.subjectName}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        </span>
+                        <span className="block mt-0.5 text-xs text-slate-500">
                           คลิกเพื่อจัดการวิชานี้
-                        </p>
-                      </div>
+                        </span>
+                      </span>
 
                       {/* Arrow */}
                       <ChevronRight

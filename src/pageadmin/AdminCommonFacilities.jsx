@@ -692,18 +692,18 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                     <div key={item.CommonFacilityId}
                         className={`min-w-0 rounded-2xl border shadow-sm p-4 ${outOfStock ? "bg-red-50/50 border-red-200" : lowStock ? "bg-yellow-50/50 border-yellow-200" : "bg-white border-slate-200"}`}>
                         <button onClick={() => onView(item)} className="w-full text-left flex items-start gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                            <span className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
                                 <CIcon className="h-5 w-5 text-orange-500" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-900 leading-snug break-words">{item.Name}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <p className="text-slate-700 text-sm"><span className="font-bold text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</p>
-                                {outOfStock && <p className="text-[11px] font-bold text-red-600">หมดสต๊อก</p>}
-                                {lowStock && <p className="text-[11px] font-bold text-yellow-700">ใกล้หมด</p>}
-                            </div>
+                            </span>
+                            <span className="block min-w-0 flex-1">
+                                <span className="block font-bold text-slate-900 leading-snug break-words">{item.Name}</span>
+                                <span className="block text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</span>
+                            </span>
+                            <span className="block text-right shrink-0">
+                                <span className="block text-slate-700 text-sm"><span className="font-bold text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</span>
+                                {outOfStock && <span className="block text-[11px] font-bold text-red-600">หมดสต๊อก</span>}
+                                {lowStock && <span className="block text-[11px] font-bold text-yellow-700">ใกล้หมด</span>}
+                            </span>
                         </button>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                             <span className={`inline-flex min-w-0 items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>

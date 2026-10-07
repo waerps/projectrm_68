@@ -19,7 +19,7 @@ function NewsImage({ src, alt, className = "", onLoad }) {
   useEffect(() => setFailed(false), [src]);
 
   if (!src || failed) {
-    return <div className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></div>;
+    return <span className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></span>;
   }
   return <img className={className} src={src} alt={alt} loading="lazy" onLoad={onLoad} onError={() => setFailed(true)} />;
 }

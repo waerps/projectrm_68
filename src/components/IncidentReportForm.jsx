@@ -165,15 +165,15 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
           return (
             <button key={cat.key} onClick={() => pickCategory(cat.key)}
               className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition hover:shadow-sm ${meta.bg} ${meta.border} hover:ring-2`}>
-              <div className={`h-10 w-10 rounded-xl ${meta.solidBg} flex items-center justify-center shrink-0`}>
+              <span className={`h-10 w-10 rounded-xl ${meta.solidBg} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${meta.text}`}>{cat.label}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+              </span>
+              <span className="block flex-1 min-w-0">
+                <span className={`block font-semibold text-sm ${meta.text}`}>{cat.label}</span>
+                <span className="block text-[11px] text-slate-500 mt-0.5">
                   {cat.types.map(t => t.label).join(" · ")}
-                </p>
-              </div>
+                </span>
+              </span>
             </button>
           );
         })}

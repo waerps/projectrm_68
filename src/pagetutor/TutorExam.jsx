@@ -118,37 +118,37 @@ export default function TutorExam() {
                 onClick={() => handleManage(exam)}
                 className={`text-left bg-white rounded-2xl border shadow-sm p-5 transition hover:shadow-md ${status === "active" ? "border-green-300" : "border-slate-200 hover:border-orange-200"}`}
               >
-                <div className="flex items-start justify-between mb-3">
+                <span className="flex items-start justify-between mb-3">
                   <Badge className={TYPE_BADGE[exam.type]}>{meta?.label}</Badge>
                   <Badge className={sb.cls}>
                     {status === "active" && <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />}
                     {sb.label}
                   </Badge>
-                </div>
+                </span>
 
-                <p className="text-sm text-slate-500 mb-4">{meta?.sub}</p>
+                <span className="block text-sm text-slate-500 mb-4">{meta?.sub}</span>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                <span className="grid grid-cols-2 gap-3 mb-4">
+                  <span className="flex items-center gap-2 text-sm text-slate-600">
                     <FileQuestion className="h-4 w-4 text-slate-400" />
                     {qCount} ข้อ
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                  </span>
+                  <span className="flex items-center gap-2 text-sm text-slate-600">
                     <Clock className="h-4 w-4 text-slate-400" />
                     {exam.settings?.duration || 0} นาที
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-600 col-span-2">
+                  </span>
+                  <span className="flex items-center gap-2 text-sm text-slate-600 col-span-2">
                     <Users className="h-4 w-4 text-slate-400" />
                     {status === "active" || status === "closed" ? "ดูรายชื่อในหน้าจัดการ" : "ยังไม่เปิดสอบ"}
-                  </div>
-                </div>
+                  </span>
+                </span>
 
-                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <span className="flex items-center justify-between pt-3 border-t border-slate-100">
                   <span className="text-sm font-semibold text-orange-600">
                     {qCount > 0 ? "จัดการข้อสอบ" : "เริ่มเพิ่มข้อสอบ"}
                   </span>
                   <ChevronRight className="h-4 w-4 text-orange-400" />
-                </div>
+                </span>
               </button>
             );
           })}

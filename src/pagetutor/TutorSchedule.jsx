@@ -168,9 +168,9 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
           return (
             <button key={d} type="button" onClick={() => setDay(d)}
               className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
-              <div className="text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</div>
-              <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</div>
-              <div className={`mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
+              <span className="block text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</span>
+              <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</span>
+              <span className={`block mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
             </button>
           )
         })}
@@ -188,23 +188,23 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
               <div key={sl.label} className="space-y-1">
               <button type="button" onClick={() => onPick(day, sl.label, cls)}
                 className={`w-full text-left flex gap-3 rounded-2xl border-2 p-3 ${style ? style.card : 'bg-white border-slate-200'}`}>
-                <div className="w-16 shrink-0 text-center">
-                  <p className="text-xs font-bold text-slate-700 leading-tight">{sl.label}</p>
-                </div>
-                <div className="min-w-0 flex-1">
+                <span className="block w-16 shrink-0 text-center">
+                  <span className="block text-xs font-bold text-slate-700 leading-tight">{sl.label}</span>
+                </span>
+                <span className="block min-w-0 flex-1">
                   <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
-                  <p className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                  <span className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</span>
+                  <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
-                  </div>
+                  </span>
                   {style && (
-                    <div className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
+                    <span className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
                       {style.Icon ? <style.Icon className="w-3.5 h-3.5 shrink-0" /> : <span className="h-2 w-2 rounded-full bg-slate-300 inline-block shrink-0" />}
                       <span>{style.label}</span>
-                    </div>
+                    </span>
                   )}
-                </div>
+                </span>
               </button>
               </div>
             )
