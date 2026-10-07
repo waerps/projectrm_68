@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { ChevronDown, Heart, Loader2, MessageSquare, Star, Users } from "lucide-react";
 import { API_URL } from "../config";
@@ -6,10 +6,10 @@ import { getFileUrl } from "../utils/fileUrl";
 
 import { STAT_VALUE, STAT_UNIT } from "./ui/tokens";
 
-function FeedbackStatTile({ label, value, unit, color, icon: Icon }) {
+function FeedbackStatTile({ label, value, unit, color, icon }) {
   return <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
-    <Icon aria-hidden="true" className="pointer-events-none absolute -right-3 -top-3 h-14 w-14 text-slate-50" />
-    <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${color}`}><Icon aria-hidden="true" className="h-5 w-5 text-white" /></div>
+    {createElement(icon, { "aria-hidden": true, className: "pointer-events-none absolute -right-3 -top-3 h-14 w-14 text-slate-50" })}
+    <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${color}`}>{createElement(icon, { "aria-hidden": true, className: "h-5 w-5 text-white" })}</div>
     <div className="relative min-w-0"><p className="text-xs font-medium text-slate-500">{label}</p><p className={STAT_VALUE}>{value}<span className={STAT_UNIT}>{unit}</span></p></div>
   </div>;
 }
