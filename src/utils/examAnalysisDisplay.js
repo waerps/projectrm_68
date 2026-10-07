@@ -38,10 +38,6 @@ export function examTimingForDisplay(student) {
   };
 }
 
-export const formatSecondsPerQuestion = (value) => validSeconds(value)
-  ? Number(value).toLocaleString("th-TH", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  : "—";
-
 export const parentMessageAttribution = (row) => {
   const source = `ข้อมูลผลสอบจากระบบ · คำแนะนำร่างโดย Google Gemini (${row?.model || "ไม่ทราบรุ่น"})`;
   return row?.teacherEdited ? `${source} · ผู้สอนปรับแก้` : source;

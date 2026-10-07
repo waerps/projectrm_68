@@ -1,20 +1,4 @@
-import { AlertTriangle, Clock, Info, LifeBuoy, Map as MapIcon, Timer } from "lucide-react";
-import { formatSecondsPerQuestion } from "../../utils/examAnalysisDisplay";
-
-function PaceGauge({ ratio }) {
-  const angle = ratio == null ? null : -90 + (Math.max(0.5, Math.min(1.5, ratio)) - 0.5) * 180;
-  return (
-    <svg viewBox="0 0 200 118" className="w-full max-w-[280px] mx-auto" aria-hidden="true">
-      <defs><linearGradient id="saPace" x1="0" x2="1"><stop offset="0" stopColor="#60a5fa" /><stop offset=".5" stopColor="#e2e8f0" /><stop offset="1" stopColor="#fb7185" /></linearGradient></defs>
-      <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="url(#saPace)" strokeWidth="16" strokeLinecap="round" />
-      <line x1="100" y1="16" x2="100" y2="30" stroke="#64748b" strokeWidth="2" />
-      {angle != null && <g transform={`rotate(${angle} 100 100)`}><line x1="100" y1="100" x2="100" y2="34" stroke="#0f172a" strokeWidth="4" strokeLinecap="round" /></g>}
-      <circle cx="100" cy="100" r="8" fill={angle != null ? "#0f172a" : "#94a3b8"} />
-      <text x="20" y="116" fontSize="12" fill="#3b82f6" fontWeight="700">เร็ว</text>
-      <text x="180" y="116" fontSize="12" textAnchor="end" fill="#f43f5e" fontWeight="700">ช้า</text>
-    </svg>
-  );
-}
+import { AlertTriangle, LifeBuoy, Map as MapIcon } from "lucide-react";
 
 const AiLabel = ({ model }) => <span className="text-[11px] font-semibold bg-orange-100 text-orange-700 rounded-full px-2 py-0.5">เขียนโดย Google Gemini ({model || "ไม่ทราบรุ่น"})</span>;
 const questionRefs = (item) => {
@@ -27,33 +11,12 @@ const questionRefs = (item) => {
   return out.slice(0, 12);
 };
 
-function TimeFact({ label, value, unit }) {
-  return <div className="min-w-0 rounded-xl border border-slate-100 bg-white px-4 py-3">
-    <p className="text-xs font-semibold text-slate-500">{label}</p>
-    <p className="mt-1 text-xl font-bold tabular-nums text-slate-800">{value}<span className="ml-1 text-xs font-semibold text-slate-500">{unit}</span></p>
-  </div>;
-}
-
-export default function ExamSupportPanel({ latest, roomPace, previous, aiRow, notice }) {
+export default function ExamSupportPanel({ aiRow, notice }) {
   const misconceptions = aiRow?.misconceptions || [];
   const focusNext = aiRow?.focusNext || [];
-  const myPace = latest?.avgTimePerQuestion ?? null;
-  const ratio = myPace != null && roomPace > 0 ? myPace / roomPace : null;
-  const difference = myPace != null && roomPace != null ? myPace - roomPace : null;
-  const timeDelta = myPace != null && previous?.avgTimePerQuestion != null ? myPace - previous.avgTimePerQuestion : null;
-  const timeAvailable = myPace != null;
-  const timeMessage = !timeAvailable
-    ? latest?.timingStatus === "not_consented" ? "ไม่ได้เก็บข้อมูลเวลารายข้อของนักเรียนคนนี้" : "ข้อมูลเวลารายข้อไม่ครบหรือยังไม่ผ่านการตรวจสอบ จึงยังสรุปเวลาไม่ได้"
-    : difference == null ? "ยังไม่มีค่าเฉลี่ยห้องสำหรับเปรียบเทียบ"
-      : Math.abs(difference) < 0.05 ? "ใช้เวลาใกล้เคียงค่าเฉลี่ยห้อง"
-        : `${difference < 0 ? "เร็วกว่าห้อง" : "ช้ากว่าห้อง"} ${formatSecondsPerQuestion(Math.abs(difference))} วินาที/ข้อ`;
-  const previousMessage = timeDelta == null ? "ยังไม่มีเวลารอบก่อนสำหรับเปรียบเทียบ"
-    : Math.abs(timeDelta) < 0.05 ? `ใช้เวลาใกล้เคียง ${previous.label}`
-      : `${timeDelta < 0 ? "เร็วขึ้น" : "ช้าลง"} ${formatSecondsPerQuestion(Math.abs(timeDelta))} วินาที/ข้อ จาก ${previous.label}`;
 
   return (
     <div id="sec-help" className="sa-rise space-y-4" style={{ animationDelay: ".18s" }}>
-      <div className="grid lg:grid-cols-2 gap-4 items-stretch">
       <section className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col gap-5">
       <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LifeBuoy className="h-4 w-4 text-orange-500" /> สิ่งที่ต้องช่วย</h3>
       <div className={`space-y-3 ${!aiRow || misconceptions.length === 0 ? "flex-1 flex flex-col" : ""}`}>
@@ -77,36 +40,7 @@ export default function ExamSupportPanel({ latest, roomPace, previous, aiRow, no
           </div>
         )}
       </div>
-
       </section>
-
-      <section className="min-w-0 rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white shadow-sm p-4 sm:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-bold text-slate-600 flex items-center gap-1.5"><Timer className="h-4 w-4" /> จังหวะการทำข้อสอบ · {latest?.label || "—"}
-            <span title="รวมเวลาที่อยู่ในแต่ละข้อทุกครั้งที่เปิด แล้วหารด้วยจำนวนข้อทั้งหมด รวมข้อที่มีเวลา 0 วินาทีเฉพาะเมื่อข้อมูลครบ" aria-label="วิธีคำนวณเวลาเฉลี่ยต่อข้อ" tabIndex={0} className="cursor-help"><Info className="h-3.5 w-3.5 text-slate-400" /></span>
-          </h4>
-          <span className="text-[11px] font-semibold rounded-full bg-slate-200/70 px-2 py-0.5 text-slate-600">ข้อมูลจากการทำข้อสอบ</span>
-        </div>
-        <div className="mt-4 grid items-center gap-5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-          <div className="text-center min-w-0">
-            <PaceGauge ratio={ratio} />
-            <p className="mt-1 tabular-nums text-4xl font-bold text-slate-900">{formatSecondsPerQuestion(myPace)}<span className="ml-1 text-sm font-semibold text-slate-500">วินาที/ข้อ</span></p>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{timeAvailable ? "เวลาเฉลี่ยของนักเรียน" : "ยังไม่มีเวลารายข้อที่ตรวจสอบได้"}</p>
-          </div>
-          <div className="min-w-0 space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <TimeFact label="ค่าเฉลี่ยห้อง" value={formatSecondsPerQuestion(roomPace)} unit="วินาที/ข้อ" />
-              <TimeFact label="เวลารวมรายข้อ" value={formatSecondsPerQuestion(latest?.secondsUsed)} unit="วินาที" />
-            </div>
-            <p className={`rounded-xl px-4 py-3 text-sm font-semibold leading-relaxed ${timeAvailable ? "bg-white border border-slate-100 text-slate-700" : "bg-amber-50 text-amber-800"}`}>{timeMessage}</p>
-            {timeAvailable && <p className="text-sm text-slate-600 leading-relaxed flex items-start gap-2"><Clock className="h-4 w-4 mt-0.5 shrink-0" />{previousMessage}</p>}
-          </div>
-        </div>
-        {!timeAvailable && latest?.timingStatus !== "not_consented" && latest?.elapsedSeconds != null && (
-          <p className="mt-3 text-xs text-slate-500">ตั้งแต่เริ่มทำจนส่งข้อสอบ {formatSecondsPerQuestion(latest.elapsedSeconds)} วินาที <span className="text-slate-400">(ไม่ใช่เวลารายข้อ)</span></p>
-        )}
-      </section>
-      </div>
 
       {focusNext.length > 0 && <section className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5">
         <p className="text-sm font-bold text-slate-800 flex flex-wrap items-center gap-1.5 mb-3"><MapIcon className="h-4 w-4 text-orange-500" /> แนวทางที่ควรทำต่อ <AiLabel model={aiRow?.model} /></p>

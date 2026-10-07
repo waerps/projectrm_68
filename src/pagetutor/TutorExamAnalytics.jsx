@@ -973,7 +973,7 @@ const buildAiFullText = (row, parentMessage) => {
 //   1) สรุป        — สถานะ (ไฟ 3 สี) + สรุปจาก AI
 //   2) คะแนนข้ามรอบ — กราฟนักเรียน vs ค่าเฉลี่ยห้อง + คะแนน/อันดับรายรอบ
 //   3) รายหมวด      — กราฟใยแมงมุม (เทียบห้อง / เทียบตัวเองรอบแรก) + แถบรายหมวด + คำอธิบาย AI
-//   4) สิ่งที่ต้องช่วย — เรื่องที่เข้าใจผิด + หน้าปัดจังหวะการทำข้อสอบ + แผนทำต่อ
+//   4) สิ่งที่ต้องช่วย — เรื่องที่เข้าใจผิด + แผนทำต่อ
 //   5) ข้อความถึงผู้ปกครอง — ฟองแชต แก้ไข/บันทึก/คัดลอก
 
 function ScoreRing({ pct, size = 108, stroke = 10 }) {
@@ -1146,7 +1146,6 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
   const classRound = (i) => crossExamData.map((d) => d.exams[i]).filter((e) => e?.submitted && e.consent);
   const classAvgPct = (i) => aiAvg(classRound(i).map((e) => e.pct));
   const classTopicAvg = (i, topic) => aiAvg(classRound(i).map((e) => e.topicPcts?.[topic]).filter((v) => v != null));
-  const classPace = (i) => aiAvg(classRound(i).map((e) => e.avgTimePerQuestion).filter((v) => v != null));
 
   // ── ป้ายความสำเร็จ (ไม่มีป้ายอันดับ)
   const topicPcts = latest?.topicPcts || {};
@@ -1189,10 +1188,6 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
   const canSelfCompare = first && first !== latest;
   const mode = radarMode === "self" && canSelfCompare ? "self" : "class";
 
-  // Backend's explicit null means comparison is unavailable; do not reconstruct it.
-  const roomPace = latest && Object.prototype.hasOwnProperty.call(latest, "classAvgTimePerQuestion")
-    ? latest.classAvgTimePerQuestion : latestIndex != null ? classPace(latestIndex) : null;
-  const prevDone = latest ? done.at(-2) || null : done.at(-1) || null;
 
   // ── ข้อความถึงผู้ปกครอง
   const parentMessage = draft ?? baseMessage;
@@ -1476,7 +1471,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                 )}
               </div>
 
-              <ExamSupportPanel latest={latest} roomPace={roomPace} previous={prevDone} aiRow={aiRow} notice={noAiNote} />
+              <ExamSupportPanel aiRow={aiRow} notice={noAiNote} />
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
