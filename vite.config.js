@@ -12,9 +12,6 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
   },
-  optimizeDeps: {
-    include: ['use-sync-external-store', 'react-redux', '@reduxjs/toolkit'],
-  },
   server: {
     proxy: {
       "/api/chat": {
