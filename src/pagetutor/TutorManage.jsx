@@ -5,9 +5,10 @@ import {
   UploadCloud, Loader2, Pencil, X, Check, PlayCircle, CircleHelp
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import TutorVideoQuestionEditor from "../components/TutorVideoQuestionEditor";
+import TutorTeachingTopics from "../components/TutorTeachingTopics";
+
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
@@ -46,7 +47,7 @@ export default function TutorCourseManagePage() {
 
   const [videos, setVideos] = useState([]);
   const [documents, setDocuments] = useState([]);
-  const [questionVideo, setQuestionVideo] = useState(null);
+  const navigate = useNavigate();
 
   const editFileInputRef = useRef(null);
 
@@ -210,6 +211,8 @@ export default function TutorCourseManagePage() {
   </p>
 </div>
 
+        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} token={token} />
+
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -294,8 +297,8 @@ export default function TutorCourseManagePage() {
                             <Calendar className="h-3 w-3" />{video.date}
                           </span>
                           <div className="flex items-center gap-0.5">
-                            <button onClick={() => setQuestionVideo(video)} title="จัดการคำถามในวิดีโอ"
-                              className="p-2 lg:p-1.5 text-slate-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50">
+                            <button aria-label="จัดการคำถามในวิดีโอ" disabled={getVideoType(video.VideoUrl, video.VideoType) !== "upload"} onClick={() => navigate(`/tutor/video-questions/${video.VideoId}`)} title={getVideoType(video.VideoUrl, video.VideoType) === "upload" ? "จัดการคำถามในวิดีโอ" : "คำถามแทรกใช้ได้กับวิดีโอที่อัปโหลดเข้าระบบ"}
+                              className="p-2 lg:p-1.5 text-slate-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed">
                               <CircleHelp className="h-3.5 w-3.5" />
                             </button>
                             <button aria-label="แก้ไข" onClick={() => { setEditingVideoId(video.VideoId); setEditVideoData({ title: video.VideoTitle, url: video.VideoUrl, type: video.VideoType || getVideoType(video.VideoUrl), duration: video.Duration || "" }); }}
@@ -383,7 +386,7 @@ export default function TutorCourseManagePage() {
       </div>
 
       {/* ===== MODAL: ADD VIDEO ===== */}
-      {questionVideo && <TutorVideoQuestionEditor video={questionVideo} token={token} onClose={() => setQuestionVideo(null)} />}
+
 
       {isAddVideoOpen && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">

@@ -531,8 +531,8 @@ export default function StudentExam() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (!userId) {
-      navigate(`/login?returnTo=/exam/${token}`);
+    if (!userId || !localStorage.getItem("student_token") || localStorage.getItem("user_role") !== "student") {
+      navigate(`/login?${new URLSearchParams({ returnTo: `/exam/${encodeURIComponent(token)}` })}`, { replace: true });
       return;
     }
     let cancelled = false;
@@ -551,6 +551,10 @@ export default function StudentExam() {
       })
       .catch((err) => {
         if (cancelled) return;
+        if (err.response?.status === 401) {
+          navigate(`/login?${new URLSearchParams({ returnTo: `/exam/${encodeURIComponent(token)}` })}`, { replace: true });
+          return;
+        }
         setErrorMsg(err.response?.data?.message || "ไม่สามารถเข้าสอบได้");
         setPhase("error");
       });

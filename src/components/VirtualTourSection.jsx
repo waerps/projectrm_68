@@ -1,5 +1,5 @@
 import { ArrowRight, Box, Building2, MousePointer2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import "./VirtualTourSection.css";
 
@@ -11,6 +11,15 @@ const floors = [
 
 export default function VirtualTourSection({ contentReady }) {
   const sectionRef = useRef(null);
+  const previewRef = useRef(null);
+  const [previewReady, setPreviewReady] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setPreviewReady(true); observer.disconnect(); }
+    }, { rootMargin: "100px" });
+    if (previewRef.current) observer.observe(previewRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (contentReady && window.location.hash === "#virtual-tour") {
@@ -40,9 +49,9 @@ export default function VirtualTourSection({ contentReady }) {
           <span className="virtual-tour-tip"><MousePointer2 size={14} /> ลากเพื่อหมุน · เลื่อนเพื่อซูม · กดเริ่มพาชมเพื่อสำรวจ</span>
         </div>
 
-        <div className="virtual-tour-preview">
+        <div ref={previewRef} className="virtual-tour-preview">
           <span className="virtual-tour-preview-label"><span /> ศรเสริม ติวเตอร์ / ชั้น 1</span>
-          <iframe src="/tour-preview?preview=1" title="หมุนและซูมโมเดล 3D พื้นที่ต้อนรับของศรเสริม ติวเตอร์" loading="lazy" />
+          {previewReady ? <iframe src="/tour-preview?preview=1" title="หมุนและซูมโมเดล 3D พื้นที่ต้อนรับของศรเสริม ติวเตอร์" /> : <div className="flex h-full min-h-64 items-center justify-center bg-orange-50 text-orange-700"><Building2 size={64} aria-hidden="true" /></div>}
         </div>
 
         <nav className="virtual-tour-floors" aria-label="เลือกชั้นที่ต้องการพาชม">

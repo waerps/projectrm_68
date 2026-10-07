@@ -37,7 +37,7 @@ export default function Footer({ role }) {
   const homePath = menuLinks[0].to;
 
   return (
-    <footer className="mt-12 bg-[#FF7411] text-white" aria-label="ข้อมูลและช่องทางติดต่อศรเสริมติวเตอร์">
+    <footer className="mt-12 bg-[#b84300] text-white" aria-label="ข้อมูลและช่องทางติดต่อศรเสริมติวเตอร์">
       <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-10">
         <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.1fr_1fr_1fr] lg:gap-10">
           <div>

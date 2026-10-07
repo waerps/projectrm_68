@@ -147,3 +147,9 @@ export async function logQuestionLeave(payload, keepalive = false) {
     const { data } = await axios.post(`${API_BASE}/question/leave`, payload, { headers: authHeaders() });
     return data;
 }
+
+// The logged-in student only; identity is taken from the bearer token.
+export async function fetchExamOverview(courseId) {
+    const { data } = await axios.get(`${API_BASE}/by-course/${courseId}/overview`, { headers: authHeaders() });
+    return data;
+}

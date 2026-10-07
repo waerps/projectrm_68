@@ -62,7 +62,6 @@ export default function Navbar() {
   const [showFavDrop, setShowFavDrop] = useState(false)
   const [showCartDrop, setShowCartDrop] = useState(false)
   const [showFilterDrop, setShowFilterDrop] = useState(false)
-  const [showMobileMenu, setShowMobileMenu] = useState(false)
   const [userData, setUserData] = useState(null)
 
   // ── state ของฟิลเตอร์ ──
@@ -101,8 +100,6 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path
   const PREVIEW = 5
 
-  useEffect(() => { setShowMobileMenu(false) }, [location.pathname])
-
   useEffect(() => {
     getCourses().then((data) => setAllCourses(Array.isArray(data) ? data : []))
   }, [])
@@ -119,7 +116,7 @@ export default function Navbar() {
           username: user.username ?? user.Username ?? "",
           photo: user.photo ?? user.Photo ?? null,
         })
-      }
+      } else setUserData(null)
     }
     syncUser()
     window.addEventListener("student-profile-updated", syncUser)
@@ -141,14 +138,18 @@ export default function Navbar() {
         id: profile.userId ?? profile.UserId ?? savedUser.id ?? savedUser.UserId,
         nickname: profile.nickname ?? profile.Nickname ?? savedUser.nickname ?? savedUser.Nickname ?? "นักเรียน",
         username: profile.username ?? profile.Username ?? savedUser.username ?? savedUser.Username ?? "",
-        photo: profile.photo ?? profile.Photo ?? savedUser.photo ?? savedUser.Photo ?? null,
+        photo: Object.prototype.hasOwnProperty.call(profile, "photo")
+          ? profile.photo
+          : Object.prototype.hasOwnProperty.call(profile, "Photo")
+            ? profile.Photo
+            : savedUser.photo ?? savedUser.Photo ?? null,
       }
       localStorage.setItem("user", JSON.stringify(mergedUser))
       setUserData(mergedUser)
     }).catch((error) => console.warn("โหลดชื่อเล่นนักเรียนไม่สำเร็จ:", error))
 
     return () => { cancelled = true }
-  }, [])
+  }, [location.pathname])
 
   useEffect(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -250,7 +251,7 @@ const cartTotal = cart.reduce((sum, item) => {
   return (
     <div className="fixed left-0 right-0 top-0 z-50 flex justify-center pt-4 bg-white xl:bg-transparent">
       {menuOpen && <div className="fixed inset-0 bg-slate-900/30 xl:hidden" aria-hidden="true" />}
-      <nav className="relative mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-2 sm:gap-4 xl:gap-4 rounded-2xl bg-white px-3 sm:px-4 xl:px-6 shadow-lg">
+      <nav className="relative mx-4 md:mx-12 flex h-[65px] w-full max-w-[1384px] items-center justify-between gap-2 sm:gap-4 xl:gap-3 rounded-2xl bg-white px-3 sm:px-4 xl:px-6 shadow-lg">
 
         {/* Logo */}
         <Link to="/" className="flex-shrink-0">
@@ -266,8 +267,8 @@ const cartTotal = cart.reduce((sum, item) => {
         </Link>
 
         {/* Menu + Search */}
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-4 xl:gap-4">
-          <div className="hidden xl:flex shrink-0 items-center gap-3 whitespace-nowrap">
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-4 xl:gap-5 xl:pl-5">
+          <div className="hidden items-center gap-3 whitespace-nowrap xl:flex xl:flex-1 xl:justify-center">
             <Link
               to="/"
               className={`font-medium transition-colors text-xs ${
@@ -372,7 +373,7 @@ const cartTotal = cart.reduce((sum, item) => {
           </div>
 
           {/* Search Box + ปุ่มฟิลเตอร์ */}
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:max-w-sm sm:gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:max-w-sm sm:gap-2 xl:max-w-[285px]">
             <div className="relative min-w-0 flex-1" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -526,7 +527,7 @@ const cartTotal = cart.reduce((sum, item) => {
         </div>
 
         {/* ปุ่มด้านขวา */}
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-0">
 
           {/* ── แฮมเบอร์เกอร์: ลิงก์เมนูหลัก + บัญชี สำหรับจอ < md ── */}
           <div ref={menuRef} className="relative order-last xl:order-none xl:hidden">
@@ -570,14 +571,14 @@ const cartTotal = cart.reduce((sum, item) => {
                 )}
 
                 <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
-                  {MAIN_NAV_LINKS.map(({ to, label, icon: Icon }) => (
+                  {MAIN_NAV_LINKS.map(({ to, label, icon }) => (
                     <li key={to}>
                       <Link
                         to={to}
                         onClick={() => setMenuOpen(false)}
                         className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive(to) ? "bg-orange-50 text-orange-600" : "text-gray-700 hover:bg-orange-50 hover:text-orange-500"}`}
                       >
-                        <Icon className="h-5 w-5 shrink-0" />
+                        {React.createElement(icon, { className: "h-5 w-5 shrink-0" })}
                         <span className="truncate">{label}</span>
                       </Link>
                     </li>
@@ -609,14 +610,14 @@ const cartTotal = cart.reduce((sum, item) => {
                   {userData && (
                     <>
                       <li className="my-1.5 border-t border-gray-100" />
-                      {PROFILE_LINKS.map(({ to, label, icon: Icon }) => (
+                      {PROFILE_LINKS.map(({ to, label, icon }) => (
                         <li key={to}>
                           <Link
                             to={to}
                             onClick={() => setMenuOpen(false)}
                             className={`flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors ${isActive(to) ? "bg-orange-50 text-orange-600" : "text-gray-700 hover:bg-orange-50 hover:text-orange-500"}`}
                           >
-                            <Icon className="h-5 w-5 shrink-0" />
+                            {React.createElement(icon, { className: "h-5 w-5 shrink-0" })}
                             <span className="truncate">{label}</span>
                           </Link>
                         </li>
@@ -791,7 +792,7 @@ const cartTotal = cart.reduce((sum, item) => {
 
           {/* ── User / Login (โชว์รูป + ชื่อเล่นเท่านั้น) ── */}
           {userData ? (
-            <div className="relative group hidden xl:flex items-center gap-2">
+            <div className="relative group hidden xl:ml-3 xl:flex items-center gap-2">
               <Link to="/profile" className="flex items-center gap-2 cursor-pointer pb-1">
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-orange-200 bg-orange-50 flex-shrink-0">
                   <img
@@ -833,16 +834,6 @@ const cartTotal = cart.reduce((sum, item) => {
               เข้าสู่ระบบ
             </Link>
           )}
-          <div className="relative sm:hidden">
-            <button type="button" aria-label={showMobileMenu ? "ปิดเมนู" : "เปิดเมนู"} aria-expanded={showMobileMenu} onClick={() => setShowMobileMenu((open) => !open)} className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-700"><Menu className="h-5 w-5" /></button>
-            {showMobileMenu && <div className="absolute right-0 top-full z-[70] mt-2 w-48 rounded-xl border border-gray-100 bg-white p-1 shadow-xl">
-              <Link to={userData ? "/profile" : "/login"} className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">{userData ? "ข้อมูลส่วนตัว" : "เข้าสู่ระบบ"}</Link>
-              {userData && <><Link to="/profile/my-courses" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">คอร์สเรียนของฉัน</Link><Link to="/profile/schedule" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ตารางเรียน</Link><Link to="/profile/incidents" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ประวัติการแจ้งเรื่อง</Link></>}
-              <Link to="/favorites" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">รายการโปรด</Link>
-              <Link to="/cart" className="block rounded-lg px-3 py-2 text-sm hover:bg-orange-50">ตะกร้าสินค้า</Link>
-              {userData && <button type="button" onClick={() => { localStorage.clear(); window.location.href = "/login" }} className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50">ออกจากระบบ</button>}
-            </div>}
-          </div>
         </div>
       </nav>
 

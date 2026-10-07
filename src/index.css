@@ -6,12 +6,14 @@
   src: url("./assets/fonts/IBMPlexSansThaiLooped-Light.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
   font-family: "MyFont2";
   src: url("./assets/fonts/Kanit-Regular.ttf") format("truetype");
   font-style: normal;
+  font-display: swap;
 }
 
 html, body {

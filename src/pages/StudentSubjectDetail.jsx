@@ -394,7 +394,7 @@ export default function StudentSubjectDetail() {
         {[
           { key: "videos", label: `คลิปวิดีโอ (${videos.length})`, icon: <Video className="h-4 w-4" /> },
           { key: "files", label: `เอกสาร (${files.length})`, icon: <FileText className="h-4 w-4" /> },
-          { key: "exam", label: "ข้อสอบ", icon: <ClipboardList className="h-4 w-4" /> },
+          { key: "exam", label: "การสอบ", icon: <ClipboardList className="h-4 w-4" /> },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
             className={`flex min-w-0 items-center justify-center gap-1 rounded-lg px-1 py-3 text-xs font-semibold transition sm:gap-2 sm:px-6 sm:text-base ${
@@ -468,7 +468,10 @@ export default function StudentSubjectDetail() {
       {activeTab === "exam" && (
         <div className="bg-white rounded-2xl border border-neutral-200 shadow-sm p-8 text-center">
           <ClipboardList className="h-12 w-12 text-green-500 mx-auto mb-3" />
-          <h2 className="font-bold text-neutral-900 mb-1">ข้อสอบประจำวิชา</h2>
+          <h2 className="font-bold text-neutral-900 mb-1">การสอบประจำวิชา</h2>
+          <Link to={`/profile/course/${courseId}/exams?subjectId=${subjectId}`} className="inline-flex items-center gap-2 text-green-700 font-semibold hover:underline my-3">
+            ดูผลสอบก่อนเรียน กลางเรียน และท้ายเรียน <ChevronRight className="h-4 w-4" />
+          </Link>
           <p className="text-sm text-neutral-500 mb-5">กดปุ่มด้านล่างเพื่อเข้าสอบวิชานี้</p>
           <button
             onClick={handleEnterExam}

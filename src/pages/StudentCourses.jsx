@@ -1,7 +1,7 @@
 // ===================== 1) StudentCourses.jsx =====================
 import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList } from "lucide-react";
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   getStudentCourses,
   getStudentFiles,
@@ -9,9 +9,7 @@ import {
   getStudentSubjectsProgress,
   getStudentVideos,
 } from "../callapi/callusers_student";
-import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
-import { useToast } from "../components/useToast";
-import { ToastContainer } from "../components/Toast";
+import { fetchExamSchedule } from "../utils/studentExamShared";
 
 function unwrapList(payload, keys = []) {
   if (Array.isArray(payload)) return payload;
@@ -29,31 +27,6 @@ function safeCount(value) {
 
 export default function StudentCourses() {
   const token = localStorage.getItem("student_token");
-  const navigate = useNavigate();
-  const [examLoadingId, setExamLoadingId] = useState(null);
-  const [examChoices, setExamChoices] = useState(null); // [{ subjectId, subjectName, examName, token }]
-  const { toasts, showToast, removeToast } = useToast();
-
-  const handleEnterExam = async (courseId, courseName) => {
-    // ส่งชื่อคอร์ส (และวิชา ถ้ามี) ไปกับ route state ให้ breadcrumb หน้าสอบพากลับได้ถูกที่
-    const examState = (extra = {}) => ({ state: { from: { courseId, courseName, ...extra } } });
-    const userId = getCurrentUserId();
-    if (!userId) return navigate("/login");
-    setExamLoadingId(courseId);
-    try {
-      const data = await fetchExamEntry(courseId, userId);
-      if (data.token) {
-        navigate(`/exam/${data.token}`, examState());
-      } else if (data.choices?.length) {
-        setExamChoices(data.choices.map((c) => ({ ...c, examState: examState({ subjectId: c.subjectId, subjectName: c.subjectName }) })));
-      }
-    } catch (err) {
-      showToast("error", "เข้าสอบไม่ได้", err.response?.data?.message || "ยังไม่มีข้อสอบที่เปิดอยู่ตอนนี้");
-    } finally {
-      setExamLoadingId(null);
-    }
-  };
-
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -388,15 +361,12 @@ export default function StudentCourses() {
                     <FileText className="h-4 w-4" /> เนื้อหาในคอร์ส
                   </Link>
 
-                  <div className="flex-1 relative">
-                    <button
-                      onClick={() => handleEnterExam(course.id, course.name)}
-                      disabled={examLoadingId === course.id}
-                      className="w-full h-full bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 disabled:opacity-50 transition flex items-center justify-center gap-1 font-bold text-xs shadow-sm sm:gap-2 sm:text-sm"
-                    >
-                      <ClipboardList className="h-4 w-4" /> {examLoadingId === course.id ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
-                    </button>
-                  </div>
+                  <Link
+                    to={`/profile/course/${course.id}/exams`}
+                    className="min-w-0 flex-1 bg-green-50 text-green-700 border-2 border-green-100 rounded-xl py-2.5 hover:bg-green-100 hover:border-green-200 transition flex items-center justify-center gap-1 font-bold text-xs shadow-sm sm:gap-2 sm:text-sm"
+                  >
+                    <ClipboardList className="h-4 w-4" /> การสอบ
+                  </Link>
 
                   <Link
                     to={`/profile/course-detail/${course.id}`}
@@ -411,29 +381,7 @@ export default function StudentCourses() {
         </div>
       </div>
 
-      {examChoices && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setExamChoices(null)}>
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-neutral-900 mb-1 text-center">เลือกวิชาที่จะเข้าสอบ</h3>
-            <p className="text-sm text-neutral-500 mb-4 text-center">คอร์สนี้มีข้อสอบเปิดอยู่มากกว่า 1 วิชา</p>
-            <div className="space-y-2">
-              {examChoices.map((c) => (
-                <button
-                  key={c.token}
-                  onClick={() => navigate(`/exam/${c.token}`, c.examState)}
-                  className="w-full text-left border-2 border-neutral-200 hover:border-green-300 hover:bg-green-50 rounded-xl px-4 py-3 transition"
-                >
-                  <p className="font-semibold text-neutral-800 text-sm">{c.subjectName}</p>
-                  <p className="text-xs text-neutral-500">{c.examName}</p>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setExamChoices(null)} className="w-full mt-4 text-sm text-neutral-500 hover:text-neutral-700 font-medium">ยกเลิก</button>
-          </div>
-        </div>
-      )}
 
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

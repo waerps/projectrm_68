@@ -1,3 +1,4 @@
+import { optimizedImage } from "../utils/responsiveImage";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, BookOpen, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
@@ -24,7 +25,7 @@ function CourseImage({ src, title }) {
     );
   }
 
-  return <img src={src} alt={title} className="stagger-course-image" loading="lazy" onError={() => setFailed(true)} />;
+  return <img src={optimizedImage(src, 640)} width={640} height={536} decoding="async" alt={title} className="stagger-course-image" loading="lazy" onError={() => setFailed(true)} />;
 }
 
 function StaggerCourseCard({ course, offset, cardWidth, onSelect }) {

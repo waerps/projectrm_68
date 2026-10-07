@@ -51,7 +51,9 @@ export default function NotificationBell({ role, pagePath }) {
   const load = async ({ silent = false } = {}) => {
     let token = null;
     try { token = localStorage.getItem('student_token'); } catch { token = null; }
-    if (!token) return;
+    let storedRole;
+    try { const user = JSON.parse(localStorage.getItem('user') || 'null'); const raw = user?.role || localStorage.getItem('user_role'); storedRole = ({1:'admin',2:'tutor',3:'student'})[raw] || raw; } catch { storedRole = null; }
+    if (!token || storedRole !== role) return;
     if (!silent) setLoading(true);
     try {
       const { data } = await axios.get(api, { headers: { Authorization: `Bearer ${token}` } });

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /tutor/
+Disallow: /profile/
+Disallow: /exam/

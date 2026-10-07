@@ -26,6 +26,7 @@ import { EXAM_SCORE_CAP, PASS_PCT, isPassingScore, displayExamPercent, sumScores
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import ExamSessionQr from "../components/ExamSessionQr";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
@@ -2326,8 +2327,9 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           <div className="space-y-5">
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-              <p className="text-sm text-green-700 font-medium">การสอบเปิดอยู่ — นักเรียนเข้าสอบได้จากหน้าคอร์สของตนเอง</p>
+              <p className="text-sm text-green-700 font-medium">การสอบเปิดอยู่ — นักเรียนสแกน QR ด้านล่าง หรือเข้าจากหน้าคอร์สของตนเอง</p>
             </div>
+            <ExamSessionQr examId={exam.id} sessionId={exam.sessionId} />
 
             <div className="border border-slate-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-3">

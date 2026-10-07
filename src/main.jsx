@@ -1,4 +1,4 @@
-import { GoogleOAuthProvider } from "@react-oauth/google";
+
 
 // ★ เพิ่ม: บังคับใช้ "จำฉันไว้ในระบบ" — รันครั้งเดียวตอนแอปเริ่มโหลด ก่อน React จะ render อะไรเลย
 //   ถ้าตอน login ไม่ได้ติ๊ก "จำฉันไว้ในระบบ" (remember_me === "false") แล้วเบราว์เซอร์/แท็บถูกปิด
@@ -30,85 +30,87 @@ import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 
 import AppShell from "./layouts/AppShell.jsx"
-import ProfileLayout from "./layouts/ProfileLayout.jsx"
+const ProfileLayout = React.lazy(() => import("./layouts/ProfileLayout.jsx"));
 
 // Pages Imports
 import Home from "./pages/Home.jsx"
-import VirtualTour from "./pages/VirtualTour.jsx"
-import Schedule from "./pages/Schedule.jsx"
-import CourseDetail from "./pages/Courses.jsx"
-import Profile from "./pages/Profile.jsx"
+const VirtualTour = React.lazy(() => import("./pages/VirtualTour.jsx"));
+const Schedule = React.lazy(() => import("./pages/Schedule.jsx"));
+const CourseDetail = React.lazy(() => import("./pages/Courses.jsx"));
+const Profile = React.lazy(() => import("./pages/Profile.jsx"));
 
-import Notifications from "./pages/Notifications.jsx"
-import StudentCourses from "./pages/StudentCourses.jsx"
-import Attendance from "./pages/Attendance.jsx"
-import New from "./pages/New.jsx"
-import News from "./pages/News.jsx"
-import MyIncidents from "./pages/MyIncidents.jsx"
-import Login from "./pages/Login.jsx"
-import Register from "./pages/Register.jsx"
-import GoogleRegister from "./pages/GoogleRegister.jsx"
-import ForgotPassword from "./pages/ForgotPassword.jsx"
-import ResetPassword from "./pages/ResetPassword.jsx"
-import ThaiExam from "./pages/thai_exam.jsx"
-import About from "./pages/About.jsx"
-import Promotion from "./pages/Promotion.jsx"
-import CourseSearch from "./pages/CourseSearch.jsx"
-import PrivateCourses from "./pages/PrivateCourses.jsx"
-import StudentCourseContent from "./pages/StudentCourseContent.jsx"
-import StudentCourseDetail from "./pages/StudentCourseDetail.jsx"
-import StudentExam from "./pages/StudentExam.jsx" //เป้วทำ
-import SubjectList from "./pages/SubjectList.jsx" //เป้วทำ
-import StudentSubjectDetail from "./pages/StudentSubjectDetail.jsx" //เป้ว
+const Notifications = React.lazy(() => import("./pages/Notifications.jsx"));
+const StudentExamOverview = React.lazy(() => import("./pages/StudentExamOverview.jsx"));
+const StudentCourses = React.lazy(() => import("./pages/StudentCourses.jsx"));
+const Attendance = React.lazy(() => import("./pages/Attendance.jsx"));
+const New = React.lazy(() => import("./pages/New.jsx"));
+const News = React.lazy(() => import("./pages/News.jsx"));
+const MyIncidents = React.lazy(() => import("./pages/MyIncidents.jsx"));
+const Login = React.lazy(() => import("./pages/Login.jsx"));
+const Register = React.lazy(() => import("./pages/Register.jsx"));
+const GoogleRegister = React.lazy(() => import("./pages/GoogleRegister.jsx"));
+const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword.jsx"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword.jsx"));
+const ThaiExam = React.lazy(() => import("./pages/thai_exam.jsx"));
+const About = React.lazy(() => import("./pages/About.jsx"));
+const Promotion = React.lazy(() => import("./pages/Promotion.jsx"));
+const CourseSearch = React.lazy(() => import("./pages/CourseSearch.jsx"));
+const PrivateCourses = React.lazy(() => import("./pages/PrivateCourses.jsx"));
+const StudentCourseContent = React.lazy(() => import("./pages/StudentCourseContent.jsx"));
+const StudentCourseDetail = React.lazy(() => import("./pages/StudentCourseDetail.jsx"));
+const StudentExam = React.lazy(() => import("./pages/StudentExam.jsx"));
+const SubjectList = React.lazy(() => import("./pages/SubjectList.jsx"));
+const StudentSubjectDetail = React.lazy(() => import("./pages/StudentSubjectDetail.jsx"));
 
 // CSS
 import "./index.css"
 
 // Tutor Layouts
-import TutorLayout from "./layouts/TutorLayout.jsx"
-import TutorMain from "./pagetutor/TutorMain.jsx"
-import TutorSchedule from "./pagetutor/TutorSchedule.jsx"
-import TutorProfile from "./pagetutor/TutorProfile.jsx"
-import TutorCourses from "./pagetutor/TutorCourses.jsx"
-// import TutorAnalytics from "./pagetutor/TutorAnalytics.jsx"
-import TutorStudents from "./pagetutor/TutorStudents.jsx"
-import TutorStudentDetail from "./pagetutor/TutorStudentDetail.jsx"
-import TutorManage from "./pagetutor/TutorManage.jsx"
-import Test from "./pagetutor/Test.jsx"
-import TutorIncome from "./pagetutor/TutorIncome.jsx"
-import TutorNotification from "./pagetutor/TutorNotification.jsx"
-import TutorExam from "./pagetutor/TutorExam.jsx"
-import TutorExamAnalytics from "./pagetutor/TutorExamAnalytics.jsx"
-import TutorExamDetail from "./pagetutor/TutorExamDetail.jsx"
-import TutorQuestionBank from "./pagetutor/TutorQuestionBank.jsx"
-import TutorProgressOverview from "./pagetutor/TutorProgressOverview.jsx"
-import TutorIncidents from "./pagetutor/TutorIncidents.jsx"
+const TutorLayout = React.lazy(() => import("./layouts/TutorLayout.jsx"));
+const TutorMain = React.lazy(() => import("./pagetutor/TutorMain.jsx"));
+const TutorSchedule = React.lazy(() => import("./pagetutor/TutorSchedule.jsx"));
+const TutorProfile = React.lazy(() => import("./pagetutor/TutorProfile.jsx"));
+const TutorCourses = React.lazy(() => import("./pagetutor/TutorCourses.jsx"));
+// const TutorAnalytics = React.lazy(() => import("./pagetutor/TutorAnalytics.jsx"));
+const TutorStudents = React.lazy(() => import("./pagetutor/TutorStudents.jsx"));
+const TutorStudentDetail = React.lazy(() => import("./pagetutor/TutorStudentDetail.jsx"));
+const TutorVideoQuestions = React.lazy(() => import("./pagetutor/TutorVideoQuestions.jsx"));
+const TutorManage = React.lazy(() => import("./pagetutor/TutorManage.jsx"));
+const Test = React.lazy(() => import("./pagetutor/Test.jsx"));
+const TutorIncome = React.lazy(() => import("./pagetutor/TutorIncome.jsx"));
+const TutorNotification = React.lazy(() => import("./pagetutor/TutorNotification.jsx"));
+const TutorExam = React.lazy(() => import("./pagetutor/TutorExam.jsx"));
+const TutorExamAnalytics = React.lazy(() => import("./pagetutor/TutorExamAnalytics.jsx"));
+const TutorExamDetail = React.lazy(() => import("./pagetutor/TutorExamDetail.jsx"));
+const TutorQuestionBank = React.lazy(() => import("./pagetutor/TutorQuestionBank.jsx"));
+const TutorProgressOverview = React.lazy(() => import("./pagetutor/TutorProgressOverview.jsx"));
+const TutorIncidents = React.lazy(() => import("./pagetutor/TutorIncidents.jsx"));
 
 // Admin Layouts
-import AdminLayout from "./layouts/AdminLayout.jsx"
-import AdminDashboard from "./pageadmin/AdminDashboard.jsx"
-import AdminCourses from "./pageadmin/AdminCourses.jsx"
-import AdminSchedule from "./pageadmin/AdminSchedule.jsx"
-import AdminStudents from "./pageadmin/AdminStudents.jsx"
-import AdminTutors from "./pageadmin/AdminTutors.jsx"
-import AdminFinance from "./pageadmin/AdminFinance.jsx"
-import AdminAnnouncements from "./pageadmin/AdminAnnouncements.jsx"
-import AdminNotification from "./pageadmin/AdminNotification.jsx"
-import AdminPasswordResets from "./pageadmin/AdminPasswordResets.jsx"
-import AdminRooms from "./pageadmin/AdminRooms.jsx"
-import AdminCommonFacilities from "./pageadmin/AdminCommonFacilities.jsx"
-import CreateTutorForm from "./pageadmin/CreateTutorForm.jsx"
-import AdminAttendanceDashboard from "./pageadmin/AdminAttendanceDashboard.jsx"
-import AdminManagement from "./pageadmin/AdminManagement.jsx"
-import AdminProfile from "./pageadmin/AdminProfile.jsx"
-import AdminIncidents from "./pageadmin/AdminIncidents.jsx"
-import AdminProgressOverview from "./pageadmin/AdminProgressOverview.jsx"
-import AdminExamAnalytics from "./pageadmin/AdminExamAnalytics.jsx"
+const AdminLayout = React.lazy(() => import("./layouts/AdminLayout.jsx"));
+const AdminDashboard = React.lazy(() => import("./pageadmin/AdminDashboard.jsx"));
+const AdminCourses = React.lazy(() => import("./pageadmin/AdminCourses.jsx"));
+const AdminSchedule = React.lazy(() => import("./pageadmin/AdminSchedule.jsx"));
+const AdminStudents = React.lazy(() => import("./pageadmin/AdminStudents.jsx"));
+const AdminTutors = React.lazy(() => import("./pageadmin/AdminTutors.jsx"));
+const AdminFinance = React.lazy(() => import("./pageadmin/AdminFinance.jsx"));
+const AdminAnnouncements = React.lazy(() => import("./pageadmin/AdminAnnouncements.jsx"));
+const AdminNotification = React.lazy(() => import("./pageadmin/AdminNotification.jsx"));
+const AdminPasswordResets = React.lazy(() => import("./pageadmin/AdminPasswordResets.jsx"));
+const AdminRooms = React.lazy(() => import("./pageadmin/AdminRooms.jsx"));
+const AdminCommonFacilities = React.lazy(() => import("./pageadmin/AdminCommonFacilities.jsx"));
+const CreateTutorForm = React.lazy(() => import("./pageadmin/CreateTutorForm.jsx"));
+const AdminAttendanceDashboard = React.lazy(() => import("./pageadmin/AdminAttendanceDashboard.jsx"));
+const AdminManagement = React.lazy(() => import("./pageadmin/AdminManagement.jsx"));
+const AdminProfile = React.lazy(() => import("./pageadmin/AdminProfile.jsx"));
+const AdminIncidents = React.lazy(() => import("./pageadmin/AdminIncidents.jsx"));
+const AdminProgressOverview = React.lazy(() => import("./pageadmin/AdminProgressOverview.jsx"));
+const AdminExamAnalytics = React.lazy(() => import("./pageadmin/AdminExamAnalytics.jsx"));
 
 import ChatProvider from "./components/Chat/ChatProvider.jsx"
 import { ShopProvider } from "./context/ShopContext"
-import Cart from "./pages/Cart.jsx"
-import Favorites from "./pages/Favorites.jsx"
+const Cart = React.lazy(() => import("./pages/Cart.jsx"));
+const Favorites = React.lazy(() => import("./pages/Favorites.jsx"));
 
 const router = createBrowserRouter(
   [
@@ -151,6 +153,7 @@ const router = createBrowserRouter(
             { path: "schedule", element: <Schedule /> },
             { path: "notifications", element: <Notifications /> },
             { path: "my-courses", element: <StudentCourses /> },
+            { path: "course/:courseId/exams", element: <StudentExamOverview /> },
             { path: "incidents", element: <MyIncidents /> },
             { path: "course-detail/:courseId", element: <StudentCourseDetail /> },
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
@@ -179,6 +182,7 @@ const router = createBrowserRouter(
             { path: "exam", element: <TutorExam /> },
             { path: "exam-analytics", element: <TutorExamAnalytics /> },
             { path: "manage", element: <TutorManage /> },
+            { path: "video-questions/:videoId", element: <TutorVideoQuestions /> },
             { path: "exam-detail", element: <TutorExamDetail /> },
             { path: "question-bank", element: <TutorQuestionBank /> },   // คลังข้อสอบของติวเตอร์ เข้าตรงจากเมนู
             { path: "progress", element: <TutorProgressOverview /> },   // เลือกคอร์ส+วิชา แล้วเข้าหน้าวิเคราะห์พัฒนาการ
@@ -224,10 +228,10 @@ const router = createBrowserRouter(
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+    <React.Suspense fallback={<div role="status" className="min-h-screen p-8 text-center text-slate-600">กำลังโหลดหน้า…</div>}>
       <ShopProvider>
         <RouterProvider router={router} />
       </ShopProvider>
-    </GoogleOAuthProvider>
+    </React.Suspense>
   </React.StrictMode>
 )
