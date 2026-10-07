@@ -391,7 +391,7 @@ export default function TutorStudents() {
                                             <StudentAvatar student={student} />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-lg font-bold text-slate-900 break-words">{student.name}</h3>
+                                            <h2 className="text-lg font-bold text-slate-900 break-words">{student.name}</h2>
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold border border-red-200 mt-1">
                                                     <LuAlertTriangle className="h-3 w-3" /> เข้าเรียนต่ำกว่า 60%
