@@ -4,11 +4,13 @@ import tailwind from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwind()],
+  build: {
+    rollupOptions: { output: { manualChunks(id) {
+      if (id.includes('/node_modules/recharts/') || id.includes('/node_modules/recharts-scale/') || id.includes('/node_modules/d3-') || id.includes('/node_modules/victory-vendor/')) return 'charts';
+    } } },
+  },
   resolve: {
     dedupe: ['react', 'react-dom'],
-  },
-  optimizeDeps: {
-    include: ['use-sync-external-store', 'react-redux', '@reduxjs/toolkit'],
   },
   server: {
     proxy: {

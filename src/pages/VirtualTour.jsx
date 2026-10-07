@@ -34,11 +34,11 @@ function FloorNavigation({ floor, classroom }) {
             aria-current="page"
             onClick={() => document.getElementById(classroom ? "lobby" : "reset")?.click()}
           >
-            <b>0{number}</b> ชั้น {number}
+            ชั้น {number}
           </button>
         ) : (
           <Link key={number} to={`/virtual-tour?floor=${number}`}>
-            <b>0{number}</b> ชั้น {number}
+            ชั้น {number}
           </Link>
         )
       )}
@@ -62,7 +62,6 @@ function WelcomeTour() {
         <nav className="first-floor-rooms" aria-label="ห้องเรียนชั้น 1">
           <span className="section-label">ห้องเรียนชั้น 1</span>
           <Link to="/virtual-tour?room=1"><span>ห้อง 1 <small>8 ที่นั่ง</small></span><span aria-hidden="true">→</span></Link>
-          <Link to="/virtual-tour?room=90004"><span>ห้อง 0 <small>ไม่ใช้งาน</small></span><span aria-hidden="true">→</span></Link>
         </nav>
         <Link className="course-link" to="/courses">ดูคอร์สเรียนของเรา <span aria-hidden="true">→</span></Link>
         <Link className="back-home" to="/#virtual-tour"><span aria-hidden="true">←</span> กลับหน้าแรก</Link>
@@ -94,6 +93,7 @@ function WelcomeTour() {
 
 function ClassroomTour({ floor }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const hasGuide = floor === 2 || floor === 3;
   useEffect(() => {
     const page = document.getElementById("virtual-tour-page");
     page?.classList.toggle("room-details-open", detailsOpen);
@@ -106,8 +106,13 @@ function ClassroomTour({ floor }) {
         <FloorNavigation floor={floor} classroom />
         <div className="eyebrow" id="eyebrow" />
         <h1 id="title" /><p className="desc" id="desc" />
-        <span className="section-label">เลือกห้องที่อยากชม</span>
+        <span className="section-label">เลือกพื้นที่ที่อยากชม</span>
         <nav className="rooms" id="rooms" aria-label="เลือกห้องเรียน" />
+        {hasGuide && <>
+          <button className="primary guide-start" id="guideTour" type="button">เริ่มพาชมทีละจุด <span aria-hidden="true">↗</span></button>
+          <span className="section-label guide-label">จุดแนะนำชั้น {floor}</span>
+          <nav className="dock guide-dock" id="guideDock" aria-label={`เลือกจุดแนะนำชั้น ${floor}`} />
+        </>}
         <button className="details-toggle secondary" id="detailsToggle" aria-expanded={detailsOpen} aria-controls="roomDetails" onClick={() => setDetailsOpen(!detailsOpen)}>ข้อมูลพื้นที่และอุปกรณ์ ⓘ</button>
         <div className="details-container" id="roomDetails">
           <button className="details-close" id="detailsClose" aria-label="ปิดข้อมูลพื้นที่" onClick={() => setDetailsOpen(false)}>×</button>
@@ -119,14 +124,22 @@ function ClassroomTour({ floor }) {
       </aside>
 
       <div className="scene-label"><span className="live-dot" /> สำรวจพื้นที่การเรียนรู้ <span className="scene-label-muted">/ 3D</span></div>
+      {hasGuide && <div id="guideHotspots" aria-label={`จุดแนะนำบนโมเดลชั้น ${floor}`} />}
       <div className="toolbar controls" role="group" aria-label="ควบคุมมุมมอง">
         <button id="minus" aria-label="ซูมออก">−</button><button id="plus" aria-label="ซูมเข้า">+</button>
         <span className="toolbar-separator" />
         <button id="reset" aria-label="มุมเริ่มต้น">↺ <span>มุมเริ่มต้น</span></button>
         <button id="top" aria-label="ผังด้านบน">⊞ <span>ผังด้านบน</span></button>
+        {hasGuide && <><button id="rotate" aria-label="หมุนโถงอัตโนมัติ" aria-pressed="false" title="หมุนโถงอัตโนมัติ">↻</button><button id="labels" aria-label="แสดงหรือซ่อนจุดแนะนำ" aria-pressed="true" title="แสดงหรือซ่อนจุดแนะนำ">ⓘ</button></>}
       </div>
       <div className="hint note">ลากเพื่อหมุน · เลื่อนหรือใช้สองนิ้วเพื่อซูม · แตะประตูเพื่อเลือกห้อง</div>
       <div className="model-note">ภาพจำลองห้องเรียน ตำแหน่งและขนาดโดยประมาณ</div>
+      {hasGuide && <aside className="panel classroom-guide-panel" id="guidePanel" aria-label="รายละเอียดจุดแนะนำ" inert>
+        <button className="close" id="guideClose" type="button" aria-label="ปิดรายละเอียด">×</button>
+        <div className="panel-head"><div className="eyebrow" id="guideCategory" /><h2 id="guideTitle" /><p id="guideDescription" /></div>
+        <div className="photo" id="guidePhoto" />
+        <div className="panel-details" id="guideDetails" />
+      </aside>}
     </>
   );
 }

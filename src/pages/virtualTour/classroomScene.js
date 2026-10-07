@@ -47,11 +47,27 @@ export function mountClassroomScene() {
     navy = mat('#293b6c'),
     mint = mat('#98bc9c'),
     blue = mat('#447e9d');
+  const initialParams = new URLSearchParams(location.search);
+  const initialRoom = DATA.find(r => r.id === Number(initialParams.get('room')));
   let world,
     picks = [],
     walls = [],
-    floor = 2,
+    floor = initialRoom?.floor ?? (Number(initialParams.get('floor')) === 3 ? 3 : 2),
     current = null;
+  const guidePointsByFloor = { 2: [
+    { name: 'ห้องเรียน 2', title: 'ห้องเรียน 2', roomName: 'ห้อง 2', desc: 'ขึ้นบันไดมาแล้วพบห้อง 2 อยู่ตรงหน้า ข้างประตูมีตู้เตี้ยสำหรับจัดเก็บเอกสาร', photo: '/tour/photos/floor2-room2.png', pos: [-1.6, 1.8, -4.65], angle: -.28 },
+    { name: 'ห้องเรียน 3', title: 'ห้องเรียน 3', roomName: 'ห้อง 3', desc: 'ห้อง 3 อยู่ฝั่งขวาของโถง ถัดจากมุมจัดเก็บเอกสาร', photo: '/tour/photos/floor2-rooms34.png', pos: [2.75, 1.8, -.35], angle: -.45 },
+    { name: 'ห้องเรียน 4', title: 'ห้องเรียน 4', roomName: 'ห้อง 4', desc: 'ห้อง 4 อยู่ถัดจากห้อง 3 ตามแนวโถงด้านขวา', photo: '/tour/photos/floor2-rooms34.png', pos: [2.75, 1.8, 2], angle: -.55 },
+    { name: 'มุมจัดเก็บเอกสาร', title: 'มุมจัดเก็บเอกสาร', desc: 'ตู้เตี้ยและตู้สูงสำหรับจัดเก็บเอกสารอยู่บนผนังฝั่งขวา ก่อนถึงห้อง 3 และ 4', photo: '/tour/photos/floor2-rooms34.png', pos: [2.4, 1.5, -2.65], angle: -.48 }
+  ], 3: [
+    { name: 'ห้องเรียน 5', title: 'ห้องเรียน 5', roomName: 'ห้อง 5', desc: 'ขึ้นบันไดมาจะพบห้อง 5 อยู่ตรงหน้า ทางซ้ายของห้อง 6', photo: '/tour/photos/floor3-rooms.png', pos: [-.05, 1.8, -2.5], angle: -.25 },
+    { name: 'ห้องเรียน 6', title: 'ห้องเรียน 6', roomName: 'ห้อง 6', desc: 'ห้อง 6 อยู่ตรงหน้าบันได ถัดจากห้อง 5', photo: '/tour/photos/floor3-rooms.png', pos: [1.45, 1.8, -2.5], angle: -.25 },
+    { name: 'ห้องเรียน 7', title: 'ห้องเรียน 7', roomName: 'ห้อง 7', desc: 'ห้อง 7 อยู่ทางขวามือของโถงชั้น 3', photo: '/tour/photos/floor3-lobby.png', pos: [2.75, 1.8, -1.05], angle: -.5 }
+  ] };
+  const activeGuides = () => guidePointsByFloor[floor] || [];
+  let selectedGuide = -1;
+  let autoRotate = false;
+  let showGuides = true;
   function box(w, h, d, x, y, z, m = white, p = world) {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
     o.position.set(x, y, z);
@@ -114,7 +130,7 @@ export function mountClassroomScene() {
     for (let x = -w / 2; x < w / 2; x += .5) box(.01, .004, d, x, .022, 0, grout);
     for (let z = -d / 2; z < d / 2; z += .5) box(w, .004, .01, 0, .022, z, grout);
     const back = box(w, 3.05, .12, 0, 1.5, -d / 2, pink);
-    const left = box(.12, 3.05, d, -w / 2, 1.5, 0, cream);
+    const left = box(.12, 3.05, d, -w / 2, 1.5, 0, f === 3 ? pink : cream);
     for (const wall of [back, left]) {
       wall.material = wall.material.clone();
       wall.material.transparent = true;
@@ -224,6 +240,7 @@ export function mountClassroomScene() {
     }
   }
   function buildClass(r) {
+    closeGuide();
     clear();
     floor = r.floor;
     current = r;
@@ -269,6 +286,7 @@ export function mountClassroomScene() {
       location.href = "/virtual-tour?floor=1";
       return;
     }
+    closeGuide();
     clear();
     floor = f;
     current = null;
@@ -277,24 +295,68 @@ export function mountClassroomScene() {
     floorUrl.searchParams.delete('room');
     history.replaceState(history.state, '', floorUrl);
     const rs = DATA.filter(r => r.floor === f).sort((a, b) => a.name.localeCompare(b.name));
-    roomShell(9, 5.6, f);
-    rs.forEach((r, i) => {
-      const x = -3 + i * 2.35;
-      door(x, -2.71, r.name, r.id, f === 2 && i === 0 ? mat('#cebf78') : oak);
-      label(r.name.replace('ห้อง ', ''), .25, .29, x + .70, 1.96, -2.62, '#e8bcae', f === 3 ? '#607b42' : '#cf773e');
-    });
-    shelves(3.5, .42, 1.25, 2.65, -Math.PI / 2);
-    shelves(1.9, 1.91, 2.35, 1.28, Math.PI);
-    desk(2.7, .9, 1.30);
-    chair(2.65, 1.5, 0, mint);
-    chair(1.75, 1.0, .4, blue);
-    label('ชั้น ' + f, 1.0, .32, 0, 2.75, -2.62);
+    const lobbyWidth = f === 2 ? 5.6 : 5.8;
+    const lobbyDepth = f === 2 ? 9.6 : 5.2;
+    roomShell(lobbyWidth, lobbyDepth, f);
+    if (f === 2) {
+      // From the stairs (open front), room 2 is ahead; rooms 3 and 4 are on the right.
+      const room2 = rs.find(r => r.name === 'ห้อง 2');
+      if (room2) {
+        door(-1.6, -lobbyDepth / 2 + .09, room2.name, room2.id, mat('#cebf78'));
+        label('2', .25, .29, -.9, 1.96, -lobbyDepth / 2 + .18, '#e8bcae', '#cf773e');
+      }
+      shelves(.65, -lobbyDepth / 2 + .4, 1.65, 1.28);
+      const rightX = lobbyWidth / 2;
+      const rightWall = box(.12, 3.05, lobbyDepth, rightX, 1.5, 0, pink);
+      rightWall.material = rightWall.material.clone();
+      rightWall.material.transparent = true;
+      walls.push({ mesh: rightWall, axis: 'x', limit: rightX, reverse: true });
+      // Low then tall cabinet run along the room 3/4 wall before the doors.
+      shelves(rightX - .38, -3.65, 2.0, 1.28, -Math.PI / 2);
+      shelves(rightX - .38, -1.95, 1.35, 2.65, -Math.PI / 2);
+      const rightRooms = rs.filter(r => r.name === 'ห้อง 3' || r.name === 'ห้อง 4');
+      rightRooms.forEach((r, i) => {
+        const z = -.35 + i * 2.35;
+        door(rightX - .07, z, r.name, r.id, oak, -Math.PI / 2);
+        // A number beside each door faces the landing, like the room signs on site.
+        const sign = group(rightX - .12, 1.96, z + .7, -Math.PI / 2);
+        label(r.name.replace('ห้อง ', ''), .25, .29, 0, 0, 0, '#e8bcae', '#cf773e', sign);
+      });
+      const studyArea = group(0, 0, -2.4, -Math.PI / 2);
+      desk(0, 0, 1.30, studyArea);
+      chair(-.4, .7, 0, mint, studyArea);
+      chair(.4, .7, 0, blue, studyArea);
+    } else {
+      // The third floor is a small landing: rooms 5 and 6 face the stairs,
+      // while room 7 turns off to the right.
+      for (const [name, x] of [['ห้อง 5', -.05], ['ห้อง 6', 1.45]]) {
+        const room = rs.find(r => r.name === name);
+        if (!room) continue;
+        door(x, -lobbyDepth / 2 + .09, room.name, room.id, oak);
+        label(room.name.replace('ห้อง ', ''), .25, .29, x - .7, 1.96, -lobbyDepth / 2 + .18, '#e8bcae', name === 'ห้อง 5' ? '#cf773e' : '#607b42');
+      }
+      const rightX = lobbyWidth / 2;
+      const rightWall = box(.12, 3.05, lobbyDepth, rightX, 1.5, 0, white);
+      rightWall.material = rightWall.material.clone();
+      rightWall.material.transparent = true;
+      walls.push({ mesh: rightWall, axis: 'x', limit: rightX, reverse: true });
+      const room7 = rs.find(r => r.name === 'ห้อง 7');
+      if (room7) {
+        door(rightX - .07, -1.05, room7.name, room7.id, oak, -Math.PI / 2);
+        const sign = group(rightX - .12, 1.96, -.35, -Math.PI / 2);
+        label('7', .25, .29, 0, 0, 0, '#e8bcae', '#607b42', sign);
+      }
+      // The small table sits on the same back wall, to the left of room 5.
+      desk(-1.85, -2.15, 1.35);
+      chair(-1.85, -1.4, 0, mint);
+    }
+    label('ชั้น ' + f, 1.0, .32, f === 2 ? 0 : -1.2, 2.75, -lobbyDepth / 2 + .18);
     $('title').textContent = 'ชั้น ' + f + ' · โถงหน้าห้อง';
     $('eyebrow').textContent = 'พื้นที่การเรียนรู้ / ชั้น ' + f;
     $('desc').textContent = f === 1 ? 'ห้องตามข้อมูลแอดมิน แยกจากเดโมโถงต้อนรับเดิม' : 'เลือกห้องจากรายการหรือแตะประตู แล้วเข้าไปสำรวจบรรยากาศการเรียนรู้ด้วยตัวเอง';
     $('details').innerHTML = `<b>${rs.length} ห้อง · ${rs.reduce((s, r) => s + r.capacity, 0)} ที่นั่งรวม</b><ul>${rs.map(r => `<li>${r.name} · ${r.capacity} ที่นั่ง${r.status === 'ไม่ใช้งาน' ? ' · ไม่ใช้งาน' : ''}</li>`).join('')}</ul><div class="muted">โถงอิงภาพถ่าย แต่ระยะและผังห้องยังเป็นแบบเสนอ ใช้เพื่อแนะนำบรรยากาศ</div>${f === 1 ? '<p><a href="/virtual-tour?floor=1">เปิดเดโมพื้นที่ต้อนรับชั้น 1 ↗</a></p>' : ''}`;
     $('lobby').hidden = true;
-    resetView(18);
+    resetView(f === 3 ? 13 : 18);
     updateRooms();
   }
   let yaw = .55,
@@ -304,20 +366,92 @@ export function mountClassroomScene() {
     tpitch = pitch,
     tdist = 18,
     defaultDist = 18,
-    target = new THREE.Vector3(0, .8, 0);
+    target = new THREE.Vector3(0, .8, 0),
+    ttarget = target.clone();
   function resetView(d = defaultDist) {
     defaultDist = d;
-    tyaw = .55;
+    ttarget.set(0, .8, 0);
+    tyaw = !current ? -.45 : .55;
     tpitch = .60;
     tdist = mobile() ? d * Math.max(1.65, innerHeight / innerWidth * 1.08) : d;
   }
   function updateRooms() {
-    $('rooms').innerHTML = DATA.filter(r => r.floor === floor).map(r => `<button class="room ${current?.id === r.id ? 'active' : ''}" data-id="${r.id}" aria-pressed="${current?.id === r.id}"><span>${r.name}</span><small>${r.capacity} ที่นั่ง${r.status === 'ไม่ใช้งาน' ? ' · ปิด' : ''}</small></button>`).join('');
+    const lobbyButton = `<button class="room ${current ? '' : 'active'}" id="floorLobby" aria-pressed="${!current}"><span>โถงชั้น ${floor}</span><small>หน้าห้อง ${floor === 2 ? '2–4' : '5–7'}</small></button>`;
+    $('rooms').innerHTML = lobbyButton + DATA.filter(r => r.floor === floor).map(r => `<button class="room ${current?.id === r.id ? 'active' : ''}" data-id="${r.id}" aria-pressed="${current?.id === r.id}"><span>${r.name}</span><small>${r.capacity} ที่นั่ง${r.status === 'ไม่ใช้งาน' ? ' · ปิด' : ''}</small></button>`).join('');
+    $('floorLobby').onclick = () => buildLobby(floor);
     document.querySelectorAll('[data-id]').forEach(b => b.onclick = () => buildClass(DATA.find(r => r.id === +b.dataset.id)));
   }
+  function updateGuideNav() {
+    document.querySelectorAll('#guideDock .zone').forEach((button, i) => {
+      button.classList.toggle('active', i === selectedGuide);
+      button.setAttribute('aria-pressed', String(i === selectedGuide));
+    });
+  }
+  function closeGuide() {
+    const panel = $('guidePanel');
+    if (!panel) return;
+    panel.classList.remove('open');
+    panel.inert = true;
+    selectedGuide = -1;
+    updateGuideNav();
+  }
+  function selectGuide(i) {
+    if (!$('guidePanel')) return;
+    if (current) buildLobby(floor);
+    const point = activeGuides()[i];
+    const room = DATA.find(r => r.name === point.roomName && r.floor === floor);
+    selectedGuide = i;
+    autoRotate = false;
+    $('rotate').classList.remove('active');
+    $('rotate').setAttribute('aria-pressed', 'false');
+    ttarget.set(...point.pos);
+    tyaw = point.angle;
+    tpitch = .48;
+    tdist = mobile() ? 17 : 12.5;
+    $('guideCategory').textContent = `0${i + 1} / ชั้น ${floor}`;
+    $('guideTitle').textContent = point.title;
+    $('guideDescription').textContent = point.desc;
+    $('guidePhoto').innerHTML = `<img src="${point.photo}" alt="${point.title} — ภาพสถานที่จริง">`;
+    $('guideDetails').innerHTML = room
+      ? `<span class="badge">ห้องเรียน · ชั้น ${floor}</span><p><b>${room.capacity} ที่นั่ง</b><br>วางโต๊ะเรียน ${room.capacity} ตัว เก้าอี้นักเรียน ${room.capacity} ตัว</p><b>สิ่งอำนวยความสะดวก</b><ul>${room.facilities.map(f => `<li>${f.Facilities_Name} × ${f.Quantity}</li>`).join('') || '<li>ยังไม่มีรายการอุปกรณ์</li>'}</ul><div class="muted">ตำแหน่งอุปกรณ์และขนาดห้องเป็นข้อเสนอ<br>ข้อมูลประกอบภาพจำลอง</div><button class="secondary guide-enter" id="guideEnter" type="button">เข้าชม${room.name} →</button>`
+      : '<div class="detail">ตู้เตี้ยและตู้สูงอยู่เรียงกันบนผนังฝั่งห้อง 3–4</div><div class="detail">มีตู้เตี้ยอีกหนึ่งใบอยู่ข้างห้อง 2</div>';
+    if (room) $('guideEnter').onclick = () => buildClass(room);
+    $('guidePanel').scrollTop = 0;
+    $('guidePanel').classList.add('open');
+    $('guidePanel').inert = false;
+    updateGuideNav();
+    $('guideClose').focus({ preventScroll: true });
+  }
+  if ($('guideDock')) {
+    const guides = activeGuides();
+    $('guideDock').innerHTML = guides.map((point, i) => `<button class="zone" type="button" aria-pressed="false"><span>0${i + 1}</span>${point.name}</button>`).join('');
+    [...$('guideDock').children].forEach((button, i) => button.onclick = () => selectGuide(i));
+    guides.forEach((point, i) => {
+      const button = document.createElement('button');
+      button.className = 'hotspot';
+      button.type = 'button';
+      button.innerHTML = `<b>0${i + 1}</b>${point.name}`;
+      button.setAttribute('aria-label', `แนะนำ${point.name}`);
+      button.onclick = () => selectGuide(i);
+      $('guideHotspots').appendChild(button);
+    });
+    $('guideTour').onclick = () => selectGuide((selectedGuide + 1) % guides.length);
+    $('guideClose').onclick = closeGuide;
+    $('rotate').onclick = () => {
+      autoRotate = !autoRotate;
+      $('rotate').classList.toggle('active', autoRotate);
+      $('rotate').setAttribute('aria-pressed', String(autoRotate));
+    };
+    $('labels').onclick = () => {
+      showGuides = !showGuides;
+      $('labels').setAttribute('aria-pressed', String(showGuides));
+    };
+  }
   $('lobby').onclick = () => buildLobby(floor);
-  $('reset').onclick = () => resetView();
+  $('reset').onclick = () => { closeGuide(); resetView(); };
   $('top').onclick = () => {
+    closeGuide();
+    ttarget.set(0, .8, 0);
     tpitch = 1.48;
     tyaw = 0;
   };
@@ -410,24 +544,42 @@ export function mountClassroomScene() {
   };
   window.addEventListener('resize', onResize);
   const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
-  function frame() {
+  const guidePosition = new THREE.Vector3();
+  let lastFrameTime = 0;
+  function frame(time) {
     if (stopped) return;
     animationFrame = requestAnimationFrame(frame);
-    const k = reduce ? 1 : .09;
+    const dt = lastFrameTime ? Math.min((time - lastFrameTime) / 1000, .05) : .016;
+    lastFrameTime = time;
+    const k = reduce ? 1 : 1 - Math.exp(-dt * 6);
+    if (autoRotate && !reduce && !current) tyaw += dt * .13;
     yaw += (tyaw - yaw) * k;
     pitch += (tpitch - pitch) * k;
     dist += (tdist - dist) * k;
+    target.lerp(ttarget, k);
     camera.aspect = innerWidth / innerHeight;
-    camera.setViewOffset(innerWidth, innerHeight, preview ? 0 : mobile() ? 0 : -innerWidth * .10, preview ? 0 : mobile() ? -innerHeight * .10 : 0, innerWidth, innerHeight);
-    camera.position.set(dist * Math.sin(yaw) * Math.cos(pitch), .8 + dist * Math.sin(pitch), dist * Math.cos(yaw) * Math.cos(pitch));
+    camera.setViewOffset(innerWidth, innerHeight, preview ? 0 : mobile() ? 0 : selectedGuide >= 0 ? innerWidth * .025 : -innerWidth * .10, preview ? 0 : mobile() ? selectedGuide >= 0 ? innerHeight * .12 : -innerHeight * .10 : 0, innerWidth, innerHeight);
+    camera.position.set(target.x + dist * Math.sin(yaw) * Math.cos(pitch), target.y + dist * Math.sin(pitch), target.z + dist * Math.cos(yaw) * Math.cos(pitch));
     camera.lookAt(target);
     camera.updateProjectionMatrix();
     for (const w of walls) {
-      const fade = camera.position[w.axis] < w.limit;
+      const fade = w.reverse ? camera.position[w.axis] > w.limit : camera.position[w.axis] < w.limit;
       w.mesh.material.opacity = fade ? .12 : 1;
       w.mesh.material.depthWrite = !fade;
     }
     renderer.render(scene, camera);
+    if ($('guideHotspots')) activeGuides().forEach((point, i) => {
+      const button = $('guideHotspots').children[i];
+      guidePosition.set(...point.pos).project(camera);
+      const x = (guidePosition.x * .5 + .5) * innerWidth;
+      const y = (.5 - guidePosition.y * .5) * innerHeight;
+      const visible = showGuides && !current && !$('guidePanel').classList.contains('open') && guidePosition.z < 1 && x > (mobile() ? 25 : 310) && x < innerWidth - 35 && y > 130 && y < innerHeight - 130;
+      button.style.display = visible ? 'flex' : 'none';
+      if (visible) {
+        button.style.left = x + 'px';
+        button.style.top = y + 'px';
+      }
+    });
   }
   const requested = new URLSearchParams(location.search);
   const requestedRoom = DATA.find(r => r.id === Number(requested.get('room')));

@@ -20,12 +20,13 @@ import {
 import { getCourses } from "../callapi/callusers";
 import { getStudentCourses } from "../callapi/callusers_student";
 import { useShop } from "../context/ShopContext";
-import { CourseCheckoutModal } from "./Cart";
+const CourseCheckoutModal = React.lazy(() => import("./Cart").then(module => ({ default: module.CourseCheckoutModal })));
 import StaggerCourses from "./StaggerCourses";
 import NewsMarqueeArchive from "./NewsMarqueeArchive";
 import VirtualTourSection from "../components/VirtualTourSection";
 import PrivateCourseTeaser from "../components/PrivateCourseTeaser";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
+import { optimizedImage } from "../utils/responsiveImage";
 import { API_URL } from "../config";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
@@ -58,7 +59,13 @@ const STATUS_BADGE = {
 /** ---------- helpers ---------- */
 const SafeImg = ({ src, className, alt }) => (
   <img
-    src={src}
+    src={optimizedImage(src, 1280)}
+    srcSet={src?.includes("res.cloudinary.com") ? [640, 960, 1280, 1600].map(width => `${optimizedImage(src, width)} ${width}w`).join(", ") : undefined}
+    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 95vw, 1280px"
+    fetchPriority="high"
+    decoding="async"
+    width={1600}
+    height={500}
     onError={(e) => {
       e.currentTarget.src =
         "https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1400&auto=format&fit=crop";
@@ -85,7 +92,7 @@ const CourseArtwork = ({ src, alt, className = "" }) => {
     );
   }
 
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return <img src={optimizedImage(src, 640)} loading="lazy" decoding="async" width={640} height={536} alt={alt} className={className} onError={() => setFailed(true)} />;
 };
 
 const resolveCourseImg = (c) =>
@@ -936,10 +943,12 @@ export default function Home() {
       </div>
 
       {buyNowCourse && (
+        <React.Suspense fallback={<div role="status" className="fixed bottom-4 right-4 rounded-xl bg-white p-4 shadow">กำลังโหลด…</div>}>
         <CourseCheckoutModal
           course={buyNowCourse}
           onClose={() => setBuyNowCourse(null)}
         />
+        </React.Suspense>
       )}
 
     </div>

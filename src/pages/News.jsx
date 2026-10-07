@@ -1,3 +1,4 @@
+import { optimizedImage } from "../utils/responsiveImage";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import axios from "axios";
@@ -21,7 +22,7 @@ function NewsImage({ src, alt, className = "", onLoad }) {
   if (!src || failed) {
     return <span className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></span>;
   }
-  return <img className={className} src={src} alt={alt} loading="lazy" onLoad={onLoad} onError={() => setFailed(true)} />;
+  return <img className={className} src={optimizedImage(src, 640)} alt={alt} loading="lazy" decoding="async" onLoad={onLoad} onError={() => setFailed(true)} />;
 }
 
 export function NewsTile({ item, index, onOpen, balanced = false, isWide, onImageAspect }) {

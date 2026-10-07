@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { postStudentAuth } from "../utils/studentSession";
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
 
-export default function GoogleSignInButton({ disabled, onBusyChange = () => {}, onAuthenticated, mode = "login" }) {
+function GoogleSignInButtonContent({ disabled, onBusyChange = () => {}, onAuthenticated, mode = "login" }) {
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -127,4 +127,8 @@ export default function GoogleSignInButton({ disabled, onBusyChange = () => {}, 
       )}
     </div>
   );
+}
+
+export default function GoogleSignInButton(props) {
+  return <GoogleOAuthProvider clientId={clientId || ""}><GoogleSignInButtonContent {...props} /></GoogleOAuthProvider>;
 }

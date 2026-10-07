@@ -26,23 +26,6 @@ export const rooms = [{
       "Quantity": 1
     }]
   }, {
-    "id": 90004,
-    "name": "ห้อง 0",
-    "floor": 1,
-    "capacity": 15,
-    "status": "ไม่ใช้งาน",
-    "facilities": [{
-      "Room_Facilities_Id": 150005,
-      "FacilitiesId": 3,
-      "Facilities_Name": "ทีวี",
-      "Quantity": 1
-    }, {
-      "Room_Facilities_Id": 150003,
-      "FacilitiesId": 1,
-      "Facilities_Name": "เครื่องปรับอากาศ",
-      "Quantity": 1
-    }]
-  }, {
     "id": 2,
     "name": "ห้อง 2",
     "floor": 2,

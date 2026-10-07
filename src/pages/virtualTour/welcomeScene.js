@@ -621,7 +621,7 @@ export function mountWelcomeScene({ embedded = false } = {}) {
     $('title').textContent = z.title;
     $('description').textContent = z.desc;
     $('features').innerHTML = z.features.map(s => `<div class="detail">${s}</div>`).join('');
-    $('features').innerHTML += i === 5 ? '<nav class="room-links" aria-label="ไปห้องเรียน"><a href="/virtual-tour?room=1">ชั้น 1 · ห้อง 1 · 8 ที่นั่ง →</a><a href="/virtual-tour?room=90004">ชั้น 1 · ห้อง 0 · ไม่ใช้งาน →</a><a href="/virtual-tour?floor=2">ไปชั้น 2 · ห้อง 2–4 →</a><a href="/virtual-tour?floor=3">ไปชั้น 3 · ห้อง 5–7 →</a></nav>' : '';
+    $('features').innerHTML += i === 5 ? '<nav class="room-links" aria-label="ไปห้องเรียน"><a href="/virtual-tour?room=1">ชั้น 1 · ห้อง 1 · 8 ที่นั่ง →</a><a href="/virtual-tour?floor=2">ไปชั้น 2 · ห้อง 2–4 →</a><a href="/virtual-tour?floor=3">ไปชั้น 3 · ห้อง 5–7 →</a></nav>' : '';
     $('photo').innerHTML = z.photo === null ? '<div class="photo-placeholder">↗<br>ทางขึ้นห้องเรียน<br>เลือกชั้นและห้องที่อยากชม</div>' : `<img src="${PHOTOS[z.photo]}" alt="${z.title} — ภาพสถานที่จริง">`;
     $('panel').scrollTop = 0;
     $('panel').classList.add('open');
