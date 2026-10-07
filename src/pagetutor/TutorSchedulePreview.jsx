@@ -100,14 +100,14 @@ export default function TutorSchedulePreview() {
         </div>
 
         {loading ? <div className="rounded-xl bg-orange-50/70 px-3 py-10 text-center text-xs text-neutral-500" role="status">กำลังโหลดตารางสอน...</div> : error ? <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-8 text-center text-xs text-neutral-600" role="alert">โหลดตารางสอนไม่สำเร็จ<button type="button" onClick={() => setReloadKey((k) => k + 1)} className="mt-2 block w-full font-bold text-orange-700 hover:underline">ลองใหม่</button></div> : (
-          <div className="grid grid-cols-7 gap-1" aria-label={`ปฏิทินตารางสอน ${formatDay(`${monthKey}-01`, { month: "long", year: "numeric" })}`}>
+          <div className="grid grid-cols-7 gap-1" role="group" aria-label={`ปฏิทินตารางสอน ${formatDay(`${monthKey}-01`, { month: "long", year: "numeric" })}`}>
             {WEEKDAYS.map((day) => <span key={day} className="pb-0.5 text-center text-[10px] font-bold text-neutral-500">{day}</span>)}
             {calendarCells.map((date, index) => {
               if (!date) return <span key={`blank-${index}`} aria-hidden="true" />;
               const count = classCounts.get(date) || 0;
               const isToday = date === todayDate;
               return (
-                <div key={date} aria-label={`${formatDay(date, { weekday: "long", day: "numeric", month: "long" })} ${count ? `${count} คาบ` : "ไม่มีคาบ"}`} className={`flex h-9 min-w-0 flex-col items-center justify-center rounded-lg border text-center ${isToday ? "border-orange-500 bg-orange-500 text-white" : count ? "border-orange-200 bg-orange-50 text-orange-800" : "border-transparent bg-white text-neutral-600"}`}>
+                <div key={date} role="img" aria-label={`${formatDay(date, { weekday: "long", day: "numeric", month: "long" })} ${count ? `${count} คาบ` : "ไม่มีคาบ"}`} className={`flex h-9 min-w-0 flex-col items-center justify-center rounded-lg border text-center ${isToday ? "border-orange-500 bg-orange-500 text-white" : count ? "border-orange-200 bg-orange-50 text-orange-800" : "border-transparent bg-white text-neutral-600"}`}>
                   <span className="text-[11px] font-bold leading-none">{Number(date.slice(-2))}</span>
                   <span className={`mt-0.5 text-[9px] font-semibold leading-none ${isToday ? "text-orange-50" : count ? "text-orange-700" : "text-neutral-300"}`}>{count ? `${count} คาบ` : "—"}</span>
                 </div>

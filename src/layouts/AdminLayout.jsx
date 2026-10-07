@@ -8,9 +8,9 @@ export default function AdminLayout() {
     <div>
       <AdminNavbar />
       {/* ระยะห่างจาก navbar กำหนดที่นี่ที่เดียว (navbar สูง ~90px + ช่องไฟ 30px) — หน้าในไม่ต้องใส่ mt เอง */}
-      <main className="pt-[120px] pb-12">
+      <div className="pt-[120px] pb-12">
         <Outlet />
-      </main>
+      </div>
     </div>
     </RequireRole>
   )

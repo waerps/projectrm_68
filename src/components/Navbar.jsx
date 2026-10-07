@@ -846,16 +846,6 @@ const cartTotal = cart.reduce((sum, item) => {
         </div>
       </nav>
 
-      <style>{`
-        .navbar-drop {
-          animation: navDrop 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          transform-origin: top center;
-        }
-        @keyframes navDrop {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </div>
   )
 }

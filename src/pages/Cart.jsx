@@ -405,7 +405,6 @@ function SlipToast({ toast, onClose }) {
         isSuccess ? "border-emerald-200 bg-emerald-50/95" : "border-red-200 bg-red-50/95"
       )}
     >
-      <style>{`@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }`}</style>
       <div className="flex items-start gap-3">
         <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", isSuccess ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}>
           {isSuccess ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -1286,8 +1285,7 @@ export default function Cart() {
   }, [cart, courseDetails]);
 
   return (
-    <main className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Kanit', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');`}</style>
+    <div className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Kanit', sans-serif" }}>
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div><h1 className="mt-1 text-3xl font-black text-orange-600 sm:text-4xl" style={{ fontFamily: "'Kanit', sans-serif" }}>ตะกร้าคอร์สเรียน</h1><p className="mt-2 text-sm text-slate-500">ตรวจสอบรายละเอียด ตารางเรียน และรูปแบบการชำระก่อนยืนยัน</p></div>
@@ -1305,6 +1303,6 @@ export default function Cart() {
       </div>
 
       {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} onEnrollmentComplete={removeManyFromCart} />}
-    </main>
+    </div>
   );
 }

@@ -10,9 +10,9 @@ export default function ProfileLayout() {
   return (
 
     <div className="min-h-screen min-w-0 px-4 sm:px-6 lg:px-0">
-        <main className="min-w-0 pt-[30px]">
+        <div className="min-w-0 pt-[30px]">
           <Outlet />
-        </main>
+        </div>
     </div>
   );
 }

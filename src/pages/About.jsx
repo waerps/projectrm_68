@@ -5,7 +5,7 @@ const LINE_ID = "";
 
 export default function About() {
   return (
-    <main className="pb-20 pt-[110px] text-neutral-900">
+    <div className="pb-20 pt-[110px] text-neutral-900">
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
         <PublicPageHero
           eyebrow="เกี่ยวกับศรเสริมติวเตอร์"
@@ -77,6 +77,6 @@ export default function About() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }

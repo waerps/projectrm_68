@@ -719,9 +719,6 @@ export default function Home() {
 
   return (
     <div className="pb-24" style={{ fontFamily: "'Kanit', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');
-      `}</style>
 
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
         {/* ========== HERO — ประกาศคอร์สเรียนแบบสไลด์ ========== */}

@@ -30,12 +30,13 @@ const SafeImg = ({ src, className, alt }) => {
 function TutorAnnouncementCard({ item, onOpen }) {
   return (
     <button type="button" data-news-id={item.id} onClick={(event) => onOpen(item.id, event.currentTarget)} className="group flex w-full gap-3 rounded-2xl border border-orange-100 bg-white p-3 text-left shadow-sm transition hover:border-orange-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
-      {item.img && <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-orange-50"><SafeImg src={item.img} alt={item.title || "ภาพข่าวสำหรับติวเตอร์"} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /></div>}
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px]"><span className="rounded-full bg-orange-50 px-2 py-0.5 font-bold text-orange-700">{item.tag || "ข่าวสำหรับติวเตอร์"}</span>{item.date && <span className="text-neutral-500">{item.date}</span>}</div>
-        <h3 className="mt-2 line-clamp-2 text-sm font-bold leading-snug text-neutral-900">{item.title}</h3>
+      {/* ใน <button> ใช้ได้แค่ phrasing content (W3C) — จึงใช้ <span> แทน <div>/<h3> แล้วกำหนด display ด้วยคลาส */}
+      {item.img && <span className="block h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-orange-50"><SafeImg src={item.img} alt={item.title || "ภาพข่าวสำหรับติวเตอร์"} className="h-full w-full object-cover transition duration-300 group-hover:scale-105" /></span>}
+      <span className="block min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-1.5 text-[11px]"><span className="rounded-full bg-orange-50 px-2 py-0.5 font-bold text-orange-700">{item.tag || "ข่าวสำหรับติวเตอร์"}</span>{item.date && <span className="text-neutral-500">{item.date}</span>}</span>
+        <span className="mt-2 line-clamp-2 block text-sm font-bold leading-snug text-neutral-900">{item.title}</span>
         <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-orange-700">อ่านรายละเอียด <span aria-hidden="true">→</span></span>
-      </div>
+      </span>
     </button>
   );
 }

@@ -14,23 +14,11 @@ const iconStyle = {
   info:    { background: "#dbeafe", color: "#2563eb" },
 };
 
-// ✅ ใส่ keyframe animation ตรงนี้เลย ไม่ต้องพึ่ง tailwind.config.js
-const styleTag = `
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(60px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes shrinkBar {
-    from { width: 100%; }
-    to   { width: 0%; }
-  }
-`;
+// keyframes slideIn / shrinkBar อยู่ใน src/index.css
 
 export function ToastContainer({ toasts, onRemove }) {
   return (
     <>
-      {/* inject keyframes ครั้งเดียว */}
-      <style>{styleTag}</style>
 
       <div style={{
         position: "fixed",
