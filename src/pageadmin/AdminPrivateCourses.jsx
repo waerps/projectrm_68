@@ -160,10 +160,11 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
           onEdit={(o) => setModal({ type: "offer", data: o })} onChanged={load} />
       ) : (
-        <InquiriesTab inquiries={inquiries} search={search} focusedId={Number(searchParams.get("inquiry"))} error={inquiryError} onRetry={load} onContacted={markContacted} />
+        <InquiriesTab inquiries={inquiries} search={search} focusedId={Number(searchParams.get("inquiry"))} error={inquiryError} onRetry={load} onContacted={markContacted}
+          onCreateCourse={(item) => setModal({ type: "create", data: item })} />
       )}
 
-      {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} onClose={close} onDone={done} />}
+      {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} inquiry={modal.data} onClose={close} onDone={done} />}
       {modal?.type === "payment" && <PaymentModal course={modal.data} onClose={close} onDone={done} />}
       {modal?.type === "enroll" && <EnrollModal course={modal.data} students={lookups.students} onClose={close} onDone={done} />}
       {modal?.type === "offer" && <OfferModal offer={modal.data} subjects={lookups.subjects} onClose={close} onDone={done} />}
@@ -171,7 +172,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   );
 }
 
-function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacted }) {
+function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacted, onCreateCourse }) {
   useEffect(() => {
     if (focusedId && inquiries.some((item) => Number(item.InquiryId) === focusedId)) {
       document.getElementById(`private-inquiry-${focusedId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -195,9 +196,33 @@ function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacte
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
         <span className="text-slate-600">ผู้ติดต่อ {item.ContactName}</span>
         <a href={`tel:${item.ContactPhone}`} className="font-bold text-orange-600 hover:underline">{item.ContactPhone}</a>
-        {item.Status === "pending" && <button type="button" onClick={() => onContacted(item.InquiryId)} className="ml-auto rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white">บันทึกว่าติดต่อแล้ว</button>}
+        <div className="ml-auto flex flex-wrap gap-2">
+          <button type="button" onClick={() => onCreateCourse(item)} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><Plus className="h-3.5 w-3.5" />สร้างคอร์สจากคำขอนี้</button>
+          {item.Status === "pending" && <button type="button" onClick={() => onContacted(item.InquiryId)} className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white">บันทึกว่าติดต่อแล้ว</button>}
+        </div>
       </div>
+      <MatchedStudents matches={item.MatchedStudents} phone={item.ContactPhone} />
     </article>)}
+  </div>;
+}
+
+// บัญชีที่เบอร์ตรงกับเบอร์ผู้ติดต่อ — แค่เสนอให้เลือก ไม่ได้ผูกกับคำขอจริง
+const matchVia = { student: "เบอร์นักเรียน", parent: "เบอร์ผู้ปกครอง" };
+function MatchedStudents({ matches = [], phone, selected = [], onPick }) {
+  if (!matches.length) return <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">ไม่พบบัญชีที่เบอร์ {phone} ตรงกัน — ถ้ายังไม่มีบัญชี ให้สมัครให้ที่หน้านักเรียนก่อนสร้างคอร์ส</p>;
+  return <div className="mt-3 rounded-xl bg-emerald-50/70 px-3 py-2">
+    <p className="text-xs font-semibold text-emerald-800">บัญชีที่เบอร์ตรงกับคำขอ{onPick ? " (กดเพื่อเลือก)" : ""}</p>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {matches.map((m) => {
+        const picked = selected.map(String).includes(String(m.UserId));
+        const label = <>{fullName(m)} <span className="font-normal text-slate-500">· {matchVia[m.via]}</span></>;
+        return onPick
+          ? <button key={m.UserId} type="button" onClick={() => onPick(m.UserId)} disabled={picked}
+              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${picked ? "border-emerald-300 bg-emerald-100 text-emerald-800" : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-100"}`}>
+              {picked && <CheckCircle2 className="h-3.5 w-3.5" />}{label}</button>
+          : <span key={m.UserId} className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700">{label}</span>;
+      })}
+    </div>
   </div>;
 }
 
@@ -241,7 +266,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
           await axios.post(`${API}/courses/${c.CourseID}/publish`, {}, auth());
           toast('เผยแพร่คอร์สแล้ว');
           onChanged();
-        } catch (e) { toast(errMsg(e, 'เผยแพร่คอร์สไม่สำเร็จ')); }
+        } catch (e) { toast(errMsg(e, 'เผยแพร่คอร์สไม่สำเร็จ')); if (e.response?.data?.applied) onChanged(); }
       }} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}>เผยแพร่คอร์ส</button>}
       {(c.Students || []).length < Number(c.MaxStudents || 1) &&
         <button type="button" onClick={() => onEnroll(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><UserPlus className="h-3.5 w-3.5" />ลงทะเบียนนักเรียน</button>}
@@ -448,10 +473,15 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
   );
 }
 
-function CreateCourseModal({ offers, lookups, onClose, onDone }) {
+function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
   const latestYear = lookups.years[lookups.years.length - 1]?.YearId || "";
+  const inquiryOffer = inquiry?.OfferId ? offers.find((o) => String(o.OfferId) === String(inquiry.OfferId)) : null;
+  const inquiryLearners = Number(inquiry?.LearnerCount) === 2 ? 2 : 1;
+  const inquiryMatches = inquiry?.MatchedStudents || [];
   const [f, setF] = useState({
-    OfferId: "", SubjectId: "", UserId: "", SecondUserId: "", LearnerCount: 1, AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
+    OfferId: inquiryOffer ? String(inquiryOffer.OfferId) : "", SubjectId: inquiryOffer?.SubjectId ? String(inquiryOffer.SubjectId) : "",
+    // เบอร์ตรงแค่บัญชีเดียว → เลือกให้เลย (แอดมินเปลี่ยนได้)
+    UserId: inquiryMatches.length === 1 ? String(inquiryMatches[0].UserId) : "", SecondUserId: "", LearnerCount: inquiryLearners, AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING.find((group) => group.learners === inquiryLearners)?.modes[0].starting || PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
     customPrice: false, Price: "", StartDate: todayStr(), LastDate: addMonths(todayStr(), 3), YearId: latestYear,
     Course_Availability_Id: "", Remark: "", enrollNow: true,
   });
@@ -498,7 +528,7 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
   };
 
   return (
-    <Modal title="สร้างคอร์สเดี่ยวให้นักเรียน" subtitle="สร้างหลังประเมินนักเรียนและตกลงราคาแล้ว" icon={UserRoundCheck} size="lg" onClose={onClose}
+    <Modal title="สร้างคอร์สเดี่ยวให้นักเรียน" subtitle={inquiry ? `จากคำขอของ ${inquiry.StudentName || inquiry.ContactName} · ${inquiry.SubjectName}` : "สร้างหลังประเมินนักเรียนและตกลงราคาแล้ว"} icon={UserRoundCheck} size="lg" onClose={onClose}
       footer={<>
         <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ยกเลิก</button>
         <button type="button" onClick={submit} disabled={saving || lossRate} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>{saving ? "กำลังบันทึก…" : "สร้างคอร์ส"}</button>
@@ -533,6 +563,10 @@ function CreateCourseModal({ offers, lookups, onClose, onDone }) {
               <option value={1}>เรียน 1 คน</option><option value={2}>เรียน 2 คนในคลาสเดียว</option>
             </select>
           </div>
+          {inquiry && <div className="sm:col-span-2 -mb-2"><MatchedStudents matches={inquiryMatches} phone={inquiry.ContactPhone} selected={[f.UserId, f.SecondUserId].filter(Boolean)}
+            onPick={(id) => setF((current) => (!current.UserId || current.LearnerCount === 1
+              ? { ...current, UserId: String(id) }
+              : { ...current, SecondUserId: String(current.UserId) === String(id) ? current.SecondUserId : String(id) }))} /></div>}
           <Combobox required label="นักเรียนคนที่ 1 *" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => setF((current) => ({ ...current, UserId: v, SecondUserId: String(current.SecondUserId) === String(v) ? "" : current.SecondUserId }))} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
           {f.LearnerCount === 2 && <Combobox required label="นักเรียนคนที่ 2 *" options={lookups.students.filter((student) => String(student.UserId) !== String(f.UserId))} idKey="UserId" labelOf={fullName} value={f.SecondUserId} onChange={(v) => set("SecondUserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />}
           <Combobox required label="ติวเตอร์ *" options={lookups.tutors} idKey="AdminId" labelOf={fullName} value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />

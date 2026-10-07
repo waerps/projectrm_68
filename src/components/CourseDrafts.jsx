@@ -187,6 +187,7 @@ export function CourseDraftsModal({ drafts, onClose, onChanged, note }) {
     } catch (e) {
       toast(e.response?.data?.message || "เผยแพร่คอร์สไม่สำเร็จ", "error");
       await drafts.reload();
+      if (e.response?.data?.applied) onChanged?.(); // บางรายการมีผลไปแล้ว ให้หน้าหลักโหลดใหม่
     } finally {
       setBusy(false);
     }
