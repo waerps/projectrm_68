@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 import { ArrowUpRight } from "lucide-react";
 import { API_URL } from "../config";
+import { newsAuthConfig } from "../utils/newsApi";
 import { NewsExpanded, NewsTile } from "./News";
 import "./NewsMarqueeArchive.css";
 
