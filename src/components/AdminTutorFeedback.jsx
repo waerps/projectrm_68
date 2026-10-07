@@ -8,11 +8,14 @@ import Pagination from "./ui/Pagination";
 
 import { STAT_VALUE, STAT_UNIT } from "./ui/tokens";
 
-function FeedbackStatTile({ label, value, unit, color, icon }) {
-  return <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
+function FeedbackStatTile({ label, value, unit, color, icon, description }) {
+  return <div className="relative flex flex-col justify-center gap-3 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-orange-200 hover:shadow-md">
     {createElement(icon, { "aria-hidden": true, className: "pointer-events-none absolute -right-3 -top-3 h-14 w-14 text-slate-50" })}
+    <div className="relative flex items-center gap-3">
     <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm ${color}`}>{createElement(icon, { "aria-hidden": true, className: "h-5 w-5 text-white" })}</div>
     <div className="relative min-w-0"><p className="text-xs font-medium text-slate-500">{label}</p><p className={STAT_VALUE}>{value}<span className={STAT_UNIT}>{unit}</span></p></div>
+    </div>
+    {description && <p className="relative border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-500">{description}</p>}
   </div>;
 }
 
@@ -47,10 +50,10 @@ export default function AdminTutorFeedback() {
   const average = count ? filtered.reduce((sum,t) => sum+t.filteredAverage*t.filteredCount,0)/count : null;
   return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-6"><h2 className="flex items-center gap-2 text-base font-bold text-slate-900"><Heart size={22} className="text-orange-500" />รีวิวการสอนจากนักเรียน</h2><p className="text-xs text-slate-500">ความพึงพอใจหลังเรียนจบคอร์ส</p></div>
-    <div className="space-y-5 p-4 sm:p-6"><div className="flex flex-wrap items-end justify-between gap-3"><p className="max-w-xl text-xs leading-relaxed text-slate-500">คะแนนเฉลี่ย = ดาวรวม ÷ จำนวนรีวิว เฉพาะเดือนและวิชาที่เลือก<br />นับเดือนที่รีวิวครั้งแรก แก้ไขรีวิวแล้วไม่นับซ้ำ</p><div className="flex flex-wrap items-center gap-2"><label className="text-xs text-slate-500">เดือนที่ได้รับรีวิว<input aria-label="เดือนที่ได้รับรีวิว" type="month" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="ml-2 min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3" /></label><button onClick={() => { setMonth(''); setPage(1); }} className={`min-h-10 rounded-xl border px-3 text-xs ${!month ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-slate-200 text-slate-600'}`}>ทุกเดือน</button><select aria-label="วิชาของรีวิว" value={subject} onChange={e => { setSubject(e.target.value); setPage(1); }} className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm"><option value="all">ทุกวิชา</option>{subjects.map(([id,name]) => <option value={id} key={id}>{name}</option>)}</select></div></div>
+    <div className="space-y-5 p-4 sm:p-6"><div className="flex flex-col items-start gap-2 sm:items-end"><div className="flex flex-wrap items-center gap-2"><label className="text-xs text-slate-500">เดือนที่ได้รับรีวิว<input aria-label="เดือนที่ได้รับรีวิว" type="month" value={month} onChange={e => { setMonth(e.target.value); setPage(1); }} className="ml-2 min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3" /></label><button onClick={() => { setMonth(''); setPage(1); }} className={`min-h-10 rounded-xl border px-3 text-xs ${!month ? 'border-orange-200 bg-orange-50 text-orange-700' : 'border-slate-200 text-slate-600'}`}>ทุกเดือน</button><select aria-label="วิชาของรีวิว" value={subject} onChange={e => { setSubject(e.target.value); setPage(1); }} className="min-h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm"><option value="all">ทุกวิชา</option>{subjects.map(([id,name]) => <option value={id} key={id}>{name}</option>)}</select></div><p className="text-xs leading-relaxed text-slate-500">เดือนที่ได้รับรีวิวอ้างอิงวันที่ส่งครั้งแรก การแก้ไขรีวิวไม่นับเป็นรีวิวใหม่</p></div>
       {loading ? <div role="status" className="flex justify-center gap-2 py-10 text-slate-500"><Loader2 className="animate-spin" />กำลังโหลดรีวิว</div> : error ? <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button className="ml-3 underline" onClick={() => setRetry(n => n+1)}>ลองอีกครั้ง</button></div> : <>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <FeedbackStatTile label="คะแนนรีวิวเฉลี่ย" value={average === null ? '— / 5' : `${score(average)} / 5`} unit="ดาว" color="bg-orange-500" icon={Star} />
+          <FeedbackStatTile label="คะแนนรีวิวเฉลี่ย" value={average === null ? '— / 5' : `${score(average)} / 5`} unit="ดาว" color="bg-orange-500" icon={Star} description="คำนวณจากดาวรวม ÷ จำนวนรีวิว ในเดือนและวิชาที่เลือก" />
           <FeedbackStatTile label="จำนวนรีวิว" value={count.toLocaleString()} unit="รีวิว" color="bg-emerald-500" icon={MessageSquare} />
           <FeedbackStatTile label="ติวเตอร์ที่มีรีวิว" value={filtered.length.toLocaleString()} unit="คน" color="bg-slate-500" icon={Users} />
         </div>
