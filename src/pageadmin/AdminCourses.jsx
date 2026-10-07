@@ -3552,7 +3552,7 @@ export default function AdminCoursesPage() {
       {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
-          <p className="text-base font-semibold text-slate-700">{groupCourses.length === 0 ? "ยังไม่มีคอร์สเรียน" : "ไม่พบคอร์สเรียนที่ค้นหา"}</p>
+          <p className="text-base font-semibold text-slate-700">{groupCourses.length === 0 ? "ยังไม่มีคอร์สกลุ่ม" : "ไม่พบคอร์สเรียนที่ค้นหา"}</p>
           {groupCourses.length > 0 && <p className="mt-1 text-sm text-slate-500">โปรดปรับคำค้นหาหรือตัวกรอง</p>}
         </div>
       ) : (

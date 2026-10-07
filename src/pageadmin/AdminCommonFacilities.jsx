@@ -860,7 +860,8 @@ export default function AdminCommonFacilities() {
         } catch (e) {
             setLoadError(true);
             console.error("fetch common-facilities error:", e.response?.status, e.response?.data || e.message);
-            showToast("error", "โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
+            // ยังไม่มีข้อมูล = กล่อง error แสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+            if (items.length) showToast("error", "โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
     };
 

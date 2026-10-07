@@ -592,6 +592,8 @@ export default function TutorSchedule() {
     const year = base.getFullYear()
     const month = String(base.getMonth() + 1).padStart(2, '0')
     const date = String(base.getDate()).padStart(2, '0')
+    // เปลี่ยนป้ายวันที่เป็นสัปดาห์ใหม่ทันที — ถ้าโหลดไม่สำเร็จ ป้ายจะตรงกับสัปดาห์ที่ error อยู่
+    setWeekStart(`${year}-${month}-${date}`)
     setReferenceDate(`${year}-${month}-${date}`)
   }
 

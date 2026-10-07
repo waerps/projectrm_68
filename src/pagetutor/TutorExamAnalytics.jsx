@@ -2596,7 +2596,7 @@ export function ExamAnalyticsView({
       <div className="min-w-0">
         <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
+          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {resultsErrors[examId] ? "—" : (examResults[examId]?.submittedCount ?? 0)} คน
           {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
           {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
             ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
@@ -2669,7 +2669,9 @@ export function ExamAnalyticsView({
           <div className="flex items-center gap-2.5 min-w-0">
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
-              {aiErrors[examId] && aiSummaries[examId] == null
+              {resultsErrors[examId]
+                ? <span className="text-red-600">โหลดผลสอบรอบ {examLabel} ไม่สำเร็จ จึงยังแสดงผลวิเคราะห์ไม่ได้</span>
+                : aiErrors[examId] && aiSummaries[examId] == null
                 ? <span className="text-red-600">โหลดผลวิเคราะห์โดย AI ไม่สำเร็จ{" "}
                     <button type="button" onClick={() => setAiReloadKey((k) => k + 1)} className="font-semibold underline hover:text-red-700">ลองใหม่</button>
                   </span>

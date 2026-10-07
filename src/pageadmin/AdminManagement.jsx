@@ -350,7 +350,8 @@ export default function AdminManagement() {
     } catch (e) {
       console.error("fetch admins error:", e);
       setLoadError(true);
-      showToast("error", "โหลดข้อมูลผู้ดูแลระบบไม่สำเร็จ");
+      // ยังไม่มีข้อมูล = กล่อง error แสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+      if (admins.length) showToast("error", "โหลดข้อมูลผู้ดูแลระบบไม่สำเร็จ");
     } finally { setLoading(false); }
   };
 

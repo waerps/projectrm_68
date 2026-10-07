@@ -2394,7 +2394,8 @@ export default function AdminTutorsPage() {
       console.error("fetch applications error:", e);
       // คงข้อมูลเดิมไว้ ถ้ายังไม่เคยโหลดได้จะแสดง ErrorState แทนข้อความ "ไม่พบใบสมัคร"
       setAppsError(true);
-      showToast(
+      // ยังไม่มีข้อมูล = กล่อง error ในแท็บใบสมัครแสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+      if (applications.length) showToast(
         "error",
         "โหลดใบสมัครติวเตอร์ไม่สำเร็จ",
         e.response?.data?.message || "กรุณาเข้าสู่ระบบด้วยบัญชีแอดมินอีกครั้ง",

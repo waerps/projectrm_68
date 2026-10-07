@@ -810,7 +810,8 @@ export default function AdminRooms() {
         } catch (e) {
             setLoadError(true);
             console.error("fetch rooms error:", e.response?.status, e.response?.data || e.message);
-            showToast("error", "โหลดข้อมูลห้องเรียนไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
+            // ยังไม่มีข้อมูล = กล่อง error แสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+            if (rooms.length) showToast("error", "โหลดข้อมูลห้องเรียนไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
     };
 
