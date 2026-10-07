@@ -201,7 +201,7 @@ function IsoTabs({ tabs, value, onChange }) {
         const Icon = t.icon;
         const active = t.key === value;
         return (
-          <button key={t.key} type="button" role="tab" aria-selected={active} onClick={() => onChange(t.key)}
+          <button key={t.key} type="button" role="tab" id={`income-tab-${t.key}`} aria-controls="income-tabpanel" aria-selected={active} onClick={() => onChange(t.key)}
             className={`relative z-10 flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold transition-colors ${active ? 'text-orange-600' : 'text-slate-500 hover:text-slate-700'}`}>
             {Icon && <Icon className="hidden sm:block h-4 w-4 shrink-0" />}
             <span className="sm:hidden truncate">{t.short || t.label}</span>
@@ -824,6 +824,7 @@ export default function TutorIncome() {
 
         {/* ── Tabs (เต็มความกว้าง) ─────────────────────────────── */}
         <IsoTabs tabs={TABS} value={viewMode} onChange={setViewMode} />
+        <div role="tabpanel" id="income-tabpanel" aria-labelledby={`income-tab-${viewMode}`}>
 
         {/* ══ Tab: Overview ══════════════════════════════════════ */}
         {viewMode === 'overview' && (
@@ -963,7 +964,7 @@ export default function TutorIncome() {
                       <div className="p-5 border-b border-slate-100 flex-1">
                         <div className="flex justify-between items-start gap-3 mb-4">
                           <div className="min-w-0">
-                            <h3 className="text-lg font-bold text-slate-900 leading-tight">{course.courseName}</h3>
+                            <h2 className="text-lg font-bold text-slate-900 leading-tight">{course.courseName}</h2>
                             <div className="mt-2 flex flex-wrap items-center gap-1.5">
                               <span className={`text-xs px-2.5 py-0.5 rounded-full border font-semibold ${LEVEL_BADGE[course.levelType] || LEVEL_BADGE.secondary}`}>
                                 {course.levelType === 'elementary' ? 'ประถม' : 'มัธยม'}
@@ -1302,6 +1303,7 @@ export default function TutorIncome() {
             </div>
           );
         })()}
+        </div>
       </div>
 
     </div>

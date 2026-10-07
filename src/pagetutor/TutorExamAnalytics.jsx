@@ -513,20 +513,20 @@ function SectionCard({ title, icon: Icon, children, action, tooltip, className =
   return (
     <div className={`bg-white rounded-2xl border border-slate-200 shadow-sm p-5 ${className}`}>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
           {Icon && <Icon className="h-4 w-4 text-orange-500" />}
           {title}
           {tooltip && (
-            <div className="relative group">
+            <span className="relative group">
               <span tabIndex={0} role="button" aria-label="คำอธิบาย" className="h-4 w-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-normal text-slate-500 cursor-help shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-orange-400 after:absolute after:-inset-3 after:content-['']">
                 ?
               </span>
-              <div className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl p-3 text-xs font-normal text-slate-600 leading-relaxed shadow-lg hidden group-hover:block group-focus-within:block z-10">
+              <span className="absolute top-full left-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl p-3 text-xs font-normal text-slate-600 leading-relaxed shadow-lg hidden group-hover:block group-focus-within:block z-10">
                 {tooltip}
-              </div>
-            </div>
+              </span>
+            </span>
           )}
-        </h3>
+        </h2>
         {action}
       </div>
       {children}
@@ -1442,24 +1442,24 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                         return (
                           <details key={t.topic} className={`group rounded-2xl px-3 py-2.5 open:shadow-sm ${t.pct < 0.5 ? "bg-rose-50/70 ring-1 ring-rose-100" : "bg-slate-50"}`}>
                             <summary className={`list-none grid grid-cols-[1fr_auto] gap-3 items-center ${t.comment ? "cursor-pointer" : "cursor-default"}`} onClick={(e) => { if (!t.comment) e.preventDefault(); }}>
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
-                                  <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
+                              <span className="block min-w-0">
+                                <span className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
+                                  <span className="block text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</span>
                                   {t.trend && (
                                     <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจาก Google Gemini ({aiModelName(aiRow)}): {t.trend}</span>
                                   )}
-                                </div>
-                                <div className="relative h-3 rounded-full bg-white mt-1.5">
+                                </span>
+                                <span className="block relative h-3 rounded-full bg-white mt-1.5">
                                   <span className={`sa-grow absolute inset-y-0 left-0 rounded-full bg-gradient-to-r ${bar}`} style={{ width: `${Math.round(t.pct * 100)}%`, animationDelay: `${i * 0.07}s` }} />
                                   {t.cls != null && <span className="absolute -top-1 -bottom-1 w-[3px] rounded bg-slate-700" style={{ left: `calc(${Math.round(t.cls * 100)}% - 1px)` }} title={`ค่าเฉลี่ยห้อง ${fmtPct(t.cls)}`} />}
-                                </div>
-                              </div>
-                              <div className="min-w-[7.75rem] text-right tabular-nums leading-tight">
-                                <p className="text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</p>
-                                {t.points && <p className="text-[10px] text-slate-500">{t.points}</p>}
-                                {t.vsClass != null && <p title={`${signed(t.vsClass)} เทียบค่าเฉลี่ยห้อง`} className={`whitespace-nowrap text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} เทียบห้อง</p>}
-                                {t.sinceFirst != null && <p title={`${signed(t.sinceFirst)} เทียบคะแนน ${first.label}`} className={`whitespace-nowrap text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
-                              </div>
+                                </span>
+                              </span>
+                              <span className="block min-w-[7.75rem] text-right tabular-nums leading-tight">
+                                <span className="block text-base font-bold text-slate-900">{Math.round(t.pct * 100)}%</span>
+                                {t.points && <span className="block text-[10px] text-slate-500">{t.points}</span>}
+                                {t.vsClass != null && <span title={`${signed(t.vsClass)} เทียบค่าเฉลี่ยห้อง`} className={`block whitespace-nowrap text-[10.5px] font-bold ${t.vsClass >= 0 ? "text-emerald-600" : "text-rose-500"}`}>{signed(t.vsClass)} เทียบห้อง</span>}
+                                {t.sinceFirst != null && <span title={`${signed(t.sinceFirst)} เทียบคะแนน ${first.label}`} className={`block whitespace-nowrap text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</span>}
+                              </span>
                             </summary>
                             {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">เขียนโดย Google Gemini ({aiModelName(aiRow)}):</b> {t.comment}</p>}
                           </details>
@@ -1752,7 +1752,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
       <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-4">
         {/* ── ดีขึ้น / ลดลง / เท่าเดิม ── */}
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".08s" }}>
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><PieChart className="h-4 w-4 text-orange-500" /> ดีขึ้น / ลดลง / เท่าเดิม</h3>
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><PieChart className="h-4 w-4 text-orange-500" /> ดีขึ้น / ลดลง / เท่าเดิม</h2>
           <div className="relative mx-auto mt-3 h-36 w-36">
             <svg viewBox="0 0 180 180" className="h-36 w-36 -rotate-90" aria-hidden="true">
               <circle cx="90" cy="90" r={R} fill="none" stroke="#f1f5f9" strokeWidth="22" />
@@ -1787,7 +1787,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         {/* ── ใครขยับไปเท่าไร ── */}
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 min-w-0 lg:min-w-auto" style={{ animationDelay: ".14s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> การเปลี่ยนแปลงคะแนนรายคน</h3>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><ScatterChart className="h-4 w-4 text-orange-500" /> การเปลี่ยนแปลงคะแนนรายคน</h2>
             <SegmentedControl size="sm" value={view} onChange={setView} options={[{ id: "swarm", label: "กลุ่มวงกลม" }, { id: "slope", label: "เส้นรายคน" }]} />
           </div>
           <p className="text-[11px] text-slate-500 mt-1">
@@ -1812,7 +1812,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
           <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
             <div>
-              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการคะแนนรายหมวด</h3>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-orange-500" /> พัฒนาการคะแนนรายหมวด</h2>
               <p className="text-xs text-slate-500 mt-0.5">เรียงจากหมวดหมู่ที่คะแนนเปลี่ยนแปลงน้อยที่สุด แถวบนสุดควรพิจารณาปรับวิธีสอนหรือเพิ่มเวลา</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap text-[11px] text-slate-500">
@@ -1911,7 +1911,7 @@ const ExcelPreviewModal = ({ rows, examLabel, onClose, onConfirm }) => {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
-          <h3 className="text-base font-bold text-white min-w-0 truncate">ตัวอย่างข้อมูลก่อนส่งออก Excel · {examLabel}</h3>
+          <h2 className="text-base font-bold text-white min-w-0 truncate">ตัวอย่างข้อมูลก่อนส่งออก Excel · {examLabel}</h2>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center">
             <X className="h-5 w-5" />
           </button>
