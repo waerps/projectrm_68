@@ -147,8 +147,27 @@ function NoQuestionsNotice() {
 
 // ─── Taking the exam ─────────────────────────────────────────────────────────
 
+// คำตอบที่ autosave ไม่สำเร็จ เก็บสำรองในเบราว์เซอร์ด้วย — รีเฟรช/ปิดแท็บแล้วกลับมา
+// จะเติมคำตอบคืนและส่งขึ้นเซิร์ฟเวอร์ให้อัตโนมัติ (ไม่เก็บอย่างอื่นนอกจาก questionId → ตัวเลือก)
+const unsavedKey = (examJoinId) => `exam-unsaved:${examJoinId}`;
+function readUnsaved(examJoinId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(unsavedKey(examJoinId)) || "[]");
+    return new Map(Array.isArray(raw) ? raw.filter(([q, v]) => q != null && Number.isInteger(v)) : []);
+  } catch { return new Map(); }
+}
+function writeUnsaved(examJoinId, map) {
+  try {
+    if (map.size) localStorage.setItem(unsavedKey(examJoinId), JSON.stringify([...map]));
+    else localStorage.removeItem(unsavedKey(examJoinId));
+  } catch { /* เบราว์เซอร์ไม่ให้ใช้ storage — ยังมีสำเนาในหน่วยความจำ */ }
+}
+
 function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, examBehaviorConsent, onSubmitted }) {
-  const [questions, setQuestions] = useState(initialQuestions);
+  const [questions, setQuestions] = useState(() => {
+    const stored = readUnsaved(examJoinId);
+    return stored.size ? initialQuestions.map((q) => (stored.has(q.id) ? { ...q, selected: stored.get(q.id) } : q)) : initialQuestions;
+  });
   const [activeIdx, setActiveIdx] = useState(0);
   const [remainingSec, setRemainingSec] = useState(() => {
     // deadline is anchored to the tutor's session-open time (examStartedAt),
@@ -167,7 +186,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const timingCompleteRef = useRef(true);
   const currentVisitRef = useRef(null);
   const answerQueueRef = useRef(Promise.resolve());
-  const unsavedAnswersRef = useRef(new Map());
+  const unsavedAnswersRef = useRef(null);
+  if (!unsavedAnswersRef.current) unsavedAnswersRef.current = readUnsaved(examJoinId);
+  const persistUnsaved = useCallback(() => writeUnsaved(examJoinId, unsavedAnswersRef.current), [examJoinId]);
   // (แก้บั๊ก) ใช้แจ้งเตือนตอน autosave คำตอบล้มเหลว — ดูจุดแก้ที่ pickAnswer ด้านล่าง
   const { toasts, showToast, removeToast } = useToast();
 
@@ -211,12 +232,14 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     submittedRef.current = true;
     try {
       const result = await submitExam(examJoinId, userId, { timingSessionId: timingSessionRef.current, timingComplete: false });
+      unsavedAnswersRef.current.clear();
+      persistUnsaved();
       onSubmitted({ ...result, closedByServer: true });
     } catch {
       submittedRef.current = false;
       setError("การสอบถูกปิดแล้ว กรุณารีเฟรชหน้าเพื่อดูคะแนน");
     }
-  }, [examJoinId, userId, onSubmitted]);
+  }, [examJoinId, userId, onSubmitted, persistUnsaved]);
 
   const doSubmit = useCallback(async () => {
     if (submittedRef.current) return;
@@ -234,12 +257,15 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           if (err.response?.status !== 409) throw err;
         }
         unsavedAnswersRef.current.delete(questionId);
+        persistUnsaved();
       }
       await closingVisit;
       const result = await submitExam(examJoinId, userId, {
         timingSessionId: timingSessionRef.current,
         timingComplete: examBehaviorConsent !== false && timingCompleteRef.current,
       });
+      unsavedAnswersRef.current.clear();
+      persistUnsaved();
       onSubmitted(result);
     } catch (err) {
       console.error("Submit failed:", err);
@@ -249,7 +275,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     } finally {
       setSubmitting(false);
     }
-  }, [examJoinId, userId, onSubmitted, examBehaviorConsent, closeVisit, openVisit, current?.id]);
+  }, [examJoinId, userId, onSubmitted, examBehaviorConsent, closeVisit, openVisit, current?.id, persistUnsaved]);
 
   // Countdown — auto-submits the moment time runs out.
   useEffect(() => {
@@ -313,17 +339,47 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     };
   }, [examJoinId, examBehaviorConsent]);
 
+  // กลับมาหลังรีเฟรช/ปิดแท็บ: ส่งคำตอบที่ค้างไว้ขึ้นเซิร์ฟเวอร์อีกครั้ง
+  useEffect(() => {
+    const pending = [...unsavedAnswersRef.current];
+    if (!pending.length) return;
+    answerQueueRef.current = answerQueueRef.current.then(async () => {
+      for (const [questionId, selected] of pending) {
+        try {
+          await saveAnswer({ examJoinId, userId, questionId, selected });
+          if (unsavedAnswersRef.current.get(questionId) === selected) { unsavedAnswersRef.current.delete(questionId); persistUnsaved(); }
+        } catch (err) {
+          if (err.response?.status === 409) { handleClosedByServer(); return; }
+          // ยังไม่ผ่าน — เก็บไว้ ระบบจะลองอีกครั้งตอนกดส่ง
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ยังมีคำตอบที่บันทึกไม่สำเร็จ แล้วจะปิด/รีเฟรชหน้า → ให้เบราว์เซอร์ถามยืนยันก่อน
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (submittedRef.current || !unsavedAnswersRef.current.size) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   const pickAnswer = (optIdx) => {
     if (submittedRef.current) return;
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
     const questionId = current.id;
     // Preserve answer order, including rapid changes to the same question.
     unsavedAnswersRef.current.set(questionId, optIdx);
+    persistUnsaved();
     answerQueueRef.current = answerQueueRef.current.then(async () => {
       try {
         try { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
         catch { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
-        if (unsavedAnswersRef.current.get(questionId) === optIdx) unsavedAnswersRef.current.delete(questionId);
+        if (unsavedAnswersRef.current.get(questionId) === optIdx) { unsavedAnswersRef.current.delete(questionId); persistUnsaved(); }
       } catch (err) {
         if (err.response?.status === 409) { handleClosedByServer(); return; }
         console.error("Autosave failed:", err);
