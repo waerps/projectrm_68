@@ -144,9 +144,9 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
       <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
         <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 rounded-t-2xl bg-gradient-to-r from-orange-500 to-amber-500 shrink-0">
           <div className="min-w-0">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Tags className="h-4 w-4 text-white" /> จัดการหมวดหมู่
-            </h3>
+            </h2>
             <p className="text-xs text-white/80 mt-1">เปลี่ยนชื่อหมวดหมู่ให้ตรงกัน หรือรวมหมวดหมู่ที่เป็นเนื้อหาเดียวกัน</p>
           </div>
           <button onClick={onClose} aria-label="ปิด" className="p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white transition flex-shrink-0 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0"><X className="h-5 w-5" /></button>
@@ -1818,16 +1818,16 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                   return (
                     <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
                       <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
+                      <span className="block min-w-0 flex-1">
+                        <span className="block text-sm text-slate-800 line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</span>
                         {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
-                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        <span className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
                           {b.gradeDetail && <span className="text-[11px] px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">{b.gradeDetail}</span>}
                           <span className="text-[11px] text-slate-500">{b.usedCount > 0 ? `ใช้ไปแล้ว ${b.usedCount} ครั้ง` : "ยังไม่เคยใช้"}</span>
-                        </div>
-                      </div>
+                        </span>
+                      </span>
                     </label>
                   );
                 })}

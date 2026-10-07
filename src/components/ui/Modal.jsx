@@ -85,7 +85,7 @@ export function ModalHeader({ title, subtitle, icon, onClose, children }) {
           </span>
         )}
         <div className="min-w-0">
-          <h3 className="text-base font-bold text-white truncate">{title}</h3>
+          <h2 className="text-base font-bold text-white truncate">{title}</h2>
           {subtitle && <p className="text-xs text-white/80 truncate">{subtitle}</p>}
         </div>
       </div>

@@ -282,16 +282,16 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
       <label className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
         <input type="checkbox" checked={isAnonymous} onChange={e => setIsAnonymous(e.target.checked)}
           className="mt-0.5 h-4 w-4 accent-orange-500 shrink-0" />
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+        <span className="block flex-1">
+          <span className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
             {isAnonymous ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             แจ้งแบบไม่เปิดเผยตัวตน
-          </p>
-          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+          </span>
+          <span className="block text-[11px] text-slate-500 mt-0.5 leading-relaxed">
             จะไม่มีใครเห็นว่าใครเป็นผู้แจ้ง ไม่ว่าจะเป็น{role === "tutor" ? "นักเรียน" : "ติวเตอร์/คู่กรณี"}
             หรือแม้แต่ทีมแอดมิน — แอดมินจะเห็นแค่เนื้อหาที่แจ้งเท่านั้น ไม่เห็นชื่อหรือช่องทางติดต่อของคุณเลย
-          </p>
-        </div>
+          </span>
+        </span>
       </label>
 
       {previewSeverityMeta.requiresImmediateWarning && (
