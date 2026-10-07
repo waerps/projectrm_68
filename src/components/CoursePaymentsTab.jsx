@@ -27,7 +27,7 @@ const STATUS = {
   paid: ["ชำระแล้ว", "bg-emerald-100 text-emerald-700"],
 };
 
-export default function CoursePaymentsTab({ courseId }) {
+export default function CoursePaymentsTab({ courseId, courseType = "bundle", fullCost = 0 }) {
   const token = localStorage.getItem("student_token");
   const fileRef = useRef(null);
   const [rows, setRows] = useState([]);
@@ -48,7 +48,7 @@ export default function CoursePaymentsTab({ courseId }) {
       setError("");
       const [data, lineResult] = await Promise.all([
         getPaymentOrders(token),
-        getLineLoginStatus(token).catch(() => null),
+        courseType === "single" ? Promise.resolve(null) : getLineLoginStatus(token).catch(() => null),
       ]);
       const orderList = Array.isArray(data) ? data : data?.orders ?? data?.data?.orders ?? data?.data ?? [];
       setRows((Array.isArray(orderList) ? orderList : []).filter((row) => String(row.courseId ?? row.CourseId) === String(courseId)));
@@ -59,7 +59,7 @@ export default function CoursePaymentsTab({ courseId }) {
     } finally {
       setLoading(false);
     }
-  }, [courseId, token]);
+  }, [courseId, courseType, token]);
 
   useEffect(() => { loadOrders(); }, [loadOrders]);
 
@@ -122,6 +122,29 @@ export default function CoursePaymentsTab({ courseId }) {
   };
 
   if (loading) return <div className="rounded-2xl border bg-white p-10 text-center text-orange-600"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />กำลังโหลดค่าชำระคอร์ส...</div>;
+
+  if (courseType === "single") {
+    const latest = rows[0];
+    const total = Number(latest?.totalAmount ?? fullCost);
+    const paid = Number(latest?.paidAmount ?? 0);
+    const remaining = Math.max(0, total - paid);
+    return <div className="space-y-4">
+      {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
+      <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
+        <h2 className="font-bold text-neutral-900">ยอดชำระคอร์สเดี่ยวของคุณ</h2>
+        <p className="mt-1 text-sm text-neutral-600">ชำระกับสถาบัน แล้วแอดมินจะบันทึกยอดให้บัญชีของคุณ หากโอนแล้วแต่ยอดยังไม่อัปเดต กรุณาติดต่อสถาบัน</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[["ราคาต่อคน", total, "text-neutral-900"], ["บันทึกรับแล้ว", paid, "text-emerald-700"], ["คงเหลือ", remaining, "text-orange-600"]].map(([label, amount, color]) =>
+          <div key={label} className="rounded-xl border border-neutral-200 bg-white p-4">
+            <p className="text-xs text-neutral-500">{label}</p>
+            <p className={`mt-1 text-xl font-bold ${color}`}>{money(amount)}</p>
+          </div>
+        )}
+      </div>
+      <p className="text-sm font-semibold text-neutral-600">{remaining === 0 && total > 0 ? "ชำระครบแล้ว" : paid > 0 ? "ชำระบางส่วน" : "ยังไม่พบยอดที่แอดมินบันทึก"}</p>
+    </div>;
+  }
 
   return (
     <div className="space-y-4">

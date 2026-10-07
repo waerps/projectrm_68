@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound } from 'lucide-react';
+import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound, Search } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
@@ -24,6 +24,7 @@ const typeMeta = {
   room: { label: 'ห้องเรียน', Icon: DoorOpen, accentBar: 'bg-cyan-400', bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-100' },
   incident: { label: 'แจ้งเหตุการณ์', Icon: AlertOctagon, accentBar: 'bg-red-500', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-100' }, // ★ เพิ่ม
   'password-reset': { label: 'ลืมรหัสผ่าน', Icon: KeyRound, accentBar: 'bg-amber-500', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100' }, // ★ เพิ่ม
+  'private-inquiry': { label: 'คำขอคอร์สเดี่ยว', Icon: BookOpen, accentBar: 'bg-indigo-400', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-100' },
 };
 const fallbackTypeMeta = { label: '', Icon: Bell, accentBar: 'bg-slate-300', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
 
@@ -74,6 +75,7 @@ export default function AdminNotifications() {
   const [filterType, setFilterType] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -89,13 +91,15 @@ export default function AdminNotifications() {
   const unreadCount = items.filter(item => !item.isRead).length;
   const actionRequiredCount = items.filter(item => item.actionRequired && !item.isRead).length;
   const filtered = useMemo(() => items.filter(item => {
+    const query = search.trim().toLocaleLowerCase('th-TH');
+    if (query && ![item.title, item.message, typeMeta[item.type]?.label].some(value => String(value || '').toLocaleLowerCase('th-TH').includes(query))) return false;
     if (filterType !== 'all' && item.type !== filterType) return false;
     if (filterPriority !== 'all' && item.priority !== filterPriority) return false;
     if (filterStatus === 'unread' && item.isRead) return false;
     if (filterStatus === 'read' && !item.isRead) return false;
     if (filterStatus === 'action' && !item.actionRequired) return false;
     return true;
-  }), [items, filterType, filterPriority, filterStatus]);
+  }), [items, search, filterType, filterPriority, filterStatus]);
   const availableTypes = [...new Set(items.map(item => item.type))];
 
   const markRead = async id => {
@@ -130,7 +134,7 @@ export default function AdminNotifications() {
   const grouped = useMemo(() => groupByDate(filtered), [filtered]);
 
   return (
-    <div className="space-y-6 px-4 lg:px-0">
+    <div className="space-y-4 px-4 lg:px-0">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -151,23 +155,23 @@ export default function AdminNotifications() {
       </div>
 
       {/* ★ ใหม่: Stat summary — เหมือนหน้า AdminTutors/AdminStudents */}
-      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
-          { key: 'all', label: 'การแจ้งเตือนทั้งหมด', value: items.length, color: 'bg-orange-500', Icon: Bell },
-          { key: 'unread', label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500', Icon: Filter },
-          { key: 'action', label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500', Icon: AlertTriangle },
-        ].map(({ key, label, value, color, Icon }) => (
+          { key: 'all', label: 'การแจ้งเตือนทั้งหมด', value: items.length, color: 'bg-orange-500' },
+          { key: 'unread', label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500' },
+          { key: 'action', label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500' },
+        ].map(({ key, label, value, color }) => (
           // กดการ์ดเพื่อกรองตามสถานะ — ใช้แทนตัวเลขซ้ำในตัวกรองด้านล่าง
           <button key={key} type="button" aria-pressed={filterStatus === key}
             onClick={() => setFilterStatus(filterStatus === key && key !== 'all' ? 'all' : key)}
-            className={`flex min-w-0 items-center gap-3 p-4 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterStatus === key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
-            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
-              <Icon className="h-5 w-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className={STAT_LABEL}>{label}</p>
-              <p className={STAT_VALUE}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></p>
-            </div>
+            className={`flex min-w-0 items-center gap-3 p-3 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterStatus === key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
+            <span className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+              {key === 'all' ? <Bell className="h-5 w-5 text-white" /> : key === 'unread' ? <Filter className="h-5 w-5 text-white" /> : <AlertTriangle className="h-5 w-5 text-white" />}
+            </span>
+            <span className="block min-w-0">
+              <span className={`block ${STAT_LABEL}`}>{label}</span>
+              <span className={`block ${STAT_VALUE}`}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></span>
+            </span>
           </button>
         ))}
       </div>
@@ -181,21 +185,22 @@ export default function AdminNotifications() {
 
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(3,minmax(0,1fr))]">
+          <label className="relative sm:col-span-2 lg:col-span-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="ค้นหาหัวข้อ ชื่อ หรือรายละเอียด" aria-label="ค้นหาการแจ้งเตือน" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-400" /></label>
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none max-w-full md:max-w-[240px] truncate">
+            className="h-10 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400">
             <option value="all">ทุกประเภท ({items.length})</option>
             {availableTypes.map(type => <option key={type} value={type}>{typeMeta[type]?.label || type}</option>)}
           </select>
           <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none max-w-full md:max-w-[240px] truncate">
+            className="h-10 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400">
             <option value="all">ทุกระดับความสำคัญ</option>
             <option value="high">สำคัญมาก</option>
             <option value="normal">ปกติ</option>
             <option value="low">ไม่เร่งด่วน</option>
           </select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none max-w-full md:max-w-[240px] truncate">
+            className="h-10 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400">
             <option value="all">ทุกสถานะ</option>
             <option value="unread">ยังไม่ได้อ่าน</option>
             <option value="read">อ่านแล้ว</option>
@@ -204,8 +209,8 @@ export default function AdminNotifications() {
         </div>
         <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
           <span>แสดง {filtered.length} จาก {items.length} รายการ</span>
-          <ClearFiltersButton show={filterType !== 'all' || filterPriority !== 'all' || filterStatus !== 'all'}
-            onClick={() => { setFilterType('all'); setFilterPriority('all'); setFilterStatus('all'); }} />
+          <ClearFiltersButton show={search !== '' || filterType !== 'all' || filterPriority !== 'all' || filterStatus !== 'all'}
+            onClick={() => { setSearch(''); setFilterType('all'); setFilterPriority('all'); setFilterStatus('all'); }} />
         </div>
       </div>
 
@@ -215,23 +220,23 @@ export default function AdminNotifications() {
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : error && items.length === 0 ? null : filtered.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีรายการที่ตรงกับเงื่อนไข</p>
           <p className="text-sm text-slate-500 mt-1">ปรับตัวกรองเพื่อดูรายการอื่น</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {grouped.map(([groupLabel, groupItems]) => (
             <div key={groupLabel}>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-2">
                 <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wide">{groupLabel}</h2>
                 <div className="h-px flex-1 bg-slate-200" />
                 <span className="text-[11px] text-slate-500">{groupItems.length} รายการ</span>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {groupItems.map(item => {
                   const meta = typeMeta[item.type] || fallbackTypeMeta;
                   const priority = priorityMeta[item.priority] || priorityMeta.normal;
@@ -253,12 +258,12 @@ export default function AdminNotifications() {
                         </button>
                       </div>
 
-                      <div className="p-3 pl-4 sm:p-4 sm:pl-5 flex gap-3">
+                      <div className="flex gap-3 p-3 pl-4">
                         <div className={`h-9 w-9 rounded-lg ${meta.bg} flex items-center justify-center shrink-0 mt-0.5`}>
                           <meta.Icon className={`h-4.5 w-4.5 ${meta.text}`} />
                         </div>
 
-                        <div className="flex-1 min-w-0 pr-14 sm:pr-16">
+                        <div className="min-w-0 flex-1 pr-14 sm:pr-16">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="text-sm font-bold text-slate-900">
                               {item.title}

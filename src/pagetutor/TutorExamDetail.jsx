@@ -18,6 +18,7 @@ import {
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
   fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  uploadBankQuestionImage,
   bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
   assembleExamSet, applyExamSet,
   fetchAiSummaries,
@@ -30,9 +31,13 @@ import ExamSessionQr from "../components/ExamSessionQr";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
+import ExamMathText from "../components/ExamMathText";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
+import ExamRightsNotice from "./ExamRightsNotice";
+import { API_URL } from "../config";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
 
@@ -82,15 +87,15 @@ function AddMethodPicker({ onPick }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <button onClick={() => onPick("manual")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
-        <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</p>
-        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</p>
+        <span className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Pencil className="h-4 w-4 text-orange-600" /></span>
+        <span className="block text-sm font-semibold text-slate-800">พิมพ์ข้อสอบเอง</span>
+        <span className="block text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังทีละข้อ</span>
       </button>
 
       <button onClick={() => onPick("excel")} className="text-left border border-slate-200 shadow-sm hover:border-orange-300 rounded-xl p-4 transition">
-        <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></div>
-        <p className="text-sm font-semibold text-slate-800">Import จาก Excel</p>
-        <p className="text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</p>
+        <span className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center mb-2"><Upload className="h-4 w-4 text-orange-600" /></span>
+        <span className="block text-sm font-semibold text-slate-800">Import จาก Excel</span>
+        <span className="block text-xs text-slate-500 mt-0.5">เพิ่มเข้าคลังครั้งละหลายข้อ</span>
       </button>
     </div>
   );
@@ -278,9 +283,28 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [q, setQ] = useState(initial || emptyQuestion());
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState("");
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
-  const complete = q.text.trim() && q.options.every((o) => o.trim()) && q.correct !== null;
+  const complete = (q.text.trim() || q.imagePath) && q.options.every((o) => o.trim()) && q.correct !== null;
+  const handleImage = async (file) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageError("รองรับเฉพาะ JPG, PNG หรือ WEBP ขนาดไม่เกิน 5 MB");
+      return;
+    }
+    setUploadingImage(true);
+    setImageError("");
+    try {
+      const imagePath = await uploadBankQuestionImage(file);
+      patch({ imagePath });
+    } catch (err) {
+      setImageError(err.response?.data?.message || "อัปโหลดรูปโจทย์ไม่สำเร็จ");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   return (
     <div className="border border-slate-200 rounded-2xl p-5 space-y-4">
@@ -292,6 +316,26 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       <div>
         <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
         <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+        <p className="mt-1 text-xs text-slate-500">พิมพ์สัญลักษณ์ได้ตรง ๆ หรือครอบ LaTeX ด้วย $...$ เช่น $\frac{1}{2}$ (สูตรเดี่ยวพิมพ์ \frac{1}{2} ได้) แนบรูปโจทย์ร่วมกันได้</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {[["เศษส่วน", "$\\frac{a}{b}$"], ["ยกกำลัง", "$x^{2}$"], ["ราก", "$\\sqrt{x}$"], ["สูตรหลายบรรทัด", "$$\\begin{aligned}a&=b+c\\\\d&=e+f\\end{aligned}$$"]].map(([label, snippet]) => (
+            <button key={label} type="button" onClick={() => patch({ text: `${q.text}${q.text ? " " : ""}${snippet}` })} className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600 hover:border-orange-300 hover:text-orange-700">+ {label}</button>
+          ))}
+        </div>
+        {/[\\$]/.test(q.text) && <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">
+          <p className="mb-1 text-xs font-semibold text-blue-700">ตัวอย่างที่นักเรียนจะเห็น</p>
+          <ExamMathText text={q.text} />
+        </div>}
+        {q.imagePath && <div className="mt-3 rounded-xl border border-slate-200 p-3">
+          <img src={q.imagePath} alt="รูปประกอบโจทย์" className="max-h-72 w-auto max-w-full rounded-lg object-contain" />
+          <button type="button" onClick={() => patch({ imagePath: null })} className="mt-2 text-xs font-semibold text-red-600">นำรูปออกจากข้อนี้</button>
+        </div>}
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700">
+          <Upload className="h-4 w-4" /> {uploadingImage ? "กำลังอัปโหลด…" : q.imagePath ? "เปลี่ยนรูปโจทย์" : "แนบรูปโจทย์"}
+          <input type="file" accept="image/jpeg,image/png,image/webp" disabled={uploadingImage}
+            onChange={(e) => { handleImage(e.target.files?.[0]); e.target.value = ""; }} className="sr-only" />
+        </label>
+        {imageError && <p className="mt-2 text-xs text-red-600">{imageError}</p>}
       </div>
 
       <div className="space-y-2.5">
@@ -303,7 +347,10 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
                 {isCorrect && <Check className="h-3.5 w-3.5 text-white" />}
               </button>
               <span className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-              <input type="text" value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} className="flex-1 text-sm bg-transparent border-none outline-none text-slate-800" />
+              <div className="min-w-0 flex-1">
+                <textarea value={q.options[optIdx]} onChange={(e) => patchOption(optIdx, e.target.value)} placeholder={`ตัวเลือก ${label}`} rows={2} className="w-full text-sm bg-transparent border-none outline-none text-slate-800 resize-y" />
+                {/[\\$]/.test(q.options[optIdx]) && <div className="mt-1 border-t border-slate-200 pt-1 text-sm text-slate-700 whitespace-pre-wrap break-words"><ExamMathText text={q.options[optIdx]} /></div>}
+              </div>
             </div>
           );
         })}
@@ -320,6 +367,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           rows={2}
           className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
         />
+        {/[\\$]/.test(q.explanation || "") && <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-slate-800 whitespace-pre-wrap break-words"><ExamMathText text={q.explanation} /></div>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -467,7 +515,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3">ยกเลิก</button>
         <button
           onClick={() => onSave(q)}
-          disabled={!complete || saving}
+          disabled={!complete || saving || uploadingImage}
           className={`${BTN.primary} flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl px-4 py-2 text-sm font-semibold transition`}
         >
           {saving ? "กำลังบันทึก…" : (saveLabel || "บันทึก")}
@@ -512,7 +560,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       // กันแถวที่ข้อมูลไม่ครบ (ไม่มีโจทย์/ตัวเลือก/ยังไม่เลือกเฉลย) ออกจากที่จะส่งเข้าคลังจริง
       // กดยืนยันแล้วส่งไปทั้งแถวที่เสีย จึงกรองออกตั้งแต่ฝั่ง frontend ก่อนส่ง แล้วแจ้งจำนวนที่
       // ถูกข้ามให้ผู้สอนเห็นหลังนำเข้าเสร็จ (ดู onImported ด้านล่าง)
-      const isInvalidRow = (q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+      const isInvalidRow = (q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
 
       const mappedAll = rows.map((r, i) => ({
         ...r,
@@ -543,7 +591,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     }
   };
 
-  const invalidCount = rows.filter((q) => !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null).length;
+  const invalidCount = rows.filter((q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null).length;
 
   // หมวดในไฟล์ที่ยังไม่มีในคลัง — ให้ครูเลือกก่อนว่าจะแมปเข้าหมวดเดิมหรือสร้างใหม่
   // กันกรณีพิมพ์ชื่อหมวดคนละแบบใน Excel แล้วคลังแตกเป็นหลายหมวดที่ความจริงคืออันเดียวกัน
@@ -729,7 +777,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           )}
           <div className="border border-slate-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-slate-50">
             {rows.map((q, i) => {
-              const bad = !q.text.trim() || q.options.some((o) => !o.trim()) || q.correct === null;
+              const bad = (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
               const dup = dupFlags[i];
               const skipped = skipDup && dup;
               const plan = rowPlan[i] || { mode: "new" };
@@ -737,7 +785,8 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
                 <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
                   <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
                   <div className="min-w-0">
-                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text || "(ไม่มีโจทย์)"}</p>
+                    <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : "(ไม่มีโจทย์)"}</p>
+                    {q.imagePath && <img src={q.imagePath} alt={`รูปโจทย์แถวที่ ${i + 1}`} className="mt-2 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                     {plan.mode === "update" && (
                       <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
                     )}
@@ -841,7 +890,7 @@ function scaleScoresLocal(items, totalScore) {
 // ทุก endpoint หน้าจอนี้จึงไม่ต้องกรองเองและไม่ต้องส่ง id ของครูไปไหน)
 // คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
-export function BankTab({ subjectId, showToast, subjectName }) {
+export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = null }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -1010,6 +1059,7 @@ export function BankTab({ subjectId, showToast, subjectName }) {
 
   return (
     <div className="space-y-4">
+      {rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-bold text-slate-900">คลังข้อสอบของฉัน</p>
@@ -1215,12 +1265,12 @@ export function BankTab({ subjectId, showToast, subjectName }) {
         </div>
       )}
 
-      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+      {loadError && <ErrorState title={loadError} onRetry={load} className="py-8" />}
 
       {/* (แก้บั๊ก) เดิมรายการข้อสอบด้านล่างนี้ไม่ได้ถูกกันด้วย !editing เหมือนแถบ
           ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
           ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
-      {!editing && (!loading && items.length === 0 && !mode ? (
+      {!editing && !loadError && (!loading && items.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
@@ -1248,7 +1298,8 @@ export function BankTab({ subjectId, showToast, subjectName }) {
                     className="mt-1 accent-orange-500 flex-shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                    <p className="text-sm text-slate-800 line-clamp-2">{it.text ? <ExamMathText text={it.text} /> : it.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
+                    {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <div className="flex flex-wrap items-center gap-2 mt-1.5">
                       <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category || "ไม่ระบุหมวดหมู่"}</span>
                       <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
@@ -1477,6 +1528,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
   const replaceAt = (idx, bankItem) => {
     setWorking((prev) => prev.map((it, i) => (i === idx ? {
       bankQuestionId: bankItem.id, text: bankItem.text, options: bankItem.options,
+      imagePath: bankItem.imagePath,
       correct: bankItem.correct, level: bankItem.level, category: bankItem.category,
       explanation: bankItem.explanation, reused: false,
     } : it)));
@@ -1672,7 +1724,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <div className="flex items-start gap-3">
                       <span className="text-xs font-bold text-orange-500 w-6 flex-shrink-0 pt-0.5">{idx + 1}.</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{it.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{it.text ? <ExamMathText text={it.text} /> : it.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
+                        {it.imagePath && <img src={it.imagePath} alt="รูปโจทย์" className="mt-2 max-h-32 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{it.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[it.level]?.pill || "text-slate-600"}`}>{it.level}</span>
@@ -1692,8 +1745,9 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                         {gradeFilteredBank
                           .filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id))
                           .map((b) => (
-                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5 line-clamp-2">
-                              {b.text}
+                            <button key={b.id} onClick={() => replaceAt(idx, b)} className="block w-full text-left text-xs text-slate-700 hover:bg-white rounded-xl px-2 py-1.5">
+                              <span className="block line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</span>
+                              {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-1 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                             </button>
                           ))}
                         {gradeFilteredBank.filter((b) => b.category === it.category && b.level === it.level && !scored.some((x) => x.bankQuestionId === b.id)).length === 0 && (
@@ -1766,7 +1820,8 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
                     <label key={b.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50">
                       <input type="checkbox" checked={on} onChange={() => setPicked((p) => on ? p.filter((x) => x !== b.id) : [...p, b.id])} className="mt-1 accent-orange-500" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-slate-800 line-clamp-2">{b.text}</p>
+                        <p className="text-sm text-slate-800 line-clamp-2">{b.text ? <ExamMathText text={b.text} /> : b.imagePath ? "โจทย์เป็นรูปภาพ" : ""}</p>
+                        {b.imagePath && <img src={b.imagePath} alt="รูปโจทย์" className="mt-2 max-h-28 max-w-full rounded-lg border border-slate-200 object-contain" />}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           <span className="text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">{b.category}</span>
                           <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium ${LEVEL_COLOR[b.level]?.pill || "text-slate-600"}`}>{b.level}</span>
@@ -1862,7 +1917,7 @@ function PreviewTab({ exam, goToAssemble }) {
           <p className="text-sm text-amber-700">
             ยังไม่พร้อมเปิดสอบ
             {target > 0 && questions.length < target && ` — มี ${questions.length}/${target} ข้อ`}
-            {questions.some((q) => !q.text?.trim() || q.options?.some((o) => !o.trim()) || q.correct === null) && " — มีข้อที่ยังไม่สมบูรณ์"}
+            {questions.some((q) => (!q.text?.trim() && !q.imagePath) || q.options?.some((o) => !o.trim()) || q.correct === null) && " — มีข้อที่ยังไม่สมบูรณ์"}
           </p>
         </div>
       )}
@@ -1879,8 +1934,9 @@ function PreviewTab({ exam, goToAssemble }) {
 
         <div className="flex items-baseline gap-3 mb-5">
           <span className="text-xl font-bold text-orange-500">{activeIdx + 1}.</span>
-          <p className="text-base font-medium text-slate-900 leading-relaxed">{current.text || <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
+          <p className="text-base font-medium text-slate-900 leading-relaxed whitespace-pre-wrap break-words">{current.text ? <ExamMathText text={current.text} /> : !current.imagePath && <span className="text-slate-300 italic">ยังไม่มีโจทย์</span>}</p>
         </div>
+        {current.imagePath && <img src={current.imagePath} alt="รูปโจทย์" className="mb-5 max-h-96 max-w-full rounded-xl border border-slate-200 object-contain" />}
 
         <div className="space-y-2.5">
           {OPTION_LABELS.map((label, optIdx) => {
@@ -1888,7 +1944,7 @@ function PreviewTab({ exam, goToAssemble }) {
             return (
               <div key={label} className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${isCorrect ? "border-green-400 bg-green-50" : "border-slate-200"}`}>
                 <span className={`h-6 w-6 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${isCorrect ? "bg-green-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-                <span className="text-sm text-slate-800">{current.options?.[optIdx] || <span className="text-slate-300 italic">ว่าง</span>}</span>
+                <span className="text-sm text-slate-800 whitespace-pre-wrap break-words">{current.options?.[optIdx] ? <ExamMathText text={current.options[optIdx]} /> : <span className="text-slate-300 italic">ว่าง</span>}</span>
                 {isCorrect && <Check className="h-4 w-4 text-green-600 ml-auto" />}
               </div>
             );
@@ -1900,7 +1956,7 @@ function PreviewTab({ exam, goToAssemble }) {
             <LuLightbulb className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
               <p className="text-xs font-semibold text-blue-700 mb-0.5">คำอธิบายเฉลย</p>
-              <p className="text-xs text-blue-700/90 leading-relaxed">{current.explanation}</p>
+              <p className="text-xs text-blue-700/90 leading-relaxed whitespace-pre-wrap break-words"><ExamMathText text={current.explanation} /></p>
             </div>
           </div>
         ) : (
@@ -1957,6 +2013,11 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const [error, setError] = useState("");
 
   const handleSave = async () => {
+    if (settingsLocked) return;
+    if (!(Number(form.duration) >= 1)) {
+      setError("เวลาสอบต้องอย่างน้อย 1 นาที");
+      return;
+    }
     setSaving(true);
     setError("");
     const mode = isClosed ? "manual" : (form.openMode === "auto" ? "auto" : "manual");
@@ -2004,6 +2065,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const ready = isExamReady(exam);
   // ตั้งเปิดอัตโนมัติไว้จริง (มีทั้งวันและเวลา) และยังไม่เคยเปิด/ปิด — เงื่อนไขเดียวกับที่
   // ใช้ซ่อนปุ่ม "เปิดสอบ" หลัก แล้วโชว์การ์ดนับถอยหลังแทน
+  // ระหว่างเปิดสอบห้ามแก้ตั้งค่า — เวลาหมดของนักเรียนคำนวณจากค่านี้ แก้กลางทางแล้วหน้าจอนักเรียนไม่รู้
+  const settingsLocked = status === "active";
   const isScheduledAuto = status !== "active" && !isClosed && settings.openMode === "auto" && !!settings.date && !!settings.time;
 
   // นับถอยหลังฝั่ง Tutor เอง (ไม่รอ poll ทุก 5 วิ) แต่ยึด deadline จาก
@@ -2122,11 +2185,18 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           <p className="text-xs text-blue-700 leading-relaxed">ส่วนนี้คุมเวลาและวันสอบเท่านั้น จำนวนข้อและคะแนนมาจากชุดที่จัดไว้ในกล่องด้านบน ส่วนเนื้อข้อสอบแก้ได้ที่แท็บคลังข้อสอบ</p>
         </div>
 
+        {settingsLocked && (
+          <div className="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-700 leading-relaxed">กำลังเปิดสอบอยู่ จึงแก้เวลาสอบ วันที่ และวิธีเปิดสอบไม่ได้ ต้องปิดสอบก่อน</p>
+          </div>
+        )}
+        <fieldset disabled={settingsLocked} className="contents">
         {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
             ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสอบ (นาที)</label>
-          <input type="number" min={0} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <input type="number" min={1} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>
@@ -2179,9 +2249,11 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
           )}
         </div>
 
+        </fieldset>
+
         {error && <p className="text-xs text-red-500">{error}</p>}
 
-        <button onClick={handleSave} disabled={saving} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
+        <button onClick={handleSave} disabled={saving || settingsLocked} className={`flex items-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold transition disabled:opacity-50 ${saved ? "bg-green-50 border border-green-300 text-green-700" : "bg-orange-500 hover:bg-orange-600 text-white"}`}>
           {saving ? "กำลังบันทึก…" : saved ? <><Check className="h-4 w-4" /> บันทึกแล้ว</> : "บันทึกการตั้งค่า"}
         </button>
       </div>
@@ -2360,7 +2432,7 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
                   <div className="text-center mb-5">
                     <div className="h-14 w-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-red-600" /></div>
                     <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันการปิดสอบ?</h3>
-                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบต่อไม่ได้อีก</p>
+                    <p className="text-sm text-slate-500">นักเรียนจะเข้าสอบไม่ได้อีก และคนที่ยังทำอยู่จะถูกส่งข้อสอบทันทีด้วยคำตอบที่บันทึกไว้</p>
                   </div>
                   <div className="flex gap-3">
                     <button onClick={() => setConfirmClose(false)} className="flex-1 border border-slate-200 rounded-xl py-2.5 text-sm font-semibold text-slate-700">ยกเลิก</button>
@@ -2716,9 +2788,9 @@ function StudentDetailModal({
                 {enrichedQuestions.map((q, i) => (
                   <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
-                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed">
+                      <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed whitespace-pre-wrap break-words">
                         <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
-                        {q.text}
+                        {q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : ""}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
@@ -2728,6 +2800,7 @@ function StudentDetailModal({
                         <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
                       </div>
                     </div>
+                    {q.imagePath && <img src={q.imagePath} alt="รูปโจทย์" className="mb-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <QuestionPeriods periods={q.periods} />
                   </div>
                 ))}
@@ -2947,6 +3020,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
   const [sortKey, setSortKey] = useState("rank");
   const [sortDir, setSortDir] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
   // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
@@ -2966,9 +3040,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     let cancelled = false;
 
     const load = (showSpinner) => {
-      if (showSpinner) setLoading(true);
+      if (showSpinner) { setLoading(true); setError(""); }
       fetchExamResults(exam.id)
-        .then((data) => { if (!cancelled) setResults(data); })
+        .then((data) => { if (!cancelled) { setResults(data); setError(""); } })
         .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
         .finally(() => { if (!cancelled && showSpinner) setLoading(false); });
     };
@@ -2979,7 +3053,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     if (status !== "active") return () => { cancelled = true; };
     const iv = setInterval(() => load(false), 5000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [exam.id, status]);
+  }, [exam.id, status, reloadKey]);
 
   // อันดับต้องยึดคะแนนเป็นหลักเสมอ (มาก → น้อย, เท่ากันใช้ชื่อ) และคำนวณจาก
   // ชุดข้อมูลหลัง search/filter เท่านั้น — ห้ามใช้ index ดิบของ array ทั้งหมด
@@ -3079,7 +3153,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   }
 
   if (loading) return <Spinner block label="กำลังโหลดผลสอบ..." />;
-  if (error) return <p className="text-sm text-red-500">{error}</p>;
+  if (error) return <ErrorState title={error} onRetry={() => setReloadKey((k) => k + 1)} />;
   if (!results) return null;
 
   return (
@@ -3402,6 +3476,7 @@ export default function TutorExamDetail() {
   const examId = searchParams.get("examId");
 
   const [exam, setExam] = useState(null);
+  const [fallbackCourseType, setFallbackCourseType] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [tab, setTab] = useState("questions");
@@ -3423,6 +3498,32 @@ export default function TutorExamDetail() {
 
   useEffect(() => { setLoading(true); reload(); }, [reload]);
 
+  // รองรับ Backend รุ่นที่ยังไม่ส่ง courseType ในข้อมูลสอบ โดยอ่านจากรายการคอร์ส
+  // ที่ติวเตอร์คนนี้สอนจริง แทนการเดาประเภทคอร์สจากชื่อหรือ URL
+  useEffect(() => {
+    setFallbackCourseType(null);
+    if (!exam?.courseId || exam.courseType) return;
+    const tutorId = JSON.parse(localStorage.getItem("user") || "null")?.id;
+    const token = localStorage.getItem("student_token");
+    if (!tutorId || !token) return;
+    let cancelled = false;
+    fetch(`${API_URL}/coursestutor?adminId=${tutorId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((rows) => {
+        if (!cancelled) {
+          const course = (Array.isArray(rows) ? rows : []).find((row) => String(row.CourseID) === String(exam.courseId));
+          setFallbackCourseType(course?.Course_Type || null);
+        }
+      })
+      .catch((err) => console.error("Load course type failed:", err));
+    return () => { cancelled = true; };
+  }, [exam?.courseId, exam?.courseType]);
+
   const backToExamList = () => {
     const params = new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName });
     navigate(`/tutor/exam?${params.toString()}`);
@@ -3432,10 +3533,21 @@ export default function TutorExamDetail() {
     return <div className="px-4 lg:px-0"><Spinner block label="กำลังโหลดข้อมูลการสอบ..." /></div>;
   }
 
-  if (loadError || !exam) {
+  if (loadError) {
+    return (
+      <div className="px-4 lg:px-0 py-16">
+        <ErrorState title={loadError} onRetry={() => { setLoading(true); reload(); }} />
+        <div className="text-center">
+          <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!exam) {
     return (
       <div className="px-4 lg:px-0 text-center py-16">
-        <p className="text-sm text-slate-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
+        <p className="text-sm text-slate-500">ไม่พบข้อมูลการสอบนี้</p>
         <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
       </div>
     );
@@ -3444,6 +3556,14 @@ export default function TutorExamDetail() {
   const meta = EXAM_TYPES.find((t) => t.value === exam.type);
   const status = deriveStatus(exam);
   const sb = STATUS_BADGE[status];
+  const courseType = exam.courseType || fallbackCourseType;
+  const rightsNoticeMode = courseType === "single" ? "single" : courseType === "bundle" ? null : "unknown";
+
+  // เปิด/ปิดสอบ — แจ้งเหตุผลจาก backend (เช่น ต้องสอบ Pre-test ให้เสร็จก่อน) แทนการเงียบ
+  const runSessionAction = async (action, fallback) => {
+    try { await action(); await reload(); }
+    catch (err) { showToast("error", fallback, err.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"); }
+  };
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -3482,6 +3602,8 @@ export default function TutorExamDetail() {
         </div>
       </div>
 
+      {tab !== "questions" && rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {TABS.map((t) => {
@@ -3501,7 +3623,7 @@ export default function TutorExamDetail() {
 
       <div>
         {tab === "questions" && (
-          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} />
+          <BankTab subjectId={subjectId} showToast={showToast} subjectName={subjectName} rightsNoticeMode={rightsNoticeMode} />
         )}
         {tab === "preview" && (
           <PreviewTab exam={exam} goToAssemble={() => setTab("manage")} />
@@ -3514,9 +3636,9 @@ export default function TutorExamDetail() {
             goToPreview={() => setTab("preview")}
             onSaved={reload}
             showToast={showToast}
-            onOpen={async () => { await openExamSession(exam.id); await reload(); }}
-            onReopen={async () => { await openExamSession(exam.id); await reload(); }}
-            onClose={async () => { await closeExamSession(exam.id); await reload(); }}
+            onOpen={() => runSessionAction(() => openExamSession(exam.id), "เปิดสอบไม่สำเร็จ")}
+            onReopen={() => runSessionAction(() => openExamSession(exam.id), "เปิดสอบใหม่ไม่สำเร็จ")}
+            onClose={() => runSessionAction(() => closeExamSession(exam.id), "ปิดสอบไม่สำเร็จ")}
           />
         )}
         {tab === "results" && (

@@ -372,13 +372,13 @@ function PaymentChoice({ icon: Icon, active, title, price, detail, badge, onClic
       )}
     >
       {badge && <span className="absolute -top-2.5 right-3 rounded-full bg-emerald-600 px-2.5 py-1 text-[10px] font-bold text-white">{badge}</span>}
-      <div className="flex items-start gap-3">
+      <span className="flex items-start gap-3">
         <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", active ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500")}>{React.createElement(Icon, { className: "h-5 w-5" })}</span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3"><strong className="text-sm text-[#14213D]">{title}</strong><strong className="shrink-0 text-sm text-orange-600">{price}</strong></div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{detail}</p>
-        </div>
-      </div>
+        <span className="block min-w-0 flex-1">
+          <span className="flex items-start justify-between gap-3"><strong className="text-sm text-[#14213D]">{title}</strong><strong className="shrink-0 text-sm text-orange-600">{price}</strong></span>
+          <span className="block mt-1 text-xs leading-relaxed text-slate-500">{detail}</span>
+        </span>
+      </span>
     </button>
   );
 }
@@ -405,7 +405,6 @@ function SlipToast({ toast, onClose }) {
         isSuccess ? "border-emerald-200 bg-emerald-50/95" : "border-red-200 bg-red-50/95"
       )}
     >
-      <style>{`@keyframes toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }`}</style>
       <div className="flex items-start gap-3">
         <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full", isSuccess ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}>
           {isSuccess ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
@@ -456,10 +455,8 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   useEffect(() => { bodyRef.current?.scrollTo({ top: 0, behavior: "auto" }); }, [step]);
 
-  // ── PDPA: ข้อมูลผู้ปกครอง + ความยินยอมบันทึกพฤติกรรมระหว่างสอบ — ทั้งสองอย่างเก็บ "ครั้งเดียวต่อนักเรียน"
-  // ไม่ถามซ้ำทุกครั้งที่ซื้อคอร์ส: ข้อมูลผู้ปกครองถามเฉพาะตอนยังไม่มีผู้ปกครองผูกไว้ (ParentId ว่าง)
-  // ส่วนความยินยอมสอบถามเฉพาะตอนยังไม่เคยตอบ (not_answered) — เคยตอบแล้วไม่ว่ายินยอมหรือไม่ยินยอม
-  // ก็ไม่ถามซ้ำอีก มีแอดมินเท่านั้นที่แก้ไขให้ทีหลังได้ (ดู admin.students.routes.js)
+  // ข้อมูลผู้ปกครองถามเมื่อนักเรียนยังไม่มีผู้ปกครอง ส่วนความยินยอมถามแยกตามคอร์ส
+  // และเฉพาะรายการที่ยังไม่เคยตอบสำหรับคอร์สนั้น
   const [profileLoading, setProfileLoading] = useState(true);
   const [studentParentId, setStudentParentId] = useState(undefined);
   const [parentSubmitted, setParentSubmitted] = useState(false);
@@ -472,9 +469,10 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
   const [enrollConsentItems, setEnrollConsentItems] = useState([]);
   const [enrollConsentLoading, setEnrollConsentLoading] = useState(true);
+  const [enrollConsentLoadError, setEnrollConsentLoadError] = useState(false);
   // ยินยอมผูกกับ "คอร์สที่กำลังจะซื้อ" แยกกันทีละคอร์ส ไม่ใช่ครั้งเดียวใช้กับทุกคอร์สแบบเดิม
-  // { [courseId]: { status: 'granted' | 'denied' | 'not_answered', granted: boolean (ค่าที่กำลังติ๊ก) }
-  const [examConsentByCourse, setExamConsentByCourse] = useState({});
+  // { [courseId]: { [consentKey]: { status, granted } } }
+  const [consentByCourse, setConsentByCourse] = useState({});
 
   const [savingStep1, setSavingStep1] = useState(false);
   const [step1Error, setStep1Error] = useState("");
@@ -482,11 +480,13 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   useEffect(() => {
     let cancelled = false;
     const token = checkoutToken;
+    setEnrollConsentLoading(true);
+    setEnrollConsentLoadError(false);
     (async () => {
       try {
         const [catalog, profile, types] = await Promise.all([
           getConsentCatalog(),
-          token ? getStudentProfile(token) : Promise.resolve(null),
+          token ? getStudentProfile(token).catch(() => null) : Promise.resolve(null),
           getParentProfileTypes().catch(() => []),
         ]);
         if (cancelled) return;
@@ -497,25 +497,29 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
         // ต้องรู้สถานะความยินยอมของ "แต่ละคอร์สที่กำลังจะซื้อรอบนี้" แยกกัน เพราะยินยอมผูกกับ
         // คอร์สแล้ว ไม่ใช่ครั้งเดียวใช้กับทุกคอร์สแบบเดิม
-        const consentKey = catalogItems[0]?.key;
         const statusEntries = await Promise.all(
           items.map(async (courseItem) => {
-            if (!token || !consentKey) return [courseItem.id, "not_answered"];
+            if (!token || !catalogItems.length) return [courseItem.id, {}];
             try {
               const res = await getMyConsents(token, courseItem.id);
-              return [courseItem.id, res?.consents?.[consentKey] || "not_answered"];
+              return [courseItem.id, res?.consents || {}];
             } catch {
-              return [courseItem.id, "not_answered"];
+              return [courseItem.id, {}];
             }
           })
         );
         if (!cancelled) {
-          setExamConsentByCourse((previous) =>
-            Object.fromEntries(statusEntries.map(([courseId, status]) => [courseId, {
-              status,
-              granted: status === "not_answered" ? !!previous[courseId]?.granted : status === "granted",
-            }]))
-          );
+          setConsentByCourse((previous) => Object.fromEntries(
+            statusEntries.map(([courseId, statuses]) => [courseId,
+              Object.fromEntries(catalogItems.map(({ key }) => {
+                const status = statuses[key] || "not_answered";
+                return [key, {
+                  status,
+                  granted: status === "not_answered" ? !!previous[courseId]?.[key]?.granted : status === "granted",
+                }];
+              }))
+            ])
+          ));
         }
 
         setStudentParentId(profile ? (profile.parentId ?? null) : null);
@@ -526,8 +530,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
         setParentTypes(Array.isArray(types) ? types : []);
       } catch (err) {
         console.error("โหลดข้อมูลก่อนชำระเงินไม่สำเร็จ:", err);
-        // ไม่บล็อกการซื้อคอร์สเพราะ API เหล่านี้ล่ม — ปล่อยให้ซื้อต่อได้ตามปกติ (ถือว่ายังไม่มีผู้ปกครองผูก)
-        setStudentParentId(null);
+        if (!cancelled) setEnrollConsentLoadError(true);
       } finally {
         if (!cancelled) {
           setEnrollConsentLoading(false);
@@ -549,14 +552,18 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     setStep1Error("");
   };
 
-  const examConsentItem = enrollConsentItems[0] || null;
-  const needsParentForm = !profileLoading;
-  // คอร์สไหนในตะกร้ารอบนี้ที่ยังไม่เคยตอบความยินยอมบ้าง ต้องบันทึกให้ครบก่อนไปขั้นตอนถัดไป
-  const coursesNeedingExamConsent = examConsentItem
-    ? items.filter((item) => (examConsentByCourse[item.id]?.status || "not_answered") === "not_answered")
-    : [];
+  const needsParentForm = !profileLoading && studentParentId === null && !parentSubmitted;
+  const pendingConsentItemsByCourse = items.map((courseItem) => ({
+    courseId: courseItem.id,
+    pending: enrollConsentItems.filter(({ key }) =>
+      (consentByCourse[courseItem.id]?.[key]?.status || "not_answered") === "not_answered"),
+  })).filter(({ pending }) => pending.length);
 
   const handleContinueFromStep1 = async () => {
+    if (enrollConsentLoading || enrollConsentLoadError || !enrollConsentItems.length) {
+      setStep1Error("โหลดรายการความยินยอมไม่สำเร็จ กรุณาเปิดขั้นตอนชำระเงินใหม่แล้วลองอีกครั้ง");
+      return;
+    }
     const buyer = checkoutToken ? studentForm : checkoutAccount;
     if (!buyer.firstname.trim() || !buyer.lastname.trim()) {
       setStep1Error("กรุณากรอกชื่อและนามสกุลนักเรียน");
@@ -570,9 +577,15 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
       setStep1Error("รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
       return;
     }
-    if (checkoutToken && studentParentId === null && (!parentForm.firstname.trim() || !parentForm.lastname.trim() || !parentAcknowledged)) {
-      setStep1Error("กรุณากรอกชื่อผู้ปกครองและรับทราบการเก็บข้อมูลก่อน");
-      return;
+    if (checkoutToken && needsParentForm) {
+      if (!parentForm.firstname.trim() || !parentForm.lastname.trim()) {
+        setStep1Error("กรุณากรอกชื่อและนามสกุลผู้ปกครองก่อน");
+        return;
+      }
+      if (!parentAcknowledged) {
+        setStep1Error("กรุณายืนยันว่ารับทราบเรื่องการเก็บข้อมูลผู้ปกครองก่อน");
+        return;
+      }
     }
 
     setSavingStep1(true);
@@ -616,28 +629,32 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
       } else if (parentId === null) {
         throw new Error("กรุณากรอกชื่อและนามสกุลผู้ปกครองก่อน");
       }
-      if (token && examConsentItem && coursesNeedingExamConsent.length) {
-        // ถามแยกเป็นรายคอร์ส — บันทึกทีละคอร์สที่ยังไม่เคยตอบ ใช้ค่าที่ติ๊กไว้ของคอร์สนั้น
-        // (ไม่ติ๊ก = ไม่ยินยอม เหมือนพฤติกรรมเดิม)
-        const unanswered = (await Promise.all(coursesNeedingExamConsent.map(async (courseItem) => {
-          const current = await getMyConsents(token, courseItem.id);
-          return (current?.consents?.[examConsentItem.key] || "not_answered") === "not_answered" ? courseItem : null;
-        }))).filter(Boolean);
+      if (token && pendingConsentItemsByCourse.length) {
+        const unanswered = (await Promise.all(pendingConsentItemsByCourse.map(async ({ courseId, pending }) => {
+          const current = await getMyConsents(token, courseId);
+          return {
+            courseId,
+            pending: pending.filter(({ key }) => (current?.consents?.[key] || "not_answered") === "not_answered"),
+          };
+        }))).filter(({ pending }) => pending.length);
         await Promise.all(
-          unanswered.map((courseItem) =>
+          unanswered.map(({ courseId, pending }) =>
             saveConsents(
               token,
-              courseItem.id,
-              [{ consentKey: examConsentItem.key, isGranted: !!examConsentByCourse[courseItem.id]?.granted }],
+              courseId,
+              pending.map(({ key }) => ({ consentKey: key, isGranted: !!consentByCourse[courseId]?.[key]?.granted })),
               { grantedByRole: "student" }
             )
           )
         );
-        setExamConsentByCourse((prev) => {
+        setConsentByCourse((prev) => {
           const next = { ...prev };
-          unanswered.forEach((courseItem) => {
-            const granted = !!prev[courseItem.id]?.granted;
-            next[courseItem.id] = { status: granted ? "granted" : "denied", granted };
+          unanswered.forEach(({ courseId, pending }) => {
+            next[courseId] = { ...prev[courseId] };
+            pending.forEach(({ key }) => {
+              const granted = !!prev[courseId]?.[key]?.granted;
+              next[courseId][key] = { status: granted ? "granted" : "denied", granted };
+            });
           });
           return next;
         });
@@ -957,52 +974,49 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
           {step === 0 && (
             <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
-              {/* ── PDPA: ยินยอมบันทึกพฤติกรรมระหว่างสอบ — ถามแยกเป็นรายคอร์สที่กำลังซื้อรอบนี้ ── */}
+              {/* ความยินยอมรายคอร์ส แต่ละรายการตอบได้แยกกัน */}
               <div>
                 <strong className="text-base text-slate-900">ความยินยอมด้านข้อมูลส่วนบุคคล (PDPA)</strong>
                 {enrollConsentLoading ? (
                   <p className="mt-3 text-sm text-slate-400">กำลังโหลด...</p>
-                ) : examConsentItem ? (
+                ) : enrollConsentLoadError ? (
+                  <p className="mt-3 text-sm text-red-600">โหลดรายการความยินยอมไม่สำเร็จ กรุณาเปิดขั้นตอนชำระเงินใหม่แล้วลองอีกครั้ง</p>
+                ) : enrollConsentItems.length ? (
                   <div className="mt-4 space-y-4">
                     {items.map((courseItem) => {
-                      const state = examConsentByCourse[courseItem.id] || { status: "not_answered", granted: false };
-                      const needsAnswer = state.status === "not_answered";
                       return (
                         <div key={courseItem.id} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
                           <p className="text-sm font-bold text-[#14213D]">{courseItem.title}</p>
-                          {needsAnswer ? (
-                            <>
-                              <p className="mt-2 text-sm text-slate-600 leading-relaxed whitespace-pre-line">{examConsentItem.summary}</p>
-                              {examConsentItem.reassurance && (
-                                <p className="mt-2 text-sm text-emerald-600 leading-relaxed">{examConsentItem.reassurance}</p>
-                              )}
-                              <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl bg-white px-3 py-2.5 border border-slate-200">
-                                <input
-                                  type="checkbox"
-                                  checked={state.granted}
-                                  onChange={(e) =>
-                                    setExamConsentByCourse((prev) => ({
-                                      ...prev,
-                                      [courseItem.id]: { ...(prev[courseItem.id] || state), granted: e.target.checked },
-                                    }))
-                                  }
-                                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
-                                />
-                                <span className="text-sm font-semibold text-slate-700">
-                                  ยินยอมให้บันทึกพฤติกรรมการใช้อุปกรณ์ระหว่างทำข้อสอบของคอร์สนี้
-                                </span>
-                              </label>
-                              {!state.granted && (
-                                <p className="mt-2 text-xs text-slate-500 leading-relaxed whitespace-pre-line">
-                                  {examConsentItem.ifDenied}
-                                </p>
-                              )}
-                            </>
-                          ) : (
-                            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                              เคยตอบเรื่องนี้ไว้แล้วสำหรับคอร์สนี้ ({state.status === "granted" ? "ยินยอม" : "ไม่ยินยอม"}) — เปลี่ยนใจภายหลังติดต่อเจ้าหน้าที่ได้
-                            </p>
-                          )}
+                          <div className="mt-3 space-y-4">
+                            {enrollConsentItems.map((consentItem) => {
+                              const state = consentByCourse[courseItem.id]?.[consentItem.key] || { status: "not_answered", granted: false };
+                              return (
+                                <div key={consentItem.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                                  <p className="text-sm font-semibold text-slate-800">{consentItem.label}</p>
+                                  {state.status === "not_answered" ? (
+                                    <>
+                                      <p className="mt-2 text-sm text-slate-600 leading-relaxed whitespace-pre-line">{consentItem.summary}</p>
+                                      {consentItem.reassurance && <p className="mt-2 text-sm text-emerald-600 leading-relaxed">{consentItem.reassurance}</p>}
+                                      <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl bg-white px-3 py-2.5 border border-slate-200">
+                                        <input type="checkbox" checked={state.granted}
+                                          onChange={(e) => setConsentByCourse((prev) => ({
+                                            ...prev,
+                                            [courseItem.id]: { ...prev[courseItem.id], [consentItem.key]: { ...state, granted: e.target.checked } },
+                                          }))}
+                                          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400" />
+                                        <span className="text-sm font-semibold text-slate-700">ยินยอม: {consentItem.label}</span>
+                                      </label>
+                                      {!state.granted && <p className="mt-2 text-xs text-slate-500 leading-relaxed whitespace-pre-line">{consentItem.ifDenied}</p>}
+                                    </>
+                                  ) : (
+                                    <p className="mt-2 text-sm text-slate-500 leading-relaxed">
+                                      เคยตอบเรื่องนี้ไว้แล้วสำหรับคอร์สนี้ ({state.status === "granted" ? "ยินยอม" : "ไม่ยินยอม"}) — คำตอบนี้ใช้ตลอดคอร์ส เปลี่ยนไม่ได้
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })}
@@ -1166,7 +1180,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           {step < 2 && (
             <button
               onClick={step === 1 ? handleContinueFromStep1 : () => { setStep(1); setMaxReached((value) => Math.max(value, 1)); }}
-              disabled={savingStep1 || (step === 1 && !!checkoutToken && profileLoading)}
+              disabled={savingStep1 || (step === 1 && (profileLoading || enrollConsentLoading || enrollConsentLoadError))}
               className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {step === 1 && savingStep1 ? "กำลังบันทึก..." : "ดำเนินการต่อ"} <ChevronRight className="h-4 w-4" />
@@ -1191,9 +1205,10 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
 
 export function CourseCheckoutModal({ course, onClose }) {
   const item = useMemo(() => normalizeCartItem(course), [course]);
+  const checkoutItems = useMemo(() => [item], [item]);
   return (
     <CheckoutModal
-      items={[item]}
+      items={checkoutItems}
       total={item.salePrice}
       onClose={onClose}
       // Do not close the direct-purchase modal here. CheckoutModal advances to
@@ -1270,8 +1285,7 @@ export default function Cart() {
   }, [cart, courseDetails]);
 
   return (
-    <main className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Kanit', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');`}</style>
+    <div className="min-h-screen bg-white pb-20 pt-28 text-slate-900" style={{ fontFamily: "'Kanit', sans-serif" }}>
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
         <div className="mt-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div><h1 className="mt-1 text-3xl font-black text-orange-600 sm:text-4xl" style={{ fontFamily: "'Kanit', sans-serif" }}>ตะกร้าคอร์สเรียน</h1><p className="mt-2 text-sm text-slate-500">ตรวจสอบรายละเอียด ตารางเรียน และรูปแบบการชำระก่อนยืนยัน</p></div>
@@ -1289,6 +1303,6 @@ export default function Cart() {
       </div>
 
       {checkoutTotal !== null && <CheckoutModal items={items} total={checkoutTotal} onClose={() => setCheckoutTotal(null)} onEnrollmentComplete={removeManyFromCart} />}
-    </main>
+    </div>
   );
 }

@@ -7,7 +7,7 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import TutorTeachingTopics from "../components/TutorTeachingTopics";
+import TutorTeachingTopics from "./TutorTeachingTopics";
 
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE } from "../components/ui/tokens";
@@ -17,10 +17,12 @@ import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
 
+
 export default function TutorCourseManagePage() {
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get("courseId") || "";
   const subjectId = searchParams.get("subjectId") || "";
+  const assignmentId = searchParams.get("assignmentId") || "";
   const courseName = searchParams.get("courseName") || "คอร์สรวม (แพ็กเกจ)";
   const subjectName = searchParams.get("subjectName") || "";
   const adminId = JSON.parse(localStorage.getItem("user"))?.id;
@@ -211,7 +213,7 @@ export default function TutorCourseManagePage() {
   </p>
 </div>
 
-        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} token={token} />
+        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} assignmentId={assignmentId} subjectName={subjectName} />
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}

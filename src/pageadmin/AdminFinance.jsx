@@ -655,7 +655,7 @@ export default function AdminFinance() {
             {missingPriceCount > 0 && (
                 <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
                     <AlertCircle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
-                    <p>พบ {missingPriceCount} รายการลงทะเบียนที่ยังไม่ได้กรอกราคา (FullPrice/ส่วนลด) — จะไม่ถูกนับทั้งใน "จ่ายแล้ว" และ "ค้างชำระ" จนกว่าจะกรอกราคาให้ครบ</p>
+                    <p>พบ {missingPriceCount} คำสั่งซื้อที่ยอดเป็น 0 บาท (เกิดจากคอร์สที่ยังไม่ได้ตั้งราคาตอนนักเรียนสั่งซื้อ) — ไม่ถูกนับใน "จ่ายแล้ว" และ "ค้างชำระ" กรุณาตรวจสอบและติดต่อนักเรียนเพื่อจัดการรายการเหล่านี้</p>
                 </div>
             )}
 
@@ -901,15 +901,15 @@ export default function AdminFinance() {
                                         return (
                                             <button key={txn.TransactionId} onClick={() => setViewTxId(txn.TransactionId)}
                                                 className={`min-w-0 text-left ${T.card} p-4`}>
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div className="min-w-0">
-                                                        <p className="font-semibold text-slate-900 truncate">{studentDisplayName(txn)}</p>
-                                                        <p className={T.caption}>{txn.PhoneNo || 'ไม่มีเบอร์โทร'}</p>
-                                                    </div>
-                                                    <p className="shrink-0 font-bold text-green-600">+{formatMoney(txn.Amount)}</p>
-                                                </div>
-                                                <p className="mt-2 text-sm font-semibold text-slate-800 line-clamp-2">{txn.CourseName}</p>
-                                                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                <span className="flex items-start justify-between gap-3">
+                                                    <span className="block min-w-0">
+                                                        <span className="block font-semibold text-slate-900 truncate">{studentDisplayName(txn)}</span>
+                                                        <span className={`block ${T.caption}`}>{txn.PhoneNo || 'ไม่มีเบอร์โทร'}</span>
+                                                    </span>
+                                                    <span className="block shrink-0 font-bold text-green-600">+{formatMoney(txn.Amount)}</span>
+                                                </span>
+                                                <span className="mt-2 text-sm font-semibold text-slate-800 line-clamp-2">{txn.CourseName}</span>
+                                                <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                                                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${txn.Course_Type === 'single' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
                                                         {txn.Course_Type === 'single' ? 'คอร์สเดี่ยว' : 'คอร์สรวม'}
                                                     </span>
@@ -917,7 +917,7 @@ export default function AdminFinance() {
                                                         {isFull ? 'เต็มจำนวน' : `ผ่อน งวด ${txn.InstallmentNo}/${txn.InstallmentCount}`}
                                                     </span>
                                                     <span className={T.caption}>{formatDate(txn.TransDate || txn.Created_at)} · #{txn.TransactionId}</span>
-                                                </div>
+                                                </span>
                                             </button>
                                         );
                                     })}

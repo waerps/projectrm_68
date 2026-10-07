@@ -28,6 +28,8 @@ import PrivateCourseTeaser from "../components/PrivateCourseTeaser";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import { optimizedImage } from "../utils/responsiveImage";
 import { API_URL } from "../config";
+import ErrorState from "../components/ui/ErrorState";
+import Spinner from "../components/ui/Spinner";
 
 /** ---------- ค่าคงที่อ้างอิงจาก DB (status_course, term) ----------
  * ⚠️ ค่าพวกนี้อิงจากข้อมูลในตารางที่ส่งมาให้ดู ถ้าใน DB จริงมีการเพิ่ม/แก้ค่า
@@ -579,6 +581,9 @@ export default function Home() {
   const [coursesLoaded, setCoursesLoaded] = useState(false);
   const [newsLoaded, setNewsLoaded] = useState(false);
   const [newsError, setNewsError] = useState(false);
+  const [coursesError, setCoursesError] = useState(false);
+  const [coursesReloadKey, setCoursesReloadKey] = useState(0);
+  const [newsReloadKey, setNewsReloadKey] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState(new Set());
 
@@ -601,21 +606,30 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchCourses() {
+      setCoursesLoaded(false);
+      setCoursesError(false);
       try {
         const courses = await getCourses();
-        setData(Array.isArray(courses) ? courses : []);
+        if (!cancelled) setData(Array.isArray(courses) ? courses : []);
       } catch (err) {
         console.error("Error loading courses:", err);
-        setData([]);
+        if (!cancelled) {
+          setData([]);
+          setCoursesError(true);
+        }
       } finally {
-        setCoursesLoaded(true);
+        if (!cancelled) setCoursesLoaded(true);
       }
     }
     fetchCourses();
-  }, []);
+    return () => { cancelled = true; };
+  }, [coursesReloadKey]);
 
   useEffect(() => {
+    setNewsLoaded(false);
+    setNewsError(false);
     axios
       .get(`${API_URL}/api/news`, { params: { role: "public" } })
       .then((res) => {
@@ -628,7 +642,7 @@ export default function Home() {
         setNewsError(true);
       })
       .finally(() => setNewsLoaded(true));
-  }, []);
+  }, [newsReloadKey]);
 
   // คอร์สที่ไม่ถูกซ่อน (ไม่ใช่ Status = ปิดคอร์ส)
   const visibleCourses = useMemo(
@@ -712,9 +726,6 @@ export default function Home() {
 
   return (
     <div className="pb-24" style={{ fontFamily: "'Kanit', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700;800&display=swap');
-      `}</style>
 
       <div className="mx-auto max-w-[1200px] px-4 md:px-6">
         {/* ========== HERO — ประกาศคอร์สเรียนแบบสไลด์ ========== */}
@@ -822,7 +833,7 @@ export default function Home() {
               <p className="mt-3 text-gray-600 leading-relaxed">
                 รับติวตั้งแต่ระดับ ป.2 - ม.6 คณิต-วิทย์-อังกฤษ-ไทย-สังคม
                 ติวสอบเข้า ม.1 / ม.4 / NETSAT
-                รองรับการสอนทั้ง ออนไลน์ และออนไซด์
+                รองรับการสอนทั้ง ออนไลน์ และออนไซต์
                 โดยทีมสอน ครูกวาง เกียรตินิยม 1 มหาวิทยาลัยขอนแก่น (3 ปีครึ่ง)
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
@@ -852,7 +863,17 @@ export default function Home() {
 
         {/* ========== COURSES แยกตามเทอมจริงจาก DB — เลื่อนซ้าย/ขวา + กด "ทั้งหมด" เพื่อขยาย ========== */}
         <div id="home-courses" className="scroll-mt-28">
-          {termGroups.length > 0 ? (
+          {!coursesLoaded ? (
+            <div className="mt-12 rounded-3xl bg-white p-10 shadow-sm" role="status">
+              <Spinner block size="lg" label="กำลังโหลดคอร์สเรียน..." />
+            </div>
+          ) : coursesError ? (
+            <ErrorState
+              className="mt-12"
+              title="โหลดคอร์สเรียนไม่สำเร็จ"
+              onRetry={() => setCoursesReloadKey((k) => k + 1)}
+            />
+          ) : termGroups.length > 0 ? (
             termGroups.map((group) => (
               <CourseCarousel
                 key={group.id}
@@ -898,6 +919,15 @@ export default function Home() {
           ) : newsError ? (
             <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm" role="alert">
               โหลดข่าวประชาสัมพันธ์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => setNewsReloadKey((k) => k + 1)}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                  ลองใหม่
+                </button>
+              </div>
             </div>
           ) : newsItems.length > 0 ? (
             <NewsMarqueeArchive items={newsItems} embedded />

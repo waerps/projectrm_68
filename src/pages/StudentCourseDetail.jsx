@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import {
   Users, Calendar, Video, FileText, Download, BarChart2, PlayCircle,
   CheckCircle, XCircle, Clock, ChevronRight,
-  WalletCards,
+  WalletCards, BookOpen, RefreshCw,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
@@ -43,15 +43,19 @@ export default function StudentCourseDetail() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [courseName, setCourseName] = useState(
     searchParams.get("courseName") || "คอร์สเรียน"
   );
   const [courseType, setCourseType] = useState("bundle");
+  const [fullCost, setFullCost] = useState(0);
   const [student, setStudent] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [videos, setVideos] = useState([]);
   const [files, setFiles] = useState([]);
-  const [activeTab, setActiveTab] = useState("attendance");
+  const [subjects, setSubjects] = useState([]);
+  const [teachingTopics, setTeachingTopics] = useState([]);
+  const [activeTab, setActiveTab] = useState("plan");
 
   useEffect(() => {
     let cancelled = false;
@@ -91,7 +95,10 @@ export default function StudentCourseDetail() {
         setCourseName(detail.course?.courseName ?? detail.course?.CourseName ?? "คอร์สเรียน");
         const type = detail.course?.courseType ?? detail.course?.Course_Type ?? "bundle";
         setCourseType(type);
-        setActiveTab(type === "single" ? "attendance" : "videos");
+        setFullCost(Number(detail.course?.fullCost ?? detail.course?.FullCost ?? 0));
+        setActiveTab("plan");
+        setSubjects(detail.subjects ?? []);
+        setTeachingTopics(detail.teachingTopics ?? []);
         setAttendance((detail.schedule ?? []).map((item) => ({
           StudentAttendanceId: item.attendanceId ?? item.AttendanceId ?? item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
           CourseScheduleDetailId: item.courseScheduleDetailId ?? item.CourseScheduleDetailId,
@@ -111,6 +118,7 @@ export default function StudentCourseDetail() {
           const progress = Number.isFinite(rawProgress) ? Math.min(100, Math.max(0, Math.round(rawProgress))) : 0;
           return {
             id: video.videoId ?? video.VideoId,
+            subjectId: video.subjectId ?? video.SubjectId,
             title: video.videoTitle ?? video.VideoTitle ?? "ไม่มีชื่อคลิป",
             subjectName: video.subjectName ?? video.SubjectName,
             duration: video.duration ?? video.Duration ?? "-",
@@ -122,6 +130,7 @@ export default function StudentCourseDetail() {
         }));
         setFiles((detail.files ?? []).map((file) => ({
           fileId: file.fileId ?? file.FileId,
+          subjectId: file.subjectId ?? file.SubjectId,
           fileName: file.fileName ?? file.FileName,
           subjectName: file.subjectName ?? file.SubjectName,
           filePath: file.filePath ?? file.FilePath,
@@ -142,7 +151,7 @@ export default function StudentCourseDetail() {
     return () => {
       cancelled = true;
     };
-  }, [courseId, token]);
+  }, [courseId, token, reloadKey]);
 
   const attendedCount = attendance.filter((a) => a.Status === "present").length;
   const absentCount = attendance.filter((a) => a.Status === "absent").length;
@@ -159,7 +168,22 @@ export default function StudentCourseDetail() {
   const rateText = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
   if (loading) return <div className="mt-[90px] text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>;
-  if (error) return <div className="mt-[90px] text-center p-10 text-red-500">{error}</div>;
+  if (error) return (
+    <div className="mt-[90px] text-center p-10 text-red-500" role="alert">
+      {error}
+      {token && courseId && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+          >
+            <RefreshCw className="h-4 w-4" /> ลองใหม่
+          </button>
+        </div>
+      )}
+    </div>
+  );
   if (!student) return <div className="mt-[90px] text-center p-10 text-neutral-500">ไม่พบข้อมูลนักเรียน</div>;
 
   return (
@@ -200,6 +224,7 @@ export default function StudentCourseDetail() {
 
       <div className="grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:grid-cols-3 lg:flex lg:flex-wrap">
         {[
+          { key: "plan", label: "แผนการสอน", icon: <BookOpen className="h-4 w-4" /> },
           ...(courseType === "single" ? [{ key: "attendance", label: "ตารางเข้าเรียน", icon: <Calendar className="h-4 w-4" /> }] : []),
           { key: "videos", label: "รายการคลิป", icon: <Video className="h-4 w-4" /> },
           { key: "files", label: "เอกสารประกอบ", icon: <FileText className="h-4 w-4" /> },
@@ -214,6 +239,27 @@ export default function StudentCourseDetail() {
           </button>
         ))}
       </div>
+
+      {activeTab === "plan" && (
+        <section className="overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-sm">
+          <header className="bg-gradient-to-r from-orange-50 to-amber-50 px-5 py-4">
+            <h2 className="flex items-center gap-2 font-bold text-slate-900"><BookOpen className="h-5 w-5 text-orange-600" />แผนการสอนของคอร์ส</h2>
+            <p className="mt-1 text-sm text-slate-600">หัวข้อที่ติวเตอร์เตรียมสอนและสื่อประกอบของแต่ละวิชา · สอนแล้ว {teachingTopics.filter(topic => topic.isTaught).length}/{teachingTopics.length} หัวข้อ</p>
+          </header>
+          <div className="space-y-4 p-4 sm:p-5">
+            {subjects.length ? subjects.map(subject => {
+              const topicList = teachingTopics.filter(topic => Number(topic.subjectId) === Number(subject.subjectId) && Number(topic.tutorId) === Number(subject.tutorId));
+              const subjectVideos = videos.filter(video => Number(video.subjectId) === Number(subject.subjectId));
+              const subjectFiles = files.filter(file => Number(file.subjectId) === Number(subject.subjectId));
+              return <article key={`${subject.subjectId}-${subject.tutorId}`} className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2"><div><h3 className="font-bold text-slate-900">{subject.subjectName}</h3><p className="text-xs text-slate-500">ติวเตอร์ {subject.tutorName || 'ยังไม่ระบุ'}</p></div><span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-700">{topicList.length} หัวข้อ</span></div>
+                {topicList.length ? <ol className="mt-4 grid gap-2 sm:grid-cols-2">{topicList.map((topic, index) => <li key={topic.id} className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-xs font-bold text-orange-600">{index + 1}</span><span className="min-w-0 flex-1 break-words">{topic.title}{topic.plannedLessons?.length > 0 && <span className="block text-xs text-slate-500">คาดว่า {topic.plannedLessons.map(lesson => `${lesson.date} ${lesson.startTime}–${lesson.endTime}`).join(' · ')}</span>}{topic.taughtLessons?.map((lesson, lessonIndex) => <span key={lessonIndex} className="block text-xs text-emerald-700">สอน {lesson.date}{lesson.detail ? ` · ${lesson.detail}` : ''}</span>)}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${topic.isTaught ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{topic.isTaught ? 'สอนแล้ว' : 'ในแผน'}</span></li>)}</ol> : <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-500">ติวเตอร์ยังไม่ได้ระบุหัวข้อ</p>}
+                <div className="mt-4 rounded-xl bg-white px-3 py-3 text-sm"><p className="font-semibold text-slate-700">สื่อประกอบของวิชานี้</p><div className="mt-2 flex flex-wrap gap-2">{subjectVideos.map(video => <button key={`video-${video.id}`} type="button" onClick={() => setActiveTab('videos')} className="rounded-lg bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">▶ {video.title}</button>)}{subjectFiles.map(file => <button key={`file-${file.fileId}`} type="button" onClick={() => setActiveTab('files')} className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">▤ {file.fileName}</button>)}{!subjectVideos.length && !subjectFiles.length && <span className="text-xs text-slate-500">ยังไม่มีสื่อประกอบ</span>}</div></div>
+              </article>;
+            }) : <p className="py-8 text-center text-sm text-slate-500">ยังไม่มีข้อมูลวิชาในคอร์สนี้</p>}
+          </div>
+        </section>
+      )}
 
       {courseType === "single" && activeTab === "attendance" && (
         <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
@@ -435,7 +481,7 @@ export default function StudentCourseDetail() {
         </div>
       )}
 
-      {activeTab === "payments" && <CoursePaymentsTab courseId={courseId} />}
+      {activeTab === "payments" && <CoursePaymentsTab courseId={courseId} courseType={courseType} fullCost={fullCost} />}
     </div>
   );
 }

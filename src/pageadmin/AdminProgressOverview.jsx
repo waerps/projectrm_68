@@ -14,6 +14,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
 // หนึ่งแถว = คอร์ส 1 × วิชา 1 × ติวเตอร์ 1 ซึ่งตรงกับหน่วยที่ระบบใช้จริง
@@ -131,11 +132,13 @@ export default function AdminProgressOverview() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
+    setError("");
     axios
       .get(`${API_BASE}/overview`, getAdminAuthConfig())
       .then((res) => {
@@ -149,7 +152,7 @@ export default function AdminProgressOverview() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // แถวหลังกรองตามปุ่มที่กดเข้ามา (ยังไม่กรองคำค้น) — ใช้คิดการ์ดสรุปพัฒนาการด้านบน
   const presetRows = useMemo(() => {
@@ -306,7 +309,9 @@ export default function AdminProgressOverview() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <ErrorState title={error} onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }} />
+      )}
 
       {!error && filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
@@ -346,7 +351,7 @@ export default function AdminProgressOverview() {
                         onClick={() => openDetail(r)}
                         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-orange-50/40 transition-colors"
                       >
-                        <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                        <span className="min-w-0 flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-semibold text-slate-800">
                             {r.subjectName || `วิชา #${r.subjectId}`}
                           </span>
@@ -354,10 +359,10 @@ export default function AdminProgressOverview() {
                             <GraduationCap className="h-3 w-3 text-slate-400" />
                             {r.tutorName || "—"}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 shrink-0">
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 shrink-0">
                           <BarChart2 className="h-4 w-4 text-slate-400 shrink-0" /> ดูพัฒนาการ <ChevronRight className="h-4 w-4 text-slate-300 shrink-0" />
-                        </div>
+                        </span>
                       </button>
                     ))}
                   </div>

@@ -7,6 +7,7 @@ import { ToastContainer } from "../components/Toast";
 import { KeyRound, Loader2, Check, Clock, User, Phone, ArrowUpRight } from "lucide-react";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import EmptyState from "../components/ui/EmptyState";
+import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -26,6 +27,8 @@ export default function AdminPasswordResets() {
   const [pending, setPending] = useState([]);
   const [recentlyDone, setRecentlyDone] = useState([]);
   const [loading, setLoading] = useState(true);
+  // โหลดไม่สำเร็จ → กล่อง error + ลองใหม่ (เดิมขึ้น "ไม่มีคำขอที่รอดำเนินการ" ทำให้พลาดคำขอได้)
+  const [loadError, setLoadError] = useState("");
   const [resolvingId, setResolvingId] = useState(null);
 
   const load = useCallback(async () => {
@@ -34,8 +37,9 @@ export default function AdminPasswordResets() {
       const res = await axios.get(`${API}/password-reset-requests`, auth());
       setPending(res.data.pending || []);
       setRecentlyDone(res.data.recentlyDone || []);
+      setLoadError("");
     } catch (err) {
-      showToast("error", "โหลดคำขอไม่สำเร็จ", err.response?.data?.message || err.message);
+      setLoadError(err.response?.data?.message || "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
     }
@@ -70,6 +74,8 @@ export default function AdminPasswordResets() {
         <div className="flex items-center justify-center py-16 text-slate-400">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
+      ) : loadError ? (
+        <ErrorState title="โหลดคำขอลืมรหัสผ่านไม่สำเร็จ" description={loadError} onRetry={load} />
       ) : (
         <>
           <div className="mb-8">

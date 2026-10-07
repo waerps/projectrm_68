@@ -18,10 +18,12 @@ export function ConfirmDialog({ title, message, confirmText = "ยืนยั�
         <p className="whitespace-pre-line text-sm text-slate-500">{message}</p>
       </div>
       <div className="flex flex-col-reverse gap-2 px-5 pb-5 sm:flex-row sm:px-6 sm:pb-6">
-        <button type="button" onClick={onCancel}
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
-          {cancelText}
-        </button>
+        {cancelText !== null && (
+          <button type="button" onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+            {cancelText}
+          </button>
+        )}
         <button type="button" onClick={onConfirm} autoFocus
           className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition ${danger ? "bg-red-500 hover:bg-red-600" : "bg-orange-500 hover:bg-orange-600"}`}>
           {confirmText}

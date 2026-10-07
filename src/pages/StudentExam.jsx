@@ -12,6 +12,7 @@ import {
 } from "../utils/studentExamShared";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
+import ExamMathText from "../components/ExamMathText";
 import { Sprout as LuSprout } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 
@@ -146,8 +147,27 @@ function NoQuestionsNotice() {
 
 // ─── Taking the exam ─────────────────────────────────────────────────────────
 
+// คำตอบที่ autosave ไม่สำเร็จ เก็บสำรองในเบราว์เซอร์ด้วย — รีเฟรช/ปิดแท็บแล้วกลับมา
+// จะเติมคำตอบคืนและส่งขึ้นเซิร์ฟเวอร์ให้อัตโนมัติ (ไม่เก็บอย่างอื่นนอกจาก questionId → ตัวเลือก)
+const unsavedKey = (examJoinId) => `exam-unsaved:${examJoinId}`;
+function readUnsaved(examJoinId) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(unsavedKey(examJoinId)) || "[]");
+    return new Map(Array.isArray(raw) ? raw.filter(([q, v]) => q != null && Number.isInteger(v)) : []);
+  } catch { return new Map(); }
+}
+function writeUnsaved(examJoinId, map) {
+  try {
+    if (map.size) localStorage.setItem(unsavedKey(examJoinId), JSON.stringify([...map]));
+    else localStorage.removeItem(unsavedKey(examJoinId));
+  } catch { /* เบราว์เซอร์ไม่ให้ใช้ storage — ยังมีสำเนาในหน่วยความจำ */ }
+}
+
 function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questions: initialQuestions, examBehaviorConsent, onSubmitted }) {
-  const [questions, setQuestions] = useState(initialQuestions);
+  const [questions, setQuestions] = useState(() => {
+    const stored = readUnsaved(examJoinId);
+    return stored.size ? initialQuestions.map((q) => (stored.has(q.id) ? { ...q, selected: stored.get(q.id) } : q)) : initialQuestions;
+  });
   const [activeIdx, setActiveIdx] = useState(0);
   const [remainingSec, setRemainingSec] = useState(() => {
     // deadline is anchored to the tutor's session-open time (examStartedAt),
@@ -166,7 +186,9 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
   const timingCompleteRef = useRef(true);
   const currentVisitRef = useRef(null);
   const answerQueueRef = useRef(Promise.resolve());
-  const unsavedAnswersRef = useRef(new Map());
+  const unsavedAnswersRef = useRef(null);
+  if (!unsavedAnswersRef.current) unsavedAnswersRef.current = readUnsaved(examJoinId);
+  const persistUnsaved = useCallback(() => writeUnsaved(examJoinId, unsavedAnswersRef.current), [examJoinId]);
   // (แก้บั๊ก) ใช้แจ้งเตือนตอน autosave คำตอบล้มเหลว — ดูจุดแก้ที่ pickAnswer ด้านล่าง
   const { toasts, showToast, removeToast } = useToast();
 
@@ -203,6 +225,22 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     queueTiming(() => logQuestionEnter(visit));
   }, [examJoinId, examBehaviorConsent, queueTiming]);
 
+  // ติวเตอร์ปิดสอบ/หมดเวลา ระหว่างที่ยังทำอยู่ — server ส่งข้อสอบให้แล้ว (ตอบ 409)
+  // ดึงคะแนนที่ส่งไว้มาแสดงแทนการเด้ง error
+  const handleClosedByServer = useCallback(async () => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
+    try {
+      const result = await submitExam(examJoinId, userId, { timingSessionId: timingSessionRef.current, timingComplete: false });
+      unsavedAnswersRef.current.clear();
+      persistUnsaved();
+      onSubmitted({ ...result, closedByServer: true });
+    } catch {
+      submittedRef.current = false;
+      setError("การสอบถูกปิดแล้ว กรุณารีเฟรชหน้าเพื่อดูคะแนน");
+    }
+  }, [examJoinId, userId, onSubmitted, persistUnsaved]);
+
   const doSubmit = useCallback(async () => {
     if (submittedRef.current) return;
     submittedRef.current = true;
@@ -212,14 +250,22 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
       // A last click must finish saving before the backend locks and grades the attempt.
       await answerQueueRef.current;
       for (const [questionId, selected] of unsavedAnswersRef.current) {
-        await saveAnswer({ examJoinId, userId, questionId, selected });
+        try {
+          await saveAnswer({ examJoinId, userId, questionId, selected });
+        } catch (err) {
+          // ถูกส่งไปแล้วฝั่ง server (ปิดสอบ/หมดเวลา) — ข้ามไปส่งเพื่อรับคะแนน
+          if (err.response?.status !== 409) throw err;
+        }
         unsavedAnswersRef.current.delete(questionId);
+        persistUnsaved();
       }
       await closingVisit;
       const result = await submitExam(examJoinId, userId, {
         timingSessionId: timingSessionRef.current,
         timingComplete: examBehaviorConsent !== false && timingCompleteRef.current,
       });
+      unsavedAnswersRef.current.clear();
+      persistUnsaved();
       onSubmitted(result);
     } catch (err) {
       console.error("Submit failed:", err);
@@ -229,7 +275,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     } finally {
       setSubmitting(false);
     }
-  }, [examJoinId, userId, onSubmitted, examBehaviorConsent, closeVisit, openVisit, current?.id]);
+  }, [examJoinId, userId, onSubmitted, examBehaviorConsent, closeVisit, openVisit, current?.id, persistUnsaved]);
 
   // Countdown — auto-submits the moment time runs out.
   useEffect(() => {
@@ -293,18 +339,49 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
     };
   }, [examJoinId, examBehaviorConsent]);
 
+  // กลับมาหลังรีเฟรช/ปิดแท็บ: ส่งคำตอบที่ค้างไว้ขึ้นเซิร์ฟเวอร์อีกครั้ง
+  useEffect(() => {
+    const pending = [...unsavedAnswersRef.current];
+    if (!pending.length) return;
+    answerQueueRef.current = answerQueueRef.current.then(async () => {
+      for (const [questionId, selected] of pending) {
+        try {
+          await saveAnswer({ examJoinId, userId, questionId, selected });
+          if (unsavedAnswersRef.current.get(questionId) === selected) { unsavedAnswersRef.current.delete(questionId); persistUnsaved(); }
+        } catch (err) {
+          if (err.response?.status === 409) { handleClosedByServer(); return; }
+          // ยังไม่ผ่าน — เก็บไว้ ระบบจะลองอีกครั้งตอนกดส่ง
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ยังมีคำตอบที่บันทึกไม่สำเร็จ แล้วจะปิด/รีเฟรชหน้า → ให้เบราว์เซอร์ถามยืนยันก่อน
+  useEffect(() => {
+    const onBeforeUnload = (e) => {
+      if (submittedRef.current || !unsavedAnswersRef.current.size) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
   const pickAnswer = (optIdx) => {
     if (submittedRef.current) return;
     setQuestions((prev) => prev.map((q, i) => (i === activeIdx ? { ...q, selected: optIdx } : q)));
     const questionId = current.id;
     // Preserve answer order, including rapid changes to the same question.
     unsavedAnswersRef.current.set(questionId, optIdx);
+    persistUnsaved();
     answerQueueRef.current = answerQueueRef.current.then(async () => {
       try {
         try { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
         catch { await saveAnswer({ examJoinId, userId, questionId, selected: optIdx }); }
-        if (unsavedAnswersRef.current.get(questionId) === optIdx) unsavedAnswersRef.current.delete(questionId);
+        if (unsavedAnswersRef.current.get(questionId) === optIdx) { unsavedAnswersRef.current.delete(questionId); persistUnsaved(); }
       } catch (err) {
+        if (err.response?.status === 409) { handleClosedByServer(); return; }
         console.error("Autosave failed:", err);
         showToast?.("error", "บันทึกคำตอบไม่สำเร็จ", "ระบบจะลองบันทึกอีกครั้งก่อนส่งข้อสอบ");
       }
@@ -330,12 +407,13 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 mb-5">
             <div className="flex min-w-0 items-baseline gap-3">
               <span className="text-2xl font-bold text-orange-500">{activeIdx + 1}.</span>
-              <p className="text-lg font-medium text-slate-900 leading-relaxed break-words">{current.text}</p>
+              {current.text && <p className="text-lg font-medium text-slate-900 leading-relaxed whitespace-pre-wrap break-words"><ExamMathText text={current.text} /></p>}
             </div>
             <span className="flex-shrink-0 text-sm font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
               {fmtScore(current.score)} คะแนน
             </span>
           </div>
+          {current.imagePath && <img src={current.imagePath} alt={`รูปประกอบโจทย์ข้อที่ ${activeIdx + 1}`} className="mb-5 max-h-[28rem] max-w-full rounded-xl border border-slate-200 object-contain" />}
           <div className="space-y-3">
             {OPTION_LABELS.map((label, optIdx) => {
               const isSelected = current.selected === optIdx;
@@ -346,7 +424,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
                   className={`w-full flex items-center gap-3 sm:gap-4 px-3.5 sm:px-5 py-3.5 sm:py-4 rounded-2xl border-2 text-left transition ${isSelected ? "border-orange-400 bg-orange-50" : "border-slate-200 hover:border-orange-200"}`}
                 >
                   <span className={`h-8 w-8 rounded-lg flex items-center justify-center text-sm font-bold flex-shrink-0 ${isSelected ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600"}`}>{label}</span>
-                  <span className="min-w-0 flex-1 break-words text-base text-slate-800">{current.options?.[optIdx]}</span>
+                  <span className="min-w-0 flex-1 whitespace-pre-wrap break-words text-base text-slate-800"><ExamMathText text={current.options?.[optIdx]} /></span>
                   {isSelected && <Check className="h-5 w-5 text-orange-600 ml-auto flex-shrink-0" />}
                 </button>
               );
@@ -469,6 +547,7 @@ function ResultCard({ result }) {
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center space-y-4">
         <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
         <h1 className="text-lg font-bold text-slate-900">ส่งข้อสอบเรียบร้อยแล้ว</h1>
+        {result.closedByServer && <p className="text-sm text-slate-500">ติวเตอร์ปิดการสอบแล้ว ระบบส่งข้อสอบให้ด้วยคำตอบที่บันทึกไว้</p>}
         <div className="bg-slate-50 rounded-xl p-5">
           <p className="text-sm text-slate-500 mb-1">คะแนนสอบรอบนี้</p>
           <p className="text-3xl font-bold text-orange-600">
@@ -529,6 +608,7 @@ export default function StudentExam() {
   const [result, setResult] = useState(null);
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!userId || !localStorage.getItem("student_token") || localStorage.getItem("user_role") !== "student") {
@@ -536,6 +616,7 @@ export default function StudentExam() {
       return;
     }
     let cancelled = false;
+    setPhase("loading");
     fetchExamByToken(token, userId)
       .then((data) => {
         if (cancelled) return;
@@ -559,7 +640,7 @@ export default function StudentExam() {
         setPhase("error");
       });
     return () => { cancelled = true; };
-  }, [token, userId, navigate]);
+  }, [token, userId, navigate, reloadKey]);
 
   const handleStart = async () => {
     setStarting(true);
@@ -599,6 +680,17 @@ export default function StudentExam() {
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
           <p className="text-sm text-slate-600">{errorMsg}</p>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            <button type="button" onClick={() => setReloadKey((k) => k + 1)}
+              className={`${BTN.primary} rounded-xl px-4 py-2 text-sm font-semibold`}>ลองใหม่</button>
+            <button type="button"
+              onClick={() => navigate(cameFrom?.courseId && cameFrom?.subjectId
+                ? `/profile/course/${cameFrom.courseId}/subject/${cameFrom.subjectId}`
+                : "/profile/my-courses", cameFrom?.subjectId ? { state: { tab: "exam" } } : undefined)}
+              className={`${BTN.secondary} rounded-xl px-4 py-2 text-sm font-semibold`}>
+              {cameFrom?.subjectId ? "กลับไปหน้ารายวิชา" : "กลับไปคอร์สเรียนของฉัน"}
+            </button>
+          </div>
         </div>
       </PageShell>
     );

@@ -6,7 +6,7 @@ import { API_URL } from "../config";
 const sessionLabel = session => `${new Date(session.startsAt).toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric" })} · ${session.startTime}–${session.endTime}${session.room ? ` · ${session.room}` : ""}`;
 const keyed = topics => topics.map(topic => ({ ...topic, key: `saved-${topic.id}` }));
 
-export default function TutorTeachingTopics({ courseId, subjectId, token }) {
+export default function TutorTeachingTopics({ courseId, subjectId, token, assignmentId }) {
   const [plan, setPlan] = useState({ topics: [], sessions: [] });
   const [draft, setDraft] = useState([]);
   const [editing, setEditing] = useState(false);
@@ -16,11 +16,11 @@ export default function TutorTeachingTopics({ courseId, subjectId, token }) {
   const load = useCallback(async () => {
     setLoading(true); setError(""); setEditing(false);
     try {
-      const { data } = await axios.get(`${API_URL}/api/tutor-content/teaching-plan`, { params: { courseId, subjectId }, headers: { Authorization: `Bearer ${token}` } });
+      const { data } = await axios.get(`${API_URL}/api/tutor-content/teaching-plan`, { params: { courseId, subjectId, ...(assignmentId ? { assignmentId } : {}) }, headers: { Authorization: `Bearer ${token}` } });
       setPlan(data); setDraft(keyed(data.topics));
     } catch (err) { setError(err.response?.data?.message || "โหลดแผนการสอนไม่สำเร็จ"); }
     finally { setLoading(false); }
-  }, [courseId, subjectId, token]);
+  }, [courseId, subjectId, token, assignmentId]);
   useEffect(() => { load(); }, [load]);
   const change = (key, patch) => setDraft(items => items.map(item => item.key === key ? { ...item, ...patch } : item));
   const move = (index, delta) => setDraft(items => { const next = [...items]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; return next; });

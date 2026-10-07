@@ -10,6 +10,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { TrendingUp as LuTrendingUp } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 
 // ─── ภาพรวมพัฒนาการ — ทางลัดจากเมนู ──────────────────────────────────────────
 // หน้าวิเคราะห์ผูกกับ "คอร์ส + วิชา" โดยธรรมชาติ (TutorExamAnalytics ต้องมีทั้งสองค่า
@@ -42,6 +43,7 @@ export default function TutorProgressOverview() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!tutorId) {
@@ -50,6 +52,8 @@ export default function TutorProgressOverview() {
       return;
     }
     let cancelled = false;
+    setLoading(true);
+    setError("");
     axios
       .get(`${API_URL}/coursestutor?adminId=${tutorId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -81,7 +85,7 @@ export default function TutorProgressOverview() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [tutorId, token]);
+  }, [tutorId, token, reloadKey]);
 
   const stats = useMemo(() => {
     const courses = new Map();
@@ -209,7 +213,7 @@ export default function TutorProgressOverview() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <ErrorState title={error} onRetry={() => setReloadKey((k) => k + 1)} />}
 
       {!error && courseCards.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">

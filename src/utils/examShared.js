@@ -61,12 +61,13 @@ export function isExamReady(exam) {
   if (qs.length === 0) return false;
   const target = Number(exam.settings?.totalQuestions) || 0;
   if (target && qs.length < target) return false;
-  return qs.every((q) => q.text?.trim() && q.options?.every((o) => o.trim()) && q.correct !== null && q.correct !== undefined);
+  return qs.every((q) => (q.text?.trim() || q.imagePath) && q.options?.every((o) => o.trim()) && q.correct !== null && q.correct !== undefined);
 }
 
 export const emptyQuestion = () => ({
   id: `new-${Date.now()}-${Math.random()}`,
   text: "",
+  imagePath: null,
   options: ["", "", "", ""],
   correct: null,
   score: 1,
@@ -78,7 +79,7 @@ export const emptyQuestion = () => ({
 
 // ── xlsx template / import (parsing only — saving goes through addQuestions) ─
 export const downloadXlsxTemplate = () => {
-  const headers = ["bank_id", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
+  const headers = ["bank_id", "question", "image_path", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
   const sample = [
     { bank_id: "", question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต", explanation: "แยกตัวประกอบได้ (x−2)(x−3)=0 จึงได้ x=2 หรือ x=3", grade_level: "ม.3" },
     { bank_id: "", question: "หาค่า sin 30° + cos 60°", option_a: "0", option_b: "0.5", option_c: "1", option_d: "√2", correct_answer: "C", score: 2, level: "ปานกลาง", category: "ตรีโกณมิติ", explanation: "", grade_level: "" },
@@ -86,12 +87,13 @@ export const downloadXlsxTemplate = () => {
   const wb = XLSX.utils.book_new();
   const wsData = [headers, ...sample.map((r) => headers.map((h) => r[h]))];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
+  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 65 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
   const instr = [
     ["📋 คำอธิบาย Template ข้อสอบ"], [],
     ["คอลัมน์", "คำอธิบาย", "ค่าที่รองรับ", "บังคับ?"],
     ["bank_id", "รหัสข้อเดิมในคลัง — ใส่มาเมื่อต้องการแก้ข้อเดิม", "เว้นว่าง = เพิ่มเป็นข้อใหม่ / มีเลข = อัปเดตทับข้อนั้น", "ไม่บังคับ"],
-    ["question", "โจทย์ข้อสอบ", "ข้อความ (รองรับ LaTeX เช่น $x^2$)", "✅ บังคับ"],
+    ["question", "โจทย์ข้อสอบ", "ข้อความ หรือเว้นว่างถ้ามี image_path", "ข้อความหรือรูปอย่างใดอย่างหนึ่ง"],
+    ["image_path", "รูปโจทย์", "พาธของรูปที่อัปโหลดผ่านระบบแล้ว; ไฟล์ Excel ไม่อัปโหลดภาพให้", "ไม่บังคับ"],
     ["option_a", "ตัวเลือก A", "ข้อความ", "✅ บังคับ"],
     ["option_b", "ตัวเลือก B", "ข้อความ", "✅ บังคับ"],
     ["option_c", "ตัวเลือก C", "ข้อความ", "✅ บังคับ"],
@@ -116,12 +118,13 @@ export const downloadXlsxTemplate = () => {
 
 // ── export คลังทั้งวิชาเป็น .xlsx ────────────────────────────────────────────
 // หัวตารางตรงกับ template เป๊ะ ๆ และอยู่ชีตแรก เพื่อให้แก้ใน Excel แล้วนำเข้ากลับได้ทันที
-// (parseXlsx อ่านเฉพาะชีตแรก) — คอลัมน์ bank_id มีไว้ให้คนอ่านอ้างอิงเฉย ๆ ระบบไม่ได้ใช้
+// (parseXlsx อ่านเฉพาะชีตแรก) — คอลัมน์ bank_id ใช้อัปเดตข้อเดิมในคลังเมื่อใส่กลับมา
 export const exportBankXlsx = (items, subjectName = "") => {
-  const headers = ["bank_id", "question", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
+  const headers = ["bank_id", "question", "image_path", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
   const rows = (items || []).map((it) => [
     it.id,
     it.text || "",
+    it.imagePath || "",
     it.options?.[0] || "",
     it.options?.[1] || "",
     it.options?.[2] || "",
@@ -136,7 +139,7 @@ export const exportBankXlsx = (items, subjectName = "") => {
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
+  ws["!cols"] = [{ wch: 9 }, { wch: 60 }, { wch: 65 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 16 }, { wch: 8 }, { wch: 12 }, { wch: 18 }, { wch: 50 }, { wch: 12 }];
   XLSX.utils.book_append_sheet(wb, ws, "คลังข้อสอบ");
 
   const today = new Date().toISOString().slice(0, 10);
@@ -154,10 +157,11 @@ export const parseXlsx = (file) =>
         const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
         const OPTION_MAP = { A: 0, B: 1, C: 2, D: 3 };
         const parsed = rows
-          .filter((r) => r.question && r.option_a)
+          .filter((r) => (r.question || r.image_path) && r.option_a)
           .map((r, i) => ({
             id: `import-${Date.now()}-${i}`,
             text: String(r.question || ""),
+            ...(String(r.image_path || "").trim() ? { imagePath: String(r.image_path).trim() } : {}),
             options: [String(r.option_a || ""), String(r.option_b || ""), String(r.option_c || ""), String(r.option_d || "")],
             // (แก้บั๊ก) เดิมไม่ trim() ก่อนเทียบ ทำให้ค่าที่มีช่องว่างเกินติดมาจากไฟล์ Excel เช่น
             // "A " (มีเว้นวรรคท้าย) เทียบไม่ตรงกับ key ใน OPTION_MAP แล้วถูกตั้งเป็น null แบบ
@@ -196,37 +200,6 @@ export async function fetchExamDetail(examId) {
 // PUT /api/exam/:examId/settings → { totalQuestions, duration, date }
 export async function updateExamSettings(examId, settings) {
   const { data } = await axios.put(`${API_BASE}/${examId}/settings`, settings, { headers: authHeaders() });
-  return data;
-}
-
-// POST /api/exam/:examId/questions → adds question(s) to the EXISTING exam.
-// `questions` is always an array (manual add sends length-1 arrays too).
-export async function addQuestions(examId, questions) {
-  const { data } = await axios.post(`${API_BASE}/${examId}/questions`, { questions }, { headers: authHeaders() });
-  return data;
-}
-
-// PUT /api/exam/questions/:questionId
-export async function updateQuestion(questionId, patch) {
-  const { data } = await axios.put(`${API_BASE}/questions/${questionId}`, patch, { headers: authHeaders() });
-  return data;
-}
-
-// DELETE /api/exam/questions/:questionId
-// PUT /api/exam/:examId/questions/scores — อัปเดตคะแนนหลายข้อพร้อมกัน (ปุ่มแบ่งคะแนนอัตโนมัติ)
-export async function bulkUpdateQuestionScores(examId, scores) {
-    const { data } = await axios.put(`${API_BASE}/${examId}/questions/scores`, { scores }, { headers: authHeaders() });
-    return data;
-}
-
-// DELETE /api/exam/:examId/questions — ลบข้อสอบทั้งชุดในครั้งเดียว
-export async function deleteAllQuestions(examId) {
-    const { data } = await axios.delete(`${API_BASE}/${examId}/questions`, { headers: authHeaders() });
-    return data;
-}
-
-export async function deleteQuestion(questionId) {
-  const { data } = await axios.delete(`${API_BASE}/questions/${questionId}`, { headers: authHeaders() });
   return data;
 }
 
@@ -303,14 +276,6 @@ export async function fetchTopicBreakdown(examId) {
   return data;
 }
 
-
-// GET /api/exam/subject/:subjectId/categories?adminId= → หมวดทั้งหมดที่เคยใช้ในวิชานี้ (ข้าม 3 รอบ)
-export async function fetchSubjectCategories({ subjectId, adminId }) {
-  const { data } = await axios.get(`${API_BASE}/subject/${subjectId}/categories`, { params: { adminId }, headers: authHeaders() });
-  return data;
-}
-
-
 // ── คลังข้อสอบของวิชา (/api/bank) ─────────────────────────────────────────────
 // คลังแยกจากชุดที่ใช้สอบจริง แก้ข้อในคลังไม่กระทบข้อสอบที่เคยใช้ไปแล้ว
 const BANK_BASE = `${API_URL}/api/bank`;
@@ -321,23 +286,18 @@ export async function fetchBank(subjectId) {
   return data;
 }
 
-// GET /api/bank/summary?subjectId= → [{ category, level, count }] ใช้เติมตารางตอนกรอกเงื่อนไข
-export async function fetchBankSummary(subjectId) {
-  const { data } = await axios.get(`${BANK_BASE}/summary`, { params: { subjectId }, headers: authHeaders() });
-  return data;
-}
-
-// GET /api/bank/usage-history?subjectId= → ชุดข้อสอบที่เคยใช้ไปแล้วในวิชานี้
-export async function fetchBankUsageHistory(subjectId) {
-  const { data } = await axios.get(`${BANK_BASE}/usage-history`, { params: { subjectId }, headers: authHeaders() });
-  return data;
-}
-
 // GET /api/bank/my-subjects → [{ subjectId, subjectName, total, categories, lastUpdatedAt }]
 // วิชาที่ครูคนนี้สอน พร้อมจำนวนข้อในคลังของตัวเอง ใช้เปิดคลังตรงจากเมนู
 export async function fetchMySubjects() {
   const { data } = await axios.get(`${BANK_BASE}/my-subjects`, { headers: authHeaders() });
   return data;
+}
+
+export async function uploadBankQuestionImage(file) {
+  const body = new FormData();
+  body.append('image', file);
+  const { data } = await axios.post(`${BANK_BASE}/image`, body, { headers: authHeaders() });
+  return data.imagePath;
 }
 
 // GET /api/bank/grade-levels → [{ id, label }] รายการระดับชั้นให้เลือกตอนเพิ่มข้อในคลัง
@@ -418,12 +378,6 @@ export async function applyExamSet({ examId, bankQuestionIds, applyTo = "all", t
     { examId, bankQuestionIds, applyTo, totalScore },
     { headers: authHeaders() }
   );
-  return data;
-}
-
-// PUT /api/exam/subject/:subjectId/categories/rename → รวม/เปลี่ยนชื่อหมวด (cascade ทุก exam ของวิชานี้)
-export async function renameSubjectCategory({ subjectId, adminId, from, to }) {
-  const { data } = await axios.put(`${API_BASE}/subject/${subjectId}/categories/rename`, { adminId, from, to }, { headers: authHeaders() });
   return data;
 }
 

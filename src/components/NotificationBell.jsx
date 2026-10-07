@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react';
+import { Bell, ChevronRight, Volume2, VolumeX, Play } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -23,6 +23,7 @@ export default function NotificationBell({ role, pagePath }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [muted, setMuted] = useState(() => isNotifySoundMuted(role));
+  const [soundHint, setSoundHint] = useState('');
   const api = `${API_URL}/api/${role}/notifications`;
   // Baseline for "new arrival" detection: null until the first successful load,
   // so the initial page load never plays a sound.
@@ -80,12 +81,15 @@ export default function NotificationBell({ role, pagePath }) {
     return () => { clearInterval(timer); document.removeEventListener('visibilitychange', poll); };
   }, [api]);
 
-  const toggleMute = () => {
-    setMuted(value => {
-      const next = !value;
-      setNotifySoundMuted(role, next);
-      return next;
-    });
+  const toggleMute = async () => {
+    const next = !mutedRef.current;
+    setMuted(next);
+    setNotifySoundMuted(role, next);
+    setSoundHint('');
+    if (!next) {
+      const played = await playNotifySound({ preview: true });
+      setSoundHint(played ? 'เปิดเสียงแล้ว' : 'เบราว์เซอร์ยังไม่อนุญาตเสียง ลองแตะหน้าจอแล้วเปิดอีกครั้ง');
+    }
   };
   useEffect(() => {
     const close = event => { if (ref.current && !ref.current.contains(event.target)) setOpen(false); };
@@ -103,12 +107,14 @@ export default function NotificationBell({ role, pagePath }) {
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <span className="font-bold text-gray-900">การแจ้งเตือน</span>
         <div className="flex items-center gap-2">
+          <button type="button" disabled={muted} onClick={async () => { const played = await playNotifySound({ preview: true }); setSoundHint(played ? 'เสียงตัวอย่างเล่นแล้ว' : 'เบราว์เซอร์ยังไม่อนุญาตเสียง ลองแตะหน้าจอแล้วกดอีกครั้ง'); }} title="ลองเสียงแจ้งเตือน" className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-gray-600 hover:bg-orange-50 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"><Play className="h-3.5 w-3.5" />ลองเสียง</button>
           <button type="button" onClick={toggleMute} aria-label={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} title={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} aria-pressed={muted} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-orange-50 hover:text-orange-500">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
           <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-600">ยังไม่อ่าน {unread}</span>
         </div>
       </div>
+      {soundHint && <p role="status" className="border-b border-gray-100 px-4 py-2 text-xs text-slate-600">{soundHint}</p>}
       <div className="max-h-[min(330px,calc(100dvh-230px))] overflow-y-auto sm:max-h-[330px]">
         {loading && items.length === 0 ? <p className="px-4 py-10 text-center text-sm text-gray-400">กำลังโหลด...</p> : items.length === 0 ? <div className="px-4 py-10 text-center"><Bell className="mx-auto mb-2 h-10 w-10 text-gray-200"/><p className="text-sm text-gray-400">ยังไม่มีการแจ้งเตือน</p></div> : items.slice(0, 5).map(item => <Link key={item.id} to={item.link || pagePath} onClick={() => setOpen(false)} className={`block border-b border-gray-50 px-4 py-3 transition hover:bg-orange-50 ${!item.isRead ? 'bg-orange-50/40' : ''}`}>
           <div className="flex items-start gap-3"><span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${item.isRead ? 'bg-gray-200' : 'bg-orange-500'}`}/><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-gray-900">{item.title}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-gray-600">{item.message}</p><p className="mt-1 text-[11px] text-gray-400">{ago(item.createdAt)}</p></div></div>

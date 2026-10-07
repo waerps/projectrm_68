@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import UIModal from "../components/ui/Modal";
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Megaphone, Plus, Search, Filter, Pencil, Trash2, Eye,
+    Megaphone, Plus, Search, Filter, Pencil, Trash2,
     Image as ImageIcon, Calendar, Users, X, Save,
     TrendingUp, Bell, BookOpen, PartyPopper, AlertCircle,
     ChevronLeft, ChevronRight, Loader2, Inbox, Images,
@@ -17,6 +17,10 @@ import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
 const API_BASE = `${API_URL}/api/admin/news`;
+const authHeaders = () => {
+    const token = localStorage.getItem('student_token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
 const SERVER_URL = API_URL;
 const ITEMS_PER_PAGE = 10;
 
@@ -46,6 +50,7 @@ const EMPTY_FORM = {
     // รูปเพิ่มเติม (มีอยู่แล้ว — กรณีแก้ไข)
     existingExtras: [],        // [{ImageId, ImagePath}]
     removedExtraIds: [],       // ImageId[] ที่จะลบ
+    publicityReviewConfirmed: false,
 };
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -288,6 +293,16 @@ function NewsForm({ formData, setFormData, onSubmit, onCancel, submitLabel, subm
                     multiple className="hidden" onChange={handleExtraChange} />
             </div>
 
+            {(formData.coverPreview || totalExtras > 0) && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+                <p className="font-semibold">ตรวจความยินยอมก่อนใช้ภาพนักเรียนประชาสัมพันธ์</p>
+                <p className="mt-1">หากรูปหรือวิดีโอระบุตัวนักเรียนได้ ให้ตรวจสถานะ “การใช้ภาพนักเรียนเพื่อประชาสัมพันธ์” ของนักเรียนแต่ละคนในคอร์สนั้นที่หน้าแอดมินนักเรียน ผู้ที่ไม่ยินยอมหรือยังไม่ตอบต้องไม่ปรากฏในสื่อที่จะเผยแพร่ รวมถึงเพจภายนอก ความยินยอมรูปบันทึกคาบเรียนใช้แทนกันไม่ได้</p>
+                <label className="mt-3 flex cursor-pointer items-start gap-2 font-medium">
+                    <input type="checkbox" className="mt-1" checked={formData.publicityReviewConfirmed}
+                        onChange={e => setFormData(f => ({ ...f, publicityReviewConfirmed: e.target.checked }))} />
+                    <span>ตรวจภาพและสถานะความยินยอมแล้ว หรือภาพนี้ไม่มีนักเรียนที่ระบุตัวได้</span>
+                </label>
+            </div>}
+
             {/* Buttons */}
             <div className="flex justify-end gap-3 pt-2">
                 <button onClick={onCancel}
@@ -334,7 +349,7 @@ export default function AdminAnnouncements() {
     // ── fetch ──────────────────────────────────────────────────────────────────
     const fetchStats = async () => {
         try {
-            const res = await fetch(`${API_BASE}/stats`);
+            const res = await fetch(`${API_BASE}/stats`, { headers: authHeaders() });
             if (!res.ok) return;
             setStats(await res.json());
         } catch (err) { console.error('fetchStats:', err); }
@@ -347,7 +362,7 @@ export default function AdminAnnouncements() {
             if (searchQuery) params.set('search', searchQuery);
             if (categoryFilter !== 'all') params.set('category', categoryFilter);
             if (targetFilter !== 'all') params.set('target', targetFilter);
-            const res = await fetch(`${API_BASE}?${params}`);
+            const res = await fetch(`${API_BASE}?${params}`, { headers: authHeaders() });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
             setAnnouncements(json.data ?? []);
@@ -371,8 +386,8 @@ export default function AdminAnnouncements() {
     const resetForm = () => setFormData(EMPTY_FORM);
 
     const displayed = statusFilter === 'all' ? announcements
-        : statusFilter === 'visible' ? announcements.filter(a => a.IsVisible === 1)
-            : announcements.filter(a => a.IsVisible !== 1);
+        : statusFilter === 'visible' ? announcements.filter(a => Number(a.IsPublished) === 1)
+            : announcements.filter(a => Number(a.IsPublished) !== 1);
 
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
@@ -394,29 +409,33 @@ export default function AdminAnnouncements() {
     // ── CRUD ───────────────────────────────────────────────────────────────────
     const handleAdd = async () => {
         if (!formData.title.trim()) return toast('กรุณาระบุหัวข้อข่าว');
+        if ((formData.coverPreview || formData.newExtraFiles.length || formData.existingExtras.length) && !formData.publicityReviewConfirmed) return toast('กรุณาตรวจภาพและความยินยอมก่อนบันทึกข่าว');
         setSubmitting(true);
         try {
-            const res = await fetch(API_BASE, { method: 'POST', body: buildMultipart() });
+            const res = await fetch(API_BASE, { method: 'POST', headers: authHeaders(), body: buildMultipart() });
             if (!res.ok) throw new Error(await res.text());
             await fetchAnnouncements(1);
             await fetchStats();
             setCurrentPage(1);
             resetForm();
             setShowAddModal(false);
+            toast('บันทึกฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม');
         } catch (err) { console.error(err); toast('เกิดข้อผิดพลาด ไม่สามารถเพิ่มข่าวได้'); }
         finally { setSubmitting(false); }
     };
 
     const handleEdit = async () => {
         if (!formData.title.trim()) return toast('กรุณาระบุหัวข้อข่าว');
+        if ((formData.coverPreview || formData.newExtraFiles.length || formData.existingExtras.length) && !formData.publicityReviewConfirmed) return toast('กรุณาตรวจภาพและความยินยอมก่อนบันทึกข่าว');
         setSubmitting(true);
         try {
-            const res = await fetch(`${API_BASE}/${selectedNews.NewsId}`, { method: 'PUT', body: buildMultipart() });
+            const res = await fetch(`${API_BASE}/${selectedNews.NewsId}`, { method: 'PUT', headers: authHeaders(), body: buildMultipart() });
             if (!res.ok) throw new Error(await res.text());
             await fetchAnnouncements(currentPage);
             await fetchStats();
             resetForm();
             setShowEditModal(false);
+            toast('บันทึกฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม');
         } catch (err) { console.error(err); toast('เกิดข้อผิดพลาด ไม่สามารถแก้ไขข่าวได้'); }
         finally { setSubmitting(false); }
     };
@@ -424,7 +443,7 @@ export default function AdminAnnouncements() {
     const handleDelete = async () => {
         setSubmitting(true);
         try {
-            const res = await fetch(`${API_BASE}/${selectedNews.NewsId}`, { method: 'DELETE' });
+            const res = await fetch(`${API_BASE}/${selectedNews.NewsId}`, { method: 'DELETE', headers: authHeaders() });
             if (!res.ok) throw new Error(await res.text());
             const newTotal = totalCount - 1;
             const maxPage = Math.max(1, Math.ceil(newTotal / ITEMS_PER_PAGE));
@@ -436,6 +455,15 @@ export default function AdminAnnouncements() {
             setSelectedNews(null);
         } catch (err) { console.error(err); toast('เกิดข้อผิดพลาด ไม่สามารถลบข่าวได้'); }
         finally { setSubmitting(false); }
+    };
+
+    const handlePublish = async (item) => {
+        try {
+            const res = await fetch(`${API_BASE}/${item.NewsId}/publish`, { method: 'POST', headers: authHeaders() });
+            if (!res.ok) throw new Error(await res.text());
+            await fetchAnnouncements(currentPage);
+            toast('เผยแพร่ข่าวแล้ว');
+        } catch (err) { console.error(err); toast('เผยแพร่ข่าวไม่สำเร็จ'); }
     };
 
     const openEditModal = (item) => {
@@ -468,7 +496,7 @@ export default function AdminAnnouncements() {
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                 {[
                     { label: 'ข่าวทั้งหมด', value: stats.total, color: 'bg-blue-600', Icon: Megaphone },
-                    { label: 'ข่าวสำหรับติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Eye },
+                    { label: 'ข่าวสำหรับติวเตอร์', value: stats.tutorCount ?? 0, color: 'bg-green-500', Icon: Users },
                     { label: 'ข่าวสำหรับนักเรียน', value: stats.studentCount ?? 0, color: 'bg-purple-500', Icon: TrendingUp },
                 ].map(({ label, value, color, Icon }) => (
                     <div key={label} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-4 flex items-center gap-3">
@@ -513,7 +541,7 @@ export default function AdminAnnouncements() {
                     <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
             ) : loadError ? (
-                <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" />
+                <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { fetchAnnouncements(currentPage); fetchStats(); }} />
             ) : displayed.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
                     <Inbox className="h-14 w-14 text-slate-300 mx-auto mb-3" />
@@ -555,6 +583,8 @@ export default function AdminAnnouncements() {
                                                 {item.Title}
                                             </h3>
                                             <div className="flex items-center gap-1.5 shrink-0">
+                                                {(Number(item.IsPublished) !== 1 || item.HasDraft) && <button onClick={() => handlePublish(item)}
+                                                    className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-white bg-green-600 rounded-lg hover:bg-green-700">เผยแพร่</button>}
                                                 <button onClick={() => openEditModal(item)}
                                                     className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition">
                                                     <Pencil className="h-3.5 w-3.5" /> แก้ไข
@@ -567,13 +597,11 @@ export default function AdminAnnouncements() {
                                         </div>
 
                                         <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${Number(item.IsPublished) === 1 && !item.HasDraft ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>{item.HasDraft ? 'มีฉบับร่าง' : Number(item.IsPublished) === 1 ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span>
                                             <CategoryBadge category={item.Category} />
                                             <TargetBadge target={item.TargetAudience} />
                                             <span className="text-xs text-slate-500 flex items-center gap-1">
                                                 <Calendar className="h-3 w-3" />{formatThaiDate(item.Created_at)}
-                                            </span>
-                                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                                                <Eye className="h-3 w-3" />{item.Views ?? 0} ครั้ง
                                             </span>
                                         </div>
 

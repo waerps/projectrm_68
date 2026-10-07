@@ -15,6 +15,7 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import UIModal from "../components/ui/Modal";
 import { confirmDialog, toast } from "../components/ui/dialogs";
+import { CoursePublishModal, PendingDraftsCallout } from "../components/CourseDrafts";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
@@ -170,9 +171,9 @@ function Avatar({ photo, size = "w-6 h-6", name, seed }) {
   }
   if (name) {
     return (
-      <div className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
+      <span className={`${size} rounded-full flex items-center justify-center font-bold text-white shrink-0 ${colorForSeed(seed ?? name)}`}>
         <span className="text-[11px] leading-none">{initialsOf(name)}</span>
-      </div>
+      </span>
     );
   }
   return <span className={`${size} rounded-full bg-slate-200 shrink-0`} />;
@@ -579,9 +580,9 @@ function StudentPreviewModal({ course, onClose }) {
                         ) : (
                           <PlayCircle className="h-10 w-10 text-slate-300" />
                         )}
-                        <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+                        <span className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                           <PlayCircle className="h-12 w-12 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
-                        </div>
+                        </span>
                       </button>
                     </div>
                   )}
@@ -877,6 +878,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const [editingRateId, setEditingRateId] = useState(null);
   const [manualIds, setManualIds] = useState(new Set());
   const [applyingAll, setApplyingAll] = useState(false);
+  const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
 
   const fetchSubjects = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
@@ -1020,14 +1022,68 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
-  const tutorOptions = allTutors.map(t => ({
+  // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
+  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
   }));
+  const topicsReady = subjects.filter((s) => s.TeachingTopics?.length).length;
+  const allPlanTopics = subjects.flatMap((subject) => subject.TeachingTopics || []);
+  const scheduledPlanTopics = allPlanTopics.filter((topic) => topic.isScheduled).length;
+  const taughtPlanTopics = allPlanTopics.filter((topic) => topic.isTaught).length;
+  const toggleTopics = (id) => setExpandedTopicIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
 
   return (
     <div className="space-y-3">
+      <section className="overflow-hidden rounded-2xl border border-orange-200 bg-white shadow-[0_12px_30px_-20px_rgba(194,65,12,0.55)]">
+        <div className="relative overflow-hidden bg-gradient-to-r from-orange-500 via-orange-500 to-amber-500 px-4 py-4 text-white sm:px-5">
+          <BookOpen className="pointer-events-none absolute -right-3 -top-5 h-28 w-28 rotate-12 text-white/10" aria-hidden="true" />
+          <div className="relative flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20"><BookOpen className="h-5 w-5" /></span>
+              <div>
+                <h4 className="text-base font-bold">แผนหัวข้อการสอน</h4>
+                <p className="mt-0.5 text-xs leading-5 text-white/85">ภาพรวมที่ติวเตอร์เตรียมสอน แยกตามวิชาและผู้สอน</p>
+              </div>
+            </div>
+            <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">{topicsReady}/{subjects.length} วิชาระบุแล้ว</span>
+          </div>
+          <div className="relative mt-3 h-1.5 overflow-hidden rounded-full bg-white/25" role="progressbar" aria-label="ความครบถ้วนของแผนหัวข้อการสอน" aria-valuemin={0} aria-valuemax={subjects.length} aria-valuenow={topicsReady}>
+            <div className="h-full rounded-full bg-white transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${subjects.length ? (topicsReady / subjects.length) * 100 : 0}%` }} />
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 border-b border-orange-100 bg-orange-50/50 p-3 text-center text-xs sm:p-4"><div><p className="text-lg font-bold text-slate-900">{allPlanTopics.length}</p><p className="text-slate-600">หัวข้อในแผน</p></div><div><p className="text-lg font-bold text-orange-700">{scheduledPlanTopics}</p><p className="text-slate-600">คาดว่าจะสอน</p></div><div><p className="text-lg font-bold text-emerald-700">{taughtPlanTopics}</p><p className="text-slate-600">สอนจริงแล้ว</p></div></div>
+        <div className="space-y-2 p-3 sm:p-4">
+          {subjects.length === 0 && <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">เมื่อเพิ่มวิชาและติวเตอร์แล้ว แผนหัวข้อจะปรากฏที่นี่</p>}
+          {subjects.map((s) => {
+            const topics = s.TeachingTopics || [];
+            const expanded = expandedTopicIds.has(s.TutorCourseDetailId);
+            return <div key={`outline-${s.TutorCourseDetailId}`} className="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-3 transition-colors duration-200 hover:border-orange-200 hover:bg-orange-50/30 sm:px-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
+                  <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-800">{s.SubjectName}</p><p className="truncate text-xs text-slate-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p></div>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${topics.length ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{topics.length ? `${topics.length} หัวข้อ` : "รอติวเตอร์ระบุ"}</span>
+              </div>
+              {topics.length ? <>
+                <ol className={`mt-3 space-y-1.5 overflow-y-auto ${expanded ? "max-h-64" : "max-h-none"}`}>
+                  {(expanded ? topics : topics.slice(0, 2)).map((topic, index) => <li key={topic.id || index} className="flex items-start gap-2 text-sm leading-6 text-slate-700"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-white text-xs font-bold text-orange-600 shadow-sm">{index + 1}</span><span className="min-w-0 flex-1 break-words">{topic.title}{topic.plannedLessons?.length > 0 && <span className="block text-xs text-slate-500">คาดว่า {topic.plannedLessons.map(lesson => `${lesson.date} ${lesson.startTime}–${lesson.endTime}`).join(' · ')}</span>}{topic.taughtLessons?.map((lesson, lessonIndex) => <span key={lessonIndex} className="block text-xs text-emerald-700">สอน {lesson.date}{lesson.detail ? ` · ${lesson.detail}` : ''}</span>)}</span><span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${topic.isTaught ? 'bg-emerald-50 text-emerald-700' : topic.isScheduled ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-600'}`}>{topic.isTaught ? 'สอนแล้ว' : topic.isScheduled ? 'คาดว่าจะสอน' : 'ในแผน'}</span></li>)}
+                </ol>
+                {topics.length > 2 && <button type="button" onClick={() => toggleTopics(s.TutorCourseDetailId)} aria-expanded={expanded} className="mt-2 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-100">{expanded ? "ย่อรายการ" : `ดูอีก ${topics.length - 2} หัวข้อ`}<ChevronDown className={`h-4 w-4 transition-transform duration-300 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`} /></button>}
+              </> : <p className="mt-2 text-xs text-slate-500">ติวเตอร์ยังไม่ได้บันทึกหัวข้อของวิชานี้</p>}
+            </div>;
+          })}
+          {subjects.length > 0 && <p className="flex items-start gap-1.5 px-1 pt-1 text-xs leading-5 text-slate-500"><Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />หัวข้อระดับคอร์สจะแสดงที่นี่หลังติวเตอร์บันทึกจากหน้าจัดการเนื้อหา</p>}
+        </div>
+      </section>
+
       <SubjectAddForm
         newRow={newRow}
         setNewRow={setNewRow}
@@ -1414,9 +1470,9 @@ function CoursePreviewVideos({ courseId, showToast }) {
               ) : (
                 <PlayCircle className="h-5 w-5 text-slate-300" />
               )}
-              <div className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
+              <span className="absolute inset-0 bg-black/20 lg:bg-black/0 lg:group-hover:bg-black/40 flex items-center justify-center transition">
                 <PlayCircle className="h-5 w-5 text-white opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition" />
-              </div>
+              </span>
             </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-800 truncate">{v.VideoTitle}</p>
@@ -1839,7 +1895,7 @@ function InstallmentAmountsEditor({ installments, fullCost, value, onChange }) {
 // ส่งต้นทุน/ชั่วโมงกลับมาคำนวณได้แม้ผู้ใช้ยังไม่ได้เปิดขั้นนั้น
 const COURSE_FORM_STEPS = [
   { key: "basic", label: "ข้อมูลคอร์ส", short: "ข้อมูลคอร์ส", icon: BookOpen, desc: "ชื่อคอร์ส ช่วงเวลาเรียน และการตั้งค่า" },
-  { key: "subjects", label: "วิชาและติวเตอร์", short: "วิชา/ติวเตอร์", icon: Tag, desc: "กำหนดวิชา ติวเตอร์ และชั่วโมงเรียน" },
+  { key: "subjects", label: "วิชา ติวเตอร์ และแผนการสอน", short: "วิชา/แผน", icon: Tag, desc: "ดูแผนหัวข้อ กำหนดวิชา ติวเตอร์ และชั่วโมงเรียน" },
   { key: "pricing", label: "ราคาและที่นั่ง", short: "ราคา/ที่นั่ง", icon: DollarSign, desc: "ราคา จำนวนที่นั่ง และการผ่อนชำระ" },
   { key: "students", label: "นักเรียน", short: "นักเรียน", icon: Users, desc: "เพิ่มนักเรียนเข้าคอร์ส (ไม่บังคับ)" },
   { key: "media", label: "สื่อประกอบ", short: "สื่อ", icon: ImagePlus, desc: "รูปปก รูปประกาศ และคลิปตัวอย่าง" },
@@ -1962,25 +2018,15 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       : distributeInstallments(fullCost, installmentsCount))
     : [];
   const installmentSum = currentInstallmentAmounts.reduce((s, v) => s + Number(v || 0), 0);
-  const installmentMismatch = isInstallmentEnabled && Math.abs(fullCost - installmentSum) > 0.01;
+  const installmentMismatch = isInstallmentEnabled && form.Price !== "" && form.Price !== null && Math.abs(fullCost - installmentSum) > 0.01;
 
   // ── ช่องที่ยังไม่ครบ/ไม่ถูกต้อง (กติกาเดียวกับตอนบันทึกและฝั่ง backend) ──
   const errors = {};
   if (!String(form.CourseName || "").trim()) errors.CourseName = "กรุณากรอกชื่อคอร์ส";
-  if (!form.StartDate) errors.StartDate = "กรุณาเลือกวันเริ่มสอน";
-  if (!form.LastDate) errors.LastDate = "กรุณาเลือกวันสิ้นสุด";
-  if (form.StartDate && form.LastDate) {
-    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
-      errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง กรุณาลบแล้วเลือกวันที่ใหม่จากปฏิทิน";
-    } else if (new Date(form.StartDate) >= new Date(form.LastDate)) {
-      errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
-    }
-  }
-  if (!form.YearId) errors.YearId = "กรุณาเลือกปีการศึกษา";
-  if (hoursMismatch) {
-    errors.hours = `จำนวนชั่วโมงรายวิชา${hoursDiff > 0 ? "ยังไม่ครบ" : "เกินชั่วโมงรวมของคอร์ส"} (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`;
-  }
-  if (!form.Price || Number(form.Price) <= 0) errors.Price = "กรุณากรอกราคาเต็มให้มากกว่า 0";
+  if (form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) errors.StartDate = "รูปแบบวันที่ไม่ถูกต้อง";
+  if (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง";
+  if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
+  if (form.Price !== "" && form.Price !== null && (!Number.isFinite(Number(form.Price)) || Number(form.Price) < 0)) errors.Price = "ราคาที่กรอกต้องไม่ติดลบ";
   if (form.Discount !== "" && Number(form.Discount || 0) > Number(form.Price || 0) && Number(form.Price) > 0) {
     errors.Discount = "ส่วนลดต้องไม่มากกว่าราคาเต็ม";
   }
@@ -2022,26 +2068,16 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     if (firstErrorStep >= 0) goTo(firstErrorStep);
 
     if (!form.CourseName.trim()) return toast("กรุณากรอกชื่อคอร์ส");
-    if (!form.StartDate || !form.LastDate) return toast("กรุณากรอกวันเริ่มและวันสิ้นสุด");
-    if (!COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10)) || !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) {
+    if ((form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) || (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10)))) {
       return showToast(
         "error",
         "รูปแบบวันที่ไม่ถูกต้อง",
         "กรุณาลบข้อมูลในช่องวันเริ่มสอน/วันสิ้นสุด แล้วเลือกวันที่ใหม่จากปฏิทินอีกครั้ง"
       );
     }
-    if (new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
-    if (!form.Price || Number(form.Price) <= 0) return toast("กรุณากรอกราคาคอร์สให้ถูกต้อง (มากกว่า 0)");
-    if (!form.YearId) return toast("กรุณากรอกปีการศึกษา");
+    if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    if (errors.Price) return toast(errors.Price);
     if (errors.Discount) return toast(errors.Discount);
-
-    if (hoursMismatch) {
-      return showToast(
-        "error",
-        hoursDiff > 0 ? "จำนวนชั่วโมงรายวิชายังไม่ครบ" : "จำนวนชั่วโมงรายวิชาเกินกว่าชั่วโมงรวมของคอร์ส",
-        `กรุณาตรวจสอบอีกครั้ง (${hoursDiff > 0 ? "ขาด" : "เกิน"} ${formatHoursLabel(Math.abs(hoursDiff))})`
-      );
-    }
 
     // ★ แก้ (ข้อ 2): บล็อกบันทึกถ้ายอดผ่อนรายงวดรวมกันไม่เท่ากับราคาสุทธิ
     if (installmentMismatch) {
@@ -2056,7 +2092,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       ...form,
       FullCost: fullCost,
       // ★ แปลงเป็น Number ให้ชัวร์ก่อนส่ง กันกรณีมีข้อความดิบค้าง เช่น "8." หลุดเข้ามาตอนยังไม่ blur
-      InstallmentAmounts: isInstallmentEnabled ? currentInstallmentAmounts.map(v => Number(v || 0)) : null,
+      InstallmentAmounts: isInstallmentEnabled && form.Price !== "" && form.Price !== null ? currentInstallmentAmounts.map(v => Number(v || 0)) : null,
       pendingSubjects,
       pendingStudents,
     });
@@ -2095,7 +2131,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       step: 2, title: "ราคาและที่นั่ง", rows: [
         { label: "ราคาเต็ม", value: Number(form.Price) > 0 ? `฿${formatPrice(form.Price)}` : null, err: errors.Price },
         { label: "ส่วนลด", value: `฿${formatPrice(form.Discount)}`, err: errors.Discount },
-        { label: "ราคาสุทธิ", value: `฿${formatPrice(fullCost)}` },
+        { label: "ราคาสุทธิ", value: form.Price === "" || form.Price === null ? null : `฿${formatPrice(fullCost)}` },
         { label: "จำนวนที่นั่ง", value: form.MaxStudents ? `${form.MaxStudents} คน` : "ไม่จำกัด" },
         { label: "การชำระเงิน", value: isInstallmentEnabled ? `ผ่อน ${installmentsCount} งวด` : "จ่ายครั้งเดียว", err: errors.installments },
       ],
@@ -2115,7 +2151,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   ];
 
   const stepWarn = stepHasError(step) && touchedSteps.has(step) && step !== lastStep;
-  const hoursTone = !hoursMismatch ? "success" : hoursDiff > 0 ? "warning" : "danger";
+  const hoursTone = !hoursMismatch ? "success" : "warning";
   const hoursPct = targetCourseHours > 0 ? Math.min(100, Math.round((addedSubjectHours / targetCourseHours) * 100)) : 0;
 
   // layout: [stepper ตรึงบน] · [เนื้อหาเลื่อนได้] · [แถบปุ่มตรึงล่าง] — ใช้คู่กับ Modal bodyClassName="p-0 flex flex-col"
@@ -2204,18 +2240,18 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     placeholder="เช่น คอร์สรวม ป.3 ทั้งหมด 4 วิชา"
                   />
                 </FormField>
-                <FormField label="วันเริ่มสอน" required error={errOf("StartDate")}>
+                <FormField label="วันเริ่มสอน" optional error={errOf("StartDate")}>
                   <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls(errOf("StartDate"))} />
                 </FormField>
                 <FormField
-                  label="วันสิ้นสุด" required
+                  label="วันสิ้นสุด" optional
                   error={errOf("LastDate") || (form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) ? "วันสิ้นสุดต้องมาหลังวันเริ่มสอน" : undefined)}
                   hint={monthsSpanned > 0 ? `ระยะเวลาประมาณ ${monthsSpanned} เดือน` : undefined}
                 >
                   <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
                 </FormField>
-                <FormField label="ปีการศึกษา (พ.ศ.)" required error={errOf("YearId")}>
-                  <select value={form.YearId} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
+                <FormField label="ปีการศึกษา (พ.ศ.)" optional error={errOf("YearId")}>
+                  <select value={form.YearId ?? ""} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
                     <option value="">เลือกปีการศึกษา</option>
                     {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
                   </select>
@@ -2235,24 +2271,9 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     {statusOptions.map((s) => <option key={s.Status_Course_Id} value={s.Status_Course_Id}>{s.Status_Course_Name}</option>)}
                   </select>
                 </FormField>
-                <FormField label="ประเภทคอร์ส" hint="คอร์สเดี่ยวจะไม่แสดงบนหน้าเว็บไซต์">
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { value: "bundle", label: "คอร์สรวม" },
-                      { value: "single", label: "คอร์สเดี่ยว" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => set("Course_Type", opt.value)}
-                        className={`h-10 rounded-xl text-sm font-semibold border transition
-                        ${form.Course_Type === opt.value
-                            ? "bg-orange-500 text-white border-orange-500"
-                            : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
+                <FormField label="ประเภทคอร์ส" hint="สร้างคอร์สเดี่ยวพร้อมนักเรียนและติวเตอร์ได้ในแท็บคอร์สเดี่ยว">
+                  <div className="flex h-10 items-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-sm font-semibold text-orange-700">
+                    {form.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}
                   </div>
                 </FormField>
                 <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้กรองข้อสอบจากคลัง ไม่จำกัดผู้สมัคร">
@@ -2319,13 +2340,13 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 <FormField
                   label="ชั่วโมงรวมของคอร์ส (ชม.)" optional
                   hint={!monthsSpanned
-                    ? "ถ้ากรอก ชั่วโมงรายวิชาต้องรวมได้เท่าค่านี้"
+                    ? "ระบุภายหลังได้ ชั่วโมงรายวิชาที่จัดไว้จะแสดงด้านข้าง"
                     : !form.TotalCourseHours
                       ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
                       : `เฉลี่ย ${formatHoursLabel(avgHoursPerMonth)}/เดือน (${monthsSpanned} เดือน)`}
                 >
                   <input
-                    type="number" min="0" step="0.5" value={form.TotalCourseHours}
+                    type="number" min="0" step="0.5" value={form.TotalCourseHours ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2354,10 +2375,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                       {hoursMismatch && (
                         <p className={`mt-1.5 text-xs ${errOf("hours") ? "text-red-600 font-medium" : "text-slate-600"}`}>
                           {tutorCount === 0
-                            ? "ยังไม่มีวิชา เพิ่มวิชาและติวเตอร์ด้านล่าง"
+                            ? "ยังไม่มีวิชาและติวเตอร์ สามารถบันทึกเป็นร่างแล้วเพิ่มภายหลังได้"
                             : hoursDiff > 0
-                              ? "เพิ่มวิชา หรือแก้ชั่วโมงรายวิชาให้ครบ"
-                              : "ลดชั่วโมงรายวิชา หรือเพิ่มชั่วโมงรวม"}
+                              ? "ชั่วโมงรายวิชายังไม่ครบ สามารถบันทึกเป็นร่างได้"
+                              : "ชั่วโมงรายวิชาเกินชั่วโมงรวม ตรวจสอบเมื่อได้ข้อมูลครบ"}
                         </p>
                       )}
                     </div>
@@ -2370,7 +2391,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               </div>
             </FormSection>
 
-            <FormSection title="วิชาและติวเตอร์">
+            <FormSection title="วิชา ติวเตอร์ และแผนการสอน">
               {isEdit
                 ? <CourseSubjects
                   courseId={initial.CourseID}
@@ -2415,7 +2436,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           <div className={step === 2 ? "space-y-4" : "hidden"}>
             <FormSection title="ราคา">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-4">
-                <FormField label="ราคาเต็ม (บาท)" required error={errOf("Price")}>
+                <FormField label="ราคาเต็ม (บาท)" optional error={errOf("Price")}>
                   <input
                     type="text" inputMode="decimal" value={moneyDisplay(form.Price)}
                     onChange={handleMoneyChange("Price")} onKeyDown={blockNegativeKeys}
@@ -2429,7 +2450,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 </FormField>
                 <FormField label="ราคาสุทธิ" hint="ราคาเต็ม − ส่วนลด">
                   <div className="h-10 flex items-center px-3 bg-orange-50 border border-orange-200 rounded-xl text-sm font-bold text-orange-600 tabular-nums">
-                    ฿{formatPrice(fullCost)}
+                    {form.Price === "" || form.Price === null ? "ยังไม่ระบุ" : `฿${formatPrice(fullCost)}`}
                   </div>
                 </FormField>
               </div>
@@ -2439,7 +2460,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <div className={FORM_GRID}>
                 <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint="เว้นว่าง = ไม่จำกัด">
                   <input
-                    type="number" min="0" step="1" value={form.MaxStudents}
+                    type="number" min="0" step="1" value={form.MaxStudents ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2454,7 +2475,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     : "1 = จ่ายครั้งเดียว"}
                 >
                   <input
-                    type="number" min="0" step="1" value={form.Installments}
+                    type="number" min="0" step="1" value={form.Installments ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
@@ -2466,8 +2487,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     }}
                     className={inputCls()} />
                 </FormField>
-                {isInstallmentEnabled && (
-                  <FormField label="ยอดผ่อนแต่ละงวด" required error={errOf("installments")} hint="ยอดรวมต้องเท่ากับราคาสุทธิ" className="sm:col-span-2">
+                {isInstallmentEnabled && form.Price !== "" && form.Price !== null && (
+                  <FormField label="ยอดผ่อนแต่ละงวด" error={errOf("installments")} hint="ยอดรวมต้องเท่ากับราคาสุทธิ" className="sm:col-span-2">
                     <InstallmentAmountsEditor
                       installments={installmentsCount}
                       fullCost={fullCost}
@@ -2591,7 +2612,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             ) : (
               <div className={`${CALLOUT.box} ${CALLOUT.success}`}>
                 <Check className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.success}`} />
-                <p>ข้อมูลครบแล้ว กด “{isEdit ? "บันทึกการแก้ไข" : "สร้างคอร์ส"}” เพื่อบันทึก</p>
+                <p>บันทึกเป็นร่างได้ ข้อมูลที่ยังไม่แน่ใจเพิ่มภายหลังได้</p>
               </div>
             )}
 
@@ -2902,7 +2923,8 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   const inp = "px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-[13px] outline-none";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4)
-  const tutorOptions = allTutors.map(t => ({
+  // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
+  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
@@ -3005,7 +3027,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 }
 
 // ─── Course Card ─────────────────────────────────────────────────────────────
-function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, onDuplicate }) {
+function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -3029,9 +3051,10 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
         <select
           value={course.Status_Course_Id}
           onChange={async (e) => {
-            await axios.patch(`${API_BASE}/courses/${course.CourseID}/status`, {
+            const response = await axios.patch(`${API_BASE}/courses/${course.CourseID}/status`, {
               Status_Course_Id: Number(e.target.value)
             });
+            if (response.data?.drafted) toast(response.data.message);
             onStatusChange();
           }}
           className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[11px] font-bold border cursor-pointer ${status.color}`}
@@ -3046,6 +3069,10 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, statusOptions, o
       </div>
 
       <div className="p-4 flex-1 flex flex-col">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${course.IsPublished && !Number(course.PendingDraftActions) ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'}`}>{course.IsPublished ? Number(course.PendingDraftActions) ? `มีร่าง ${course.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span>
+          {(!course.IsPublished || Number(course.PendingDraftActions) > 0) && <button type="button" onClick={() => onPublish(course)} className="rounded-lg bg-green-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-green-700">เผยแพร่</button>}
+        </div>
         <h3 className="font-bold text-slate-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
         </h3>
@@ -3160,6 +3187,7 @@ export default function AdminCoursesPage() {
   const [availabilityOptions, setAvailabilityOptions] = useState([]);
   const [gradeLevelOptions, setGradeLevelOptions] = useState([]);
   const [duplicatingCourse, setDuplicatingCourse] = useState(null);
+  const [publishingCourse, setPublishingCourse] = useState(null);
 
   // แท็บบนสุด: คอร์สรวม (เรียนกลุ่ม) | คอร์สเดี่ยว (ตัวต่อตัว) — จำไว้ใน URL (?type=single)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -3199,54 +3227,118 @@ export default function AdminCoursesPage() {
   const handleCreate = async (data) => {
     setIsSubmitting(true);
     const { pendingSubjects = [], pendingStudents = [], ...courseData } = data;
+
+    // ช่วงที่ 1: สร้างตัวคอร์ส — ถ้าพังตรงนี้ แปลว่ายังไม่มีคอร์สเกิดขึ้น ให้คงหน้าต่างไว้แก้แล้วกดใหม่ได้
+    let CourseID;
     try {
       const res = await axios.post(`${API_BASE}/courses`, courseData);
-      const CourseID = res.data.CourseID;
+      CourseID = res.data.CourseID;
+    } catch (e) {
+      showToast("error", "สร้างคอร์สไม่สำเร็จ", e.response?.data?.message);
+      setIsSubmitting(false);
+      return;
+    }
 
+    // ช่วงที่ 2: เพิ่มวิชา/นักเรียน — คอร์สมีอยู่แล้ว ห้ามปล่อยให้ error หลุดไปจนหน้าต่างค้าง
+    // (เดิมแอดมินจะเข้าใจว่ายังไม่ได้สร้าง แล้วกดบันทึกซ้ำจนได้คอร์สซ้ำ)
+    const failedSubjects = []; // { item, reason }
+    const failedStudents = []; // { userId, reason }
+    let studentsSkippedDueToStatus = false;
+    try {
       const subjectResults = await Promise.allSettled(
         pendingSubjects.map(s => axios.post(`${API_BASE}/courses/${CourseID}/subjects`, s))
       );
-      const subjectFailed = subjectResults.filter(r => r.status === "rejected").length;
+      subjectResults.forEach((r, i) => {
+        if (r.status === "rejected") {
+          failedSubjects.push({ item: pendingSubjects[i], reason: r.reason?.response?.data?.message || "" });
+        }
+      });
 
       const canEnrollNow = [1, 2].includes(Number(courseData.Status_Course_Id));
-      const studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
-      let enrollFailed = 0;
+      studentsSkippedDueToStatus = !canEnrollNow && pendingStudents.length > 0;
       if (canEnrollNow && pendingStudents.length > 0) {
-        const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, {
-          UserIds: pendingStudents,
-          CourseID,
-        });
-        enrollFailed = (enrollRes.data?.failed || []).length;
+        try {
+          const enrollRes = await axios.post(`${API_BASE}/enroll/bulk`, { UserIds: pendingStudents, CourseID });
+          for (const f of enrollRes.data?.failed || []) {
+            if (f.UserId) failedStudents.push({ userId: f.UserId, reason: f.message || "" });
+            else pendingStudents.forEach(userId => failedStudents.push({ userId, reason: f.message || "" }));
+          }
+        } catch (e) {
+          const reason = e.response?.data?.message || "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ";
+          pendingStudents.forEach(userId => failedStudents.push({ userId, reason }));
+        }
       }
 
-      if (studentsSkippedDueToStatus) {
+      if (failedSubjects.length || failedStudents.length) {
+        await showCreateFailures(courseData.CourseName, failedSubjects, failedStudents);
+      } else if (studentsSkippedDueToStatus) {
         showToast(
           "error",
           "สร้างคอร์สสำเร็จ แต่ยังไม่ได้เพิ่มนักเรียน",
           "เนื่องจากสถานะคอร์สไม่ใช่เปิดรับสมัคร/กำลังสอน กรุณาเปลี่ยนสถานะก่อนแล้วเพิ่มนักเรียนภายหลัง"
         );
-      } else if (subjectFailed > 0 || enrollFailed > 0) {
-        showToast("error", "สร้างคอร์สสำเร็จ แต่มีบางรายการเพิ่มไม่สำเร็จ",
-          `วิชาที่ล้มเหลว: ${subjectFailed} · นักเรียนที่ล้มเหลว: ${enrollFailed}`
-        );
       } else {
-        showToast("success", "สร้างคอร์สสำเร็จ พร้อมครูและนักเรียนที่เลือกไว้");
+        showToast("success", "บันทึกคอร์สฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม");
       }
+    } catch (e) {
+      showToast("error", "สร้างคอร์สฉบับร่างแล้ว แต่เพิ่มวิชา/นักเรียนไม่ครบ", "กด \"แก้ไข\" ที่คอร์สนี้เพื่อตรวจและเพิ่มรายการที่ขาด");
+    } finally {
+      // คอร์สถูกสร้างแล้วเสมอในช่วงนี้ → ปิดหน้าต่างและรีเฟรช เพื่อกันการกดบันทึกซ้ำ
       setShowAddModal(false);
       fetchAll();
-    } catch (e) {
-      showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
-    } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // แสดงชื่อวิชา/นักเรียนที่เพิ่มไม่สำเร็จ ในกล่องที่ค้างไว้จนแอดมินกดรับทราบ (toast หายเร็วเกินไปสำหรับรายชื่อ)
+  const showCreateFailures = async (courseName, failedSubjects, failedStudents) => {
+    let subjects = [], tutors = [], students = [];
+    try {
+      const [sRes, tRes, stRes] = await Promise.all([
+        failedSubjects.length ? axios.get(`${API_BASE}/subjects`) : { data: [] },
+        failedSubjects.length ? axios.get(`${API_BASE}/tutors`) : { data: [] },
+        failedStudents.length ? axios.get(`${API_BASE}/students`) : { data: [] },
+      ]);
+      subjects = sRes.data || []; tutors = tRes.data || []; students = stRes.data || [];
+    } catch { /* ดึงชื่อไม่ได้ → แสดงเป็นรหัสแทน */ }
+
+    const personName = (p) => p.Nickname || `${p.Firstname || ""} ${p.Lastname || ""}`.trim();
+    const subjectLabel = ({ item, reason }) => {
+      const subj = subjects.find(x => String(x.SubjectId) === String(item.SubjectId));
+      const tut = tutors.find(x => String(x.AdminId) === String(item.AdminId));
+      const name = `${subj?.SubjectName || `วิชารหัส ${item.SubjectId}`} (${tut ? personName(tut) : `ติวเตอร์รหัส ${item.AdminId}`})`;
+      return reason ? `${name} — ${reason}` : name;
+    };
+    const studentLabel = ({ userId, reason }) => {
+      const st = students.find(x => String(x.UserId) === String(userId));
+      const name = st ? personName(st) : `นักเรียนรหัส ${userId}`;
+      return reason ? `${name} — ${reason}` : name;
+    };
+    const listOf = (rows, label) => {
+      const shown = rows.slice(0, 5).map(r => `• ${label(r)}`);
+      if (rows.length > 5) shown.push(`และอีก ${rows.length - 5} รายการ`);
+      return shown.join("\n");
+    };
+
+    const parts = [];
+    if (failedSubjects.length) parts.push(`วิชาที่เพิ่มไม่สำเร็จ:\n${listOf(failedSubjects, subjectLabel)}`);
+    if (failedStudents.length) parts.push(`นักเรียนที่เพิ่มไม่สำเร็จ:\n${listOf(failedStudents, studentLabel)}`);
+    parts.push(`กด "แก้ไข" ที่คอร์ส "${courseName}" เพื่อเพิ่มรายการที่ขาด`);
+
+    await confirmDialog(parts.join("\n\n"), {
+      title: "สร้างคอร์สฉบับร่างแล้ว แต่ยังเพิ่มไม่ครบ",
+      confirmText: "รับทราบ",
+      cancelText: null,
+      danger: false,
+    });
   };
 
   const handleUpdate = async (data) => {
     setIsSubmitting(true);
     const { pendingSubjects, pendingStudents, ...courseData } = data;
     try {
-      await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData)
-      showToast("success", "แก้ไขข้อมูลคอร์สสำเร็จ");
+      const result = await axios.put(`${API_BASE}/courses/${editingCourse.CourseID}`, courseData);
+      showToast("success", result.data?.drafted ? "บันทึกฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม" : "บันทึกข้อมูลคอร์สร่างแล้ว");
       setEditingCourse(null);
       fetchAll();
     } catch (e) {
@@ -3460,8 +3552,8 @@ export default function AdminCoursesPage() {
       {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBookOpen className="h-7 w-7 text-orange-400" /></div>
-          <p className="text-base font-semibold text-slate-700">ไม่พบคอร์สเรียนที่ค้นหา</p>
-          <p className="mt-1 text-sm text-slate-500">โปรดปรับคำค้นหาหรือตัวกรอง</p>
+          <p className="text-base font-semibold text-slate-700">{groupCourses.length === 0 ? "ยังไม่มีคอร์สกลุ่ม" : "ไม่พบคอร์สเรียนที่ค้นหา"}</p>
+          {groupCourses.length > 0 && <p className="mt-1 text-sm text-slate-500">โปรดปรับคำค้นหาหรือตัวกรอง</p>}
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
@@ -3472,6 +3564,7 @@ export default function AdminCoursesPage() {
               onEdit={(c) => setEditingCourse(c)}
               onDelete={(c) => setDeletingCourse(c)}
               onStatusChange={fetchAll}
+              onPublish={(c) => setPublishingCourse(c)}
               statusOptions={statusOptions}
               onDuplicate={handleDuplicate}
             />
@@ -3498,8 +3591,17 @@ export default function AdminCoursesPage() {
         </Modal>
       )}
 
+      {publishingCourse && (
+        <CoursePublishModal course={publishingCourse} onClose={() => setPublishingCourse(null)} onPublished={fetchAll} />
+      )}
+
       {editingCourse && (
         <Modal title={editingCourse.CourseName || "แก้ไขคอร์ส"} icon={Pencil} onClose={() => setEditingCourse(null)} wide bodyClassName="p-0 flex flex-col">
+          {Number(editingCourse.PendingDraftActions) > 0 && (
+            <div className="shrink-0 px-4 pt-4 sm:px-6">
+              <PendingDraftsCallout courseId={editingCourse.CourseID} what="ของคอร์สนี้" onChanged={fetchAll} />
+            </div>
+          )}
           <CourseForm
             initial={editingCourse}
             onSave={handleUpdate}

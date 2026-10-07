@@ -76,7 +76,6 @@ const TutorStudents = React.lazy(() => import("./pagetutor/TutorStudents.jsx"));
 const TutorStudentDetail = React.lazy(() => import("./pagetutor/TutorStudentDetail.jsx"));
 const TutorVideoQuestions = React.lazy(() => import("./pagetutor/TutorVideoQuestions.jsx"));
 const TutorManage = React.lazy(() => import("./pagetutor/TutorManage.jsx"));
-const Test = React.lazy(() => import("./pagetutor/Test.jsx"));
 const TutorIncome = React.lazy(() => import("./pagetutor/TutorIncome.jsx"));
 const TutorNotification = React.lazy(() => import("./pagetutor/TutorNotification.jsx"));
 const TutorExam = React.lazy(() => import("./pagetutor/TutorExam.jsx"));
@@ -99,7 +98,6 @@ const AdminNotification = React.lazy(() => import("./pageadmin/AdminNotification
 const AdminPasswordResets = React.lazy(() => import("./pageadmin/AdminPasswordResets.jsx"));
 const AdminRooms = React.lazy(() => import("./pageadmin/AdminRooms.jsx"));
 const AdminCommonFacilities = React.lazy(() => import("./pageadmin/AdminCommonFacilities.jsx"));
-const CreateTutorForm = React.lazy(() => import("./pageadmin/CreateTutorForm.jsx"));
 const AdminAttendanceDashboard = React.lazy(() => import("./pageadmin/AdminAttendanceDashboard.jsx"));
 const AdminManagement = React.lazy(() => import("./pageadmin/AdminManagement.jsx"));
 const AdminProfile = React.lazy(() => import("./pageadmin/AdminProfile.jsx"));
@@ -172,11 +170,9 @@ const router = createBrowserRouter(
             { path: "schedule", element: <TutorSchedule /> },
             { path: "profile", element: <TutorProfile /> },
             { path: "courses", element: <TutorCourses /> },
-            // { path: "analytics", element: <TutorAnalytics /> },
             { path: "students", element: <TutorStudents /> },
             { path: "students/detail", element: <TutorStudentDetail /> },
             { path: "incidents", element: <TutorIncidents /> },
-            { path: "test", element: <Test /> },
             { path: "income", element: <TutorIncome /> },
             { path: "notification", element: <TutorNotification /> },
             { path: "exam", element: <TutorExam /> },
@@ -205,8 +201,6 @@ const router = createBrowserRouter(
             { path: "announcements", element: <AdminAnnouncements /> },
             { path: "notification", element: <AdminNotification /> },
             { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
-            { path: "create-tutor", element: <CreateTutorForm /> },
-            { path: "attendance", element: <div className="px-4 lg:px-0"><AdminAttendanceDashboard /></div> },
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },

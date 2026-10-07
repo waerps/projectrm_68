@@ -14,6 +14,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import PageHeader from "../components/ui/PageHeader";
 
 const API = `${API_URL}/api/admin`;
@@ -332,6 +333,7 @@ export default function AdminManagement() {
 
   const [admins, setAdmins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [search, setSearch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -344,9 +346,12 @@ export default function AdminManagement() {
     try {
       const res = await axios.get(`${API}/admins`);
       setAdmins(res.data);
+      setLoadError(false);
     } catch (e) {
       console.error("fetch admins error:", e);
-      showToast("error", "โหลดข้อมูลผู้ดูแลระบบไม่สำเร็จ");
+      setLoadError(true);
+      // ยังไม่มีข้อมูล = กล่อง error แสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+      if (admins.length) showToast("error", "โหลดข้อมูลผู้ดูแลระบบไม่สำเร็จ");
     } finally { setLoading(false); }
   };
 
@@ -405,6 +410,9 @@ export default function AdminManagement() {
   if (loading) return (
     <Spinner block label="กำลังโหลดข้อมูลผู้ดูแลระบบ..." />
   );
+  if (loadError && admins.length === 0) return (
+    <ErrorState title="โหลดข้อมูลผู้ดูแลระบบไม่สำเร็จ" onRetry={() => { setLoadError(false); setLoading(true); fetchAdmins(); }} />
+  );
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -452,7 +460,7 @@ export default function AdminManagement() {
       {/* Table */}
       {filtered.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
-          <p className="text-slate-500 font-medium">ไม่พบผู้ดูแลระบบที่ค้นหา</p>
+          <p className="text-slate-500 font-medium">{admins.length === 0 ? "ยังไม่มีผู้ดูแลระบบ" : "ไม่พบผู้ดูแลระบบที่ค้นหา"}</p>
         </div>
       ) : (
         <>

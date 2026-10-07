@@ -89,19 +89,21 @@ const formatPhone = (v) => {
 };
 
 // ★ เพิ่ม: ใช้รูปที่อัปโหลดถ้ามี, ไม่งั้น fallback เป็น dicebear เหมือนเดิม (ไม่กระทบข้อมูลเก่าที่ยังไม่มีรูป)
+// ใช้ <span> เพื่อวางใน <button> ได้ (W3C) · ใส่ block ให้เมื่อ className ไม่ได้กำหนด display เอง
+const blockIfNeeded = (cls = "") => (/(^|\s)(hidden|flex|inline-flex|grid|inline-grid|block|inline-block|inline|contents)(\s|$)/.test(cls) ? "" : "block ");
 function StudentAvatar({ student, className = "h-10 w-10 rounded-xl" }) {
   const [imgErr, setImgErr] = useState(false);
   const displayName = student.Nickname || `${student.Firstname} ${student.Lastname}`;
   const src = (student.Photo && !imgErr) ? getFileUrl(student.Photo) : avatarUrl(student.UserId);
   return (
-    <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+    <span className={`${blockIfNeeded(className)}overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
       <img
         src={src}
         alt={displayName}
         onError={() => { if (student.Photo) setImgErr(true); }}
         className="w-full h-full object-cover"
       />
-    </div>
+    </span>
   );
 }
 
@@ -2330,7 +2332,7 @@ export default function AdminStudentsPage() {
       {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuGraduationCap className="h-7 w-7 text-orange-400" /></div>
-          <p className="text-base font-semibold text-slate-700">ไม่พบนักเรียนที่ค้นหา</p>
+          <p className="text-base font-semibold text-slate-700">{students.length === 0 ? "ยังไม่มีนักเรียน" : "ไม่พบนักเรียนที่ค้นหา"}</p>
         </div>
       ) : (
         <>
@@ -2342,11 +2344,11 @@ export default function AdminStudentsPage() {
               <div key={s.UserId} className="min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col">
                 <button onClick={() => setViewStudentId(s.UserId)} className="flex items-start gap-3 text-left">
                   <StudentAvatar student={s} className="h-11 w-11 rounded-xl shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
-                    {s.Nickname && <p className="text-xs text-slate-500 truncate">{s.Firstname} {s.Lastname}</p>}
-                    <p className="text-[11px] text-slate-500">#{s.UserId}</p>
-                  </div>
+                  <span className="block min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-900 text-sm leading-snug">{displayName}</span>
+                    {s.Nickname && <span className="block text-xs text-slate-500 truncate">{s.Firstname} {s.Lastname}</span>}
+                    <span className="block text-[11px] text-slate-500">#{s.UserId}</span>
+                  </span>
                 </button>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-600">
                   {s.SchoolName && (

@@ -36,33 +36,39 @@ function IncidentCard({ incident, showReporter, onClick }) {
     const SeverityIcon = severityMeta?.icon;
 
     return (
-        <button onClick={onClick} disabled={!onClick} className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition disabled:cursor-default">
-            <div className="flex items-start gap-3">
-                <div className={`h-10 w-10 rounded-xl ${severityMeta?.solidBg || "bg-slate-400"} flex items-center justify-center shrink-0`}>
+        // การ์ดเป็น <div>: ส่วนหัว+รายละเอียดเป็นปุ่มเปิดเคส ส่วนไฟล์แนบ (ลิงก์) อยู่นอกปุ่ม (W3C: ห้ามมีลิงก์ใน <button>)
+        <div className="w-full text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm transition">
+        <button type="button" onClick={onClick} disabled={!onClick} className="block w-full text-left disabled:cursor-default">
+            <span className="flex items-start gap-3">
+                <span className={`h-10 w-10 rounded-xl ${severityMeta?.solidBg || "bg-slate-400"} flex items-center justify-center shrink-0`}>
                     {SeverityIcon && <SeverityIcon className="h-5 w-5 text-white" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <p className="font-semibold text-sm text-slate-900">
+                </span>
+                <span className="block flex-1 min-w-0">
+                    <span className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="block font-semibold text-sm text-slate-900">
                             {type?.label || incident.IncidentTypeId}
-                        </p>
+                        </span>
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
                             {statusMeta.label}
                         </span>
-                    </div>
+                    </span>
 
                     {showReporter && (
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                        <span className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                             {incident.IsAnonymous ? (
                                 <><EyeOff className="h-3 w-3" /> ไม่เปิดเผยผู้แจ้ง</>
                             ) : (
                                 <>ผู้แจ้ง: {incident.ReporterFirstname ? `${incident.ReporterFirstname} ${incident.ReporterLastname}` : "ไม่ระบุ"}</>
                             )}
-                        </p>
+                        </span>
                     )}
 
-                    <p className="text-sm text-slate-600 mt-1.5 line-clamp-2 break-words">{incident.Description}</p>
+                    <span className="text-sm text-slate-600 mt-1.5 line-clamp-2 break-words">{incident.Description}</span>
 
+                </span>
+            </span>
+        </button>
+            <div className="pl-[52px]">
                     {incident.Attachments?.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-2">
                             {incident.Attachments.map((att) => {
@@ -98,9 +104,8 @@ function IncidentCard({ incident, showReporter, onClick }) {
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
                         </span>
                     </div>
-                </div>
             </div>
-        </button>
+        </div>
     );
 }
 

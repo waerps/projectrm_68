@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import React from 'react'
 import axios from 'axios'
 import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
@@ -40,6 +40,36 @@ const SUBJECT_COLOR = (name) => {
 
 // slotKey ใช้ระบุ slot เดียวกันในทุก state
 const slotKey = (day, time) => `${day}||${time}`
+
+function PhotoConsentWarning({ roster, loading, error, confirmed, onConfirm }) {
+  const denied = (roster || []).filter(student => student.status === 'denied')
+  const unanswered = (roster || []).filter(student => student.status === 'not_answered')
+  if (error) return <p className="rounded-xl bg-red-50 p-3 text-xs text-red-700">โหลดสถานะความยินยอมไม่สำเร็จ กรุณาปิดแล้วเปิดคาบนี้ใหม่ก่อนส่งรูป</p>
+  if (loading || !roster) return <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">กำลังตรวจสถานะความยินยอมก่อนถ่ายรูป…</p>
+  return <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+    <p className="font-bold">ตรวจกรอบภาพก่อนถ่ายและส่งรูป</p>
+    {denied.length > 0 && <p className="mt-2">ไม่ยินยอม: <strong>{denied.map(student => student.name).join(', ')}</strong></p>}
+    {unanswered.length > 0 && <p className="mt-2">ยังไม่ตอบ: <strong>{unanswered.map(student => student.name).join(', ')}</strong></p>}
+    {denied.length + unanswered.length > 0
+      ? <p className="mt-2">กรุณาแจ้งนักเรียนรายชื่อข้างต้นให้ขยับออกจากกรอบภาพก่อนถ่ายรูป นักเรียนยังเช็กชื่อเข้าเรียนได้ตามปกติ</p>
+      : <p className="mt-2">ไม่มีนักเรียนในคอร์สนี้ที่ปฏิเสธหรือยังไม่ตอบเรื่องการปรากฏในรูป</p>}
+    <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-lg bg-white p-3">
+      <input type="checkbox" checked={confirmed} onChange={event => onConfirm(event.target.checked)} className="mt-0.5 h-4 w-4" />
+      <span>ฉันตรวจกรอบภาพแล้ว และนักเรียนที่ไม่ยินยอมหรือยังไม่ตอบไม่อยู่ในภาพที่จะส่ง</span>
+    </label>
+  </div>
+}
+
+function SelectedPhotoPreview({ file }) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!file) { setUrl(null); return undefined }
+    const nextUrl = URL.createObjectURL(file)
+    setUrl(nextUrl)
+    return () => URL.revokeObjectURL(nextUrl)
+  }, [file])
+  return url ? <img src={url} alt="ภาพที่จะส่งสำหรับบันทึกคาบเรียน" className="mt-3 max-h-64 w-full rounded-xl border border-slate-200 object-contain bg-slate-50" /> : null
+}
 
 // เลื่อนวันที่ไป n วัน (เอามาจาก AdminSchedule.jsx)
 function addDays(date, n) {
@@ -138,9 +168,9 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
           return (
             <button key={d} type="button" onClick={() => setDay(d)}
               className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
-              <div className="text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</div>
-              <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</div>
-              <div className={`mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
+              <span className="block text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</span>
+              <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</span>
+              <span className={`block mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
             </button>
           )
         })}
@@ -155,26 +185,28 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
             const status = getSlotStatus(cls, slotPhases, clockNow)
             const style = status ? STATUS_STYLE[status] : null
             return (
-              <button key={sl.label} type="button" onClick={() => onPick(day, sl.label, cls)}
+              <div key={sl.label} className="space-y-1">
+              <button type="button" onClick={() => onPick(day, sl.label, cls)}
                 className={`w-full text-left flex gap-3 rounded-2xl border-2 p-3 ${style ? style.card : 'bg-white border-slate-200'}`}>
-                <div className="w-16 shrink-0 text-center">
-                  <p className="text-xs font-bold text-slate-700 leading-tight">{sl.label}</p>
-                </div>
-                <div className="min-w-0 flex-1">
+                <span className="block w-16 shrink-0 text-center">
+                  <span className="block text-xs font-bold text-slate-700 leading-tight">{sl.label}</span>
+                </span>
+                <span className="block min-w-0 flex-1">
                   <span className={`inline-block text-[11px] font-bold text-white px-1.5 py-0.5 rounded ${SUBJECT_COLOR(cls.subjectName)}`}>{cls.subjectName}</span>
-                  <p className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                  <span className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</span>
+                  <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
                     <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
-                  </div>
+                  </span>
                   {style && (
-                    <div className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
+                    <span className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
                       {style.Icon ? <style.Icon className="w-3.5 h-3.5 shrink-0" /> : <span className="h-2 w-2 rounded-full bg-slate-300 inline-block shrink-0" />}
                       <span>{style.label}</span>
-                    </div>
+                    </span>
                   )}
-                </div>
+                </span>
               </button>
+              </div>
             )
           })}
         </div>
@@ -193,6 +225,10 @@ export default function TutorSchedule() {
   const [rawSchedule, setRawSchedule] = useState([])   // เก็บไว้คำนวณ derivedTimeSlots
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  // หลังโหลดครั้งแรกสำเร็จแล้ว การเปลี่ยนสัปดาห์/รีเฟรชจะไม่แทนทั้งหน้าด้วย spinner/error
+  const loadedOnceRef = useRef(false)
+  const [weekLoading, setWeekLoading] = useState(false)
+  const [weekError, setWeekError] = useState(false)
 
   // ── ความจริงเรื่อง "วันนี้" / "สัปดาห์นี้" มาจาก backend เท่านั้น ──
   // (ไม่ใช้ new Date() ของเบราว์เซอร์ เพื่อให้ mock วันที่ตอนเทสได้ตรงกันทั้งระบบ)
@@ -211,11 +247,21 @@ export default function TutorSchedule() {
   // ── Phase 1 ────────────────────────────────────────────────────
   const [startPhoto, setStartPhoto] = useState(null)
   const [remark, setRemark] = useState('')
+  const [lessonTopics, setLessonTopics] = useState([])
+  const [plannedTopicIds, setPlannedTopicIds] = useState([])
+  const [taughtTopicIds, setTaughtTopicIds] = useState([])
+  const [topicsLoading, setTopicsLoading] = useState(false)
   const [studentsList, setStudentsList] = useState([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError] = useState('')
   const [attendance, setAttendance] = useState({})
 
   // ── Phase 2 ────────────────────────────────────────────────────
   const [endPhoto, setEndPhoto] = useState(null)
+  const [photoConsentRoster, setPhotoConsentRoster] = useState(null)
+  const [photoConsentLoading, setPhotoConsentLoading] = useState(false)
+  const [photoConsentError, setPhotoConsentError] = useState(false)
+  const [photoReviewConfirmed, setPhotoReviewConfirmed] = useState(false)
 
   const [isSaving, setIsSaving] = useState(false)
   const [lineLinked, setLineLinked] = useState(false)
@@ -321,8 +367,11 @@ export default function TutorSchedule() {
   // ── ดึงตารางสอน ────────────────────────────────────────────────
   useEffect(() => {
     if (!tutorId) return
+    let cancelled = false
     const fetchSchedule = async () => {
       setLoadError(false)
+      setWeekError(false)
+      if (loadedOnceRef.current) setWeekLoading(true)
       try {
         const query = referenceDate ? `?date=${referenceDate}` : ''
         // ★ แก้บั๊กจริง: เดิมไม่แนบ Authorization header เลย ทั้งที่ backend (authRequired)
@@ -332,6 +381,7 @@ export default function TutorSchedule() {
           headers: { Authorization: `Bearer ${token}` },
         })
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
+        if (cancelled) return
         const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
 
         const map = {}
@@ -353,15 +403,83 @@ export default function TutorSchedule() {
         setSlotPhases(phases)
         setTodayDate(serverToday)
         setWeekStart(serverWeekStart)
+        loadedOnceRef.current = true
       } catch (err) {
+        if (cancelled) return
         console.error('Error fetching schedule', err)
-        setLoadError(true)
+        if (loadedOnceRef.current) setWeekError(true)
+        else setLoadError(true)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setWeekLoading(false)
+        }
       }
     }
     fetchSchedule()
+    return () => { cancelled = true }
   }, [tutorId, scheduleVersion, referenceDate, token])
+
+  const fetchPhotoConsentRoster = async (scheduleDetailId) => {
+    const response = await axios.get(`${API_URL}/api/tutor/record-teaching/${scheduleDetailId}/photo-consent`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data.students || []
+  }
+
+  const loadLessonTopics = async (scheduleDetailId) => {
+    setTopicsLoading(true)
+    try {
+      const response = await axios.get(`${API_URL}/api/tutor/schedule/${scheduleDetailId}/topics`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const items = response.data.topics || []
+      setLessonTopics(items)
+      const planned = items.filter(item => Number(item.isPlanned) === 1).map(item => item.id)
+      setPlannedTopicIds(planned)
+      setTaughtTopicIds(items.some(item => Number(item.isTaught) === 1) ? items.filter(item => Number(item.isTaught) === 1).map(item => item.id) : planned)
+      return true
+    } catch (error) {
+      showToast('error', 'โหลดหัวข้อไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่')
+      return false
+    } finally { setTopicsLoading(false) }
+  }
+
+  const toggleTopic = (setter, id) => setter(items => items.includes(id) ? items.filter(item => item !== id) : [...items, id])
+
+  const loadPhotoConsentRoster = async (scheduleDetailId) => {
+    setPhotoConsentRoster(null)
+    setPhotoConsentLoading(true)
+    setPhotoConsentError(false)
+    setPhotoReviewConfirmed(false)
+    try {
+      setPhotoConsentRoster(await fetchPhotoConsentRoster(scheduleDetailId))
+    } catch (error) {
+      setPhotoConsentError(true)
+      showToast('error', 'โหลดความยินยอมไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองเปิดคาบอีกครั้ง')
+    } finally {
+      setPhotoConsentLoading(false)
+    }
+  }
+
+  const photoReviewHeaders = async () => {
+    if (!photoReviewConfirmed || !photoConsentRoster) {
+      showToast('warning', 'กรุณาตรวจกรอบภาพ', 'ตรวจรายชื่อและยืนยันก่อนส่งรูป')
+      return null
+    }
+    const latest = await fetchPhotoConsentRoster(selectedClass.courseScheduleDetailId)
+    const signature = rows => JSON.stringify(rows.map(student => [student.userId, student.status]))
+    if (signature(latest) !== signature(photoConsentRoster)) {
+      setPhotoConsentRoster(latest)
+      setPhotoReviewConfirmed(false)
+      showToast('warning', 'สถานะความยินยอมเปลี่ยน', 'กรุณาตรวจรายชื่อใหม่ก่อนถ่ายและส่งรูป')
+      return null
+    }
+    return {
+      'X-Photo-Consent-Reviewed': 'true',
+      'X-Photo-Excluded-Student-Ids': latest.filter(student => student.status !== 'granted').map(student => student.userId).sort((a, b) => a - b).join(','),
+    }
+  }
 
   // ── กดเปิด Modal ───────────────────────────────────────────────
   const handleClick = async (day, time, data) => {
@@ -402,10 +520,13 @@ export default function TutorSchedule() {
     if (!cId) { showToast('error', 'ไม่พบข้อมูลคอร์ส', 'กรุณารีเฟรชหน้าแล้วลองใหม่'); return }
 
     setSelectedClass({ day, time, ...data, courseId: cId })
+    if (!(await loadLessonTopics(data.courseScheduleDetailId))) return
     setEndPhoto(null)
+    loadPhotoConsentRoster(data.courseScheduleDetailId)
 
     // ── Phase 2: ถ่ายรูปท้ายคาบ ────────────────────────────────
     if (status === 'phase1_done') {
+      setRemark(data.lessonRemark || '')
       setModalPhase(2)
       setShowModal(true)
       return
@@ -417,16 +538,24 @@ export default function TutorSchedule() {
     setRemark('')
     setShowModal(true)
 
-    // ดึงรายชื่อนักเรียน
+    // ดึงรายชื่อนักเรียนของคอร์สจาก API สำหรับติวเตอร์
+    setStudentsList([])
+    setStudentsError('')
+    setStudentsLoading(true)
     try {
-      const res = await axios.get(`${API_URL}/courses/${cId}/students`)
+      const res = await axios.get(`${API_URL}/coursestutor/${cId}/students`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const students = res.data.students || []
       setStudentsList(students)
       const init = {}
       students.forEach(s => { init[s.UserId || s.id] = false })
       setAttendance(init)
-    } catch {
+    } catch (error) {
       setStudentsList([])
+      setStudentsError(error.response?.data?.message || 'โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองเปิดคาบนี้ใหม่')
+    } finally {
+      setStudentsLoading(false)
     }
   }
 
@@ -463,11 +592,17 @@ export default function TutorSchedule() {
     const year = base.getFullYear()
     const month = String(base.getMonth() + 1).padStart(2, '0')
     const date = String(base.getDate()).padStart(2, '0')
+    // เปลี่ยนป้ายวันที่เป็นสัปดาห์ใหม่ทันที — ถ้าโหลดไม่สำเร็จ ป้ายจะตรงกับสัปดาห์ที่ error อยู่
+    setWeekStart(`${year}-${month}-${date}`)
     setReferenceDate(`${year}-${month}-${date}`)
   }
 
   // ── Phase 1: บันทึกต้นคาบ ──────────────────────────────────────
   const handleSavePhase1 = async () => {
+    if (studentsLoading || studentsError || studentsList.length === 0) {
+      showToast('error', 'ยังเช็กชื่อไม่ได้', studentsError || (studentsLoading ? 'กำลังโหลดรายชื่อนักเรียน' : 'คอร์สนี้ยังไม่มีนักเรียนที่ลงทะเบียน'))
+      return
+    }
     if (!startPhoto) {
       showToast('warning', 'ยังไม่มีรูปต้นคาบ', 'กรุณาถ่ายรูปต้นคาบก่อนบันทึก')
       return
@@ -479,10 +614,13 @@ export default function TutorSchedule() {
 
     setIsSaving(true)
     try {
+      const reviewHeaders = await photoReviewHeaders()
+      if (!reviewHeaders) return
       const formData = new FormData()
       formData.append('adminId', tutorId)
       formData.append('courseScheduleDetailId', selectedClass.courseScheduleDetailId)
       formData.append('remark', remark)
+      formData.append('topicIds', JSON.stringify(plannedTopicIds))
       formData.append('photoStart', startPhoto)
 
       const attendanceArray = studentsList.map(s => {
@@ -493,9 +631,9 @@ export default function TutorSchedule() {
 
       // API คืน recordId กลับมาเพื่อใช้ในขั้นที่ 2
       const res = await axios.post(
-        `${API_URL}/api/tutor/record-teaching/start`,
+        `${API_URL}/api/tutor/record-teaching/${selectedClass.courseScheduleDetailId}/start`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}`, ...reviewHeaders } }
       )
 
       const key = slotKey(selectedClass.day, selectedClass.time)
@@ -503,6 +641,12 @@ export default function TutorSchedule() {
         ...prev,
         [key]: { phase: 'phase1_done', recordId: res.data.recordId }
       }))
+      setScheduleMap(prev => ({ ...prev, [selectedClass.day]: {
+        ...prev[selectedClass.day],
+        [selectedClass.time]: { ...prev[selectedClass.day]?.[selectedClass.time], lessonRemark: remark,
+          plannedTopicsText: lessonTopics.filter(item => plannedTopicIds.includes(item.id)).map(item => item.title).join(', ') },
+      } }))
+      setScheduleVersion(value => value + 1)
 
       closeModal()
       showToast('success', 'บันทึกต้นคาบแล้ว', 'กรุณาถ่ายรูปท้ายคาบเพื่อปิดคาบ')
@@ -526,20 +670,25 @@ export default function TutorSchedule() {
 
     setIsSaving(true)
     try {
+      const reviewHeaders = await photoReviewHeaders()
+      if (!reviewHeaders) return
       const formData = new FormData()
       formData.append('recordId', recordId)
       formData.append('photoEnd', endPhoto)
+      formData.append('topicIds', JSON.stringify(taughtTopicIds))
+      formData.append('remark', remark)
 
       await axios.put(
         `${API_URL}/api/tutor/record-teaching/${recordId}/end`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } }
+        { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}`, ...reviewHeaders } }
       )
 
       setSlotPhases(prev => ({
         ...prev,
         [key]: { ...prev[key], phase: 'completed' }
       }))
+      setScheduleVersion(value => value + 1)
 
       closeModal()
       showToast('success', 'ปิดคาบเรียบร้อย', 'บันทึกรูปท้ายคาบสำเร็จแล้ว')
@@ -566,13 +715,18 @@ export default function TutorSchedule() {
     setStartPhoto(null)
     setEndPhoto(null)
     setRemark('')
+    setLessonTopics([])
+    setPlannedTopicIds([])
+    setTaughtTopicIds([])
     setStudentsList([])
+    setStudentsError('')
+    setStudentsLoading(false)
     setAttendance({})
   }
 
   if (!tutorId) return <div className="text-center p-10 text-red-500">ไม่พบข้อมูลผู้ใช้</div>
   if (loading) return <Spinner block label="กำลังโหลดตารางสอน..." />
-  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดตารางสอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดตารางสอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); setScheduleVersion(v => v + 1) }} /></div>
 
   // ── วันนี้ (สำหรับ label หัวข้อ) คำนวณจาก todayDate ของ backend เท่านั้น ──
   const todayLabel = todayDate
@@ -613,6 +767,7 @@ export default function TutorSchedule() {
                 {' – '}
                 {addDays(`${weekStart}T00:00:00`, 6).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
+              {weekLoading && <p className="mt-1 text-xs font-semibold text-slate-500" role="status">กำลังโหลดสัปดาห์…</p>}
               {referenceDate && <button type="button" onClick={() => setReferenceDate(null)} className="mt-1 text-xs font-bold text-orange-600">กลับสัปดาห์นี้</button>}
             </div>
             <button type="button" onClick={() => moveWeek(7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ถัดไป">
@@ -643,6 +798,10 @@ export default function TutorSchedule() {
           </span>
         </div>
 
+        {weekError ? (
+          <ErrorState title="โหลดตารางสอนสัปดาห์นี้ไม่สำเร็จ" onRetry={() => setScheduleVersion(v => v + 1)} />
+        ) : (
+        <div className={`relative transition-opacity ${weekLoading ? 'opacity-50 pointer-events-none' : ''}`} aria-busy={weekLoading}>
         {/* มือถือ: มุมมองรายวัน */}
         <MobileDayView weekDates={weekDates} todayDate={todayDate} slots={derivedTimeSlots} scheduleMap={scheduleMap}
           slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
@@ -688,7 +847,7 @@ export default function TutorSchedule() {
 
                     return (
                       <div key={d + slot.label}
-                        className={`min-h-[100px] p-2.5 rounded-xl border-2 transition-all duration-300 ${style ? style.card : 'bg-transparent border-transparent'}`}
+                        className={`min-h-[100px] min-w-0 overflow-hidden p-2.5 rounded-xl border-2 transition-all duration-300 ${style ? style.card : 'bg-transparent border-transparent'}`}
                         onClick={() => cls && handleClick(d, slot.label, cls)}>
 
                         {cls && (
@@ -698,11 +857,11 @@ export default function TutorSchedule() {
                             <div className="mb-1 space-y-1"> {/* <-- เพิ่ม space-y-1 เพื่อให้ป้ายสีกับชื่อคอร์สไม่ชิดกันเกินไป */}
 
                               {/* 👇 แก้ไขบล็อกนี้: เปลี่ยนให้เป็นป้ายสีแบบแอดมิน */}
-                              <div className={`text-[11px] font-bold text-white px-1.5 py-0.5 rounded w-fit line-clamp-1 ${SUBJECT_COLOR(cls.subjectName)}`}>
+                              <div className={`max-w-full truncate text-[11px] font-bold text-white px-1.5 py-0.5 rounded w-fit ${SUBJECT_COLOR(cls.subjectName)}`} title={cls.subjectName}>
                                 {cls.subjectName}
                               </div>
 
-                              <div className="text-[11px] text-slate-500 line-clamp-1 leading-tight mt-0.5">
+                              <div className="text-[11px] text-slate-600 line-clamp-2 break-words leading-tight mt-0.5" title={cls.courseName}>
                                 {cls.courseName}
                               </div>
                             </div>
@@ -743,6 +902,8 @@ export default function TutorSchedule() {
             ))}
           </div>
         </div>
+        </div>
+        )}
       </div >
 
       <div className={`rounded-2xl border p-4 sm:p-6 shadow-sm ${lineLinked ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
@@ -860,11 +1021,12 @@ export default function TutorSchedule() {
 
                   {/* Course info */}
                   <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl p-5 shadow-md">
-                    <h3 className="text-lg font-bold">{selectedClass.subject}</h3>
+                    <h3 className="text-lg font-bold">{selectedClass.subjectName}</h3>
                     <p className="text-sm opacity-90 font-medium">ห้องเรียน: {selectedClass.room}</p>
                   </div>
 
                   {/* ถ่ายรูปต้นคาบ — บังคับ */}
+                  <PhotoConsentWarning roster={photoConsentRoster} loading={photoConsentLoading} error={photoConsentError} confirmed={photoReviewConfirmed} onConfirm={setPhotoReviewConfirmed} />
                   <div>
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายต้นคาบ
@@ -872,7 +1034,7 @@ export default function TutorSchedule() {
                     </label>
                     <div className="relative group">
                       <input type="file" accept="image/*" capture="environment"
-                        onChange={e => setStartPhoto(e.target.files[0])}
+                        onChange={e => { setStartPhoto(e.target.files[0]); setPhotoReviewConfirmed(false) }}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-24 rounded-xl border-2 border-dashed flex items-center justify-center transition-colors
                       ${startPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
@@ -881,15 +1043,21 @@ export default function TutorSchedule() {
                         </span>
                       </div>
                     </div>
+                    <SelectedPhotoPreview file={startPhoto} />
                   </div>
 
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-600">หัวข้อจากแผนที่จะสอนคาบนี้</p>
+                    {topicsLoading ? <p className="text-sm text-slate-500">กำลังโหลดหัวข้อ…</p> : lessonTopics.length ? lessonTopics.map(item => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm hover:border-orange-300"><input type="checkbox" checked={plannedTopicIds.includes(item.id)} onChange={() => toggleTopic(setPlannedTopicIds, item.id)} className="h-4 w-4 accent-orange-500" />{item.title}</label>) : <p className="rounded-xl bg-orange-50 p-3 text-sm text-orange-800">ยังไม่มีหัวข้อในแผนคอร์ส สามารถพิมพ์รายละเอียดคาบนี้ได้ตามปกติ</p>}
+                    <p className="text-xs text-slate-500">เลือกหัวข้อเดิมซ้ำกับคาบอื่นได้ รายละเอียดแต่ละคาบแยกกัน</p>
+                  </div>
                   {/* สรุปเนื้อหา */}
                   <div>
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2 block">
-                      สรุปเนื้อหาที่จะสอน
+                      สรุปเนื้อหาที่จะสอน (รายละเอียดเพิ่มเติม)
                     </label>
                     <textarea rows="2"
-                      placeholder="หัวข้อที่สอนในคาบนี้"
+                      placeholder="เช่น แบบฝึกหัด ตัวอย่างโจทย์ หรือสิ่งที่เน้นเฉพาะวันนี้"
                       className="w-full border border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-400 outline-none transition-all resize-none"
                       value={remark} onChange={e => setRemark(e.target.value)} />
                   </div>
@@ -908,9 +1076,13 @@ export default function TutorSchedule() {
                     </div>
 
                     <div className="grid grid-cols-1 gap-2">
-                      {studentsList.length === 0 ? (
+                      {studentsLoading ? (
+                        <div className="text-center py-8 bg-slate-50 rounded-2xl text-slate-500 text-sm">กำลังโหลดรายชื่อนักเรียน...</div>
+                      ) : studentsError ? (
+                        <div role="alert" className="text-center py-8 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-sm">{studentsError}</div>
+                      ) : studentsList.length === 0 ? (
                         <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-500 text-sm">
-                          ไม่มีข้อมูลรายชื่อนักเรียน
+                          คอร์สนี้ยังไม่มีนักเรียนที่ลงทะเบียน
                         </div>
                       ) : studentsList.map(student => {
                         const sId = student.UserId || student.id
@@ -951,11 +1123,20 @@ export default function TutorSchedule() {
 
                   {/* Course info */}
                   <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl p-5 shadow-md">
-                    <h3 className="text-lg font-bold">{selectedClass.subject}</h3>
+                    <h3 className="text-lg font-bold">{selectedClass.subjectName}</h3>
                     <p className="text-sm opacity-90 font-medium">ห้องเรียน: {selectedClass.room}</p>
                   </div>
 
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-600">หัวข้อที่สอนจริงในคาบนี้</p>
+                    {lessonTopics.length ? lessonTopics.map(item => <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-sm hover:border-orange-300"><input type="checkbox" checked={taughtTopicIds.includes(item.id)} onChange={() => toggleTopic(setTaughtTopicIds, item.id)} className="h-4 w-4 accent-orange-500" />{item.title}</label>) : <p className="rounded-xl bg-orange-50 p-3 text-sm text-orange-800">ยังไม่มีหัวข้อในแผนคอร์ส</p>}
+                    <p className="text-xs text-slate-500">ปรับจากแผนได้ตามที่สอนจริง หัวข้อเดิมบันทึกซ้ำในหลายคาบได้</p>
+                  </div>
+
+                  <div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600">รายละเอียดที่สอนจริงเพิ่มเติม</label><textarea rows="3" value={remark} onChange={event => setRemark(event.target.value)} placeholder="บันทึกสิ่งที่สอนจริงในคาบนี้" className="w-full resize-y rounded-2xl border border-slate-200 p-3 text-sm outline-none focus:border-orange-400" /></div>
+
                   {/* ถ่ายรูปท้ายคาบ */}
+                  <PhotoConsentWarning roster={photoConsentRoster} loading={photoConsentLoading} error={photoConsentError} confirmed={photoReviewConfirmed} onConfirm={setPhotoReviewConfirmed} />
                   <div>
                     <label className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1 mb-2">
                       <Camera className="w-3.5 h-3.5" /> รูปถ่ายท้ายคาบ
@@ -963,7 +1144,7 @@ export default function TutorSchedule() {
                     </label>
                     <div className="relative group">
                       <input type="file" accept="image/*" capture="environment"
-                        onChange={e => setEndPhoto(e.target.files[0])}
+                        onChange={e => { setEndPhoto(e.target.files[0]); setPhotoReviewConfirmed(false) }}
                         className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                       <div className={`h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors
                       ${endPhoto ? 'border-green-500 bg-green-50' : 'border-slate-200 group-hover:border-orange-400'}`}>
@@ -973,6 +1154,7 @@ export default function TutorSchedule() {
                         </span>
                       </div>
                     </div>
+                    <SelectedPhotoPreview file={endPhoto} />
                   </div>
 
                   {/* แจ้งเตือนถ้ายังไม่ถ่าย — warning ไม่ใช่ error */}
@@ -996,9 +1178,9 @@ export default function TutorSchedule() {
                       <span className="tabular-nums text-2xl font-bold text-green-600">{presentCount}</span>
                       <span className="text-sm font-bold text-slate-500">/ {studentsList.length} <span className="text-xs font-medium text-slate-500">คน</span></span>
                     </div>
-                    <button onClick={handleSavePhase1} disabled={isSaving}
+                    <button onClick={handleSavePhase1} disabled={isSaving || studentsLoading || !!studentsError || studentsList.length === 0}
                       className={`w-full md:w-auto px-10 py-3.5 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95
-                      ${isSaving ? 'bg-slate-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
+                      ${(isSaving || studentsLoading || studentsError || studentsList.length === 0) ? 'bg-slate-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-200'}`}>
                       {isSaving ? 'กำลังบันทึก...' : 'บันทึกต้นคาบ'}
                     </button>
                   </div>

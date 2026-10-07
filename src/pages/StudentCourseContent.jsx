@@ -2,7 +2,7 @@
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
-import { Video, FileText, Download, Loader2, PlayCircle, X } from "lucide-react";
+import { Video, FileText, Download, Loader2, PlayCircle, X, RefreshCw } from "lucide-react";
 import { getStudentCourses, getStudentVideos, getStudentFiles, getVideoLearningState, updateVideoWatchSegments } from "../callapi/callusers_student";
 import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
 import Breadcrumb from "../components/ui/Breadcrumb";
@@ -215,6 +215,7 @@ export default function StudentCourseContent() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [courseName, setCourseName] = useState(searchParams.get("courseName") || "คอร์สเรียน");
   const [videos, setVideos] = useState([]);
   const [documents, setDocuments] = useState([]);
@@ -254,6 +255,7 @@ export default function StudentCourseContent() {
       if (!courseId) { setError("ไม่พบรหัสคอร์ส"); setLoading(false); return; }
       if (!token) { setError("กรุณาเข้าสู่ระบบใหม่"); setLoading(false); return; }
       try {
+        setLoading(true);
         setError("");
         const [videoResult, fileResult, courseResult] = await Promise.allSettled([
           getStudentVideos(token, courseId),
@@ -315,7 +317,7 @@ export default function StudentCourseContent() {
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [courseId, token, requestedVideoId]);
+  }, [courseId, token, requestedVideoId, reloadKey]);
 
   if (loading) {
     return (
@@ -327,7 +329,22 @@ export default function StudentCourseContent() {
   }
 
   if (error) {
-    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+    return (
+      <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600" role="alert">
+        {error}
+        {courseId && token && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            >
+              <RefreshCw className="h-4 w-4" /> ลองใหม่
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -363,11 +380,11 @@ export default function StudentCourseContent() {
                     {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
                       <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="h-full w-20 object-cover sm:w-28" />
                     ) : (
-                      <div className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></div>
+                      <span className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></span>
                     )}
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                    <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                       <PlayCircle className="h-8 w-8 text-white" />
-                    </div>
+                    </span>
                   </button>
 
                   <div className="flex min-w-0 flex-1 flex-col justify-between px-2 py-3 sm:px-3">

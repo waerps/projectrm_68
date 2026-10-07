@@ -2,8 +2,8 @@ import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
-import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark } from "lucide-react"
-import { toast } from "../components/ui/dialogs";
+import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark, Trash2 } from "lucide-react"
+import { toast, confirmDialog } from "../components/ui/dialogs";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
@@ -80,10 +80,28 @@ export default function TutorProfile() {
                 headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` }
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
+            setOriginalData(prev => (prev ? { ...prev, photo: res.data.imageUrl } : prev));
             toast("อัปโหลดรูปสำเร็จ");
         } catch (error) {
             console.error(error);
             toast("อัปโหลดไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"));
+        } finally {
+            e.target.value = "";
+        }
+    };
+
+    const handleDeletePhoto = async () => {
+        if (!await confirmDialog("ลบรูปโปรไฟล์? ระบบจะแสดงรูปเริ่มต้นแทน", { title: "ลบรูปโปรไฟล์", confirmText: "ลบรูป", danger: true })) return;
+        try {
+            await axios.delete(`${API_URL}/api/tutor/${TUTOR_ID}/delete-profile`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setFormData(prev => ({ ...prev, photo: null }));
+            setOriginalData(prev => (prev ? { ...prev, photo: null } : prev));
+            toast("ลบรูปโปรไฟล์แล้ว", "success");
+        } catch (error) {
+            console.error(error);
+            toast("ลบรูปไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"), "error");
         }
     };
 
@@ -196,6 +214,14 @@ export default function TutorProfile() {
                                 >
                                     <ImagePlus className="h-4.5 w-4.5" />
                                 </button>
+                                {formData.photo && (
+                                    <button aria-label="ลบรูปโปรไฟล์" title="ลบรูปโปรไฟล์"
+                                        onClick={handleDeletePhoto}
+                                        className="absolute -top-2 -right-2 flex h-9 w-9 items-center justify-center rounded-full bg-white text-red-500 shadow-lg hover:scale-110 transition-transform border-2 border-red-100"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
                             </div>
 
                             {/* ชื่อ + สถิติ */}

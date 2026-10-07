@@ -11,6 +11,7 @@ import { AlertTriangle as LuAlertTriangle, CalendarOff as LuCalendarOff, Lightbu
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import { PendingDraftsCallout } from "../components/CourseDrafts";
 
 const API_BASE = `${API_URL}/api/admin`;
 
@@ -315,6 +316,8 @@ export default function AdminSchedule() {
         throw new Error(d.message);
       }
 
+      if (d.drafted) toast(d.message);
+
       setShowAdd(false);
       await fetchSchedule(weekStart);
     } catch (e) {
@@ -352,6 +355,8 @@ export default function AdminSchedule() {
         throw new Error(d.message);
       }
 
+      if (d.drafted) toast(d.message);
+
       setShowEdit(false);
       setSelected(null);
       await fetchSchedule(weekStart);
@@ -388,6 +393,7 @@ export default function AdminSchedule() {
       }
 
       setShowDelete(false);
+      if (d.drafted) toast(d.message);
       setSelected(null);
       await fetchSchedule(weekStart);
     } catch (e) {
@@ -439,11 +445,19 @@ export default function AdminSchedule() {
           </div>
         </div>
 
+        {/* ── การแก้ไขตารางที่รอเผยแพร่ (ยังไม่แสดงในตารางด้านล่าง) ── */}
+        <PendingDraftsCallout category="schedule" what="ตารางสอน" className="mb-4"
+          onChanged={() => fetchSchedule(weekStart)} />
+
         {/* ── Error ── */}
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm mb-4">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>เชื่อมต่อ API ไม่สำเร็จ: {error}</span>
+            <span className="flex-1">เชื่อมต่อ API ไม่สำเร็จ: {error}</span>
+            <button type="button" onClick={() => fetchSchedule(weekStart)}
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100">
+              <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+            </button>
           </div>
         )}
 
@@ -565,6 +579,12 @@ export default function AdminSchedule() {
             </div>
           ) : (
             <>
+            {!error && schedule.length === 0 && (
+              <div className="flex items-center gap-2 p-3 mb-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-sm">
+                <Info className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                <span>สัปดาห์นี้ยังไม่มีคาบเรียน — กด "เพิ่มคาบสอน" เพื่อเพิ่มคาบใหม่</span>
+              </div>
+            )}
             {/* มือถือ: มุมมองรายวัน */}
             <div className="lg:hidden">
               <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">
@@ -577,9 +597,9 @@ export default function AdminSchedule() {
                   return (
                     <button key={dow} type="button" onClick={() => setMobileDow(dow)}
                       className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : holiday ? 'bg-red-50 border-red-200 text-red-700' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
-                      <div className="text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</div>
-                      <div className={`text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</div>
-                      <div className={`mt-0.5 text-[11px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</div>
+                      <span className="block text-sm font-bold">{DAY_MAP[dow].length > 3 ? DAY_MAP[dow].slice(0, 3) + '.' : DAY_MAP[dow]}</span>
+                      <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{dayDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
+                      <span className={`block mt-0.5 text-[11px] font-bold ${active ? 'text-white' : 'text-orange-500'}`}>{n ? `${n} คาบ` : ' '}</span>
                     </button>
                   );
                 })}
@@ -967,6 +987,12 @@ function ClassCard({ entry, weekStart, onEdit, onDelete }) {
         <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบในเทอม</p>
       )}
 
+      <div className="mt-1 border-t border-slate-100 pt-1 text-[11px] leading-4">
+        {entry.PlannedTopics?.length > 0 && <p className="font-semibold text-slate-600">คาดว่าจะสอน: {entry.PlannedTopics.join(', ')}</p>}
+        {entry.TaughtTopics?.length > 0 && <p className="mt-0.5 font-semibold text-emerald-700">สอนจริง: {entry.TaughtTopics.join(', ')}</p>}
+        {entry.TaughtTopics?.length > 0 && entry.LessonDetail && <p className="mt-0.5 text-slate-600 line-clamp-2">รายละเอียด: {entry.LessonDetail}</p>}
+      </div>
+
       {/* Actions */}
       <div className="absolute top-1 right-1 opacity-100 lg:opacity-0 group-hover:opacity-100 lg:group-hover:opacity-100 transition flex gap-1">
         <button aria-label="แก้ไข"
@@ -1302,9 +1328,13 @@ function ScheduleModal({
               className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
             >
               <option value="">เลือกติวเตอร์</option>
-              {meta.tutors.map(t => (
-                <option key={t.AdminId} value={t.AdminId}>{t.Nickname}</option>
-              ))}
+              {meta.tutors
+                .filter(t => Number(t.Status_Tutor_Id) === 1 || String(t.AdminId) === String(formData.AdminId))
+                .map(t => (
+                  <option key={t.AdminId} value={t.AdminId}>
+                    {t.Nickname}{Number(t.Status_Tutor_Id) === 1 ? '' : ' (ไม่ได้สอนแล้ว)'}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -1463,17 +1493,17 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
                       ? 'border-orange-300 bg-white hover:bg-orange-50'
                       : 'border-slate-200 bg-white hover:bg-slate-50'}`}
               >
-                <div>
-                  <p className={`text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
+                <span className="block">
+                  <span className={`block text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
                     {isTop ? 'ห้องที่แนะนำ' : `ตัวเลือกที่ ${r.rank}`}
-                  </p>
-                  <p className="text-[11px] text-slate-600">
+                  </span>
+                  <span className="block text-[11px] text-slate-600">
                     {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
                     {r.isOversized && (
                       <span className="text-amber-600"> · ที่นั่งเกินความจำเป็น {r.extraSeats} ที่นั่ง</span>
                     )}
-                  </p>
-                </div>
+                  </span>
+                </span>
                 {isSelected && <CheckCircle className="h-4 w-4 text-orange-600 shrink-0" />}
               </button>
             );

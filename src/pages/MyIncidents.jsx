@@ -107,12 +107,21 @@ export default function MyIncidents() {
             .then((payload) => {
                 const list = Array.isArray(payload) ? payload : payload?.incidents ?? payload?.data?.incidents ?? [];
                 setIncidents(Array.isArray(list) ? list : []);
+                setError("");
             })
-            .catch((err) => setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"))
+            .catch((err) => setError(
+                typeof err === "string" ? err : err?.response?.data?.message || err?.message || "โหลดข้อมูลไม่สำเร็จ"
+            ))
             .finally(() => setLoading(false));
     }, [token]);
 
     useEffect(() => { load(); }, [load]);
+
+    const retry = () => {
+        setError("");
+        setLoading(true);
+        load();
+    };
 
     if (loading) {
         return (
@@ -124,7 +133,14 @@ export default function MyIncidents() {
     }
 
     if (error) {
-        return <ErrorState />;
+        return (
+            <ErrorState
+                className="mt-[90px]"
+                title="โหลดประวัติการแจ้งเรื่องไม่สำเร็จ"
+                description={error}
+                onRetry={retry}
+            />
+        );
     }
 
     return (

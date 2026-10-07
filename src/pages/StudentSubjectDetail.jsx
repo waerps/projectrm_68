@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Video, FileText, Download, Loader2, PlayCircle, X,
-  ClipboardList, BookOpen, ChevronRight,
+  ClipboardList, BookOpen, ChevronRight, RefreshCw,
 } from "lucide-react";
 import {
   getCourseBasic,
@@ -252,6 +252,7 @@ export default function StudentSubjectDetail() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [courseName, setCourseName] = useState("คอร์สเรียน");
   const [subjectName, setSubjectName] = useState("");
   const [videos, setVideos] = useState([]);
@@ -265,6 +266,8 @@ export default function StudentSubjectDetail() {
 
   const [examLoading, setExamLoading] = useState(false);
   const [examSchedule, setExamSchedule] = useState([]);
+  const [examScheduleError, setExamScheduleError] = useState(false);
+  const [examScheduleReloadKey, setExamScheduleReloadKey] = useState(0);
   const { toasts, showToast, removeToast } = useToast();
 
   useEffect(() => {
@@ -273,6 +276,7 @@ export default function StudentSubjectDetail() {
       if (!token) { setError("กรุณาเข้าสู่ระบบใหม่"); setLoading(false); return; }
       if (!courseId || !subjectId) { setError("ไม่พบรหัสคอร์สหรือวิชา"); setLoading(false); return; }
       try {
+        setLoading(true);
         setError("");
         const [course, subjectList, videoList, fileList] = await Promise.all([
           getCourseBasic(courseId, token).catch(() => null),
@@ -325,18 +329,22 @@ export default function StudentSubjectDetail() {
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [courseId, subjectId, token]);
+  }, [courseId, subjectId, token, reloadKey]);
 
   // กำหนดสอบล่วงหน้า (Pre/Mid/Post ที่ยังไม่เปิด แต่ติวเตอร์ตั้งวันที่ไว้แล้ว) — โชว้ให้เห็นเฉยๆ
   // ไม่เกี่ยวกับปุ่ม "เข้าสอบ" ด้านล่าง ถ้าไม่มีอันไหนตั้งวันที่ไว้เลยก็ไม่ต้องโชว์อะไร
   useEffect(() => {
     if (!courseId || !subjectId || !token) return;
     let cancelled = false;
+    setExamScheduleError(false);
     fetchExamSchedule(courseId, subjectId)
       .then((data) => { if (!cancelled) setExamSchedule(Array.isArray(data?.schedule) ? data.schedule : []); })
-      .catch((err) => console.error("Fetch exam schedule failed:", err));
+      .catch((err) => {
+        console.error("Fetch exam schedule failed:", err);
+        if (!cancelled) setExamScheduleError(true);
+      });
     return () => { cancelled = true; };
-  }, [courseId, subjectId, token]);
+  }, [courseId, subjectId, token, examScheduleReloadKey]);
 
   const handleEnterExam = async () => {
     if (!userId) return navigate("/login");
@@ -371,7 +379,23 @@ export default function StudentSubjectDetail() {
   }
 
   if (error) {
-    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+    const canRetry = Boolean(token && courseId && subjectId);
+    return (
+      <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600" role="alert">
+        {error}
+        {canRetry && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            >
+              <RefreshCw className="h-4 w-4" /> ลองใหม่
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -414,11 +438,11 @@ export default function StudentSubjectDetail() {
                   {(video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)) ? (
                     <img src={video.Thumbnail || getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="h-full w-20 object-cover sm:w-28" />
                   ) : (
-                    <div className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></div>
+                    <span className="flex h-full min-h-[72px] w-20 items-center justify-center sm:w-28"><span className="text-2xl">📁</span></span>
                   )}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <span className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                     <PlayCircle className="h-8 w-8 text-white" />
-                  </div>
+                  </span>
                 </button>
                 <div className="flex min-w-0 flex-1 flex-col justify-between px-2 py-3 sm:px-3">
                   <div>
@@ -481,7 +505,20 @@ export default function StudentSubjectDetail() {
             <ClipboardList className="h-4 w-4" /> {examLoading ? "กำลังตรวจสอบ…" : "เข้าสอบ"}
           </button>
 
-          {examSchedule.length > 0 && (
+          {examScheduleError && (
+            <div className="mt-6 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600" role="alert">
+              โหลดกำหนดการสอบไม่สำเร็จ
+              <button
+                type="button"
+                onClick={() => setExamScheduleReloadKey((k) => k + 1)}
+                className="ml-3 inline-flex items-center gap-1 font-semibold underline hover:text-red-700"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+              </button>
+            </div>
+          )}
+
+          {!examScheduleError && examSchedule.length > 0 && (
             <div className="mt-6 space-y-2 text-left">
               {examSchedule.map((s) => {
                 const d = new Date(s.examDate);

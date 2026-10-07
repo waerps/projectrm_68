@@ -14,6 +14,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -691,18 +692,18 @@ function FacilityTable({ items, onEdit, onView, onStatusChange, onDelete }) {
                     <div key={item.CommonFacilityId}
                         className={`min-w-0 rounded-2xl border shadow-sm p-4 ${outOfStock ? "bg-red-50/50 border-red-200" : lowStock ? "bg-yellow-50/50 border-yellow-200" : "bg-white border-slate-200"}`}>
                         <button onClick={() => onView(item)} className="w-full text-left flex items-start gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+                            <span className="h-10 w-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
                                 <CIcon className="h-5 w-5 text-orange-500" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <p className="font-bold text-slate-900 leading-snug break-words">{item.Name}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <p className="text-slate-700 text-sm"><span className="font-bold text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</p>
-                                {outOfStock && <p className="text-[11px] font-bold text-red-600">หมดสต๊อก</p>}
-                                {lowStock && <p className="text-[11px] font-bold text-yellow-700">ใกล้หมด</p>}
-                            </div>
+                            </span>
+                            <span className="block min-w-0 flex-1">
+                                <span className="block font-bold text-slate-900 leading-snug break-words">{item.Name}</span>
+                                <span className="block text-xs text-slate-500 mt-0.5">{item.Category_Name}{item.Location ? ` · ${item.Location}` : ""}</span>
+                            </span>
+                            <span className="block text-right shrink-0">
+                                <span className="block text-slate-700 text-sm"><span className="font-bold text-slate-900 text-base">{item.Quantity}</span> {item.Unit}</span>
+                                {outOfStock && <span className="block text-[11px] font-bold text-red-600">หมดสต๊อก</span>}
+                                {lowStock && <span className="block text-[11px] font-bold text-yellow-700">ใกล้หมด</span>}
+                            </span>
                         </button>
                         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                             <span className={`inline-flex min-w-0 items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${st.bg} ${st.text} ${st.border}`}>
@@ -827,6 +828,7 @@ export default function AdminCommonFacilities() {
     const [categories, setCategories] = useState([]);
     const [statuses, setStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
     const [filterType, setFilterType] = useState("all"); // 'all' | 'asset' | 'consumable'
     const [search, setSearch] = useState("");
@@ -854,9 +856,12 @@ export default function AdminCommonFacilities() {
             setItems(iRes.data);
             setCategories(cRes.data);
             setStatuses(sRes.data);
+            setLoadError(false);
         } catch (e) {
+            setLoadError(true);
             console.error("fetch common-facilities error:", e.response?.status, e.response?.data || e.message);
-            showToast("error", "โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
+            // ยังไม่มีข้อมูล = กล่อง error แสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+            if (items.length) showToast("error", "โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
     };
 
@@ -941,6 +946,9 @@ export default function AdminCommonFacilities() {
 
     if (loading) return (
         <Spinner block label="กำลังโหลดข้อมูลคลังอุปกรณ์..." />
+    );
+    if (loadError && items.length === 0) return (
+        <ErrorState title="โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ" onRetry={() => { setLoadError(false); setLoading(true); fetchAll(); }} />
     );
 
     return (
@@ -1028,7 +1036,7 @@ export default function AdminCommonFacilities() {
             {filtered.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <Boxes className="h-16 w-16 mx-auto text-slate-200" />
-                    <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
+                    <p className="text-slate-500 font-medium mt-3">{items.length === 0 ? "ยังไม่มีอุปกรณ์" : "ไม่พบอุปกรณ์ที่ค้นหา"}</p>
                 </div>
             ) : (
                 <FacilityTable

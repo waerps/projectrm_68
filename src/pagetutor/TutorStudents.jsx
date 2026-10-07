@@ -54,6 +54,10 @@ export default function TutorStudents() {
     const [students, setStudents] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [examSummary, setExamSummary] = useState(null);
+    // โหลดสรุปคะแนนสอบไม่สำเร็จ — แยกจาก "ยังไม่มีข้อมูลสอบ"
+    const [examError, setExamError] = useState(false);
+    const [examRetrying, setExamRetrying] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
     const navigate = useNavigate();
 
 
@@ -67,7 +71,7 @@ export default function TutorStudents() {
         ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
         คะแนนสอบ: student.exam?.improvement
             ? `ก่อนเรียน ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
-            : "ยังไม่มีข้อมูลสอบ",
+            : examError ? "—" : "ยังไม่มีข้อมูลสอบ",
         // แยกคอลัมน์: คะแนนดิบใช้ดูรายคน ส่วน "พัฒนาการ" คือตัวที่เอาไปเรียง/เทียบข้ามคนได้
         พัฒนาการ: getGrowthText(student),
     }));
@@ -120,7 +124,7 @@ export default function TutorStudents() {
                     axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders),
                     axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders).catch((err) => {
                         console.error("Fetch exam summary failed:", err);
-                        return null;
+                        return { failed: true };
                     }),
                 ]);
                 const dataFromApi = response.data;
@@ -128,6 +132,7 @@ export default function TutorStudents() {
 
                 const summary = summaryRes?.data || null;
                 setExamSummary(summary);
+                setExamError(!!summaryRes?.failed);
                 const examByUserId = new Map((summary?.students || []).map((s) => [s.userId, s]));
                 const mappedStudents = dataFromApi.students.map((std, index) => {
                     const studentId = std.UserId || std.id || (index + 1);
@@ -161,7 +166,26 @@ export default function TutorStudents() {
             }
         };
         fetchData();
-    }, [courseId]);
+    }, [courseId, reloadKey]);
+
+    // ลองโหลดสรุปคะแนนสอบใหม่อย่างเดียว ไม่ต้องโหลดรายชื่อทั้งหน้าใหม่
+    const retryExamSummary = async () => {
+        setExamRetrying(true);
+        try {
+            const token = localStorage.getItem("student_token");
+            const res = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, { headers: { Authorization: `Bearer ${token}` } });
+            const summary = res?.data || null;
+            const examByUserId = new Map((summary?.students || []).map((s) => [s.userId, s]));
+            setExamSummary(summary);
+            setStudents((prev) => prev.map((st) => ({ ...st, exam: examByUserId.get(st.id) || null })));
+            setExamError(false);
+        } catch (err) {
+            console.error("Retry exam summary failed:", err);
+            setExamError(true);
+        } finally {
+            setExamRetrying(false);
+        }
+    };
 
     useEffect(() => { setCurrentPage(1); }, [search, sortBy]);
 
@@ -262,7 +286,7 @@ export default function TutorStudents() {
         filteredStudents.filter(s => { const r = getAttendanceRate(s); return r !== null && r < 60; });
 
     if (loading) return <Spinner block label="กำลังโหลดข้อมูลนักเรียน..." />;
-    if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>;
+    if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }} /></div>;
 
     return (
         <div className="space-y-6 px-4 lg:px-0">
@@ -338,6 +362,17 @@ export default function TutorStudents() {
                     </div>
                 )}
 
+                {examError && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 mb-4 text-sm text-red-700">
+                        <LuAlertTriangle className="h-4 w-4 shrink-0" />
+                        <span>โหลดข้อมูลสอบไม่สำเร็จ</span>
+                        <button type="button" onClick={retryExamSummary} disabled={examRetrying}
+                            className="font-semibold underline hover:text-red-800 disabled:opacity-50">
+                            {examRetrying ? "กำลังโหลด…" : "ลองใหม่"}
+                        </button>
+                    </div>
+                )}
+
                 {/* Students List */}
                 <div className="space-y-4">
                     {filteredStudents.length === 0 ? (
@@ -356,7 +391,7 @@ export default function TutorStudents() {
                                             <StudentAvatar student={student} />
                                         </div>
                                         <div className="min-w-0">
-                                            <h3 className="text-lg font-bold text-slate-900 break-words">{student.name}</h3>
+                                            <h2 className="text-lg font-bold text-slate-900 break-words">{student.name}</h2>
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold border border-red-200 mt-1">
                                                     <LuAlertTriangle className="h-3 w-3" /> เข้าเรียนต่ำกว่า 60%
@@ -454,7 +489,7 @@ export default function TutorStudents() {
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="text-lg font-bold text-slate-300">ยังไม่มีข้อมูลสอบ</p>
+                                        <p className="text-lg font-bold text-slate-300">{examError ? "—" : "ยังไม่มีข้อมูลสอบ"}</p>
                                     )}
                                 </div>
                             </div>

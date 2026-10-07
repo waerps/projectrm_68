@@ -5,7 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
-import { AlertOctagon, ChevronDown, Menu, X, LayoutDashboard, BookOpen, GraduationCap, Users, TrendingUp, CalendarDays, DoorOpen, Package, Megaphone, Wallet, ShieldCheck, UserCircle, LogOut } from "lucide-react";
+import { AlertOctagon, ChevronDown, Menu, X, LayoutDashboard, BookOpen, GraduationCap, Users, TrendingUp, CalendarDays, DoorOpen, Package, Megaphone, Wallet, ShieldCheck, UserCircle, LogOut, KeyRound } from "lucide-react";
 
 export default function Navbar() {
     const user = JSON.parse(localStorage.getItem("user"));
@@ -55,6 +55,7 @@ export default function Navbar() {
         { to: "finance", label: "การเงิน", icon: Wallet },
         { to: "management", label: "ผู้ดูแลระบบ", icon: ShieldCheck },
         { to: "incidents", label: "รับแจ้งเหตุการณ์", icon: AlertOctagon },
+        { to: "password-resets", label: "คำขอลืมรหัสผ่าน", icon: KeyRound },
         { to: "profile", label: "ข้อมูลส่วนตัว", icon: UserCircle },
     ]
 
@@ -246,6 +247,15 @@ export default function Navbar() {
                                         className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
                                     >
                                         รับแจ้งเหตุการณ์
+                                    </Link>
+                                </li>
+
+                                <li>
+                                    <Link
+                                        to="password-resets"
+                                        className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition"
+                                    >
+                                        คำขอลืมรหัสผ่าน
                                     </Link>
                                 </li>
 

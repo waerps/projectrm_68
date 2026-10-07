@@ -180,7 +180,7 @@ export default function StudentProfile() {
       const uploadedPhoto = res.data?.path ?? res.data?.imageUrl ?? res.data?.data?.path;
       if (!uploadedPhoto) throw new Error("เซิร์ฟเวอร์ไม่ส่ง path ของรูปกลับมา");
       if (!studentId) throw new Error("ไม่พบรหัสนักเรียน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
-      const putRes = await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
+      await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
         firstname: formData.firstname,
         lastname: formData.lastname,
         nickname: formData.nickname,
@@ -191,18 +191,6 @@ export default function StudentProfile() {
         remark: formData.remark,
         photo: uploadedPhoto,
       }, { headers: { Authorization: `Bearer ${token}` } });
-      if (putRes.data?.photoBlocked) {
-        // ไม่ยินยอมเรื่องรูป (เช่น เพิ่งถอนความยินยอมไปในแท็บอื่น) — เซิร์ฟเวอร์ไม่ได้บันทึกรูปใหม่จริง
-        // แม้ request จะสำเร็จก็ตาม ต้องคืนค่ารูปเดิมแทนที่จะโชว์เหมือนบันทึกสำเร็จ
-        URL.revokeObjectURL(previewUrl);
-        setFormData((prev) => ({ ...prev, photo: previousPhoto }));
-        showToast(
-          "error",
-          "อัปโหลดรูปไม่สำเร็จ",
-          "มีการปฏิเสธความยินยอมเรื่องภาพถ่ายไว้ก่อนหน้านี้ ระบบจึงไม่บันทึกรูปใหม่ให้ — กรุณาติดต่อเจ้าหน้าที่หากต้องการเปลี่ยนแปลง"
-        );
-        return;
-      }
       setFormData((prev) => ({ ...prev, photo: uploadedPhoto }));
       URL.revokeObjectURL(previewUrl);
       setOriginalData((prev) => ({ ...prev, photo: uploadedPhoto }));

@@ -28,6 +28,7 @@ export function examTimingForDisplay(student) {
   return {
     avgTimePerQuestion: average,
     secondsUsed: unavailable || average == null ? null : seconds,
+    elapsedSeconds: validSeconds(student?.elapsedSeconds) ? Number(student.elapsedSeconds) : null,
     totalQuestions: Number.isInteger(questionCount) && questionCount > 0 ? questionCount : null,
     timingStatus: status,
     timingIssues: Array.isArray(student?.timingIssues) ? student.timingIssues : [],
@@ -37,13 +38,10 @@ export function examTimingForDisplay(student) {
   };
 }
 
-export const formatSecondsPerQuestion = (value) => validSeconds(value)
-  ? Number(value).toLocaleString("th-TH", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-  : "—";
-
-export const parentMessageAttribution = (row) => row?.teacherEdited
-  ? "ร่างโดย AI · ผู้สอนปรับแก้"
-  : "ร่างโดย AI";
+export const parentMessageAttribution = (row) => {
+  const source = `ข้อมูลผลสอบจากระบบ · คำแนะนำร่างโดย Google Gemini (${row?.model || "ไม่ทราบรุ่น"})`;
+  return row?.teacherEdited ? `${source} · ผู้สอนปรับแก้` : source;
+};
 
 export function parentMessageParts(row, message = row?.parentMessage || "") {
   const prefix = row?.factualIntro || row?.overview || "";

@@ -21,6 +21,7 @@ import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -291,6 +292,9 @@ export default function AdminIncidents() {
   const { toasts, showToast, removeToast } = useToast();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  // โหลดครั้งแรกไม่สำเร็จ → กล่อง error + ลองใหม่ (เดิมขึ้น "ไม่มีเคสในหมวดนี้" ทำให้เข้าใจผิดว่าไม่มีเคส)
+  const [loadError, setLoadError] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [search, setSearch] = useState("");
   const [filterSeverity, setFilterSeverity] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -304,8 +308,12 @@ export default function AdminIncidents() {
     try {
       const res = await axios.get(API, getAdminAuthConfig());
       setIncidents(res.data.incidents);
+      setHasLoaded(true);
+      setLoadError(false);
     } catch (e) {
-      showToast("error", "โหลดข้อมูลไม่สำเร็จ");
+      // โหลดซ้ำหลังมีข้อมูลแล้ว (เช่น หลังเปลี่ยนสถานะ) ไม่สำเร็จ → คงรายการเดิมไว้ แจ้งด้วย toast
+      if (hasLoaded) showToast("error", "โหลดข้อมูลล่าสุดไม่สำเร็จ", "รายการที่เห็นอาจยังไม่อัปเดต");
+      else setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -370,6 +378,12 @@ export default function AdminIncidents() {
   if (loading) return (
     <Spinner block label="กำลังโหลดข้อมูลเคส..." />
   );
+  if (loadError) return (
+    <div className="space-y-6 px-4 lg:px-0">
+      <PageHeader title="ศูนย์รับแจ้งปัญหา" subtitle="จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน" />
+      <ErrorState title="โหลดรายการเคสไม่สำเร็จ" onRetry={fetchAll} />
+    </div>
+  );
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -386,13 +400,13 @@ export default function AdminIncidents() {
             <button key={s.key} type="button" aria-pressed={filterSeverity === s.key}
               onClick={() => setFilterSeverity(filterSeverity === s.key ? "all" : s.key)}
               className={`flex min-w-0 items-center gap-3 p-4 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterSeverity === s.key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
-              <div className={`h-10 w-10 rounded-xl ${s.solidBg} flex items-center justify-center shrink-0`}>
+              <span className={`h-10 w-10 rounded-xl ${s.solidBg} flex items-center justify-center shrink-0`}>
                 <Icon className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <p className={STAT_LABEL}>{sevLabel(s.key)}</p>
-                <p className={STAT_VALUE}>{summary[s.key] ?? 0}<span className={STAT_UNIT}>เคส</span></p>
-              </div>
+              </span>
+              <span className="block">
+                <span className={`block ${STAT_LABEL}`}>{sevLabel(s.key)}</span>
+                <span className={`block ${STAT_VALUE}`}>{summary[s.key] ?? 0}<span className={STAT_UNIT}>เคส</span></span>
+              </span>
             </button>
           );
         })}
@@ -460,33 +474,33 @@ export default function AdminIncidents() {
             return (
               <button key={inc.IncidentId} onClick={() => setViewId(inc.IncidentId)}
                 className={`min-w-0 w-full text-left bg-white rounded-2xl border shadow-sm p-4 active:bg-orange-50/60 ${needsUrgentReview ? "border-red-200 bg-red-50/40" : "border-slate-200"}`}>
-                <div className="flex items-start gap-3">
-                  <div className={`h-10 w-10 rounded-xl ${sevMeta.solidBg} flex items-center justify-center shrink-0`}>
+                <span className="flex items-start gap-3">
+                  <span className={`h-10 w-10 rounded-xl ${sevMeta.solidBg} flex items-center justify-center shrink-0`}>
                     <SevIcon className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 text-sm leading-snug">{typeMeta?.label || inc.IncidentTypeId}</p>
-                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                  </span>
+                  <span className="block min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-900 text-sm leading-snug">{typeMeta?.label || inc.IncidentTypeId}</span>
+                    <span className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
                       #{String(inc.IncidentId).padStart(4, "0")} · <Clock className="h-3 w-3" /> {formatDateTime(inc.Created_at)}
-                    </p>
-                  </div>
+                    </span>
+                  </span>
                   <Eye className="h-4 w-4 text-orange-500 shrink-0 mt-1" />
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                </span>
+                <span className="mt-3 flex flex-wrap items-center gap-1.5">
                   <Badge colorClass={`${sevMeta.bg} ${sevMeta.text} ${sevMeta.border}`}>{sevLabel(inc.Severity)}</Badge>
                   <Badge colorClass={`${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>{statusMeta.label}</Badge>
                   {needsUrgentReview && (
                     <span className="text-[11px] font-bold text-red-600 flex items-center gap-1"><AlertOctagon className="h-3 w-3" /> ต้องตรวจสอบทันที</span>
                   )}
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
-                  <p className="flex items-center gap-1.5 flex-wrap">
+                </span>
+                <span className="block mt-3 pt-3 border-t border-slate-100 space-y-1.5 text-xs text-slate-600">
+                  <span className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-slate-400">ผู้แจ้ง</span>
                     <span className="font-medium text-slate-700">{reporterName}</span>
                     <span className="text-[11px] text-slate-500">· {inc.ReporterRole === "student" ? "นักเรียน" : "ติวเตอร์"}</span>
-                  </p>
+                  </span>
                   {(inc.TutorFirstname || inc.CourseName) && (
-                    <div className="flex flex-wrap gap-1">
+                    <span className="flex flex-wrap gap-1">
                       {inc.TutorFirstname && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold max-w-full">
                           <GraduationCap className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.TutorFirstname} {inc.TutorLastname}</span>
@@ -497,9 +511,9 @@ export default function AdminIncidents() {
                           <BookOpen className="h-3 w-3 shrink-0" /> <span className="truncate">{inc.CourseName}</span>
                         </span>
                       )}
-                    </div>
+                    </span>
                   )}
-                </div>
+                </span>
               </button>
             );
           })}

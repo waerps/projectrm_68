@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   MapPin,
+  RefreshCw,
   User,
   XCircle,
 } from "lucide-react";
@@ -91,6 +92,7 @@ function normalizeSchedule(item) {
     CourseScheduleDetailId: item.CourseScheduleDetailId ?? item.courseScheduleDetailId ?? item.ScheduleDetailId ?? item.scheduleDetailId,
     CourseID: item.CourseID ?? item.CourseId ?? item.courseId,
     CourseName: item.CourseName ?? item.courseName ?? "คอร์สเรียน",
+    Course_Type: item.Course_Type ?? item.courseType ?? item.CourseType ?? 'bundle',
     SubjectName: item.SubjectName ?? item.subjectName ?? "วิชาเรียน",
     StartDateTime: startDateTime,
     StartTime: (item.StartTime ?? item.startTime ?? timeFromDate(startDateTime))?.slice(0, 5),
@@ -105,6 +107,7 @@ function normalizeSchedule(item) {
 function normalizeCourse(item) {
   return {
     ...item,
+    Course_Type: item.Course_Type ?? item.courseType ?? item.CourseType ?? 'bundle',
     CourseID: item.CourseID ?? item.CourseId ?? item.courseId ?? item.id,
     CourseName: item.CourseName ?? item.courseName ?? item.name ?? "คอร์สเรียน",
     StartDate: item.StartDate ?? item.startDate,
@@ -134,10 +137,13 @@ export default function StudentSchedule() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [weekStart, setWeekStart] = useState(() => getMondayOf(new Date()));
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError("");
     Promise.allSettled([getStudentSchedule(token), getStudentCourses(token)])
       .then(([scheduleResult, courseResult]) => {
         if (cancelled) return;
@@ -151,10 +157,10 @@ export default function StudentSchedule() {
         setSchedules(scheduleList.map(normalizeSchedule).filter((item) => item.StartDateTime));
         setCourses(courseList.map(normalizeCourse).filter((item) => item.CourseID));
       })
-      .catch((err) => setError(typeof err === "string" ? err : err?.message || "โหลดตารางเรียนไม่สำเร็จ"))
+      .catch((err) => { if (!cancelled) setError(typeof err === "string" ? err : err?.message || "โหลดตารางเรียนไม่สำเร็จ"); })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, reloadKey]);
 
   const weekSchedules = useMemo(() => schedules.filter((item) => {
     const date = isoDate(item.StartDateTime);
@@ -211,7 +217,20 @@ export default function StudentSchedule() {
   const goToCourse = (courseId) => courseId && navigate(`/profile/course-detail/${courseId}`);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
-  if (error) return <div className="mt-[90px] py-12 text-center text-red-500">{error}</div>;
+  if (error) return (
+    <div className="mt-[90px] py-12 text-center text-red-500" role="alert">
+      {error}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+        >
+          <RefreshCw className="h-4 w-4" /> ลองใหม่
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="mx-auto mt-[90px] min-w-0 max-w-[1384px] space-y-6 pb-10">
@@ -224,7 +243,7 @@ export default function StudentSchedule() {
           <div className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white shadow-md">{new Date().toLocaleDateString("th-TH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
         </div>
 
-        <StatusLegend />
+        <StatusLegend showAttendance={visibleCourses.some((course) => course.Course_Type === 'single')} />
 
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
           <button aria-label="สัปดาห์ก่อนหน้า" onClick={() => setWeekStart(addDays(weekStart, -7))} className="rounded-lg p-2 transition hover:bg-white"><ChevronLeft className="h-5 w-5" /></button>
@@ -273,8 +292,8 @@ export default function StudentSchedule() {
   );
 }
 
-function StatusLegend() {
-  return <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-neutral-600">{Object.entries(STATUS_STYLE).map(([key, style]) => <span key={key} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />{style.label}</span>)}</div>;
+function StatusLegend({ showAttendance = false }) {
+  return <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs font-semibold text-neutral-600">{Object.entries(STATUS_STYLE).filter(([key]) => showAttendance || (key !== 'present' && key !== 'absent')).map(([key, style]) => <span key={key} className="flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-full ${style.dot}`} />{style.label}</span>)}</div>;
 }
 
 function ScheduleRow({ slot, scheduleMap, onSelect }) {
@@ -333,7 +352,7 @@ function CourseWeekOverview({ courses, schedules, weeks, selectedWeek, onSelectW
   return <section className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm md:p-6">
     <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-end">
       <div><h2 className="flex items-center gap-2 text-lg font-bold text-neutral-900"><BookOpen className="h-5 w-5 text-orange-500" />คอร์สที่ลงเรียน: ภาพรวมรายสัปดาห์</h2><p className="mt-1 text-xs text-neutral-500">เลือกสัปดาห์เพื่อดูสถานะคอร์สและตารางเรียน</p></div>
-      <StatusLegend />
+      <StatusLegend showAttendance={courses.some((course) => course.Course_Type === 'single')} />
     </div>
     {!courses.length ? <p className="py-8 text-center text-sm text-neutral-400">ยังไม่มีคอร์สที่ลงทะเบียน</p> : <>
       <div className="space-y-3 md:hidden">

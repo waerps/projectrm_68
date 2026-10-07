@@ -1,11 +1,11 @@
 // src/pages/Course.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard, Heart,
   Calendar, Users, PlayCircle, X, AlertTriangle, BookOpen, Loader2,
   Youtube, FolderOpen, Video, Sparkles, ShieldCheck, ArrowRight, ArrowLeft,
-  Tag, Check,
+  Tag, Check, RefreshCw,
 } from "lucide-react";
 import {
   getCourseById,
@@ -16,6 +16,7 @@ import {
 import { getFileUrl } from "../utils/fileUrl";
 import { useShop } from "../context/ShopContext";
 import Breadcrumb from "../components/ui/Breadcrumb";
+import UIErrorState from "../components/ui/ErrorState";
 
 // ─── Constants — เหมือนกับ AdminCoursesPage.jsx เป๊ะๆ เพื่อให้ badge/label ตรงกัน ───
 const STATUS_MAP = {
@@ -151,6 +152,9 @@ export default function CourseDetail() {
   const { id } = useParams();
   const [courseRaw, setCourseRaw] = useState(null);
   const [loading, setLoading] = useState(true);
+  // โหลดคอร์สไม่สำเร็จ: "notfound" (ไม่มีคอร์สนี้/ถูกซ่อน) หรือ "error" (เน็ต/เซิร์ฟเวอร์) — ไม่แสดงหน้าคอร์สปลอมที่กดซื้อได้
+  const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -159,6 +163,10 @@ export default function CourseDetail() {
 
   const [subjects, setSubjects] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [subjectsError, setSubjectsError] = useState(false);
+  const [subjectsReloadKey, setSubjectsReloadKey] = useState(0);
+  const [videosError, setVideosError] = useState(false);
+  const [videosReloadKey, setVideosReloadKey] = useState(0);
 
   const [schedule, setSchedule] = useState([]);
 
@@ -172,46 +180,54 @@ export default function CourseDetail() {
     (async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         const data = await getCourseById(id);
         setCourseRaw(data);
+        if (!data) setLoadError("notfound");
       } catch (err) {
         console.error("Load course error:", err);
         setCourseRaw(null);
+        const status = err?.response?.status ?? err?.status;
+        setLoadError(status === 404 || status === 400 ? "notfound" : "error");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, reloadKey]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoadingVideos(true);
+        setVideosError(false);
         const data = await getCoursePreviewVideos(id);
         setVideos(Array.isArray(data) ? data : []);
       } catch (err) {
         console.warn("Load preview videos error:", err);
         setVideos([]);
+        setVideosError(true);
       } finally {
         setLoadingVideos(false);
       }
     })();
-  }, [id]);
+  }, [id, videosReloadKey]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoadingSubjects(true);
+        setSubjectsError(false);
         const data = await getCourseSubjects(id);
         setSubjects(Array.isArray(data) ? data : []);
       } catch (err) {
         console.warn("Load subjects error:", err);
         setSubjects([]);
+        setSubjectsError(true);
       } finally {
         setLoadingSubjects(false);
       }
     })();
-  }, [id]);
+  }, [id, subjectsReloadKey]);
 
   useEffect(() => {
     (async () => {
@@ -297,6 +313,24 @@ export default function CourseDetail() {
   if (loading) {
     return <CourseSkeleton />;
   }
+  if (loadError) {
+    return (
+      <div className="bg-white">
+        <div className="pt-28 md:pt-36 container mx-auto max-w-6xl px-4 pb-16">
+          <Breadcrumb className="mb-4" items={[{ label: "หน้าแรก", to: "/" }, { label: "คอร์สเรียน", to: "/courses" }, { label: "รายละเอียดคอร์ส" }]} />
+          {loadError === "notfound" ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+              <p className="text-base font-semibold text-slate-700">ไม่พบคอร์สนี้</p>
+              <p className="mt-1 text-sm text-slate-500">คอร์สอาจถูกปิดรับสมัครหรือนำออกจากหน้าเว็บแล้ว</p>
+              <Link to="/courses" className="mt-4 inline-flex h-10 items-center rounded-xl bg-orange-500 px-4 text-sm font-semibold text-white hover:bg-orange-600">ดูคอร์สทั้งหมด</Link>
+            </div>
+          ) : (
+            <UIErrorState title="โหลดข้อมูลคอร์สไม่สำเร็จ" onRetry={() => setReloadKey((k) => k + 1)} />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const scrollToVideo = (i) => {
     toggleOpen(i);
@@ -315,15 +349,6 @@ export default function CourseDetail() {
 
   return (
     <div className="bg-white">
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes scaleIn { from { opacity: 0; transform: scale(.96) translateY(6px) } to { opacity: 1; transform: scale(1) translateY(0) } }
-        @keyframes riseIn { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
-        .snap-x-mandatory { scroll-snap-type: x mandatory; }
-        .snap-center { scroll-snap-align: center; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
 
       {/* ─── Cinematic hero — contained, rounded, pulled clear of the navbar ─── */}
       <div className="pt-28 md:pt-36 container mx-auto max-w-6xl px-4">
@@ -500,6 +525,18 @@ export default function CourseDetail() {
             <div className="space-y-4 animate-pulse">
               {[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-2xl bg-neutral-100" />)}
             </div>
+          ) : subjectsError ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-red-50 border border-red-100" role="alert">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+              <p className="text-sm text-red-600">โหลดรายวิชาไม่สำเร็จ</p>
+              <button
+                type="button"
+                onClick={() => setSubjectsReloadKey((k) => k + 1)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+              </button>
+            </div>
           ) : subjects.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-neutral-50 border border-dashed border-neutral-200">
               <BookOpen className="h-8 w-8 text-neutral-300" />
@@ -566,6 +603,18 @@ export default function CourseDetail() {
             <div className="flex gap-4 overflow-hidden animate-pulse">
               {[0, 1, 2].map((i) => <div key={i} className="h-48 w-72 shrink-0 rounded-2xl bg-neutral-100" />)}
             </div>
+          ) : videosError ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-red-50 border border-red-100" role="alert">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+              <p className="text-sm text-red-600">โหลดคลิปวิดีโอไม่สำเร็จ</p>
+              <button
+                type="button"
+                onClick={() => setVideosReloadKey((k) => k + 1)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+              </button>
+            </div>
           ) : videos.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-neutral-50 border border-dashed border-neutral-200">
               <Video className="h-8 w-8 text-neutral-300" />
@@ -574,42 +623,41 @@ export default function CourseDetail() {
           ) : (
             <div className="flex gap-4 overflow-x-auto snap-x-mandatory no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
               {videos.map((v, i) => (
-                <button
+                // การ์ดเป็น <div> (W3C: ห้ามมี <button> ซ้อนใน <button>) — ปุ่มเล่นด้านในครอบรูปทั้งใบอยู่แล้ว
+                <div
                   key={v.VideoId}
                   id={`clip-${i}`}
-                  onClick={() => scrollToVideo(i)}
                   onDoubleClick={() => setPlayingVideo(v)}
-                  aria-pressed={openIdx === i}
-                  className={`group relative shrink-0 w-64 md:w-72 snap-center rounded-2xl overflow-hidden bg-neutral-900 text-left shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] ring-2 transition-all duration-200 focus:outline-none
+                  className={`group relative shrink-0 w-64 md:w-72 snap-center rounded-2xl overflow-hidden bg-neutral-900 text-left shadow-[0_10px_30px_-12px_rgba(0,0,0,0.3)] ring-2 transition-all duration-200 focus-within:ring-orange-300
                     ${openIdx === i ? "ring-orange-500 scale-[1.02]" : "ring-transparent hover:ring-neutral-200"}`}
                 >
-                  <div className="relative aspect-[4/3] w-full">
+                  <span className="block relative aspect-[4/3] w-full">
                     {getThumbnail(v) ? (
                       <img src={getThumbnail(v)} alt={v.VideoTitle} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-neutral-800">
+                      <span className="w-full h-full flex items-center justify-center bg-neutral-800">
                         <PlayCircle className="h-10 w-10 text-neutral-600" />
-                      </div>
+                      </span>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                    <span className="block absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setPlayingVideo(v); }}
+                      onClick={(e) => { e.stopPropagation(); scrollToVideo(i); setPlayingVideo(v); }}
                       aria-label={`เล่น ${v.VideoTitle}`}
                       className="absolute inset-0 flex items-center justify-center"
                     >
                       <PlayCircle className="h-12 w-12 text-white/90 scale-90 opacity-80 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 drop-shadow-lg" />
                     </button>
-                    <div className="absolute top-2 left-2">
+                    <span className="block absolute top-2 left-2">
                       {v.VideoType === "youtube" ? <Youtube className="h-4 w-4 text-red-400" />
                         : v.VideoType === "drive" ? <FolderOpen className="h-4 w-4 text-blue-400" />
                         : <Video className="h-4 w-4 text-purple-400" />}
-                    </div>
-                    <p className="absolute bottom-2 left-3 right-3 text-sm font-semibold text-white truncate">
+                    </span>
+                    <span className="block absolute bottom-2 left-3 right-3 text-sm font-semibold text-white truncate">
                       {v.VideoTitle}
-                    </p>
-                  </div>
-                </button>
+                    </span>
+                  </span>
+                </div>
               ))}
             </div>
           )}

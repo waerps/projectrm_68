@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip, X, ChevronRight } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip, X, ChevronRight, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -12,6 +12,9 @@ import { ClipboardList } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+
+const WEEKDAY_SHORT = ['', 'อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+const scheduleLabel = (slot) => `${WEEKDAY_SHORT[Number(slot.dayOfWeek)] || 'วันอื่น'} ${slot.startTime}–${slot.endTime}`;
 
 export default function CoursesPage() {
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
@@ -32,7 +35,12 @@ export default function CoursesPage() {
 
   const navigateToAction = (course, subject, action) => {
     if (action === "content") {
-      navigate(`/tutor/manage?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
+      const params = new URLSearchParams({
+        courseId: String(course.id), subjectId: String(subject.subjectId),
+        courseName: course.name, subjectName: subject.subjectName,
+      });
+      if (subject.assignmentId) params.set("assignmentId", String(subject.assignmentId));
+      navigate(`/tutor/manage?${params.toString()}`);
     } else if (action === "exam") {
       // ⚠️ ปรับ path ให้ตรงกับ route จริงของหน้า TutorExamManagement ในระบบ router ของคุณ
       navigate(`/tutor/exam?courseId=${course.id}&subjectId=${subject.subjectId}&courseName=${encodeURIComponent(course.name)}&subjectName=${encodeURIComponent(subject.subjectName)}`);
@@ -104,6 +112,9 @@ export default function CoursesPage() {
               startDate: row.StartDate
                 ? new Date(row.StartDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
                 : "ไม่ระบุ",
+              lastDate: row.LastDate
+                ? new Date(row.LastDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })
+                : "ไม่ระบุ",
               totalHours: 0,
               completedHours: 0,
               StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
@@ -114,6 +125,7 @@ export default function CoursesPage() {
               statusColor: statusInfo.colorClass,
               courseType: row.Course_Type || "bundle",
               subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
+              schedulePatterns: [],
             });
           }
 
@@ -122,11 +134,16 @@ export default function CoursesPage() {
           c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
           c.VideoCount += row.VideoCount || 0;
           c.FileCount += row.FileCount || 0;
-          c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName });
+          c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, assignmentId: row.TutorCourseDetailId });
+          for (const slot of row.schedulePatterns || []) {
+            const key = `${slot.dayOfWeek}:${slot.startTime}:${slot.endTime}`;
+            if (!c.schedulePatterns.some(existing => existing.key === key)) c.schedulePatterns.push({ ...slot, key });
+          }
         });
 
         const formattedData = Array.from(courseMap.values()).map(c => ({
           ...c,
+          schedulePatterns: c.schedulePatterns.sort((a, b) => Number(a.dayOfWeek) - Number(b.dayOfWeek) || a.startTime.localeCompare(b.startTime)),
           progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
         }));
 
@@ -307,8 +324,19 @@ export default function CoursesPage() {
                         {course.name}
                       </h2>
                       <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
-                        <Clock className="w-3 h-3" /> เริ่มสอน: {course.startDate}
+                        <Clock className="w-3 h-3" /> {course.startDate} – {course.lastDate}
                       </p>
+                      {course.schedulePatterns.length > 0 && <details className="group mt-2 max-w-full rounded-lg border border-slate-100 bg-slate-50/70 text-xs text-slate-600">
+                        <summary aria-label="ดูตารางสอนทั้งหมด" title="ตารางสอน" className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-orange-100 text-orange-600"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /></span>
+                          <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{scheduleLabel(course.schedulePatterns[0])}</span>
+                          {course.schedulePatterns.length > 1 && <span className="shrink-0 text-orange-600">+{course.schedulePatterns.length - 1}</span>}
+                          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
+                        </summary>
+                        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-2.5 py-2">
+                          {course.schedulePatterns.map(slot => <span key={slot.key} className="rounded-md bg-white px-2 py-1 text-slate-600 ring-1 ring-slate-100">{scheduleLabel(slot)}</span>)}
+                        </div>
+                      </details>}
 
                       {course.subjects && course.subjects.length > 0 && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -488,19 +516,19 @@ export default function CoursesPage() {
                       className="group flex w-full items-center gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:bg-orange-50/50 hover:shadow-md"
                     >
                       {/* Number */}
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-600 transition group-hover:bg-orange-100 group-hover:text-orange-600">
                         {String(index + 1).padStart(2, "0")}
-                      </div>
+                      </span>
 
                       {/* Subject name */}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800 group-hover:text-orange-700">
+                      <span className="block min-w-0 flex-1">
+                        <span className="block text-sm font-semibold text-slate-800 group-hover:text-orange-700">
                           {subject.subjectName}
-                        </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        </span>
+                        <span className="block mt-0.5 text-xs text-slate-500">
                           คลิกเพื่อจัดการวิชานี้
-                        </p>
-                      </div>
+                        </span>
+                      </span>
 
                       {/* Arrow */}
                       <ChevronRight

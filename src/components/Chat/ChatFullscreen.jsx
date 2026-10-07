@@ -86,8 +86,8 @@ export default function ChatFullscreen() {
                     />
                   ) : (
                     <button onClick={() => loadChat(chat.id)} className="w-full text-left px-4 py-3 pr-16">
-                      <div className="font-medium text-sm truncate">{chat.title}</div>
-                      <div className="text-xs text-gray-400 mt-1">{formatDate(chat.date)}</div>
+                      <span className="block font-medium text-sm truncate">{chat.title}</span>
+                      <span className="block text-xs text-gray-400 mt-1">{formatDate(chat.date)}</span>
                     </button>
                   )}
 

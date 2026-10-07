@@ -41,13 +41,12 @@ const PIE_COLORS = [
 // ไอคอน + สีทึบของการ์ด "สิ่งที่ต้องจัดการ" (สี่เหลี่ยมสีทึบแบบ StatCard ของหน้าอื่น)
 const ACTION_META = {
   "missed-checkins": { icon: Clock, color: "bg-red-500", urgent: true },
-  "pending-payments": { icon: Wallet, color: "bg-orange-500" },
+  "overdue-installments": { icon: Wallet, color: "bg-orange-500" },
   "tutor-applications": { icon: UserCheck, color: "bg-blue-500" },
   "stock-issues": { icon: Boxes, color: "bg-amber-500" },
   "students-attention": { icon: AlertTriangle, color: "bg-rose-500" },
   "tutors-attention": { icon: UserX, color: "bg-violet-500" },
   "rooms-maintenance": { icon: DoorOpen, color: "bg-slate-500" },
-  "missing-price": { icon: AlertCircle, color: "bg-orange-500" },
 };
 
 const RM = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;

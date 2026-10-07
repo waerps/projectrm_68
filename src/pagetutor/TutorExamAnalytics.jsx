@@ -119,7 +119,7 @@ const STUDENT_STATUS = {
   care: { label: "ต้องดูแลพิเศษ", short: "ต้องดูแล", level: 2, box: "bg-red-50 border-red-200", text: "text-red-600", pill: "bg-red-100 text-red-600 border-red-200" },
 };
 
-function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 }) {
+function computeStudentStatus({ exams, missedRounds = 0 }) {
   const done = (exams || []).filter((e) => e.submitted);
   const latest = done[done.length - 1] || null;
   const change = scoreChangeOf(exams);
@@ -127,15 +127,14 @@ function computeStudentStatus({ exams, missedRounds = 0, misconceptionCount = 0 
   const below = latest?.pct != null && latest.pct * 100 < PASS_PCT;
   const reasons = [];
   if (!latest) reasons.push("ยังไม่ได้เข้าสอบ");
-  if (below) reasons.push(`คะแนนสอบล่าสุด ${fmtIndividualPct(latest)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
+  if (below) reasons.push(`คะแนนสอบ ${fmtIndividualPct(latest)} ยังไม่ถึงเกณฑ์ผ่าน ${PASS_PCT}%`);
   if (weak) reasons.push(`ควรทบทวน ${weak} หมวดหมู่ (คะแนนรายหมวดต่ำกว่า 50%)`);
   if (change != null && change < 0) reasons.push("คะแนนสอบลดลงจากรอบแรก");
   if (missedRounds) reasons.push(`ขาดสอบ ${missedRounds} รอบ`);
-  if (misconceptionCount >= 2) reasons.push(`ข้อสังเกตโดย AI: ควรทบทวน ${misconceptionCount} เรื่อง`);
   let key = "ok";
   if (!latest || below || weak >= 2 || (change != null && change <= -5)) key = "care";
-  else if (weak === 1 || misconceptionCount >= 2 || (change != null && change < 0) || missedRounds > 0) key = "watch";
-  if (key === "ok") reasons.push("คะแนนสอบล่าสุดผ่านเกณฑ์");
+  else if (weak === 1 || (change != null && change < 0) || missedRounds > 0) key = "watch";
+  if (key === "ok") reasons.push("คะแนนสอบผ่านเกณฑ์");
   return { key, level: STUDENT_STATUS[key].level, reasons, change, weakCount: weak };
 }
 
@@ -446,13 +445,17 @@ function buildCohortComparison(examResults, topicResults) {
 }
 
 // ─── แท็บ "รายคน": 1 แถวต่อนักเรียน — ใช้ทั้งตารางในแท็บและ Export PDF ───────────
-function buildProgressRows(crossExamData, aiSummaries) {
+function buildProgressRows(crossExamData, selectedExamIndex = null) {
+  const roundIndex = Number.isInteger(selectedExamIndex) && selectedExamIndex >= 0 && selectedExamIndex < EXAMS_META.length
+    ? selectedExamIndex : null;
   return crossExamData.map((d) => {
-    const submittedList = d.exams.filter(e => e.submitted);
-    const latest = submittedList[submittedList.length - 1] ?? null;
-    const latestIndex = [2, 1, 0].find((i) => d.exams[i]?.submitted) ?? null;
-    const ai = latestIndex != null ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === d.studentId) : null;
-    const status = computeStudentStatus({ exams: d.exams, missedRounds: d.missedRounds, misconceptionCount: isVerifiedAiSummary(ai) ? ai.misconceptions?.length || 0 : 0 });
+    const visibleExams = roundIndex == null ? d.exams : d.exams.map((exam, index) => index <= roundIndex ? exam : { ...exam, submitted: false });
+    const submittedList = visibleExams.filter(e => e.submitted);
+    const latest = roundIndex == null ? submittedList.at(-1) ?? null : visibleExams[roundIndex]?.submitted ? visibleExams[roundIndex] : null;
+    const missedRounds = d.roundsWithData.filter((index) => (roundIndex == null || index <= roundIndex) && !d.exams[index].submitted).length;
+    const status = roundIndex != null && !latest
+      ? { key: "care", level: STUDENT_STATUS.care.level, reasons: [`ยังไม่มีผลสอบรอบ ${EXAMS_META[roundIndex].label}`], change: null }
+      : computeStudentStatus({ exams: visibleExams, missedRounds });
     return {
       studentId: d.studentId, name: d.name,
       submittedCount: submittedList.length,
@@ -752,12 +755,12 @@ function OverviewTab({ results, topicBreakdown, loading }) {
 // การ์ดไฟสถานะ 3 ใบใช้เป็นตัวกรอง, แถบดาวรุ่ง = 3 คนที่พัฒนาจากตัวเองมากที่สุด (ไม่ได้เทียบเพื่อน)
 // หน้าต่างรายคนถูกยกไปไว้ที่ ExamAnalyticsView เพื่อให้แท็บเปรียบเทียบกดเปิดได้ด้วย
 
-function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent }) {
+function StudentProgressTab({ crossExamData, selectedExamIndex, loading, onOpenStudent }) {
   // ── Hooks ทั้งหมดต้องอยู่บนสุด ก่อน early return ทุกอัน (Rules of Hooks) ──
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // "all" | "care" | "watch" | "ok"
 
-  const students = useMemo(() => buildProgressRows(crossExamData, aiSummaries), [crossExamData, aiSummaries]);
+  const students = useMemo(() => buildProgressRows(crossExamData, selectedExamIndex), [crossExamData, selectedExamIndex]);
 
   const counts = useMemo(() => ({
     care: students.filter((s) => s.status === "care").length,
@@ -806,7 +809,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
             <div className="lg:w-56 flex-shrink-0">
               <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> นักเรียนที่พัฒนาสูงสุด</p>
               <p className="text-lg font-bold mt-1 leading-snug">พัฒนาจากคะแนนเดิมของตนเองมากที่สุด</p>
-              <p className="text-[11px] text-slate-500 mt-1">เทียบคะแนนรอบแรกกับรอบล่าสุดของแต่ละคน ไม่ได้เทียบกับเพื่อน</p>
+              <p className="text-[11px] text-slate-400 mt-1">เทียบรอบแรกที่สอบกับ {EXAMS_META[selectedExamIndex].label} ของแต่ละคน</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 flex-1">
               {rising.map((s, i) => {
@@ -842,19 +845,19 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
             <button key={k} type="button" onClick={() => setStatusFilter(on ? "all" : k)} aria-pressed={on}
               className={`sa-rise relative overflow-hidden text-left rounded-2xl p-4 sm:p-5 transition border-2 ${on ? "border-transparent shadow-xl scale-[1.02]" : "border-slate-100 bg-white hover:shadow-md"}`}
               style={{ animationDelay: `${i * 0.06}s` }}>
-              {on && <><div className={`absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><div className="absolute inset-0 sa-grain opacity-50" /></>}
-              <div className="relative flex items-center justify-between gap-2">
-                <div className="flex gap-1.5">
+              {on && <><span className={`block absolute inset-0 bg-gradient-to-br ${STATUS_GRAD[k]}`} /><span className="block absolute inset-0 sa-grain opacity-50" /></>}
+              <span className="relative flex items-center justify-between gap-2">
+                <span className="flex gap-1.5">
                   {[2, 1, 0].map((l) => (
                     <span key={l} className={`h-3.5 w-3.5 rounded-full ${l === st.level ? `${on ? "bg-white" : STATUS_DOT[k]}${k === "care" ? " sa-pulse-red" : ""}` : on ? "bg-white/30" : "bg-slate-200"}`} />
                   ))}
-                </div>
+                </span>
                 <span className={`text-[11px] font-semibold ${on ? "text-white/90" : "text-slate-400"}`}>{on ? "กำลังกรอง · กดอีกครั้งเพื่อดูทั้งหมด" : "กดเพื่อกรอง"}</span>
-              </div>
-              <p className={`relative ${STAT_NUM} mt-3 ${on ? "text-white" : "text-slate-900"}`}>
+              </span>
+              <span className={`block relative ${STAT_NUM} mt-3 ${on ? "text-white" : "text-slate-900"}`}>
                 {counts[k]}<span className={`ml-1 text-xs font-medium ${on ? "text-white/80" : "text-slate-500"}`}>คน</span>
-              </p>
-              <p className={`relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</p>
+              </span>
+              <span className={`block relative text-sm font-bold ${on ? "text-white" : st.text}`}>{st.label}</span>
             </button>
           );
         })}
@@ -866,7 +869,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อหรือชื่อเล่น..."
             className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition" />
         </div>
-        <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {students.length} คน · เรียงคนที่ต้องดูแลขึ้นก่อน · แนวโน้ม = รอบแรกที่สอบ → รอบล่าสุด</p>
+        <p className="text-xs text-slate-500">รอบ {EXAMS_META[selectedExamIndex].label} · แสดง {filtered.length} จาก {students.length} คน · เรียงคนที่ต้องดูแลขึ้นก่อน</p>
       </div>
 
       {/* ── การ์ดนักเรียน ── */}
@@ -902,7 +905,7 @@ function StudentProgressTab({ crossExamData, aiSummaries, loading, onOpenStudent
               <span className="relative flex flex-col items-end gap-1 flex-shrink-0">
                 <Sparkline values={s.rounds.map((r) => r.pct)} color={STATUS_HEX[s.status]} />
                 <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPctText ?? "—"}</span>
-                <span className="text-[10px] text-slate-500">คะแนนสอบล่าสุด</span>
+                <span className="text-[10px] text-slate-500">คะแนนรอบ {EXAMS_META[selectedExamIndex].label}</span>
                 <span className={`tabular-nums text-[11px] font-bold ${s.scoreChange > 0 ? "text-emerald-600" : s.scoreChange < 0 ? "text-rose-500" : "text-slate-300"}`}>
                   {s.scoreChange == null ? "ยังเทียบไม่ได้" : `${signed(s.scoreChange)} จากรอบแรก`}
                 </span>
@@ -970,7 +973,7 @@ const buildAiFullText = (row, parentMessage) => {
 //   1) สรุป        — สถานะ (ไฟ 3 สี) + สรุปจาก AI
 //   2) คะแนนข้ามรอบ — กราฟนักเรียน vs ค่าเฉลี่ยห้อง + คะแนน/อันดับรายรอบ
 //   3) รายหมวด      — กราฟใยแมงมุม (เทียบห้อง / เทียบตัวเองรอบแรก) + แถบรายหมวด + คำอธิบาย AI
-//   4) สิ่งที่ต้องช่วย — เรื่องที่เข้าใจผิด + หน้าปัดจังหวะการทำข้อสอบ + แผนทำต่อ
+//   4) สิ่งที่ต้องช่วย — เรื่องที่เข้าใจผิด + แผนทำต่อ
 //   5) ข้อความถึงผู้ปกครอง — ฟองแชต แก้ไข/บันทึก/คัดลอก
 
 function ScoreRing({ pct, size = 108, stroke = 10 }) {
@@ -1073,8 +1076,9 @@ const MODAL_SECTIONS = [
   ["sec-help", "สิ่งที่ต้องช่วย", LifeBuoy],
   ["sec-parent", "ผู้ปกครอง", MessageCircle],
 ];
+const aiModelName = (row) => row?.model || "ไม่ทราบรุ่น";
 
-function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseName, subjectName, onClose }) {
+function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamData, aiSummaries, courseName, subjectName, onClose }) {
   // hook ต้องอยู่บนสุดก่อน early return เสมอ (Rules of Hooks)
   const [draft, setDraft] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
@@ -1086,13 +1090,21 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const [radarMode, setRadarMode] = useState("class"); // "class" | "self"
   const [activeSec, setActiveSec] = useState("sec-sum");
   const [typed, setTyped] = useState(null); // จำนวนตัวอักษรที่ "พิมพ์" แล้วในฟองแชต (null = แสดงครบ)
+  const [roundOverride, setRoundOverride] = useState(selectedExamIndex);
   const scrollRef = useRef(null);
 
   const data = crossExamData.find((d) => d.studentId === studentId) || null;
-  const latestIndex = data ? ([2, 1, 0].find((i) => data.exams[i]?.submitted) ?? null) : null;
-  const rawAiRow = data && latestIndex != null ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === studentId) || null : null;
+  const lastSubmittedIndex = data ? ([2, 1, 0].find((i) => data.exams[i]?.submitted) ?? null) : null;
+  const latestIndex = roundOverride ?? lastSubmittedIndex;
+  const rawAiRow = data && latestIndex != null && data.exams[latestIndex]?.submitted ? (aiSummaries?.[latestIndex] || []).find((r) => r.userId === studentId) || null : null;
   const aiRow = isVerifiedAiSummary(rawAiRow) ? rawAiRow : null;
   const baseMessage = savedMessage ?? aiRow?.parentMessage ?? "";
+
+  useEffect(() => { setRoundOverride(selectedExamIndex); }, [selectedExamIndex, studentId]);
+  useEffect(() => {
+    setDraft(null); setSavedMessage(null); setEditing(false); setTyped(null);
+    setShowFullOverview(false); setRadarMode("class");
+  }, [studentId, latestIndex]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -1116,23 +1128,24 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   if (!data) return null;
 
   const exams = data.exams;
-  const done = exams.filter((e) => e.submitted);
-  const latest = latestIndex != null ? exams[latestIndex] : null;
+  const done = exams.filter((e, i) => latestIndex != null && i <= latestIndex && e.submitted);
+  const latest = latestIndex != null && exams[latestIndex]?.submitted ? exams[latestIndex] : null;
   const first = done[0] ?? null;
-  const missingExams = data.roundsWithData.filter((i) => !exams[i].submitted).map((i) => exams[i].label);
+  const missingExams = data.roundsWithData.filter((i) => latestIndex != null && i <= latestIndex && !exams[i].submitted).map((i) => exams[i].label);
   const { full: fullName, nick } = splitName(data.name);
   const callName = nick || fullName.split(" ")[0];
 
-  const misconceptions = aiRow?.misconceptions || [];
-  const status = computeStudentStatus({ exams, missedRounds: data.missedRounds, misconceptionCount: misconceptions.length });
+  const visibleExams = exams.map((exam, i) => latestIndex != null && i <= latestIndex ? exam : { ...exam, submitted: false });
+  const status = !latest
+    ? { key: "care", level: STUDENT_STATUS.care.level, reasons: [`ยังไม่มีผลสอบรอบ ${exams[latestIndex]?.label || "นี้"}`], change: null }
+    : computeStudentStatus({ exams: visibleExams, missedRounds: missingExams.length });
   const st = STUDENT_STATUS[status.key];
-  const change = status.change;
+  const change = latest && first && first !== latest ? Math.round((latest.pct - first.pct) * 1000) / 10 : null;
 
   // ค่าเฉลี่ยห้อง — กติกาเดียวกับสถิติระดับห้องทุกแท็บ (ไม่นับคนที่ไม่ยินยอม)
   const classRound = (i) => crossExamData.map((d) => d.exams[i]).filter((e) => e?.submitted && e.consent);
   const classAvgPct = (i) => aiAvg(classRound(i).map((e) => e.pct));
   const classTopicAvg = (i, topic) => aiAvg(classRound(i).map((e) => e.topicPcts?.[topic]).filter((v) => v != null));
-  const classPace = (i) => aiAvg(classRound(i).map((e) => e.avgTimePerQuestion).filter((v) => v != null));
 
   // ── ป้ายความสำเร็จ (ไม่มีป้ายอันดับ)
   const topicPcts = latest?.topicPcts || {};
@@ -1175,10 +1188,6 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
   const canSelfCompare = first && first !== latest;
   const mode = radarMode === "self" && canSelfCompare ? "self" : "class";
 
-  // Backend's explicit null means comparison is unavailable; do not reconstruct it.
-  const roomPace = latest && Object.prototype.hasOwnProperty.call(latest, "classAvgTimePerQuestion")
-    ? latest.classAvgTimePerQuestion : latestIndex != null ? classPace(latestIndex) : null;
-  const prevDone = done.length >= 2 ? done[done.length - 2] : null;
 
   // ── ข้อความถึงผู้ปกครอง
   const parentMessage = draft ?? baseMessage;
@@ -1204,11 +1213,12 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const headline = aiHeadline(aiRow?.overview);
+  const factualSummary = latest ? (aiRow?.overview || `ผลสอบได้ ${fmtScore(latest.totalScore)}/${fmtScore(latest.maxScore)} คะแนน (${fmtIndividualPct(latest)})`) : "";
+  const headline = aiHeadline(factualSummary);
   const hasMoreOverview = !!aiRow?.overview && aiRow.overview.trim() !== headline;
   const noAiNote = latest
     ? rawAiRow ? aiAnalysisNotice(rawAiRow) : `ยังไม่มีผลวิเคราะห์โดย AI ของรอบ ${latest.label} กด "วิเคราะห์ใหม่ด้วย AI" ในแท็บรายคน`
-    : `${callName} ยังไม่ได้เข้าสอบรอบใด ควรติดต่อผู้ปกครองก่อนรอบถัดไป`;
+    : `ยังไม่มีผลสอบรอบ ${exams[latestIndex]?.label || "นี้"}`;
 
   const jumpTo = (id) => {
     const box = scrollRef.current; const el = box?.querySelector(`#${id}`);
@@ -1253,8 +1263,14 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
               <div className="min-w-0">
                 <p className="text-xs text-white/80 font-semibold">พัฒนาการรายคน{subjectName ? ` · ${subjectName}` : ""}</p>
                 <h2 className="text-xl font-bold leading-tight break-words">{fullName}</h2>
-                <p className="text-sm text-white/90">{nick ? `ชื่อเล่น ${nick} · ` : ""}สอบแล้ว {done.length}/{data.roundsWithData.length} รอบ</p>
-                {latest && <span className="mt-3 inline-flex items-center rounded-full bg-white text-orange-700 px-3 py-1 text-xs font-bold shadow-sm">ผลสอบรอบ {latest.label}{aiRow ? " · มีข้อเสนอจากการวิเคราะห์โดย AI" : " · ยังไม่มีผลวิเคราะห์โดย AI"}</span>}
+                <p className="text-sm text-white/90">{nick ? `ชื่อเล่น ${nick} · ` : ""}สอบแล้ว {exams.filter((e) => e.submitted).length}/{data.roundsWithData.length} รอบ</p>
+                <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="เลือกรอบสอบในผลวิเคราะห์รายคน">
+                  {exams.map((exam, index) => <button key={exam.label} type="button" onClick={() => setRoundOverride(index)} aria-pressed={index === latestIndex}
+                    className={`rounded-full px-3 py-1 text-xs font-bold transition ${index === latestIndex ? "bg-white text-orange-700 shadow-sm" : "bg-white/15 text-white hover:bg-white/25"}`}>
+                    {exam.label}{!exam.submitted ? " · ยังไม่ส่ง" : ""}
+                  </button>)}
+                </div>
+                <span className="mt-3 inline-flex items-center rounded-full bg-white text-orange-700 px-3 py-1 text-xs font-bold shadow-sm">{latest ? `ผลสอบรอบ ${latest.label}${aiRow ? " · มีข้อเสนอจากการวิเคราะห์โดย AI" : " · ยังไม่มีผลวิเคราะห์โดย AI"}` : `ยังไม่มีผลสอบรอบ ${exams[latestIndex]?.label || "นี้"}`}</span>
                 <div className="flex flex-wrap gap-1.5 mt-3">
                   {badges.map((badge) => { const BadgeIcon = badge[0]; const l = badge[1]; return (
                     <span key={l} className="relative overflow-hidden inline-flex items-center gap-1.5 rounded-full bg-white/20 border border-white/30 px-2.5 py-0.5 text-xs font-semibold backdrop-blur">
@@ -1320,18 +1336,18 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
             <div className="sa-rise relative rounded-2xl bg-slate-900 text-white p-5 overflow-hidden" style={{ animationDelay: ".06s" }}>
               <Quote className="absolute right-5 top-4 h-16 w-16 text-orange-500/25" />
               <p className="relative text-[11px] font-bold text-orange-300 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> สรุปจากผลสอบ{aiRow ? ` · ${latest.label}` : ""}
+                <Sparkles className="h-3.5 w-3.5" /> สรุปผลสอบจากระบบ{latest ? ` · ${latest.label}` : ""}
               </p>
-              {aiRow ? (
+              {latest ? (
                 <>
-                  <p className="relative text-base sm:text-lg font-medium leading-relaxed mt-2">{showFullOverview ? aiRow.overview : headline}</p>
+                  <p className="relative text-base sm:text-lg font-medium leading-relaxed mt-2">{showFullOverview ? factualSummary : headline}</p>
                   {hasMoreOverview && (
                     <button type="button" onClick={() => setShowFullOverview((v) => !v)} className="relative text-xs font-semibold text-orange-300 hover:text-orange-200 mt-2">
                       {showFullOverview ? "ย่อ" : "อ่านต่อ"}
                     </button>
                   )}
                 </>
-              ) : <p className="relative text-sm text-slate-500 mt-2 leading-relaxed">{noAiNote}</p>}
+              ) : <p className="relative text-sm text-slate-300 mt-2 leading-relaxed">{noAiNote}</p>}
             </div>
           </div>
 
@@ -1394,9 +1410,9 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                       <div key={`${c.topic}-${i}`} className="rounded-2xl bg-slate-50 px-3 py-2.5">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <p className="text-sm font-bold text-slate-800">{c.topic}</p>
-                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">ข้อสังเกตจากการวิเคราะห์โดย AI: {c.trend}</span>}
+                          {c.trend && <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-600">ข้อสังเกตจาก Google Gemini ({aiModelName(aiRow)}): {c.trend}</span>}
                         </div>
-                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {c.comment}</p>}
+                        {c.comment && <p className="text-xs text-slate-600 leading-relaxed mt-1.5"><b className="text-orange-600">เขียนโดย Google Gemini ({aiModelName(aiRow)}):</b> {c.comment}</p>}
                       </div>
                     ))}
                     <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะผลวิเคราะห์โดย AI</p>
@@ -1430,7 +1446,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
                                   <p className="text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</p>
                                   {t.trend && (
-                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจากการวิเคราะห์โดย AI: {t.trend}</span>
+                                    <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจาก Google Gemini ({aiModelName(aiRow)}): {t.trend}</span>
                                   )}
                                 </div>
                                 <div className="relative h-3 rounded-full bg-white mt-1.5">
@@ -1445,7 +1461,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                                 {t.sinceFirst != null && <p title={`${signed(t.sinceFirst)} เทียบคะแนน ${first.label}`} className={`whitespace-nowrap text-[10.5px] font-semibold ${t.sinceFirst > 0 ? "text-emerald-600" : t.sinceFirst < 0 ? "text-rose-500" : "text-slate-400"}`}>{signed(t.sinceFirst)} เทียบ {first.label}</p>}
                               </div>
                             </summary>
-                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">ข้อสังเกตจากการวิเคราะห์โดย AI:</b> {t.comment}</p>}
+                            {t.comment && <p className="text-xs text-slate-600 leading-relaxed mt-2 bg-white rounded-xl px-3 py-2"><b className="text-orange-600">เขียนโดย Google Gemini ({aiModelName(aiRow)}):</b> {t.comment}</p>}
                           </details>
                         );
                       })}
@@ -1455,7 +1471,7 @@ function StudentProgressModal({ studentId, crossExamData, aiSummaries, courseNam
                 )}
               </div>
 
-              <ExamSupportPanel latest={latest} roomPace={roomPace} previous={prevDone} aiRow={aiRow} notice={noAiNote} />
+              <ExamSupportPanel aiRow={aiRow} notice={noAiNote} />
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
@@ -2392,7 +2408,7 @@ export function ExamAnalyticsView({
   api,
   breadcrumb = null,
   roleNote = null,
-  initialExamId = 1,
+  initialExamId = 0,
   initialTab = "overview",
   initialStudentId = null,
 }) {
@@ -2407,6 +2423,7 @@ export function ExamAnalyticsView({
   const [loadingExams, setLoadingExams] = useState(true);
 
   const [examListError, setExamListError] = useState(false);
+  const [examListReloadKey, setExamListReloadKey] = useState(0);
   useEffect(() => {
     if (!courseId || !subjectId || !api) {
       setLoadingExams(false);
@@ -2420,7 +2437,7 @@ export function ExamAnalyticsView({
       .catch((err) => { console.error("Fetch exam list failed:", err); if (!cancelled) setExamListError(true); })
       .finally(() => { if (!cancelled) setLoadingExams(false); });
     return () => { cancelled = true; };
-  }, [courseId, subjectId, api]);
+  }, [courseId, subjectId, api, examListReloadKey]);
 
   // จับคู่ EXAMS_META (pre/mid/post) กับ examId จริงจาก backend ตามลำดับ type
   const realExamId = (id) => examList.find((e) => e.type === ["pre-test", "mid-test", "post-test"][id])?.id ?? null;
@@ -2428,6 +2445,8 @@ export function ExamAnalyticsView({
   // ── Step 2: ผลสอบจริงต่อรอบ ──────────────────────────────────────────────
   const [examResults, setExamResults] = useState([null, null, null]); // ผลจริงของ pre/mid/post
   const [loadingResults, setLoadingResults] = useState(true);
+  // รอบที่โหลดผลไม่สำเร็จ — แยกจาก "ยังไม่มีผลสอบ" เพื่อไม่ให้ผู้ใช้เข้าใจผิด
+  const [resultsErrors, setResultsErrors] = useState([false, false, false]);
 
   useEffect(() => {
     if (loadingExams) return; // ยังรอรายชื่อ exam อยู่
@@ -2437,62 +2456,90 @@ export function ExamAnalyticsView({
     // ลัพธ์ใหม่ที่โหลดเสร็จไปแล้ว ใช้ pattern เดียวกับ effect โหลด examList ด้านบน (cancelled flag)
     let cancelled = false;
     setLoadingResults(true);
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return api.fetchExamResults(id).catch((err) => {
           console.error(`Fetch results for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setExamResults(data); })
+    ).then((data) => { if (!cancelled) { setExamResults(data); setResultsErrors(errs); } })
       .finally(() => { if (!cancelled) setLoadingResults(false); });
     return () => { cancelled = true; };
   }, [loadingExams, examList]);
 
+  // ลองโหลดผลสอบใหม่เฉพาะรอบที่ล้มเหลว
+  const [retryingRound, setRetryingRound] = useState(null);
+  const retryRoundResults = (i) => {
+    const id = realExamId(i);
+    if (!id || !api) return;
+    setRetryingRound(i);
+    api.fetchExamResults(id)
+      .then((data) => {
+        setExamResults((prev) => { const next = [...prev]; next[i] = data; return next; });
+        setResultsErrors((prev) => { const next = [...prev]; next[i] = false; return next; });
+      })
+      .catch((err) => {
+        console.error(`Retry results for exam ${id} failed:`, err);
+        setResultsErrors((prev) => { const next = [...prev]; next[i] = true; return next; });
+      })
+      .finally(() => setRetryingRound(null));
+  };
+
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
   const [topicResults, setTopicResults] = useState([null, null, null]); // topic-breakdown ของ pre/mid/post
+  const [topicErrors, setTopicErrors] = useState([false, false, false]);
+  const [topicReloadKey, setTopicReloadKey] = useState(0);
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
     // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ examResults ด้านบน
     let cancelled = false;
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return api.fetchTopicBreakdown(id).catch((err) => {
           console.error(`Fetch topic breakdown for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setTopicResults(data); });
+    ).then((data) => { if (!cancelled) { setTopicResults(data); setTopicErrors(errs); } });
     return () => { cancelled = true; };
-  }, [loadingExams, examList]);
+  }, [loadingExams, examList, topicReloadKey]);
 
   // ── Step 7: ผลวิเคราะห์ AI ต่อรอบ (ใช้ใน StudentProgressModal แท็บ "รายคน") ──────
   // ดึงพร้อมกับข้อมูลรอบอื่นๆ ตั้งแต่โหลดหน้า ไม่ต้องรอกดเข้าแท็บไหนก่อน (แพทเทิร์นเดียวกับ
   // topicResults ด้านบน) — เดิมตอนยังมีแท็บ "ผล AI" แยก ปล่อยให้ AiSummaryPanel ดึงเองตอน
   // กดเข้าแท็บ แต่ตอนนี้ย้ายมาดึงรวมตรงนี้แทน เพื่อให้ StudentProgressModal ใช้ได้ทันที
   const [aiSummaries, setAiSummaries] = useState([null, null, null]); // ผลวิเคราะห์ AI ของ pre/mid/post
+  const [aiErrors, setAiErrors] = useState([false, false, false]);
+  const [aiReloadKey, setAiReloadKey] = useState(0);
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
     // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ 2 effect ด้านบน
     let cancelled = false;
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return fetchAiSummaries(id).catch((err) => {
           console.error(`Fetch AI summaries for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setAiSummaries(data); });
+    ).then((data) => { if (!cancelled) { setAiSummaries(data); setAiErrors(errs); } });
     return () => { cancelled = true; };
-  }, [loadingExams, examList]);
+  }, [loadingExams, examList, aiReloadKey]);
 
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
@@ -2505,7 +2552,7 @@ export function ExamAnalyticsView({
   const crossExamDataForExport = useMemo(() => buildRealCrossExamData(examResults, topicResults), [examResults, topicResults]);
   const comparisonForExport = useMemo(() => buildCohortComparison(examResults, topicResults), [examResults, topicResults]);
   // หมายเหตุ: export ฝั่ง "รายคน" เป็นรายชื่อทั้งหมดเสมอ ไม่ได้กรองตามช่องค้นหา/ตัวกรองในแท็บ
-  const progressRowsForExport = useMemo(() => buildProgressRows(crossExamDataForExport, aiSummaries), [crossExamDataForExport, aiSummaries]);
+  const progressRowsForExport = useMemo(() => buildProgressRows(crossExamDataForExport, examId), [crossExamDataForExport, examId]);
 
   // ── ปุ่ม "วิเคราะห์ใหม่" ของห้อง (ย้ายมาจาก TutorExamDetail.jsx ตามที่ตกลงกัน — ฟังก์ชัน
   // เกี่ยวกับประมวลผล AI ทั้งหมดอยู่หน้านี้ที่เดียว) สโคปตามรอบที่เลือกอยู่ (examId) เท่านั้น
@@ -2526,6 +2573,7 @@ export function ExamAnalyticsView({
         next[examId] = Array.isArray(list) ? list : [];
         return next;
       });
+      setAiErrors((prev) => { const next = [...prev]; next[examId] = false; return next; });
       const notes = [];
       if (res?.failed > 0) notes.push(`AI ประมวลผลสำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่ด้วย AI เพื่อลองอีกครั้ง`);
       if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในผลวิเคราะห์โดย AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
@@ -2548,7 +2596,7 @@ export function ExamAnalyticsView({
       <div className="min-w-0">
         <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {examResults[examId]?.submittedCount ?? 0} คน
+          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {resultsErrors[examId] ? "—" : (examResults[examId]?.submittedCount ?? 0)} คน
           {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
           {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
             ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
@@ -2556,7 +2604,7 @@ export function ExamAnalyticsView({
         {roleNote}
       </div>
 
-      {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" />}
+      {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" onRetry={() => setExamListReloadKey((k) => k + 1)} />}
 
       {/* Tab Nav — แท็บอยู่ซ้าย ตัวเลือกรอบสอบ (เฉพาะแท็บที่ดูทีละรอบ) + ปุ่ม "ส่งออกรายงาน" อยู่ขวา
           ปุ่มส่งออกมีปุ่มเดียวต่อแท็บ รายการในเมนูเปลี่ยนตามแท็บที่เลือก */}
@@ -2621,7 +2669,13 @@ export function ExamAnalyticsView({
           <div className="flex items-center gap-2.5 min-w-0">
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
-              {aiSummaries[examId] == null
+              {resultsErrors[examId]
+                ? <span className="text-red-600">โหลดผลสอบรอบ {examLabel} ไม่สำเร็จ จึงยังแสดงผลวิเคราะห์ไม่ได้</span>
+                : aiErrors[examId] && aiSummaries[examId] == null
+                ? <span className="text-red-600">โหลดผลวิเคราะห์โดย AI ไม่สำเร็จ{" "}
+                    <button type="button" onClick={() => setAiReloadKey((k) => k + 1)} className="font-semibold underline hover:text-red-700">ลองใหม่</button>
+                  </span>
+                : aiSummaries[examId] == null
                 ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
                 : verifiedAiCount > 0
                   ? `ผลวิเคราะห์โดย AI ผ่านการตรวจสอบ ${verifiedAiCount} จาก ${examResults[examId]?.submittedCount || 0} คน${unavailableAiCount ? ` · ต้องวิเคราะห์ใหม่ ${unavailableAiCount} คน` : ""}`
@@ -2645,12 +2699,41 @@ export function ExamAnalyticsView({
       )}
 
       {/* Content */}
-      {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
+      {/* โหลดผลสอบบางรอบไม่สำเร็จ (แท็บเปรียบเทียบ/รายคนใช้ทุกรอบ) — แจ้งพร้อมปุ่มลองใหม่ของแต่ละรอบ */}
+      {!dataLoading && activeTab !== "overview" && resultsErrors.some(Boolean) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span>โหลดผลสอบไม่สำเร็จ: ข้อมูลด้านล่างอาจไม่ครบ</span>
+          {resultsErrors.map((err, i) => err && (
+            <button key={i} type="button" disabled={retryingRound != null} onClick={() => retryRoundResults(i)}
+              className="font-semibold underline hover:text-red-800 disabled:opacity-50">
+              {retryingRound === i ? `กำลังโหลด ${EXAMS_META[i].label}…` : `ลองใหม่ (${EXAMS_META[i].label})`}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* โหลดคะแนนรายหัวข้อไม่สำเร็จ — แจ้งเล็กๆ ไม่บังเนื้อหาหลัก */}
+      {!dataLoading && activeTab !== "progress" && (activeTab === "overview" ? topicErrors[examId] : topicErrors.some(Boolean)) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>โหลดคะแนนรายหัวข้อไม่สำเร็จ ข้อมูลรายหัวข้ออาจไม่แสดง</span>
+          <button type="button" onClick={() => setTopicReloadKey((k) => k + 1)} className="font-semibold underline hover:text-amber-800">ลองใหม่</button>
+        </div>
+      )}
+      {activeTab === "overview" && !dataLoading && resultsErrors[examId] && (
+        <ErrorState
+          title={`โหลดผลสอบรอบ ${examLabel} ไม่สำเร็จ`}
+          description={retryingRound === examId ? "กำลังโหลดใหม่…" : "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง"}
+          onRetry={() => { if (retryingRound == null) retryRoundResults(examId); }}
+        />
+      )}
+      {activeTab === "overview" && !(!dataLoading && resultsErrors[examId]) && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
-      {activeTab === "progress" && <StudentProgressTab crossExamData={crossExamDataForExport} aiSummaries={aiSummaries} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
+      {activeTab === "progress" && <StudentProgressTab crossExamData={crossExamDataForExport} selectedExamIndex={examId} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
       {openStudentId != null && !dataLoading && (
         <StudentProgressModal
           studentId={openStudentId}
+          selectedExamIndex={activeTab === "progress" ? examId : null}
           crossExamData={crossExamDataForExport}
           aiSummaries={aiSummaries}
           courseName={courseName}
@@ -2685,7 +2768,8 @@ export default function TutorExamAnalytics() {
   const fromProgress = searchParams.get("from") === "progress";
 
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
-  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
+  // เปิดหน้ามาครั้งแรกเริ่มที่ Pre-test (กดเปลี่ยนเป็น Mid/Post ได้เหมือนเดิม)
+  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 0;
   const requestedTab = searchParams.get("tab") ?? "overview";
   const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
   // เปิดหน้าต่างรายคนของนักเรียนคนนี้ทันที (มาจากปุ่ม "ดูพัฒนาการเต็ม" ในหน้ารอบสอบ)

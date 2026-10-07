@@ -24,6 +24,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import { PendingDraftsCallout } from "../components/CourseDrafts";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -203,11 +204,13 @@ const initialsOf = (name) => {
   const second = parts.length > 1 ? parts[1][0] : "";
   return (first + second).toUpperCase();
 };
+// ใช้ <span> เพื่อวางใน <button> ได้ (W3C) · ใส่ block ให้เมื่อ className ไม่ได้กำหนด display เอง
+const blockIfNeeded = (cls = "") => (/(^|\s)(hidden|flex|inline-flex|grid|inline-grid|block|inline-block|inline|contents)(\s|$)/.test(cls) ? "" : "block ");
 function InitialsAvatar({ name, seed, className = "" }) {
   return (
-    <div className={`flex items-center justify-center font-bold text-white select-none ${colorForSeed(seed ?? name)} ${className}`}>
+    <span className={`flex items-center justify-center font-bold text-white select-none ${colorForSeed(seed ?? name)} ${className}`}>
       {initialsOf(name)}
-    </div>
+    </span>
   );
 }
 // รูปโปรไฟล์ติวเตอร์: ถ้ามีรูป → แสดงรูป, ถ้าไม่มี/โหลดพัง → fallback เป็นตัวอักษรแรกของชื่อ
@@ -216,14 +219,14 @@ function TutorAvatar({ tutor, className = "h-10 w-10 rounded-xl" }) {
   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
   if (tutor.Photo && !imgErr) {
     return (
-      <div className={`overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
+      <span className={`${blockIfNeeded(className)}overflow-hidden bg-orange-50 border border-orange-100 shrink-0 ${className}`}>
         <img
           src={getFileUrl(tutor.Photo)}
           alt={displayName}
           onError={() => setImgErr(true)}
           className="w-full h-full object-cover"
         />
-      </div>
+      </span>
     );
   }
   return (
@@ -292,25 +295,66 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
   );
 }
 
+function ApplicationInfoSection({ title, fields }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <h4 className="mb-3 text-sm font-bold text-slate-900">{title}</h4>
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {fields.map(({ label, value }) => (
+          <div key={label} className="min-w-0 rounded-xl bg-slate-50 px-3 py-2.5">
+            <dt className="text-xs font-medium text-slate-500">{label}</dt>
+            <dd className="mt-1 break-words text-sm font-semibold text-slate-900">{value || "ไม่ได้ระบุ"}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function ApplicationSubmittedDetails({ application }) {
+  const studyStatus = application.StudyStatus === "studying" ? "กำลังศึกษาอยู่" : application.StudyStatus === "graduated" ? "สำเร็จการศึกษาแล้ว" : null;
+  return (
+    <div className="space-y-3">
+      <ApplicationInfoSection title="ข้อมูลส่วนตัว" fields={[
+        { label: "ชื่อจริง", value: application.Firstname },
+        { label: "นามสกุล", value: application.Lastname },
+        { label: "ชื่อเล่น", value: application.Nickname },
+      ]} />
+      <ApplicationInfoSection title="ช่องทางติดต่อ" fields={[
+        { label: "เบอร์โทรศัพท์", value: application.PhoneNo },
+        { label: "LINE ID", value: application.LineID },
+      ]} />
+      <ApplicationInfoSection title="อาชีพและการศึกษา" fields={[
+        { label: "อาชีพปัจจุบัน", value: application.Occupation },
+        { label: "คณะ", value: application.Faculty },
+        { label: "สาขา", value: application.Major },
+        { label: "มหาวิทยาลัย", value: application.University },
+        { label: "สถานะการศึกษา", value: studyStatus },
+        ...(application.StudyStatus === "studying" ? [{ label: "ชั้นปี", value: application.StudyYear ? `ปี ${application.StudyYear}` : null }] : []),
+      ]} />
+    </div>
+  );
+}
+
 function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting, showToast, allTutors, allSubjects }) {
   return (
     <Modal
       title={`อนุมัติใบสมัคร: ${application.Nickname || `${application.Firstname} ${application.Lastname}`}`}
       icon={UserCheck}
       onClose={onClose}
+      wide
     >
-      {/* แจ้งเตือน: ชื่อ/เบอร์/LINE/อาชีพ ดึงมาจากใบสมัคร แก้ไม่ได้ตรงนี้ */}
+      <div className="mb-5">
+        <p className="mb-3 text-sm font-bold text-slate-900">ข้อมูลที่ผู้สมัครส่งมา</p>
+        <ApplicationSubmittedDetails application={application} />
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          เอกสารแนบ: {application.ResumePath ? <a href={getFileUrl(application.ResumePath)} target="_blank" rel="noreferrer" className="font-semibold text-orange-600 underline underline-offset-2">ดูไฟล์ Resume</a> : "ไม่ได้แนบไฟล์"}
+        </div>
+      </div>
       <div className="mb-5 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
         <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
         <p className="text-xs text-blue-700 leading-relaxed">
           ชื่อ-นามสกุล, ชื่อเล่น, เบอร์โทร, LINE ID และอาชีพ ดึงมาจากใบสมัครโดยตรง หากต้องการแก้ไขข้อมูลเหล่านี้ กรุณาแก้ไขที่หน้ารายชื่อติวเตอร์หลังอนุมัติแล้ว
-          {application.ResumePath && (
-            <>
-              {" · "}
-              <a href={getFileUrl(application.ResumePath)} target="_blank" rel="noreferrer"
-                className="underline font-semibold text-blue-800">ดูไฟล์ Resume</a>
-            </>
-          )}
         </p>
       </div>
 
@@ -403,7 +447,7 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
   };
 
   return (
-    <Modal title={`ใบสมัคร: ${displayName}`} icon={Eye} onClose={onClose}>
+    <Modal title={`ใบสมัคร: ${displayName}`} icon={Eye} onClose={onClose} wide>
       <div className="flex items-center gap-4 mb-6 p-4 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl text-white">
         <InitialsAvatar name={displayName} seed={application.ApplicationId}
           className="h-16 w-16 rounded-2xl text-lg border-2 border-white/30" />
@@ -416,28 +460,9 @@ function ApplicationDetailModal({ application, onClose, onApprove, onReject, sho
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">เบอร์โทร</p>
-          <p className="text-sm text-slate-800">{application.PhoneNo || "—"}</p>
-        </div>
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">LINE ID</p>
-          <p className="text-sm text-slate-800">{application.LineID || "—"}</p>
-        </div>
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">อาชีพ</p>
-          <p className="text-sm text-slate-800">{application.Occupation || "—"}</p>
-        </div>
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">การศึกษา</p>
-          <p className="text-sm text-slate-800">{[application.Faculty, application.Major, application.University].filter(Boolean).join(" · ") || "—"}</p>
-          {application.StudyStatus && <p className="mt-1 text-xs text-slate-500">{application.StudyStatus === "studying" ? `กำลังศึกษา ปี ${application.StudyYear || "—"}` : "สำเร็จการศึกษาแล้ว"}</p>}
-        </div>
-        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">วันที่สมัคร</p>
-          <p className="text-sm text-slate-800">{formatDate(application.Created_at)}</p>
-        </div>
+      <ApplicationSubmittedDetails application={application} />
+      <div className="mb-5 mt-3 rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 text-xs text-orange-800">
+        สมัครเมื่อ {formatDate(application.Created_at)} · ใบสมัคร #{application.ApplicationId}
       </div>
 
       {application.Status === 3 && application.RejectReason && (
@@ -509,9 +534,9 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const matchSearchFn = (a) => {
-    const displayName = (a.Nickname || `${a.Firstname} ${a.Lastname}`).toLowerCase();
-    const s = search.toLowerCase();
-    return !s || displayName.includes(s) || (a.PhoneNo || "").includes(s) || (a.Occupation || "").toLowerCase().includes(s);
+    const s = search.trim().toLowerCase();
+    return !s || [a.Firstname, a.Lastname, a.Nickname, a.PhoneNo, a.LineID, a.Occupation, a.Faculty, a.Major, a.University, a.StudyStatus]
+      .some((value) => String(value || "").toLowerCase().includes(s));
   };
 
   const filtered = applications.filter(a => (filterStatus === "all" || String(a.Status) === filterStatus) && matchSearchFn(a));
@@ -597,7 +622,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="ค้นหาชื่อ เบอร์โทร หรืออาชีพ"
+              placeholder="ค้นหาชื่อ เบอร์โทร LINE อาชีพ หรือการศึกษา"
               className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
             />
           </div>
@@ -618,7 +643,7 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ผู้สมัคร</th>
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ / อาชีพ</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ / การศึกษา</th>
                   <th className="whitespace-nowrap lg:whitespace-normal text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">วันที่สมัคร</th>
                   <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                   <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
@@ -627,13 +652,15 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
               <tbody className="divide-y divide-slate-100">
                 {filtered.map(a => {
                   const status = appStatusOf(a.Status);
-                  const displayName = a.Nickname || `${a.Firstname} ${a.Lastname}`;
                   return (
                     <tr key={a.ApplicationId} className="hover:bg-orange-50/40 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <InitialsAvatar name={displayName} seed={a.ApplicationId} className="h-10 w-10 rounded-xl text-sm shrink-0" />
-                          <p className="font-semibold text-slate-900 text-sm">{displayName}</p>
+                          <InitialsAvatar name={`${a.Firstname} ${a.Lastname}`} seed={a.ApplicationId} className="h-10 w-10 rounded-xl text-sm shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-900 text-sm">{a.Firstname} {a.Lastname}</p>
+                            {a.Nickname && <p className="text-xs text-slate-500">ชื่อเล่น {a.Nickname}</p>}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -646,6 +673,11 @@ function TutorApplicationList({ applications, onRefresh, showToast, allTutors, a
                           <div className="flex items-center gap-1.5 text-xs text-orange-600 font-medium mt-0.5">
                             <Briefcase className="h-3.5 w-3.5 shrink-0" /><span>{a.Occupation}</span>
                           </div>
+                        )}
+                        {(a.Faculty || a.Major || a.University) && (
+                          <p className="mt-0.5 max-w-[260px] truncate text-xs text-slate-500" title={[a.Faculty, a.Major, a.University].filter(Boolean).join(" · ")}>
+                            {[a.Faculty, a.Major, a.University].filter(Boolean).join(" · ")}
+                          </p>
                         )}
                       </td>
                       <td className="whitespace-nowrap lg:whitespace-normal px-4 py-3 text-xs text-slate-500">{formatDate(a.Created_at)}</td>
@@ -937,6 +969,12 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
         AdminId: tutorId,
         Assignments: selected.map(x => ({ CourseID: x.CourseID, SubjectId: x.SubjectId })),
       });
+      if (res.data?.drafted) {
+        showToast('success', res.data.message);
+        setSelected([]); setAdding(false); setSearch('');
+        onAdded();
+        return;
+      }
       const { success = [], skipped = [], failed = [] } = res.data;
       let msg = `เพิ่มสำเร็จ ${success.length} รายการ`;
       if (skipped.length) msg += ` · ข้าม ${skipped.length} รายการ (มีอยู่แล้ว)`;
@@ -1347,6 +1385,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
       {isEdit && (
         <div>
           <label className={lbl}>คอร์สที่สอน</label>
+          <PendingDraftsCallout tutorId={initial.AdminId} what="การสอนของติวเตอร์คนนี้" className="mb-3" onChanged={loadCourses} />
           <AddCourseToTutor
             tutorId={initial.AdminId}
             assignedCourses={courses}
@@ -1359,7 +1398,8 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             compact
             onRemoveSubject={async (tutorCourseDetailId) => {
               try {
-                await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                if (res.data?.drafted) showToast("success", res.data.message);
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
@@ -1367,7 +1407,8 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             }}
             onUpdateHours={async (tutorCourseDetailId, hours) => {
               try {
-                await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                const res = await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                if (res.data?.drafted) showToast("success", res.data.message);
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
@@ -1583,11 +1624,11 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
     <div className={`min-w-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col ${isInactive ? "opacity-60" : ""}`}>
       <button onClick={() => setViewTutor(t)} className="flex items-start gap-3 text-left">
         <TutorAvatar tutor={t} className="h-11 w-11 rounded-xl text-sm shrink-0" />
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-slate-900 text-sm leading-snug">{displayName}</p>
-          {t.Nickname && displayName !== fullName && <p className="text-xs text-slate-500 truncate">{fullName}</p>}
-          <p className="text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</p>
-        </div>
+        <span className="block min-w-0 flex-1">
+          <span className="block font-semibold text-slate-900 text-sm leading-snug">{displayName}</span>
+          {t.Nickname && displayName !== fullName && <span className="block text-xs text-slate-500 truncate">{fullName}</span>}
+          <span className="block text-[11px] text-slate-500">#{t.AdminId} · {t.ExperienceYear} ปี</span>
+        </span>
         <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${status.bg} ${status.text} ${status.border}`}>
           {isInactive ? <UserX className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           {status.label}
@@ -2240,6 +2281,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         <>
           {tab === 'courses' && (
             <div className="space-y-3">
+              <PendingDraftsCallout tutorId={tutor.AdminId} what="การสอนของติวเตอร์คนนี้" onChanged={loadDetail} />
               <AddCourseToTutor
                 tutorId={tutor.AdminId}
                 assignedCourses={data.courses}
@@ -2252,7 +2294,8 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                 onRemoveSubject={async (tutorCourseDetailId, label) => {
                   if (!await confirmDialog(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
                   try {
-                    await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                    const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
+                    if (res.data?.drafted) showToast("success", res.data.message);
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
@@ -2260,7 +2303,8 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                 }}
                 onUpdateHours={async (tutorCourseDetailId, hours) => {
                   try {
-                    await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                    const res = await axios.put(`${API}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+                    if (res.data?.drafted) showToast("success", res.data.message);
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
@@ -2314,9 +2358,13 @@ export default function AdminTutorsPage() {
   const [resetPwdTutor, setResetPwdTutor] = useState(null);
   const [statusTutor, setStatusTutor] = useState(null); // ★ เพิ่ม
   const [viewTutor, setViewTutor] = useState(null);
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    return ['list', 'attendance', 'applications'].includes(t) ? t : 'list';
+  });
   const [loadError, setLoadError] = useState(false);
   const [applications, setApplications] = useState([]);
+  const [appsError, setAppsError] = useState(false);
 
   const fetchTutors = async () => {
     try {
@@ -2343,10 +2391,13 @@ export default function AdminTutorsPage() {
     try {
       const res = await axios.get(`${API}/tutor-applications`, getAdminAuthConfig());
       setApplications(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+      setAppsError(false);
     } catch (e) {
       console.error("fetch applications error:", e);
-      setApplications([]);
-      showToast(
+      // คงข้อมูลเดิมไว้ ถ้ายังไม่เคยโหลดได้จะแสดง ErrorState แทนข้อความ "ไม่พบใบสมัคร"
+      setAppsError(true);
+      // ยังไม่มีข้อมูล = กล่อง error ในแท็บใบสมัครแสดงอยู่แล้ว ไม่ต้องเด้งแจ้งเตือนซ้อน
+      if (applications.length) showToast(
         "error",
         "โหลดใบสมัครติวเตอร์ไม่สำเร็จ",
         e.response?.data?.message || "กรุณาเข้าสู่ระบบด้วยบัญชีแอดมินอีกครั้ง",
@@ -2467,7 +2518,14 @@ export default function AdminTutorsPage() {
       {/* ── Attendance Tab ── */}
       {activeTab === 'attendance' && <AdminAttendanceDashboard embedded />}
 
-      {activeTab === 'applications' && (
+      {activeTab === 'applications' && appsError && applications.length === 0 && (
+        <ErrorState
+          title="โหลดใบสมัครติวเตอร์ไม่สำเร็จ"
+          onRetry={() => { setAppsError(false); fetchApplications(); }}
+        />
+      )}
+
+      {activeTab === 'applications' && !(appsError && applications.length === 0) && (
         <TutorApplicationList
           applications={applications}
           onRefresh={() => { fetchApplications(); fetchTutors(); }}   // ← แก้ตรงนี้

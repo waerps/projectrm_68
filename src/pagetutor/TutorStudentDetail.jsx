@@ -73,11 +73,79 @@ export default function TutorStudentDetail() {
     const [videosPage, setVideosPage] = useState(1);
     const itemsPerPage = 10; // จำนวนรายการต่อหน้า
 
+    // สถานะโหลดไม่สำเร็จของข้อมูลย่อยแต่ละส่วน — แยกจาก "ยังไม่มีข้อมูล"
+    const [reloadKey, setReloadKey] = useState(0);
+    const [attendanceError, setAttendanceError] = useState(false);
+    const [videosError, setVideosError] = useState(false);
+    const [examError, setExamError] = useState(false);
+    const [subRetrying, setSubRetrying] = useState(null);
+
+    const getAuthHeaders = () => {
+        // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
+        const token = localStorage.getItem("student_token");
+        return { headers: { Authorization: `Bearer ${token}` } };
+    };
+
+    // คะแนนสอบจริงข้ามทุกวิชาในคอร์ส (endpoint เดียวกับหน้ารายชื่อ)
+    const loadExamSummary = async (sid) => {
+        try {
+            const sumRes = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, getAuthHeaders());
+            setExamSummary(sumRes.data);
+            setExamData((sumRes.data.students || []).find((s) => String(s.userId) === String(sid)) || null);
+            setExamError(false);
+        } catch (err) {
+            console.error("Fetch exam summary failed:", err);
+            setExamSummary(null);
+            setExamData(null);
+            setExamError(true);
+        }
+    };
+
+    const loadAttendance = async () => {
+        try {
+            const attRes = await axios.get(
+                `${API_URL}/coursestutor/${courseId}/students/${studentId}/attendance`,
+                getAuthHeaders()
+            );
+            setAttendance(attRes.data);
+            setAttendanceError(false);
+        } catch (err) {
+            console.error("Fetch attendance failed:", err);
+            setAttendance([]);
+            setAttendanceError(true);
+        }
+    };
+
+    const loadVideos = async () => {
+        try {
+            const vidRes = await axios.get(
+                `${API_URL}/coursestutor/${courseId}/students/${studentId}/videos`,
+                getAuthHeaders()
+            );
+            setVideos(vidRes.data);
+            setVideosError(false);
+        } catch (err) {
+            console.error("Fetch videos failed:", err);
+            setVideos([]);   // ดึงไม่ได้ ไม่ใช้ค่าจำลองมาหลอกตา — แสดงสถานะ error แทน
+            setVideosError(true);
+        }
+    };
+
+    const retrySub = async (key) => {
+        setSubRetrying(key);
+        try {
+            if (key === "attendance") await loadAttendance();
+            else if (key === "videos") await loadVideos();
+            else if (key === "exam") await loadExamSummary(student?.UserId || student?.id || Number(studentId));
+        } finally {
+            setSubRetrying(null);
+        }
+    };
+
     useEffect(() => {
         const fetchAll = async () => {
-            // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
-            const token = localStorage.getItem("student_token");
-            const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
+            const authHeaders = getAuthHeaders();
+            setLoading(true);
             setLoadError(false);
             try {
                 const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders);
@@ -96,37 +164,9 @@ export default function TutorStudentDetail() {
                     totalClassHeld: found.totalClassHeld ?? 0,
                 });
 
-                // คะแนนสอบจริงข้ามทุกวิชาในคอร์ส (endpoint เดียวกับหน้ารายชื่อ)
-                try {
-                    const sumRes = await axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders);
-                    setExamSummary(sumRes.data);
-                    setExamData((sumRes.data.students || []).find((s) => String(s.userId) === String(sid)) || null);
-                } catch (err) {
-                    console.error("Fetch exam summary failed:", err);
-                    setExamSummary(null);
-                    setExamData(null);
-                }
-
-                try {
-                    const attRes = await axios.get(
-                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/attendance`,
-                        authHeaders
-                    );
-                    console.log('attendance data:', attRes.data)
-                    setAttendance(attRes.data);
-                } catch {
-                    setAttendance([]) // ← ถ้า error ให้แสดงว่าไม่มีข้อมูล
-                }
-
-                try {
-                    const vidRes = await axios.get(
-                        `${API_URL}/coursestutor/${courseId}/students/${studentId}/videos`,
-                        authHeaders
-                    );
-                    setVideos(vidRes.data);
-                } catch {
-                    setVideos([]);   // ดึงไม่ได้ = ไม่มีข้อมูล ไม่ใช้ค่าจำลองมาหลอกตา
-                }
+                await loadExamSummary(sid);
+                await loadAttendance();
+                await loadVideos();
             } catch (err) {
                 console.error(err);
                 setLoadError(true);
@@ -135,7 +175,7 @@ export default function TutorStudentDetail() {
             }
         };
         fetchAll();
-    }, [courseId, studentId]);
+    }, [courseId, studentId, reloadKey]);
 
     // ✨ Reset pagination when changing tabs
     useEffect(() => {
@@ -205,7 +245,7 @@ export default function TutorStudentDetail() {
     const rateText  = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
     if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
-    if (loadError) return <div className="px-4 lg:px-0"><ErrorState /></div>;
+    if (loadError) return <div className="px-4 lg:px-0"><ErrorState onRetry={() => setReloadKey((k) => k + 1)} /></div>;
     if (!student) return (
         <div className="text-center p-10 text-slate-500">ไม่พบข้อมูลนักเรียน</div>
     );
@@ -240,13 +280,13 @@ export default function TutorStudentDetail() {
                     <div className="grid grid-cols-2 min-[480px]:grid-cols-3 gap-2 sm:gap-3 lg:flex lg:flex-wrap lg:shrink-0 [&>*:last-child]:col-span-2 min-[480px]:[&>*:last-child]:col-span-1">
                         <div className="bg-white border border-green-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className={`${STAT_LABEL} mb-0.5`}>เข้าเรียน</p>
-                            <p className={`${STAT_NUM} ${rateText}`}>{attendanceRate}%</p>
-                            <p className={STAT_SUB}>{attendedCount}/{attendance.length} คาบ</p>
+                            <p className={`${STAT_NUM} ${attendanceError ? "text-slate-400" : rateText}`}>{attendanceError ? "—" : `${attendanceRate}%`}</p>
+                            <p className={STAT_SUB}>{attendanceError ? "โหลดไม่สำเร็จ" : `${attendedCount}/${attendance.length} คาบ`}</p>
                         </div>
                         <div className="bg-white border border-orange-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className={`${STAT_LABEL} mb-0.5`}>ดูคลิป</p>
-                            <p className={`${STAT_NUM} text-orange-600`}>{videoRate}%</p>
-                            <p className={STAT_SUB}>{watchedCount}/{videos.length} คลิป</p>
+                            <p className={`${STAT_NUM} ${videosError ? "text-slate-400" : "text-orange-600"}`}>{videosError ? "—" : `${videoRate}%`}</p>
+                            <p className={STAT_SUB}>{videosError ? "โหลดไม่สำเร็จ" : `${watchedCount}/${videos.length} คลิป`}</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-2 sm:px-4 py-2 text-center min-w-0 ${getTrendColor(getOverallTrend())}`}>
                             <p className="text-xs font-medium mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
@@ -257,7 +297,7 @@ export default function TutorStudentDetail() {
                             <div className={STAT_SUB}>
                                 {improvement
                                     ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
-                                    : "ยังไม่มีข้อมูลสอบ"}
+                                    : examError ? "โหลดข้อมูลสอบไม่สำเร็จ" : "ยังไม่มีข้อมูลสอบ"}
                             </div>
                         </div>
                     </div>
@@ -282,7 +322,12 @@ export default function TutorStudentDetail() {
             </div>
 
             {/* ── Tab: Attendance with Pagination ── */}
-            {activeTab === "attendance" && (
+            {activeTab === "attendance" && attendanceError && (
+                <ErrorState title="โหลดข้อมูลการเข้าเรียนไม่สำเร็จ"
+                    description={subRetrying === "attendance" ? "กำลังโหลดใหม่…" : undefined}
+                    onRetry={() => { if (!subRetrying) retrySub("attendance"); }} />
+            )}
+            {activeTab === "attendance" && !attendanceError && (
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
                     <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -375,7 +420,12 @@ export default function TutorStudentDetail() {
             )}
 
             {/* ── Tab: Videos with Pagination ── */}
-            {activeTab === "videos" && (
+            {activeTab === "videos" && videosError && (
+                <ErrorState title="โหลดรายการคลิปไม่สำเร็จ"
+                    description={subRetrying === "videos" ? "กำลังโหลดใหม่…" : undefined}
+                    onRetry={() => { if (!subRetrying) retrySub("videos"); }} />
+            )}
+            {activeTab === "videos" && !videosError && (
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
                     <div className="p-4 border-b border-slate-100 flex flex-wrap gap-2 items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -445,7 +495,12 @@ export default function TutorStudentDetail() {
 
 
             {/* ── Tab: Scores — คะแนนจริงข้ามทุกวิชาในแพ็กเกจ ── */}
-            {activeTab === "scores" && (
+            {activeTab === "scores" && examError && (
+                <ErrorState title="โหลดคะแนนสอบไม่สำเร็จ"
+                    description={subRetrying === "exam" ? "กำลังโหลดใหม่…" : undefined}
+                    onRetry={() => { if (!subRetrying) retrySub("exam"); }} />
+            )}
+            {activeTab === "scores" && !examError && (
                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
                     <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
@@ -579,7 +634,17 @@ export default function TutorStudentDetail() {
             )}
 
             {/* ── Tab: Overview ── */}
-            {activeTab === "overview" && (
+            {activeTab === "overview" && (attendanceError || videosError) && (
+                <ErrorState
+                    title={attendanceError && videosError ? "โหลดข้อมูลการเข้าเรียนและคลิปไม่สำเร็จ" : attendanceError ? "โหลดข้อมูลการเข้าเรียนไม่สำเร็จ" : "โหลดรายการคลิปไม่สำเร็จ"}
+                    description={subRetrying ? "กำลังโหลดใหม่…" : "ภาพรวมต้องใช้ข้อมูลส่วนนี้ กรุณาลองใหม่อีกครั้ง"}
+                    onRetry={async () => {
+                        if (subRetrying) return;
+                        if (attendanceError) await retrySub("attendance");
+                        if (videosError) await retrySub("videos");
+                    }} />
+            )}
+            {activeTab === "overview" && !attendanceError && !videosError && (
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {[

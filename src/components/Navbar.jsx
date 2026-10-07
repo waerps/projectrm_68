@@ -404,19 +404,19 @@ const cartTotal = cart.reduce((sum, item) => {
                           onClick={() => handleSelectCourse(c.CourseID)}
                           className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-orange-50 group"
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100">
+                          <span className="flex items-center gap-3 min-w-0">
+                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100">
                               <BookOpen className="h-4 w-4 text-orange-500" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-gray-800 group-hover:text-orange-600">
+                            </span>
+                            <span className="block min-w-0">
+                              <span className="block truncate text-sm font-medium text-gray-800 group-hover:text-orange-600">
                                 {highlightMatch(c.CourseName || "", searchQuery)}
-                              </p>
+                              </span>
                               {c.Price != null && (
-                                <p className="text-xs text-gray-400">{Number(c.Price).toLocaleString()} บาท</p>
+                                <span className="block text-xs text-gray-400">{Number(c.Price).toLocaleString()} บาท</span>
                               )}
-                            </div>
-                          </div>
+                            </span>
+                          </span>
                           <ChevronRight className="h-4 w-4 flex-shrink-0 text-gray-300 group-hover:text-orange-400 transition" />
                         </button>
                       ))}
@@ -692,8 +692,8 @@ const cartTotal = cart.reduce((sum, item) => {
                             onClick={() => handleSelectCourse(item.id)}
                             className="min-w-0 flex-1 text-left"
                           >
-                            <p className="truncate text-sm font-medium text-gray-800 group-hover:text-orange-500">{item.title}</p>
-                            <p className="text-xs text-orange-400">{item.price}</p>
+                            <span className="block truncate text-sm font-medium text-gray-800 group-hover:text-orange-500">{item.title}</span>
+                            <span className="block text-xs text-orange-400">{item.price}</span>
                           </button>
                           <button
                             onClick={() => toggleFavorite(item)}
@@ -758,8 +758,8 @@ const cartTotal = cart.reduce((sum, item) => {
                             onClick={() => handleSelectCourse(item.id)}
                             className="min-w-0 flex-1 text-left"
                           >
-                            <p className="truncate text-sm font-medium text-gray-800 group-hover:text-orange-500">{item.title}</p>
-                            <p className="text-xs text-orange-400">{item.price}</p>
+                            <span className="block truncate text-sm font-medium text-gray-800 group-hover:text-orange-500">{item.title}</span>
+                            <span className="block text-xs text-orange-400">{item.price}</span>
                           </button>
                           <button
                             onClick={() => removeFromCart(item.id)}
@@ -837,16 +837,6 @@ const cartTotal = cart.reduce((sum, item) => {
         </div>
       </nav>
 
-      <style>{`
-        .navbar-drop {
-          animation: navDrop 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          transform-origin: top center;
-        }
-        @keyframes navDrop {
-          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
     </div>
   )
 }
