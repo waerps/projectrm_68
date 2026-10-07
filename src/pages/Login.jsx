@@ -159,7 +159,7 @@ export function Login({ initialMode = "login" }) {
   }
 
   return (
-    <main className="auth-page">
+    <div className="auth-page">
       <div className="auth-page-glow auth-page-glow-one" aria-hidden="true" />
       <div className="auth-page-glow auth-page-glow-two" aria-hidden="true" />
       <div className="auth-stage" data-mode={mode === "login" ? "login" : "register"}>
@@ -294,7 +294,7 @@ export function Login({ initialMode = "login" }) {
           <BookOpen className="auth-swipe-book" size={210} strokeWidth={0.7} aria-hidden="true" />
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

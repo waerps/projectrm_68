@@ -49,7 +49,7 @@ function FloorNavigation({ floor, classroom }) {
 function WelcomeTour() {
   return (
     <>
-      <div id="room" aria-label="โมเดลสามมิติพื้นที่ต้อนรับของศรเสริม ติวเตอร์" />
+      <div id="room" role="img" aria-label="โมเดลสามมิติพื้นที่ต้อนรับของศรเสริม ติวเตอร์" />
       <aside className="intro">
         <FloorNavigation floor={1} classroom={false} />
         <div className="eyebrow"><span /> ชั้น 1 / ยินดีต้อนรับ</div>
@@ -101,7 +101,7 @@ function ClassroomTour({ floor }) {
   }, [detailsOpen]);
   return (
     <>
-      <div id="canvas" aria-label="โมเดลสามมิติห้องเรียนของศรเสริม ติวเตอร์" />
+      <div id="canvas" role="img" aria-label="โมเดลสามมิติห้องเรียนของศรเสริม ติวเตอร์" />
       <aside className="sidebar">
         <FloorNavigation floor={floor} classroom />
         <div className="eyebrow" id="eyebrow" />
@@ -124,7 +124,7 @@ function ClassroomTour({ floor }) {
       </aside>
 
       <div className="scene-label"><span className="live-dot" /> สำรวจพื้นที่การเรียนรู้ <span className="scene-label-muted">/ 3D</span></div>
-      {hasGuide && <div id="guideHotspots" aria-label={`จุดแนะนำบนโมเดลชั้น ${floor}`} />}
+      {hasGuide && <div id="guideHotspots" role="group" aria-label={`จุดแนะนำบนโมเดลชั้น ${floor}`} />}
       <div className="toolbar controls" role="group" aria-label="ควบคุมมุมมอง">
         <button id="minus" aria-label="ซูมออก">−</button><button id="plus" aria-label="ซูมเข้า">+</button>
         <span className="toolbar-separator" />

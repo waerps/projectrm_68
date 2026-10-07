@@ -63,7 +63,7 @@ function WatchProgressRing({ percent }) {
   const color = value >= 80 ? "#16a34a" : value > 0 ? "#f97316" : "#94a3b8";
 
   return (
-    <div className="relative h-12 w-12 shrink-0" title={`ดูแล้ว ${value}%`} aria-label={`ดูแล้ว ${value}%`}>
+    <div className="relative h-12 w-12 shrink-0" title={`ดูแล้ว ${value}%`} role="img" aria-label={`ดูแล้ว ${value}%`}>
       <svg viewBox="0 0 48 48" className="h-12 w-12 -rotate-90">
         <circle cx="24" cy="24" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="5" />
         <circle cx="24" cy="24" r={radius} fill="none" stroke={color} strokeWidth="5"

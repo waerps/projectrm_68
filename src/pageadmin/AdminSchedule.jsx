@@ -567,7 +567,7 @@ export default function AdminSchedule() {
               ยังไม่เช็กอิน
             </span>
             <span className="flex items-center gap-1">
-              <div className="h-3 w-3 rounded-full bg-slate-300" />
+              <span className="block h-3 w-3 rounded-full bg-slate-300" />
               ยังไม่ถึงวัน
             </span>
           </div>
@@ -830,7 +830,7 @@ export default function AdminSchedule() {
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
-            <h3 className="text-lg font-bold text-slate-900 mb-1 text-center">ยืนยันการลบคาบสอน</h3>
+            <h2 className="text-lg font-bold text-slate-900 mb-1 text-center">ยืนยันการลบคาบสอน</h2>
             <p className="text-sm text-slate-500 mb-4 text-center">
               ลบคาบ <strong>{selected.SubjectName || selected.CourseName}</strong> วัน{DAY_MAP[selected.DayOfWeek]} {selected.StartTime}–{selected.EndTime}
             </p>

@@ -66,9 +66,9 @@ const NewsCard = ({ item }) => (
             {item.sub}
           </span>
         </div>
-        <h4 className="text-[15px] md:text-base font-semibold leading-relaxed">
+        <h3 className="text-[15px] md:text-base font-semibold leading-relaxed">
           {item.title}
-        </h4>
+        </h3>
       </div>
     </div>
   </div>

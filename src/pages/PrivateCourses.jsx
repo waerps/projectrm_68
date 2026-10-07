@@ -296,17 +296,19 @@ function ContactModal({ subject, subjects, onClose }) {
               <button type="submit" disabled={sending || !inquiry.privacyAcknowledged} className="w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">{sending ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้สถาบัน"}</button>
             </form>
           )}
-          <a href={C.tel} className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-orange-300">
+          <div className="relative">
+          <a href={C.tel} className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 pr-14 transition hover:border-orange-300">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style={{ background: ORANGE_GRAD }}><Phone className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block text-[11px] text-gray-500">โทรหา{C.name} ({C.role})</span>
               <span className="text-lg font-bold tabular-nums" style={{ color: NAVY }}>{C.phone}</span>
             </span>
-            <button type="button" onClick={(e) => { e.preventDefault(); copy(C.phone.replace(/-/g, "")); }} title="คัดลอกเบอร์"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-gray-200 text-gray-400 transition hover:border-orange-300 hover:text-orange-500">
+          </a>
+          <button type="button" onClick={() => { copy(C.phone.replace(/-/g, "")); }} title="คัดลอกเบอร์" aria-label="คัดลอกเบอร์"
+              className="absolute right-3 top-1/2 -translate-y-1/2 grid h-9 w-9 place-items-center bg-white rounded-xl border border-gray-200 text-gray-400 transition hover:border-orange-300 hover:text-orange-500">
               <Copy className="h-4 w-4" />
             </button>
-          </a>
+          </div>
           <a href={C.facebookUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 transition hover:border-blue-300">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#1877F2] text-white"><FacebookIcon className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1 leading-tight">

@@ -303,7 +303,7 @@ export default function ThaiExam() {
             <div style={s.section}>
               <div style={s.sectionHeader}>
                 <span style={s.sectionIcon}>🔍</span>
-                <h3 style={s.sectionTitle}>จุดอ่อนที่ต้องพัฒนา</h3>
+                <h2 style={s.sectionTitle}>จุดอ่อนที่ต้องพัฒนา</h2>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {result.weaknesses.map((w,i)=>(
@@ -327,7 +327,7 @@ export default function ThaiExam() {
             <div style={s.section}>
               <div style={s.sectionHeader}>
                 <span style={s.sectionIcon}>💡</span>
-                <h3 style={s.sectionTitle}>คำแนะนำ</h3>
+                <h2 style={s.sectionTitle}>คำแนะนำ</h2>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {result.recommendations.map((r,i)=>(
@@ -344,7 +344,7 @@ export default function ThaiExam() {
           <div style={s.section}>
             <div style={s.sectionHeader}>
               <span style={s.sectionIcon}>📋</span>
-              <h3 style={s.sectionTitle}>เฉลยข้อสอบ</h3>
+              <h2 style={s.sectionTitle}>เฉลยข้อสอบ</h2>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {questions.map(q=>{
