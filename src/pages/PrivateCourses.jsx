@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   UserRoundCheck, UserRound, ClipboardCheck, HeartHandshake, LineChart, PhoneCall, UsersRound, Rocket,
   Phone, Copy, MessageCircle, ExternalLink, MessageSquareText, ChevronDown, X,
-  BookOpen, ArrowRight, Sparkles,
+  BookOpen, ArrowRight, Sparkles, RefreshCw,
 } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../config";
@@ -40,14 +40,16 @@ const toSubject = (o) => ({
 
 function usePrivateOffers() {
   const [state, setState] = useState({ loading: true, error: false, subjects: [] });
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     let alive = true;
+    setState((prev) => ({ ...prev, loading: true, error: false }));
     axios.get(`${API_URL}/api/private-courses/offers`)
       .then((res) => { if (alive) setState({ loading: false, error: false, subjects: (Array.isArray(res.data) ? res.data : []).map(toSubject) }); })
       .catch(() => { if (alive) setState({ loading: false, error: true, subjects: [] }); });
     return () => { alive = false; };
-  }, []);
-  return state;
+  }, [reloadKey]);
+  return { ...state, reload: () => setReloadKey((k) => k + 1) };
 }
 
 const FEATURES = [
@@ -334,7 +336,7 @@ function ContactModal({ subject, subjects, onClose }) {
 export default function PrivateCourses() {
   const [level, setLevel] = useState("ทั้งหมด");
   const [selected, setSelected] = useState(null);
-  const { loading, error, subjects } = usePrivateOffers();
+  const { loading, error, subjects, reload } = usePrivateOffers();
   const list = subjects.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
   // แสดงเฉพาะระดับชั้นที่มีรายวิชาจริง
   const levels = PRIVATE_LEVELS.filter((l) => subjects.some((s) => s.levels.includes(l)));
@@ -441,6 +443,11 @@ export default function PrivateCourses() {
               <p className="max-w-md text-[13px] leading-relaxed text-gray-500">
                 บอกวิชา ระดับชั้น และเป้าหมายของน้องกับ{C.name}ได้เลย แล้วเราจะหาครูที่เหมาะให้
               </p>
+              {error && (
+                <button type="button" onClick={reload} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 transition hover:bg-gray-50">
+                  <RefreshCw className="h-4 w-4" /> ลองใหม่
+                </button>
+              )}
               <PrivateContactButtons compact className="justify-center" />
               <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-orange-600">ฝากข้อมูลให้ติดต่อกลับ</button>
             </div>

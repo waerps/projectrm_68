@@ -5,6 +5,7 @@ import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
 import PublicPageHero from "../components/PublicPageHero"
+import ErrorState from "../components/ui/ErrorState"
 
 const API_URL = import.meta.env.VITE_API_URL
 const STATUS_BADGE = {
@@ -122,8 +123,21 @@ export default function Promotion() {
   const navigate = useNavigate()
   const [allCourses, setAllCourses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const { cart, favorites, addToCart, toggleFavorite } = useShop()
-  useEffect(() => { getCourses().then((data) => setAllCourses(Array.isArray(data) ? data : [])).finally(() => setLoading(false)) }, [])
+  useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
+    getCourses()
+      .then((data) => setAllCourses(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error("Error loading courses:", err)
+        setAllCourses([])
+        setLoadError(true)
+      })
+      .finally(() => setLoading(false))
+  }, [reloadKey])
   const promotionCourses = useMemo(
     () => allCourses.filter((course) => Number(course.Discount) > 0 && [1, 2].includes(Number(course.Status_Course_Id))),
     [allCourses]
@@ -142,10 +156,12 @@ export default function Promotion() {
           highlight="ในราคาพิเศษ"
           description="เลือกคอร์สเรียนที่สนใจ พร้อมดูรายละเอียดและส่วนลดของแต่ละคอร์สได้เลย"
           icon={Tag}
-          note={loading ? "กำลังโหลดคอร์สที่มีส่วนลด..." : `พบ ${promotionCourses.length} คอร์สที่มีส่วนลดพิเศษตอนนี้`}
+          note={loading ? "กำลังโหลดคอร์สที่มีส่วนลด..." : loadError ? "โหลดคอร์สที่มีส่วนลดไม่สำเร็จ" : `พบ ${promotionCourses.length} คอร์สที่มีส่วนลดพิเศษตอนนี้`}
         />
       </div>
-      {loading ? <div className="flex h-64 items-center justify-center text-orange-500"><Loader2 className="h-6 w-6 animate-spin" /></div> : promotionCourses.length === 0 ? (
+      {loading ? <div className="flex h-64 items-center justify-center text-orange-500"><Loader2 className="h-6 w-6 animate-spin" /></div> : loadError ? (
+        <ErrorState title="โหลดคอร์สโปรโมชันไม่สำเร็จ" onRetry={() => setReloadKey((k) => k + 1)} />
+      ) : promotionCourses.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-gray-200 bg-white py-20 text-center"><Tag className="mx-auto mb-3 h-12 w-12 text-gray-200" /><p className="font-medium text-gray-500">ยังไม่มีคอร์สที่มีโปรโมชันในขณะนี้</p></div>
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

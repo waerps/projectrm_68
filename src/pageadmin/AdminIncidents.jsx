@@ -21,6 +21,7 @@ import Badge from "../components/ui/Badge";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -291,6 +292,9 @@ export default function AdminIncidents() {
   const { toasts, showToast, removeToast } = useToast();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  // โหลดครั้งแรกไม่สำเร็จ → กล่อง error + ลองใหม่ (เดิมขึ้น "ไม่มีเคสในหมวดนี้" ทำให้เข้าใจผิดว่าไม่มีเคส)
+  const [loadError, setLoadError] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [search, setSearch] = useState("");
   const [filterSeverity, setFilterSeverity] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -304,8 +308,12 @@ export default function AdminIncidents() {
     try {
       const res = await axios.get(API, getAdminAuthConfig());
       setIncidents(res.data.incidents);
+      setHasLoaded(true);
+      setLoadError(false);
     } catch (e) {
-      showToast("error", "โหลดข้อมูลไม่สำเร็จ");
+      // โหลดซ้ำหลังมีข้อมูลแล้ว (เช่น หลังเปลี่ยนสถานะ) ไม่สำเร็จ → คงรายการเดิมไว้ แจ้งด้วย toast
+      if (hasLoaded) showToast("error", "โหลดข้อมูลล่าสุดไม่สำเร็จ", "รายการที่เห็นอาจยังไม่อัปเดต");
+      else setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -369,6 +377,12 @@ export default function AdminIncidents() {
 
   if (loading) return (
     <Spinner block label="กำลังโหลดข้อมูลเคส..." />
+  );
+  if (loadError) return (
+    <div className="space-y-6 px-4 lg:px-0">
+      <PageHeader title="ศูนย์รับแจ้งปัญหา" subtitle="จัดการปัญหาที่ได้รับแจ้งจากผู้ใช้งาน" />
+      <ErrorState title="โหลดรายการเคสไม่สำเร็จ" onRetry={fetchAll} />
+    </div>
   );
 
   return (

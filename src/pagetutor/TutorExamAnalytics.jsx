@@ -2408,7 +2408,7 @@ export function ExamAnalyticsView({
   api,
   breadcrumb = null,
   roleNote = null,
-  initialExamId = 1,
+  initialExamId = 0,
   initialTab = "overview",
   initialStudentId = null,
 }) {
@@ -2423,6 +2423,7 @@ export function ExamAnalyticsView({
   const [loadingExams, setLoadingExams] = useState(true);
 
   const [examListError, setExamListError] = useState(false);
+  const [examListReloadKey, setExamListReloadKey] = useState(0);
   useEffect(() => {
     if (!courseId || !subjectId || !api) {
       setLoadingExams(false);
@@ -2436,7 +2437,7 @@ export function ExamAnalyticsView({
       .catch((err) => { console.error("Fetch exam list failed:", err); if (!cancelled) setExamListError(true); })
       .finally(() => { if (!cancelled) setLoadingExams(false); });
     return () => { cancelled = true; };
-  }, [courseId, subjectId, api]);
+  }, [courseId, subjectId, api, examListReloadKey]);
 
   // จับคู่ EXAMS_META (pre/mid/post) กับ examId จริงจาก backend ตามลำดับ type
   const realExamId = (id) => examList.find((e) => e.type === ["pre-test", "mid-test", "post-test"][id])?.id ?? null;
@@ -2444,6 +2445,8 @@ export function ExamAnalyticsView({
   // ── Step 2: ผลสอบจริงต่อรอบ ──────────────────────────────────────────────
   const [examResults, setExamResults] = useState([null, null, null]); // ผลจริงของ pre/mid/post
   const [loadingResults, setLoadingResults] = useState(true);
+  // รอบที่โหลดผลไม่สำเร็จ — แยกจาก "ยังไม่มีผลสอบ" เพื่อไม่ให้ผู้ใช้เข้าใจผิด
+  const [resultsErrors, setResultsErrors] = useState([false, false, false]);
 
   useEffect(() => {
     if (loadingExams) return; // ยังรอรายชื่อ exam อยู่
@@ -2453,62 +2456,90 @@ export function ExamAnalyticsView({
     // ลัพธ์ใหม่ที่โหลดเสร็จไปแล้ว ใช้ pattern เดียวกับ effect โหลด examList ด้านบน (cancelled flag)
     let cancelled = false;
     setLoadingResults(true);
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return api.fetchExamResults(id).catch((err) => {
           console.error(`Fetch results for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setExamResults(data); })
+    ).then((data) => { if (!cancelled) { setExamResults(data); setResultsErrors(errs); } })
       .finally(() => { if (!cancelled) setLoadingResults(false); });
     return () => { cancelled = true; };
   }, [loadingExams, examList]);
 
+  // ลองโหลดผลสอบใหม่เฉพาะรอบที่ล้มเหลว
+  const [retryingRound, setRetryingRound] = useState(null);
+  const retryRoundResults = (i) => {
+    const id = realExamId(i);
+    if (!id || !api) return;
+    setRetryingRound(i);
+    api.fetchExamResults(id)
+      .then((data) => {
+        setExamResults((prev) => { const next = [...prev]; next[i] = data; return next; });
+        setResultsErrors((prev) => { const next = [...prev]; next[i] = false; return next; });
+      })
+      .catch((err) => {
+        console.error(`Retry results for exam ${id} failed:`, err);
+        setResultsErrors((prev) => { const next = [...prev]; next[i] = true; return next; });
+      })
+      .finally(() => setRetryingRound(null));
+  };
+
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
   const [topicResults, setTopicResults] = useState([null, null, null]); // topic-breakdown ของ pre/mid/post
+  const [topicErrors, setTopicErrors] = useState([false, false, false]);
+  const [topicReloadKey, setTopicReloadKey] = useState(0);
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
     // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ examResults ด้านบน
     let cancelled = false;
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return api.fetchTopicBreakdown(id).catch((err) => {
           console.error(`Fetch topic breakdown for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setTopicResults(data); });
+    ).then((data) => { if (!cancelled) { setTopicResults(data); setTopicErrors(errs); } });
     return () => { cancelled = true; };
-  }, [loadingExams, examList]);
+  }, [loadingExams, examList, topicReloadKey]);
 
   // ── Step 7: ผลวิเคราะห์ AI ต่อรอบ (ใช้ใน StudentProgressModal แท็บ "รายคน") ──────
   // ดึงพร้อมกับข้อมูลรอบอื่นๆ ตั้งแต่โหลดหน้า ไม่ต้องรอกดเข้าแท็บไหนก่อน (แพทเทิร์นเดียวกับ
   // topicResults ด้านบน) — เดิมตอนยังมีแท็บ "ผล AI" แยก ปล่อยให้ AiSummaryPanel ดึงเองตอน
   // กดเข้าแท็บ แต่ตอนนี้ย้ายมาดึงรวมตรงนี้แทน เพื่อให้ StudentProgressModal ใช้ได้ทันที
   const [aiSummaries, setAiSummaries] = useState([null, null, null]); // ผลวิเคราะห์ AI ของ pre/mid/post
+  const [aiErrors, setAiErrors] = useState([false, false, false]);
+  const [aiReloadKey, setAiReloadKey] = useState(0);
 
   useEffect(() => {
     if (loadingExams || examList.length === 0) return;
     // (แก้บั๊ก) กัน request เก่ามาทับ request ใหม่เหมือนกับ 2 effect ด้านบน
     let cancelled = false;
+    const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
         const id = realExamId(i);
         if (!id) return Promise.resolve(null);
         return fetchAiSummaries(id).catch((err) => {
           console.error(`Fetch AI summaries for exam ${id} failed:`, err);
+          errs[i] = true;
           return null;
         });
       })
-    ).then((data) => { if (!cancelled) setAiSummaries(data); });
+    ).then((data) => { if (!cancelled) { setAiSummaries(data); setAiErrors(errs); } });
     return () => { cancelled = true; };
-  }, [loadingExams, examList]);
+  }, [loadingExams, examList, aiReloadKey]);
 
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
@@ -2542,6 +2573,7 @@ export function ExamAnalyticsView({
         next[examId] = Array.isArray(list) ? list : [];
         return next;
       });
+      setAiErrors((prev) => { const next = [...prev]; next[examId] = false; return next; });
       const notes = [];
       if (res?.failed > 0) notes.push(`AI ประมวลผลสำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่ด้วย AI เพื่อลองอีกครั้ง`);
       if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในผลวิเคราะห์โดย AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
@@ -2572,7 +2604,7 @@ export function ExamAnalyticsView({
         {roleNote}
       </div>
 
-      {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" />}
+      {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" onRetry={() => setExamListReloadKey((k) => k + 1)} />}
 
       {/* Tab Nav — แท็บอยู่ซ้าย ตัวเลือกรอบสอบ (เฉพาะแท็บที่ดูทีละรอบ) + ปุ่ม "ส่งออกรายงาน" อยู่ขวา
           ปุ่มส่งออกมีปุ่มเดียวต่อแท็บ รายการในเมนูเปลี่ยนตามแท็บที่เลือก */}
@@ -2637,7 +2669,11 @@ export function ExamAnalyticsView({
           <div className="flex items-center gap-2.5 min-w-0">
             <Sparkles className="h-4 w-4 text-amber-500 flex-shrink-0" />
             <p className="text-xs text-slate-500">
-              {aiSummaries[examId] == null
+              {aiErrors[examId] && aiSummaries[examId] == null
+                ? <span className="text-red-600">โหลดผลวิเคราะห์โดย AI ไม่สำเร็จ{" "}
+                    <button type="button" onClick={() => setAiReloadKey((k) => k + 1)} className="font-semibold underline hover:text-red-700">ลองใหม่</button>
+                  </span>
+                : aiSummaries[examId] == null
                 ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
                 : verifiedAiCount > 0
                   ? `ผลวิเคราะห์โดย AI ผ่านการตรวจสอบ ${verifiedAiCount} จาก ${examResults[examId]?.submittedCount || 0} คน${unavailableAiCount ? ` · ต้องวิเคราะห์ใหม่ ${unavailableAiCount} คน` : ""}`
@@ -2661,7 +2697,35 @@ export function ExamAnalyticsView({
       )}
 
       {/* Content */}
-      {activeTab === "overview" && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
+      {/* โหลดผลสอบบางรอบไม่สำเร็จ (แท็บเปรียบเทียบ/รายคนใช้ทุกรอบ) — แจ้งพร้อมปุ่มลองใหม่ของแต่ละรอบ */}
+      {!dataLoading && activeTab !== "overview" && resultsErrors.some(Boolean) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5 text-xs text-red-700">
+          <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+          <span>โหลดผลสอบไม่สำเร็จ: ข้อมูลด้านล่างอาจไม่ครบ</span>
+          {resultsErrors.map((err, i) => err && (
+            <button key={i} type="button" disabled={retryingRound != null} onClick={() => retryRoundResults(i)}
+              className="font-semibold underline hover:text-red-800 disabled:opacity-50">
+              {retryingRound === i ? `กำลังโหลด ${EXAMS_META[i].label}…` : `ลองใหม่ (${EXAMS_META[i].label})`}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* โหลดคะแนนรายหัวข้อไม่สำเร็จ — แจ้งเล็กๆ ไม่บังเนื้อหาหลัก */}
+      {!dataLoading && activeTab !== "progress" && (activeTab === "overview" ? topicErrors[examId] : topicErrors.some(Boolean)) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-700">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+          <span>โหลดคะแนนรายหัวข้อไม่สำเร็จ ข้อมูลรายหัวข้ออาจไม่แสดง</span>
+          <button type="button" onClick={() => setTopicReloadKey((k) => k + 1)} className="font-semibold underline hover:text-amber-800">ลองใหม่</button>
+        </div>
+      )}
+      {activeTab === "overview" && !dataLoading && resultsErrors[examId] && (
+        <ErrorState
+          title={`โหลดผลสอบรอบ ${examLabel} ไม่สำเร็จ`}
+          description={retryingRound === examId ? "กำลังโหลดใหม่…" : "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง"}
+          onRetry={() => { if (retryingRound == null) retryRoundResults(examId); }}
+        />
+      )}
+      {activeTab === "overview" && !(!dataLoading && resultsErrors[examId]) && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
       {activeTab === "progress" && <StudentProgressTab crossExamData={crossExamDataForExport} selectedExamIndex={examId} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
       {openStudentId != null && !dataLoading && (
@@ -2702,7 +2766,8 @@ export default function TutorExamAnalytics() {
   const fromProgress = searchParams.get("from") === "progress";
 
   const TYPE_TO_ID = { "pre-test": 0, "mid-test": 1, "post-test": 2 };
-  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 1;
+  // เปิดหน้ามาครั้งแรกเริ่มที่ Pre-test (กดเปลี่ยนเป็น Mid/Post ได้เหมือนเดิม)
+  const initialExamId = TYPE_TO_ID[searchParams.get("examType")] ?? 0;
   const requestedTab = searchParams.get("tab") ?? "overview";
   const initialTab = (requestedTab === "items" || requestedTab === "students") ? "overview" : requestedTab;
   // เปิดหน้าต่างรายคนของนักเรียนคนนี้ทันที (มาจากปุ่ม "ดูพัฒนาการเต็ม" ในหน้ารอบสอบ)

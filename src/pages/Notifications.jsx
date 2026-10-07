@@ -100,7 +100,7 @@ export default function StudentNotifications(){
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลของคุณ...</p>
         </div>
-      ) : filtered.length===0 ? (
+      ) : error && filtered.length===0 ? null : filtered.length===0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีการแจ้งเตือน</p>

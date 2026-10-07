@@ -2362,6 +2362,7 @@ export default function AdminTutorsPage() {
   });
   const [loadError, setLoadError] = useState(false);
   const [applications, setApplications] = useState([]);
+  const [appsError, setAppsError] = useState(false);
 
   const fetchTutors = async () => {
     try {
@@ -2388,9 +2389,11 @@ export default function AdminTutorsPage() {
     try {
       const res = await axios.get(`${API}/tutor-applications`, getAdminAuthConfig());
       setApplications(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+      setAppsError(false);
     } catch (e) {
       console.error("fetch applications error:", e);
-      setApplications([]);
+      // คงข้อมูลเดิมไว้ ถ้ายังไม่เคยโหลดได้จะแสดง ErrorState แทนข้อความ "ไม่พบใบสมัคร"
+      setAppsError(true);
       showToast(
         "error",
         "โหลดใบสมัครติวเตอร์ไม่สำเร็จ",
@@ -2512,7 +2515,14 @@ export default function AdminTutorsPage() {
       {/* ── Attendance Tab ── */}
       {activeTab === 'attendance' && <AdminAttendanceDashboard embedded />}
 
-      {activeTab === 'applications' && (
+      {activeTab === 'applications' && appsError && applications.length === 0 && (
+        <ErrorState
+          title="โหลดใบสมัครติวเตอร์ไม่สำเร็จ"
+          onRetry={() => { setAppsError(false); fetchApplications(); }}
+        />
+      )}
+
+      {activeTab === 'applications' && !(appsError && applications.length === 0) && (
         <TutorApplicationList
           applications={applications}
           onRefresh={() => { fetchApplications(); fetchTutors(); }}   // ← แก้ตรงนี้

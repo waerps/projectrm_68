@@ -11,6 +11,7 @@ import {
 import { confirmDialog } from "../components/ui/dialogs";
 import { BTN } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 
 const API = `${API_URL}/api/admin/profile`;
 
@@ -169,6 +170,9 @@ export default function AdminProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showPwdModal, setShowPwdModal] = useState(false);
+  // โหลดไม่สำเร็จ → แสดงกล่อง error + ลองใหม่ แทนฟอร์มว่าง (กันบันทึกค่าว่างทับข้อมูลจริง)
+  const [loadError, setLoadError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [formData, setFormData] = useState({
     firstname: "", lastname: "", nickname: "", phoneNo: "",
@@ -178,6 +182,8 @@ export default function AdminProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      setIsLoading(true);
+      setLoadError("");
       try {
         const res = await axios.get(`${API}/${ADMIN_ID}`);
         const d = res.data;
@@ -194,13 +200,14 @@ export default function AdminProfile() {
         setOriginalData(mapped);
       } catch (e) {
         console.error(e);
-        showToast("error", "โหลดข้อมูลไม่สำเร็จ");
+        setLoadError(e.response?.data?.message || "กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง");
       } finally {
         setIsLoading(false);
       }
     };
     if (ADMIN_ID) fetchProfile();
-  }, [ADMIN_ID]);
+    else { setLoadError("ไม่พบข้อมูลการเข้าสู่ระบบ กรุณาออกจากระบบแล้วเข้าใหม่"); setIsLoading(false); }
+  }, [ADMIN_ID, reloadKey]);
 
   const formatPhone = (v) => {
     const d = v.replace(/\D/g, "").slice(0, 10);
@@ -279,6 +286,12 @@ export default function AdminProfile() {
 
   if (isLoading) return (
     <Spinner block label="กำลังโหลดข้อมูล..." />
+  );
+  if (loadError) return (
+    <div className="px-4 lg:px-0">
+      <ErrorState title="โหลดข้อมูลส่วนตัวไม่สำเร็จ" description={loadError}
+        onRetry={ADMIN_ID ? () => setReloadKey((k) => k + 1) : undefined} />
+    </div>
   );
 
   return (

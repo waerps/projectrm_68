@@ -152,7 +152,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       {loading ? (
         <div className="flex justify-center py-16"><Spinner /></div>
       ) : error ? (
-        <UIErrorState message={error} onRetry={load} />
+        <UIErrorState description={error} onRetry={load} />
       ) : tab === "courses" ? (
         <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })} onChanged={load}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
@@ -178,7 +178,7 @@ function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacte
       document.getElementById(`private-inquiry-${focusedId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }, [focusedId, inquiries]);
-  if (error) return <UIErrorState message={error} onRetry={onRetry} />;
+  if (error) return <UIErrorState description={error} onRetry={onRetry} />;
   const query = search.trim().toLowerCase();
   const list = inquiries.filter((item) => !query || [item.SubjectName, item.StudentName, item.StudentNickname, item.SchoolName, item.ContactName, item.ContactPhone, item.GradeLevel, item.GradeOther]
     .some((value) => String(value || "").toLowerCase().includes(query)));

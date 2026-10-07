@@ -1,11 +1,11 @@
 // src/pages/Course.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard, Heart,
   Calendar, Users, PlayCircle, X, AlertTriangle, BookOpen, Loader2,
   Youtube, FolderOpen, Video, Sparkles, ShieldCheck, ArrowRight, ArrowLeft,
-  Tag, Check,
+  Tag, Check, RefreshCw,
 } from "lucide-react";
 import {
   getCourseById,
@@ -16,6 +16,7 @@ import {
 import { getFileUrl } from "../utils/fileUrl";
 import { useShop } from "../context/ShopContext";
 import Breadcrumb from "../components/ui/Breadcrumb";
+import UIErrorState from "../components/ui/ErrorState";
 
 // ─── Constants — เหมือนกับ AdminCoursesPage.jsx เป๊ะๆ เพื่อให้ badge/label ตรงกัน ───
 const STATUS_MAP = {
@@ -151,6 +152,9 @@ export default function CourseDetail() {
   const { id } = useParams();
   const [courseRaw, setCourseRaw] = useState(null);
   const [loading, setLoading] = useState(true);
+  // โหลดคอร์สไม่สำเร็จ: "notfound" (ไม่มีคอร์สนี้/ถูกซ่อน) หรือ "error" (เน็ต/เซิร์ฟเวอร์) — ไม่แสดงหน้าคอร์สปลอมที่กดซื้อได้
+  const [loadError, setLoadError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
@@ -159,6 +163,10 @@ export default function CourseDetail() {
 
   const [subjects, setSubjects] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(true);
+  const [subjectsError, setSubjectsError] = useState(false);
+  const [subjectsReloadKey, setSubjectsReloadKey] = useState(0);
+  const [videosError, setVideosError] = useState(false);
+  const [videosReloadKey, setVideosReloadKey] = useState(0);
 
   const [schedule, setSchedule] = useState([]);
 
@@ -172,46 +180,54 @@ export default function CourseDetail() {
     (async () => {
       try {
         setLoading(true);
+        setLoadError(null);
         const data = await getCourseById(id);
         setCourseRaw(data);
+        if (!data) setLoadError("notfound");
       } catch (err) {
         console.error("Load course error:", err);
         setCourseRaw(null);
+        const status = err?.response?.status ?? err?.status;
+        setLoadError(status === 404 || status === 400 ? "notfound" : "error");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, reloadKey]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoadingVideos(true);
+        setVideosError(false);
         const data = await getCoursePreviewVideos(id);
         setVideos(Array.isArray(data) ? data : []);
       } catch (err) {
         console.warn("Load preview videos error:", err);
         setVideos([]);
+        setVideosError(true);
       } finally {
         setLoadingVideos(false);
       }
     })();
-  }, [id]);
+  }, [id, videosReloadKey]);
 
   useEffect(() => {
     (async () => {
       try {
         setLoadingSubjects(true);
+        setSubjectsError(false);
         const data = await getCourseSubjects(id);
         setSubjects(Array.isArray(data) ? data : []);
       } catch (err) {
         console.warn("Load subjects error:", err);
         setSubjects([]);
+        setSubjectsError(true);
       } finally {
         setLoadingSubjects(false);
       }
     })();
-  }, [id]);
+  }, [id, subjectsReloadKey]);
 
   useEffect(() => {
     (async () => {
@@ -296,6 +312,24 @@ export default function CourseDetail() {
 
   if (loading) {
     return <CourseSkeleton />;
+  }
+  if (loadError) {
+    return (
+      <div className="bg-white">
+        <div className="pt-28 md:pt-36 container mx-auto max-w-6xl px-4 pb-16">
+          <Breadcrumb className="mb-4" items={[{ label: "หน้าแรก", to: "/" }, { label: "คอร์สเรียน", to: "/courses" }, { label: "รายละเอียดคอร์ส" }]} />
+          {loadError === "notfound" ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+              <p className="text-base font-semibold text-slate-700">ไม่พบคอร์สนี้</p>
+              <p className="mt-1 text-sm text-slate-500">คอร์สอาจถูกปิดรับสมัครหรือนำออกจากหน้าเว็บแล้ว</p>
+              <Link to="/courses" className="mt-4 inline-flex h-10 items-center rounded-xl bg-orange-500 px-4 text-sm font-semibold text-white hover:bg-orange-600">ดูคอร์สทั้งหมด</Link>
+            </div>
+          ) : (
+            <UIErrorState title="โหลดข้อมูลคอร์สไม่สำเร็จ" onRetry={() => setReloadKey((k) => k + 1)} />
+          )}
+        </div>
+      </div>
+    );
   }
 
   const scrollToVideo = (i) => {
@@ -500,6 +534,18 @@ export default function CourseDetail() {
             <div className="space-y-4 animate-pulse">
               {[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-2xl bg-neutral-100" />)}
             </div>
+          ) : subjectsError ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-red-50 border border-red-100" role="alert">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+              <p className="text-sm text-red-600">โหลดรายวิชาไม่สำเร็จ</p>
+              <button
+                type="button"
+                onClick={() => setSubjectsReloadKey((k) => k + 1)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+              </button>
+            </div>
           ) : subjects.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-neutral-50 border border-dashed border-neutral-200">
               <BookOpen className="h-8 w-8 text-neutral-300" />
@@ -565,6 +611,18 @@ export default function CourseDetail() {
           {loadingVideos ? (
             <div className="flex gap-4 overflow-hidden animate-pulse">
               {[0, 1, 2].map((i) => <div key={i} className="h-48 w-72 shrink-0 rounded-2xl bg-neutral-100" />)}
+            </div>
+          ) : videosError ? (
+            <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-red-50 border border-red-100" role="alert">
+              <AlertTriangle className="h-8 w-8 text-red-400" />
+              <p className="text-sm text-red-600">โหลดคลิปวิดีโอไม่สำเร็จ</p>
+              <button
+                type="button"
+                onClick={() => setVideosReloadKey((k) => k + 1)}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-700 transition hover:bg-neutral-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+              </button>
             </div>
           ) : videos.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-16 text-center rounded-2xl bg-neutral-50 border border-dashed border-neutral-200">

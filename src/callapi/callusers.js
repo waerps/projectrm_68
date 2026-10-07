@@ -78,7 +78,10 @@ export async function getCourseById(courseId) {
     const res = await apiClient.get(`/courses/${courseId}`);
     return res.data;
   } catch (error) {
-    throwNiceError(error);
+    // แนบ status ไปด้วย ให้หน้าคอร์สแยก "ไม่พบคอร์ส (404)" ออกจาก "โหลดไม่สำเร็จ" ได้
+    const err = new Error(error?.response?.data?.message || error?.message || "โหลดข้อมูลคอร์สไม่สำเร็จ");
+    err.status = error?.response?.status;
+    throw err;
   }
 }
 
@@ -107,36 +110,6 @@ export async function getCourseSchedule(courseId) {
   try {
     const res = await apiClient.get(`/courses/${courseId}/schedule`);
     return res.data ?? [];
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-// POST /courses
-export async function createCourse(payload) {
-  try {
-    const res = await apiClient.post("/courses", payload);
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-// PUT /courses/:id
-export async function updateCourse(courseId, payload) {
-  try {
-    const res = await apiClient.put(`/courses/${courseId}`, payload);
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-// DELETE /courses/:id
-export async function deleteCourse(courseId) {
-  try {
-    const res = await apiClient.delete(`/courses/${courseId}`);
-    return res.data;
   } catch (error) {
     throwNiceError(error);
   }

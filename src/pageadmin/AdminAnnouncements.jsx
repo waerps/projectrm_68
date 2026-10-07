@@ -541,7 +541,7 @@ export default function AdminAnnouncements() {
                     <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 </div>
             ) : loadError ? (
-                <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" />
+                <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { fetchAnnouncements(currentPage); fetchStats(); }} />
             ) : displayed.length === 0 ? (
                 <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm">
                     <Inbox className="h-14 w-14 text-slate-300 mx-auto mb-3" />

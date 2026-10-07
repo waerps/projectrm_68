@@ -12,6 +12,7 @@ import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BookOpen as LuBookOpen } from "lucide-react";
 import ExamRightsNotice from "./ExamRightsNotice";
+import ErrorState from "../components/ui/ErrorState";
 
 // ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
 // เดิมกว่าจะเข้าถึงคลังได้ต้องไล่ คอร์ส → วิชา → รอบสอบ → แท็บคลัง ทั้งที่คลังข้อสอบ
@@ -53,6 +54,7 @@ export default function TutorQuestionBank() {
 
   const load = useCallback(() => {
     setLoading(true);
+    setError("");
     fetchMySubjects()
       .then((rows) => setSubjects(Array.isArray(rows) ? rows : []))
       .catch((err) => {
@@ -168,7 +170,7 @@ export default function TutorQuestionBank() {
               </div>
               <div className="min-w-0">
                 <p className={STAT_LABEL}>{card.label}</p>
-                <p className={STAT_VALUE}>{card.value.toLocaleString()}<span className={STAT_UNIT}>{card.unit}</span></p>
+                <p className={STAT_VALUE}>{error ? "—" : <>{card.value.toLocaleString()}<span className={STAT_UNIT}>{card.unit}</span></>}</p>
               </div>
             </div>
           );
@@ -198,10 +200,10 @@ export default function TutorQuestionBank() {
             <option value="bundle">คอร์สรวม</option>
           </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {typeSubjects.length} วิชา</p>
+        {!error && <p className="text-xs text-slate-500 mt-2 pl-1">แสดง {filtered.length} จาก {typeSubjects.length} วิชา</p>}
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && <ErrorState title={error} onRetry={load} />}
 
       {!error && filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">

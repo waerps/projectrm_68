@@ -45,6 +45,7 @@ export default function TutorSchedulePreview() {
   const [todayDate, setTodayDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -72,7 +73,7 @@ export default function TutorSchedulePreview() {
       if (requestError.code !== "ERR_CANCELED") setError(true);
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [monthKey]);
+  }, [monthKey, reloadKey]);
 
   const calendarCells = useMemo(() => getCalendarCells(monthKey), [monthKey]);
   const classCounts = useMemo(() => {
@@ -89,7 +90,7 @@ export default function TutorSchedulePreview() {
         <div className="mb-3 flex items-center gap-2">
           <CalendarDays className="h-4 w-4 shrink-0 text-orange-600" aria-hidden="true" />
           <h2 id="tutor-schedule-preview-title" className="text-sm font-extrabold text-neutral-900">ตารางสอนรายเดือน</h2>
-          <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-bold text-orange-700">{loading ? "…" : `${schedule.length} คาบ`}</span>
+          <span className="shrink-0 rounded-full bg-orange-50 px-2 py-0.5 text-xs font-bold text-orange-700">{loading ? "…" : error ? "—" : `${schedule.length} คาบ`}</span>
         </div>
 
         <div className="mb-2 flex items-center justify-between gap-2">
@@ -98,7 +99,7 @@ export default function TutorSchedulePreview() {
           <button type="button" onClick={() => setMonthKey((month) => moveMonth(month, 1))} className="grid h-7 w-7 place-items-center rounded-lg border border-orange-100 bg-white text-orange-700 transition hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-orange-500" aria-label="เดือนถัดไป"><ChevronRight className="h-4 w-4" /></button>
         </div>
 
-        {loading ? <div className="rounded-xl bg-orange-50/70 px-3 py-10 text-center text-xs text-neutral-500" role="status">กำลังโหลดตารางสอน...</div> : error ? <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-8 text-center text-xs text-neutral-600" role="alert">โหลดตารางสอนไม่สำเร็จ</div> : (
+        {loading ? <div className="rounded-xl bg-orange-50/70 px-3 py-10 text-center text-xs text-neutral-500" role="status">กำลังโหลดตารางสอน...</div> : error ? <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-8 text-center text-xs text-neutral-600" role="alert">โหลดตารางสอนไม่สำเร็จ<button type="button" onClick={() => setReloadKey((k) => k + 1)} className="mt-2 block w-full font-bold text-orange-700 hover:underline">ลองใหม่</button></div> : (
           <div className="grid grid-cols-7 gap-1" aria-label={`ปฏิทินตารางสอน ${formatDay(`${monthKey}-01`, { month: "long", year: "numeric" })}`}>
             {WEEKDAYS.map((day) => <span key={day} className="pb-0.5 text-center text-[10px] font-bold text-neutral-500">{day}</span>)}
             {calendarCells.map((date, index) => {

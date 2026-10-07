@@ -13,6 +13,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -782,6 +783,7 @@ export default function AdminRooms() {
     const [statuses, setStatuses] = useState([]);
     const [facilityList, setFacilityList] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
     const [search, setSearch] = useState("");
     const [filterFloor, setFilterFloor] = useState("all");
     const [filterStatus, setFilterStatus] = useState("all");
@@ -804,7 +806,9 @@ export default function AdminRooms() {
             setRooms(rRes.data);
             setStatuses(sRes.data);
             setFacilityList(fRes.data);
+            setLoadError(false);
         } catch (e) {
+            setLoadError(true);
             console.error("fetch rooms error:", e.response?.status, e.response?.data || e.message);
             showToast("error", "โหลดข้อมูลห้องเรียนไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
@@ -865,6 +869,9 @@ export default function AdminRooms() {
 
     if (loading) return (
         <Spinner block label="กำลังโหลดข้อมูลห้องเรียน..." />
+    );
+    if (loadError && rooms.length === 0) return (
+        <ErrorState title="โหลดข้อมูลห้องเรียนไม่สำเร็จ" onRetry={() => { setLoadError(false); setLoading(true); fetchAll(); }} />
     );
 
     return (
@@ -939,7 +946,7 @@ export default function AdminRooms() {
                         <polygon points="100,25 180,65 100,105 20,65" fill="#E2E8F0" />
                         <polygon points="65,35 110,58 110,70 65,47" fill="#CBD5E1" opacity="0.5" />
                     </svg>
-                    <p className="text-slate-500 font-medium mt-2">ไม่พบห้องเรียนที่ค้นหา</p>
+                    <p className="text-slate-500 font-medium mt-2">{rooms.length === 0 ? "ยังไม่มีห้องเรียน" : "ไม่พบห้องเรียนที่ค้นหา"}</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

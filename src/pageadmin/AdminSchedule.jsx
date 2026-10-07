@@ -453,7 +453,11 @@ export default function AdminSchedule() {
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm mb-4">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>เชื่อมต่อ API ไม่สำเร็จ: {error}</span>
+            <span className="flex-1">เชื่อมต่อ API ไม่สำเร็จ: {error}</span>
+            <button type="button" onClick={() => fetchSchedule(weekStart)}
+              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100">
+              <RefreshCw className="h-3.5 w-3.5" /> ลองใหม่
+            </button>
           </div>
         )}
 
@@ -575,6 +579,12 @@ export default function AdminSchedule() {
             </div>
           ) : (
             <>
+            {!error && schedule.length === 0 && (
+              <div className="flex items-center gap-2 p-3 mb-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-sm">
+                <Info className="h-4 w-4 flex-shrink-0 text-slate-400" />
+                <span>สัปดาห์นี้ยังไม่มีคาบเรียน — กด "เพิ่มคาบสอน" เพื่อเพิ่มคาบใหม่</span>
+              </div>
+            )}
             {/* มือถือ: มุมมองรายวัน */}
             <div className="lg:hidden">
               <div className="-mx-1 px-1 flex gap-2 overflow-x-auto pb-2 snap-x">

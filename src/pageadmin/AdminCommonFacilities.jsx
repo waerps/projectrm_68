@@ -14,6 +14,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 import PageHeader from "../components/ui/PageHeader";
 
@@ -827,6 +828,7 @@ export default function AdminCommonFacilities() {
     const [categories, setCategories] = useState([]);
     const [statuses, setStatuses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(false);
 
     const [filterType, setFilterType] = useState("all"); // 'all' | 'asset' | 'consumable'
     const [search, setSearch] = useState("");
@@ -854,7 +856,9 @@ export default function AdminCommonFacilities() {
             setItems(iRes.data);
             setCategories(cRes.data);
             setStatuses(sRes.data);
+            setLoadError(false);
         } catch (e) {
+            setLoadError(true);
             console.error("fetch common-facilities error:", e.response?.status, e.response?.data || e.message);
             showToast("error", "โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ", e.response?.data?.message || `HTTP ${e.response?.status || "?"}: ${e.message}`);
         } finally { setLoading(false); }
@@ -942,6 +946,9 @@ export default function AdminCommonFacilities() {
     if (loading) return (
         <Spinner block label="กำลังโหลดข้อมูลคลังอุปกรณ์..." />
     );
+    if (loadError && items.length === 0) return (
+        <ErrorState title="โหลดข้อมูลคลังอุปกรณ์ไม่สำเร็จ" onRetry={() => { setLoadError(false); setLoading(true); fetchAll(); }} />
+    );
 
     return (
         <div className="space-y-6 px-4 lg:px-0">
@@ -1028,7 +1035,7 @@ export default function AdminCommonFacilities() {
             {filtered.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <Boxes className="h-16 w-16 mx-auto text-slate-200" />
-                    <p className="text-slate-500 font-medium mt-3">ไม่พบอุปกรณ์ที่ค้นหา</p>
+                    <p className="text-slate-500 font-medium mt-3">{items.length === 0 ? "ยังไม่มีอุปกรณ์" : "ไม่พบอุปกรณ์ที่ค้นหา"}</p>
                 </div>
             ) : (
                 <FacilityTable

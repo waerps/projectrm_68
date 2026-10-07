@@ -2330,7 +2330,7 @@ export default function AdminStudentsPage() {
       {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuGraduationCap className="h-7 w-7 text-orange-400" /></div>
-          <p className="text-base font-semibold text-slate-700">ไม่พบนักเรียนที่ค้นหา</p>
+          <p className="text-base font-semibold text-slate-700">{students.length === 0 ? "ยังไม่มีนักเรียน" : "ไม่พบนักเรียนที่ค้นหา"}</p>
         </div>
       ) : (
         <>

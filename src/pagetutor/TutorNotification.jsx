@@ -50,7 +50,9 @@ const pillClass = (active) =>
 export default function TutorNotifications(){
   const navigate=useNavigate();
   const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
-  const load=useCallback(async()=>{setLoading(true);setError('');try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);
+  // โหลดรายการไม่สำเร็จ — ใช้ซ่อนข้อความ "ไม่มีการแจ้งเตือน" ไม่ให้ซ้อนใต้แถบ error
+  const [loadFailed,setLoadFailed]=useState(false);
+  const load=useCallback(async()=>{setLoading(true);setError('');setLoadFailed(false);try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setLoadFailed(true);setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);
   useEffect(()=>{load();},[load]);
   const unread=items.filter(x=>!x.isRead).length;
   const filtered=useMemo(()=>items.filter(x=>{const query=search.trim().toLocaleLowerCase('th-TH');return (filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter)&&(!query||[x.title,x.message,meta[x.type]?.label].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(query)));}),[items,filter,search]);
@@ -107,13 +109,13 @@ export default function TutorNotifications(){
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
-      ) : filtered.length===0 ? (
+      ) : filtered.length===0 ? (loadFailed ? null : (
         <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />
           <p className="text-slate-500 font-medium">ไม่มีการแจ้งเตือน</p>
           <p className="text-sm text-slate-500 mt-1">การแจ้งเตือนใหม่จะแสดงที่นี่</p>
         </div>
-      ) : (
+      )) : (
         <div className="space-y-4">
           {grouped.map(([groupLabel, groupItems]) => (
             <div key={groupLabel}>

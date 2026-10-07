@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import {
   Users, Calendar, Video, FileText, Download, BarChart2, PlayCircle,
   CheckCircle, XCircle, Clock, ChevronRight,
-  WalletCards, BookOpen,
+  WalletCards, BookOpen, RefreshCw,
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
@@ -43,6 +43,7 @@ export default function StudentCourseDetail() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [courseName, setCourseName] = useState(
     searchParams.get("courseName") || "คอร์สเรียน"
   );
@@ -150,7 +151,7 @@ export default function StudentCourseDetail() {
     return () => {
       cancelled = true;
     };
-  }, [courseId, token]);
+  }, [courseId, token, reloadKey]);
 
   const attendedCount = attendance.filter((a) => a.Status === "present").length;
   const absentCount = attendance.filter((a) => a.Status === "absent").length;
@@ -167,7 +168,22 @@ export default function StudentCourseDetail() {
   const rateText = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
 
   if (loading) return <div className="mt-[90px] text-center p-10 text-orange-600 font-medium">กำลังโหลดข้อมูล...</div>;
-  if (error) return <div className="mt-[90px] text-center p-10 text-red-500">{error}</div>;
+  if (error) return (
+    <div className="mt-[90px] text-center p-10 text-red-500" role="alert">
+      {error}
+      {token && courseId && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+          >
+            <RefreshCw className="h-4 w-4" /> ลองใหม่
+          </button>
+        </div>
+      )}
+    </div>
+  );
   if (!student) return <div className="mt-[90px] text-center p-10 text-neutral-500">ไม่พบข้อมูลนักเรียน</div>;
 
   return (

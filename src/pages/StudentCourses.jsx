@@ -1,5 +1,5 @@
 // ===================== 1) StudentCourses.jsx =====================
-import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -60,6 +60,7 @@ export default function StudentCourses() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   // ── สถานะคอร์ส (คำนวณจากวันที่ เหมือนของติวเตอร์) ──────────────
   const mapStatus = (startDate, lastDate) => {
@@ -92,6 +93,8 @@ export default function StudentCourses() {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
+        setLoading(true);
+        setError("");
         const data = await getStudentCourses(token);
         const courseList = unwrapList(data, ["courses"]);
 
@@ -200,7 +203,7 @@ export default function StudentCourses() {
       }
     };
     fetchCourses();
-  }, [token]);
+  }, [token, reloadKey]);
 
   // ── สถิติรวมด้านบน ─────────────────────────────────────────
   const activeCount = courses.filter((c) => c.statusId === "active").length;
@@ -224,7 +227,20 @@ export default function StudentCourses() {
   }
 
   if (error) {
-    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+    return (
+      <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600" role="alert">
+        {error}
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+          >
+            <RefreshCw className="h-4 w-4" /> ลองใหม่
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

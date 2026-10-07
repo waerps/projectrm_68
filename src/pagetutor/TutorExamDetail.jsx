@@ -30,6 +30,7 @@ import { PAGE_TITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { Lightbulb as LuLightbulb } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 import ExamMathText from "../components/ExamMathText";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
@@ -1263,12 +1264,12 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
         </div>
       )}
 
-      {loadError && <p className="text-sm text-red-600">{loadError}</p>}
+      {loadError && <ErrorState title={loadError} onRetry={load} className="py-8" />}
 
       {/* (แก้บั๊ก) เดิมรายการข้อสอบด้านล่างนี้ไม่ได้ถูกกันด้วย !editing เหมือนแถบ
           ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
           ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
-      {!editing && (!loading && items.length === 0 && !mode ? (
+      {!editing && !loadError && (!loading && items.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />
           <p className="text-sm font-semibold text-slate-500">คลังของคุณในวิชานี้ยังว่างอยู่</p>
@@ -3017,6 +3018,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const [filterPass, setFilterPass] = useState("ทั้งหมด");
   const [sortKey, setSortKey] = useState("rank");
   const [sortDir, setSortDir] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
 
   // ปิดตัวนับเวลาถอยหลังแบบเรียลไทม์ไว้ก่อนตามที่ขอ — ไม่จำเป็นต้องอัปเดตทุกวินาที
   // remainingSec เลยค้างเป็น null ตลอด ทำให้คอลัมน์ "เวลาที่ใช้" ของคนที่ยังทำไม่เสร็จ
@@ -3036,9 +3038,9 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     let cancelled = false;
 
     const load = (showSpinner) => {
-      if (showSpinner) setLoading(true);
+      if (showSpinner) { setLoading(true); setError(""); }
       fetchExamResults(exam.id)
-        .then((data) => { if (!cancelled) setResults(data); })
+        .then((data) => { if (!cancelled) { setResults(data); setError(""); } })
         .catch((err) => { console.error("Fetch results failed:", err); if (!cancelled) setError("โหลดผลสอบไม่สำเร็จ"); })
         .finally(() => { if (!cancelled && showSpinner) setLoading(false); });
     };
@@ -3049,7 +3051,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
     if (status !== "active") return () => { cancelled = true; };
     const iv = setInterval(() => load(false), 5000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [exam.id, status]);
+  }, [exam.id, status, reloadKey]);
 
   // อันดับต้องยึดคะแนนเป็นหลักเสมอ (มาก → น้อย, เท่ากันใช้ชื่อ) และคำนวณจาก
   // ชุดข้อมูลหลัง search/filter เท่านั้น — ห้ามใช้ index ดิบของ array ทั้งหมด
@@ -3149,7 +3151,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   }
 
   if (loading) return <Spinner block label="กำลังโหลดผลสอบ..." />;
-  if (error) return <p className="text-sm text-red-500">{error}</p>;
+  if (error) return <ErrorState title={error} onRetry={() => setReloadKey((k) => k + 1)} />;
   if (!results) return null;
 
   return (
@@ -3529,10 +3531,21 @@ export default function TutorExamDetail() {
     return <div className="px-4 lg:px-0"><Spinner block label="กำลังโหลดข้อมูลการสอบ..." /></div>;
   }
 
-  if (loadError || !exam) {
+  if (loadError) {
+    return (
+      <div className="px-4 lg:px-0 py-16">
+        <ErrorState title={loadError} onRetry={() => { setLoading(true); reload(); }} />
+        <div className="text-center">
+          <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!exam) {
     return (
       <div className="px-4 lg:px-0 text-center py-16">
-        <p className="text-sm text-slate-500">{loadError || "ไม่พบข้อมูลการสอบนี้"}</p>
+        <p className="text-sm text-slate-500">ไม่พบข้อมูลการสอบนี้</p>
         <button onClick={backToExamList} className="mt-3 text-sm text-orange-600 font-semibold hover:underline">← กลับไปหน้ารายการสอบ</button>
       </div>
     );
@@ -3543,6 +3556,12 @@ export default function TutorExamDetail() {
   const sb = STATUS_BADGE[status];
   const courseType = exam.courseType || fallbackCourseType;
   const rightsNoticeMode = courseType === "single" ? "single" : courseType === "bundle" ? null : "unknown";
+
+  // เปิด/ปิดสอบ — แจ้งเหตุผลจาก backend (เช่น ต้องสอบ Pre-test ให้เสร็จก่อน) แทนการเงียบ
+  const runSessionAction = async (action, fallback) => {
+    try { await action(); await reload(); }
+    catch (err) { showToast("error", fallback, err.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"); }
+  };
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -3615,9 +3634,9 @@ export default function TutorExamDetail() {
             goToPreview={() => setTab("preview")}
             onSaved={reload}
             showToast={showToast}
-            onOpen={async () => { await openExamSession(exam.id); await reload(); }}
-            onReopen={async () => { await openExamSession(exam.id); await reload(); }}
-            onClose={async () => { await closeExamSession(exam.id); await reload(); }}
+            onOpen={() => runSessionAction(() => openExamSession(exam.id), "เปิดสอบไม่สำเร็จ")}
+            onReopen={() => runSessionAction(() => openExamSession(exam.id), "เปิดสอบใหม่ไม่สำเร็จ")}
+            onClose={() => runSessionAction(() => closeExamSession(exam.id), "ปิดสอบไม่สำเร็จ")}
           />
         )}
         {tab === "results" && (

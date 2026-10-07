@@ -14,6 +14,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import ErrorState from "../components/ui/ErrorState";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
 // หนึ่งแถว = คอร์ส 1 × วิชา 1 × ติวเตอร์ 1 ซึ่งตรงกับหน่วยที่ระบบใช้จริง
@@ -131,11 +132,13 @@ export default function AdminProgressOverview() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
+    setError("");
     axios
       .get(`${API_BASE}/overview`, getAdminAuthConfig())
       .then((res) => {
@@ -149,7 +152,7 @@ export default function AdminProgressOverview() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   // แถวหลังกรองตามปุ่มที่กดเข้ามา (ยังไม่กรองคำค้น) — ใช้คิดการ์ดสรุปพัฒนาการด้านบน
   const presetRows = useMemo(() => {
@@ -306,7 +309,9 @@ export default function AdminProgressOverview() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <ErrorState title={error} onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }} />
+      )}
 
       {!error && filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">

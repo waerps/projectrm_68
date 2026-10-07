@@ -130,6 +130,7 @@ export default function News({ role = "public", embedded = false }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -146,7 +147,7 @@ export default function News({ role = "public", embedded = false }) {
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [role]);
+  }, [role, reloadKey]);
 
   const changeSelection = (id, source) => {
     if (document.startViewTransition && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -174,7 +175,7 @@ export default function News({ role = "public", embedded = false }) {
           description="ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน"
           icon={Newspaper}
         />
-        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
+        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง<div className="mt-4"><button type="button" onClick={() => setReloadKey((k) => k + 1)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">ลองใหม่</button></div></div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
           const selectedItem = section.items.find((item) => item.id === selectedId);
           return (
             <section key={section.key} className="news-feed" aria-labelledby={`news-section-${section.key}`}>

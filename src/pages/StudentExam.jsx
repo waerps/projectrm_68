@@ -608,6 +608,7 @@ export default function StudentExam() {
   const [result, setResult] = useState(null);
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!userId) {
@@ -615,6 +616,7 @@ export default function StudentExam() {
       return;
     }
     let cancelled = false;
+    setPhase("loading");
     fetchExamByToken(token, userId)
       .then((data) => {
         if (cancelled) return;
@@ -634,7 +636,7 @@ export default function StudentExam() {
         setPhase("error");
       });
     return () => { cancelled = true; };
-  }, [token, userId, navigate]);
+  }, [token, userId, navigate, reloadKey]);
 
   const handleStart = async () => {
     setStarting(true);
@@ -674,6 +676,17 @@ export default function StudentExam() {
         <div className="text-center space-y-3">
           <AlertCircle className="h-10 w-10 text-red-400 mx-auto" />
           <p className="text-sm text-slate-600">{errorMsg}</p>
+          <div className="flex flex-wrap justify-center gap-2 pt-2">
+            <button type="button" onClick={() => setReloadKey((k) => k + 1)}
+              className={`${BTN.primary} rounded-xl px-4 py-2 text-sm font-semibold`}>ลองใหม่</button>
+            <button type="button"
+              onClick={() => navigate(cameFrom?.courseId && cameFrom?.subjectId
+                ? `/profile/course/${cameFrom.courseId}/subject/${cameFrom.subjectId}`
+                : "/profile/my-courses", cameFrom?.subjectId ? { state: { tab: "exam" } } : undefined)}
+              className={`${BTN.secondary} rounded-xl px-4 py-2 text-sm font-semibold`}>
+              {cameFrom?.subjectId ? "กลับไปหน้ารายวิชา" : "กลับไปคอร์สเรียนของฉัน"}
+            </button>
+          </div>
         </div>
       </PageShell>
     );

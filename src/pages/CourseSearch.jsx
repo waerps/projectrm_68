@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
+import ErrorState from "../components/ui/ErrorState"
 import { CourseCard, toCardItem } from "./Promotion"
 
 // ── ต้องตรงกับตัวเลือกใน Navbar.jsx ──
@@ -66,6 +67,8 @@ export default function CourseSearch() {
 
   const [allCourses, setAllCourses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [searchInput, setSearchInput] = useState(searchParams.get("search") || "")
 
   const buyNow = (item) => {
@@ -80,10 +83,16 @@ export default function CourseSearch() {
 
   useEffect(() => {
     setLoading(true)
+    setLoadError(false)
     getCourses()
       .then((data) => setAllCourses(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.error("Error loading courses:", err)
+        setAllCourses([])
+        setLoadError(true)
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   useEffect(() => {
     setSearchInput(search)
@@ -253,6 +262,11 @@ export default function CourseSearch() {
             <div className="flex items-center justify-center h-64 text-orange-500">
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
+          ) : loadError ? (
+            <ErrorState
+              title="โหลดรายการคอร์สไม่สำเร็จ"
+              onRetry={() => setReloadKey((k) => k + 1)}
+            />
           ) : filteredCourses.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-gray-200">
               <div className="text-5xl mb-3">🔍</div>

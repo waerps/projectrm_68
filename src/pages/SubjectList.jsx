@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2, X } from "lucide-react";
+import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2, X, RefreshCw } from "lucide-react";
 import { getCourseBasic, getStudentSubjectsProgress } from "../callapi/callusers_student";
 
 export default function SubjectList() {
@@ -12,6 +12,7 @@ export default function SubjectList() {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,6 +20,7 @@ export default function SubjectList() {
       if (!token) { setError("กรุณาเข้าสู่ระบบใหม่"); setLoading(false); return; }
       if (!courseId) { setError("ไม่พบรหัสคอร์ส"); setLoading(false); return; }
       try {
+        setLoading(true);
         setError("");
         const [course, subjs] = await Promise.all([
           getCourseBasic(courseId, token),
@@ -56,7 +58,7 @@ export default function SubjectList() {
       }
     })();
     return () => { cancelled = true; };
-  }, [courseId, token, navigate]);
+  }, [courseId, token, navigate, reloadKey]);
 
   if (loading) {
     return (
@@ -68,7 +70,22 @@ export default function SubjectList() {
   }
 
   if (error) {
-    return <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600">{error}</div>;
+    return (
+      <div className="mt-[90px] rounded-xl bg-red-50 p-10 text-center font-medium text-red-600" role="alert">
+        {error}
+        {token && courseId && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            >
+              <RefreshCw className="h-4 w-4" /> ลองใหม่
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   const closeSubjectPicker = () => navigate("/profile/my-courses");

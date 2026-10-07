@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   MapPin,
+  RefreshCw,
   User,
   XCircle,
 } from "lucide-react";
@@ -136,10 +137,13 @@ export default function StudentSchedule() {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
   const [weekStart, setWeekStart] = useState(() => getMondayOf(new Date()));
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError("");
     Promise.allSettled([getStudentSchedule(token), getStudentCourses(token)])
       .then(([scheduleResult, courseResult]) => {
         if (cancelled) return;
@@ -153,10 +157,10 @@ export default function StudentSchedule() {
         setSchedules(scheduleList.map(normalizeSchedule).filter((item) => item.StartDateTime));
         setCourses(courseList.map(normalizeCourse).filter((item) => item.CourseID));
       })
-      .catch((err) => setError(typeof err === "string" ? err : err?.message || "โหลดตารางเรียนไม่สำเร็จ"))
+      .catch((err) => { if (!cancelled) setError(typeof err === "string" ? err : err?.message || "โหลดตารางเรียนไม่สำเร็จ"); })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, reloadKey]);
 
   const weekSchedules = useMemo(() => schedules.filter((item) => {
     const date = isoDate(item.StartDateTime);
@@ -213,7 +217,20 @@ export default function StudentSchedule() {
   const goToCourse = (courseId) => courseId && navigate(`/profile/course-detail/${courseId}`);
 
   if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
-  if (error) return <div className="mt-[90px] py-12 text-center text-red-500">{error}</div>;
+  if (error) return (
+    <div className="mt-[90px] py-12 text-center text-red-500" role="alert">
+      {error}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setReloadKey((k) => k + 1)}
+          className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+        >
+          <RefreshCw className="h-4 w-4" /> ลองใหม่
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="mx-auto mt-[90px] min-w-0 max-w-[1384px] space-y-6 pb-10">

@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import React from 'react'
 import axios from 'axios'
 import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
@@ -225,6 +225,10 @@ export default function TutorSchedule() {
   const [rawSchedule, setRawSchedule] = useState([])   // เก็บไว้คำนวณ derivedTimeSlots
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  // หลังโหลดครั้งแรกสำเร็จแล้ว การเปลี่ยนสัปดาห์/รีเฟรชจะไม่แทนทั้งหน้าด้วย spinner/error
+  const loadedOnceRef = useRef(false)
+  const [weekLoading, setWeekLoading] = useState(false)
+  const [weekError, setWeekError] = useState(false)
 
   // ── ความจริงเรื่อง "วันนี้" / "สัปดาห์นี้" มาจาก backend เท่านั้น ──
   // (ไม่ใช้ new Date() ของเบราว์เซอร์ เพื่อให้ mock วันที่ตอนเทสได้ตรงกันทั้งระบบ)
@@ -363,8 +367,11 @@ export default function TutorSchedule() {
   // ── ดึงตารางสอน ────────────────────────────────────────────────
   useEffect(() => {
     if (!tutorId) return
+    let cancelled = false
     const fetchSchedule = async () => {
       setLoadError(false)
+      setWeekError(false)
+      if (loadedOnceRef.current) setWeekLoading(true)
       try {
         const query = referenceDate ? `?date=${referenceDate}` : ''
         // ★ แก้บั๊กจริง: เดิมไม่แนบ Authorization header เลย ทั้งที่ backend (authRequired)
@@ -374,6 +381,7 @@ export default function TutorSchedule() {
           headers: { Authorization: `Bearer ${token}` },
         })
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
+        if (cancelled) return
         const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
 
         const map = {}
@@ -395,14 +403,21 @@ export default function TutorSchedule() {
         setSlotPhases(phases)
         setTodayDate(serverToday)
         setWeekStart(serverWeekStart)
+        loadedOnceRef.current = true
       } catch (err) {
+        if (cancelled) return
         console.error('Error fetching schedule', err)
-        setLoadError(true)
+        if (loadedOnceRef.current) setWeekError(true)
+        else setLoadError(true)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          setWeekLoading(false)
+        }
       }
     }
     fetchSchedule()
+    return () => { cancelled = true }
   }, [tutorId, scheduleVersion, referenceDate, token])
 
   const fetchPhotoConsentRoster = async (scheduleDetailId) => {
@@ -709,7 +724,7 @@ export default function TutorSchedule() {
 
   if (!tutorId) return <div className="text-center p-10 text-red-500">ไม่พบข้อมูลผู้ใช้</div>
   if (loading) return <Spinner block label="กำลังโหลดตารางสอน..." />
-  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดตารางสอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
+  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดตารางสอนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); setScheduleVersion(v => v + 1) }} /></div>
 
   // ── วันนี้ (สำหรับ label หัวข้อ) คำนวณจาก todayDate ของ backend เท่านั้น ──
   const todayLabel = todayDate
@@ -750,6 +765,7 @@ export default function TutorSchedule() {
                 {' – '}
                 {addDays(`${weekStart}T00:00:00`, 6).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
+              {weekLoading && <p className="mt-1 text-xs font-semibold text-slate-500" role="status">กำลังโหลดสัปดาห์…</p>}
               {referenceDate && <button type="button" onClick={() => setReferenceDate(null)} className="mt-1 text-xs font-bold text-orange-600">กลับสัปดาห์นี้</button>}
             </div>
             <button type="button" onClick={() => moveWeek(7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ถัดไป">
@@ -780,6 +796,10 @@ export default function TutorSchedule() {
           </span>
         </div>
 
+        {weekError ? (
+          <ErrorState title="โหลดตารางสอนสัปดาห์นี้ไม่สำเร็จ" onRetry={() => setScheduleVersion(v => v + 1)} />
+        ) : (
+        <div className={`relative transition-opacity ${weekLoading ? 'opacity-50 pointer-events-none' : ''}`} aria-busy={weekLoading}>
         {/* มือถือ: มุมมองรายวัน */}
         <MobileDayView weekDates={weekDates} todayDate={todayDate} slots={derivedTimeSlots} scheduleMap={scheduleMap}
           slotPhases={slotPhases} clockNow={clockNow} onPick={handleClick} />
@@ -880,6 +900,8 @@ export default function TutorSchedule() {
             ))}
           </div>
         </div>
+        </div>
+        )}
       </div >
 
       <div className={`rounded-2xl border p-4 sm:p-6 shadow-sm ${lineLinked ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
