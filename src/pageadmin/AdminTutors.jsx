@@ -25,6 +25,7 @@ import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import { PendingDraftsCallout } from "../components/CourseDrafts";
+import AdminTutorFeedback from "../components/AdminTutorFeedback";
 
 // ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
 async function forceDownload(url, filename) {
@@ -2563,6 +2564,7 @@ export default function AdminTutorsPage() {
 
         {/* ★ ใหม่: Performance Ranking (ย้ายมาจากหน้าบันทึกชั่วโมงการสอน) */}
         <TutorPerformanceRanking onViewTutor={setViewTutor} allSubjects={allSubjects} />
+        <AdminTutorFeedback />
 
         {/* Search */}
         <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
