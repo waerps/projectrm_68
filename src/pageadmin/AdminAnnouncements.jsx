@@ -579,9 +579,9 @@ export default function AdminAnnouncements() {
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-2 mb-2">
-                                            <h3 className="font-bold text-slate-900 text-base leading-snug line-clamp-2">
+                                            <h2 className="font-bold text-slate-900 text-base leading-snug line-clamp-2">
                                                 {item.Title}
-                                            </h3>
+                                            </h2>
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 {(Number(item.IsPublished) !== 1 || item.HasDraft) && <button onClick={() => handlePublish(item)}
                                                     className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-white bg-green-600 rounded-lg hover:bg-green-700">เผยแพร่</button>}
@@ -665,7 +665,7 @@ export default function AdminAnnouncements() {
                     <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-md w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
                         <div className="text-center">
                             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertCircle className="h-7 w-7 text-red-600" /></div>
-                            <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบข่าว</h3>
+                            <h2 className="text-lg font-bold text-slate-900">ยืนยันการลบข่าว</h2>
                         </div>
                         <p className="text-sm text-slate-500 text-center mt-1 mb-5">
                             คุณแน่ใจหรือไม่ว่าต้องการลบข่าว{' '}
