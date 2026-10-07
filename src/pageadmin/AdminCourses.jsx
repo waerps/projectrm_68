@@ -167,7 +167,7 @@ const initialsOf = (name) => {
 
 function Avatar({ photo, size = "w-6 h-6", name, seed }) {
   if (photo) {
-    return <img src={getFileUrl(photo)} className={`${size} rounded-full object-cover shrink-0 bg-slate-100`} />;
+    return <img src={getFileUrl(photo)} alt="" className={`${size} rounded-full object-cover shrink-0 bg-slate-100`} />;
   }
   if (name) {
     return (
@@ -626,7 +626,7 @@ function ImageUpload({ value, onChange }) {
           ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50"}`}
       >
         {value && !uploading && (
-          <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
+          <img src={getFileUrl(value)} alt="" className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
         )}
         <div className="relative z-10 flex flex-col items-center gap-1 text-center">
           {uploading
@@ -1466,7 +1466,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
               title="เล่นวิดีโอ"
             >
               {getThumbnail(v) ? (
-                <img src={getThumbnail(v)} className="w-full h-full object-cover" />
+                <img src={getThumbnail(v)} alt="" className="w-full h-full object-cover" />
               ) : (
                 <PlayCircle className="h-5 w-5 text-slate-300" />
               )}

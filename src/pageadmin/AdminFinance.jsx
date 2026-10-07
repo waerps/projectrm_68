@@ -1097,12 +1097,12 @@ function StudentPaymentDetailModal({ transactionId, onClose }) {
             <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
                 <div className="sticky top-0 z-10 px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 flex justify-between items-center">
                     <div>
-                        <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                        <h2 className="flex items-center gap-2.5 text-base font-bold text-white">
                             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20">
                                 <Receipt className="h-4 w-4 text-white" />
                             </span>
                             รายละเอียดรับชำระ
-                        </h3>
+                        </h2>
                         <p className="text-xs text-orange-100 mt-0.5 ml-[42px]">Transaction #{transactionId}</p>
                     </div>
                     <button aria-label="ปิด" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}>

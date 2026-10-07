@@ -507,7 +507,7 @@ function ExamRunner({ examJoinId, userId, examStartedAt, durationMinutes, questi
           <div className="bg-white rounded-t-2xl sm:rounded-2xl max-w-sm w-full p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="text-center mb-5">
               <div className="h-14 w-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3"><AlertCircle className="h-7 w-7 text-orange-600" /></div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">ยืนยันส่งข้อสอบ?</h3>
+              <h2 className="text-lg font-bold text-slate-900 mb-1">ยืนยันส่งข้อสอบ?</h2>
               <p className="text-sm text-slate-500">
                 คุณตอบแล้ว {answeredCount}/{questions.length} ข้อ
                 {answeredCount < questions.length && " — ข้อที่ไม่ได้ตอบจะได้ 0 คะแนน"}

@@ -148,7 +148,7 @@ function ImageUpload({ value, onChange, showToast }) {
           ${uploading ? "border-orange-300 bg-orange-50" : value ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50 hover:border-orange-300 hover:bg-orange-50"}`}
       >
         {value && !uploading && (
-          <img src={getFileUrl(value)} className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
+          <img src={getFileUrl(value)} alt="" className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-25" onError={() => { }} />
         )}
         <div className="relative z-10 flex flex-col items-center gap-1 text-center">
           {uploading
