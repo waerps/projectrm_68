@@ -1181,6 +1181,15 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
   }).sort((a, b) => (a.pct ?? 2) - (b.pct ?? 2));
   // นักเรียนที่ไม่ยินยอมเก็บข้อมูลพฤติกรรมจะไม่มี topicPcts → แสดงความเห็น AI รายหมวดแบบไม่มีเปอร์เซ็นต์แทน
   const aiOnlyTopics = topics.length === 0 ? (aiRow?.byCategory || []).filter((c) => c.topic && (c.comment || c.trend)) : [];
+  const factualSummary = latest ? (aiRow?.overview || `ผลสอบได้ ${fmtScore(latest.totalScore)}/${fmtScore(latest.maxScore)} คะแนน (${fmtIndividualPct(latest)})`) : "";
+  // ไม่มีผลวิเคราะห์ AI ที่ผ่านการตรวจ → ยังแสดงข้อมูลจริงจากผลสอบ (หมวดที่ยังได้ไม่เต็ม เรียงจากคะแนนน้อยสุด)
+  const factReviewTopics = topics.filter((t) => t.pct != null && t.pct < 1).slice(0, 4);
+  const factParentMessage = latest ? [
+    factualSummary,
+    factReviewTopics.length
+      ? `หมวดที่ควรทบทวน: ${factReviewTopics.map((t) => `${t.topic} (${t.points || `${Math.round(t.pct * 100)}%`})`).join(", ")}`
+      : topics.length ? "ได้คะแนนเต็มทุกหมวด" : "",
+  ].filter(Boolean).join("\n") : "";
   // ตัวเลขใน AI ที่ไม่ตรงกับคะแนนจริง (ตรวจฝั่ง backend) — แสดงสั้น ๆ ให้ครูตรวจก่อนส่ง
   const numberWarnings = Array.isArray(aiRow?.numberWarnings) ? aiRow.numberWarnings : [];
   const warnFieldLabel = (f) => (f === "overview" ? "ภาพรวม" : f === "parentMessage" ? "ข้อความถึงผู้ปกครอง" : f === "behavior" ? "พฤติกรรม" : /^byCategory/.test(f || "") ? "คะแนนรายหมวด" : f);
@@ -1213,7 +1222,6 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const factualSummary = latest ? (aiRow?.overview || `ผลสอบได้ ${fmtScore(latest.totalScore)}/${fmtScore(latest.maxScore)} คะแนน (${fmtIndividualPct(latest)})`) : "";
   const headline = aiHeadline(factualSummary);
   const hasMoreOverview = !!aiRow?.overview && aiRow.overview.trim() !== headline;
   const noAiNote = latest
@@ -1471,7 +1479,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                 )}
               </div>
 
-              <ExamSupportPanel aiRow={aiRow} notice={noAiNote} />
+              <ExamSupportPanel aiRow={aiRow} notice={noAiNote} factTopics={factReviewTopics} />
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
@@ -1547,6 +1555,17 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                       )}
                     </div>
                   </>
+                ) : factParentMessage ? (
+                  <div className="px-4 sm:px-6 pb-5 pt-3 space-y-3">
+                    <p className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm leading-relaxed text-slate-700 whitespace-pre-line">{factParentMessage}</p>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-[10.5px] text-slate-400">ข้อความจากผลสอบจริง (ไม่ได้ใช้ AI) · {noAiNote}</span>
+                      <button type="button" onClick={() => copyText(factParentMessage, "fact")}
+                        className={`${BTN.primary} flex items-center gap-1 text-xs font-bold rounded-xl px-3 py-1.5`}>
+                        {copied === "fact" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />} {copied === "fact" ? "คัดลอกแล้ว" : copied === "fact-fail" ? "คัดลอกไม่ได้" : "คัดลอกข้อความ"}
+                      </button>
+                    </div>
+                  </div>
                 ) : <p className="px-4 sm:px-6 pb-5 pt-2 text-xs text-slate-500">{noAiNote}</p>}
               </div>
             </>
