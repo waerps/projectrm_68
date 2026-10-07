@@ -105,10 +105,10 @@ export default function TutorVideoQuestionEditor({ video, token }) {
       </div>
     </div>
     <div className="flex gap-1 overflow-x-auto border-b border-slate-200" role="tablist" aria-label="จัดการวิดีโอ">
-      {[{id:"questions",label:"จัดการคำถาม",icon:FileQuestion},{id:"analytics",label:"ผลตอบ / สถิติ",icon:BarChart2}].map(item => { const Icon = item.icon; return <button key={item.id} type="button" role="tab" aria-selected={pageTab === item.id} onClick={() => { player.current?.pause(); setPageTab(item.id); }} className={"flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition " + (pageTab === item.id ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700")}><Icon size={16} />{item.label}</button>; })}
+      {[{id:"questions",label:"จัดการคำถาม",icon:FileQuestion},{id:"analytics",label:"ผลตอบ / สถิติ",icon:BarChart2}].map(item => { const Icon = item.icon; return <button key={item.id} type="button" role="tab" id={`video-tab-${item.id}`} aria-controls="video-tabpanel" aria-selected={pageTab === item.id} onClick={() => { player.current?.pause(); setPageTab(item.id); }} className={"flex items-center gap-1.5 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition " + (pageTab === item.id ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700")}><Icon size={16} />{item.label}</button>; })}
     </div>
     {error && <div role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-    <div className={"grid items-start gap-6 " + (pageTab === "questions" || reportTab === "replay" ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : "")}>
+    <div role="tabpanel" id="video-tabpanel" aria-labelledby={`video-tab-${pageTab}`} className={"grid items-start gap-6 " + (pageTab === "questions" || reportTab === "replay" ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]" : "")}>
       <div className={pageTab === "questions" || reportTab === "replay" ? "min-w-0 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" : "hidden"}>
           <video ref={player} src={video.VideoUrl} controls className="aspect-video w-full rounded-xl bg-black"  />
           {pageTab === "questions" && <><div className="mt-3 rounded-2xl bg-orange-50 p-4">

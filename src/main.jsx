@@ -118,7 +118,6 @@ const AdminTutors = lazyPage(() => import("./pageadmin/AdminTutors.jsx"));
 const AdminFinance = lazyPage(() => import("./pageadmin/AdminFinance.jsx"));
 const AdminAnnouncements = lazyPage(() => import("./pageadmin/AdminAnnouncements.jsx"));
 const AdminNotification = lazyPage(() => import("./pageadmin/AdminNotification.jsx"));
-const AdminPasswordResets = lazyPage(() => import("./pageadmin/AdminPasswordResets.jsx"));
 const AdminRooms = lazyPage(() => import("./pageadmin/AdminRooms.jsx"));
 const AdminCommonFacilities = lazyPage(() => import("./pageadmin/AdminCommonFacilities.jsx"));
 const AdminAttendanceDashboard = lazyPage(() => import("./pageadmin/AdminAttendanceDashboard.jsx"));
@@ -223,7 +222,6 @@ const router = createBrowserRouter(
             { path: "finance", element: <AdminFinance /> },
             { path: "announcements", element: <AdminAnnouncements /> },
             { path: "notification", element: <AdminNotification /> },
-            { path: "password-resets", element: <AdminPasswordResets /> }, // ★ เพิ่ม: คำขอลืมรหัสผ่าน
             { path: "rooms", element: <AdminRooms /> },
             { path: "common-facilities", element: <AdminCommonFacilities /> },
             { path: "management", element: <AdminManagement /> },
