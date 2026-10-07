@@ -11,7 +11,7 @@ const questionRefs = (item) => {
   return out.slice(0, 12);
 };
 
-export default function ExamSupportPanel({ aiRow, notice }) {
+export default function ExamSupportPanel({ aiRow, notice, factTopics = [] }) {
   const misconceptions = aiRow?.misconceptions || [];
   const focusNext = aiRow?.focusNext || [];
 
@@ -25,7 +25,21 @@ export default function ExamSupportPanel({ aiRow, notice }) {
           <p className="flex-1 flex items-center rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-600">
             {!aiRow ? notice : "ผลวิเคราะห์รอบนี้ไม่มีข้อสังเกตเพิ่มเติมในส่วนนี้"}
           </p>
-        ) : (
+        ) : null}
+        {!aiRow && factTopics.length > 0 && (
+          <>
+            <p className="text-xs font-bold text-slate-500">หมวดที่ยังได้คะแนนไม่เต็ม <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">จากผลสอบจริง</span></p>
+            <ul className="grid gap-3 md:grid-cols-2">
+              {factTopics.map((t) => (
+                <li key={t.topic} className="min-w-0 rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                  <p className="text-sm font-bold text-slate-800 break-words">{t.topic}</p>
+                  <p className="text-sm text-slate-600 mt-1 tabular-nums">{t.points || "-"} · {Math.round(t.pct * 100)}%</p>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {!aiRow || misconceptions.length === 0 ? null : (
           <div className="grid gap-3 md:grid-cols-2">
             {misconceptions.map((item, index) => {
               const refs = questionRefs(item);
