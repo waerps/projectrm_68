@@ -1,3 +1,4 @@
+import { downloadFile } from "../utils/downloadFile";
 import { API_URL } from "../config";
 import { BookOpen, Users, Clock, Video, FileText, Search, CalendarDays, MapPin, Paperclip, X, ChevronRight, ChevronDown } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -296,7 +297,7 @@ export default function CoursesPage() {
                   </div>
                   <p className="text-xs text-slate-500">รับต่อจาก: {item.ownerNickname || [item.ownerFirstname, item.ownerLastname].filter(Boolean).join(' ') || 'ไม่ระบุ'}</p>
                   {item.attachmentFilePath ? (
-                    <a href={item.attachmentFilePath} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 hover:bg-orange-100">
+                    <a href={item.attachmentFilePath} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); downloadFile(item.attachmentFilePath, item.attachmentFileName); }} className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-orange-700 hover:bg-orange-100">
                       <span className="flex min-w-0 items-center gap-2"><Paperclip className="h-4 w-4 shrink-0" /><span className="truncate">{item.attachmentFileName}</span></span>
                       <span>เปิดเอกสาร</span>
                     </a>

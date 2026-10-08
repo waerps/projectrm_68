@@ -1,4 +1,5 @@
 //ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
+import { downloadFile } from "../utils/downloadFile";
 import { API_URL } from "../config";
 import { useNavigate } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
@@ -349,7 +350,7 @@ function ApproveApplicationModal({ application, onClose, onApprove, isSubmitting
         <p className="mb-3 text-sm font-bold text-slate-900">ข้อมูลที่ผู้สมัครส่งมา</p>
         <ApplicationSubmittedDetails application={application} />
         <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          เอกสารแนบ: {application.ResumePath ? <a href={getFileUrl(application.ResumePath)} target="_blank" rel="noreferrer" className="font-semibold text-orange-600 underline underline-offset-2">ดูไฟล์ Resume</a> : "ไม่ได้แนบไฟล์"}
+          เอกสารแนบ: {application.ResumePath ? <a href={getFileUrl(application.ResumePath)} target="_blank" rel="noreferrer" onClick={(e) => { e.preventDefault(); downloadFile(application.ResumePath, `resume-${application.ApplicationId || "tutor"}`); }} className="font-semibold text-orange-600 underline underline-offset-2">ดูไฟล์ Resume</a> : "ไม่ได้แนบไฟล์"}
         </div>
       </div>
       <div className="mb-5 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">

@@ -1,6 +1,7 @@
 // src/pageadmin/AdminIncidents.jsx
 // ★ Incident Center — รีดีไซน์ให้ consistent กับ AdminStudents.jsx ทุกจุด
 //   (ค้นหา, dropdown filter, ตาราง, pagination, ปุ่มดูข้อมูล, ไม่มี emoji)
+import { downloadFile } from "../utils/downloadFile";
 import { API_URL } from "../config";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -192,12 +193,13 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
 
           <div className="flex flex-wrap gap-2">
             {attachments.map((att) => {
-              const isPdf = att.FilePath.toLowerCase().endsWith(".pdf");
+              const isPdf = att.FilePath.toLowerCase().endsWith(".pdf") || att.FilePath.includes("/raw/upload/"); // PDF เก่าบน Cloudinary ไม่มี .pdf ใน URL
 
               return (
                 <a
                   key={att.IncidentAttachmentId}
                   href={getFileUrl(att.FilePath)}
+                  onClick={isPdf ? (e) => { e.preventDefault(); downloadFile(att.FilePath, `หลักฐาน-${att.IncidentAttachmentId}.pdf`); } : undefined}
                   target="_blank"
                   rel="noreferrer"
                   className="block"

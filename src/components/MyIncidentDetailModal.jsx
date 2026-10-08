@@ -1,3 +1,4 @@
+import { downloadFile } from "../utils/downloadFile";
 import { useState, useEffect } from "react";
 import { X, Loader2, Clock, AlertTriangle, Paperclip, FileText } from "lucide-react";
 import { getIncidentDetail, cancelIncident } from "../callapi/callusers_student";
@@ -92,9 +93,10 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {attachments.map(att => {
-                        const isPdf = att.FilePath.toLowerCase().endsWith(".pdf");
+                        const isPdf = att.FilePath.toLowerCase().endsWith(".pdf") || att.FilePath.includes("/raw/upload/"); // PDF เก่าบน Cloudinary ไม่มี .pdf ใน URL
                         return (
-                          <a key={att.IncidentAttachmentId} href={getFileUrl(att.FilePath)} target="_blank" rel="noreferrer">
+                          <a key={att.IncidentAttachmentId} href={getFileUrl(att.FilePath)}
+                  onClick={isPdf ? (e) => { e.preventDefault(); downloadFile(att.FilePath, `หลักฐาน-${att.IncidentAttachmentId}.pdf`); } : undefined} target="_blank" rel="noreferrer">
                             {isPdf ? (
                               <span className="flex items-center gap-1.5 h-16 w-24 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
                                 <FileText className="h-4 w-4 shrink-0" /> PDF
