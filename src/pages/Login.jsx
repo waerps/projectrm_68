@@ -256,7 +256,7 @@ export function Login({ initialMode = "login" }) {
               <div className="auth-pdpa-notice">
                 <strong>การเก็บและใช้ข้อมูลส่วนบุคคล</strong>
                 <p>สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
-                <label htmlFor="register-pdpa"><input id="register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว *</span></label>
+                <label htmlFor="register-pdpa"><input id="register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span className="auth-consent-text">ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว <span className="text-red-500">*</span></span></label>
               </div>
               {registerError && <p className="auth-error" role="alert">{registerError}</p>}
               <button className="auth-primary" disabled={registerBusy || !pdpaAcknowledged} type="submit">{registerBusy ? "กำลังสมัคร..." : "สร้างบัญชี"}</button>

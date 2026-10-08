@@ -104,7 +104,7 @@
 .auth-form label, .auth-optional label { color: #374151; font-size: 12px; font-weight: 700; }
 .auth-form label span { color: #ea580c; }
 /* เครื่องหมาย * ช่องบังคับ ให้เป็นสีแดงเหมือนทุกฟอร์มในระบบ */
-.auth-form label > span:not([class]) { color: #ef4444; }
+.auth-form label > span:not([class]), .auth-form label span.text-red-500 { color: #ef4444; }
 .auth-input { width: 100%; min-height: 44px; padding: 10px 13px; border: 1px solid #e5e7eb; border-radius: 10px; outline: none; background: #fafafa; color: #1f2937; font-size: 13px; transition: border-color .2s, box-shadow .2s, background .2s; }
 .auth-input:focus { border-color: #fb923c; background: #fff; box-shadow: 0 0 0 3px #ffedd5; }
 .auth-input::placeholder { color: #a3a3a3; }

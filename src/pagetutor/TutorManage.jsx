@@ -21,9 +21,13 @@ import { BTN } from "../components/ui/tokens";
 const MAX_VIDEO_MB = 100;
 const RequiredMark = () => <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>;
 
-// Cloudinary คืนความยาวเป็นวินาที (เช่น 754.32) แปลงเป็น "12:34" หรือ "1:02:03"
+// Duration ในฐานข้อมูลต้องเป็น "วินาที" เสมอ เพราะระบบบันทึกการดูคลิปของนักเรียน
+// (watch-segments) และคำถามแทรกในวิดีโอใช้ค่านี้เป็นตัวเลข ถ้าเป็นข้อความ เช่น "1 ชม. 30 นาที"
+// นักเรียนจะบันทึกความคืบหน้าไม่ได้ (409) — จึงรับค่าจาก Cloudinary อย่างเดียว แล้วแปลงเฉพาะตอนแสดง
 const formatDuration = (seconds) => {
-  const total = Math.round(Number(seconds) || 0);
+  const raw = Number(seconds);
+  if (!Number.isFinite(raw)) return seconds ? String(seconds) : ""; // ข้อมูลเก่าที่เป็นข้อความ แสดงตามเดิม
+  const total = Math.round(raw);
   if (!total) return "";
   const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
   const pad = (n) => String(n).padStart(2, "0");
@@ -115,7 +119,7 @@ export default function TutorCourseManagePage() {
       await axios.post(`${API_URL}/api/tutor-content/video`, {
         CourseID: courseId, SubjectId: subjectId, AdminId: adminId,
         VideoTitle: newVideo.title.trim(), VideoUrl: upload.data.secure_url,
-        VideoType: "upload", Duration: newVideo.duration.trim() || formatDuration(upload.data.duration) || null
+        VideoType: "upload", Duration: Number.isFinite(Number(upload.data.duration)) ? Math.round(Number(upload.data.duration)) : null
       }, { headers: authHeaders });
       setIsAddVideoOpen(false);
       setNewVideo({ title: "", duration: "" });
@@ -269,12 +273,6 @@ export default function TutorCourseManagePage() {
                       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
                         ไฟล์วิดีโอเดิมจะไม่ถูกเปลี่ยน หากต้องการเปลี่ยนไฟล์ให้ลบรายการนี้แล้วอัปโหลดใหม่
                       </p>
-                      <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">ความยาวคลิป</label>
-                        <input type="text" value={editVideoData.duration} onChange={e => setEditVideoData({ ...editVideoData, duration: e.target.value })}
-                          className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
-                          placeholder="เช่น 1 ชม. 30 นาที" disabled={isSubmitting} />
-                      </div>
                       <div className="flex gap-2">
                         <button onClick={() => setEditingVideoId(null)} disabled={isSubmitting}
                           className="flex-1 flex items-center justify-center gap-1 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-bold hover:bg-slate-200 transition">
@@ -310,7 +308,7 @@ export default function TutorCourseManagePage() {
                             <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${getVideoType(video.VideoUrl, video.VideoType) === 'upload' ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-500'}`}>
                               {getVideoType(video.VideoUrl, video.VideoType) === 'upload' ? 'วิดีโอระบบ' : 'คลิปเดิม'}
                             </span>
-                            {video.Duration && <span className="text-[11px] text-slate-500">{video.Duration}</span>}
+                            {video.Duration && <span className="text-[11px] text-slate-500">{formatDuration(video.Duration)}</span>}
                           </div>
                           <p className="text-sm font-semibold text-slate-900 line-clamp-2 leading-snug">{video.VideoTitle}</p>
                         </div>
@@ -419,7 +417,6 @@ export default function TutorCourseManagePage() {
             <div className="space-y-3">
               {[
                 { label: "ชื่อวิดีโอ / หัวข้อ", key: "title", type: "text", placeholder: "เช่น EP.1: แนะนำบทเรียน", required: true },
-                { label: "ความยาวคลิป (ไม่บังคับ — เว้นว่างระบบจะใส่ให้อัตโนมัติ)", key: "duration", type: "text", placeholder: "เช่น 1 ชม. 30 นาที" },
               ].map(({ label, key, type, placeholder, required }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <RequiredMark />}</label>

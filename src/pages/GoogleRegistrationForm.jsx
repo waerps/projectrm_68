@@ -90,7 +90,7 @@ export default function GoogleRegistrationForm({ pending, onCancel, onComplete }
         <div className="auth-pdpa-notice">
           <strong>การเก็บและใช้ข้อมูลส่วนบุคคล</strong>
           <p>สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
-          <label htmlFor="google-register-pdpa"><input id="google-register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว *</span></label>
+          <label htmlFor="google-register-pdpa"><input id="google-register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={event => setPdpaAcknowledged(event.target.checked)} required /><span className="auth-consent-text">ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว <span className="text-red-500">*</span></span></label>
         </div>
         {error && <p className="auth-error" role="alert">{error}</p>}
         <button type="submit" disabled={busy || !pdpaAcknowledged} className="auth-primary">{busy ? "กำลังสร้างบัญชี..." : "สร้างบัญชีและเข้าสู่ระบบ"}</button>
