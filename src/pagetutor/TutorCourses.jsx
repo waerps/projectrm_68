@@ -15,7 +15,42 @@ import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 const WEEKDAY_SHORT = ['', 'อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
-const scheduleLabel = (slot) => `${WEEKDAY_SHORT[Number(slot.dayOfWeek)] || 'วันอื่น'} ${slot.startTime}–${slot.endTime}`;
+const dayShort = (d) => WEEKDAY_SHORT[Number(d)] || 'วันอื่น';
+// แสดงวันอาทิตย์ท้ายสุด ให้เรียง จ.→อา. แบบปฏิทินไทยทั่วไป
+const dayOrder = (d) => (Number(d) === 1 ? 8 : Number(d));
+const toISODate = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+// รวมคาบที่เวลาต่อกันในวันเดียวกัน เช่น 09:00–10:30 + 10:30–12:00 → 09:00–12:00
+const mergeTimes = (slots) => {
+  const sorted = [...slots].sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const out = [];
+  for (const s of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.endTime >= s.startTime) { if (s.endTime > last.endTime) last.endTime = s.endTime; }
+    else out.push({ startTime: s.startTime, endTime: s.endTime });
+  }
+  return out;
+};
+// กลุ่มตามวิชา → [{ subjectName, days: [{ day, times: [{startTime,endTime}] }] }]
+const buildSubjectSchedule = (subjects) => subjects
+  .filter(s => s.patterns.length > 0)
+  .map(s => {
+    const byDay = new Map();
+    for (const p of s.patterns) {
+      const k = Number(p.dayOfWeek);
+      if (!byDay.has(k)) byDay.set(k, []);
+      byDay.get(k).push(p);
+    }
+    const days = [...byDay.entries()]
+      .sort((a, b) => dayOrder(a[0]) - dayOrder(b[0]))
+      .map(([day, list]) => ({ day, times: mergeTimes(list) }));
+    return { subjectId: s.subjectId, subjectName: s.subjectName, days };
+  });
+const subjectDaysText = (g) => `${g.subjectName}: ${g.days.map(d => dayShort(d.day)).join(' ')}`;
 
 export default function CoursesPage() {
   const tutorId = JSON.parse(localStorage.getItem("user"))?.id;
@@ -126,7 +161,9 @@ export default function CoursesPage() {
               statusColor: statusInfo.colorClass,
               courseType: row.Course_Type || "bundle",
               subjects: [], // รายวิชาที่ติวเตอร์รับผิดชอบใน Course นี้
-              schedulePatterns: [],
+              subjectPatterns: [],
+              startDateISO: toISODate(row.StartDate),
+              lastDateISO: toISODate(row.LastDate),
             });
           }
 
@@ -136,15 +173,12 @@ export default function CoursesPage() {
           c.VideoCount += row.VideoCount || 0;
           c.FileCount += row.FileCount || 0;
           c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, assignmentId: row.TutorCourseDetailId });
-          for (const slot of row.schedulePatterns || []) {
-            const key = `${slot.dayOfWeek}:${slot.startTime}:${slot.endTime}`;
-            if (!c.schedulePatterns.some(existing => existing.key === key)) c.schedulePatterns.push({ ...slot, key });
-          }
+          c.subjectPatterns.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, patterns: row.schedulePatterns || [] });
         });
 
         const formattedData = Array.from(courseMap.values()).map(c => ({
           ...c,
-          schedulePatterns: c.schedulePatterns.sort((a, b) => Number(a.dayOfWeek) - Number(b.dayOfWeek) || a.startTime.localeCompare(b.startTime)),
+          subjectSchedule: buildSubjectSchedule(c.subjectPatterns),
           progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
         }));
 
@@ -327,15 +361,34 @@ export default function CoursesPage() {
                       <p className="text-xs text-slate-500 flex items-center gap-1 font-medium">
                         <Clock className="w-3 h-3" /> {course.startDate} – {course.lastDate}
                       </p>
-                      {course.schedulePatterns.length > 0 && <details className="group mt-2 max-w-full rounded-lg border border-slate-100 bg-slate-50/70 text-xs text-slate-600">
-                        <summary aria-label="ดูตารางสอนทั้งหมด" title="ตารางสอน" className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
+                      {course.subjectSchedule.length > 0 && <details className="group mt-2 max-w-full rounded-lg border border-slate-100 bg-slate-50/70 text-xs text-slate-600">
+                        <summary aria-label="กางดูวันและเวลาเรียนของแต่ละวิชา" title="กางดูเวลาเรียน" className="flex cursor-pointer list-none items-center gap-2 px-2.5 py-2 [&::-webkit-details-marker]:hidden">
                           <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-orange-100 text-orange-600"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" /></span>
-                          <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{scheduleLabel(course.schedulePatterns[0])}</span>
-                          {course.schedulePatterns.length > 1 && <span className="shrink-0 text-orange-600">+{course.schedulePatterns.length - 1}</span>}
+                          <span className="min-w-0 flex-1 truncate font-medium text-slate-700">{course.subjectSchedule.map(subjectDaysText).join(' · ')}</span>
                           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true" />
                         </summary>
-                        <div className="flex flex-wrap gap-1.5 border-t border-slate-100 px-2.5 py-2">
-                          {course.schedulePatterns.map(slot => <span key={slot.key} className="rounded-md bg-white px-2 py-1 text-slate-600 ring-1 ring-slate-100">{scheduleLabel(slot)}</span>)}
+                        <div className="space-y-1.5 border-t border-slate-100 px-2.5 py-2">
+                          {course.subjectSchedule.map(g => (
+                            <div key={g.subjectId} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                              <span className="font-semibold text-slate-700">{g.subjectName}</span>
+                              {g.days.map(d => (
+                                <span key={d.day} className="rounded-md bg-white px-2 py-0.5 text-slate-600 ring-1 ring-slate-100">
+                                  {dayShort(d.day)} {d.times.map(t => `${t.startTime}–${t.endTime}`).join(', ')}
+                                </span>
+                              ))}
+                            </div>
+                          ))}
+                          <Link
+                            to={(() => {
+                              const today = toISODate(new Date());
+                              const target = course.startDateISO && course.startDateISO > today ? course.startDateISO
+                                : course.lastDateISO && course.lastDateISO < today ? course.lastDateISO : null;
+                              return target ? `/tutor/schedule?date=${target}` : '/tutor/schedule';
+                            })()}
+                            className="mt-1 inline-flex items-center gap-1 font-bold text-orange-600 hover:text-orange-700"
+                          >
+                            ไปหน้าตารางสอน <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
+                          </Link>
                         </div>
                       </details>}
 

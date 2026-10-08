@@ -269,7 +269,11 @@ export default function TutorSchedule() {
   const [lineNotice, setLineNotice] = useState('')
   const [clockNow, setClockNow] = useState(() => new Date())
   const [scheduleVersion, setScheduleVersion] = useState(0)
-  const [referenceDate, setReferenceDate] = useState(null)
+  // เปิดจากหน้าคอร์สด้วย ?date=YYYY-MM-DD เพื่อกระโดดไปสัปดาห์ที่คอร์สมีเรียน
+  const [referenceDate, setReferenceDate] = useState(() => {
+    const d = new URLSearchParams(window.location.search).get('date')
+    return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null
+  })
   const [releaseModal, setReleaseModal] = useState(null)
   const [releaseFiles, setReleaseFiles] = useState([])
   const [releaseForm, setReleaseForm] = useState({ teachingInstructions: '', reason: '', attachmentFileId: '' })
