@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { getFileUrl } from '../utils/fileUrl';
@@ -428,7 +429,10 @@ function TransactionRow({ txn, onView }) {
    Main Page
    ═══════════════════════════════════════════════════════════════════════ */
 export default function AdminFinance() {
-    const [selectedTab, setSelectedTab] = useState('overview');
+    // เปิดตรงไปยังรายการที่ต้องการได้จากหน้าอื่น เช่น ปุ่ม "ไปจ่ายค่าสอน" ในหน้าต่างลบติวเตอร์
+    // ?tab=transactions&kind=tutor&tutorStatus=unpaid&q=ชื่อติวเตอร์
+    const [urlParams] = useSearchParams();
+    const [selectedTab, setSelectedTab] = useState(urlParams.get('tab') === 'transactions' ? 'transactions' : 'overview');
 
     /* summary */
     const [summary, setSummary] = useState(null);
@@ -455,7 +459,7 @@ export default function AdminFinance() {
     const [txPagination, setTxPagination] = useState({ page: 1, limit: ITEMS_PER_PAGE, total: 0, totalPages: 1 });
     const [txLoading, setTxLoading] = useState(true);
     const [txError, setTxError] = useState(null);
-    const [transactionKind, setTransactionKind] = useState('student');
+    const [transactionKind, setTransactionKind] = useState(urlParams.get('kind') === 'tutor' ? 'tutor' : 'student');
     const [tutorData, setTutorData] = useState([]);
     const [tutorSummary, setTutorSummary] = useState({ unpaidAmount: 0, unpaidCount: 0, paidAmount: 0, paidCount: 0 });
     const [tutorLoading, setTutorLoading] = useState(false);
@@ -464,13 +468,13 @@ export default function AdminFinance() {
     const [tutorDetailItem, setTutorDetailItem] = useState(null);
 
     /* filters state */
-    const [searchInput, setSearchInput] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [searchInput, setSearchInput] = useState(urlParams.get('q') || '');
+    const [debouncedSearch, setDebouncedSearch] = useState(urlParams.get('q') || '');
     const [monthFilter, setMonthFilter] = useState(''); // yyyy-mm from <input type="month">, empty = all
     const [orderStatus, setOrderStatus] = useState('all');
     const [paymentPlanFilter, setPaymentPlanFilter] = useState('all');
     const [courseTypeFilter, setCourseTypeFilter] = useState('all'); // 'all' | 'single' | 'bundle' — แยกคอร์สเดี่ยว/คอร์สรวม
-    const [tutorStatus, setTutorStatus] = useState('all');
+    const [tutorStatus, setTutorStatus] = useState(['unpaid', 'paid'].includes(urlParams.get('tutorStatus')) ? urlParams.get('tutorStatus') : 'all');
     const [courseId, setCourseId] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
 

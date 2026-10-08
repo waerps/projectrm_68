@@ -611,7 +611,7 @@ export default function AdminSchedule() {
                 const holiday = holidayMap[dateStr];
                 const addAt = async (slot) => {
                   if (holiday) {
-                    const ok = await confirmDialog(`วันที่เลือกเป็นวันหยุดของสถาบัน (${holiday}) ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`);
+                    const ok = await confirmDialog(`วันที่เลือกเป็นวันหยุด (${holiday}) ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`);
                     if (!ok) return;
                   }
                   openAdd(dow, slot.start, slot.end);
@@ -712,7 +712,7 @@ export default function AdminSchedule() {
                           if (isHoliday) {
                             const holidayName = holidayMap[dateStr];
                             const ok = await confirmDialog(
-                              `วันที่เลือกเป็นวันหยุดของสถาบัน${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`
+                              `วันที่เลือกเป็นวันหยุด${holidayName ? ` (${holidayName})` : ''} ต้องการเพิ่มคาบสอนในวันนี้หรือไม่?`
                             );
                             if (!ok) return;
                           }

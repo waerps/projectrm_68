@@ -1583,30 +1583,82 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
 }
 
 // ─── ConfirmDelete ─────────────────────────────────────────────────────────────
-function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting }) {
+function ConfirmDelete({ tutor, onConfirm, onCancel, isDeleting, onSwitchToInactive }) {
+  const navigate = useNavigate();
+  // เช็กก่อนว่ายังลบได้ไหม (ค่าสอนค้างจ่าย / คาบที่ยังต้องสอน) จะได้บอกทางแก้ตั้งแต่เปิดหน้าต่าง ไม่ต้องกดแล้วค่อยเจอ error
+  const [check, setCheck] = useState(null);
+  const [checkError, setCheckError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    axios.get(`${API}/tutors/${tutor.AdminId}/delete-check`)
+      .then(r => { if (!cancelled) setCheck(r.data); })
+      .catch(e => { if (!cancelled) setCheckError(e.response?.data?.message || "ตรวจสอบก่อนลบไม่สำเร็จ"); });
+    return () => { cancelled = true; };
+  }, [tutor.AdminId]);
+  const name = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
+  const blocked = check && !check.canDelete;
+  const money = (n) => `฿${Number(n || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })}`;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md shadow-2xl p-6 max-h-[92vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="text-center mb-4">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertTriangle className="h-7 w-7 text-red-600" /></div>
-          <h3 className="text-lg font-bold text-slate-900">ยืนยันการลบติวเตอร์</h3>
-          <p className="text-sm text-slate-500 mt-1">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+          <h3 className="text-lg font-bold text-slate-900">{blocked ? "ยังลบติวเตอร์คนนี้ไม่ได้" : "ยืนยันการลบติวเตอร์"}</h3>
+          <p className="text-sm text-slate-500 mt-1">{blocked ? "จัดการรายการด้านล่างให้เสร็จก่อน" : "การดำเนินการนี้ไม่สามารถย้อนกลับได้"}</p>
         </div>
-        <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-5">
-          <p className="text-sm font-semibold text-red-800">
-            {tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`}
-          </p>
+        <div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+          <p className="text-sm font-semibold text-red-800">{name}</p>
           <p className="text-xs text-red-400 mt-0.5">ID: #{tutor.AdminId}</p>
         </div>
+
+        {!check && !checkError && (
+          <p className="mb-4 flex items-center justify-center gap-2 text-xs text-slate-500"><Loader2 className="h-3.5 w-3.5 animate-spin" /> กำลังตรวจสอบค่าสอนและคาบสอน…</p>
+        )}
+        {checkError && <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">{checkError} — ระบบจะตรวจอีกครั้งตอนกดลบ</p>}
+
+        {blocked && (
+          <div className="mb-4 space-y-2">
+            {check.unpaidCount > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-semibold text-amber-900">ค่าสอนค้างจ่าย {check.unpaidCount} คาบ รวม {money(check.unpaidAmount)}</p>
+                <p className="mt-0.5 text-xs text-amber-800">ลบแล้วติวเตอร์จะเข้าดูรายได้และสลิปไม่ได้ ต้องจ่ายให้ครบก่อน</p>
+                <button type="button" onClick={() => navigate(`/admin/finance?tab=transactions&kind=tutor&tutorStatus=unpaid&q=${encodeURIComponent(name)}`)}
+                  className={`${BTN.primary} mt-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold`}>ไปจ่ายค่าสอน →</button>
+              </div>
+            )}
+            {check.upcomingCount > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-semibold text-amber-900">ยังมีคาบสอนที่จะถึง {check.upcomingCount} คาบ ใน {check.upcomingCourses.length} คอร์ส</p>
+                <ul className="mt-1 list-disc pl-5 text-xs text-amber-800">
+                  {check.upcomingCourses.slice(0, 3).map(c => <li key={c.CourseID}>{c.CourseName} · {c.count} คาบ</li>)}
+                  {check.upcomingCourses.length > 3 && <li>และอีก {check.upcomingCourses.length - 3} คอร์ส</li>}
+                </ul>
+                <p className="mt-1 text-xs text-amber-800">ย้ายคาบให้ติวเตอร์คนอื่นก่อน ไม่งั้นนักเรียนจะไม่มีครูสอน</p>
+                <button type="button" onClick={() => navigate("/admin/schedule")}
+                  className={`${BTN.secondary} mt-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold`}>ไปหน้าตารางสอน →</button>
+              </div>
+            )}
+            {Number(tutor.Status_Tutor_Id) !== 2 && onSwitchToInactive && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs text-slate-600">ถ้าแค่ไม่ให้สอนต่อ ไม่จำเป็นต้องลบ — เปลี่ยนสถานะเป็น "เลิกสอน" ได้เลย ประวัติและรายได้ยังอยู่ครบ</p>
+                <button type="button" onClick={onSwitchToInactive}
+                  className={`${BTN.secondary} mt-2 inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold`}>เปลี่ยนเป็นเลิกสอนแทน</button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col-reverse sm:flex-row gap-2">
           <button onClick={onCancel} disabled={isDeleting}
             className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
-            ยกเลิก
+            {blocked ? "ปิด" : "ยกเลิก"}
           </button>
-          <button onClick={onConfirm} disabled={isDeleting}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
-            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
-          </button>
+          {!blocked && (
+            <button onClick={onConfirm} disabled={isDeleting || (!check && !checkError)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 disabled:opacity-50 transition text-sm">
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "ยืนยันการลบ"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -2345,7 +2397,8 @@ export default function AdminTutorsPage() {
           </Modal>
         )}
         {deletingTutor && (
-          <ConfirmDelete tutor={deletingTutor} onConfirm={handleDelete} onCancel={() => setDeletingTutor(null)} isDeleting={isDeleting} />
+          <ConfirmDelete tutor={deletingTutor} onConfirm={handleDelete} onCancel={() => setDeletingTutor(null)} isDeleting={isDeleting}
+            onSwitchToInactive={() => { const t = deletingTutor; setDeletingTutor(null); setStatusTutor(t); }} />
         )}
         {resetPwdTutor && (
           <ResetPasswordModal tutor={resetPwdTutor} onClose={() => setResetPwdTutor(null)} showToast={showToast} />
