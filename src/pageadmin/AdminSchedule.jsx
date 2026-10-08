@@ -1064,6 +1064,40 @@ function ScheduleModal({
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === String(formData.CourseID));
   const availableSubjects = getCourseSubjects(selectedCourse, meta.subjects);
 
+  // ── ชั่วโมงแพ็กเกจคอร์สเดี่ยว: คำนวณให้ก่อนกดบันทึก พร้อมทางเลือกที่พอดี ──
+  const [capacity, setCapacity] = useState(null);
+  useEffect(() => {
+    const ready = showTermFields && formData.CourseID && formData.DayOfWeek && formData.StartTime && formData.EndTime
+      && formData.TermStartDate && formData.TermEndDate && formData.StartTime < formData.EndTime;
+    if (!ready) { setCapacity(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          courseId: formData.CourseID, dayOfWeek: formData.DayOfWeek, startTime: formData.StartTime,
+          endTime: formData.EndTime, termStart: formData.TermStartDate, termEnd: formData.TermEndDate,
+        });
+        const r = await fetch(`${API_BASE}/schedule/private-capacity?${params}`);
+        setCapacity(r.ok ? await r.json() : null);
+      } catch { setCapacity(null); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [showTermFields, formData.CourseID, formData.DayOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate, formData.TermEndDate]);
+  const fmtH = (min) => {
+    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    return m ? (h ? `${h} ชม. ${m} นาที` : `${m} นาที`) : `${h} ชม.`;
+  };
+  const slotMinutes = (sl) => {
+    const [a, b] = [sl.start, sl.end].map(x => x.split(':').map(Number));
+    return (b[0] * 60 + b[1]) - (a[0] * 60 + a[1]);
+  };
+  // ช่วงเวลามาตรฐานที่สั้นกว่าและทำให้ "ครบทุกคาบในช่วงวันที่เดิม" ได้พอดีแพ็กเกจ (เรียงจากยาวสุด)
+  const fittingSlots = capacity?.isPrivate && !capacity.fits && capacity.sessions > 0
+    ? timeSlots.filter(sl => !sl.isBreak && slotMinutes(sl) > 0 && slotMinutes(sl) < capacity.perSession
+        && slotMinutes(sl) * capacity.sessions <= capacity.remainMinutes)
+      .sort((x, y) => slotMinutes(y) - slotMinutes(x)).slice(0, 2)
+    : [];
+  const overCapacity = Boolean(capacity?.isPrivate && !capacity.fits);
+
   const [roomSuggestions, setRoomSuggestions] = useState(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
   const suggestTimer = useRef(null);
@@ -1153,7 +1187,8 @@ function ScheduleModal({
     (!showTermFields || (formData.TermStartDate && formData.TermEndDate)) &&
     conflicts.length === 0 &&
     !dateError &&
-    !timeError;
+    !timeError &&
+    !overCapacity;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
@@ -1369,6 +1404,44 @@ function ScheduleModal({
                 <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 flex-shrink-0" /> {dateError}
                 </p>
+              )}
+
+              {capacity?.isPrivate && !dateError && (
+                <div className={`mt-2 rounded-xl border p-3 text-xs ${overCapacity ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`} role={overCapacity ? 'alert' : 'status'}>
+                  <p className="font-semibold">
+                    ชั่วโมงแพ็กเกจคอร์สเดี่ยว: ใช้ {fmtH(capacity.usedMinutes)} จาก {fmtH(capacity.limitMinutes)}
+                    {capacity.pendingMinutes > 0 && <span className="font-normal"> (รวมตารางที่รอเผยแพร่ {fmtH(capacity.pendingMinutes)})</span>}
+                  </p>
+                  <p className="mt-0.5">
+                    ตารางนี้ {capacity.sessions} คาบ × {fmtH(capacity.perSession)} = <strong>{fmtH(capacity.addMinutes)}</strong>
+                    {overCapacity
+                      ? <> — เกิน {fmtH(capacity.addMinutes - capacity.remainMinutes)} (เหลือได้อีก {fmtH(capacity.remainMinutes)})</>
+                      : <> — หลังบันทึกเหลือ {fmtH(capacity.remainMinutes - capacity.addMinutes)}</>}
+                  </p>
+                  {overCapacity && (capacity.suggestions?.length > 0 || fittingSlots.length > 0) && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="font-semibold">เลือกแบบที่พอดีแพ็กเกจ:</p>
+                      {capacity.suggestions.filter(sg => sg.kind === 'endDate').map(sg => (
+                        <button key="endDate" type="button" onClick={() => set('TermEndDate', sg.termEndDate)}
+                          className="block w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
+                          จบเร็วขึ้น: {sg.label}
+                        </button>
+                      ))}
+                      {fittingSlots.map(sl => (
+                        <button key={sl.label} type="button" onClick={() => handleSlot(sl.label)}
+                          className="block w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
+                          คาบสั้นลง: {sl.label} ({fmtH(slotMinutes(sl))}) — ครบ {capacity.sessions} คาบ รวม {fmtH(slotMinutes(sl) * capacity.sessions)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {overCapacity && !capacity.suggestions?.length && !fittingSlots.length && (
+                    <p className="mt-1">ชั่วโมงที่เหลือไม่พอแม้ 1 คาบ — เพิ่มชั่วโมงแพ็กเกจในข้อมูลคอร์ส หรือลบคาบเดิมที่ไม่ใช้ก่อน</p>
+                  )}
+                  {!overCapacity && capacity.remainMinutes - capacity.addMinutes > 0 && capacity.perSession > 0 && (
+                    <p className="mt-0.5 text-emerald-700">ยังจัดเพิ่มได้อีกประมาณ {Math.floor((capacity.remainMinutes - capacity.addMinutes) / capacity.perSession)} คาบ (คาบละ {fmtH(capacity.perSession)})</p>
+                  )}
+                </div>
               )}
             </div>
           )}

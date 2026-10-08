@@ -880,9 +880,26 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
   const [applyingAll, setApplyingAll] = useState(false);
   const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
 
+  // รายการแก้ไขที่ยังเป็น "ฉบับร่าง" (คอร์สที่เผยแพร่แล้ว การเพิ่ม/ลบ/แก้วิชาจะยังไม่มีผลจนกว่าจะกดเผยแพร่)
+  // ใช้แสดงป้าย "รอลบ/รอเพิ่มเมื่อเผยแพร่" กันแอดมินกดซ้ำเพราะคิดว่ากดไม่ติด
+  const [pendingDrafts, setPendingDrafts] = useState([]);
   const fetchSubjects = async () => {
-    const res = await axios.get(`${API_BASE}/courses/${courseId}/subjects`);
+    const [res, drafts] = await Promise.all([
+      axios.get(`${API_BASE}/courses/${courseId}/subjects`),
+      axios.get(`${API_BASE}/courses/${courseId}/drafts`).catch(() => ({ data: [] })),
+    ]);
     setSubjects(res.data);
+    setPendingDrafts(Array.isArray(drafts.data) ? drafts.data : []);
+  };
+  const pendingDeleteOf = (detailId) => pendingDrafts.find(d => d.Method === 'DELETE' && d.Path === `/tutorcoursedetails/${detailId}`);
+  const hasPendingEdit = (detailId) => pendingDrafts.some(d => d.Method === 'PUT' && d.Path === `/tutorcoursedetails/${detailId}`);
+  const pendingAdds = pendingDrafts.filter(d => d.Method === 'POST' && d.Path === `/courses/${courseId}/subjects`);
+  const draftedNotice = (res, what) => {
+    if (!res?.data?.drafted) return false;
+    showToast("warning", res.data.alreadyDrafted
+      ? `${what}อยู่ในฉบับร่างแล้ว — จะมีผลเมื่อกด "เผยแพร่" คอร์ส`
+      : `บันทึก${what}เป็นฉบับร่างแล้ว — คอร์สนี้เผยแพร่อยู่ จะมีผลเมื่อกด "เผยแพร่" คอร์ส`);
+    return true;
   };
 
   useEffect(() => {
@@ -966,6 +983,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       setNewRow({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
       setAdding(false);
       fetchSubjects();
+      if (!draftedNotice(res, "การเพิ่มวิชา")) showToast("success", "เพิ่มวิชาและติวเตอร์แล้ว");
     } catch (e) {
       showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด");
     }
@@ -973,10 +991,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
 
   const handleUpdateHours = async (tutorCourseDetailId, hours) => {
     try {
-      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
+      const res = await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { TotalHours: hours });
       setEditingId(null);
       setManualIds(prev => new Set(prev).add(tutorCourseDetailId));
       fetchSubjects();
+      if (!draftedNotice(res, "การแก้ชั่วโมง")) showToast("success", "แก้ไขชั่วโมงแล้ว");
     } catch (e) {
       showToast("error", e.response?.data?.message || "แก้ไขชั่วโมงไม่สำเร็จ");
     }
@@ -1001,9 +1020,10 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     }
 
     try {
-      await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, payload);
+      const res = await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, payload);
       setEditingRateId(null);
       fetchSubjects();
+      if (!draftedNotice(res, "การแก้เรท")) showToast("success", "แก้ไขเรทแล้ว");
       return true;
     } catch (e) {
       showToast("error", e.response?.data?.message || "แก้ไขราคาไม่สำเร็จ");
@@ -1011,12 +1031,29 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (s) => {
+    const id = s.TutorCourseDetailId;
+    const tutorName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
+    const ok = await confirmDialog(
+      `ลบวิชา "${s.SubjectName}" (${tutorName}) ออกจากคอร์สนี้?`,
+      { title: "ลบวิชาและติวเตอร์", confirmText: "ลบ", danger: true }
+    );
+    if (!ok) return;
     try {
-      await axios.delete(`${API_BASE}/tutorcoursedetails/${id}`);
+      const res = await axios.delete(`${API_BASE}/tutorcoursedetails/${id}`);
       setManualIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSubjects();
+      if (!draftedNotice(res, "การลบวิชา")) showToast("success", `ลบวิชา ${s.SubjectName} ออกจากคอร์สแล้ว`);
     } catch (e) { showToast("error", e.response?.data?.message || "ลบไม่สำเร็จ"); }
+  };
+
+  // ยกเลิกร่าง "ลบวิชา" ที่ยังไม่เผยแพร่ — วิชากลับมาเป็นปกติ
+  const handleUndoDelete = async (draft) => {
+    try {
+      await axios.delete(`${API_BASE}/courses/${courseId}/drafts/${draft.ActionId}`);
+      fetchSubjects();
+      showToast("success", "ยกเลิกการลบแล้ว");
+    } catch (e) { showToast("error", e.response?.data?.message || "ยกเลิกไม่สำเร็จ"); }
   };
 
   const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
@@ -1107,18 +1144,37 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
         </div>
       )}
 
+      {pendingAdds.map((d) => {
+        const subj = allSubjects.find(x => String(x.SubjectId) === String(d.Body?.SubjectId));
+        const tutor = allTutors.find(x => String(x.AdminId) === String(d.Body?.AdminId));
+        return (
+          <div key={`draft-${d.ActionId}`} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 px-3 sm:px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{subj?.SubjectName || d.Title || "วิชาใหม่"}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{tutor ? (tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`) : ""}</p>
+              </div>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">รอเพิ่มเมื่อเผยแพร่</span>
+            </div>
+          </div>
+        );
+      })}
+
       {subjects.map((s) => {
         const avgPerMonthLabel = formatAvgPerMonth(s.TotalHours, monthsSpanned);
         const isManual = manualIds.has(s.TutorCourseDetailId);
+        const pendingDelete = pendingDeleteOf(s.TutorCourseDetailId);
         return (
-          <div key={s.TutorCourseDetailId} className="rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-3">
+          <div key={s.TutorCourseDetailId} className={`rounded-xl border px-3 sm:px-4 py-3 ${pendingDelete ? "border-dashed border-red-200 bg-red-50/40" : "border-slate-200 bg-white"}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2.5">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
                 <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{s.SubjectName}</p>
+                  <p className={`text-sm font-semibold truncate ${pendingDelete ? "text-slate-400 line-through" : "text-slate-800"}`}>{s.SubjectName}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+                  {pendingDelete && <p className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">รอลบเมื่อเผยแพร่</p>}
+                  {!pendingDelete && hasPendingEdit(s.TutorCourseDetailId) && <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">มีการแก้ไขรอเผยแพร่</p>}
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-1">
@@ -1129,11 +1185,19 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
                   title="ดูภาพรวมพัฒนาการของวิชานี้">
                   <TrendingUp className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => handleDelete(s.TutorCourseDetailId)}
-                  className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 lg:min-h-0"
-                  title="ลบวิชานี้ออกจากคอร์ส">
-                  <Trash2 className="h-3.5 w-3.5" /> ลบ
-                </button>
+                {pendingDelete ? (
+                  <button type="button" onClick={() => handleUndoDelete(pendingDelete)}
+                    className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition min-h-10 lg:min-h-0"
+                    title="ยกเลิกการลบที่ยังไม่เผยแพร่">
+                    ยกเลิกการลบ
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => handleDelete(s)}
+                    className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition min-h-10 lg:min-h-0"
+                    title="ลบวิชานี้ออกจากคอร์ส">
+                    <Trash2 className="h-3.5 w-3.5" /> ลบ
+                  </button>
+                )}
               </div>
             </div>
 
