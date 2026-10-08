@@ -59,6 +59,7 @@ export default function TutorCourseManagePage() {
 
   const [newVideo, setNewVideo] = useState({ title: "", duration: "" });
   const [newVideoFile, setNewVideoFile] = useState(null);
+  const [videoErrors, setVideoErrors] = useState({ title: "", file: "" });
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadDisplayName, setUploadDisplayName] = useState("");
   const [editDocName, setEditDocName] = useState("");
@@ -102,7 +103,13 @@ export default function TutorCourseManagePage() {
 
   // ===== VIDEO =====
   const handleSaveNewVideo = async () => {
-    if (!newVideo.title.trim() || !newVideoFile) return toast("กรุณาระบุชื่อและเลือกไฟล์วิดีโอ");
+    // แยกข้อความตามสิ่งที่ขาด: ไม่ใส่ชื่อ / ไม่เลือกไฟล์ / ขาดทั้งสองอย่าง
+    const missingTitle = !newVideo.title.trim();
+    const missingFile = !newVideoFile;
+    setVideoErrors({ title: missingTitle ? "กรุณาระบุชื่อวิดีโอ" : "", file: missingFile ? "กรุณาเลือกไฟล์วิดีโอ" : "" });
+    if (missingTitle && missingFile) return toast("กรุณาระบุชื่อวิดีโอและเลือกไฟล์วิดีโอ");
+    if (missingTitle) return toast("กรุณาระบุชื่อวิดีโอ");
+    if (missingFile) return toast("กรุณาเลือกไฟล์วิดีโอ");
     if (newVideoFile.size > MAX_VIDEO_MB * 1024 * 1024) return toast(`ไฟล์วิดีโอต้องมีขนาดไม่เกิน ${MAX_VIDEO_MB} MB`);
     setIsSubmitting(true);
     try {
@@ -420,21 +427,24 @@ export default function TutorCourseManagePage() {
               ].map(({ label, key, type, placeholder, required }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <RequiredMark />}</label>
-                  <input type={type} value={newVideo[key]} onChange={e => setNewVideo({ ...newVideo, [key]: e.target.value })}
-                    className="w-full px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm transition"
+                  <input type={type} value={newVideo[key]} onChange={e => { setNewVideo({ ...newVideo, [key]: e.target.value }); if (videoErrors[key]) setVideoErrors(v => ({ ...v, [key]: "" })); }}
+                    aria-invalid={Boolean(videoErrors[key])}
+                    className={`w-full px-4 h-10 bg-slate-50 border ${videoErrors[key] ? "border-red-400" : "border-slate-200"} rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm transition`}
                     placeholder={placeholder} disabled={isSubmitting} />
+                  {videoErrors[key] && <p className="mt-1 text-xs font-medium text-red-500">{videoErrors[key]}</p>}
                 </div>
               ))}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์วิดีโอ<RequiredMark /></label>
                 <input type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
-                  onChange={event => setNewVideoFile(event.target.files?.[0] || null)} disabled={isSubmitting}
+                  onChange={event => { const f = event.target.files?.[0] || null; setNewVideoFile(f); if (f) setVideoErrors(v => ({ ...v, file: "" })); }} disabled={isSubmitting}
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100" />
                 <p className="mt-1.5 text-xs text-slate-500">รองรับ MP4, MOV และ WEBM ขนาดไม่เกิน {MAX_VIDEO_MB} MB ไม่รองรับลิงก์ YouTube/Drive</p>
                 {newVideoFile && <p className="mt-1 text-xs font-medium text-orange-600">ไฟล์: {newVideoFile.name}</p>}
+                {videoErrors.file && <p className="mt-1 text-xs font-medium text-red-500">{videoErrors.file}</p>}
               </div>
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { setIsAddVideoOpen(false); setNewVideo({ title: "", duration: "" }); setNewVideoFile(null); }} disabled={isSubmitting}
+                <button onClick={() => { setIsAddVideoOpen(false); setNewVideo({ title: "", duration: "" }); setNewVideoFile(null); setVideoErrors({ title: "", file: "" }); }} disabled={isSubmitting}
                   className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>ยกเลิก</button>
                 <button onClick={handleSaveNewVideo} disabled={isSubmitting}
                   className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition`}>
