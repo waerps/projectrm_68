@@ -138,10 +138,10 @@ export default function TutorApply({ embedded = false }) {
                 <h3 className="text-lg font-bold text-neutral-900">ข้อมูลส่วนตัว</h3>
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className={formLabelClass} htmlFor="tutor-firstname">ชื่อจริง <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-firstname">ชื่อจริง <span className="text-red-500">*</span>
                   <input id="tutor-firstname" name="firstname" autoComplete="given-name" required value={form.firstname} onChange={onChange} placeholder="กรอกชื่อจริง" className={inputClass} />
                 </label>
-                <label className={formLabelClass} htmlFor="tutor-lastname">นามสกุล <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-lastname">นามสกุล <span className="text-red-500">*</span>
                   <input id="tutor-lastname" name="lastname" autoComplete="family-name" required value={form.lastname} onChange={onChange} placeholder="กรอกนามสกุล" className={inputClass} />
                 </label>
                 <label className={`${formLabelClass} sm:col-span-2`} htmlFor="tutor-nickname">ชื่อเล่น <span className="font-normal text-neutral-400">(ถ้ามี)</span>
@@ -156,7 +156,7 @@ export default function TutorApply({ embedded = false }) {
                 <h3 className="text-lg font-bold text-neutral-900">ช่องทางติดต่อ</h3>
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
-                <label className={formLabelClass} htmlFor="tutor-phone">เบอร์โทรศัพท์ <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-phone">เบอร์โทรศัพท์ <span className="text-red-500">*</span>
                   <input id="tutor-phone" name="phone" type="tel" autoComplete="tel" inputMode="numeric" required value={form.phone} onChange={onChange} placeholder="098-888-8888" className={inputClass} />
                 </label>
                 <label className={formLabelClass} htmlFor="tutor-line">LINE ID <span className="font-normal text-neutral-400">(ถ้ามี)</span>
@@ -174,13 +174,13 @@ export default function TutorApply({ embedded = false }) {
                 <input id="tutor-occupation" name="occupation" value={form.occupation} onChange={onChange} placeholder="เช่น ครู นักศึกษา หรืออาชีพอื่น ๆ" className={inputClass} />
               </label>
               <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                <label className={formLabelClass} htmlFor="tutor-faculty">คณะ <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-faculty">คณะ <span className="text-red-500">*</span>
                   <input id="tutor-faculty" name="faculty" required value={form.faculty} onChange={onChange} placeholder="คณะ" className={inputClass} />
                 </label>
-                <label className={formLabelClass} htmlFor="tutor-major">สาขา <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-major">สาขา <span className="text-red-500">*</span>
                   <input id="tutor-major" name="major" required value={form.major} onChange={onChange} placeholder="สาขาวิชา" className={inputClass} />
                 </label>
-                <label className={formLabelClass} htmlFor="tutor-university">มหาวิทยาลัย <span className="text-orange-600">*</span>
+                <label className={formLabelClass} htmlFor="tutor-university">มหาวิทยาลัย <span className="text-red-500">*</span>
                   <input id="tutor-university" name="university" required value={form.university} onChange={onChange} placeholder="มหาวิทยาลัย" className={inputClass} />
                 </label>
                 <label className={formLabelClass} htmlFor="tutor-study-status">สถานะการศึกษา
@@ -188,7 +188,7 @@ export default function TutorApply({ embedded = false }) {
                     <option value="graduated">สำเร็จการศึกษาแล้ว</option><option value="studying">กำลังศึกษาอยู่</option>
                   </select>
                 </label>
-                {form.studyStatus === "studying" && <label className={formLabelClass} htmlFor="tutor-study-year">ชั้นปี <span className="text-orange-600">*</span>
+                {form.studyStatus === "studying" && <label className={formLabelClass} htmlFor="tutor-study-year">ชั้นปี <span className="text-red-500">*</span>
                   <select id="tutor-study-year" name="studyYear" required value={form.studyYear} onChange={onChange} className={inputClass}>
                     <option value="">เลือกชั้นปี</option>{[1, 2, 3, 4, 5, 6].map((year) => <option key={year} value={year}>ปี {year}</option>)}
                   </select>

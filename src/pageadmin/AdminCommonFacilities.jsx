@@ -159,7 +159,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
             )}
 
             <div>
-                <label className={lbl}>ชื่ออุปกรณ์ <span className="text-red-400 normal-case">*</span></label>
+                <label className={lbl}>ชื่ออุปกรณ์ <span className="text-red-500 normal-case">*</span></label>
                 <div className="relative">
                     <input
                         className={`${inp} ${errors.name || hasExactDup ? errInp : ""}`}
@@ -233,7 +233,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label className={lbl}>หมวดหมู่ <span className="text-red-400 normal-case">*</span></label>
+                    <label className={lbl}>หมวดหมู่ <span className="text-red-500 normal-case">*</span></label>
                     <select className={`${inp} ${errors.categoryId ? errInp : ""}`} value={form.categoryId} onChange={e => set("categoryId", e.target.value)}>
                         {categories.map(c => (
                             <option key={c.CategoryId} value={c.CategoryId}>{c.Category_Name}</option>
@@ -242,7 +242,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
                     {errors.categoryId && <p className="text-xs text-red-500 mt-1">{errors.categoryId}</p>}
                 </div>
                 <div>
-                    <label className={lbl}>หน่วยนับ <span className="text-red-400 normal-case">*</span></label>
+                    <label className={lbl}>หน่วยนับ <span className="text-red-500 normal-case">*</span></label>
                     <input
                         className={`${inp} ${errors.unit ? errInp : ""}`}
                         value={form.unit}
@@ -256,7 +256,7 @@ function CommonFacilityForm({ initial = {}, categories, statuses, onSave, onCanc
             {!isEdit && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className={lbl}>จำนวนเริ่มต้น <span className="text-red-400 normal-case">*</span></label>
+                        <label className={lbl}>จำนวนเริ่มต้น <span className="text-red-500 normal-case">*</span></label>
                         <input
                             type="number" min="0" step="1" onKeyDown={blockNegativeKeys}
                             className={`${inp} ${errors.quantity ? errInp : ""}`}
@@ -413,7 +413,7 @@ function QuantityAdjustModal({ item, onClose, onSaved, showToast }) {
 
                 {isDecrease && (
                     <div>
-                        <label className={lbl}>เหตุผลที่ลดจำนวน <span className="text-red-400 normal-case">*</span></label>
+                        <label className={lbl}>เหตุผลที่ลดจำนวน <span className="text-red-500 normal-case">*</span></label>
                         <select className={inp} value={reasonPreset} onChange={e => setReasonPreset(e.target.value)}>
                             {REMOVE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>

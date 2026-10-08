@@ -287,7 +287,14 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   const [imageError, setImageError] = useState("");
   const patch = (p) => setQ((prev) => ({ ...prev, ...p }));
   const patchOption = (i, val) => { const opts = [...q.options]; opts[i] = val; patch({ options: opts }); };
-  const complete = (q.text.trim() || q.imagePath) && q.options.every((o) => o.trim()) && q.correct !== null;
+  // ต้องตรงกับ validateItem ฝั่ง backend (routes/tutor.bank.routes.js) — หมวดหมู่เป็นช่องบังคับด้วย
+  const missing = [
+    !(q.text.trim() || q.imagePath) && "โจทย์หรือรูปโจทย์",
+    !q.options.every((o) => o.trim()) && "ตัวเลือกให้ครบ 4 ข้อ",
+    (q.correct === null || q.correct === undefined) && "คำตอบที่ถูก (กดวงกลมหน้าตัวเลือก)",
+    !String(q.category || "").trim() && "หมวดหมู่",
+  ].filter(Boolean);
+  const complete = missing.length === 0;
   const handleImage = async (file) => {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
@@ -314,7 +321,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์</label>
+        <label className="block text-sm font-semibold text-slate-800 mb-2">โจทย์ <span className="text-red-500" aria-hidden="true">*</span> <span className="text-xs font-normal text-slate-500">(พิมพ์โจทย์ หรือแนบรูปโจทย์อย่างใดอย่างหนึ่ง)</span></label>
         <textarea value={q.text} onChange={(e) => patch({ text: e.target.value })} placeholder="พิมพ์โจทย์ข้อสอบที่นี่…" rows={3} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
         <p className="mt-1 text-xs text-slate-500">พิมพ์สัญลักษณ์ได้ตรง ๆ หรือครอบ LaTeX ด้วย $...$ เช่น $\frac{1}{2}$ (สูตรเดี่ยวพิมพ์ \frac{1}{2} ได้) แนบรูปโจทย์ร่วมกันได้</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -339,6 +346,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
       </div>
 
       <div className="space-y-2.5">
+        <p className="text-sm font-semibold text-slate-800">ตัวเลือก <span className="text-red-500" aria-hidden="true">*</span> <span className="text-xs font-normal text-slate-500">(กรอกให้ครบ 4 ข้อ แล้วกดวงกลมหน้าข้อที่ถูก)</span></p>
         {OPTION_LABELS.map((label, optIdx) => {
           const isCorrect = q.correct === optIdx;
           return (
@@ -399,7 +407,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
           </div>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1.5">หมวดหมู่</label>
+          <label className="block text-xs font-semibold text-slate-600 mb-1.5">หมวดหมู่ <span className="text-red-500" aria-hidden="true">*</span></label>
           {/* เลือกจากรายการเป็นหลัก เพื่อไม่ให้เกิดหมวดชื่อเพี้ยนซ้ำซ้อน
               จะสร้างหมวดใหม่ต้องกดปุ่ม และระบบจะเตือนถ้าชื่อคล้ายของเดิม */}
           {addingCategory ? (
@@ -511,6 +519,9 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         </div>
       )}
 
+      {!complete && (
+        <p className="text-xs text-red-500 text-right">ยังขาด: {missing.join(", ")}</p>
+      )}
       <div className="flex justify-end gap-2 pt-1">
         <button onClick={onClose} className="text-sm text-slate-500 hover:text-slate-700 font-medium px-3">ยกเลิก</button>
         <button
@@ -2881,9 +2892,11 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
     ${absentRows ? `<h2>นักเรียนที่ขาดสอบ (${results.absentStudents.length} คน)</h2><table><tbody>${absentRows}</tbody></table>` : ""}
-    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
-    <script>window.onload = () => window.print();</script></body></html>`);
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
   printWindow.document.close();
+  // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+  const runPrint = () => { printWindow.focus(); printWindow.print(); };
+  if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
 };
 
 // ─── "ข้อที่ควรตรวจสอบ" — มองพฤติกรรมระหว่างสอบตามข้อ ไม่ใช่ตามคน ──────────────

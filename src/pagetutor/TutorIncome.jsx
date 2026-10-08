@@ -581,9 +581,11 @@ export default function TutorIncome() {
       <th style="text-align:center">นักเรียน</th><th style="text-align:center">ชั่วโมง</th><th style="text-align:right">รายได้</th><th style="text-align:center">สถานะ</th></tr></thead>
       <tbody>${sessionRows}</tbody>
       <tfoot><tr><td colspan="5">รวม ${sessions.length} คลาส</td><td style="text-align:right">${sessions.reduce((s, x) => s + x.earnedAmount, 0).toLocaleString()} บ.</td><td></td></tr></tfoot></table>
-      <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
-      <script>window.onload = () => window.print();</script></body></html>`);
+      <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
     printWindow.document.close();
+    // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+    const runPrint = () => { printWindow.focus(); printWindow.print(); };
+    if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
   };
 
   // ── Derived data (ต้องอยู่ก่อน early return ทุกครั้ง) ──────────

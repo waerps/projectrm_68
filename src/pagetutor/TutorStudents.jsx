@@ -106,9 +106,11 @@ export default function TutorStudents() {
             <h1>รายงานนักเรียน: ${esc(courseInfo.name)}</h1>
             <p>จำนวนนักเรียน: ${filteredStudents.length} คน | วันที่: ${new Date().toLocaleDateString("th-TH")}</p>
             <table><thead><tr><th>ชื่อ</th><th>โรงเรียน</th><th>เบอร์โทร</th><th>การเข้าเรียน</th><th>ดูคลิป</th><th>คะแนนสอบที่เพิ่มขึ้น</th></tr></thead>
-            <tbody>${rows}</tbody></table>
-            <script>window.onload=()=>window.print();</script></body></html>`);
+            <tbody>${rows}</tbody></table></body></html>`);
         printWindow.document.close();
+        // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+        const runPrint = () => { printWindow.focus(); printWindow.print(); };
+        if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
     };
 
     useEffect(() => {

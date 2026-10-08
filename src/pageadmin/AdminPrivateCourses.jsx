@@ -446,7 +446,7 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
 
   return (
     <div ref={wrapRef} className="relative">
-      {label && <label className={labelCls}>{label}</label>}
+      {label && <label className={labelCls}>{label}{required && <> <span className="text-red-500">*</span></>}</label>}
       <input
         value={open ? q : (selected ? labelOf(selected) : "")}
         onChange={(e) => { setQ(e.target.value); setOpen(true); if (value) onChange(""); }}
@@ -543,7 +543,7 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
             </select>
           </div>
           <div>
-            <Combobox required label="วิชา *" options={lookups.subjects} idKey="SubjectId" labelOf={(s) => s.SubjectName}
+            <Combobox required label="วิชา" options={lookups.subjects} idKey="SubjectId" labelOf={(s) => s.SubjectName}
               value={f.SubjectId} onChange={(v) => set("SubjectId", v)} placeholder="พิมพ์ชื่อวิชาเพื่อค้นหา" />
           </div>
           <div>
@@ -554,7 +554,7 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
             </select>
           </div>
           <div>
-            <label className={labelCls}>จำนวนผู้เรียน *</label>
+            <label className={labelCls}>จำนวนผู้เรียน <span className="text-red-500">*</span></label>
             <select value={f.LearnerCount} onChange={(e) => {
               const count = Number(e.target.value);
               setSelectedPackage("");
@@ -567,9 +567,9 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
             onPick={(id) => setF((current) => (!current.UserId || current.LearnerCount === 1
               ? { ...current, UserId: String(id) }
               : { ...current, SecondUserId: String(current.UserId) === String(id) ? current.SecondUserId : String(id) }))} /></div>}
-          <Combobox required label="นักเรียนคนที่ 1 *" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => setF((current) => ({ ...current, UserId: v, SecondUserId: String(current.SecondUserId) === String(v) ? "" : current.SecondUserId }))} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
-          {f.LearnerCount === 2 && <Combobox required label="นักเรียนคนที่ 2 *" options={lookups.students.filter((student) => String(student.UserId) !== String(f.UserId))} idKey="UserId" labelOf={fullName} value={f.SecondUserId} onChange={(v) => set("SecondUserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />}
-          <Combobox required label="ติวเตอร์ *" options={lookups.tutors} idKey="AdminId" labelOf={fullName} value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          <Combobox required label="นักเรียนคนที่ 1" options={lookups.students} idKey="UserId" labelOf={fullName} value={f.UserId} onChange={(v) => setF((current) => ({ ...current, UserId: v, SecondUserId: String(current.SecondUserId) === String(v) ? "" : current.SecondUserId }))} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
+          {f.LearnerCount === 2 && <Combobox required label="นักเรียนคนที่ 2" options={lookups.students.filter((student) => String(student.UserId) !== String(f.UserId))} idKey="UserId" labelOf={fullName} value={f.SecondUserId} onChange={(v) => set("SecondUserId", v)} placeholder="พิมพ์ชื่อเพื่อค้นหา" />}
+          <Combobox required label="ติวเตอร์" options={lookups.tutors} idKey="AdminId" labelOf={fullName} value={f.AdminId} onChange={pickTutor} placeholder="พิมพ์ชื่อเพื่อค้นหา" />
         </section>
 
         <section className="rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
@@ -589,15 +589,15 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
           <p className="mb-3 text-xs text-slate-500">ราคาที่กรอกเป็นราคาต่อคน นักเรียนแต่ละคนมียอดชำระของตนเอง ตารางสอนและค่าติวเตอร์นับเป็นคลาสเดียว</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className={labelCls}>ชั่วโมงเรียนรวม *</label>
+              <label className={labelCls}>ชั่วโมงเรียนรวม <span className="text-red-500">*</span></label>
               <input type="number" min="0" step="0.5" value={f.TotalHours} onChange={(e) => set("TotalHours", e.target.value)} className={INPUT} />
             </div>
             <div>
-              <label className={labelCls}>ราคาขาย / ชม. *</label>
+              <label className={labelCls}>ราคาขาย / ชม. <span className="text-red-500">*</span></label>
               <input type="number" min="0" value={f.StudentRatePerHour} onChange={(e) => set("StudentRatePerHour", e.target.value)} className={INPUT} />
             </div>
             <div>
-              <label className={labelCls}>ค่าติวเตอร์ / ชม. *</label>
+              <label className={labelCls}>ค่าติวเตอร์ / ชม. <span className="text-red-500">*</span></label>
               <input type="number" min="0" value={f.TutorRatePerHour} onChange={(e) => set("TutorRatePerHour", e.target.value)} className={`${INPUT} ${lossRate ? "border-red-300 ring-2 ring-red-200" : ""}`} />
             </div>
           </div>
@@ -628,15 +628,15 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
 
         <section className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className={labelCls}>วันเริ่มเรียน *</label>
+            <label className={labelCls}>วันเริ่มเรียน <span className="text-red-500">*</span></label>
             <input type="date" value={f.StartDate} onChange={(e) => set("StartDate", e.target.value)} className={INPUT} />
           </div>
           <div>
-            <label className={labelCls}>วันสิ้นสุด *</label>
+            <label className={labelCls}>วันสิ้นสุด <span className="text-red-500">*</span></label>
             <input type="date" value={f.LastDate} onChange={(e) => set("LastDate", e.target.value)} className={INPUT} />
           </div>
           <div>
-            <label className={labelCls}>ปีการศึกษา *</label>
+            <label className={labelCls}>ปีการศึกษา <span className="text-red-500">*</span></label>
             <select value={f.YearId} onChange={(e) => set("YearId", e.target.value)} className={INPUT}>
               <option value="">— เลือก —</option>
               {lookups.years.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
@@ -706,7 +706,7 @@ function PaymentModal({ course, onClose, onDone }) {
       </>}>
       <div className="space-y-4">
         <div>
-          <label className={labelCls}>นักเรียนที่ชำระ *</label>
+          <label className={labelCls}>นักเรียนที่ชำระ <span className="text-red-500">*</span></label>
           <select value={selectedUserId} onChange={(e) => { setSelectedUserId(e.target.value); setF((current) => ({ ...current, Amount: "" })); }} className={INPUT}>
             <option value="">— เลือกนักเรียน —</option>
             {(course.Students || []).map((student) => <option key={student.UserId} value={student.UserId}>{fullName(student)} · ค้าง {money(Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost || 0) - Number(student.PaidAmount || 0)))}</option>)}
@@ -777,7 +777,7 @@ function OfferModal({ offer, subjects, onClose, onDone }) {
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelCls}>ชื่อวิชาที่แสดง *</label>
+            <label className={labelCls}>ชื่อวิชาที่แสดง <span className="text-red-500">*</span></label>
             <input value={f.Title} onChange={(e) => set("Title", e.target.value)} className={INPUT} placeholder="เช่น คณิตศาสตร์" />
           </div>
           <div>

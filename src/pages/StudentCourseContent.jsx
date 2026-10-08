@@ -1,5 +1,7 @@
 // ===================== 2) StudentCourseContent.jsx =====================
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
+import { downloadFile } from "../utils/downloadFile";
+import { API_URL } from "../config";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { Video, FileText, Download, Loader2, PlayCircle, X, RefreshCw } from "lucide-react";
@@ -163,7 +165,7 @@ function UploadedVideoPlayer({ video, token, onProgress }) {
   );
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE_URL = API_URL;
 
 function FileRow({ file }) {
   const [downloading, setDownloading] = useState(false);
@@ -172,19 +174,7 @@ function FileRow({ file }) {
   async function handleDownload() {
     setDownloading(true);
     try {
-      const res = await fetch(getFullUrl(file.FilePath));
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.FileName || "download";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      window.open(getFullUrl(file.FilePath), "_blank", "noopener,noreferrer");
+      await downloadFile(getFullUrl(file.FilePath), file.FileName);
     } finally { setDownloading(false); }
   }
 

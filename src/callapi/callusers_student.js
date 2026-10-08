@@ -1,6 +1,7 @@
+import { API_URL } from "../config";
 import axios from "axios";
 
-const BASE_URL = import.meta?.env?.VITE_API_URL || "http://localhost:3000";
+const BASE_URL = API_URL; // ใช้ค่ากลางจาก config (preview/production ไม่หลุดไป localhost)
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

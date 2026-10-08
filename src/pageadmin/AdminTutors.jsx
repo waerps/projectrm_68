@@ -271,7 +271,7 @@ function RejectApplicationModal({ application, onClose, onSaved, showToast }) {
         </div>
 
         <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-          เหตุผลการปฏิเสธ <span className="text-red-400 normal-case">*</span>
+          เหตุผลการปฏิเสธ <span className="text-red-500 normal-case">*</span>
         </label>
         <textarea
           rows={3}
@@ -1228,11 +1228,11 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className={lbl}>ชื่อ <span className="text-red-400 normal-case">*</span></label>
+          <label className={lbl}>ชื่อ <span className="text-red-500 normal-case">*</span></label>
           <input className={inp} value={form.firstname} onChange={e => set("firstname", e.target.value)} placeholder="ชื่อจริง" />
         </div>
         <div>
-          <label className={lbl}>นามสกุล <span className="text-red-400 normal-case">*</span></label>
+          <label className={lbl}>นามสกุล <span className="text-red-500 normal-case">*</span></label>
           <input className={inp} value={form.lastname} onChange={e => set("lastname", e.target.value)} placeholder="นามสกุล" />
         </div>
       </div>
@@ -1359,11 +1359,11 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={lbl}>Username <span className="text-red-400 normal-case">*</span></label>
+              <label className={lbl}>Username <span className="text-red-500 normal-case">*</span></label>
               <input className={inp} value={form.username} onChange={e => set("username", e.target.value)} placeholder="username" autoComplete="off" />
             </div>
             <div>
-              <label className={lbl}>Password <span className="text-red-400 normal-case">*</span></label>
+              <label className={lbl}>Password <span className="text-red-500 normal-case">*</span></label>
               <div className="relative">
                 <input
                   type={showPwd ? "text" : "password"}
@@ -1551,7 +1551,7 @@ function TutorStatusModal({ tutor, onClose, onSaved, showToast }) {
         {statusTutorId === 2 && (
           <div className="mb-4">
             <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-              เหตุผลการเลิกสอน <span className="text-red-400 normal-case">*</span>
+              เหตุผลการเลิกสอน <span className="text-red-500 normal-case">*</span>
             </label>
             <textarea
               rows={3}

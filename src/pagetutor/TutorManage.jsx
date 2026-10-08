@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { getFileUrl } from "../utils/fileUrl";
+import { downloadFile } from "../utils/downloadFile";
 import {
   Video, FileText, Trash2, Calendar, Plus, Download,
   UploadCloud, Loader2, Pencil, X, Check, PlayCircle, CircleHelp
@@ -16,6 +16,19 @@ import { Folder as LuFolder } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
+
+// Cloudinary รับไฟล์ที่อัปโหลดแบบส่งครั้งเดียวได้ไม่เกิน 100 MB (เกินนี้ต้องอัปแบบแบ่งก้อน)
+const MAX_VIDEO_MB = 100;
+const RequiredMark = () => <span className="text-red-500 ml-0.5" aria-hidden="true">*</span>;
+
+// Cloudinary คืนความยาวเป็นวินาที (เช่น 754.32) แปลงเป็น "12:34" หรือ "1:02:03"
+const formatDuration = (seconds) => {
+  const total = Math.round(Number(seconds) || 0);
+  if (!total) return "";
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+};
 
 
 export default function TutorCourseManagePage() {
@@ -86,7 +99,7 @@ export default function TutorCourseManagePage() {
   // ===== VIDEO =====
   const handleSaveNewVideo = async () => {
     if (!newVideo.title.trim() || !newVideoFile) return toast("กรุณาระบุชื่อและเลือกไฟล์วิดีโอ");
-    if (newVideoFile.size > 500 * 1024 * 1024) return toast("ไฟล์วิดีโอต้องมีขนาดไม่เกิน 500 MB");
+    if (newVideoFile.size > MAX_VIDEO_MB * 1024 * 1024) return toast(`ไฟล์วิดีโอต้องมีขนาดไม่เกิน ${MAX_VIDEO_MB} MB`);
     setIsSubmitting(true);
     try {
       const signature = await axios.post(`${API_URL}/api/tutor-content/video/upload-signature`, {}, {
@@ -102,13 +115,19 @@ export default function TutorCourseManagePage() {
       await axios.post(`${API_URL}/api/tutor-content/video`, {
         CourseID: courseId, SubjectId: subjectId, AdminId: adminId,
         VideoTitle: newVideo.title.trim(), VideoUrl: upload.data.secure_url,
-        VideoType: "upload", Duration: newVideo.duration || upload.data.duration
+        VideoType: "upload", Duration: newVideo.duration.trim() || formatDuration(upload.data.duration) || null
       }, { headers: authHeaders });
       setIsAddVideoOpen(false);
       setNewVideo({ title: "", duration: "" });
       setNewVideoFile(null);
       fetchContent();
-    } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการอัปโหลดวิดีโอ"); }
+    } catch (error) {
+      console.error("Video upload failed:", error);
+      // backend ตอบ { message } ส่วน Cloudinary ตอบ { error: { message } } — แสดงสาเหตุจริงให้ติวเตอร์เห็น
+      const reason = error.response?.data?.message || error.response?.data?.error?.message || error.response?.data?.error
+        || (!error.response ? "เชื่อมต่อบริการอัปโหลดวิดีโอไม่ได้ (ตรวจอินเทอร์เน็ต หรือการตั้งค่า CSP ของเว็บ)" : "");
+      toast(reason ? `อัปโหลดวิดีโอไม่สำเร็จ: ${reason}` : "เกิดข้อผิดพลาดในการอัปโหลดวิดีโอ");
+    }
     finally { setIsSubmitting(false); }
   };
 
@@ -150,7 +169,8 @@ export default function TutorCourseManagePage() {
     formData.append("CourseID", courseId);
     formData.append("SubjectId", subjectId);
     formData.append("AdminId", adminId);
-    formData.append("DisplayName", uploadDisplayName.trim());
+    // ส่งชื่อไฟล์จากฝั่งเบราว์เซอร์ (UTF-8 ถูกต้องเสมอ) เผื่อช่องชื่อที่แสดงถูกลบจนว่าง
+    formData.append("DisplayName", uploadDisplayName.trim() || uploadFile.name);
     try {
       await axios.post(`${API_URL}/api/tutor-content/file`, formData, {
         headers: { ...authHeaders, "Content-Type": "multipart/form-data" },
@@ -159,7 +179,7 @@ export default function TutorCourseManagePage() {
       setUploadFile(null);
       setUploadDisplayName("");
       fetchContent();
-    } catch { toast("เกิดข้อผิดพลาดในการอัปโหลดไฟล์"); }
+    } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการอัปโหลดไฟล์"); }
     finally { setIsSubmitting(false); }
   };
 
@@ -176,7 +196,7 @@ export default function TutorCourseManagePage() {
       });
       setEditingDoc(null);
       fetchContent();
-    } catch { toast("เกิดข้อผิดพลาดในการแก้ไขไฟล์"); }
+    } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการแก้ไขไฟล์"); }
     finally { setIsSubmitting(false); }
   };
 
@@ -242,7 +262,7 @@ export default function TutorCourseManagePage() {
                     /* Edit Mode */
                     <div className="p-4 space-y-3">
                       <div>
-                        <label className="text-xs font-bold text-slate-500 mb-1 block">ชื่อวิดีโอ</label>
+                        <label className="text-xs font-bold text-slate-500 mb-1 block">ชื่อวิดีโอ<RequiredMark /></label>
                         <input type="text" value={editVideoData.title} onChange={e => setEditVideoData({ ...editVideoData, title: e.target.value })}
                           className="w-full px-3 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none" disabled={isSubmitting} />
                       </div>
@@ -361,10 +381,10 @@ export default function TutorCourseManagePage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <a href={getFileUrl(doc.FilePath)} download target="_blank" rel="noreferrer"
-                      className="p-2 lg:p-1.5 text-slate-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด">
+                    <button type="button" onClick={() => downloadFile(doc.FilePath, doc.FileName)}
+                      className="p-2 lg:p-1.5 text-slate-300 hover:text-green-500 transition rounded-lg hover:bg-green-50" title="ดาวน์โหลด" aria-label="ดาวน์โหลด">
                       <Download className="h-4 w-4" />
-                    </a>
+                    </button>
                     <button onClick={() => { setEditingDoc(doc); setEditDocName(doc.FileName); setEditDocFile(null); }}
                       className="p-2 lg:p-1.5 text-slate-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50" title="แก้ไข">
                       <Pencil className="h-4 w-4" />
@@ -398,22 +418,22 @@ export default function TutorCourseManagePage() {
             </h3>
             <div className="space-y-3">
               {[
-                { label: "ชื่อวิดีโอ / หัวข้อ", key: "title", type: "text", placeholder: "เช่น EP.1: แนะนำบทเรียน" },
-                { label: "ความยาวคลิป (ไม่บังคับ)", key: "duration", type: "text", placeholder: "เช่น 1 ชม. 30 นาที" },
-              ].map(({ label, key, type, placeholder }) => (
+                { label: "ชื่อวิดีโอ / หัวข้อ", key: "title", type: "text", placeholder: "เช่น EP.1: แนะนำบทเรียน", required: true },
+                { label: "ความยาวคลิป (ไม่บังคับ — เว้นว่างระบบจะใส่ให้อัตโนมัติ)", key: "duration", type: "text", placeholder: "เช่น 1 ชม. 30 นาที" },
+              ].map(({ label, key, type, placeholder, required }) => (
                 <div key={key}>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{label}{required && <RequiredMark />}</label>
                   <input type={type} value={newVideo[key]} onChange={e => setNewVideo({ ...newVideo, [key]: e.target.value })}
                     className="w-full px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm transition"
                     placeholder={placeholder} disabled={isSubmitting} />
                 </div>
               ))}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์วิดีโอ</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์วิดีโอ<RequiredMark /></label>
                 <input type="file" accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm"
                   onChange={event => setNewVideoFile(event.target.files?.[0] || null)} disabled={isSubmitting}
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100" />
-                <p className="mt-1.5 text-xs text-slate-500">รองรับ MP4, MOV และ WEBM ขนาดไม่เกิน 500 MB ไม่รองรับลิงก์ YouTube/Drive</p>
+                <p className="mt-1.5 text-xs text-slate-500">รองรับ MP4, MOV และ WEBM ขนาดไม่เกิน {MAX_VIDEO_MB} MB ไม่รองรับลิงก์ YouTube/Drive</p>
                 {newVideoFile && <p className="mt-1 text-xs font-medium text-orange-600">ไฟล์: {newVideoFile.name}</p>}
               </div>
               <div className="flex gap-3 pt-2">
@@ -438,7 +458,7 @@ export default function TutorCourseManagePage() {
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์ (PDF, DOCX, DOC)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">เลือกไฟล์ (PDF, DOCX, DOC)<RequiredMark /></label>
                 <input type="file" onChange={handleUploadFileChange} accept=".pdf,.doc,.docx" disabled={isSubmitting}
                   className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-600 hover:file:bg-blue-100 transition cursor-pointer" />
                 {uploadFile && <p className="mt-1.5 text-xs text-slate-500">ไฟล์: {uploadFile.name}</p>}
@@ -473,7 +493,7 @@ export default function TutorCourseManagePage() {
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อที่แสดงในระบบ</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อที่แสดงในระบบ<RequiredMark /></label>
                 <input type="text" value={editDocName} onChange={e => setEditDocName(e.target.value)}
                   className="w-full px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
                   disabled={isSubmitting} />

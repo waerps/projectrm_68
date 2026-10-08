@@ -1198,7 +1198,7 @@ function ScheduleModal({
           {/* Day + Time */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-600 mb-1 block">วัน *</label>
+              <label className="text-xs text-slate-600 mb-1 block">วัน <span className="text-red-500">*</span></label>
               <select
                 value={formData.DayOfWeek}
                 onChange={e => set('DayOfWeek', e.target.value)}
@@ -1212,7 +1212,7 @@ function ScheduleModal({
             </div>
 
             <div>
-              <label className="text-xs text-slate-600 mb-1 block">ช่วงเวลา *</label>
+              <label className="text-xs text-slate-600 mb-1 block">ช่วงเวลา <span className="text-red-500">*</span></label>
               <select
                 value={currentSlotLabel}
                 onChange={e => handleSlot(e.target.value)}
@@ -1235,7 +1235,7 @@ function ScheduleModal({
 
           {/* Course */}
           <div>
-            <label className="text-xs text-slate-600 mb-1 block">คอร์ส *</label>
+            <label className="text-xs text-slate-600 mb-1 block">คอร์ส <span className="text-red-500">*</span></label>
             <select
               value={formData.CourseID}
               onChange={e => handleCourseChange(e.target.value)}

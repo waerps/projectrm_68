@@ -1,3 +1,4 @@
+import { API_URL } from "../config";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useShop } from "../context/ShopContext";
@@ -668,7 +669,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     }
   };
   const promptPayAccountName = import.meta.env.VITE_PROMPTPAY_ACCOUNT_NAME || "บัญชี PromptPay ของสถาบัน";
-  const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const API_BASE = API_URL;
 
   const installmentRows = useMemo(() => {
     const maxInstallments = Math.max(...items.map((item) => item.installments), 1);
@@ -1038,8 +1039,8 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3"><h3 className="font-bold text-slate-900">ข้อมูลนักเรียน</h3><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{pendingUser ? "ยืนยันตัวตนแล้ว" : "เข้าสู่ระบบแล้ว"}</span></div>
                   <p className="mt-3 text-xs text-slate-500">ตรวจสอบและแก้ไขข้อมูลติดต่อก่อนชำระเงิน</p>
                   <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <label className="text-sm font-semibold text-slate-700">ชื่อ <span className="text-orange-600">*</span><input value={studentForm.firstname} onChange={(e) => setStudentForm((f) => ({ ...f, firstname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
-                    <label className="text-sm font-semibold text-slate-700">นามสกุล <span className="text-orange-600">*</span><input value={studentForm.lastname} onChange={(e) => setStudentForm((f) => ({ ...f, lastname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                    <label className="text-sm font-semibold text-slate-700">ชื่อ <span className="text-red-500">*</span><input value={studentForm.firstname} onChange={(e) => setStudentForm((f) => ({ ...f, firstname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
+                    <label className="text-sm font-semibold text-slate-700">นามสกุล <span className="text-red-500">*</span><input value={studentForm.lastname} onChange={(e) => setStudentForm((f) => ({ ...f, lastname: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
                     <label className="text-sm font-semibold text-slate-700">เบอร์โทรศัพท์<input type="tel" value={studentForm.phoneNo} onChange={(e) => setStudentForm((f) => ({ ...f, phoneNo: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
                     <label className="text-sm font-semibold text-slate-700">โรงเรียน<input value={studentForm.schoolName} onChange={(e) => setStudentForm((f) => ({ ...f, schoolName: e.target.value }))} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none" /></label>
                   </div>
@@ -1049,12 +1050,12 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                 <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                   <div className="border-b border-slate-100 pb-3"><strong className="text-base text-slate-900">ข้อมูลผู้ปกครอง</strong><p className="mt-1 text-xs text-slate-500">ใช้ติดต่อเรื่องการเรียนและการชำระเงิน ข้อมูลนี้เก็บไว้ใช้กับคอร์สถัดไป</p></div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label className="text-sm font-semibold text-slate-700">ชื่อผู้ปกครอง <span className="text-orange-600">*</span><input
+                    <label className="text-sm font-semibold text-slate-700">ชื่อผู้ปกครอง <span className="text-red-500">*</span><input
                       value={parentForm.firstname}
                       onChange={(e) => setParentForm((f) => ({ ...f, firstname: e.target.value }))}
                       className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"
                     /></label>
-                    <label className="text-sm font-semibold text-slate-700">นามสกุลผู้ปกครอง <span className="text-orange-600">*</span><input
+                    <label className="text-sm font-semibold text-slate-700">นามสกุลผู้ปกครอง <span className="text-red-500">*</span><input
                       value={parentForm.lastname}
                       onChange={(e) => setParentForm((f) => ({ ...f, lastname: e.target.value }))}
                       className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-orange-400 focus:outline-none"

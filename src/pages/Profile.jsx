@@ -415,14 +415,14 @@ export default function StudentProfile() {
             icon={<Phone className="h-4.5 w-4.5 text-orange-500" />}
             isEditing={isEditing}
           >
-            <InfoRow
+            <InfoRow required
               label="เบอร์โทรศัพท์"
               name="phone"
               value={formData.phone}
               isEditing={isEditing}
               onChange={handleChange}
             />
-            <InfoRow
+            <InfoRow required
               label="Line ID"
               name="lineId"
               value={formData.lineId}
@@ -437,7 +437,7 @@ export default function StudentProfile() {
             icon={<BookOpen className="h-4.5 w-4.5 text-orange-500" />}
             isEditing={isEditing}
           >
-            <InfoRow
+            <InfoRow required
               label="โรงเรียน"
               name="schoolName"
               value={formData.schoolName}
@@ -530,11 +530,11 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
-function InfoRow({ label, value, displayValue, name, isEditing, onChange, type = "text" }) {
+function InfoRow({ label, required, value, displayValue, name, isEditing, onChange, type = "text" }) {
   return (
     <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-        {label}
+        {label}{required && isEditing && <span className="text-red-500 normal-case"> *</span>}
       </span>
       <div className="min-w-0 flex-1 break-words text-right">
         {isEditing ? (

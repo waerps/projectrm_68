@@ -323,7 +323,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
     return (
         <div className="space-y-4">
             <div>
-                <label className={lbl}>ชื่อห้อง <span className="text-red-400 normal-case">*</span></label>
+                <label className={lbl}>ชื่อห้อง <span className="text-red-500 normal-case">*</span></label>
                 <input
                     className={`${inp} ${errors.roomDetail ? errInp : ""}`}
                     value={form.roomDetail}
@@ -335,7 +335,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className={lbl}>ชั้น <span className="text-red-400 normal-case">*</span></label>
+                    <label className={lbl}>ชั้น <span className="text-red-500 normal-case">*</span></label>
                     <select className={`${inp} ${errors.floor ? errInp : ""}`} value={form.floor} onChange={e => set("floor", e.target.value)}>
                         <option value="">เลือกชั้น</option>
                         {Array.from({ length: 3 }, (_, i) => i + 1).map(f => (
@@ -505,7 +505,7 @@ function RoomStatusModal({ room, statuses, onClose, onSaved, showToast }) {
                 {isMaintenance && (
                     <>
                         <div>
-                            <label className={lbl}>เหตุผลการปิดปรับปรุง <span className="text-red-400 normal-case">*</span></label>
+                            <label className={lbl}>เหตุผลการปิดปรับปรุง <span className="text-red-500 normal-case">*</span></label>
                             <textarea
                                 rows={3}
                                 className={inp}

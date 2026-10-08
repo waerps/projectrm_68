@@ -293,11 +293,11 @@ export default function TutorProfile() {
                         icon={<Users className="h-4.5 w-4.5 text-orange-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="ชื่อ" name="firstname" value={formData.firstname} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="นามสกุล" name="lastname" value={formData.lastname} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="ชื่อเล่น" name="nickname" value={formData.nickname} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="วันเกิด" name="birthDate" value={formData.birthDate} isEditing={isEditing} onChange={handleChange} type="date" />
-                        <InfoRow label="อาชีพ" name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="ชื่อ" name="firstname" value={formData.firstname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="นามสกุล" name="lastname" value={formData.lastname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="ชื่อเล่น" name="nickname" value={formData.nickname} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="วันเกิด" name="birthDate" value={formData.birthDate} isEditing={isEditing} onChange={handleChange} type="date" />
+                        <InfoRow required label="อาชีพ" name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
                     {/* ข้อมูลติดต่อ */}
@@ -306,8 +306,8 @@ export default function TutorProfile() {
                         icon={<Phone className="h-4.5 w-4.5 text-orange-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="เบอร์โทรศัพท์" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="Line ID" name="lineId" value={formData.lineId} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="เบอร์โทรศัพท์" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="Line ID" name="lineId" value={formData.lineId} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
                     {/* 🟢 ข้อมูลการเงินและเรทค่าสอน (รวมกันแล้ว) */}
@@ -349,8 +349,8 @@ export default function TutorProfile() {
                         icon={<AlertTriangle className="h-4.5 w-4.5 text-red-500" />}
                         isEditing={isEditing}
                     >
-                        <InfoRow label="ชื่อผู้ติดต่อ" name="emergencyName" value={formData.emergencyName} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow label="เบอร์โทรฉุกเฉิน" name="emergencyPhone" value={formData.emergencyPhone} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="ชื่อผู้ติดต่อ" name="emergencyName" value={formData.emergencyName} isEditing={isEditing} onChange={handleChange} />
+                        <InfoRow required label="เบอร์โทรฉุกเฉิน" name="emergencyPhone" value={formData.emergencyPhone} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
                 </div>
             </div>
@@ -381,10 +381,10 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
-function InfoRow({ label, value, name, isEditing, onChange, type = "text" }) {
+function InfoRow({ label, required, value, name, isEditing, onChange, type = "text" }) {
     return (
         <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}{required && isEditing && <span className="text-red-500 normal-case"> *</span>}</span>
             <div className="min-w-0 text-left">
                 {isEditing ? (
                     <input

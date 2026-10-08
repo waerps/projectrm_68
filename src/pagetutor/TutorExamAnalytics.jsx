@@ -2050,9 +2050,11 @@ const exportToPdf = (results, examLabel, courseName, subjectName, topicBreakdown
     <h2>รายชื่อนักเรียน</h2>
     <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>สถานะ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:right">คะแนนสอบ (%)</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
-    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
-    <script>window.onload = () => window.print();</script></body></html>`);
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
   printWindow.document.close();
+  // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+  const runPrint = () => { printWindow.focus(); printWindow.print(); };
+  if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
 };
 
 // Export PDF สำหรับแท็บ "เปรียบเทียบ" — ใช้ข้อมูลชุดเดียวกับตัวแท็บ (buildCohortComparison)
@@ -2101,9 +2103,11 @@ const exportComparisonToPdf = (cmp, courseName, subjectName) => {
     <h2>พัฒนาการคะแนนรายหมวด (เรียงจากขยับน้อยสุด)</h2>
     <table><thead><tr><th>หมวดหมู่</th>${cmp.labels.map((l) => `<th style="text-align:right">${esc(l)}</th>`).join("")}<th style="text-align:right">คะแนนเปลี่ยนไป (%)</th></tr></thead>
     <tbody>${topicRows}</tbody></table>
-    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
-    <script>window.onload = () => window.print();</script></body></html>`);
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
   printWindow.document.close();
+  // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+  const runPrint = () => { printWindow.focus(); printWindow.print(); };
+  if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
 };
 
 // Export PDF สำหรับแท็บ "รายคน" — ตารางเดียวกับในแท็บ (ใช้ buildProgressRows ตัวเดียวกัน)
@@ -2142,9 +2146,11 @@ const exportProgressToPdf = (students, courseName, subjectName) => {
     <table><thead><tr><th>ชื่อ</th><th style="text-align:center">สอบแล้ว</th><th style="text-align:right">คะแนนล่าสุด</th><th style="text-align:center">แนวโน้ม</th><th>สถานะ</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p style="color:#9ca3af;font-size:11px;">แนวโน้ม = คะแนนสอบรอบแรกเทียบรอบล่าสุด (% ของคะแนนเต็ม)</p>
-    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div>
-    <script>window.onload = () => window.print();</script></body></html>`);
+    <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
   printWindow.document.close();
+  // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+  const runPrint = () => { printWindow.focus(); printWindow.print(); };
+  if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
 };
 
 // ─── Phase 3: รายงานผลสอบสำหรับผู้ปกครอง (PDF) ──────────────────────────────
@@ -2307,9 +2313,11 @@ function openPrintReport(title, bodyHtml) {
     <style>* { box-sizing:border-box;margin:0;padding:0; } body{font-family:'Sarabun',sans-serif;padding:32px;color:#1f2937;}
     .report-page{padding-bottom:8px;} .report-page:not(:last-child){page-break-after:always;}
     @media print{body{padding:16px;}}</style></head><body>
-    ${bodyHtml}
-    <script>window.onload = () => window.print();</script></body></html>`);
+    ${bodyHtml}</body></html>`);
   printWindow.document.close();
+  // CSP ไม่ให้รัน <script> ในหน้าต่างพิมพ์ จึงสั่งพิมพ์จากหน้าหลักแทน
+  const runPrint = () => { printWindow.focus(); printWindow.print(); };
+  if (printWindow.document.readyState === "complete") setTimeout(runPrint, 300); else printWindow.onload = runPrint;
 }
 
 // ปุ่ม "ส่งออกรายงาน PDF" รายคน — เรียกจาก StudentProgressModal (แท็บ "รายคน")

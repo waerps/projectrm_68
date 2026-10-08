@@ -45,7 +45,12 @@ export default function TutorExam() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!courseId || !subjectId || !adminId) return;
+    if (!courseId || !subjectId || !adminId) {
+      // เดิม return เฉย ๆ ทำให้หน้าหมุนโหลดค้างตลอดกาล
+      setLoading(false);
+      setError(!adminId ? "ไม่พบข้อมูลผู้ใช้ กรุณาเข้าสู่ระบบใหม่" : "ไม่พบคอร์สหรือวิชาที่เลือก กรุณากลับไปเลือกจากหน้าคอร์สที่สอน");
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError("");

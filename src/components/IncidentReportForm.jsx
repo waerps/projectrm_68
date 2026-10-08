@@ -196,7 +196,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
       <div>
         <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">
-          ประเภทเหตุการณ์ <span className="text-red-400 normal-case">*</span>
+          ประเภทเหตุการณ์ <span className="text-red-500 normal-case">*</span>
         </label>
         <div className="flex flex-wrap gap-1.5">
           {selectedCategory.types.map(t => (
@@ -213,7 +213,7 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
 
       <div>
         <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-          รายละเอียด <span className="text-red-400 normal-case">*</span>
+          รายละเอียด <span className="text-red-500 normal-case">*</span>
         </label>
         <textarea
           rows={4}

@@ -1,5 +1,6 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
+import { API_URL } from "../config";
 import { Link, useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
@@ -11,7 +12,7 @@ import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
 import Breadcrumb from "../components/ui/Breadcrumb";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE = API_URL;
 
 function resolveUrl(value) {
   if (!value) return "";
