@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import { getFileUrl } from "../utils/fileUrl";
+import InitialAvatar from "../components/ui/InitialAvatar";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark, Trash2 } from "lucide-react"
@@ -70,6 +70,14 @@ export default function TutorProfile() {
         fetchTutorData();
     }, [TUTOR_ID, token]);
 
+    // ให้รูปมุมขวาบน (navbar) เปลี่ยนตามทันที ไม่ต้องรีเฟรช/ล็อกอินใหม่
+    const syncNavbarPhoto = (photo) => {
+        try {
+            const u = JSON.parse(localStorage.getItem("user") || "null");
+            if (u) { localStorage.setItem("user", JSON.stringify({ ...u, photo })); window.dispatchEvent(new Event("user-updated")); }
+        } catch { /* ignore */ }
+    };
+
     const handleFileChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -81,6 +89,7 @@ export default function TutorProfile() {
             });
             setFormData(prev => ({ ...prev, photo: res.data.imageUrl }));
             setOriginalData(prev => (prev ? { ...prev, photo: res.data.imageUrl } : prev));
+            syncNavbarPhoto(res.data.imageUrl);
             toast("อัปโหลดรูปสำเร็จ");
         } catch (error) {
             console.error(error);
@@ -91,13 +100,14 @@ export default function TutorProfile() {
     };
 
     const handleDeletePhoto = async () => {
-        if (!await confirmDialog("ลบรูปโปรไฟล์? ระบบจะแสดงรูปเริ่มต้นแทน", { title: "ลบรูปโปรไฟล์", confirmText: "ลบรูป", danger: true })) return;
+        if (!await confirmDialog("ลบรูปโปรไฟล์? ระบบจะแสดงตัวอักษรย่อของชื่อแทน", { title: "ลบรูปโปรไฟล์", confirmText: "ลบรูป", danger: true })) return;
         try {
             await axios.delete(`${API_URL}/api/tutor/${TUTOR_ID}/delete-profile`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setFormData(prev => ({ ...prev, photo: null }));
             setOriginalData(prev => (prev ? { ...prev, photo: null } : prev));
+            syncNavbarPhoto(null);
             toast("ลบรูปโปรไฟล์แล้ว", "success");
         } catch (error) {
             console.error(error);
@@ -132,6 +142,26 @@ export default function TutorProfile() {
             return
         }
 
+        // ถามยืนยันก่อนบันทึก พร้อมบอกว่าแก้ช่องไหนไปบ้าง (เบอร์โทร/บัญชีธนาคารแอดมินใช้ติดต่อและโอนเงิน)
+        const FIELD_LABELS = {
+            firstname: 'ชื่อ', lastname: 'นามสกุล', nickname: 'ชื่อเล่น', birthDate: 'วันเกิด', occupation: 'อาชีพ',
+            phone: 'เบอร์โทรศัพท์', lineId: 'Line ID', bankName: 'ธนาคาร', bankAccount: 'เลขที่บัญชี',
+            bankAccountName: 'ชื่อบัญชี', emergencyName: 'ชื่อผู้ติดต่อฉุกเฉิน', emergencyPhone: 'เบอร์โทรฉุกเฉิน',
+        }
+        const changed = Object.keys(formData)
+            .filter((k) => k !== 'photo' && String(formData[k] ?? '') !== String(originalData?.[k] ?? ''))
+            .map((k) => FIELD_LABELS[k] || k)
+        if (changed.length === 0) {
+            setIsEditing(false)
+            toast('ไม่มีข้อมูลที่เปลี่ยนแปลง', 'warning')
+            return
+        }
+        const ok = await confirmDialog(
+            `บันทึกการแก้ไขโปรไฟล์?\nช่องที่แก้: ${changed.join(', ')}`,
+            { title: 'ยืนยันการบันทึก', confirmText: 'บันทึก', cancelText: 'กลับไปแก้ต่อ', danger: false }
+        )
+        if (!ok) return
+
         setIsSaving(true)
         try {
             await axios.put(`${API_URL}/api/tutor/${TUTOR_ID}`, formData, {
@@ -139,8 +169,9 @@ export default function TutorProfile() {
             });
             setOriginalData(formData);
             setIsEditing(false);
+            toast('บันทึกโปรไฟล์แล้ว', 'success');
         } catch (error) {
-            toast("เกิดข้อผิดพลาดในการบันทึก");
+            toast('บันทึกโปรไฟล์ไม่สำเร็จ: ' + (error.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง'), 'error');
         } finally {
             setIsSaving(false)
         }
@@ -200,12 +231,9 @@ export default function TutorProfile() {
 
                             {/* รูปโปรไฟล์ */}
                             <div className="relative shrink-0 mx-auto md:mx-0">
-                                <div className="relative h-24 w-24 sm:h-36 sm:w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-slate-100">
-                                    <img
-                                        src={getFileUrl(formData.photo) || "/tutor.jpeg"}
-                                        className="h-full w-full object-cover"
-                                        alt="Tutor"
-                                    />
+                                <div className="relative h-24 w-24 sm:h-36 sm:w-36 md:h-40 md:w-40 overflow-hidden rounded-2xl border-4 border-white/80 shadow-2xl bg-white/30">
+                                    <InitialAvatar photo={formData.photo} name={formData.firstname} alt="รูปโปรไฟล์ติวเตอร์"
+                                        className="h-full w-full !bg-transparent !text-white" textClassName="text-5xl" />
                                     <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                                 </div>
                                 <button aria-label="เปลี่ยนรูป"

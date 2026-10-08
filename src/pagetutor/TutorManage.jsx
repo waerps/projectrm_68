@@ -132,6 +132,7 @@ export default function TutorCourseManagePage() {
       setNewVideo({ title: "", duration: "" });
       setNewVideoFile(null);
       fetchContent();
+      toast("อัปโหลดวิดีโอแล้ว", "success");
     } catch (error) {
       console.error("Video upload failed:", error);
       // backend ตอบ { message } ส่วน Cloudinary ตอบ { error: { message } } — แสดงสาเหตุจริงให้ติวเตอร์เห็น
@@ -152,16 +153,19 @@ export default function TutorCourseManagePage() {
       }, { headers: authHeaders });
       setEditingVideoId(null);
       fetchContent();
+      toast("บันทึกการแก้ไขวิดีโอแล้ว", "success");
     } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการแก้ไขวิดีโอ"); }
     finally { setIsSubmitting(false); }
   };
 
-  const handleDeleteVideo = async (id) => {
-    if (!await confirmDialog("ต้องการลบวิดีโอนี้?")) return;
+  const handleDeleteVideo = async (video) => {
+    const ok = await confirmDialog(`ลบวิดีโอ "${video.VideoTitle}"?\nนักเรียนจะดูวิดีโอนี้ไม่ได้อีก และกู้คืนไม่ได้`, { title: "ลบวิดีโอ", confirmText: "ลบวิดีโอ", danger: true });
+    if (!ok) return;
     try {
-      await axios.delete(`${API_URL}/api/tutor-content/video/${id}`, { headers: authHeaders });
-      setVideos(videos.filter(v => v.VideoId !== id));
-    } catch { toast("ลบวิดีโอไม่สำเร็จ"); }
+      await axios.delete(`${API_URL}/api/tutor-content/video/${video.VideoId}`, { headers: authHeaders });
+      setVideos(prev => prev.filter(v => v.VideoId !== video.VideoId));
+      toast("ลบวิดีโอแล้ว", "success");
+    } catch (error) { toast("ลบวิดีโอไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"), "error"); }
   };
 
   // ===== UPLOAD DOC =====
@@ -190,6 +194,7 @@ export default function TutorCourseManagePage() {
       setUploadFile(null);
       setUploadDisplayName("");
       fetchContent();
+      toast("อัปโหลดเอกสารแล้ว", "success");
     } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการอัปโหลดไฟล์"); }
     finally { setIsSubmitting(false); }
   };
@@ -207,16 +212,19 @@ export default function TutorCourseManagePage() {
       });
       setEditingDoc(null);
       fetchContent();
+      toast("บันทึกการแก้ไขเอกสารแล้ว", "success");
     } catch (error) { toast(error.response?.data?.message || "เกิดข้อผิดพลาดในการแก้ไขไฟล์"); }
     finally { setIsSubmitting(false); }
   };
 
-  const handleDeleteDoc = async (id) => {
-    if (!await confirmDialog("ต้องการลบเอกสารนี้?")) return;
+  const handleDeleteDoc = async (doc) => {
+    const ok = await confirmDialog(`ลบเอกสาร "${doc.FileName}"?\nนักเรียนจะดาวน์โหลดเอกสารนี้ไม่ได้อีก และกู้คืนไม่ได้`, { title: "ลบเอกสาร", confirmText: "ลบเอกสาร", danger: true });
+    if (!ok) return;
     try {
-      await axios.delete(`${API_URL}/api/tutor-content/file/${id}`, { headers: authHeaders });
-      setDocuments(documents.filter(d => d.FileId !== id));
-    } catch { toast("ลบไฟล์ไม่สำเร็จ"); }
+      await axios.delete(`${API_URL}/api/tutor-content/file/${doc.FileId}`, { headers: authHeaders });
+      setDocuments(prev => prev.filter(d => d.FileId !== doc.FileId));
+      toast("ลบเอกสารแล้ว", "success");
+    } catch (error) { toast("ลบเอกสารไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"), "error"); }
   };
 
   if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
@@ -332,7 +340,7 @@ export default function TutorCourseManagePage() {
                               className="p-2 lg:p-1.5 text-slate-300 hover:text-orange-500 transition rounded-lg hover:bg-orange-50">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button aria-label="ลบ" onClick={() => handleDeleteVideo(video.VideoId)}
+                            <button aria-label="ลบ" onClick={() => handleDeleteVideo(video)}
                               className="p-2 lg:p-1.5 text-slate-300 hover:text-red-500 transition rounded-lg hover:bg-red-50">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -394,7 +402,7 @@ export default function TutorCourseManagePage() {
                       className="p-2 lg:p-1.5 text-slate-300 hover:text-blue-500 transition rounded-lg hover:bg-blue-50" title="แก้ไข">
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button onClick={() => handleDeleteDoc(doc.FileId)}
+                    <button onClick={() => handleDeleteDoc(doc)}
                       className="p-2 lg:p-1.5 text-slate-300 hover:text-red-500 transition rounded-lg hover:bg-red-50" title="ลบ">
                       <Trash2 className="h-4 w-4" />
                     </button>

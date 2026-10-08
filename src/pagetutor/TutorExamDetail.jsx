@@ -13,7 +13,7 @@ import {
 import {
   EXAM_TYPES, TYPE_BADGE, STATUS_BADGE, LEVEL_BADGE, LEVEL_COLOR,
   deriveStatus, isExamReady, formatTime,
-  downloadXlsxTemplate, parseXlsx, emptyQuestion,
+  downloadXlsxTemplate, parseXlsx, emptyQuestion, importRowProblems, IMPORT_PROBLEM_LABELS,
   fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
@@ -542,6 +542,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
   const [rowGradeOverrides, setRowGradeOverrides] = useState({}); // เผื่อบางข้อในไฟล์เดียวกันเป็นคนละระดับชั้น ปรับแยกรายข้อได้
   const [skipDup, setSkipDup] = useState(false); // ข้ามข้อที่ซ้ำตอนกดยืนยัน (ค่าเริ่มต้นคือไม่ข้าม — แค่เตือน)
   const [catMap, setCatMap] = useState({});   // หมวดในไฟล์ -> หมวดในคลังที่จะแมปเข้า
+  const [onlyBad, setOnlyBad] = useState(false); // กรองรายการให้เห็นเฉพาะข้อที่มีปัญหา (ไฟล์ใหญ่ที่ผิดหลายข้อ)
   const knownCategories = new Set((categoryOptions || []).map((c) => normCategory(c.category)));
   const [rows, setRows] = useState([]);
   const [error, setError] = useState("");
@@ -557,6 +558,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       const qs = await parseXlsx(file);
       if (qs.length === 0) throw new Error("ไม่พบข้อสอบในไฟล์ — ตรวจสอบ format ให้ตรงกับ Template");
       setRows(qs);
+      setOnlyBad(false);
       setStep(2);
     } catch (err) {
       setError(err.message || "ไฟล์ผิดพลาด กรุณาใช้ Template ที่ดาวน์โหลดมา");
@@ -571,7 +573,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       // กันแถวที่ข้อมูลไม่ครบ (ไม่มีโจทย์/ตัวเลือก/ยังไม่เลือกเฉลย) ออกจากที่จะส่งเข้าคลังจริง
       // กดยืนยันแล้วส่งไปทั้งแถวที่เสีย จึงกรองออกตั้งแต่ฝั่ง frontend ก่อนส่ง แล้วแจ้งจำนวนที่
       // ถูกข้ามให้ผู้สอนเห็นหลังนำเข้าเสร็จ (ดู onImported ด้านล่าง)
-      const isInvalidRow = (q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
+      const isInvalidRow = (q) => importRowProblems(q).length > 0;
 
       const mappedAll = rows.map((r, i) => ({
         ...r,
@@ -584,16 +586,19 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
       }));
 
       const mapped = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && !isInvalidRow(r));
-      const skippedInvalidCount = mappedAll.filter((r, i) => !(skipDup && dupFlags[i]) && isInvalidRow(r)).length;
+      const skippedInvalid = mappedAll
+        .map((r, i) => ({ r, i }))
+        .filter(({ r, i }) => !(skipDup && dupFlags[i]) && isInvalidRow(r))
+        .map(({ i }) => i + 1);
 
       if (!mapped.length) {
-        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว หรือข้อมูลไม่ครบ");
+        setError("ไม่เหลือข้อที่จะนำเข้า — ทุกข้อในไฟล์ซ้ำกับที่มีอยู่แล้ว หรือข้อมูลไม่ครบ (ดูรายการข้อที่มีปัญหาด้านบน)");
         setConfirming(false);
         return;
       }
 
       const result = await onConfirmRows(mapped);
-      onImported({ ...(result || {}), skippedInvalidCount });
+      onImported({ ...(result || {}), skippedInvalidCount: skippedInvalid.length, skippedInvalidNumbers: skippedInvalid });
     } catch (err) {
       console.error("Excel import save failed:", err);
       setError("บันทึกลงฐานข้อมูลไม่สำเร็จ ลองใหม่อีกครั้ง");
@@ -602,7 +607,18 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     }
   };
 
-  const invalidCount = rows.filter((q) => (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null).length;
+  // ปัญหารายแถว + สรุปแยกตามชนิดปัญหา ให้ครูรู้ว่าข้อไหน (และแถวไหนใน Excel) ต้องแก้อะไร
+  const rowProblems = useMemo(() => rows.map((q) => importRowProblems(q)), [rows]);
+  const invalidCount = rowProblems.filter((p) => p.length).length;
+  const problemGroups = useMemo(() => {
+    const g = {};
+    rowProblems.forEach((probs, i) => {
+      for (const pr of probs) (g[pr.key] ||= []).push(i);
+    });
+    return Object.keys(IMPORT_PROBLEM_LABELS).filter((k) => g[k]).map((k) => ({ key: k, label: IMPORT_PROBLEM_LABELS[k], idx: g[k] }));
+  }, [rowProblems]);
+  const rowRef = (i) => `ข้อ ${i + 1}${rows[i]?.excelRow ? ` (แถว ${rows[i].excelRow})` : ""}`;
+  const MAX_LIST = 15;
 
   // หมวดในไฟล์ที่ยังไม่มีในคลัง — ให้ครูเลือกก่อนว่าจะแมปเข้าหมวดเดิมหรือสร้างใหม่
   // กันกรณีพิมพ์ชื่อหมวดคนละแบบใน Excel แล้วคลังแตกเป็นหลายหมวดที่ความจริงคืออันเดียวกัน
@@ -678,7 +694,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
   const dupCount = dupFlags.filter(Boolean).length;
 
   // นับตามที่จะเกิดขึ้นจริงหลังหักข้อที่ถูกข้าม เพื่อให้ตัวเลขบนปุ่มยืนยันตรงกับผลลัพธ์
-  const keptRows = rows.map((_r, i) => !(skipDup && dupFlags[i]));
+  const keptRows = rows.map((_r, i) => !(skipDup && dupFlags[i]) && !rowProblems[i]?.length);
   const importCount = keptRows.filter(Boolean).length;
   const updateCount = rowPlan.filter((p, i) => p.mode === "update" && keptRows[i]).length;
   const newCount = importCount - updateCount;
@@ -738,6 +754,35 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           </div>
           <p className="text-[11px] text-slate-500 -mt-1">ใช้กับข้อที่ไม่ได้กรอกคอลัมน์ grade_level มาในไฟล์ — แต่ละข้อยังปรับแยกได้ที่ท้ายแถวรายการด้านล่าง</p>
 
+          {invalidCount > 0 && (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2" role="alert">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber-800">
+                    {invalidCount} ข้อข้อมูลไม่ครบ — ข้อเหล่านี้จะไม่ถูกนำเข้า
+                  </p>
+                  <p className="text-[11px] text-amber-700">
+                    แก้ในไฟล์ Excel ตามแถวที่ระบุแล้วกด "อัปโหลดไฟล์อื่น" หรือกดยืนยันเพื่อนำเข้าเฉพาะข้อที่ถูกต้อง
+                  </p>
+                </div>
+              </div>
+              <ul className="space-y-1 pl-6">
+                {problemGroups.map((g) => (
+                  <li key={g.key} className="text-xs text-amber-900">
+                    <span className="font-semibold">{g.label} ({g.idx.length} ข้อ):</span>{" "}
+                    {g.idx.slice(0, MAX_LIST).map(rowRef).join(", ")}
+                    {g.idx.length > MAX_LIST && <span className="text-amber-700"> และอีก {g.idx.length - MAX_LIST} ข้อ</span>}
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-center gap-1.5 pl-6 text-xs font-semibold text-amber-800 cursor-pointer">
+                <input type="checkbox" checked={onlyBad} onChange={(e) => setOnlyBad(e.target.checked)} className="accent-amber-500" />
+                แสดงเฉพาะข้อที่มีปัญหาในรายการด้านล่าง
+              </label>
+            </div>
+          )}
+
           {dupCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
               <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
@@ -746,7 +791,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
               </p>
               <label className="flex items-center gap-1.5 text-xs font-semibold text-red-700 cursor-pointer">
                 <input type="checkbox" checked={skipDup} onChange={(e) => setSkipDup(e.target.checked)} className="accent-red-500" />
-                ข้ามข้อที่ซ้ำ ({rows.length - dupCount} ข้อจะถูกนำเข้า)
+                ข้ามข้อที่ซ้ำ ({rows.filter((_r, i) => !dupFlags[i] && !rowProblems[i]?.length).length} ข้อจะถูกนำเข้า)
               </label>
             </div>
           )}
@@ -788,15 +833,22 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           )}
           <div className="border border-slate-100 rounded-xl max-h-64 overflow-y-auto divide-y divide-slate-50">
             {rows.map((q, i) => {
-              const bad = (!q.text.trim() && !q.imagePath) || q.options.some((o) => !o.trim()) || q.correct === null;
+              const problems = rowProblems[i] || [];
+              const bad = problems.length > 0;
+              if (onlyBad && !bad) return null;
               const dup = dupFlags[i];
               const skipped = skipDup && dup;
               const plan = rowPlan[i] || { mode: "new" };
               return (
                 <div key={i} className={`px-4 py-2.5 flex items-start gap-3 ${skipped ? "bg-slate-50 opacity-60" : dup ? "bg-red-50/50" : bad ? "bg-amber-50/50" : ""}`}>
-                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{bad ? "!" : i + 1}</span>
+                  <span className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5 ${bad ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{i + 1}</span>
                   <div className="min-w-0">
                     <p className={`text-xs truncate ${skipped ? "text-slate-400 line-through" : "text-slate-700"}`}>{q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : "(ไม่มีโจทย์)"}</p>
+                    {bad && (
+                      <p className="text-[11px] font-semibold text-amber-700 mt-0.5">
+                        ! แถว {q.excelRow} ใน Excel: {problems.map((p) => p.label).join(" · ")} — จะไม่ถูกนำเข้า
+                      </p>
+                    )}
                     {q.imagePath && <img src={q.imagePath} alt={`รูปโจทย์แถวที่ ${i + 1}`} className="mt-2 max-h-24 max-w-full rounded border border-slate-200 object-contain" />}
                     {plan.mode === "update" && (
                       <p className="text-[11px] text-blue-600 mt-0.5">จะอัปเดตทับข้อเดิม #{plan.id} ในคลัง</p>
@@ -859,12 +911,14 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
           )}
           <div className="flex flex-wrap justify-between gap-2">
             <button onClick={() => setStep(1)} className="text-sm text-slate-500 hover:text-slate-700 font-medium">← อัปโหลดไฟล์อื่น</button>
-            <button onClick={handleConfirm} disabled={confirming} className={`${BTN.primary} disabled:opacity-40 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}>
+            <button onClick={handleConfirm} disabled={confirming || importCount === 0} className={`${BTN.primary} disabled:opacity-40 rounded-xl px-5 py-2.5 text-sm font-semibold transition`}>
               {confirming
                 ? "กำลังบันทึก…"
                 : updateCount > 0
                   ? `ยืนยัน — ทับของเดิม ${updateCount} · เพิ่มใหม่ ${newCount}`
-                  : `ยืนยันนำเข้า ${importCount} ข้อ`}
+                  : importCount === 0
+                    ? "ไม่มีข้อที่นำเข้าได้"
+                    : `ยืนยันนำเข้า ${importCount} ข้อ`}
             </button>
           </div>
         </div>
@@ -1142,8 +1196,12 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
               const parts = [];
               if (ins) parts.push(`เพิ่มใหม่ ${ins} ข้อ`);
               if (upd) parts.push(`อัปเดตทับ ${upd} ข้อ`);
-              if (skipped) parts.push(`ข้าม ${skipped} ข้อ (ข้อมูลไม่ครบ)`);
-              showToast?.("success", "นำเข้าเรียบร้อย", parts.join(" · ") || "ไม่มีการเปลี่ยนแปลง");
+              if (skipped) {
+                const nums = (r?.skippedInvalidNumbers || []);
+                const list = nums.slice(0, 10).join(", ") + (nums.length > 10 ? ` และอีก ${nums.length - 10} ข้อ` : "");
+                parts.push(`ไม่ได้นำเข้า ${skipped} ข้อที่ข้อมูลไม่ครบ${list ? ` (ข้อ ${list})` : ""}`);
+              }
+              showToast?.(skipped ? "warning" : "success", skipped ? "นำเข้าบางส่วน" : "นำเข้าเรียบร้อย", parts.join(" · ") || "ไม่มีการเปลี่ยนแปลง");
             }}
             categoryOptions={categoryOptions}
             gradeLevelOptions={gradeLevels}
@@ -2022,13 +2080,16 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [durationError, setDurationError] = useState(""); // แสดงใต้ช่องเวลาสอบเลย ไม่ใช่ไปโผล่ท้ายฟอร์ม
 
   const handleSave = async () => {
     if (settingsLocked) return;
     if (!(Number(form.duration) >= 1)) {
-      setError("เวลาสอบต้องอย่างน้อย 1 นาที");
+      setDurationError("เวลาสอบต้องอย่างน้อย 1 นาที");
+      setError("");
       return;
     }
+    setDurationError("");
     setSaving(true);
     setError("");
     const mode = isClosed ? "manual" : (form.openMode === "auto" ? "auto" : "manual");
@@ -2053,6 +2114,8 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
         } else {
           showToast("success", "บันทึกแล้ว", "ระบบจะเปิดสอบให้อัตโนมัติทันทีที่ถึงวันเวลาที่ตั้งไว้");
         }
+      } else if (showToast) {
+        showToast("success", "บันทึกการตั้งค่าแล้ว", "");
       }
     } catch (err) {
       console.error("Save settings failed:", err);
@@ -2202,12 +2265,15 @@ function ManageExamTab({ exam, courseId, subjectId, onSaved, showToast, onOpen, 
             <p className="text-xs text-amber-700 leading-relaxed">กำลังเปิดสอบอยู่ จึงแก้เวลาสอบ วันที่ และวิธีเปิดสอบไม่ได้ ต้องปิดสอบก่อน</p>
           </div>
         )}
-        <fieldset disabled={settingsLocked} className="contents">
+        <fieldset disabled={settingsLocked} className="min-w-0 space-y-5 border-0 p-0">
         {/* จำนวนข้อไม่ได้ตั้งที่นี่แล้ว — มาจากชุดที่จัดไว้ในกล่องด้านบน
             ระบบเขียนจำนวนข้อจริงลงฐานข้อมูลให้เองทุกครั้งที่บันทึกชุดข้อสอบ */}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">เวลาสอบ (นาที)</label>
-          <input type="number" min={1} value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="w-full border border-slate-200 rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+          <input type="number" min={1} value={form.duration} onChange={(e) => { setForm({ ...form, duration: e.target.value }); if (durationError) setDurationError(""); }}
+            aria-invalid={Boolean(durationError)}
+            className={`w-full border ${durationError ? "border-red-400" : "border-slate-200"} rounded-xl px-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400`} />
+          {durationError && <p className="mt-1.5 text-xs font-medium text-red-500">{durationError}</p>}
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">วันที่สอบ (ไม่บังคับ)</label>

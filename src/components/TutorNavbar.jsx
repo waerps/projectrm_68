@@ -1,15 +1,23 @@
 import { API_URL } from "../config";
-import { getFileUrl } from "../utils/fileUrl";
 import React, { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar, ChevronDown, Menu, X, Home, BookOpen, Wallet, Library, TrendingUp, History, UserCircle, LogOut } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
+import InitialAvatar from "./ui/InitialAvatar"
 
 
 export default function Navbar() {
     const location = useLocation()
-    const user = JSON.parse(localStorage.getItem("user"));
+    // อ่าน user จาก localStorage และอัปเดตเมื่อหน้าโปรไฟล์เปลี่ยน/ลบรูป (event "user-updated")
+    const readUser = () => { try { return JSON.parse(localStorage.getItem("user")); } catch { return null; } };
+    const [user, setUser] = useState(readUser);
+    useEffect(() => {
+        const sync = () => setUser(readUser());
+        window.addEventListener("user-updated", sync);
+        window.addEventListener("storage", sync);
+        return () => { window.removeEventListener("user-updated", sync); window.removeEventListener("storage", sync); };
+    }, []);
 
     const isActive = (path) => location.pathname === path
 
@@ -101,11 +109,7 @@ export default function Navbar() {
                             aria-expanded={menuOpen}
                             className={`flex h-11 items-center gap-2 rounded-full border pl-1 pr-2.5 transition-colors ${menuOpen ? "border-orange-200 bg-orange-50 text-orange-500" : "border-slate-200 text-slate-700 hover:border-orange-200 hover:bg-orange-50"}`}
                         >
-                            <img
-                                src={getFileUrl(user?.photo) || "/tutor.jpeg"}
-                                alt="imgProfile"
-                                className="h-8 w-8 shrink-0 rounded-full bg-slate-400 object-cover"
-                            />
+                            <InitialAvatar photo={user?.photo} name={user?.firstname} className="h-8 w-8 shrink-0 rounded-full" textClassName="text-sm" />
                             <span className="hidden md:block max-w-[160px] truncate text-sm font-medium">{user?.firstname || "ไม่ทราบชื่อ"}</span>
                             {menuOpen ? <X className="h-5 w-5 md:hidden" /> : <Menu className="h-5 w-5 md:hidden" />}
                             <ChevronDown className={`hidden md:block h-4 w-4 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
@@ -114,11 +118,7 @@ export default function Navbar() {
                         {menuOpen && (
                             <div className="navbar-drop fixed inset-x-4 top-[89px] z-[70] flex max-h-[calc(100dvh-105px)] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl md:absolute md:inset-x-auto md:right-0 md:top-[calc(100%+12px)] md:w-80 md:max-h-[calc(100dvh-110px)]">
                                 <div className="flex items-center gap-3 border-b border-slate-100 bg-orange-50/60 px-4 py-3.5">
-                                    <img
-                                        src={getFileUrl(user?.photo) || "/tutor.jpeg"}
-                                        alt="imgProfile"
-                                        className="h-11 w-11 shrink-0 rounded-full bg-slate-400 object-cover ring-2 ring-white"
-                                    />
+                                    <InitialAvatar photo={user?.photo} name={user?.firstname} className="h-11 w-11 shrink-0 rounded-full ring-2 ring-white" textClassName="text-base" />
                                     <div className="min-w-0">
                                         <p className="truncate text-base font-bold text-slate-900">{[user?.firstname || "ไม่ทราบชื่อ", user?.lastname].filter(Boolean).join(" ")}</p>
                                         <p className="text-xs font-medium text-orange-600">ติวเตอร์</p>
@@ -154,13 +154,7 @@ export default function Navbar() {
                     </div>
 
                     <div tabIndex={0} className="relative group hidden lg:flex items-center gap-2 outline-none">
-                        <div className="h-8 w-8 rounded-full bg-slate-400 flex items-center justify-center text-white">
-                            <img
-                                src={getFileUrl(user?.photo) || "/tutor.jpeg"}
-                                alt="imgProfile"
-                                className="h-8 w-8 rounded-full object-cover"
-                            />
-                        </div>
+                        <InitialAvatar photo={user?.photo} name={user?.firstname} className="h-8 w-8 rounded-full" textClassName="text-sm" />
 
                         <Link
                             to="profile"

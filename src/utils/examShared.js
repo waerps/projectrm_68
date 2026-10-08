@@ -156,10 +156,16 @@ export const parseXlsx = (file) =>
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
         const OPTION_MAP = { A: 0, B: 1, C: 2, D: 3 };
+        // เก็บทุกแถวที่มีข้อมูลข้อสอบอยู่บ้าง (เดิมตัดแถวที่ไม่มีโจทย์/ตัวเลือก A ทิ้งเงียบๆ
+        // ครูเลยไม่รู้ว่าข้อหายไปไหน) แล้วให้หน้าพรีวิวบอกว่าแถวไหนขาดอะไรแทน
+        const MAIN_COLS = ["question", "image_path", "option_a", "option_b", "option_c", "option_d", "correct_answer"];
         const parsed = rows
-          .filter((r) => (r.question || r.image_path) && r.option_a)
+          .filter((r) => MAIN_COLS.some((c) => String(r[c] ?? "").trim()))
           .map((r, i) => ({
             id: `import-${Date.now()}-${i}`,
+            // เลขแถวจริงใน Excel (SheetJS ให้ __rowNum__ แบบนับจาก 0 รวมหัวตาราง) ไว้บอกครูว่าต้องไปแก้แถวไหน
+            excelRow: Number.isInteger(r.__rowNum__) ? r.__rowNum__ + 1 : i + 2,
+            rawCorrect: String(r.correct_answer ?? "").trim(),
             text: String(r.question || ""),
             ...(String(r.image_path || "").trim() ? { imagePath: String(r.image_path).trim() } : {}),
             options: [String(r.option_a || ""), String(r.option_b || ""), String(r.option_c || ""), String(r.option_d || "")],
@@ -182,6 +188,27 @@ export const parseXlsx = (file) =>
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   });
+
+// ปัญหาของแถวที่นำเข้าจาก Excel — คืนเป็นรายการ { key, label } (ว่าง = แถวนี้นำเข้าได้)
+// key ใช้จัดกลุ่มในสรุปบนหน้าพรีวิว เช่น "ไม่มีเฉลย: ข้อ 3, 7, 12"
+export const IMPORT_PROBLEM_LABELS = {
+  noText: "ไม่มีโจทย์",
+  noOption: "ตัวเลือกไม่ครบ",
+  noAnswer: "ไม่มีเฉลย",
+  badAnswer: "เฉลยไม่ถูกต้อง (ต้องเป็น A, B, C หรือ D)",
+};
+export const importRowProblems = (q) => {
+  const out = [];
+  if (!String(q.text || "").trim() && !q.imagePath) out.push({ key: "noText", label: "ไม่มีโจทย์" });
+  const emptyOpts = (q.options || []).map((o, i) => (String(o || "").trim() ? null : "ABCD"[i])).filter(Boolean);
+  if (emptyOpts.length) out.push({ key: "noOption", label: `ไม่มีตัวเลือก ${emptyOpts.join(", ")}` });
+  if (q.correct === null || q.correct === undefined) {
+    out.push(q.rawCorrect
+      ? { key: "badAnswer", label: `เฉลย "${q.rawCorrect}" ไม่ถูกต้อง (ต้องเป็น A–D)` }
+      : { key: "noAnswer", label: "ไม่มีเฉลย" });
+  }
+  return out;
+};
 
 // ── API layer (real backend — /api/exam) ─────────────────────────────────────
 

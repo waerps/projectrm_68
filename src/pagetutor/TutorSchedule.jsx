@@ -506,14 +506,15 @@ export default function TutorSchedule() {
     }
 
     if (status === 'released') {
-      if (!await confirmDialog('คาบนี้กำลังรอติวเตอร์รับ ต้องการยกเลิกการปล่อยคลาสหรือไม่?')) return
+      if (!await confirmDialog('คาบนี้กำลังรอติวเตอร์รับ ต้องการยกเลิกการปล่อยคลาสหรือไม่?', { title: 'ยกเลิกการปล่อยคลาส', confirmText: 'ยกเลิกการปล่อย', cancelText: 'ไม่ยกเลิก' })) return
       try {
         await axios.delete(`${API_URL}/api/tutor/releases/${data.releaseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         setScheduleVersion(value => value + 1)
+        showToast('success', 'ยกเลิกการปล่อยคลาสแล้ว', 'คาบนี้กลับมาเป็นคาบสอนของคุณตามปกติ')
       } catch (error) {
-        showToast('error', 'ยกเลิกการปล่อยคลาสไม่สำเร็จ', error.response?.data?.message)
+        showToast('error', 'ยกเลิกการปล่อยคลาสไม่สำเร็จ', error.response?.data?.message || 'กรุณาลองใหม่อีกครั้ง')
       }
       return
     }
