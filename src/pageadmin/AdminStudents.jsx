@@ -1,7 +1,7 @@
 //ก้อปวางเพื่อให้ตารางมันขึ้นแล้ว push ใหม่
 import { API_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
@@ -2148,6 +2148,9 @@ export default function AdminStudentsPage() {
   const [isDeleting, setIsDeleting] = useState(false); // FIX #7
 
   const [showAddModal, setShowAddModal] = useState(false);
+  // สมัครบัญชีให้นักเรียนจากคำขอคอร์สเดี่ยว (เปิดมาจากแท็บคำขอ) — ข้อมูลคำขอเติมฟอร์มให้ แล้วพากลับไปสร้างคอร์ส
+  const navigate = useNavigate();
+  const [inquiryPrefill, setInquiryPrefill] = useState(null);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [viewStudentId, setViewStudentId] = useState(null);
@@ -2180,13 +2183,38 @@ export default function AdminStudentsPage() {
     }
   }, [loading, linkedStudentId, students]);
   useEffect(() => { setCurrentPage(1); }, [search, filterGrade, filterEnrolled]);
+  useEffect(() => {
+    if (loading || searchParams.get("new") !== "inquiry" || inquiryPrefill) return;
+    let data = null;
+    try { data = JSON.parse(sessionStorage.getItem("privateInquiryStudentPrefill") || "null"); } catch { data = null; }
+    if (!data) return;
+    const label = String(data.GradeLabel || "").replace(/\s+/g, "");
+    const grade = label && gradeLevels.find(g => String(g.GradeDetail || "").replace(/\s+/g, "").includes(label));
+    setInquiryPrefill({ ...data, GradeLevelId: grade ? grade.GradeLevelId : "" });
+    setShowAddModal(true);
+  }, [loading, searchParams, gradeLevels, inquiryPrefill]);
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    if (inquiryPrefill) {
+      try { sessionStorage.removeItem("privateInquiryStudentPrefill"); } catch { /* ignore */ }
+      setInquiryPrefill(null);
+      navigate("/admin/students", { replace: true });
+    }
+  };
 
   const handleCreate = async (data) => {
     setIsSubmitting(true);
     try {
-      await axios.post(`${API}/students`, data);
+      const res = await axios.post(`${API}/students`, data);
       showToast("success", "เพิ่มนักเรียนสำเร็จ");
       setShowAddModal(false);
+      if (inquiryPrefill?.inquiryId && res.data?.UserId) {
+        // กลับไปที่คำขอเดิม แล้วเปิดฟอร์มสร้างคอร์สพร้อมเลือกบัญชีที่เพิ่งสมัคร
+        try { sessionStorage.removeItem("privateInquiryStudentPrefill"); } catch { /* ignore */ }
+        const id = inquiryPrefill.inquiryId;
+        navigate(`/admin/courses?type=single&tab=inquiries&inquiry=${id}&createFor=${id}&newStudent=${res.data.UserId}`);
+        return;
+      }
       fetchAll();
     } catch (e) {
       showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
@@ -2503,8 +2531,15 @@ export default function AdminStudentsPage() {
 
       {/* Modals */}
       {showAddModal && (
-        <Modal title="เพิ่มนักเรียนใหม่" icon={Plus} onClose={() => setShowAddModal(false)}>
-          <StudentForm onSave={handleCreate} onCancel={() => setShowAddModal(false)}
+        <Modal title={inquiryPrefill ? "สมัครบัญชีให้นักเรียนจากคำขอคอร์สเดี่ยว" : "เพิ่มนักเรียนใหม่"} icon={Plus} onClose={closeAddModal}>
+          {inquiryPrefill && (
+            <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">
+              เติมข้อมูลจากคำขอให้แล้ว ตรวจให้ถูกต้องแล้วตั้ง Username/Password
+              {inquiryPrefill.ParentId ? ` · ผูกกับผู้ปกครองคนเดิม (${[inquiryPrefill.ParentFirstname, inquiryPrefill.ParentLastname].filter(Boolean).join(" ")}) เหมือนพี่น้องที่ใช้เบอร์นี้` : ""}
+              {" "}— บันทึกแล้วจะพากลับไปสร้างคอร์สให้นักเรียนคนนี้ทันที
+            </div>
+          )}
+          <StudentForm initial={inquiryPrefill || {}} onSave={handleCreate} onCancel={closeAddModal}
             isSubmitting={isSubmitting} gradeLevels={gradeLevels} genders={genders}
             parentProfileTypes={parentProfileTypes} showToast={showToast} />
         </Modal>

@@ -1,6 +1,6 @@
 import { API_URL } from "../config";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import {
   UserRoundCheck, Plus, Search, Wallet, UserPlus, Settings2, Pencil, Trash2, Eye, EyeOff,
@@ -33,6 +33,33 @@ const auth = () => {
 const money = (v) => `฿${Number(v || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })}`;
 const personName = (p, prefix = "") =>
   p?.[`${prefix}Nickname`] || [p?.[`${prefix}Firstname`], p?.[`${prefix}Lastname`]].filter(Boolean).join(" ") || "—";
+// ── สมัครบัญชีให้นักเรียนจากคำขอ ──────────────────────────────────────────────
+// ส่งข้อมูลจากคำขอไปเติมฟอร์ม "เพิ่มนักเรียน" (หน้านักเรียน) ผ่าน sessionStorage
+// แล้วหน้านักเรียนพากลับมาเปิดฟอร์มสร้างคอร์สของคำขอนี้ พร้อมเลือกบัญชีใหม่ให้เลย
+const INQUIRY_PREFILL_KEY = "privateInquiryStudentPrefill";
+const cleanName = (v) => String(v || "").replace(/\s+/g, "").toLowerCase();
+function inquiryStudentPrefill(inquiry, parent) {
+  const contactIsStudent = cleanName(inquiry.ContactName) && cleanName(inquiry.ContactName) === cleanName(inquiry.StudentName);
+  const [pFirst, ...pRest] = String(inquiry.ContactName || "").trim().split(/\s+/);
+  return {
+    inquiryId: inquiry.InquiryId,
+    Firstname: inquiry.StudentFirstName || String(inquiry.StudentName || "").trim().split(/\s+/)[0] || "",
+    Lastname: inquiry.StudentLastName || String(inquiry.StudentName || "").trim().split(/\s+/).slice(1).join(" "),
+    Nickname: inquiry.StudentNickname || "",
+    SchoolName: inquiry.SchoolName || "",
+    GradeLabel: inquiry.GradeLevel || "",
+    PhoneNo: contactIsStudent ? inquiry.ContactPhone : "",
+    // พี่น้องที่ใช้เบอร์ผู้ปกครองเดียวกัน → ผูกผู้ปกครองคนเดิม ไม่สร้างผู้ปกครองซ้ำ
+    ...(parent?.ParentId ? {
+      ParentId: parent.ParentId, ParentFirstname: parent.Firstname || "", ParentLastname: parent.Lastname || "",
+      ParentNickname: parent.Nickname || "", ParentPhoneNo: parent.PhoneNo || "", ParentLineID: parent.LineID || "",
+      ParentRelationship: parent.Relationship || "", ParentProfilesType_Id: parent.ParentProfilesType_Id || "",
+    } : contactIsStudent ? {} : {
+      ParentFirstname: pFirst || "", ParentLastname: pRest.join(" "), ParentPhoneNo: inquiry.ContactPhone || "",
+    }),
+  };
+}
+
 const fullName = (p) => [p?.Nickname && `${p.Nickname} ·`, p?.Firstname, p?.Lastname].filter(Boolean).join(" ");
 const todayStr = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
 const addMonths = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x.toISOString().slice(0, 10); };
@@ -105,6 +132,23 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
     return { active, outstanding, shownOffers: offers.filter((o) => o.IsActive).length };
   }, [courses, offers]);
 
+  const navigate = useNavigate();
+  const registerStudent = (inquiry, parent) => {
+    try { sessionStorage.setItem(INQUIRY_PREFILL_KEY, JSON.stringify(inquiryStudentPrefill(inquiry, parent))); } catch { /* ignore */ }
+    navigate("/admin/students?new=inquiry");
+  };
+  // กลับมาจากหน้านักเรียนหลังสมัครบัญชีให้แล้ว → เปิดฟอร์มสร้างคอร์สของคำขอนั้น พร้อมเลือกบัญชีใหม่ให้
+  const createFor = Number(searchParams.get("createFor"));
+  const newStudentId = searchParams.get("newStudent");
+  useEffect(() => {
+    if (!createFor || loading) return;
+    const inquiry = inquiries.find((item) => Number(item.InquiryId) === createFor);
+    if (!inquiry) return;
+    setModal({ type: "create", data: inquiry, preselectUserId: newStudentId || "" });
+    const params = new URLSearchParams(searchParams);
+    params.delete("createFor"); params.delete("newStudent");
+    setSearchParams(params, { replace: true });
+  }, [createFor, newStudentId, loading, inquiries, searchParams, setSearchParams]);
   const close = () => setModal(null);
   const markContacted = async (id) => {
     try {
@@ -161,10 +205,10 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
           onEdit={(o) => setModal({ type: "offer", data: o })} onChanged={load} />
       ) : (
         <InquiriesTab inquiries={inquiries} search={search} focusedId={Number(searchParams.get("inquiry"))} error={inquiryError} onRetry={load} onContacted={markContacted}
-          onCreateCourse={(item) => setModal({ type: "create", data: item })} />
+          onCreateCourse={(item) => setModal({ type: "create", data: item })} onRegister={registerStudent} />
       )}
 
-      {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} inquiry={modal.data} onClose={close} onDone={done} />}
+      {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} inquiry={modal.data} preselectUserId={modal.preselectUserId} onRegister={registerStudent} onClose={close} onDone={done} />}
       {modal?.type === "payment" && <PaymentModal course={modal.data} onClose={close} onDone={done} />}
       {modal?.type === "enroll" && <EnrollModal course={modal.data} students={lookups.students} onClose={close} onDone={done} />}
       {modal?.type === "offer" && <OfferModal offer={modal.data} subjects={lookups.subjects} onClose={close} onDone={done} />}
@@ -172,7 +216,7 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
   );
 }
 
-function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacted, onCreateCourse }) {
+function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacted, onCreateCourse, onRegister }) {
   useEffect(() => {
     if (focusedId && inquiries.some((item) => Number(item.InquiryId) === focusedId)) {
       document.getElementById(`private-inquiry-${focusedId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -201,28 +245,48 @@ function InquiriesTab({ inquiries, search, focusedId, error, onRetry, onContacte
           {item.Status === "pending" && <button type="button" onClick={() => onContacted(item.InquiryId)} className="rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white">บันทึกว่าติดต่อแล้ว</button>}
         </div>
       </div>
-      <MatchedStudents matches={item.MatchedStudents} phone={item.ContactPhone} />
+      <MatchedStudents matches={item.MatchedStudents} phone={item.ContactPhone} inquiry={item} onRegister={onRegister} />
     </article>)}
   </div>;
 }
 
 // บัญชีที่เบอร์ตรงกับเบอร์ผู้ติดต่อ — แค่เสนอให้เลือก ไม่ได้ผูกกับคำขอจริง
 const matchVia = { student: "เบอร์นักเรียน", parent: "เบอร์ผู้ปกครอง" };
-function MatchedStudents({ matches = [], phone, selected = [], onPick }) {
-  if (!matches.length) return <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500">ไม่พบบัญชีที่เบอร์ {phone} ตรงกัน — ถ้ายังไม่มีบัญชี ให้สมัครให้ที่หน้านักเรียนก่อนสร้างคอร์ส</p>;
+function MatchedStudents({ matches = [], phone, selected = [], onPick, inquiry, onRegister }) {
+  const requested = inquiry?.StudentName || [inquiry?.StudentFirstName, inquiry?.StudentLastName].filter(Boolean).join(" ") || "นักเรียนในคำขอ";
+  const sameName = matches.filter((m) => m.NameMatch);
+  const siblingParent = matches.find((m) => m.via === "parent" && m.Parent)?.Parent || null;
+  const registerBtn = onRegister && <button type="button" onClick={() => onRegister(inquiry, siblingParent)}
+    className="mt-2 inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-white px-2.5 py-1.5 text-xs font-bold text-orange-700 hover:bg-orange-50">
+    <Plus className="h-3.5 w-3.5" />สมัครบัญชีให้ {requested}{siblingParent ? " (ผูกผู้ปกครองคนเดิม)" : ""}
+  </button>;
+
+  if (!matches.length) return <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+    <p>ไม่พบบัญชีที่เบอร์ {phone} ตรงกัน — {requested} อาจยังไม่มีบัญชี ต้องสมัครให้ก่อนสร้างคอร์ส</p>
+    {registerBtn}
+  </div>;
+
+  const chips = [...sameName, ...matches.filter((m) => !m.NameMatch)].map((m) => {
+    const picked = selected.map(String).includes(String(m.UserId));
+    const label = <>{fullName(m)} <span className="font-normal text-slate-500">· {matchVia[m.via]}{m.NameMatch ? " · ชื่อตรงคำขอ" : ""}</span></>;
+    const tone = m.NameMatch ? "border-emerald-200 text-emerald-700" : "border-amber-200 text-amber-800";
+    return onPick
+      ? <button key={m.UserId} type="button" onClick={() => onPick(m.UserId)} disabled={picked}
+          className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${picked ? "border-emerald-300 bg-emerald-100 text-emerald-800" : `${tone} bg-white hover:bg-slate-50`}`}>
+          {picked && <CheckCircle2 className="h-3.5 w-3.5" />}{label}</button>
+      : <span key={m.UserId} className={`rounded-full border bg-white px-2.5 py-1 text-xs font-semibold ${tone}`}>{label}</span>;
+  });
+
+  if (!sameName.length) return <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2">
+    <p className="text-xs font-semibold text-amber-800">ไม่พบบัญชีชื่อ {requested} — แต่เบอร์ {phone} ผูกกับบัญชีด้านล่าง อาจเป็นพี่น้องที่ใช้เบอร์ผู้ปกครองเดียวกัน</p>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">{chips}</div>
+    <p className="mt-1.5 text-[11px] text-amber-700">ถ้าคนที่จะเรียนไม่ใช่บัญชีเหล่านี้ ให้สมัครบัญชีแยกให้ก่อน{onPick ? "" : " แล้วค่อยสร้างคอร์ส"}</p>
+    {registerBtn}
+  </div>;
+
   return <div className="mt-3 rounded-xl bg-emerald-50/70 px-3 py-2">
     <p className="text-xs font-semibold text-emerald-800">บัญชีที่เบอร์ตรงกับคำขอ{onPick ? " (กดเพื่อเลือก)" : ""}</p>
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
-      {matches.map((m) => {
-        const picked = selected.map(String).includes(String(m.UserId));
-        const label = <>{fullName(m)} <span className="font-normal text-slate-500">· {matchVia[m.via]}</span></>;
-        return onPick
-          ? <button key={m.UserId} type="button" onClick={() => onPick(m.UserId)} disabled={picked}
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${picked ? "border-emerald-300 bg-emerald-100 text-emerald-800" : "border-emerald-200 bg-white text-emerald-700 hover:bg-emerald-100"}`}>
-              {picked && <CheckCircle2 className="h-3.5 w-3.5" />}{label}</button>
-          : <span key={m.UserId} className="rounded-full border border-emerald-200 bg-white px-2.5 py-1 text-xs font-semibold text-emerald-700">{label}</span>;
-      })}
-    </div>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">{chips}</div>
   </div>;
 }
 
@@ -258,27 +322,36 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
     );
   }
 
-  const Actions = ({ c }) => (
-    <div className="flex flex-wrap gap-2">
-      {(!c.IsPublished || Number(c.PendingDraftActions) > 0) && <button type="button" onClick={async () => {
-        try {
-          if (!await confirmDialog(`เผยแพร่คอร์ส "${c.CourseName}" ให้ผู้เรียนและติวเตอร์เห็นตอนนี้?`)) return;
-          await axios.post(`${API}/courses/${c.CourseID}/publish`, {}, auth());
-          toast('เผยแพร่คอร์สแล้ว');
-          onChanged();
-        } catch (e) { toast(errMsg(e, 'เผยแพร่คอร์สไม่สำเร็จ')); if (e.response?.data?.applied) onChanged(); }
-      }} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}>เผยแพร่คอร์ส</button>}
-      {(c.Students || []).length < Number(c.MaxStudents || 1) &&
-        <button type="button" onClick={() => onEnroll(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><UserPlus className="h-3.5 w-3.5" />ลงทะเบียนนักเรียน</button>}
-      {(c.Students || []).some((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost || 0)) &&
-        <button type="button" onClick={() => onPay(c)} className={`${BTN.base} ${BTN.primary} ${BTN.sm}`}><Wallet className="h-3.5 w-3.5" />บันทึกรับเงิน</button>}
-      {onManage && (
-        <button type="button" onClick={() => onManage(c.CourseID)} title="วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส" className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}>
-          <Settings2 className="h-3.5 w-3.5" />จัดการคอร์ส
-        </button>
-      )}
-    </div>
-  );
+  // ปุ่มของแต่ละคอร์ส: ขั้นถัดไปที่ควรทำเป็นปุ่มหลัก (สีส้ม) ปุ่มเดียว ที่เหลือเป็นปุ่มรอง
+  // จอใหญ่เรียงเป็นคอลัมน์กว้างเท่ากัน ไม่ห่อบรรทัดเป็นก้อนไม่เท่ากัน
+  const Actions = ({ c, stacked = false }) => {
+    const publish = async () => {
+      try {
+        if (!await confirmDialog(`เผยแพร่คอร์ส "${c.CourseName}" ให้ผู้เรียนและติวเตอร์เห็นตอนนี้?`)) return;
+        await axios.post(`${API}/courses/${c.CourseID}/publish`, {}, auth());
+        toast('เผยแพร่คอร์สแล้ว');
+        onChanged();
+      } catch (e) { toast(errMsg(e, 'เผยแพร่คอร์สไม่สำเร็จ')); if (e.response?.data?.applied) onChanged(); }
+    };
+    const items = [
+      (!c.IsPublished || Number(c.PendingDraftActions) > 0) && { key: 'publish', label: 'เผยแพร่คอร์ส', icon: CheckCircle2, onClick: publish },
+      (c.Students || []).length < Number(c.MaxStudents || 1) && { key: 'enroll', label: 'ลงทะเบียนนักเรียน', icon: UserPlus, onClick: () => onEnroll(c) },
+      (c.Students || []).some((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost || 0)) &&
+        { key: 'pay', label: 'บันทึกรับเงิน', icon: Wallet, onClick: () => onPay(c) },
+      onManage && { key: 'manage', label: 'จัดการคอร์ส', icon: Settings2, onClick: () => onManage(c.CourseID), title: 'วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส', secondary: true },
+    ].filter(Boolean);
+    const primaryKey = items.find((it) => !it.secondary)?.key;
+    return (
+      <div className={stacked ? "grid w-44 gap-1.5" : "flex flex-wrap gap-2"}>
+        {items.map(({ key, label, icon: Icon, onClick, title }) => (
+          <button key={key} type="button" onClick={onClick} title={title}
+            className={`${BTN.base} ${key === primaryKey ? BTN.primary : BTN.secondary} ${BTN.sm} ${stacked ? "w-full justify-center" : ""}`}>
+            <Icon className="h-3.5 w-3.5" />{label}
+          </button>
+        ))}
+      </div>
+    );
+  };
   const PayCell = ({ c }) => {
     return (
       <div className="min-w-[190px] space-y-1.5">
@@ -326,7 +399,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                   <span className="text-slate-400"> / {money(c.TutorRate)}</span>
                 </td>
                 <td className="px-4 py-3"><PayCell c={c} /></td>
-                <td className="px-4 py-3"><div className="flex justify-end"><Actions c={c} /></div></td>
+                <td className="px-4 py-3"><div className="flex justify-end"><Actions c={c} stacked /></div></td>
               </tr>
             ))}
           </tbody>
@@ -473,15 +546,17 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
   );
 }
 
-function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
+function CreateCourseModal({ offers, lookups, inquiry, preselectUserId = "", onRegister, onClose, onDone }) {
   const latestYear = lookups.years[lookups.years.length - 1]?.YearId || "";
   const inquiryOffer = inquiry?.OfferId ? offers.find((o) => String(o.OfferId) === String(inquiry.OfferId)) : null;
   const inquiryLearners = Number(inquiry?.LearnerCount) === 2 ? 2 : 1;
   const inquiryMatches = inquiry?.MatchedStudents || [];
   const [f, setF] = useState({
     OfferId: inquiryOffer ? String(inquiryOffer.OfferId) : "", SubjectId: inquiryOffer?.SubjectId ? String(inquiryOffer.SubjectId) : "",
-    // เบอร์ตรงแค่บัญชีเดียว → เลือกให้เลย (แอดมินเปลี่ยนได้)
-    UserId: inquiryMatches.length === 1 ? String(inquiryMatches[0].UserId) : "", SecondUserId: "", LearnerCount: inquiryLearners, AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING.find((group) => group.learners === inquiryLearners)?.modes[0].starting || PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
+    // เลือกให้เองเฉพาะบัญชีที่ "ชื่อตรงคำขอ" และมีคนเดียว — เบอร์ตรงแต่ชื่อไม่ตรงอาจเป็นพี่น้อง ไม่เดาให้
+    // (กลับมาจากการสมัครบัญชีใหม่ให้ → ใช้บัญชีที่เพิ่งสมัคร)
+    UserId: preselectUserId ? String(preselectUserId)
+      : inquiryMatches.filter((m) => m.NameMatch).length === 1 ? String(inquiryMatches.find((m) => m.NameMatch).UserId) : "", SecondUserId: "", LearnerCount: inquiryLearners, AdminId: "", TotalHours: 10, StudentRatePerHour: PRIVATE_PRICING.find((group) => group.learners === inquiryLearners)?.modes[0].starting || PRIVATE_PRICING[0].modes[0].starting, TutorRatePerHour: 140,
     customPrice: false, Price: "", StartDate: todayStr(), LastDate: addMonths(todayStr(), 3), YearId: latestYear,
     Course_Availability_Id: "", Remark: "", enrollNow: true,
   });
@@ -563,7 +638,7 @@ function CreateCourseModal({ offers, lookups, inquiry, onClose, onDone }) {
               <option value={1}>เรียน 1 คน</option><option value={2}>เรียน 2 คนในคลาสเดียว</option>
             </select>
           </div>
-          {inquiry && <div className="sm:col-span-2 -mb-2"><MatchedStudents matches={inquiryMatches} phone={inquiry.ContactPhone} selected={[f.UserId, f.SecondUserId].filter(Boolean)}
+          {inquiry && <div className="sm:col-span-2 -mb-2"><MatchedStudents matches={inquiryMatches} phone={inquiry.ContactPhone} inquiry={inquiry} onRegister={onRegister} selected={[f.UserId, f.SecondUserId].filter(Boolean)}
             onPick={(id) => setF((current) => (!current.UserId || current.LearnerCount === 1
               ? { ...current, UserId: String(id) }
               : { ...current, SecondUserId: String(current.UserId) === String(id) ? current.SecondUserId : String(id) }))} /></div>}

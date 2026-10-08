@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import {
   Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen,
   Users, MapPin, RefreshCw, AlertCircle, Loader2, ChevronLeft,
-  ChevronRight, CheckCircle, Clock, AlertTriangle, Layers, Info,
+  ChevronRight, ChevronDown, CheckCircle, Clock, AlertTriangle, Layers, Info,
 } from 'lucide-react';
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
@@ -1066,6 +1066,20 @@ function ScheduleModal({
 
   // ── ชั่วโมงแพ็กเกจคอร์สเดี่ยว: คำนวณให้ก่อนกดบันทึก พร้อมทางเลือกที่พอดี ──
   const [capacity, setCapacity] = useState(null);
+  const [capacityVersion, setCapacityVersion] = useState(0);
+  const [cancellingDraft, setCancellingDraft] = useState(null);
+  // ยกเลิกร่าง "สร้างตาราง" ที่ค้างอยู่ (เช่นร่างที่เกินแพ็กเกจตั้งแต่ก่อนมีตัวเช็กนี้) จากในฟอร์มเลย
+  const cancelPendingSchedule = async (actionId) => {
+    setCancellingDraft(actionId);
+    try {
+      const r = await fetch(`${API_BASE}/courses/${formData.CourseID}/drafts/${actionId}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).message || 'ยกเลิกร่างไม่สำเร็จ');
+      setCapacityVersion(v => v + 1);
+      toast('ยกเลิกร่างตารางแล้ว', 'success');
+    } catch (e) {
+      toast(e.message || 'ยกเลิกร่างไม่สำเร็จ', 'error');
+    } finally { setCancellingDraft(null); }
+  };
   useEffect(() => {
     const ready = showTermFields && formData.CourseID && formData.DayOfWeek && formData.StartTime && formData.EndTime
       && formData.TermStartDate && formData.TermEndDate && formData.StartTime < formData.EndTime;
@@ -1081,7 +1095,7 @@ function ScheduleModal({
       } catch { setCapacity(null); }
     }, 300);
     return () => clearTimeout(t);
-  }, [showTermFields, formData.CourseID, formData.DayOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate, formData.TermEndDate]);
+  }, [showTermFields, formData.CourseID, formData.DayOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate, formData.TermEndDate, capacityVersion]);
   const fmtH = (min) => {
     const h = Math.floor(min / 60), m = Math.round(min % 60);
     return m ? (h ? `${h} ชม. ${m} นาที` : `${m} นาที`) : `${h} ชม.`;
@@ -1435,9 +1449,29 @@ function ScheduleModal({
                       ))}
                     </div>
                   )}
-                  {overCapacity && !capacity.suggestions?.length && !fittingSlots.length && (
+                  {overCapacity && !capacity.suggestions?.length && !fittingSlots.length && !(capacity.pendingSchedules?.length > 0) && (
                     <p className="mt-1">ชั่วโมงที่เหลือไม่พอแม้ 1 คาบ — เพิ่มชั่วโมงแพ็กเกจในข้อมูลคอร์ส หรือลบคาบเดิมที่ไม่ใช้ก่อน</p>
                   )}
+                  {/* ร่างสร้างตารางที่รอเผยแพร่ — ถ้าชั่วโมงไม่พอเพราะร่างเหล่านี้ ให้ยกเลิกได้ตรงนี้ */}
+                  {overCapacity && capacity.pendingSchedules?.length > 0 && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className="font-semibold">
+                        {capacity.usedMinutes - capacity.pendingMinutes < capacity.limitMinutes && capacity.usedMinutes >= capacity.limitMinutes
+                          ? 'ชั่วโมงเต็มเพราะตารางที่ยังรอเผยแพร่ — ยกเลิกร่างที่ไม่ใช้แล้ว ระบบจะคำนวณใหม่ทันที:'
+                          : 'ตารางที่รอเผยแพร่ของคอร์สนี้ (ยกเลิกได้ถ้าไม่ใช้แล้ว):'}
+                      </p>
+                      {capacity.pendingSchedules.map(ps => (
+                        <div key={ps.ActionId} className="flex items-center justify-between gap-2 rounded-lg border border-red-200 bg-white px-3 py-2">
+                          <span className="min-w-0 text-slate-700">{ps.label}</span>
+                          <button type="button" disabled={cancellingDraft === ps.ActionId} onClick={() => cancelPendingSchedule(ps.ActionId)}
+                            className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 font-semibold text-slate-600 hover:border-red-300 hover:text-red-600 disabled:opacity-50">
+                            {cancellingDraft === ps.ActionId ? 'กำลังยกเลิก…' : 'ยกเลิกร่างนี้'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {!overCapacity && capacity.remainMinutes - capacity.addMinutes > 0 && capacity.perSession > 0 && (
                     <p className="mt-0.5 text-emerald-700">ยังจัดเพิ่มได้อีกประมาณ {Math.floor((capacity.remainMinutes - capacity.addMinutes) / capacity.perSession)} คาบ (คาบละ {fmtH(capacity.perSession)})</p>
                   )}
@@ -1515,6 +1549,18 @@ function Select({ value, onChange, options, placeholder }) {
 }
 
 function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
+  // เลือกห้องแล้วให้พับแผงเหลือบรรทัดเดียว ไม่กินที่ในฟอร์ม (กดเปิดดูใหม่ได้)
+  const [open, setOpen] = useState(false);
+  useEffect(() => { setOpen(false); }, [selectedRoomId]);
+  if (selectedRoomId && !open && !loading) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs text-slate-600 hover:border-orange-200">
+        <span><LuLightbulb className="inline h-4 w-4 shrink-0 text-amber-500" /> เลือกห้องแล้ว — ดูห้องที่แนะนำอีกครั้ง</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+      </button>
+    );
+  }
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-slate-50 rounded-xl">
