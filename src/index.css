@@ -16,6 +16,16 @@
   font-display: swap;
 }
 
+/* หน้าแรก ตะกร้า ข่าว เรียกฟอนต์ชื่อ "Kanit" ตรงๆ แต่เดิมไม่มี @font-face ชื่อนี้
+   เครื่องที่ไม่ได้ลง Kanit ไว้จึงได้ฟอนต์ระบบแทน — ผูกชื่อ Kanit กับไฟล์เดียวกับ MyFont2
+   ให้ทุกเครื่องเห็นฟอนต์เดียวกับหน้าอื่น */
+@font-face {
+  font-family: "Kanit";
+  src: url("./assets/fonts/Kanit-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-display: swap;
+}
+
 html, body {
   font-family: "MyFont2", sans-serif;
 }
