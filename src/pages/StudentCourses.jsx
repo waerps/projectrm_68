@@ -1,5 +1,5 @@
 // ===================== 1) StudentCourses.jsx =====================
-import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList, RefreshCw } from "lucide-react";
+import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList, RefreshCw, Star } from "lucide-react";
 import { lazy, Suspense, useState, useEffect } from "react";
 const StudentTutorFeedback = lazy(() => import("../components/StudentTutorFeedback"));
 import { Link } from "react-router-dom";
@@ -372,7 +372,7 @@ export default function StudentCourses() {
                   </div>
                 )}
 
-                {course.statusId === "completed" && <div className="px-3 pb-3 sm:px-4"><button type="button" onClick={() => setReviewCourse(course)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3 text-sm font-bold text-orange-800 transition hover:border-orange-300 hover:shadow-sm"><span aria-hidden="true" className="text-lg">🤩</span> ส่งดาวให้ครู · รีวิวติวเตอร์ <span aria-hidden="true" className="text-amber-500">★</span></button></div>}
+                {course.statusId === "completed" && <div className="px-3 py-3 sm:px-4 sm:py-4"><button type="button" onClick={() => setReviewCourse(course)} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-amber-200 bg-gradient-to-r from-orange-50 to-amber-50 px-4 py-3 text-sm font-bold text-orange-800 transition hover:border-orange-300 hover:shadow-sm"><Star aria-hidden="true" className="h-5 w-5 shrink-0 text-orange-500" /> รีวิวติวเตอร์</button></div>}
                 {/* ปุ่ม 3 ปุ่ม: เนื้อหา / เข้าสอบ / รายละเอียด */}
                 <div className="grid grid-cols-2 gap-2 border-t border-neutral-100 bg-white p-3 sm:flex sm:gap-3 sm:p-4">
                   <Link
