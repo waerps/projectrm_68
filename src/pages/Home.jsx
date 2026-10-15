@@ -1,7 +1,6 @@
 // src/pages/Home.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import {
   ChevronLeft,
   ChevronRight,
@@ -28,6 +27,7 @@ import PrivateCourseTeaser from "../components/PrivateCourseTeaser";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
 import { optimizedImage } from "../utils/responsiveImage";
 import { API_URL } from "../config";
+import { getPublicNews } from "../utils/publicNews";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 
@@ -628,20 +628,23 @@ export default function Home() {
   }, [coursesReloadKey]);
 
   useEffect(() => {
+    let cancelled = false;
     setNewsLoaded(false);
     setNewsError(false);
-    axios
-      .get(`${API_URL}/api/news`, { params: { role: "public" } })
-      .then((res) => {
-        setNewsItems(Array.isArray(res.data) ? res.data.slice(0, 6) : []);
+    getPublicNews()
+      .then((rows) => {
+        if (cancelled) return;
+        setNewsItems(rows.slice(0, 6));
         setNewsError(false);
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error("Error loading news:", err);
         setNewsItems([]);
         setNewsError(true);
       })
-      .finally(() => setNewsLoaded(true));
+      .finally(() => { if (!cancelled) setNewsLoaded(true); });
+    return () => { cancelled = true; };
   }, [newsReloadKey]);
 
   // คอร์สที่ไม่ถูกซ่อน (ไม่ใช่ Status = ปิดคอร์ส)

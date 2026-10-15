@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
-import axios from "axios";
 import { ArrowUpRight } from "lucide-react";
-import { API_URL } from "../config";
-import { newsAuthConfig } from "../utils/newsApi";
+import { getPublicNews } from "../utils/publicNews";
 import { NewsExpanded, NewsTile } from "./News";
 import "./NewsMarqueeArchive.css";
 
@@ -19,12 +17,9 @@ export default function NewsMarqueeArchive({ role = "public", items = null, embe
     const controller = new AbortController();
     setLoading(true);
     setError(false);
-    axios.get(`${API_URL}/api/news`, {
-      params: { role },
-      signal: controller.signal,
-      ...newsAuthConfig(role),
-    })
-      .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
+    const token = role === "tutor" ? localStorage.getItem("student_token") : null;
+    getPublicNews({ role, token, signal: controller.signal })
+      .then((rows) => { if (!controller.signal.aborted) setNews(rows); })
       .catch((requestError) => {
         if (requestError.code !== "ERR_CANCELED") {
           setError(true);
