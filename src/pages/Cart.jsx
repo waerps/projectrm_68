@@ -19,8 +19,10 @@ import {
   CircleHelp,
   CreditCard,
   FileText,
+  Facebook,
   Loader2,
   LockKeyhole,
+  Phone,
   ReceiptText,
   ShieldCheck,
   ShoppingBag,
@@ -1299,7 +1301,14 @@ export default function Cart() {
 
         <div className="mt-8 rounded-[26px] border border-orange-100 bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-5 sm:p-6">
           <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600"><CreditCard className="h-5 w-5" /></span><div><h2 className="text-sm font-extrabold text-[#14213D]">ยังไม่แน่ใจเรื่องการชำระ?</h2><p className="mt-1 text-xs leading-relaxed text-slate-500">ปรึกษาเจ้าหน้าที่เรื่องรอบเรียน การผ่อนชำระ หรือการออกใบเสร็จก่อนตัดสินใจได้</p></div></div>
-          <button className="mt-4 w-full rounded-xl border border-orange-300 px-4 py-3 text-xs font-bold text-orange-600 transition hover:bg-orange-50 sm:mt-0 sm:w-auto">คุยกับเจ้าหน้าที่ผ่าน LINE</button>
+          <div className="mt-4 flex w-full flex-col gap-2 sm:mt-0 sm:w-auto sm:flex-row">
+            <a href="https://www.facebook.com/SornSerm.tutor" target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300 px-4 py-3 text-xs font-bold text-orange-600 transition hover:bg-orange-50">
+              <Facebook className="h-4 w-4" /> ติดต่อทาง Facebook
+            </a>
+            <a href="tel:0826646551" className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300 px-4 py-3 text-xs font-bold text-orange-600 transition hover:bg-orange-50">
+              <Phone className="h-4 w-4" /> โทร 082 664 6551
+            </a>
+          </div>
         </div>
       </div>
 

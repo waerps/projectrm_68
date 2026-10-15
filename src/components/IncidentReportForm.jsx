@@ -27,7 +27,6 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
   const [incidentTypeId, setIncidentTypeId] = useState(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [description, setDescription] = useState("");
-  const [files, setFiles] = useState([]); // File[] ที่ผู้ใช้เลือก (ยังไม่อัปโหลด)
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null); // { severity } หลังส่งสำเร็จ
 
@@ -72,21 +71,6 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
     setStep(2);
   };
 
-  const MAX_FILES = 5;
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-
-  const handleFilesSelected = (fileList) => {
-    const incoming = Array.from(fileList);
-    const oversized = incoming.find(f => f.size > MAX_SIZE);
-    if (oversized) {
-      return showToast("error", "ไฟล์ใหญ่เกินไป", `${oversized.name} เกิน 10MB`);
-    }
-    const combined = [...files, ...incoming].slice(0, MAX_FILES);
-    setFiles(combined);
-  };
-
-  const removeFile = (idx) => setFiles(files.filter((_, i) => i !== idx));
-
   const submit = async () => {
     if (!incidentTypeId) return showToast("error", "กรุณาเลือกประเภทเหตุการณ์");
     if (description.trim().length < 10) return showToast("error", "กรุณาอธิบายรายละเอียดอย่างน้อย 10 ตัวอักษร");
@@ -101,22 +85,6 @@ export default function IncidentReportForm({ role, onClose, showToast }) {
         relatedStudentId: relatedStudentId || undefined,
         relatedCourseId: relatedCourseId || undefined,
       }, getAuthConfig());
-
-      const incidentId = res.data.incidentId;
-
-      if (files.length && incidentId) {
-        try {
-          const form = new FormData();
-          files.forEach(f => form.append("files", f));
-          await axios.post(`${API}/${incidentId}/attachments`, form, {
-            ...getAuthConfig(),
-            headers: { ...getAuthConfig().headers, "Content-Type": "multipart/form-data" },
-          });
-        } catch (attachErr) {
-          // เคสถูกสร้างสำเร็จแล้ว แค่แนบไฟล์ไม่สำเร็จ — แจ้งเตือนแต่ไม่บล็อกผู้ใช้
-          showToast("error", "ส่งเรื่องสำเร็จ แต่แนบไฟล์ไม่สำเร็จ", attachErr.response?.data?.message);
-        }
-      }
 
       setResult({ severity: res.data.severity || selectedType?.severity });
     } catch (err) {

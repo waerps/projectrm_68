@@ -170,11 +170,7 @@ export default function CourseDetail() {
 
   const [schedule, setSchedule] = useState([]);
 
-  // Presentation-only: toggles the "add to cart" button between its two
-  // labelled states, as requested. Does not remove/alter cart logic itself.
-  const [addedToCart, setAddedToCart] = useState(false);
-
-  const { addToCart, toggleFavorite, favorites } = useShop();
+  const { cart, toggleCart, toggleFavorite, favorites } = useShop();
 
   useEffect(() => {
     (async () => {
@@ -261,7 +257,8 @@ export default function CourseDetail() {
   }, [id, courseRaw]);
 
   const status = STATUS_MAP[course.statusId] || null;
-  const canEnroll = status ? status.canEnroll : true; // ไม่รู้สถานะ = ไม่บล็อกไว้ก่อน
+  const canEnroll = status?.canEnroll === true;
+  const addedToCart = cart.some((item) => String(item.id) === String(course.id));
 
   const isFav = favorites.some((c) => c.id === course.id);
   const courseData = {
@@ -280,10 +277,7 @@ export default function CourseDetail() {
 
   const handleAddToCart = () => {
     if (!canEnroll) return;
-    if (!addedToCart) {
-      addToCart(courseData);
-    }
-    setAddedToCart((prev) => !prev);
+    toggleCart(courseData);
   };
 
   const getThumbnail = (v) => {
@@ -439,11 +433,11 @@ export default function CourseDetail() {
           </div>
         </div>
 
-        {!canEnroll && status && (
+        {!canEnroll && (
           <div className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
             <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700">
-              คอร์สนี้อยู่ในสถานะ "{status.label}" ขณะนี้ยังไม่สามารถเพิ่มลงตะกร้าได้
+              คอร์สนี้{status ? `อยู่ในสถานะ "${status.label}"` : 'ยังไม่เปิดรับสมัคร'} ขณะนี้ยังไม่สามารถเพิ่มลงตะกร้าได้
             </p>
           </div>
         )}
@@ -481,7 +475,7 @@ export default function CourseDetail() {
                       status?.label || "ไม่เปิดรับสมัคร"
                     ) : addedToCart ? (
                       <>
-                        <Check className="h-4 w-4" /> อยู่ในตะกร้าแล้ว
+                        <Check className="h-4 w-4" /> นำออกจากตะกร้า
                       </>
                     ) : (
                       "เพิ่มลงตะกร้า"
@@ -696,7 +690,7 @@ export default function CourseDetail() {
               status?.label || "ปิดรับ"
             ) : addedToCart ? (
               <>
-                <Check className="h-4 w-4" /> อยู่ในตะกร้า
+                <Check className="h-4 w-4" /> นำออกจากตะกร้า
               </>
             ) : (
               "เพิ่มลงตะกร้า"
