@@ -44,7 +44,6 @@ export default function StudentProfile() {
   const [loadError, setLoadError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [studentId, setStudentId] = useState(null);
   const [authMethods, setAuthMethods] = useState(null);
   const [parentId, setParentId] = useState(null);
   const [parentTypes, setParentTypes] = useState([]);
@@ -136,7 +135,6 @@ export default function StudentProfile() {
         parentProfilesTypeId: parentDetailData?.parentProfilesTypeId ?? parentDetailData?.ParentProfilesType_Id ?? "",
         photo: dbData.photo ?? dbData.Photo ?? dbData.profileImage ?? dbData.ProfileImage ?? dbData.imageUrl ?? null,
       };
-      setStudentId(resolvedStudentId);
       setParentId(basicData.parentId ?? null);
       setFormData(mappedData);
       setOriginalData(mappedData);
@@ -179,18 +177,7 @@ export default function StudentProfile() {
       });
       const uploadedPhoto = res.data?.path ?? res.data?.imageUrl ?? res.data?.data?.path;
       if (!uploadedPhoto) throw new Error("เซิร์ฟเวอร์ไม่ส่ง path ของรูปกลับมา");
-      if (!studentId) throw new Error("ไม่พบรหัสนักเรียน กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง");
-      await axios.put(`${API_URL}/api/admin/students/${studentId}`, {
-        firstname: formData.firstname,
-        lastname: formData.lastname,
-        nickname: formData.nickname,
-        phoneNo: formData.phone,
-        schoolName: formData.schoolName,
-        lineId: formData.lineId,
-        birthOfDate: formData.birthDate || null,
-        remark: formData.remark,
-        photo: uploadedPhoto,
-      }, { headers: { Authorization: `Bearer ${token}` } });
+      await updateStudentProfile(token, { photo: uploadedPhoto });
       setFormData((prev) => ({ ...prev, photo: uploadedPhoto }));
       URL.revokeObjectURL(previewUrl);
       setOriginalData((prev) => ({ ...prev, photo: uploadedPhoto }));
