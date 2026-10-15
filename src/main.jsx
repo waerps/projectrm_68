@@ -65,8 +65,6 @@ const Profile = lazyPage(() => import("./pages/Profile.jsx"));
 const Notifications = lazyPage(() => import("./pages/Notifications.jsx"));
 const StudentExamOverview = lazyPage(() => import("./pages/StudentExamOverview.jsx"));
 const StudentCourses = lazyPage(() => import("./pages/StudentCourses.jsx"));
-const Attendance = lazyPage(() => import("./pages/Attendance.jsx"));
-const New = lazyPage(() => import("./pages/New.jsx"));
 const News = lazyPage(() => import("./pages/News.jsx"));
 const MyIncidents = lazyPage(() => import("./pages/MyIncidents.jsx"));
 const Login = lazyPage(() => import("./pages/Login.jsx"));
@@ -74,7 +72,6 @@ const Register = lazyPage(() => import("./pages/Register.jsx"));
 const GoogleRegister = lazyPage(() => import("./pages/GoogleRegister.jsx"));
 const ForgotPassword = lazyPage(() => import("./pages/ForgotPassword.jsx"));
 const ResetPassword = lazyPage(() => import("./pages/ResetPassword.jsx"));
-const ThaiExam = lazyPage(() => import("./pages/thai_exam.jsx"));
 const About = lazyPage(() => import("./pages/About.jsx"));
 const Promotion = lazyPage(() => import("./pages/Promotion.jsx"));
 const CourseSearch = lazyPage(() => import("./pages/CourseSearch.jsx"));
@@ -151,11 +148,9 @@ const router = createBrowserRouter(
       children: [
         { index: true, element: <Home /> },
         { path: "virtual-tour", element: <VirtualTour /> },
-        { path: "schedule", element: <Schedule /> },
         { path: "courses", element: <CourseSearch /> },
         { path: "courses/:id", element: <CourseDetail /> },
         { path: "private-courses", element: <PrivateCourses /> },
-        { path: "new", element: <New /> },
         { path: "news", element: <News /> },
         { path: "cart", element: <Cart /> },
         { path: "favorites", element: <Favorites /> },
@@ -179,7 +174,6 @@ const router = createBrowserRouter(
             { path: "course-content/:courseId", element: <StudentCourseContent /> },
             { path: "course/:courseId/subjects", element: <SubjectList /> }, //เป้วเพิ่ม
             { path: "course/:courseId/subject/:subjectId", element: <StudentSubjectDetail /> },
-            { path: "attendance", element: <Attendance /> },
           ],
         },
 

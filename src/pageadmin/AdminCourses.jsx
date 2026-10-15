@@ -867,12 +867,12 @@ function HoursSuggestionBar({ remaining, perItem, onApply, busy }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenueChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
+function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
   const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
-  const [adding, setAdding] = useState(false);
+  const [, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingId, setEditingId] = useState(null);
   const [editingRateId, setEditingRateId] = useState(null);
@@ -957,7 +957,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
       );
       fetchSubjects();
       showToast("success", `ใช้ค่าที่แนะนำ (${suggestedPerSubject.toFixed(1)} ชม./วิชา) กับ ${nonManualSubjects.length} วิชาแล้ว`);
-    } catch (e) {
+    } catch {
       showToast("error", "ใช้ค่าที่แนะนำไม่สำเร็จ");
     } finally {
       setApplyingAll(false);
@@ -1056,7 +1056,6 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalRevenue
     } catch (e) { showToast("error", e.response?.data?.message || "ยกเลิกไม่สำเร็จ"); }
   };
 
-  const inp = "px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-orange-400 outline-none transition";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
   // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
@@ -2626,7 +2625,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
             <FormSection title="นักเรียนในคอร์ส" subtitle="ไม่บังคับ · เพิ่มภายหลังได้">
               {isEdit
                 ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
-                : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} showToast={showToast} />}
+                : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} />}
             </FormSection>
           </div>
 
@@ -2783,7 +2782,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   );
 }
 
-function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
+function PendingStudentPicker({ items, onChange, statusCourseId }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
   const willBeBlocked = ![1, 2].includes(Number(statusCourseId));
@@ -2906,7 +2905,6 @@ function PendingStudentPicker({ items, onChange, statusCourseId, showToast }) {
 function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, monthsSpanned }) {
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
-  const [adding, setAdding] = useState(false);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
   const [editingIndex, setEditingIndex] = useState(null);
   const [editingRateIndex, setEditingRateIndex] = useState(null);
@@ -2984,7 +2982,6 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
     return true;
   };
 
-  const inp = "px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-[13px] outline-none";
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4)
   // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
@@ -3349,7 +3346,7 @@ export default function AdminCoursesPage() {
       } else {
         showToast("success", "บันทึกคอร์สฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม");
       }
-    } catch (e) {
+    } catch {
       showToast("error", "สร้างคอร์สฉบับร่างแล้ว แต่เพิ่มวิชา/นักเรียนไม่ครบ", "กด \"แก้ไข\" ที่คอร์สนี้เพื่อตรวจและเพิ่มรายการที่ขาด");
     } finally {
       // คอร์สถูกสร้างแล้วเสมอในช่วงนี้ → ปิดหน้าต่างและรีเฟรช เพื่อกันการกดบันทึกซ้ำ
@@ -3504,9 +3501,6 @@ export default function AdminCoursesPage() {
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-
-  const totalStudents = [...new Map(groupCourses.map((c) => [c.CourseID, c])).values()]
-    .reduce((s, c) => s + Number(c.StudentCount || 0), 0);
 
   const activeStatusId = statusOptions.find((s) => s.Status_Course_Name === "กำลังสอน")?.Status_Course_Id;
   const closedStatusId = statusOptions.find((s) => s.Status_Course_Name === "ปิดคอร์ส")?.Status_Course_Id;

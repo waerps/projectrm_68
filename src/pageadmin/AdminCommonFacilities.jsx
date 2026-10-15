@@ -562,7 +562,7 @@ function ConfirmDelete({ item, onConfirm, onCancel, isDeleting }) {
 }
 
 // ─── DetailModal — รายละเอียด + Action รอง + ประวัติการเปลี่ยนแปลง ─────────
-function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty, onStatusChange, onDelete }) {
+function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty }) {
     const statusNameOf = (id) => statuses.find(s => String(s.Status_Id) === String(id))?.Status_Name || `#${id}`;
     const st = styleOf(item.StatusId);
     const CIcon = iconForCategory(item.Category_Name);

@@ -495,7 +495,6 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 // ── Main Dashboard ────────────────────────────────────────────
 // embedded = แสดงเป็นแท็บในหน้าจัดการติวเตอร์ (หัวหน้าหลักอยู่ที่หน้านั้นแล้ว จึงใช้หัวข้อย่อยแทน h1)
 export default function TutorAttendanceDashboard({ embedded = false }) {
-  const now = new Date();
   const [selectedMonthNum, setSelectedMonthNum] = useState('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const selectedMonth = useMemo(
@@ -631,13 +630,6 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
     ).length;
     return acc;
   }, {});
-
-  const baseForStatusCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchPhotoFn(t));
-  const hasRate = t => t.AttendanceRate !== null && t.AttendanceRate !== undefined;
-  const normalCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 80).length;
-  const watchCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate >= 50 && t.AttendanceRate < 80).length;
-  const riskCount = baseForStatusCount.filter(t => hasRate(t) && t.AttendanceRate < 50).length;
-  const noDataCount = baseForStatusCount.filter(t => !hasRate(t)).length; // ★ เพิ่ม
 
   const baseForPhotoCount = tutors.filter(t => matchSearchFn(t) && matchSubjectFn(t) && matchStatusFn(t));
   const incompletePhotoCount = baseForPhotoCount.filter(t => (t.IncompletePhotoCount ?? 0) > 0).length;

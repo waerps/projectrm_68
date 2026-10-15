@@ -627,7 +627,7 @@ export default function AdminSchedule() {
                           <div className="w-16 shrink-0 pt-1 text-center text-xs font-bold text-slate-600 leading-tight">{slot.label}</div>
                           <div className="min-w-0 flex-1 space-y-1.5">
                             {entries.map(e => (
-                              <ClassCard key={e.CourseScheduleDetailId} entry={e} weekStart={weekStart}
+                              <ClassCard key={e.CourseScheduleDetailId} entry={e}
                                 onEdit={() => openEdit(e)}
                                 onDelete={() => { setSelected(e); setDeleteScope('this'); setShowDelete(true); }} />
                             ))}
@@ -743,7 +743,6 @@ export default function AdminSchedule() {
                                 <ClassCard
                                   key={e.CourseScheduleDetailId}
                                   entry={e}
-                                  weekStart={weekStart}
                                   onEdit={() => openEdit(e)}
                                   onDelete={() => {
                                     setSelected(e);
@@ -888,7 +887,7 @@ export default function AdminSchedule() {
 }
 
 // ─── ClassCard ────────────────────────────────────────────────
-function ClassCard({ entry, weekStart, onEdit, onDelete }) {
+function ClassCard({ entry, onEdit, onDelete }) {
   const colorClass = SUBJECT_COLOR(entry.SubjectName || '');
   const pct = entry.MaxStudents
     ? Math.min(Math.round((entry.StudentCount / entry.MaxStudents) * 100), 100)

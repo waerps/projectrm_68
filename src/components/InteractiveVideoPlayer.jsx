@@ -22,7 +22,7 @@ export default function InteractiveVideoPlayer({ video, token, onProgress, onLea
   const [feedback, setFeedback] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [watchPercent, setWatchPercent] = useState(Number(video.WatchPercent || 0));
+  const [, setWatchPercent] = useState(Number(video.WatchPercent || 0));
   useEffect(() => { learningRef.current = learning; }, [learning]);
   useEffect(() => { activeRef.current = active; }, [active]);
 

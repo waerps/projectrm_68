@@ -28,26 +28,6 @@ import Spinner from "../components/ui/Spinner";
 import { PendingDraftsCallout } from "../components/CourseDrafts";
 import AdminTutorFeedback from "../components/AdminTutorFeedback";
 
-// ★ เพิ่ม: บังคับดาวน์โหลดไฟล์จริงแทนเปิด href ตรงๆ (กัน SPA fallback ไปเจอ index.html บน production)
-async function forceDownload(url, filename) {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("download failed");
-    const blob = await res.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = filename || "resume";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    console.error("[forceDownload]", err);
-    window.open(url, "_blank"); // fallback เดิมถ้า fetch พัง
-  }
-}
-
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
 

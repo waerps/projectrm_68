@@ -4,7 +4,6 @@ import { publicListRequest } from "../utils/publicListRequest";
 
 const BASE_URL = import.meta?.env?.VITE_API_URL || API_URL;
 
-
 const apiClient = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -12,14 +11,6 @@ const apiClient = axios.create({
   },
   timeout: 15000,
 });
-
-
-function withAuth(token) {
-  return token
-    ? { headers: { Authorization: `Bearer ${token}` } }
-    : {};
-}
-
 
 function throwNiceError(error) {
   console.error("API Error:", error);
@@ -29,34 +20,6 @@ function throwNiceError(error) {
     "เกิดข้อผิดพลาดขณะส่งข้อมูล";
   throw message;
 }
-
-
-export async function GetLogin(email, password) {
-  try {
-    const res = await apiClient.post("/api/login-admin", { email, password });
-    // คืนเฉพาะ data
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-export async function GetDataprojectUserByYear(token, id_year, page = 1, per_page = 10) {
-  try {
-    const res = await apiClient.post(
-      `/api/v1/admin/projectuserallbyidyear`,
-      { id_year },
-      {
-        ...withAuth(token),
-        params: { page, per_page },
-      }
-    );
-    return res.data?.data ?? [];
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
 
 export async function getCourses({ termId, statusId, availabilityId } = {}) {
   try {
@@ -126,6 +89,3 @@ export async function applyTutor(formData) {
   }
 }
 
-export async function getdataProducts() {
-  return getCourses();
-}

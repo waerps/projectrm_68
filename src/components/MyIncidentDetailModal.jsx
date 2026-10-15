@@ -2,7 +2,7 @@ import { downloadFile } from "../utils/downloadFile";
 import { useState, useEffect } from "react";
 import { X, Loader2, Clock, AlertTriangle, Paperclip, FileText } from "lucide-react";
 import { getIncidentDetail, cancelIncident } from "../callapi/callusers_student";
-import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
+import { getIncidentTypeById } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import { confirmDialog, toast } from "./ui/dialogs";
 
