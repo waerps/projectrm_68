@@ -4,7 +4,7 @@ import { flushSync } from "react-dom";
 import axios from "axios";
 import { ArrowLeft, ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Image as ImageIcon, Newspaper, X } from "lucide-react";
 import { API_URL } from "../config";
-import { newsAuthConfig } from "../utils/newsApi";
+import { getPublicNews } from "../utils/publicNews";
 import "./NewsMarqueeArchive.css";
 import "./News.css";
 import PublicPageHero from "../components/PublicPageHero";
@@ -139,12 +139,8 @@ export default function News({ role = "public", embedded = false }) {
     setError(false);
     setSelectedId(null);
     const token = role === "tutor" ? localStorage.getItem("student_token") : null;
-    axios.get(`${API_URL}/api/news`, {
-      params: { role },
-      signal: controller.signal,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-      .then((response) => setNews(Array.isArray(response.data) ? response.data : []))
+    getPublicNews({ role, token, signal: controller.signal })
+      .then((rows) => { if (!controller.signal.aborted) setNews(rows); })
       .catch((requestError) => { if (requestError.code !== "ERR_CANCELED") { setError(true); setNews([]); } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();

@@ -3238,6 +3238,8 @@ export default function AdminCoursesPage() {
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const createInFlight = useRef(false);
+  const duplicateInFlight = useRef(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterTerm, setFilterTerm] = useState("all"); // "all" | Term_Id
@@ -3289,6 +3291,8 @@ export default function AdminCoursesPage() {
   useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterGrade, filterAvailability]);
 
   const handleCreate = async (data) => {
+    if (createInFlight.current) return;
+    createInFlight.current = true;
     setIsSubmitting(true);
     const { pendingSubjects = [], pendingStudents = [], ...courseData } = data;
 
@@ -3300,6 +3304,7 @@ export default function AdminCoursesPage() {
     } catch (e) {
       showToast("error", "สร้างคอร์สไม่สำเร็จ", e.response?.data?.message);
       setIsSubmitting(false);
+      createInFlight.current = false;
       return;
     }
 
@@ -3351,6 +3356,7 @@ export default function AdminCoursesPage() {
       setShowAddModal(false);
       fetchAll();
       setIsSubmitting(false);
+      createInFlight.current = false;
     }
   };
 
@@ -3414,8 +3420,8 @@ export default function AdminCoursesPage() {
 
   const handleDelete = async () => {
     try {
-      await axios.delete(`${API_BASE}/courses/${deletingCourse.CourseID}`);
-      showToast("success", "ลบข้อมูลคอร์สสำเร็จ");
+      const { data } = await axios.delete(`${API_BASE}/courses/${deletingCourse.CourseID}`);
+      showToast("success", data?.message || "ลบข้อมูลคอร์สสำเร็จ");
       setDeletingCourse(null);
       fetchAll();
     } catch (e) {
@@ -3428,6 +3434,8 @@ export default function AdminCoursesPage() {
   };
 
   const confirmDuplicate = async ({ StartDate, LastDate }) => {
+    if (duplicateInFlight.current) return;
+    duplicateInFlight.current = true;
     setIsSubmitting(true);
     try {
       await axios.post(`${API_BASE}/courses/${duplicatingCourse.CourseID}/duplicate`, { StartDate, LastDate });
@@ -3438,6 +3446,7 @@ export default function AdminCoursesPage() {
       showToast("error", "เกิดข้อผิดพลาด", e.response?.data?.message);
     } finally {
       setIsSubmitting(false);
+      duplicateInFlight.current = false;
     }
   };
 

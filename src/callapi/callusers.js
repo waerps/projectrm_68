@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
 import axios from "axios";
+import { publicListRequest } from "../utils/publicListRequest";
 
 const BASE_URL = import.meta?.env?.VITE_API_URL || API_URL;
 
@@ -59,14 +60,13 @@ export async function GetDataprojectUserByYear(token, id_year, page = 1, per_pag
 
 export async function getCourses({ termId, statusId, availabilityId } = {}) {
   try {
-    const res = await apiClient.get("/courses", {
-      params: {
-        termId,
-        statusId,
-        availabilityId,
-      },
+    return await publicListRequest(async () => {
+      const res = await apiClient.get("/courses", {
+        params: { termId, statusId, availabilityId },
+        timeout: 20000,
+      });
+      return res.data;
     });
-    return res.data ?? [];
   } catch (error) {
     throwNiceError(error);
   }
