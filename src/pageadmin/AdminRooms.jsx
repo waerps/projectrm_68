@@ -200,7 +200,6 @@ function FacilityEditor({ roomId, showToast }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
-    const [newName, setNewName] = useState("");
 
     useEffect(() => {
         Promise.all([
@@ -234,30 +233,6 @@ function FacilityEditor({ roomId, showToast }) {
         } finally {
             setBusy(false);
         }
-    };
-
-    const addFacility = () => {
-        const name = newName.trim();
-        if (!name || busy) return;
-        if (items.some(i => i.facilitiesName.toLowerCase() === name.toLowerCase())) { setNewName(""); return; }
-        const existing = facilityList.find(t => t.Facilities_Name.toLowerCase() === name.toLowerCase());
-        const nextItems = [...items, {
-            facilitiesId: existing?.FacilitiesId || null,
-            facilitiesName: existing?.Facilities_Name || name,
-            quantity: 1,
-        }];
-        setNewName("");
-        persist(nextItems);
-    };
-
-    const updateQty = (idx, delta) => {
-        if (busy) return;
-        const nextItems = items.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity + delta) } : it);
-        persist(nextItems);
-    };
-    const removeItem = (idx) => {
-        if (busy) return;
-        persist(items.filter((_, i) => i !== idx));
     };
 
     if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>;

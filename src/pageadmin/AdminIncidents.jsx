@@ -312,7 +312,7 @@ export default function AdminIncidents() {
       setIncidents(res.data.incidents);
       setHasLoaded(true);
       setLoadError(false);
-    } catch (e) {
+    } catch {
       // โหลดซ้ำหลังมีข้อมูลแล้ว (เช่น หลังเปลี่ยนสถานะ) ไม่สำเร็จ → คงรายการเดิมไว้ แจ้งด้วย toast
       if (hasLoaded) showToast("error", "โหลดข้อมูลล่าสุดไม่สำเร็จ", "รายการที่เห็นอาจยังไม่อัปเดต");
       else setLoadError(true);

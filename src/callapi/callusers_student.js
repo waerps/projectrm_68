@@ -22,21 +22,6 @@ function throwNiceError(error) {
   throw message;
 }
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-
-export async function studentLogin(username, password) {
-  try {
-    const res = await apiClient.post('/auth/login', {
-      username,
-      password,
-    });
-
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
 export async function getStudentProfile(token) {
@@ -129,20 +114,6 @@ export async function getStudentVideos(token, courseId) {
   }
 }
 
-export async function updateVideoProgress(token, videoId, payload) {
-  try {
-    // payload: { WatchPercent, LastWatchTime }
-    const res = await apiClient.put(
-      `/api/student/videos/${videoId}/progress`,
-      payload,
-      withAuth(token)
-    );
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
 export async function updateVideoWatchSegments(token, videoId, payload) {
   try {
     const res = await apiClient.put(
@@ -206,36 +177,7 @@ export async function getStudentSubjectFiles(token, courseId, subjectId) {
   }
 }
 
-// ─── Attendance ──────────────────────────────────────────────────────────────
-
-export async function getStudentAttendance(token) {
-  try {
-    const res = await apiClient.get("/api/student/attendance", withAuth(token));
-    return res.data ?? [];
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
 // ─── Payments ────────────────────────────────────────────────────────────────
-
-export async function getStudentPayments(token) {
-  try {
-    const res = await apiClient.get("/api/student/payments", withAuth(token));
-    return res.data ?? [];
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-export async function createLineLinkCode(token) {
-  try {
-    const res = await apiClient.post("/api/payments/line-link-code", {}, withAuth(token));
-    return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
 
 export async function getLineLoginStatus(token) {
   try {
@@ -295,17 +237,6 @@ export async function verifyInstallmentSlip(token, installmentId, slipImage) {
       },
     });
     return res.data;
-  } catch (error) {
-    throwNiceError(error);
-  }
-}
-
-// ─── Notifications ───────────────────────────────────────────────────────────
-
-export async function getStudentNotifications(token) {
-  try {
-    const res = await apiClient.get("/api/student/notifications", withAuth(token));
-    return res.data ?? [];
   } catch (error) {
     throwNiceError(error);
   }
