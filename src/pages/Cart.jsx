@@ -438,6 +438,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [checkoutToken, setCheckoutToken] = useState(() => localStorage.getItem("student_token"));
   const [pendingUser, setPendingUser] = useState(null);
   const [checkoutAccount, setCheckoutAccount] = useState({ firstname: "", lastname: "", username: "", password: "", confirmPassword: "" });
+  const [pdpaAcknowledged, setPdpaAcknowledged] = useState(false);
   const [studentForm, setStudentForm] = useState({ firstname: "", lastname: "", phoneNo: "", schoolName: "" });
   const [purchaseNotes, setPurchaseNotes] = useState({});
   const [payPlan, setPayPlan] = useState("full");
@@ -600,8 +601,12 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
         const login = () => fetch(`${API_BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(credentials) });
         let response = await login();
         if (response.status === 401) {
+          if (!pdpaAcknowledged) {
+            throw new Error("กรุณารับทราบเรื่องการเก็บและใช้ข้อมูลก่อนสร้างบัญชีใหม่");
+          }
           const registration = new FormData();
           for (const key of ["firstname", "lastname", "username", "password"]) registration.append(key, checkoutAccount[key].trim());
+          registration.append("pdpaAcknowledged", "true");
           const registered = await fetch(`${API_BASE}/auth/register`, { method: "POST", body: registration });
           const registeredBody = await registered.json().catch(() => ({}));
           if (!registered.ok) throw new Error(registeredBody.message?.includes("ถูกใช้งานแล้ว") ? "ชื่อผู้ใช้นี้มีอยู่แล้ว แต่รหัสผ่านไม่ตรง กรุณาตรวจสอบอีกครั้ง" : registeredBody.message || "สร้างบัญชีไม่สำเร็จ");
@@ -1036,7 +1041,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
             <div>
               <h2 className="text-xl font-bold text-slate-900">ข้อมูลผู้ซื้อ</h2>
               <p className="mt-1 text-sm text-slate-500">ข้อมูลนี้ใช้ติดต่อเรื่องการเรียนและการชำระเงิน</p>
-              {!checkoutToken ? <CheckoutIdentity account={checkoutAccount} onChange={setCheckoutAccount} onAuthenticated={handleCheckoutAuthenticated} error={step1Error} busy={savingStep1} /> : (
+              {!checkoutToken ? <CheckoutIdentity account={checkoutAccount} onChange={setCheckoutAccount} onAuthenticated={handleCheckoutAuthenticated} pdpaAcknowledged={pdpaAcknowledged} onPdpaAcknowledgedChange={setPdpaAcknowledged} error={step1Error} busy={savingStep1} /> : (
                 <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
                   <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3"><h3 className="font-bold text-slate-900">ข้อมูลนักเรียน</h3><span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">{pendingUser ? "ยืนยันตัวตนแล้ว" : "เข้าสู่ระบบแล้ว"}</span></div>
                   <p className="mt-3 text-xs text-slate-500">ตรวจสอบและแก้ไขข้อมูลติดต่อก่อนชำระเงิน</p>

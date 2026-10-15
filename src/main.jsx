@@ -57,6 +57,7 @@ const ProfileLayout = lazyPage(() => import("./layouts/ProfileLayout.jsx"));
 
 // Pages Imports
 import Home from "./pages/Home.jsx"
+import RouteErrorPage from "./pages/RouteErrorPage.jsx"
 const VirtualTour = lazyPage(() => import("./pages/VirtualTour.jsx"));
 const Schedule = lazyPage(() => import("./pages/Schedule.jsx"));
 const CourseDetail = lazyPage(() => import("./pages/Courses.jsx"));
@@ -131,6 +132,9 @@ const Favorites = lazyPage(() => import("./pages/Favorites.jsx"));
 
 const router = createBrowserRouter(
   [
+    {
+      errorElement: <RouteErrorPage />,
+      children: [
     { path: "login", element: <Login /> },
     { path: "register", element: <Register /> },
     { path: "register/google", element: <GoogleRegister /> },
@@ -225,6 +229,8 @@ const router = createBrowserRouter(
             { path: "exam-analytics", element: <AdminExamAnalytics /> },   // หน้าวิเคราะห์ตัวเดียวกับติวเตอร์ แต่มุมแอดมิน
           ],
         },
+      ],
+    },
       ],
     },
   ],

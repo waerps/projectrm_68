@@ -2,7 +2,7 @@ import { useState } from "react";
 import GoogleSignInButton from "../components/GoogleSignInButton";
 const inputClass = "mt-1.5 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100";
 
-export default function CheckoutIdentity({ account, onChange, onAuthenticated, error, busy }) {
+export default function CheckoutIdentity({ account, onChange, onAuthenticated, pdpaAcknowledged, onPdpaAcknowledgedChange, error, busy }) {
   const [googleError, setGoogleError] = useState("");
   const [googleBusy, setGoogleBusy] = useState(false);
 
@@ -22,6 +22,14 @@ export default function CheckoutIdentity({ account, onChange, onAuthenticated, e
         <label className="text-sm font-semibold text-slate-700">ยืนยันรหัสผ่าน <span className="text-red-500">*</span><input className={inputClass} name="confirmPassword" type="password" required value={account.confirmPassword} onChange={update} autoComplete="new-password" /></label>
       </div>
       <p className="mt-3 text-xs text-slate-500">หากชื่อผู้ใช้และรหัสผ่านตรงกับบัญชีเดิม ระบบจะใช้บัญชีนั้นโดยอัตโนมัติ</p>
+      <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50 p-3">
+        <strong className="text-xs text-orange-800">การเก็บและใช้ข้อมูลส่วนบุคคล</strong>
+        <p className="mt-1 text-xs leading-relaxed text-slate-600">สถาบันจะใช้ข้อมูลที่กรอกเพื่อจัดการบัญชีผู้เรียนและการเรียนการสอน ข้อมูลที่กระทบความเป็นส่วนตัวเพิ่มเติม เช่น พฤติกรรมระหว่างทำข้อสอบ ระบบจะขอความยินยอมแยกต่างหากก่อนซื้อคอร์สเรียน</p>
+        <label htmlFor="checkout-register-pdpa" className="mt-3 flex cursor-pointer items-start gap-2 text-xs font-semibold text-slate-700">
+          <input id="checkout-register-pdpa" type="checkbox" checked={pdpaAcknowledged} onChange={(event) => onPdpaAcknowledgedChange(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-orange-500" />
+          <span>ข้าพเจ้ารับทราบเรื่องการเก็บและใช้ข้อมูลข้างต้นแล้ว <span className="text-red-500">* สำหรับบัญชีใหม่</span></span>
+        </label>
+      </div>
       {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
       <div className="my-5 flex items-center gap-3 text-xs text-slate-400"><span className="h-px flex-1 bg-slate-200" />หรือใช้บัญชี Google ที่มีอยู่แล้ว<span className="h-px flex-1 bg-slate-200" /></div>
       <GoogleSignInButton disabled={busy || googleBusy} onBusyChange={setGoogleBusy} onAuthenticated={(result) => {
