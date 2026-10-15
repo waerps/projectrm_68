@@ -123,6 +123,7 @@ export function Login({ initialMode = "login" }) {
       Object.entries(registration).forEach(([key, value]) => {
         if (key !== "confirmPassword") formData.append(key, value ?? "");
       });
+      formData.append("pdpaAcknowledged", "true");
       if (registrationPhoto) formData.append("photo", registrationPhoto);
       const response = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
