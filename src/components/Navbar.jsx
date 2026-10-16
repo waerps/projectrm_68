@@ -541,7 +541,8 @@ const cartTotal = cart.reduce((sum, item) => {
                 setShowCartDrop(false)
               }}
               aria-label="เมนูหลักและบัญชี"
-              aria-controls="public-navigation-menu"
+              // ชี้ id ของเมนูเฉพาะตอนเปิด เพราะเมนูถูก render เฉพาะตอน menuOpen (W3C: aria-controls ต้องชี้ id ที่มีอยู่จริง)
+              aria-controls={menuOpen ? "public-navigation-menu" : undefined}
               aria-expanded={menuOpen}
               className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${menuOpen ? "bg-orange-100 text-orange-500" : "text-gray-500 hover:bg-orange-100 hover:text-orange-500"}`}
             >

@@ -56,11 +56,13 @@ export const toCardItem = (course) => {
   }
 }
 
-export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggleFavorite, showDiscountBadge = false }) {
+// การ์ดเป็น <div> ไม่ใช่ <a> (ห้ามมีปุ่มซ้อนในลิงก์ตาม W3C) — ชื่อคอร์สเป็นลิงก์แบบยืดเต็มการ์ด
+// (after:absolute inset-0) จึงกดตรงไหนของการ์ดก็ไปหน้าคอร์สได้เหมือนเดิม ส่วนปุ่มอยู่ชั้นบน (z-[2])
+export function CourseCard({ item, href, isFav, inCart, onBuyNow, onAddToCart, onToggleFavorite, showDiscountBadge = false }) {
   const statusBadge = STATUS_BADGE[item.status]
   const canEnroll = [1, 2].includes(Number(item.status))
   return (
-    <div className="sa-card3d group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
+    <div className="sa-card3d group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
       {...cardTiltHandlers} style={cardIdleDelay(item.id)}>
       <span className="sa-glow3d" />
       <div className="relative h-36 overflow-hidden bg-gradient-to-br from-orange-50 to-amber-100">
@@ -73,7 +75,7 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
         {statusBadge && <span className={`sa-pop3d absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur ${statusBadge.cls}`}>{statusBadge.label}</span>}
       </div>
       <div className="flex flex-1 flex-col p-3.5">
-        <h3 className="line-clamp-2 min-h-[2.6rem] text-[13.5px] font-bold leading-snug text-neutral-800">{item.title}</h3>
+        <h3 className="line-clamp-2 min-h-[2.6rem] text-[13.5px] font-bold leading-snug text-neutral-800">{href ? <Link to={href} className="after:absolute after:inset-0 after:z-[1] after:content-[''] focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-orange-400">{item.title}</Link> : item.title}</h3>
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-neutral-500">
           <Calendar className="h-3.5 w-3.5 shrink-0 text-orange-400" /><span className="truncate">{item.dateRange}</span>
         </div>
@@ -87,14 +89,14 @@ export function CourseCard({ item, isFav, inCart, onBuyNow, onAddToCart, onToggl
           <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">{item.courseType}</span>
           <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700">{item.availabilityName}</span>
         </div>
-        <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onBuyNow() }} disabled={!canEnroll} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300">
+        <div className="relative z-[2] mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onBuyNow?.() }} disabled={!canEnroll} className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-orange-500 py-2.5 text-[11px] font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-neutral-300">
             <BadgeCheck className="h-3.5 w-3.5" />{canEnroll ? "ซื้อคอร์สเรียน" : statusBadge?.label || "ไม่เปิดรับสมัคร"}
           </button>
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onAddToCart() }} disabled={inCart || !canEnroll} aria-label={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} title={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50">
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (canEnroll) onAddToCart?.() }} disabled={inCart || !canEnroll} aria-label={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} title={inCart ? "อยู่ในตะกร้าแล้ว" : canEnroll ? "เพิ่มลงตะกร้า" : "ไม่เปิดรับสมัคร"} className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-orange-200 bg-orange-50 text-orange-500 transition hover:border-orange-300 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50">
             <ShoppingCart className="h-4 w-4" />
           </button>
-          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite() }} aria-label={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} title={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${isFav ? "border-red-200 bg-red-50 text-red-500" : "border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:text-red-400"}`}>
+          <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite?.() }} aria-label={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} title={isFav ? "นำออกจากรายการโปรด" : "เพิ่มในรายการโปรด"} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition ${isFav ? "border-red-200 bg-red-50 text-red-500" : "border-gray-200 bg-white text-gray-400 hover:border-red-200 hover:text-red-400"}`}>
             <Heart className={`h-4 w-4 ${isFav ? "fill-red-400" : ""}`} />
           </button>
         </div>
@@ -167,7 +169,7 @@ export default function Promotion() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {promotionCourses.map((course) => {
             const item = toCardItem(course)
-            return <Link key={course.CourseID} to={`/courses/${course.CourseID}`} className="block h-full"><CourseCard item={item} isFav={favorites.some((f) => f.id === item.id)} inCart={cart.some((c) => c.id === item.id)} showDiscountBadge onBuyNow={() => buyNow(item)} onAddToCart={() => addToCart(item)} onToggleFavorite={() => toggleFavorite(item)} /></Link>
+            return <CourseCard key={course.CourseID} href={`/courses/${course.CourseID}`} item={item} isFav={favorites.some((f) => f.id === item.id)} inCart={cart.some((c) => c.id === item.id)} showDiscountBadge onBuyNow={() => buyNow(item)} onAddToCart={() => addToCart(item)} onToggleFavorite={() => toggleFavorite(item)} />
           })}
         </div>
       )}

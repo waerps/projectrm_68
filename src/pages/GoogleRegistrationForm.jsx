@@ -32,7 +32,7 @@ export default function GoogleRegistrationForm({ pending, onCancel, onComplete }
     setError("");
     try {
       const data = await postStudentAuth("/auth/google/register", {
-        ...form, registrationToken: pending.registrationToken,
+        ...form, registrationToken: pending.registrationToken, pdpaAcknowledged: true,
       });
       if (onComplete) onComplete(data);
       else finishStudentLogin(data, navigate, pending);
