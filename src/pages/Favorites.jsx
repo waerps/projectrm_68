@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Heart, ShoppingBag } from "lucide-react";
 import { useShop } from "../context/ShopContext";
 import { CourseCard } from "./Promotion";
@@ -25,6 +25,11 @@ const normalizeFavorite = (course) => {
 
 export default function Favorites() {
   const { favorites, cart, addToCart, toggleFavorite } = useShop();
+  const navigate = useNavigate();
+  const buyNow = (item) => {
+    addToCart(item);
+    navigate("/cart", { state: { openCheckout: true } });
+  };
 
   return (
     <div className="mx-auto mt-[110px] max-w-[1200px] px-4 pb-16 md:px-6">
@@ -61,15 +66,16 @@ export default function Favorites() {
             const inCart = cart.some((cartItem) => String(cartItem.id) === String(item.id));
 
             return (
-              <Link key={item.id} to={`/courses/${item.id}`} className="block h-full">
                 <CourseCard
+                  key={item.id}
+                  href={`/courses/${item.id}`}
                   item={item}
                   isFav
                   inCart={inCart}
+                  onBuyNow={() => buyNow(item)}
                   onAddToCart={() => addToCart(item)}
                   onToggleFavorite={() => toggleFavorite(item)}
                 />
-              </Link>
             );
           })}
         </div>

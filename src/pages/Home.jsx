@@ -57,11 +57,16 @@ const STATUS_BADGE = {
 };
 
 /** ---------- helpers ---------- */
-const SafeImg = ({ src, className, alt }) => (
+const SafeImg = ({ src, className, alt }) => {
+  const srcSet = src?.includes("res.cloudinary.com")
+    ? [640, 960, 1280, 1600].map(width => `${optimizedImage(src, width)} ${width}w`).join(", ")
+    : undefined;
+  return (
   <img
     src={optimizedImage(src, 1280)}
-    srcSet={src?.includes("res.cloudinary.com") ? [640, 960, 1280, 1600].map(width => `${optimizedImage(src, width)} ${width}w`).join(", ") : undefined}
-    sizes="(max-width: 768px) 100vw, (max-width: 1280px) 95vw, 1280px"
+    srcSet={srcSet}
+    // sizes ใช้คู่กับ srcSet เท่านั้น (W3C) — รูปที่ไม่ได้มาจาก Cloudinary ไม่มี srcSet จึงไม่ใส่ sizes
+    sizes={srcSet ? "(max-width: 768px) 100vw, (max-width: 1280px) 95vw, 1280px" : undefined}
     fetchPriority="high"
     decoding="async"
     width={1600}
@@ -73,7 +78,8 @@ const SafeImg = ({ src, className, alt }) => (
     className={className}
     alt={alt}
   />
-);
+  );
+};
 
 const CourseArtwork = ({ src, alt, className = "" }) => {
   const [failed, setFailed] = useState(false);
@@ -244,13 +250,14 @@ const SectionTitle = ({ children, sub, eyebrow, align = "center" }) => (
  * โครงสร้าง/แท็กยึดตาม CourseCard ใน Admincoures.jsx (ไม่รวมจำนวนนักเรียน)
  * ปุ่มเพิ่มลงตะกร้า/ถูกใจ ใช้สไตล์เดียวกับ CourseSearch.jsx
  */
-const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAddToCart, onToggleFavorite }) => {
+// การ์ดเป็น <div> (ห้ามปุ่มซ้อนใน <a>) ชื่อคอร์สเป็นลิงก์ยืดเต็มการ์ด ปุ่มอยู่ชั้นบน
+const CourseCard = ({ item, href, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAddToCart, onToggleFavorite }) => {
   const statusBadge = STATUS_BADGE[item.status];
   const actionDisabled = isEnrolled || !canEnroll;
   const actionLabel = isEnrolled ? "มีคอร์สนี้แล้ว" : !canEnroll ? statusBadge?.label || "ไม่เปิดรับสมัคร" : "ซื้อคอร์สเรียน";
 
   return (
-    <div className="sa-card3d group flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
+    <div className="sa-card3d group relative flex h-full flex-col overflow-hidden rounded-2xl border-2 border-gray-100 bg-white shadow-sm hover:border-orange-300 hover:shadow-xl"
       {...cardTiltHandlers} style={cardIdleDelay(item.id)}>
       <span className="sa-glow3d" />
       {/* รูป */}
@@ -272,7 +279,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAd
       {/* เนื้อหา */}
       <div className="flex flex-1 flex-col p-3.5">
         <h3 className="line-clamp-2 min-h-[2.6rem] text-[13.5px] font-bold leading-snug text-neutral-800">
-          {item.title}
+          <Link to={href} className="after:absolute after:inset-0 after:z-[1] after:content-[''] focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-orange-400">{item.title}</Link>
         </h3>
 
         <div className="mt-2 flex items-center gap-1.5 text-[11px] text-neutral-500">
@@ -309,7 +316,7 @@ const CourseCard = ({ item, isFav, inCart, isEnrolled, canEnroll, onBuyNow, onAd
         </div>
 
         {/* ปุ่มซื้อหลัก ตามด้วยตะกร้าและรายการโปรดขนาดเท่ากัน */}
-        <div className="mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
+        <div className="relative z-[2] mt-auto flex items-center gap-2 border-t border-neutral-100 pt-3">
           <button
             type="button"
             onClick={(e) => {
@@ -388,8 +395,9 @@ function CourseCarousel({ group, favorites, cart, enrolledCourseIds, onBuyNow, t
     const canEnroll = ![STATUS.CLOSED_REG, STATUS.CLOSED_COURSE].includes(Number(c.Status_Course_Id));
     const courseData = item;
     return (
-      <Link key={c.CourseID} to={`/courses/${c.CourseID}`} className="block h-full">
         <CourseCard
+          key={c.CourseID}
+          href={`/courses/${c.CourseID}`}
           item={item}
           isFav={isFav}
           inCart={inCart}
@@ -399,7 +407,6 @@ function CourseCarousel({ group, favorites, cart, enrolledCourseIds, onBuyNow, t
           onAddToCart={() => toggleCart(courseData)}
           onToggleFavorite={() => toggleFavorite(courseData)}
         />
-      </Link>
     );
   };
 

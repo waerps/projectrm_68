@@ -281,8 +281,9 @@ export default function CourseSearch() {
                 const inCart = cart.some((f) => f.id === id)
                 const courseData = toCardItem(c)
                 return (
-                  <Link key={id} to={`/courses/${id}`} className="block h-full">
                     <CourseCard
+                      key={id}
+                      href={`/courses/${id}`}
                       item={courseData}
                       isFav={isFav}
                       inCart={inCart}
@@ -290,7 +291,6 @@ export default function CourseSearch() {
                       onAddToCart={() => addToCart(courseData)}
                       onToggleFavorite={() => toggleFavorite(courseData)}
                     />
-                  </Link>
                 )
               })}
             </div>
