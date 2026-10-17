@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { BotMessageBubbles, UserMessageText, RetryButton } from "./ChatMessageBody"
+import { QUICK_REPLIES } from "./chatQuickReplies"
 import { useChat } from "./ChatProvider"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -164,8 +165,8 @@ export default function ChatFullscreen() {
 
               {messages.length === 1 && (
                 <div className="flex flex-wrap gap-2">
-                  {["ดูคอร์สเรียน", "ค่าเรียน", "ติดต่อสถาบัน"].map((label) => (
-                    <button key={label} onClick={() => handleSend(label)} disabled={isBusy}
+                  {QUICK_REPLIES.map(({ label, question }) => (
+                    <button key={label} onClick={() => handleSend(question)} disabled={isBusy}
                       className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-50">
                       {label}
                     </button>
