@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronRight, Volume2, VolumeX, Play } from 'lucide-react';
+import { Bell, ChevronRight, Volume2, VolumeX } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -107,7 +107,6 @@ export default function NotificationBell({ role, pagePath }) {
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
         <span className="font-bold text-gray-900">การแจ้งเตือน</span>
         <div className="flex items-center gap-2">
-          <button type="button" disabled={muted} onClick={async () => { const played = await playNotifySound({ preview: true }); setSoundHint(played ? 'เสียงตัวอย่างเล่นแล้ว' : 'เบราว์เซอร์ยังไม่อนุญาตเสียง ลองแตะหน้าจอแล้วกดอีกครั้ง'); }} title="ลองเสียงแจ้งเตือน" className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-gray-600 hover:bg-orange-50 hover:text-orange-500 disabled:cursor-not-allowed disabled:opacity-40"><Play className="h-3.5 w-3.5" />ลองเสียง</button>
           <button type="button" onClick={toggleMute} aria-label={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} title={muted ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'} aria-pressed={muted} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-orange-50 hover:text-orange-500">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>

@@ -161,10 +161,7 @@ export default function AdminNotifications() {
           { key: 'unread', label: 'ยังไม่ได้อ่าน', value: unreadCount, color: 'bg-amber-500' },
           { key: 'action', label: 'ต้องดำเนินการ', value: actionRequiredCount, color: 'bg-red-500' },
         ].map(({ key, label, value, color }) => (
-          // กดการ์ดเพื่อกรองตามสถานะ — ใช้แทนตัวเลขซ้ำในตัวกรองด้านล่าง
-          <button key={key} type="button" aria-pressed={filterStatus === key}
-            onClick={() => setFilterStatus(filterStatus === key && key !== 'all' ? 'all' : key)}
-            className={`flex min-w-0 items-center gap-3 p-3 text-left bg-white rounded-2xl border shadow-sm hover:shadow-md hover:border-orange-300 transition ${filterStatus === key ? "border-orange-400 ring-2 ring-orange-100" : "border-slate-200"}`}>
+          <div key={key} className="flex min-w-0 items-center gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <span className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               {key === 'all' ? <Bell className="h-5 w-5 text-white" /> : key === 'unread' ? <Filter className="h-5 w-5 text-white" /> : <AlertTriangle className="h-5 w-5 text-white" />}
             </span>
@@ -172,7 +169,7 @@ export default function AdminNotifications() {
               <span className={`block ${STAT_LABEL}`}>{label}</span>
               <span className={`block ${STAT_VALUE}`}>{value.toLocaleString()}<span className={STAT_UNIT}>รายการ</span></span>
             </span>
-          </button>
+          </div>
         ))}
       </div>
 

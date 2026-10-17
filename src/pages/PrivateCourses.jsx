@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { API_URL } from "../config";
+import { toast } from "../components/ui/dialogs";
 import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
 import PrivateSubjectStack from "../components/PrivateSubjectStack";
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt";
@@ -186,7 +187,6 @@ function ContactModal({ subject, subjects, onClose }) {
     privacyAcknowledged: false,
   });
   const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
   const [sendError, setSendError] = useState("");
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -226,9 +226,12 @@ function ContactModal({ subject, subjects, onClose }) {
         subjectName: inquiry.subjectName.trim(),
         offerId: selectedOffer?.offerId || null,
       });
-      setSent(true);
+      toast("ส่งข้อมูลให้สถาบันแล้ว\nเจ้าหน้าที่จะติดต่อกลับตามเบอร์ที่ระบุ", "success");
+      onClose();
     } catch (error) {
-      setSendError(error?.response?.data?.message || "ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const message = error?.response?.data?.message || "ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+      setSendError(message);
+      toast(message, "error");
     } finally {
       setSending(false);
     }
@@ -257,11 +260,6 @@ function ContactModal({ subject, subjects, onClose }) {
         </div>
 
         <div className="space-y-3 p-5 sm:p-6">
-          {sent ? (
-            <div role="status" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-              ส่งข้อมูลให้สถาบันแล้ว เจ้าหน้าที่จะติดต่อกลับตามเบอร์ที่ระบุ
-            </div>
-          ) : (
             <form onSubmit={sendInquiry} className="space-y-5 rounded-2xl border border-orange-100 bg-[#fffaf5] p-4 sm:p-5">
               <div><h4 className="text-lg font-extrabold text-[#14213D]">ฝากข้อมูลคอร์สเดี่ยว</h4><p className="mt-1 text-xs text-gray-600">เล่าความต้องการไว้ก่อน เจ้าหน้าที่จะติดต่อกลับเพื่อประเมินและนัดเรียน</p></div>
               <div className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm">
@@ -295,7 +293,6 @@ function ContactModal({ subject, subjects, onClose }) {
               {sendError && <p role="alert" className="text-xs font-semibold text-red-600">{sendError}</p>}
               <button type="submit" disabled={sending || !inquiry.privacyAcknowledged} className="w-full rounded-xl bg-orange-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none">{sending ? "กำลังส่งข้อมูล..." : "ส่งข้อมูลให้สถาบัน"}</button>
             </form>
-          )}
           <div className="relative">
           <a href={C.tel} className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 p-3 pr-14 transition hover:border-orange-300">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-white" style={{ background: ORANGE_GRAD }}><Phone className="h-5 w-5" /></span>
