@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react"
-import ReactMarkdown from 'react-markdown';
+import { BotMessageBubbles, UserMessageText, RetryButton } from "./ChatMessageBody"
 import { useChat } from "./ChatProvider"
 import { Pencil, Trash2 } from "lucide-react"
 
@@ -18,7 +18,12 @@ export default function ChatFullscreen() {
     loadChat,
     formatDate,
     messagesEndRef,
-    isLoading, // 🔴 ดึงค่านี้มาใช้
+    isLoading,
+    isBusy,
+    pendingChatId,
+    isStreaming,
+    loadingText,
+    retryMessage,
     deleteChat,
     renameChat,
   } = useChat()
@@ -57,7 +62,7 @@ export default function ChatFullscreen() {
       <div className="h-full max-w-[1200px] mx-auto px-4 pb-4">
         <div className="flex gap-4 h-full">
           {/* Sidebar - โค้ดส่วนเดิม */}
-          <div className="w-80 bg-white rounded-3xl shadow-lg p-4 flex flex-col">
+          <div className="hidden md:flex w-72 lg:w-80 shrink-0 bg-white rounded-3xl shadow-lg p-4 flex-col">
             <button
               onClick={handleNewChat}
               className="w-full bg-orange-500 text-white rounded-2xl py-3 font-semibold hover:bg-orange-600 transition-colors mb-4 flex items-center justify-center gap-2"
@@ -92,7 +97,7 @@ export default function ChatFullscreen() {
                   )}
 
                   {editingId !== chat.id && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex group-focus-within:flex gap-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); setEditingId(chat.id); setEditValue(chat.title) }}
                         className="w-7 h-7 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
@@ -100,13 +105,13 @@ export default function ChatFullscreen() {
                       >
                         <Pencil size={14} />
                       </button>
-                      <button
+                      {pendingChatId !== chat.id && <button
                         onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
                         className="w-7 h-7 rounded-full hover:bg-red-100 flex items-center justify-center text-gray-500 hover:text-red-500 transition-colors"
                         title="ลบ"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </button>}
                     </div>
                   )}
                 </div>
@@ -115,7 +120,7 @@ export default function ChatFullscreen() {
           </div>
 
           {/* Chat Area */}
-          <div className="flex-1 bg-white rounded-3xl shadow-lg flex flex-col relative">
+          <div className="flex-1 min-w-0 bg-white rounded-3xl shadow-lg flex flex-col relative">
             {/* Header - โค้ดส่วนเดิม */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -127,37 +132,31 @@ export default function ChatFullscreen() {
                   </div>
                 </div>
               </div>
-              <button onClick={() => { setIsFullscreen(false); setIsOpen(true); }} className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center">✕</button>
+              <div className="flex items-center gap-1">
+                {/* จอมือถือไม่มีแถบประวัติด้านซ้าย จึงมีปุ่มแชตใหม่ไว้ตรงนี้ */}
+                <button type="button" onClick={handleNewChat} className="md:hidden h-9 px-3 rounded-full border border-orange-200 text-sm font-semibold text-orange-600 hover:bg-orange-50">+ แชตใหม่</button>
+                <button onClick={() => { setIsFullscreen(false); setIsOpen(true); }} aria-label="ย่อหน้าต่างแชต" className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center">✕</button>
+              </div>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 relative" ref={scrollContainerRef} onScroll={handleScroll}>
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className="flex flex-col gap-2 max-w-[70%]">
+                  <div className="flex flex-col gap-2 max-w-[85%] md:max-w-[70%] min-w-0">
                     {msg.sender === "user" ? (
                       <div className="px-4 py-3 rounded-2xl bg-orange-500 text-white rounded-br-sm">
-                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        <UserMessageText text={msg.text} />
                       </div>
                     ) : (
-                      msg.text.split('\n').filter(line => line.trim() !== '').map((line, index) => (
-                        <div key={index} className="px-4 py-3 rounded-2xl bg-gray-100 text-gray-800 rounded-bl-sm">
-                          {line.startsWith('•') || line.startsWith('-') ? (
-                            <span className="flex gap-2">
-                              <span className="text-orange-500">•</span>
-                              <span>
-                                <ReactMarkdown components={{ p: ({ node, ...props }) => <span {...props} /> }}>
-                                  {line.replace(/^[•-]\s*/, '')}
-                                </ReactMarkdown>
-                              </span>
-                            </span>
-                          ) : (
-                            <ReactMarkdown components={{ p: ({ node, ...props }) => <span {...props} /> }}>
-                              {line}
-                            </ReactMarkdown>
-                          )}
-                        </div>
-                      ))
+                      <BotMessageBubbles
+                        text={msg.text}
+                        animate={!msg.streaming}
+                        bubbleClass={`px-4 py-3 rounded-2xl rounded-bl-sm ${msg.isError ? "bg-amber-50 text-amber-900 border border-amber-200" : "bg-gray-100 text-gray-800"}`}
+                      />
+                    )}
+                    {msg.isError && msg.retryText && (
+                      <RetryButton onClick={() => retryMessage(msg.id)} disabled={isBusy} />
                     )}
                   </div>
                 </div>
@@ -166,8 +165,8 @@ export default function ChatFullscreen() {
               {messages.length === 1 && (
                 <div className="flex flex-wrap gap-2">
                   {["ดูคอร์สเรียน", "ค่าเรียน", "ติดต่อสถาบัน"].map((label) => (
-                    <button key={label} onClick={() => handleSend(label)}
-                      className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50">
+                    <button key={label} onClick={() => handleSend(label)} disabled={isBusy}
+                      className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-50">
                       {label}
                     </button>
                   ))}
@@ -175,13 +174,15 @@ export default function ChatFullscreen() {
               )}
 
               {/* 🔴 Typing Indicator สำหรับหน้า Fullscreen */}
-              {isLoading && (
-                <div className="flex justify-start">
+              {/* ระหว่างรอข้อความแรก: จุดเคลื่อนไหว + สถานะตามจริง (ซ่อนเมื่อข้อความเริ่มไหลเข้ามา) */}
+              {isLoading && !isStreaming && (
+                <div className="flex flex-col items-start gap-1" role="status" aria-live="polite">
                   <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
                     <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
                     <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
                   </div>
+                  {loadingText && <span className="text-xs text-gray-400 pl-1">{loadingText}</span>}
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -203,11 +204,11 @@ export default function ChatFullscreen() {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSend() }}
                   placeholder={placeholders[placeholderIndex]}
                   className="flex-1 px-4 py-3 rounded-full border border-gray-200 focus:outline-none focus:border-orange-500"
                 />
-                <button onClick={() => handleSend()} disabled={isLoading} className="w-12 h-12 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center">➤</button>
+                <button onClick={() => handleSend()} disabled={isBusy || !inputValue.trim()} aria-label="ส่งข้อความ" className="disabled:opacity-50 w-12 h-12 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center">➤</button>
               </div>
             </div>
           </div>

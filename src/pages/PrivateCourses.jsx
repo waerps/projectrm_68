@@ -540,7 +540,7 @@ export default function PrivateCourses() {
       </div>
 
       {/* แถบติดต่อลอยบนมือถือ/แท็บเล็ต */}
-      <div className="fixed inset-x-3 bottom-3 z-40 lg:hidden">
+      <div data-mobile-dock="lg" className="fixed inset-x-3 bottom-3 z-40 lg:hidden">
         <div className="flex gap-2 rounded-2xl border border-gray-100 bg-white/95 p-2 shadow-xl backdrop-blur">
           <a href={C.tel} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-sm font-bold text-white" style={{ background: ORANGE_GRAD }}>
             <Phone className="h-4 w-4" />โทรหา{C.name}

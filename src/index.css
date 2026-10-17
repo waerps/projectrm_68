@@ -223,3 +223,24 @@ html, body {
   .inc3d-card{transform:none!important;transition:none}
   .inc3d-pill{transition:none}
 }
+
+/* ─── แชตบอต ───────────────────────────────────────────────────────────────
+   Tailwind v4 ไม่อ่าน tailwind.config.js (ไม่มี @config) คลาส animate-chatPopIn / animate-botFloat /
+   animate-fadeIn ที่แชตใช้อยู่จึงไม่เคยถูกสร้าง → นิยามไว้ตรงนี้แทน */
+@keyframes chatPopIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes chatBotFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes chatFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.animate-chatPopIn { animation: chatPopIn .2s ease-out; }
+.animate-botFloat { animation: chatBotFloat 2.5s ease-in-out infinite; }
+.animate-fadeIn { animation: chatFadeIn .3s ease-out both; }
+.chat-fade-in { animation: chatFadeIn .28s ease-out both; }
+/* ปุ่มแชตลอยขึ้นเหนือแถบปุ่มด้านล่างจอมือถือ (หน้าคอร์สเดี่ยว / รายละเอียดคอร์ส) ไม่ให้บังกัน */
+@media (max-width: 767px) {
+  body:has([data-mobile-dock="md"]) .chat-launcher { bottom: 6.5rem; }
+}
+@media (max-width: 1023px) {
+  body:has([data-mobile-dock="lg"]) .chat-launcher { bottom: 6.5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-chatPopIn, .animate-botFloat, .animate-fadeIn, .chat-fade-in { animation: none !important; }
+}

@@ -661,7 +661,7 @@ export default function CourseDetail() {
       {playingVideo && <VideoPlayerModal video={playingVideo} onClose={() => setPlayingVideo(null)} />}
 
       {/* ─── Mobile — thumb-reach floating dock ─── */}
-      <div className="md:hidden fixed bottom-4 left-4 right-4 z-40" style={{ animation: "riseIn .3s ease-out" }}>
+      <div data-mobile-dock="md" className="md:hidden fixed bottom-4 left-4 right-4 z-40" style={{ animation: "riseIn .3s ease-out" }}>
         <div className="flex items-center gap-2 rounded-2xl bg-neutral-900/95 backdrop-blur-xl px-3 py-3 shadow-[0_16px_40px_-10px_rgba(0,0,0,0.5)]">
           <button
             onClick={() => toggleFavorite(courseData)}
