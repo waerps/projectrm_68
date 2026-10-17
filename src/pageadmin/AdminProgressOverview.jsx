@@ -15,6 +15,7 @@ import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 // ─── ภาพรวมพัฒนาการ (ฝั่งแอดมิน) ─────────────────────────────────────────────
 // หนึ่งแถว = คอร์ส 1 × วิชา 1 × ติวเตอร์ 1 ซึ่งตรงกับหน่วยที่ระบบใช้จริง
@@ -38,6 +39,17 @@ const getAdminAuthConfig = () => {
   const token = localStorage.getItem("student_token");
   return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
+
+// สถานะผลสอบของแต่ละรายการ ใช้กับตัวกรอง "สถานะผลสอบ"
+const resultStatusOf = (r) => {
+  const hasPre = r.pre?.avgPct != null, hasPost = r.post?.avgPct != null, hasMid = r.mid?.avgPct != null;
+  if (hasPre && hasPost) return "comparable";
+  if (hasPre || hasMid || hasPost) return "partial";
+  return "none";
+};
+const dateValue = (v) => { const t = new Date(v || "").getTime(); return Number.isNaN(t) ? null : t; };
+
+const SELECT_CLASS = "h-10 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400";
 
 const fmtDate = (v) => {
   if (!v) return null;
@@ -134,6 +146,11 @@ export default function AdminProgressOverview() {
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const [search, setSearch] = useState("");
+  // ตัวกรอง — ถ้าเข้ามาจากปุ่มหน้าติวเตอร์/วิชา ให้ตั้งค่าเริ่มต้นตามนั้น (ผู้ใช้เปลี่ยนต่อได้)
+  const [filterSubject, setFilterSubject] = useState(presetSubjectId || "all");
+  const [filterTutor, setFilterTutor] = useState(presetTutorId || "all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -154,25 +171,51 @@ export default function AdminProgressOverview() {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
-  // แถวหลังกรองตามปุ่มที่กดเข้ามา (ยังไม่กรองคำค้น) — ใช้คิดการ์ดสรุปพัฒนาการด้านบน
+  // แถวของคอร์สที่กดเข้ามา (ถ้ามี) — ฐานของตัวเลือกในตัวกรอง
+  const courseRows = useMemo(() => (
+    presetCourseId ? rows.filter((r) => String(r.courseId) === String(presetCourseId)) : rows
+  ), [rows, presetCourseId]);
+
+  // ตัวเลือกวิชา/ติวเตอร์ ดึงจากข้อมูลจริง ไม่ซ้ำ เรียงตามชื่อ
+  const subjectOptions = useMemo(() => {
+    const m = new Map();
+    courseRows.forEach((r) => { if (!m.has(String(r.subjectId))) m.set(String(r.subjectId), r.subjectName || `วิชา #${r.subjectId}`); });
+    return [...m].sort((a, b) => a[1].localeCompare(b[1], "th"));
+  }, [courseRows]);
+  const tutorOptions = useMemo(() => {
+    const m = new Map();
+    courseRows.forEach((r) => { if (!m.has(String(r.tutorId))) m.set(String(r.tutorId), r.tutorName || `ติวเตอร์ #${r.tutorId}`); });
+    return [...m].sort((a, b) => a[1].localeCompare(b[1], "th"));
+  }, [courseRows]);
+
+  // แถวหลังกรองวิชา/ติวเตอร์ — ใช้คิดการ์ดสรุปพัฒนาการด้านบน
+  // (ไม่รวมคำค้นและสถานะผลสอบ เพื่อให้ตัวเลขสรุปไม่เพี้ยนตามการค้นหา)
   const presetRows = useMemo(() => {
-    let list = rows;
-    if (presetCourseId) list = list.filter((r) => String(r.courseId) === String(presetCourseId));
-    if (presetSubjectId) list = list.filter((r) => String(r.subjectId) === String(presetSubjectId));
-    if (presetTutorId) list = list.filter((r) => String(r.tutorId) === String(presetTutorId));
+    let list = courseRows;
+    if (filterSubject !== "all") list = list.filter((r) => String(r.subjectId) === String(filterSubject));
+    if (filterTutor !== "all") list = list.filter((r) => String(r.tutorId) === String(filterTutor));
     return list;
-  }, [rows, presetCourseId, presetSubjectId, presetTutorId]);
+  }, [courseRows, filterSubject, filterTutor]);
 
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
-    if (!kw) return presetRows;
-    return presetRows.filter(
-      (r) =>
-        r.courseName.toLowerCase().includes(kw) ||
-        (r.subjectName || "").toLowerCase().includes(kw) ||
-        (r.tutorName || "").toLowerCase().includes(kw)
-    );
-  }, [presetRows, search]);
+    let list = presetRows;
+    if (filterStatus !== "all") list = list.filter((r) => resultStatusOf(r) === filterStatus);
+    if (kw) {
+      list = list.filter(
+        (r) =>
+          r.courseName.toLowerCase().includes(kw) ||
+          (r.subjectName || "").toLowerCase().includes(kw) ||
+          (r.tutorName || "").toLowerCase().includes(kw)
+      );
+    }
+    return list;
+  }, [presetRows, search, filterStatus]);
+
+  const hasFilter = search.trim() !== "" || filterSubject !== "all" || filterTutor !== "all" || filterStatus !== "all" || sortBy !== "newest";
+  const clearFilters = () => {
+    setSearch(""); setFilterSubject("all"); setFilterTutor("all"); setFilterStatus("all"); setSortBy("newest"); setPage(1);
+  };
 
   // สรุปพัฒนาการ — ใช้เฉพาะตัวเลขที่ /overview คืนมาแล้ว (pre/post avgPct, growth, improvement)
   // ไม่แสดงจำนวนคอร์ส/ติวเตอร์/นักเรียนรวม เพราะซ้ำกับหน้าจัดการคอร์ส/ติวเตอร์/นักเรียน
@@ -203,8 +246,21 @@ export default function AdminProgressOverview() {
       }
       byId.get(r.courseId).items.push(r);
     }
-    return [...byId.values()];
-  }, [filtered]);
+    const cards = [...byId.values()];
+    // เรียงการ์ดคอร์ส — วันเริ่มที่ไม่ระบุไว้ท้ายสุดเสมอ
+    const byDate = (dir) => (a, b) => {
+      const da = dateValue(a.startDate), db = dateValue(b.startDate);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return dir * (da - db);
+    };
+    if (sortBy === "newest") cards.sort(byDate(-1));
+    else if (sortBy === "oldest") cards.sort(byDate(1));
+    else if (sortBy === "name") cards.sort((a, b) => a.courseName.localeCompare(b.courseName, "th"));
+    else if (sortBy === "students") cards.sort((a, b) => (b.studentsEnrolled || 0) - (a.studentsEnrolled || 0));
+    return cards;
+  }, [filtered, sortBy]);
 
   const totalPages = Math.ceil(courseCards.length / ITEMS_PER_PAGE) || 1;
   const paginatedCourses = courseCards.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -230,13 +286,11 @@ export default function AdminProgressOverview() {
   );
 
   // ป้ายบอกว่ากำลังกรองอะไรอยู่ เมื่อเข้ามาจากปุ่มในหน้าอื่น
-  const presetLabel = filtered.length
-    ? [
-        presetCourseId && filtered[0].courseName,
-        presetSubjectId && filtered[0].subjectName,
-        presetTutorId && filtered[0].tutorName,
-      ].filter(Boolean).join(" · ") || null
-    : null;
+  const presetLabel = [
+    presetCourseId && courseRows[0]?.courseName,
+    filterSubject !== "all" && subjectOptions.find(([id]) => id === String(filterSubject))?.[1],
+    filterTutor !== "all" && tutorOptions.find(([id]) => id === String(filterTutor))?.[1],
+  ].filter(Boolean).join(" · ") || null;
 
   return (
     <div className="space-y-6 px-4 lg:px-0">
@@ -293,20 +347,45 @@ export default function AdminProgressOverview() {
         ))}
       </div>
 
-      {/* Search */}
+      {/* Search + Filter bar — รูปแบบเดียวกับหน้าแอดมินอื่น */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="ค้นหาคอร์ส วิชา หรือติวเตอร์..."
-            className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
-          />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.5fr)_repeat(4,minmax(0,1fr))]">
+          <label className="relative sm:col-span-2 lg:col-span-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="ค้นหาคอร์ส วิชา หรือติวเตอร์..."
+              aria-label="ค้นหาคอร์ส วิชา หรือติวเตอร์"
+              className="pl-9 pr-3 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
+            />
+          </label>
+          <select value={filterSubject} onChange={(e) => { setFilterSubject(e.target.value); setPage(1); }} aria-label="กรองตามวิชา" className={SELECT_CLASS}>
+            <option value="all">ทุกวิชา</option>
+            {subjectOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+          <select value={filterTutor} onChange={(e) => { setFilterTutor(e.target.value); setPage(1); }} aria-label="กรองตามติวเตอร์" className={SELECT_CLASS}>
+            <option value="all">ทุกติวเตอร์</option>
+            {tutorOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} aria-label="กรองตามสถานะผลสอบ" className={SELECT_CLASS}>
+            <option value="all">ทุกสถานะผลสอบ</option>
+            <option value="comparable">เทียบ Pre/Post ได้แล้ว</option>
+            <option value="partial">มีผลสอบบางส่วน</option>
+            <option value="none">ยังไม่มีผลสอบ</option>
+          </select>
+          <select value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1); }} aria-label="เรียงลำดับ" className={SELECT_CLASS}>
+            <option value="newest">เริ่มเรียนล่าสุด</option>
+            <option value="oldest">เริ่มเรียนเก่าสุด</option>
+            <option value="name">ชื่อคอร์ส ก–ฮ</option>
+            <option value="students">นักเรียนมากสุด</option>
+          </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1">
-          แสดง {filtered.length} จาก {rows.length} รายการ ({courseCards.length} คอร์ส)
-        </p>
+        <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
+          <span>แสดง {filtered.length} จาก {courseRows.length} รายการ ({courseCards.length} คอร์ส)</span>
+          <ClearFiltersButton show={hasFilter} onClick={clearFilters} />
+        </div>
       </div>
 
       {error && (
@@ -317,7 +396,7 @@ export default function AdminProgressOverview() {
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuBarChart3 className="h-7 w-7 text-orange-400" /></div>
           <p className="text-base font-semibold text-slate-700">
-            {search.trim() ? "ไม่พบรายการที่ค้นหา" : "ยังไม่มีคอร์สที่มอบหมายวิชาให้ติวเตอร์"}
+            {hasFilter ? "ไม่พบรายการที่ตรงกับตัวกรอง" : "ยังไม่มีคอร์สที่มอบหมายวิชาให้ติวเตอร์"}
           </p>
         </div>
       ) : (
