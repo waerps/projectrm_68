@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
+import { stripToolTrace } from "./chatText"
 
 const ChatContext = createContext(null)
 export const useChat = () => useContext(ChatContext)
@@ -299,8 +300,10 @@ export default function ChatProvider({ children }) {
       if (res.body && /ndjson|event-stream|jsonl/i.test(type)) {
         replyText = await readStream(res, (partial) => {
           if (!partial) return
+          const clean = stripToolTrace(partial)
+          if (!clean) return
           setIsStreaming(true)
-          paint(partial)
+          paint(clean)
         })
       } else {
         const data = await res.json().catch(() => ({}))
@@ -308,7 +311,8 @@ export default function ChatProvider({ children }) {
         if (Array.isArray(history) && history.length) {
           const mapped = history.map((m) => {
             const role = m.role ?? (m.type === "human" ? "user" : "bot")
-            return { id: newId(), sender: role === "user" ? "user" : "bot", text: String(m.text ?? m.content ?? m.message ?? m.answer ?? "") }
+            const text = String(m.text ?? m.content ?? m.message ?? m.answer ?? "")
+            return { id: newId(), sender: role === "user" ? "user" : "bot", text: role === "user" ? text : stripToolTrace(text) }
           })
           commitMessages(chatId, mapped)
           notifyArrived()
@@ -317,6 +321,7 @@ export default function ChatProvider({ children }) {
         replyText = String(extractReply(data) ?? "")
       }
 
+      replyText = stripToolTrace(replyText)
       if (!replyText.trim()) throw new Error("empty reply")
       commitMessages(chatId, [...base, { id: botId, text: replyText, sender: "bot" }])
       notifyArrived()

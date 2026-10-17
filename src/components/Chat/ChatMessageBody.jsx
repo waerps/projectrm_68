@@ -1,27 +1,53 @@
 import React from "react"
 import ReactMarkdown from "react-markdown"
+import { useNavigate } from "react-router-dom"
+import { useChat } from "./ChatProvider"
+import { toInternalPath, autolinkBareUrls } from "./chatText"
 
 /* ─────────────────────────────────────────────────────────────────────────
    เนื้อหาข้อความแชต — ใช้ร่วมกันทั้ง ChatWidget และ ChatFullscreen
    - ข้อความบอต: แตกเป็นก้อนตามบรรทัด (ดีไซน์เดิม) + รองรับ Markdown ในบรรทัด
    - หัวข้อย่อย •, -, * และ 1. แสดงเป็นจุด/ตัวเลข (Gemini มักใช้ "* " ซึ่งเดิมไม่รองรับ)
-   - ลิงก์เปิดแท็บใหม่ ไม่พาออกจากหน้าเว็บ (เดิมกดแล้วหน้าเปลี่ยน แชตหายทั้งหมด)
+   - ลิงก์ไปเว็บอื่นเปิดแท็บใหม่ / ลิงก์ไปหน้าในเว็บนี้ (เช่น หน้าคอร์ส) แสดงเป็นปุ่ม กดแล้วเปลี่ยนหน้า แชตไม่หาย
    - ข้อความผู้ใช้แสดงเป็นข้อความธรรมดา (เดิมตีความเป็น Markdown: พิมพ์ "# " กลายเป็นหัวข้อใหญ่)
    - ตัดคำยาว ๆ/URL ไม่ให้ล้นกรอบ
    ───────────────────────────────────────────────────────────────────────── */
 
 const isSafeHref = (href) => /^(https?:|mailto:|tel:|\/(?!\/))/i.test(String(href || "").trim())
 
+function InternalLinkButton({ to, children }) {
+  const navigate = useNavigate()
+  const chat = useChat()
+  const go = () => {
+    // ปิดหน้าต่างแชตก่อน (ถ้าอยู่หน้าเดิมแค่เปลี่ยน query แชตจะไม่ปิดเอง แล้วบังฟอร์ม) — ประวัติแชตยังอยู่
+    chat?.setIsOpen(false)
+    chat?.setIsFullscreen(false)
+    navigate(to)
+  }
+  return (
+    <button
+      type="button"
+      onClick={go}
+      className="mx-0.5 my-0.5 inline-flex items-center gap-1 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white no-underline shadow-sm transition hover:bg-orange-600 active:scale-95"
+    >
+      {children} <span aria-hidden="true">→</span>
+    </button>
+  )
+}
+
 const MD_COMPONENTS = {
   p: ({ children }) => <span>{children}</span>,
-  a: ({ href, title, children }) =>
-    isSafeHref(href) ? (
+  a: ({ href, title, children }) => {
+    const internal = toInternalPath(href)
+    if (internal) return <InternalLinkButton to={internal}>{children}</InternalLinkButton>
+    return isSafeHref(href) ? (
       <a href={href} title={title} target="_blank" rel="noopener noreferrer" className="font-semibold text-orange-600 underline underline-offset-2 break-all">
         {children}
       </a>
     ) : (
       <span>{children}</span>
-    ),
+    )
+  },
 }
 
 const BULLET_RE = /^\s*([•\-*])\s+/
@@ -37,7 +63,7 @@ export function UserMessageText({ text }) {
 
 // lines ของบอต → ก้อนข้อความ (bubbleClass กำหนดหน้าตาจากแต่ละ view)
 export function BotMessageBubbles({ text, bubbleClass, animate = true }) {
-  const lines = String(text || "").split("\n").filter((line) => line.trim() !== "")
+  const lines = autolinkBareUrls(String(text || "")).split("\n").filter((line) => line.trim() !== "")
   return lines.map((line, index) => {
     const bullet = line.match(BULLET_RE)
     const number = !bullet && line.match(NUMBER_RE)
