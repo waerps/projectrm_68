@@ -5,6 +5,7 @@ import {
   BookOpen, ArrowRight, Sparkles, RefreshCw,
 } from "lucide-react";
 import axios from "axios";
+import { useSearchParams } from "react-router-dom";
 import { API_URL } from "../config";
 import { toast } from "../components/ui/dialogs";
 import PrivateCourseOrbit from "../components/PrivateCourseOrbit";
@@ -171,7 +172,7 @@ export function PrivateContactButtons({ className = "", compact = false }) {
 }
 
 /* ─── Modal ติดต่อ ─── */
-function ContactModal({ subject, subjects, onClose }) {
+function ContactModal({ subject, subjects, onClose, presetSubjectName = "" }) {
   const [msg, setMsg] = useState(() => privateInquiryMessage(subject?.generic ? "" : subject?.name));
   const [copied, setCopied] = useState(false);
   const offerNames = new Set(subjects.map((item) => item.name));
@@ -179,9 +180,13 @@ function ContactModal({ subject, subjects, onClose }) {
     ...subjects.map((item) => ({ value: `offer:${item.key}`, name: item.name, offerId: item.key })),
     ...PRIVATE_SUBJECT_OPTIONS.filter((item) => !offerNames.has(item.name)).map((item) => ({ value: `catalog:${item.key}`, name: item.name, offerId: null })),
   ];
+  // เปิดจากแชตบอต (?inquire=1&subject=...) แล้ววิชานั้นไม่ได้อยู่ในรายวิชาที่โชว์ → เลือกจากรายการวิชาทั่วไปให้
+  const presetOption = subject?.generic && presetSubjectName
+    ? subjectOptions.find((item) => item.name === presetSubjectName) || null
+    : null;
   const [inquiry, setInquiry] = useState({
-    subjectChoice: subject?.generic ? "" : `offer:${subject.key}`,
-    subjectName: subject?.generic ? "" : subject?.name || "", subjectOther: "",
+    subjectChoice: subject?.generic ? (presetOption?.value || "") : `offer:${subject.key}`,
+    subjectName: subject?.generic ? (presetOption?.name || "") : subject?.name || "", subjectOther: "",
     studentFirstName: "", studentLastName: "", studentNickname: "", gradeLevel: "", gradeOther: "", schoolName: "", learnerCount: "1", goal: "", desiredStartDate: "",
     learningFormat: "", learningNeeds: "", contactName: "", contactPhone: "",
     privacyAcknowledged: false,
@@ -335,7 +340,23 @@ function ContactModal({ subject, subjects, onClose }) {
 export default function PrivateCourses() {
   const [level, setLevel] = useState("ทั้งหมด");
   const [selected, setSelected] = useState(null);
+  const [presetSubjectName, setPresetSubjectName] = useState("");
   const { loading, error, subjects, reload } = usePrivateOffers();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // ลิงก์จากแชตบอต: /private-courses?inquire=1&subject=คณิตศาสตร์ → เปิดฟอร์มฝากข้อมูลพร้อมเลือกวิชาให้
+  // รอรายวิชาโหลดเสร็จก่อน แล้วลบพารามิเตอร์ออก (รีเฟรชหน้าแล้วฟอร์มไม่เด้งซ้ำ)
+  useEffect(() => {
+    if (searchParams.get("inquire") !== "1" || loading) return;
+    const wanted = (searchParams.get("subject") || "").trim();
+    const offer = wanted ? subjects.find((s) => s.name === wanted) || subjects.find((s) => s.name.includes(wanted) || wanted.includes(s.name)) : null;
+    setPresetSubjectName(offer ? "" : wanted);
+    setSelected(offer || GENERAL_INQUIRY);
+    const next = new URLSearchParams(searchParams);
+    next.delete("inquire");
+    next.delete("subject");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, loading, subjects, setSearchParams]);
   const list = subjects.filter((s) => level === "ทั้งหมด" || s.levels.includes(level));
   // แสดงเฉพาะระดับชั้นที่มีรายวิชาจริง
   const levels = PRIVATE_LEVELS.filter((l) => subjects.some((s) => s.levels.includes(l)));
@@ -551,7 +572,7 @@ export default function PrivateCourses() {
         </div>
       </div>
 
-      {selected && <ContactModal subject={selected} subjects={subjects} onClose={() => setSelected(null)} />}
+      {selected && <ContactModal subject={selected} subjects={subjects} presetSubjectName={presetSubjectName} onClose={() => { setSelected(null); setPresetSubjectName(""); }} />}
     </div>
   );
 }
