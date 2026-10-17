@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react"
 import { useChat } from "./ChatProvider"
-import ReactMarkdown from 'react-markdown';
+import { BotMessageBubbles, UserMessageText, RetryButton } from "./ChatMessageBody"
 
 export default function ChatWidget() {
   const {
@@ -14,6 +14,10 @@ export default function ChatWidget() {
     handleSend,
     messagesEndRef,
     isLoading,
+    isBusy,
+    isStreaming,
+    loadingText,
+    retryMessage,
     unreadCount,
     openChat,
   } = useChat()
@@ -45,7 +49,7 @@ export default function ChatWidget() {
 
   if (!isOpen && !isFullscreen) {
     return (
-      <div className="fixed bottom-6 right-10 z-50">
+      <div className="chat-launcher fixed bottom-6 right-4 sm:right-10 z-50">
         {showTooltip && (
           <div className="absolute bottom-full right-0 mb-1.5 whitespace-nowrap bg-white text-gray-700 text-xs rounded-2xl rounded-br-sm shadow-lg px-3 py-1.5 animate-fadeIn">
             มีอะไรให้น้องศรเสริมช่วยไหมครับ 😊
@@ -96,38 +100,20 @@ export default function ChatWidget() {
               {msg.sender === "bot" && (
                 <img src="/chatbot.png" alt="" className="h-6 w-6 rounded-full flex-shrink-0" />
               )}
-              <div className="flex flex-col gap-2 max-w-[85%]"> {/* เพิ่ม gap ระหว่างก้อนข้อความ */}
+              <div className="flex flex-col gap-2 max-w-[85%] min-w-0">
                 {msg.sender === "user" ? (
-                  // ของ User ให้แสดงปกติ
                   <div className="px-4 py-2.5 rounded-2xl text-sm bg-orange-500 text-white rounded-br-sm shadow-sm">
-                    <ReactMarkdown>
-                      {msg.text}
-                    </ReactMarkdown>
+                    <UserMessageText text={msg.text} />
                   </div>
                 ) : (
-                  // ของ Bot: สแกนข้อความและแบ่งส่วน
-                  msg.text.split('\n').filter(line => line.trim() !== '').map((line, index) => (
-                    <div
-                      key={index}
-                      className="px-4 py-2.5 rounded-2xl text-sm bg-gray-100 text-gray-800 rounded-bl-sm shadow-sm animate-fadeIn"
-                      style={{ animationDelay: `${index * 0.15}s`, animationFillMode: "both" }} // ให้แต่ละก้อนค่อยๆ เด้งออกมา
-                    >
-                      {line.startsWith('•') || line.startsWith('-') ? (
-                        <span className="flex gap-2">
-                          <span className="text-orange-500">•</span>
-                          <span>
-                            <ReactMarkdown components={{ p: ({ children }) => <span>{children}</span> }}>
-                              {line.replace(/^[•-]\s*/, '')}
-                            </ReactMarkdown>
-                          </span>
-                        </span>
-                      ) : (
-                        <ReactMarkdown components={{ p: ({ children }) => <span>{children}</span> }}>
-                          {line}
-                        </ReactMarkdown>
-                      )}
-                    </div>
-                  ))
+                  <BotMessageBubbles
+                    text={msg.text}
+                    animate={!msg.streaming}
+                    bubbleClass={`px-4 py-2.5 rounded-2xl text-sm rounded-bl-sm shadow-sm ${msg.isError ? "bg-amber-50 text-amber-900 border border-amber-200" : "bg-gray-100 text-gray-800"}`}
+                  />
+                )}
+                {msg.isError && msg.retryText && (
+                  <RetryButton onClick={() => retryMessage(msg.id)} disabled={isBusy} />
                 )}
               </div>
             </div>
@@ -136,8 +122,8 @@ export default function ChatWidget() {
           {messages.length === 1 && (
             <div className="flex flex-wrap gap-2 ml-8">
               {["ดูคอร์สเรียน", "ค่าเรียน", "ติดต่อสถาบัน"].map((label) => (
-                <button key={label} onClick={() => handleSend(label)}
-                  className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50">
+                <button key={label} onClick={() => handleSend(label)} disabled={isBusy}
+                  className="px-3 py-1.5 text-xs rounded-full border border-orange-300 text-orange-600 hover:bg-orange-50 disabled:opacity-50">
                   {label}
                 </button>
               ))}
@@ -145,12 +131,17 @@ export default function ChatWidget() {
           )}
 
           {/* 🔴 Typing Indicator สำหรับ Widget */}
-          {isLoading && (
-            <div className="flex justify-start mb-4">
-              <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+          {/* ระหว่างรอข้อความแรก: จุดเคลื่อนไหว + สถานะตามจริง (ซ่อนเมื่อข้อความเริ่มไหลเข้ามา) */}
+          {isLoading && !isStreaming && (
+            <div className="flex justify-start items-end gap-2 mb-4" role="status" aria-live="polite">
+              <img src="/chatbot.png" alt="" className="h-6 w-6 rounded-full flex-shrink-0" />
+              <div className="flex flex-col gap-1">
+                <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm flex items-center gap-1.5 w-fit">
+                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                  <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                </div>
+                {loadingText && <span className="text-[11px] text-gray-400 pl-1">{loadingText}</span>}
               </div>
             </div>
           )}
@@ -173,11 +164,11 @@ export default function ChatWidget() {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleSend() }}
               placeholder={placeholders[placeholderIndex]}
               className="flex-1 px-4 py-2.5 rounded-full border border-gray-200 focus:outline-none focus:border-orange-500 text-sm"
             />
-            <button onClick={() => handleSend()} disabled={isLoading} className="w-10 h-10 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform duration-150">➤</button>
+            <button onClick={() => handleSend()} disabled={isBusy || !inputValue.trim()} aria-label="ส่งข้อความ" className="disabled:opacity-50 w-10 h-10 rounded-full bg-orange-500 text-white hover:bg-orange-600 flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform duration-150">➤</button>
           </div>
         </div>
       </div>
