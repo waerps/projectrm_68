@@ -694,8 +694,8 @@ export default function AdminFinance() {
             )}
             {estimatedPrivateUnpaidAmount > 0 && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                    <b>คอร์สเดิมที่ยังไม่จ่ายตามราคาประเมิน {formatNumber(estimatedPrivateUnpaidAmount)} บาท</b>
-                    <p className="mt-1 text-amber-800">คำนวณจากอัตราคอร์สเดี่ยวและคำสั่งให้ถือว่ารายการที่ไม่ระบุสถานะเป็นยังไม่จ่าย แยกจากยอดหนี้ที่ออกคำสั่งซื้อในระบบ ควรตรวจสอบยอดก่อนเรียกเก็บ</p>
+                    <b>คอร์สเดิมที่ยังไม่จ่าย {formatNumber(estimatedPrivateUnpaidAmount)} บาท</b>
+                    <p className="mt-1 text-amber-800">คอร์สเดี่ยวที่นำเข้าจากข้อมูลเดิม แยกจากยอดค้างชำระของคำสั่งซื้อในระบบ</p>
                 </div>
             )}
 

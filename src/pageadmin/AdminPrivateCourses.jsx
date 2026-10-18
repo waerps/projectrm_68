@@ -174,11 +174,11 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${stats.estimatedUnpaid > 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} unit="คอร์ส" sub={`ทั้งหมด ${courses.length} คอร์ส`} />
         <Stat icon={Layers} color="bg-blue-500" label="วิชาที่แสดงบนเว็บไซต์" value={stats.shownOffers} unit="วิชา" sub={`ซ่อนอยู่ ${offers.length - stats.shownOffers} วิชา`} />
         <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} sub="รวมทุกคอร์สเดี่ยว" className="col-span-2 md:col-span-1" />
-        <Stat icon={Wallet} color="bg-sky-500" label="คาดว่ายังไม่จ่าย" value={money(stats.estimatedUnpaid)} sub="คอร์สที่นำเข้า · ราคาประเมิน" className="col-span-2 md:col-span-1" />
+        {stats.estimatedUnpaid > 0 && <Stat icon={Wallet} color="bg-sky-500" label="ยังไม่จ่าย" value={money(stats.estimatedUnpaid)} sub="คอร์สที่นำเข้า" className="col-span-2 md:col-span-1" />}
       </div>
 
       {/* แถวเดียว: สลับแท็บ (ซ้าย) · ค้นหา (กลาง ใช้ได้ทั้งสองแท็บ) · ปุ่มเพิ่ม (ขวา) */}
@@ -377,7 +377,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
             <summary className="cursor-pointer font-semibold text-slate-700">
               {student.Nickname || student.Firstname}
               {paid > 0 ? ` · จ่ายแล้ว ${money(paid)}` : ''}
-              {unpaid > 0 ? ` · ยังไม่จ่าย ${money(unpaid)} (ประเมิน)` : ''}
+              {unpaid > 0 ? ` · ยังไม่จ่าย ${money(unpaid)}` : ''}
               {unknown > 0 ? ` · อีก ${unknown} รอบไม่ระบุสถานะ` : ''}
             </summary>
             <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-slate-600">
@@ -385,10 +385,10 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                 {purchase.Hours} ชม. · {purchase.PaymentStatus === 'paid'
                   ? `จ่ายแล้ว ${knownMoney(purchase.ConfirmedPaidAmount)}`
                   : purchase.PaymentStatus === 'unpaid'
-                    ? `ยังไม่จ่าย ${knownMoney(purchase.ExpectedPrice)} (ราคาประเมิน)` : 'ไม่ระบุสถานะชำระ'}
+                    ? `ยังไม่จ่าย ${knownMoney(purchase.ExpectedPrice)}` : 'ไม่ระบุสถานะชำระ'}
                 {purchase.PaidDate ? ` · โอน ${purchase.PaidDate}` : ''}
               </p>)}
-              {unpaid > 0 && <p className="text-slate-500">ราคาคอร์สที่ยังไม่จ่ายเป็นค่าประเมิน ควรตรวจสอบก่อนเรียกเก็บ</p>}
+              {unknown > 0 && <p className="text-slate-400">รอบที่ไม่ระบุสถานะไม่ถูกนับเป็นยอดค้างชำระ</p>}
             </div>
           </details>;
         })}
