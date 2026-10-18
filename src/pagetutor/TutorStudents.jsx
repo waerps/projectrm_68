@@ -312,7 +312,6 @@ export default function TutorStudents() {
                 ]} />
                 <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
                 <p className={PAGE_SUBTITLE}>กำลังโหลดรายชื่อนักเรียน...</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้</p>
             </div>
             <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูลนักเรียน..." /></div>
         </div>
@@ -338,8 +337,6 @@ export default function TutorStudents() {
                             <p className={PAGE_SUBTITLE}>
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
-                            {/* คำอธิบายหน้า — แสดงตั้งแต่ตอนโหลด ผู้ใช้เห็นเนื้อหาเร็วขึ้น (LCP) */}
-                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้</p>
                         </div>
                         <div className="relative group w-full sm:w-auto md:self-auto">
                             <button className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>

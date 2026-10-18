@@ -246,7 +246,7 @@ export default function TutorStudentDetail() {
     const rateColor = attendanceRate >= 80 ? "bg-green-500" : attendanceRate >= 60 ? "bg-orange-500" : "bg-red-500";
     const rateText  = attendanceRate >= 80 ? "text-green-700" : attendanceRate >= 60 ? "text-orange-700" : "text-red-600";
 
-    // ระหว่างโหลด: แสดงเส้นทางนำทาง + คำอธิบายหน้าทันที (ช่วย LCP) — key แยกจากหน้าจริงกันหน้ากระโดด
+    // ระหว่างโหลด: แสดงเส้นทางนำทางทันที — key แยกจากหน้าจริงกันหน้ากระโดด
     if (loading) return (
         <div key="detail-loading" className="space-y-6 px-4 lg:px-0">
             <Breadcrumb items={[
@@ -255,7 +255,6 @@ export default function TutorStudentDetail() {
                 { label: "ข้อมูลนักเรียน", to: `/tutor/students?courseId=${courseId}` },
                 { label: "กำลังโหลด..." },
             ]} />
-            <p className="-mt-2 text-sm leading-6 text-slate-600">ข้อมูลการเข้าเรียน การดูคลิป และผลสอบรายวิชาของนักเรียนรายบุคคลในคอร์สนี้</p>
             <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูล..." /></div>
         </div>
     );
@@ -275,7 +274,6 @@ export default function TutorStudentDetail() {
                     { label: student.name },
                 ]}
             />
-            <p className="-mt-2 text-sm leading-6 text-slate-600">ข้อมูลการเข้าเรียน การดูคลิป และผลสอบรายวิชาของนักเรียนรายบุคคลในคอร์สนี้</p>
 
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 shadow-sm rounded-2xl p-4 sm:p-5">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">
