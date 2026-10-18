@@ -3624,11 +3624,15 @@ export default function TutorExamDetail() {
     navigate(`/tutor/exam?${params.toString()}`);
   };
 
-  if (loading) {
+  // แท็บคลังข้อสอบ (ค่าเริ่มต้น) ไม่ต้องใช้ข้อมูลรอบสอบ — ระหว่างโหลดรอบสอบจึงแสดงโครงหน้า + คลังข้อสอบได้เลย
+  // (โครงเดียวกับหน้าจริง React จึงใช้ BankTab ตัวเดิมต่อ ไม่โหลดซ้ำ) ช่วยให้เนื้อหาขึ้นเร็ว (Lighthouse LCP)
+  const showShell = loading && tab === "questions";
+
+  if (loading && !showShell) {
     return <div className="px-4 lg:px-0"><Spinner block label="กำลังโหลดข้อมูลการสอบ..." /></div>;
   }
 
-  if (loadError) {
+  if (!showShell && loadError) {
     return (
       <div className="px-4 lg:px-0 py-16">
         <ErrorState title={loadError} onRetry={() => { setLoading(true); reload(); }} />
@@ -3639,7 +3643,7 @@ export default function TutorExamDetail() {
     );
   }
 
-  if (!exam) {
+  if (!showShell && !exam) {
     return (
       <div className="px-4 lg:px-0 text-center py-16">
         <p className="text-sm text-slate-500">ไม่พบข้อมูลการสอบนี้</p>
@@ -3648,11 +3652,12 @@ export default function TutorExamDetail() {
     );
   }
 
-  const meta = EXAM_TYPES.find((t) => t.value === exam.type);
-  const status = deriveStatus(exam);
-  const sb = STATUS_BADGE[status];
-  const courseType = exam.courseType || fallbackCourseType;
-  const rightsNoticeMode = courseType === "single" ? "single" : courseType === "bundle" ? null : "unknown";
+  const meta = exam ? EXAM_TYPES.find((t) => t.value === exam.type) : null;
+  const status = exam ? deriveStatus(exam) : null;
+  const sb = status ? STATUS_BADGE[status] : null;
+  const courseType = exam?.courseType || fallbackCourseType;
+  // ระหว่างโหลดยังไม่รู้ประเภทคอร์ส จึงยังไม่แสดงประกาศสิทธิ์
+  const rightsNoticeMode = !exam ? null : courseType === "single" ? "single" : courseType === "bundle" ? null : "unknown";
 
   // เปิด/ปิดสอบ — แจ้งเหตุผลจาก backend (เช่น ต้องสอบ Pre-test ให้เสร็จก่อน) แทนการเงียบ
   const runSessionAction = async (action, fallback) => {
@@ -3671,12 +3676,19 @@ export default function TutorExamDetail() {
             to: `/tutor/exam?${new URLSearchParams({ courseId: courseId || "", subjectId: subjectId || "", courseName, subjectName }).toString()}`,
             title: [courseName, subjectName].filter(Boolean).join(" • "),
           },
-          { label: exam.name },
+          { label: exam?.name || "กำลังโหลด..." },
         ]}
       />
 
       {/* Exam header */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
+        {!exam ? (
+          <div className="min-h-[104px] md:min-h-[72px] animate-pulse space-y-2" role="status" aria-label="กำลังโหลดข้อมูลการสอบ">
+            <div className="flex gap-2"><div className="h-5 w-16 rounded-full bg-slate-100" /><div className="h-5 w-20 rounded-full bg-slate-100" /></div>
+            <div className="h-6 w-2/3 rounded bg-slate-100" />
+            <div className="h-4 w-1/3 rounded bg-slate-100" />
+          </div>
+        ) : (
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
@@ -3695,6 +3707,7 @@ export default function TutorExamDetail() {
             {exam.settings?.date && <div className="flex items-center gap-2 text-sm text-slate-600"><Calendar className="h-4 w-4 text-slate-400" />{exam.settings.date}</div>}
           </div>
         </div>
+        )}
       </div>
 
       {tab !== "questions" && rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
