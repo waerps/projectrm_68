@@ -2373,9 +2373,9 @@ export default function AdminStudentsPage() {
       {pendingLegacyPackages.length > 0 && (
         <details className="rounded-xl border border-amber-200 bg-amber-50 p-4">
           <summary className="cursor-pointer text-sm font-bold text-amber-900">
-            แพ็กเกจจากชีตที่รอจับคู่นักเรียน {pendingLegacyPackages.length} รายการ
+            รายการลงทะเบียนจากชีตที่รอจับคู่นักเรียน {pendingLegacyPackages.length} รายการ
           </summary>
-          <p className="mt-2 text-xs text-amber-800">ยังไม่พบบัญชีนักเรียนตรงกับ username ในชีต จึงยังไม่ผูกแพ็กเกจให้ใคร</p>
+          <p className="mt-2 text-xs text-amber-800">ยังไม่พบบัญชีนักเรียนตรงกับ username ในชีต จึงยังไม่ผูกคอร์สให้ใคร</p>
           <div className="mt-3 space-y-2">
             {pendingLegacyPackages.map(pkg => (
               <div key={pkg.SourcePackageId} className="rounded-lg border border-amber-200 bg-white p-3 text-xs text-slate-700">
