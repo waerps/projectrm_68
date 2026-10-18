@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell, ReferenceLine,
-} from "recharts";
+// กราฟ recharts แยกไฟล์และโหลดแบบ lazy (ดู ExamAnalyticsCharts.jsx)
+const ScoreHistogramChart = lazy(() => import("./ExamAnalyticsCharts.jsx").then((m) => ({ default: m.ScoreHistogramChart })));
+const TopicAvgChart = lazy(() => import("./ExamAnalyticsCharts.jsx").then((m) => ({ default: m.TopicAvgChart })));
 import {
   BarChart2, Users, TrendingUp, Download, AlertTriangle,
   CheckCircle, Search, Award, Clock, BookOpen, Info,
@@ -536,17 +535,7 @@ function SectionCard({ title, icon: Icon, children, action, tooltip, className =
 
 // formatValue เป็น optional — ใส่มาก็ใช้ตรงๆ (เช่นกราฟจำนวนคน ไม่อยากให้เดาว่าเป็น %)
 // ถ้าไม่ใส่ ใช้ heuristic เดิม (ค่า < 1.5 = สัดส่วน 0–1 ต้องแปลงเป็น %) ไว้เหมือนที่อื่นที่ยังใช้อยู่
-const ChartTooltip = ({ active, payload, label, formatValue }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
-      <p className="font-semibold text-slate-700 mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }}>{p.name}: <strong>{formatValue ? formatValue(p.value) : (typeof p.value === "number" && p.value < 1.5 ? fmtPct(p.value) : p.value)}</strong></p>
-      ))}
-    </div>
-  );
-};
+// ChartTooltip ย้ายไปอยู่ใน ExamAnalyticsCharts.jsx พร้อมกราฟ
 
 // (ลบโค้ดที่ไม่ได้ใช้ออก) StudentTab/StudentModal เป็น mock เก่าที่ไม่มีจุดไหนเรียกใช้แล้ว
 // (แก้บั๊ก) รอบลบ dead code ก่อนหน้านี้ลบเลยขอบเขตไปโดนฟังก์ชัน OverviewTab (component จริง
@@ -635,17 +624,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SectionCard title="การกระจายคะแนนสอบ (% ของคะแนนเต็ม)" icon={BarChart2}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={hist} barCategoryGap="15%">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="range" tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<ChartTooltip formatValue={(v) => `${v} คน`} />} cursor={{ fill: "#f8fafc" }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="จำนวนนักเรียน">
-                {hist.map((entry, i) => <Cell key={i} fill={i >= 5 ? "#22c55e" : i >= 4 ? "#f97316" : "#ef4444"} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-slate-50" aria-hidden="true" />}><ScoreHistogramChart hist={hist} /></Suspense>
           <div className="flex gap-4 justify-center mt-2 flex-wrap">
             {[["#ef4444", "0–39% ไม่ผ่าน"], ["#f97316", "40–49% ใกล้ผ่าน"], ["#22c55e", "50% ขึ้นไป ผ่าน"]].map(([c, l]) => (
               <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -675,66 +654,12 @@ function OverviewTab({ results, topicBreakdown, loading }) {
                 </span>
               </div>
 
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={topicStats} layout="vertical" barCategoryGap="20%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <ReferenceLine x={0.5} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
-                  <XAxis
-                    type="number"
-                    domain={[0, 1]}
-                    tickFormatter={v => `${(v * 100).toFixed(0)}%`}
-                    tick={{ fontSize: 10, fill: "#94a3b8" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    dataKey="topic"
-                    type="category"
-                    width={100}
-                    tick={{ fontSize: 10, fill: "#475569" }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip
-                    content={({ active, payload, label }) => {
-                      if (!active || !payload?.length) return null;
-                      const pct = payload[0].value;
-                      const msg =
-                        pct >= 0.7 ? "ระดับดี ไม่ต้องสอนซ้ำ" :
-                          pct >= 0.5 ? "พอใช้ ควรทบทวนเล็กน้อย" :
-                            "ควรสอนซ้ำบทนี้";
-                      return (
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs">
-                          <p className="font-semibold text-slate-700 mb-1">{label}</p>
-                          <p className="text-slate-600">คะแนนเฉลี่ยรายหมวด {fmtPct(pct)}</p>
-                          <p className="text-slate-500">{topicStats.find((t) => t.topic === label)?.scoreText}</p>
-                          <p className={`mt-1 font-medium ${pct >= 0.7 ? "text-emerald-600" : pct >= 0.5 ? "text-amber-600" : "text-red-500"}`}>
-                            → {msg}
-                          </p>
-                        </div>
-                      );
-                    }}
-                    cursor={{ fill: "#f8fafc" }}
-                  />
-                  <Bar dataKey="avgPct" radius={[0, 4, 4, 0]} name="คะแนนเฉลี่ยรายหมวด">
-                    {topicStats.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={
-                          entry.avgPct >= 0.7 ? "#22c55e" :
-                            entry.avgPct >= 0.5 ? "#f97316" :
-                              "#ef4444"
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-slate-50" aria-hidden="true" />}><TopicAvgChart topicStats={topicStats} /></Suspense>
 
               {topicStats.some(t => t.avgPct < 0.5) && (
                 <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
                   <AlertTriangle className="h-3.5 w-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-600">
+                  <p className="text-xs text-red-700">
                     <span className="font-semibold">
                       {topicStats.filter(t => t.avgPct < 0.5).map(t => t.topic).join(", ")}
                     </span>
