@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_URL } from "../config";
-import * as XLSX from "xlsx";
+// ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
+const loadXLSX = () => import("xlsx");
 
 const API_BASE = `${API_URL}/api/exam`;
 
@@ -78,7 +79,8 @@ export const emptyQuestion = () => ({
 });
 
 // ── xlsx template / import (parsing only — saving goes through addQuestions) ─
-export const downloadXlsxTemplate = () => {
+export const downloadXlsxTemplate = async () => {
+  const XLSX = await loadXLSX();
   const headers = ["bank_id", "question", "image_path", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
   const sample = [
     { bank_id: "", question: "ถ้า x² − 5x + 6 = 0 แล้ว x มีค่าเท่ากับเท่าไร", option_a: "x = 1 หรือ x = 6", option_b: "x = 2 หรือ x = 3", option_c: "x = −2 หรือ x = −3", option_d: "x = 0 หรือ x = 5", correct_answer: "B", score: 1, level: "ง่าย", category: "พีชคณิต", explanation: "แยกตัวประกอบได้ (x−2)(x−3)=0 จึงได้ x=2 หรือ x=3", grade_level: "ม.3" },
@@ -119,7 +121,8 @@ export const downloadXlsxTemplate = () => {
 // ── export คลังทั้งวิชาเป็น .xlsx ────────────────────────────────────────────
 // หัวตารางตรงกับ template เป๊ะ ๆ และอยู่ชีตแรก เพื่อให้แก้ใน Excel แล้วนำเข้ากลับได้ทันที
 // (parseXlsx อ่านเฉพาะชีตแรก) — คอลัมน์ bank_id ใช้อัปเดตข้อเดิมในคลังเมื่อใส่กลับมา
-export const exportBankXlsx = (items, subjectName = "") => {
+export const exportBankXlsx = async (items, subjectName = "") => {
+  const XLSX = await loadXLSX();
   const headers = ["bank_id", "question", "image_path", "option_a", "option_b", "option_c", "option_d", "correct_answer", "score", "level", "category", "explanation", "grade_level"];
   const rows = (items || []).map((it) => [
     it.id,
@@ -150,8 +153,9 @@ export const exportBankXlsx = (items, subjectName = "") => {
 export const parseXlsx = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await loadXLSX();
         const wb = XLSX.read(e.target.result, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { defval: "" });

@@ -12,7 +12,7 @@ import {
   PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
   FileSpreadsheet, FileText,
 } from "lucide-react";
-import * as XLSX from "xlsx";
+// ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import { fmtScore, PASS_PCT, isPassingScore, displayExamPercent } from "../utils/examScore";
 import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWithAi } from "../utils/examShared";
 import SegmentedControl from "../components/ui/SegmentedControl";
@@ -1916,8 +1916,9 @@ const buildExcelRows = (results) => {
   });
 };
 
-const exportToExcel = (rows, examLabel) => {
+const exportToExcel = async (rows, examLabel) => {
   if (!rows?.length) return;
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "ผลนักเรียน");
   XLSX.writeFile(wb, `exam_analytics_${examLabel.replace(/\s/g, "_")}.xlsx`);

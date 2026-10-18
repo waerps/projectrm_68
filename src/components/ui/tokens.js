@@ -58,5 +58,5 @@ export const CALLOUT_ICON = { info: "text-blue-500", warning: "text-amber-500", 
 export const STAT_LABEL = "text-xs font-medium text-slate-500";
 export const STAT_NUM = "text-xl sm:text-2xl font-bold tabular-nums leading-tight";
 export const STAT_VALUE = `${STAT_NUM} text-slate-900`;
-export const STAT_UNIT = "ml-1 text-xs font-medium text-slate-500";
+export const STAT_UNIT = "ml-1 text-xs font-medium text-slate-600";
 export const STAT_SUB = "text-[11px] text-slate-500";

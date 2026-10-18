@@ -9,7 +9,7 @@ import {
     Phone, Video, Search, Download, ChevronDown, ChevronRight,
     ChevronLeft, Users
 } from "lucide-react";
-import * as XLSX from "xlsx";
+// ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
@@ -76,7 +76,8 @@ export default function TutorStudents() {
         พัฒนาการ: getGrowthText(student),
     }));
 
-    const downloadExcel = () => {
+    const downloadExcel = async () => {
+        const XLSX = await import("xlsx");
         const data = getReportData();
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
