@@ -5,9 +5,8 @@ import tailwind from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwind()],
   build: {
-    rollupOptions: { output: { manualChunks(id) {
-      if (id.includes('/node_modules/recharts/') || id.includes('/node_modules/recharts-scale/') || id.includes('/node_modules/d3-') || id.includes('/node_modules/victory-vendor/')) return 'charts';
-    } } },
+    // เดิมมี manualChunks แยก recharts เป็นก้อน 'charts' แต่ทำให้ React ถูกดึงไปอยู่ในก้อนนั้นด้วย
+    // ทุกหน้าจึงต้องโหลดไลบรารีกราฟ (~117 KB) — ลบออกแล้ว recharts จะโหลดเฉพาะหน้าที่มีกราฟ
   },
   resolve: {
     dedupe: ['react', 'react-dom'],

@@ -41,7 +41,7 @@ export default function Footer({ role }) {
       <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6 sm:py-10">
         <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-[1.1fr_1fr_1fr] lg:gap-10">
           <div>
-            <Link to={homePath} className="inline-flex items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400" aria-label="ศรเสริม ติวเตอร์ SornSerm Tutor กลับหน้าหลัก">
+            <Link to={homePath} className="inline-flex items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-400">
               <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-white p-1 ring-1 ring-orange-100"><img src="/logo.png" alt="" className="h-full w-full object-contain" /></span>
               <span className="text-left leading-tight"><strong className="block text-base">ศรเสริม ติวเตอร์</strong><span className="text-xs text-orange-100">SornSerm Tutor</span></span>
             </Link>
