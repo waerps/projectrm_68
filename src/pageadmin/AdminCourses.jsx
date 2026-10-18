@@ -3141,11 +3141,11 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statu
         <div className="space-y-1.5 text-xs text-slate-500 mb-3">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-orange-400" />
-            <span>{formatDate(course.StartDate)} – {formatDate(course.LastDate)}</span>
+            <span>{course.StartDate || course.LastDate ? `${formatDate(course.StartDate)} – ${formatDate(course.LastDate)}` : 'ยังไม่ระบุช่วงเวลา'}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-green-500 text-sm">฿</span>
-            <span className="font-bold text-green-700 text-sm">{formatPrice(course.FullCost || course.Price)} บาท</span>
+            <span className="font-bold text-green-700 text-sm">{course.FullCost == null && course.Price == null ? 'ยังไม่ระบุราคา' : `${formatPrice(course.FullCost ?? course.Price)} บาท`}</span>
             {Number(course.Discount) > 0 && (
               <span className="line-through text-slate-400">{formatPrice(course.Price)}</span>
             )}

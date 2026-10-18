@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, Loader2, MessageCircle, QrCode, Unlink, UploadClo
 import {
   disconnectLine,
   getInstallmentQr,
+  getImportedPrivatePurchases,
   getLineLoginStatus,
   getPaymentOrders,
   startLineLogin,
@@ -31,6 +32,7 @@ export default function CoursePaymentsTab({ courseId, courseType = "bundle", ful
   const token = localStorage.getItem("student_token");
   const fileRef = useRef(null);
   const [rows, setRows] = useState([]);
+  const [sourcePurchases, setSourcePurchases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
@@ -46,12 +48,14 @@ export default function CoursePaymentsTab({ courseId, courseType = "bundle", ful
     try {
       setLoading(true);
       setError("");
-      const [data, lineResult] = await Promise.all([
+      const [data, lineResult, imported] = await Promise.all([
         getPaymentOrders(token),
         courseType === "single" ? Promise.resolve(null) : getLineLoginStatus(token).catch(() => null),
+        courseType === "single" ? getImportedPrivatePurchases(token, courseId) : Promise.resolve([]),
       ]);
       const orderList = Array.isArray(data) ? data : data?.orders ?? data?.data?.orders ?? data?.data ?? [];
       setRows((Array.isArray(orderList) ? orderList : []).filter((row) => String(row.courseId ?? row.CourseId) === String(courseId)));
+      setSourcePurchases(Array.isArray(imported) ? imported : []);
       setLineStatusKnown(Boolean(lineResult));
       setLineLinked(Boolean(lineResult?.linked ?? lineResult?.data?.linked));
     } catch (err) {
@@ -122,6 +126,31 @@ export default function CoursePaymentsTab({ courseId, courseType = "bundle", ful
   };
 
   if (loading) return <div className="rounded-2xl border bg-white p-10 text-center text-orange-600"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />กำลังโหลดค่าชำระคอร์ส...</div>;
+
+  if (courseType === "single" && sourcePurchases.length) {
+    const confirmed = sourcePurchases.reduce((sum, purchase) => sum + Number(purchase.amount || 0), 0);
+    const unknown = sourcePurchases.filter((purchase) => purchase.status !== 'paid').length;
+    return <div className="space-y-4">
+      <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
+        <h2 className="font-bold text-neutral-900">ข้อมูลการชำระคอร์สเดี่ยว</h2>
+        <p className="mt-1 text-sm text-neutral-600">แสดงการชำระตามรายการที่สถาบันบันทึกไว้ แต่ละรอบแยกกัน</p>
+      </div>
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-xs text-emerald-700">ยอดที่ยืนยันว่าจ่ายแล้ว</p>
+        <p className="mt-1 text-xl font-bold text-emerald-800">{money(confirmed)}</p>
+      </div>
+      {unknown > 0 && <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+        อีก {unknown} รอบไม่มีสถานะการชำระหรือจำนวนเงิน จึงยังไม่แสดงเป็นยอดค้างชำระ
+      </p>}
+      <div className="space-y-2">
+        {sourcePurchases.map((purchase, index) => <div key={`${index}:${purchase.hours}`} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+          <span className="font-semibold">รอบที่ {index + 1} · {purchase.hours} ชั่วโมง</span>
+          <span className="ml-2 text-slate-600">{purchase.status === 'paid' ? `จ่ายแล้ว ${money(purchase.amount)}` : 'ยังไม่ทราบสถานะการชำระ'}</span>
+          {purchase.paidDate && <span className="ml-2 text-slate-500">วันที่โอน {thaiDate(purchase.paidDate)}</span>}
+        </div>)}
+      </div>
+    </div>;
+  }
 
   if (courseType === "single") {
     const latest = rows[0];

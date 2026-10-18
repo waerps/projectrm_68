@@ -31,6 +31,7 @@ const auth = () => {
   return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 };
 const money = (v) => `฿${Number(v || 0).toLocaleString("th-TH", { maximumFractionDigits: 2 })}`;
+const knownMoney = (v) => v === null || v === undefined ? "ยังไม่ระบุ" : money(v);
 const personName = (p, prefix = "") =>
   p?.[`${prefix}Nickname`] || [p?.[`${prefix}Firstname`], p?.[`${prefix}Lastname`]].filter(Boolean).join(" ") || "—";
 // ── สมัครบัญชีให้นักเรียนจากคำขอ ──────────────────────────────────────────────
@@ -127,8 +128,9 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
   const stats = useMemo(() => {
     const active = courses.filter((c) => [1, 2].includes(Number(c.Status_Course_Id))).length;
-    const outstanding = courses.reduce((sum, course) => sum + (course.Students || []).reduce((studentSum, student) =>
-      studentSum + Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost || 0) - Number(student.PaidAmount || 0)), 0), 0);
+    const outstanding = courses.reduce((sum, course) => sum + (course.SourcePurchases?.length ? 0 : (course.Students || []).reduce((studentSum, student) =>
+      studentSum + (student.OrderId || course.FullCost !== null
+        ? Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost) - Number(student.PaidAmount || 0)) : 0), 0)), 0);
     return { active, outstanding, shownOffers: offers.filter((o) => o.IsActive).length };
   }, [courses, offers]);
 
@@ -336,7 +338,8 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
     const items = [
       (!c.IsPublished || Number(c.PendingDraftActions) > 0) && { key: 'publish', label: 'เผยแพร่คอร์ส', icon: CheckCircle2, onClick: publish },
       (c.Students || []).length < Number(c.MaxStudents || 1) && { key: 'enroll', label: 'ลงทะเบียนนักเรียน', icon: UserPlus, onClick: () => onEnroll(c) },
-      (c.Students || []).some((student) => Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost || 0)) &&
+      !c.SourcePurchases?.length && (c.Students || []).some((student) => (student.OrderId || c.FullCost !== null) &&
+        Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost)) &&
         { key: 'pay', label: 'บันทึกรับเงิน', icon: Wallet, onClick: () => onPay(c) },
       onManage && { key: 'manage', label: 'จัดการคอร์ส', icon: Settings2, onClick: () => onManage(c.CourseID), title: 'วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส', secondary: true },
     ].filter(Boolean);
@@ -353,6 +356,34 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
     );
   };
   const PayCell = ({ c }) => {
+    if (c.SourcePurchases?.length) {
+      const byUser = new Map();
+      for (const purchase of c.SourcePurchases) {
+        if (!byUser.has(purchase.UserId)) byUser.set(purchase.UserId, []);
+        byUser.get(purchase.UserId).push(purchase);
+      }
+      return <div className="min-w-[190px] space-y-2">
+        {(c.Students || []).map((student) => {
+          const purchases = byUser.get(student.UserId) || [];
+          const paid = purchases.reduce((sum, purchase) => sum + Number(purchase.ConfirmedPaidAmount || 0), 0);
+          const unknown = purchases.filter((purchase) => purchase.PaymentStatus !== 'paid').length;
+          return <details key={student.EnrollId} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs">
+            <summary className="cursor-pointer font-semibold text-slate-700">
+              {student.Nickname || student.Firstname} · {paid > 0 ? `จ่ายแล้ว ${money(paid)}` : 'ยังไม่ทราบยอดชำระ'}
+              {unknown > 0 ? ` · อีก ${unknown} รอบไม่ระบุสถานะ` : ''}
+            </summary>
+            <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-slate-600">
+              {purchases.map((purchase) => <p key={purchase.PurchaseId}>
+                {purchase.Hours} ชม. · {purchase.PaymentStatus === 'paid'
+                  ? `จ่ายแล้ว ${knownMoney(purchase.ConfirmedPaidAmount)}` : 'ไม่ระบุสถานะชำระ'}
+                {purchase.PaidDate ? ` · โอน ${purchase.PaidDate}` : ''}
+              </p>)}
+              <p className="text-slate-400">ยอดที่ไม่ระบุสถานะไม่ถูกนับเป็นหนี้ค้างชำระ</p>
+            </div>
+          </details>;
+        })}
+      </div>;
+    }
     return (
       <div className="min-w-[190px] space-y-1.5">
         {(c.Students || []).length ? c.Students.map((student) => {
@@ -389,14 +420,14 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
               <tr key={c.CourseID} className="align-middle hover:bg-orange-50/30">
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
-                  <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
+                  <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                   <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.TotalHours ?? "—"}</td>
                 <td className="px-4 py-3 text-right tabular-nums">
-                  <span className="font-semibold text-slate-800">{money(c.StudentRate)}</span>
-                  <span className="text-slate-400"> / {money(c.TutorRate)}</span>
+                  <span className="font-semibold text-slate-800">{knownMoney(c.StudentRate)}</span>
+                  <span className="text-slate-400"> / {knownMoney(c.TutorRate)}</span>
                 </td>
                 <td className="px-4 py-3"><PayCell c={c} /></td>
                 <td className="px-4 py-3"><div className="flex justify-end"><Actions c={c} stacked /></div></td>
@@ -414,12 +445,12 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : "ยังไม่มีนักเรียน"}</p>
-                <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {money(c.FullCost)}/คน</p>
+                <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                 <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
             </div>
-            <p className="text-xs text-slate-500">ราคาขาย <b className="text-slate-800">{money(c.StudentRate)}</b>/ชม. · ค่าติวเตอร์ {money(c.TutorRate)}/ชม.</p>
+            <p className="text-xs text-slate-500">ราคาขาย <b className="text-slate-800">{knownMoney(c.StudentRate)}</b>/ชม. · ค่าติวเตอร์ {knownMoney(c.TutorRate)}/ชม.</p>
             <PayCell c={c} />
             <Actions c={c} />
           </div>

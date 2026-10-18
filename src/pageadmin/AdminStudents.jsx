@@ -899,7 +899,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                         "bg-amber-100 text-amber-700 border-amber-200"
                       }`}>{c.Status_Course_Name}</span>
                     <span className="bg-white border px-2 py-0.5 rounded-full text-slate-500">
-                      {formatDate(c.StartDate)} – {formatDate(c.LastDate)}
+                      {c.StartDate || c.LastDate ? `${formatDate(c.StartDate)} – ${formatDate(c.LastDate)}` : 'ยังไม่ระบุช่วงเวลา'}
                     </span>
                     <span className={`px-2 py-0.5 rounded-full font-semibold ${c.Status_Enroll_Name === "ชำระเงินแล้ว" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
                       }`}>{c.Status_Enroll_Name}</span>

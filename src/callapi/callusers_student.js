@@ -215,6 +215,15 @@ export async function getPaymentOrders(token) {
   }
 }
 
+export async function getImportedPrivatePurchases(token, courseId) {
+  try {
+    const res = await apiClient.get(`/api/student/courses/${courseId}/source-purchases`, withAuth(token));
+    return res.data ?? [];
+  } catch (error) {
+    throwNiceError(error);
+  }
+}
+
 export async function getInstallmentQr(token, installmentId) {
   try {
     const res = await apiClient.get(`/api/payments/installments/${installmentId}/qr`, withAuth(token));
