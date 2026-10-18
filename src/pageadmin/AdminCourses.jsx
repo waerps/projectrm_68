@@ -180,6 +180,10 @@ function Avatar({ photo, size = "w-6 h-6", name, seed }) {
 }
 
 // ─── AvatarSelect: dropdown แบบ custom พร้อมรูปโปรไฟล์ (ใช้กับติวเตอร์) ───────
+// ชื่อติวเตอร์ของวิชาในคอร์ส — วิชาที่ยังไม่มอบหมายติวเตอร์แสดงว่า "ยังไม่ระบุติวเตอร์"
+const tutorLabel = (p) => p?.AdminId ? (p.Nickname || `${p.Firstname || ""} ${p.Lastname || ""}`.trim()) : "ยังไม่ระบุติวเตอร์";
+const NO_TUTOR_OPTION = { id: "", label: "ยังไม่ระบุติวเตอร์" };
+
 function AvatarSelect({ options, value, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -749,13 +753,13 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
 
 // ─── ฟอร์มเพิ่มวิชา+ติวเตอร์ (ใช้ร่วมกันทั้งตอนสร้างและแก้ไขคอร์ส) ──────────────
 function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOptions, onAdd, onCancel, totalCourseHours, busy }) {
-  const ready = !!newRow.SubjectId && !!newRow.AdminId;
+  const ready = !!newRow.SubjectId;
   const lossPerHour = Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0);
   const labelCls = "block text-xs font-medium text-slate-600 mb-1";
   return (
     <div className="rounded-xl border border-orange-200 bg-orange-50/60 p-3 sm:p-4 space-y-3">
       <p className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
-        <Plus className="h-4 w-4 text-orange-500" /> เพิ่มวิชาและติวเตอร์
+        <Plus className="h-4 w-4 text-orange-500" /> เพิ่มวิชา (ระบุติวเตอร์ภายหลังได้)
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -770,13 +774,13 @@ function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOption
           </select>
         </div>
         <div>
-          <span className={labelCls}>ติวเตอร์ <span className="text-red-500">*</span></span>
+          <span className={labelCls}>ติวเตอร์ <span className="font-normal text-slate-400">(ไม่บังคับ)</span></span>
           {/* ★ แก้ (ข้อ 4): ใช้ AvatarSelect แทน select ธรรมดา เพื่อโชว์รูปติวเตอร์ */}
           <div className="flex">
             <AvatarSelect
               options={tutorOptions}
               value={newRow.AdminId}
-              placeholder="เลือกติวเตอร์"
+              placeholder="ยังไม่ระบุติวเตอร์"
               onChange={(adminId) => {
                 const tutor = allTutors.find(t => String(t.AdminId) === adminId);
                 setNewRow(r => ({
@@ -965,14 +969,14 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
   };
 
   const handleAdd = async () => {
-    if (!newRow.SubjectId || !newRow.AdminId) {
-      return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
+    if (!newRow.SubjectId) {
+      return showToast("error", "กรุณาเลือกวิชา");
     }
     if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
       return showToast("error", "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)");
     }
     try {
-      const payload = { ...newRow };
+      const payload = { ...newRow, AdminId: newRow.AdminId || null };
       const willBeManual = newRow.TotalHours !== "" && newRow.TotalHours !== null;
       if (!willBeManual && totalCourseHours) {
         const futureNonManualCount = nonManualSubjects.length + 1;
@@ -986,6 +990,17 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
       if (!draftedNotice(res, "การเพิ่มวิชา")) showToast("success", "เพิ่มวิชาและติวเตอร์แล้ว");
     } catch (e) {
       showToast("error", e.response?.data?.message || "เกิดข้อผิดพลาด");
+    }
+  };
+
+  // มอบหมายติวเตอร์ให้วิชาที่เพิ่มไว้แบบยังไม่ระบุติวเตอร์
+  const handleAssignTutor = async (tutorCourseDetailId, adminId) => {
+    try {
+      const res = await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { AdminId: adminId || null });
+      fetchSubjects();
+      if (!draftedNotice(res, "การมอบหมายติวเตอร์")) showToast("success", adminId ? "มอบหมายติวเตอร์แล้ว" : "นำติวเตอร์ออกจากวิชาแล้ว");
+    } catch (e) {
+      showToast("error", e.response?.data?.message || "มอบหมายติวเตอร์ไม่สำเร็จ");
     }
   };
 
@@ -1033,7 +1048,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
 
   const handleDelete = async (s) => {
     const id = s.TutorCourseDetailId;
-    const tutorName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
+    const tutorName = tutorLabel(s);
     const ok = await confirmDialog(
       `ลบวิชา "${s.SubjectName}" (${tutorName}) ออกจากคอร์สนี้?`,
       { title: "ลบวิชาและติวเตอร์", confirmText: "ลบ", danger: true }
@@ -1059,11 +1074,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4) — ใช้ฟิลด์ Photo จาก admin table
   // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
-  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
+  const tutorOptions = [NO_TUTOR_OPTION, ...allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
-  }));
+  }))];
   const topicsReady = subjects.filter((s) => s.TeachingTopics?.length).length;
   const allPlanTopics = subjects.flatMap((subject) => subject.TeachingTopics || []);
   const scheduledPlanTopics = allPlanTopics.filter((topic) => topic.isScheduled).length;
@@ -1103,8 +1118,8 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
             return <div key={`outline-${s.TutorCourseDetailId}`} className="rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-3 transition-colors duration-200 hover:border-orange-200 hover:bg-orange-50/30 sm:px-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
-                  <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-800">{s.SubjectName}</p><p className="truncate text-xs text-slate-500">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p></div>
+                  <Avatar photo={s.Photo} size="w-8 h-8" name={s.AdminId ? tutorLabel(s) : undefined} seed={s.AdminId} />
+                  <div className="min-w-0"><p className="truncate text-sm font-bold text-slate-800">{s.SubjectName}</p><p className="truncate text-xs text-slate-500">{tutorLabel(s)}</p></div>
                 </div>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${topics.length ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>{topics.length ? `${topics.length} หัวข้อ` : "รอติวเตอร์ระบุ"}</span>
               </div>
@@ -1151,7 +1166,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{subj?.SubjectName || d.Title || "วิชาใหม่"}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{tutor ? (tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`) : ""}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{tutor ? (tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`) : "ยังไม่ระบุติวเตอร์"}</p>
               </div>
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">รอเพิ่มเมื่อเผยแพร่</span>
             </div>
@@ -1168,10 +1183,11 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex items-center gap-2.5">
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์ติวเตอร์คู่กับชื่อ */}
-                <Avatar photo={s.Photo} size="w-8 h-8" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.AdminId} />
+                <Avatar photo={s.Photo} size="w-8 h-8" name={s.AdminId ? tutorLabel(s) : undefined} seed={s.AdminId} />
                 <div className="min-w-0">
                   <p className={`text-sm font-semibold truncate ${pendingDelete ? "text-slate-400 line-through" : "text-slate-800"}`}>{s.SubjectName}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{tutorLabel(s)}</p>
+                  {!s.AdminId && !pendingDelete && <div className="mt-1.5 flex max-w-[240px]"><AvatarSelect options={tutorOptions.filter(o => o.id !== "")} value="" placeholder="เลือกติวเตอร์ให้วิชานี้" onChange={(adminId) => handleAssignTutor(s.TutorCourseDetailId, adminId)} /></div>}
                   {pendingDelete && <p className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">รอลบเมื่อเผยแพร่</p>}
                   {!pendingDelete && hasPendingEdit(s.TutorCourseDetailId) && <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">มีการแก้ไขรอเผยแพร่</p>}
                 </div>
@@ -2936,9 +2952,9 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
   };
 
   const add = () => {
-    if (!newRow.SubjectId || !newRow.AdminId) {
-      if (showToast) return showToast("error", "กรุณาเลือกวิชาและติวเตอร์");
-      return toast("กรุณาเลือกวิชาและติวเตอร์");
+    if (!newRow.SubjectId) {
+      if (showToast) return showToast("error", "กรุณาเลือกวิชา");
+      return toast("กรุณาเลือกวิชา");
     }
     if (!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride)) {
       const msg = "ราคาขายต่อชั่วโมงต้องไม่น้อยกว่าค่าติวเตอร์ต่อชั่วโมง (จะขาดทุน)";
@@ -2985,11 +3001,11 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 
   // ★ options สำหรับ AvatarSelect (ข้อ 4)
   // เลือกได้เฉพาะติวเตอร์ที่กำลังสอน (Status_Tutor_Id = 1) — รายการเดิมยังหาชื่อจาก allTutors ได้ครบ
-  const tutorOptions = allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
+  const tutorOptions = [NO_TUTOR_OPTION, ...allTutors.filter(t => Number(t.Status_Tutor_Id) === 1).map(t => ({
     id: t.AdminId,
     label: t.Nickname || `${t.Firstname} ${t.Lastname}`,
     Photo: t.Photo,
-  }));
+  }))];
 
   return (
     <div className="space-y-3">
@@ -3031,7 +3047,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
                     {subj ? subj.SubjectName : "วิชา (ไม่พบข้อมูล)"}
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : "ติวเตอร์ (ไม่พบข้อมูล)"}
+                    {tut ? (tut.Nickname || `${tut.Firstname} ${tut.Lastname}`) : it.AdminId ? "ติวเตอร์ (ไม่พบข้อมูล)" : "ยังไม่ระบุติวเตอร์"}
                   </p>
                 </div>
               </div>
