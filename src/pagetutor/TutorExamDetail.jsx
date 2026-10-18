@@ -17,7 +17,7 @@ import {
   fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
-  fetchBank, takeBank, prefetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  fetchBank, takeBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
   uploadBankQuestionImage,
   bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
   assembleExamSet, applyExamSet,
@@ -3588,10 +3588,7 @@ export default function TutorExamDetail() {
   useEffect(() => { setLoading(true); reload(); }, [reload]);
 
   // เริ่มโหลดคลังข้อสอบและระดับชั้นพร้อมกับข้อมูลรอบสอบเลย ไม่ต้องรอให้แท็บคลังแสดงก่อน
-  useEffect(() => {
-    if (subjectId) prefetchBank(subjectId);
-    fetchGradeLevels().catch(() => {});
-  }, [subjectId]);
+  // (คลังข้อสอบไม่ต้อง prefetch ที่นี่แล้ว — BankTab แสดงทันทีระหว่างโหลดรอบสอบและโหลดเอง)
 
   // รองรับ Backend รุ่นที่ยังไม่ส่ง courseType ในข้อมูลสอบ โดยอ่านจากรายการคอร์ส
   // ที่ติวเตอร์คนนี้สอนจริง แทนการเดาประเภทคอร์สจากชื่อหรือ URL
@@ -3683,13 +3680,14 @@ export default function TutorExamDetail() {
       {/* Exam header */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
         {!exam ? (
-          <div className="min-h-[104px] md:min-h-[72px] animate-pulse space-y-2" role="status" aria-label="กำลังโหลดข้อมูลการสอบ">
+          <div className="min-h-[148px] md:min-h-[84px] animate-pulse space-y-2" role="status" aria-label="กำลังโหลดข้อมูลการสอบ">
             <div className="flex gap-2"><div className="h-5 w-16 rounded-full bg-slate-100" /><div className="h-5 w-20 rounded-full bg-slate-100" /></div>
             <div className="h-6 w-2/3 rounded bg-slate-100" />
             <div className="h-4 w-1/3 rounded bg-slate-100" />
           </div>
         ) : (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        // min-h เท่ากับโครงตอนโหลด — กล่องไม่เปลี่ยนความสูงตอนข้อมูลมาถึง เนื้อหาด้านล่างจึงไม่กระโดด (CLS)
+        <div className="min-h-[148px] md:min-h-[84px] flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
               <Badge className={TYPE_BADGE[exam.type]}>{meta?.label}</Badge>
