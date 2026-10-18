@@ -73,7 +73,8 @@ export default function TutorCourseManagePage() {
 
   const getVideoThumbnail = (url, type) => {
     if (type === "upload" && /res\.cloudinary\.com/.test(url || "")) {
-      return url.replace("/video/upload/", "/video/upload/so_1/").replace(/\.(mp4|mov|webm)$/i, ".jpg");
+      // ภาพปกจากวินาทีที่ 1 ย่อเหลือขนาดที่แสดงจริง (กว้าง 112px x2 สำหรับจอคมชัด) + รูปแบบไฟล์ที่เล็กที่สุดที่เบราว์เซอร์รองรับ
+      return url.replace("/video/upload/", "/video/upload/so_1,w_224,c_limit,f_auto,q_auto/").replace(/\.(mp4|mov|webm)$/i, ".jpg");
     }
     const m = url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
     return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
@@ -227,9 +228,6 @@ export default function TutorCourseManagePage() {
     } catch (error) { toast("ลบเอกสารไม่สำเร็จ: " + (error.response?.data?.message || "กรุณาลองใหม่อีกครั้ง"), "error"); }
   };
 
-  if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
-  if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดคลิปและเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchContent(); }} /></div>;
-
   return (
     <div className="min-h-screen pb-12 px-4 lg:px-0">
       <div className="mx-auto">
@@ -256,6 +254,12 @@ export default function TutorCourseManagePage() {
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
+        {/* หัวข้อหน้าและหัวข้อการสอนแสดง/โหลดทันที ส่วนคลิปและเอกสารรอข้อมูล (เดิมรอทั้งหน้า) */}
+        {loading ? (
+          <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดคลิปและเอกสาร..." /></div>
+        ) : loadError ? (
+          <ErrorState description="โหลดคลิปและเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchContent(); }} />
+        ) : (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
 
           {/* VIDEOS */}
@@ -303,7 +307,7 @@ export default function TutorCourseManagePage() {
                     /* ✅ View Mode — แนวนอน thumbnail เล็ก + ข้อมูลข้างๆ */
                     <div className="flex items-stretch gap-0">
                       {/* Thumbnail */}
-                      <a href={video.VideoUrl} target="_blank" rel="noreferrer" className="relative flex-shrink-0 w-28 bg-slate-100 group">
+                      <a href={video.VideoUrl} target="_blank" rel="noreferrer" aria-label={`เปิดวิดีโอ ${video.VideoTitle || ""}`.trim()} className="relative flex-shrink-0 w-28 bg-slate-100 group">
                         {getVideoThumbnail(video.VideoUrl, video.VideoType) ? (
                           <img src={getVideoThumbnail(video.VideoUrl, video.VideoType)} alt="" className="w-28 h-full object-cover" />
                         ) : (
@@ -418,6 +422,7 @@ export default function TutorCourseManagePage() {
           </div>
 
         </div>
+        )}
       </div>
 
       {/* ===== MODAL: ADD VIDEO ===== */}

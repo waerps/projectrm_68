@@ -112,7 +112,7 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
       </div>
 
       <div className="px-4 pb-4 pt-3 sm:px-6">
-        {loading ? <p className="text-sm text-slate-500">กำลังโหลดหัวข้อ…</p> : loadFailed ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+        {loading ? <p className="min-h-[96px] text-sm text-slate-600" role="status">กำลังโหลดหัวข้อ…</p> : loadFailed ? <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
           <p className="text-sm text-red-700">{error}</p>
           <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-700 shadow-sm hover:bg-red-100">ลองโหลดใหม่</button>
         </div> : editing ? <>
