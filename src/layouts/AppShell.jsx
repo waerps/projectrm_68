@@ -92,7 +92,8 @@ export default function AppShell() {
       {/* flex แนวตั้งเต็มความสูงจอ → footer ติดล่างเสมอแม้หน้ามีเนื้อหาน้อย */}
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 w-full">
+        {/* min-h-screen: เนื้อหาสูงอย่างน้อยเต็มจอ → ตอนหน้ากำลังโหลด footer จะอยู่ใต้จอ ไม่กระโดดลงเมื่อข้อมูลมาถึง (Lighthouse CLS) */}
+        <main className="flex-1 w-full min-h-screen">
           <div className="max-w-6xl mx-auto">
             <Outlet />
           </div>

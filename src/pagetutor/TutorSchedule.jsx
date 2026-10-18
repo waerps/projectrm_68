@@ -10,6 +10,7 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { CalendarDays } from "lucide-react";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache"
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -108,7 +109,7 @@ function getSlotStatus(cls, slotPhases, now) {
 const STATUS_STYLE = {
   completed: {
     card: 'bg-green-50 border-green-200 cursor-default',
-    badge: 'bg-green-50 text-green-600 border-green-100',
+    badge: 'bg-green-50 text-green-700 border-green-100',
     label: 'เช็กอินแล้ว',
     Icon: CheckCircle, // <-- เพิ่มไอคอน
   },
@@ -120,7 +121,7 @@ const STATUS_STYLE = {
   },
   checkin_ready: {
     card: 'bg-white border-orange-200 hover:border-orange-500 hover:shadow-lg cursor-pointer transform hover:-translate-y-1',
-    badge: 'bg-orange-50 text-orange-600 border-orange-100',
+    badge: 'bg-orange-50 text-orange-700 border-orange-100',
     label: 'กดเพื่อบันทึกต้นคาบ',
     Icon: Clock,
   },
@@ -144,7 +145,7 @@ const STATUS_STYLE = {
   },
   upcoming: {
     card: 'bg-slate-50 border-slate-200 opacity-60 cursor-not-allowed',
-    badge: 'bg-slate-100 text-slate-400 border-slate-200',
+    badge: 'bg-slate-100 text-slate-600 border-slate-200',
     label: 'รอถึงช่วงเช็กอิน',
     Icon: null,
   },
@@ -169,13 +170,13 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
             <button key={d} type="button" onClick={() => setDay(d)}
               className={`snap-start shrink-0 w-[4.5rem] rounded-2xl border py-2 text-center transition ${active ? 'bg-orange-500 border-orange-500 text-white shadow-sm' : isToday ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-white border-slate-200 text-slate-700'}`}>
               <span className="block text-sm font-bold">{d.length > 3 ? d.slice(0, 3) + '.' : d}</span>
-              <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-400'}`}>{weekDates[d]?.display}</span>
+              <span className={`block text-[11px] ${active ? 'text-orange-100' : 'text-slate-500'}`}>{weekDates[d]?.display}</span>
               <span className={`block mt-1 mx-auto h-1.5 w-1.5 rounded-full ${n ? (active ? 'bg-white' : 'bg-orange-400') : 'bg-transparent'}`} />
             </button>
           )
         })}
       </div>
-      <p className="mt-2 mb-3 text-sm font-bold text-slate-800">วัน{day} <span className="font-normal text-slate-400">· {items.length} คาบ</span></p>
+      <p className="mt-2 mb-3 text-sm font-bold text-slate-800">วัน{day} <span className="font-normal text-slate-500">· {items.length} คาบ</span></p>
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center text-sm text-slate-500">ไม่มีคาบสอนในวันนี้</div>
       ) : (
@@ -386,7 +387,24 @@ export default function TutorSchedule() {
         })
         // ✅ response เปลี่ยนรูปแบบ ต้อง destructure (ดู backend ที่ต้องอัปเดตคู่กัน)
         if (cancelled) return
-        const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = res.data
+        applySchedule(res.data)
+        // เก็บตารางสัปดาห์ปัจจุบันไว้แสดงทันทีเมื่อกลับมาหน้านี้ (เฉพาะแท็บนี้)
+        if (!referenceDate) writeSessionCache('tutor-schedule', res.data)
+        loadedOnceRef.current = true
+      } catch (err) {
+        if (cancelled) return
+        console.error('Error fetching schedule', err)
+        if (loadedOnceRef.current) setWeekError(true)
+        else setLoadError(true)
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+          setWeekLoading(false)
+        }
+      }
+    }
+    const applySchedule = (data) => {
+        const { schedule, todayDate: serverToday, weekStart: serverWeekStart } = data
 
         const map = {}
         DAYS_GRID.forEach(d => { map[d] = {} })
@@ -407,18 +425,11 @@ export default function TutorSchedule() {
         setSlotPhases(phases)
         setTodayDate(serverToday)
         setWeekStart(serverWeekStart)
-        loadedOnceRef.current = true
-      } catch (err) {
-        if (cancelled) return
-        console.error('Error fetching schedule', err)
-        if (loadedOnceRef.current) setWeekError(true)
-        else setLoadError(true)
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-          setWeekLoading(false)
-        }
-      }
+    }
+    // ครั้งแรกที่เปิดหน้า: ถ้ามีตารางในแคช แสดงทันที แล้วค่อยโหลดข้อมูลใหม่มาแทน
+    if (!referenceDate && !loadedOnceRef.current) {
+      const cached = readSessionCache('tutor-schedule')
+      if (cached?.schedule) { applySchedule(cached); setLoading(false) }
     }
     fetchSchedule()
     return () => { cancelled = true }
@@ -773,7 +784,7 @@ export default function TutorSchedule() {
                 {addDays(`${weekStart}T00:00:00`, 6).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
               </p>
               {weekLoading && <p className="mt-1 text-xs font-semibold text-slate-500" role="status">กำลังโหลดสัปดาห์…</p>}
-              {referenceDate && <button type="button" onClick={() => setReferenceDate(null)} className="mt-1 text-xs font-bold text-orange-600">กลับสัปดาห์นี้</button>}
+              {referenceDate && <button type="button" onClick={() => setReferenceDate(null)} className="mt-1 text-xs font-bold text-orange-700">กลับสัปดาห์นี้</button>}
             </div>
             <button type="button" onClick={() => moveWeek(7)} className="rounded-full p-2 hover:bg-white hover:shadow-sm" aria-label="สัปดาห์ถัดไป">
               <ChevronRight className="h-5 w-5" />
@@ -783,13 +794,13 @@ export default function TutorSchedule() {
 
         {/* Legend — ปรับจาก AdminSchedule (4 สถานะ) + เพิ่ม "รอถ่ายรูปท้ายคาบ" เฉพาะติวเตอร์ */}
         <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 lg:gap-4 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-green-600">
+          <span className="flex items-center gap-1.5 text-green-700">
             <CheckCircle className="h-3.5 w-3.5" /> เช็กอินแล้ว
           </span>
-          <span className="flex items-center gap-1.5 text-yellow-600">
+          <span className="flex items-center gap-1.5 text-yellow-700">
             <Clock className="h-3.5 w-3.5" /> รอถ่ายรูปท้ายคาบ
           </span>
-          <span className="flex items-center gap-1.5 text-orange-600">
+          <span className="flex items-center gap-1.5 text-orange-700">
             <Clock className="h-3.5 w-3.5" /> เช็กอินได้ก่อนคาบ 30 นาที
           </span>
           <span className="flex items-center gap-1.5 text-blue-600">
@@ -798,7 +809,7 @@ export default function TutorSchedule() {
           <span className="flex items-center gap-1.5 text-red-600">
             <AlertTriangle className="h-3.5 w-3.5" /> เกินเวลา/ไม่มีเช็กอิน
           </span>
-          <span className="flex items-center gap-1.5 text-slate-400">
+          <span className="flex items-center gap-1.5 text-slate-500">
             <span className="h-2.5 w-2.5 rounded-full bg-slate-300 inline-block" /> รอถึงช่วงเช็กอิน
           </span>
         </div>
@@ -823,7 +834,7 @@ export default function TutorSchedule() {
                 <div key={d} className={`text-center font-bold py-2 rounded-xl text-sm transition-colors
                   ${isTodayCol ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-700 bg-orange-50/60'}`}>
                   <div>{d}</div>
-                  <div className={`text-[11px] font-normal mt-0.5 ${isTodayCol ? 'text-orange-100' : 'text-slate-400'}`}>
+                  <div className={`text-[11px] font-normal mt-0.5 ${isTodayCol ? 'text-orange-100' : 'text-slate-500'}`}>
                     {weekDates[d]?.display}
                   </div>
                 </div>
@@ -975,7 +986,7 @@ export default function TutorSchedule() {
                 {!releaseFiles.length && <p className="mt-1 text-xs text-slate-500">คอร์สและวิชานี้ยังไม่มีเอกสารให้เลือก</p>}
               </div>
               <div>
-                <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-slate-400">(ไม่บังคับ)</span></label>
+                <label className="mb-2 block text-sm font-bold">เหตุผลที่ปล่อยคลาส <span className="font-normal text-slate-500">(ไม่บังคับ)</span></label>
                 <input value={releaseForm.reason} onChange={event => setReleaseForm(value => ({ ...value, reason: event.target.value }))}
                   placeholder="เช่น ติดธุระด่วน" className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
               </div>
@@ -1122,7 +1133,7 @@ export default function TutorSchedule() {
                     <CheckCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-green-800 text-sm">บันทึกต้นคาบแล้ว</p>
-                      <p className="text-xs text-green-600 mt-0.5">บันทึกการเช็กชื่อนักเรียนแล้ว ขั้นตอนถัดไปคือถ่ายรูปท้ายคาบเพื่อปิดคาบ</p>
+                      <p className="text-xs text-green-700 mt-0.5">บันทึกการเช็กชื่อนักเรียนแล้ว ขั้นตอนถัดไปคือถ่ายรูปท้ายคาบเพื่อปิดคาบ</p>
                     </div>
                   </div>
 
