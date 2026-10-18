@@ -99,7 +99,7 @@ export default function NotificationBell({ role, pagePath }) {
 
   const unread = items.filter(item => !item.isRead).length;
   return <div className="relative" ref={ref}>
-    <button type="button" onClick={() => { setOpen(value => !value); if (!open) load(); }} aria-label="การแจ้งเตือน" className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${open ? 'bg-orange-50 text-orange-500' : 'hover:bg-orange-100 hover:text-orange-500'}`}>
+    <button type="button" onClick={() => { setOpen(value => !value); if (!open) load(); }} aria-label={unread > 0 ? `การแจ้งเตือน ${unread > 99 ? '99+' : unread} รายการที่ยังไม่อ่าน` : 'การแจ้งเตือน'} className={`relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${open ? 'bg-orange-50 text-orange-500' : 'hover:bg-orange-100 hover:text-orange-500'}`}>
       <Bell className="h-5 w-5" />
       {unread > 0 && <span className="absolute right-0 top-0 flex min-w-4 h-4 px-1 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">{unread > 99 ? '99+' : unread}</span>}
     </button>
