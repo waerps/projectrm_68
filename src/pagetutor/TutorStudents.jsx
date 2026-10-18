@@ -1,7 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { optimizedImage } from "../utils/responsiveImage";
-import ExamGrowthSummary from "../components/ExamGrowthSummary";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -494,10 +493,30 @@ export default function TutorStudents() {
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
                                     <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
                                     {student.exam?.improvement ? (
-                                        <ExamGrowthSummary
-                                            improvement={student.exam.improvement}
-                                            totalSubjects={examSummary?.subjectCount ?? student.exam.bySubject?.length}
-                                        />
+                                        (() => {
+                                            // คะแนนรวมของ "ทุกวิชาที่สอบครบทั้งสองรอบ" (วิชาละ 20 คะแนน) — ระบุชื่อวิชาที่นำมาคิดให้ชัด
+                                            const imp = student.exam.improvement;
+                                            const target = imp.basis === "pre-mid" ? "mid" : "post";
+                                            const counted = (student.exam.bySubject || []).filter((sub) => sub.pre != null && sub[target] != null).map((sub) => sub.subjectName);
+                                            const total = examSummary?.subjectCount ?? student.exam.bySubject?.length ?? counted.length;
+                                            return (
+                                                <>
+                                                    <p className="text-sm font-bold text-slate-800 leading-relaxed">
+                                                        Pre-test {fmtScoreNum(imp.from)} → {target === "mid" ? "Mid-test" : "Post-test"} {fmtScoreNum(imp.to)}
+                                                        <span className="font-medium text-slate-500"> จาก {imp.max} คะแนน</span>
+                                                    </p>
+                                                    <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === "up" ? "text-green-700" : getOverallTrend(student) === "down" ? "text-red-700" : "text-amber-800"}`}>
+                                                        {getAverageImprovement(student)} คะแนน
+                                                        {imp.growth != null && <span className="font-medium text-slate-600"> · พัฒนาการ {getGrowthText(student)} ของคะแนนที่ยังขาด</span>}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                                                        คำนวณจาก{counted.length ? ` ${counted.join(", ")}` : ` ${imp.subjectsCounted} วิชา`}
+                                                        {total > imp.subjectsCounted ? ` (${imp.subjectsCounted} จาก ${total} วิชา)` : ""}
+                                                        {imp.growthCapped ? " · พื้นฐานเดิมสูง ไม่ควรเทียบกับผู้เรียนคนอื่นโดยตรง" : ""}
+                                                    </p>
+                                                </>
+                                            );
+                                        })()
                                     ) : student.exam?.latest ? (
                                         <>
                                             <p className="text-sm font-bold text-slate-800 leading-relaxed">

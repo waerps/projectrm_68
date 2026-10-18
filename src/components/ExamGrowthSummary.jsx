@@ -33,7 +33,8 @@ function ScoreBar({ label, score, max, barClass }) {
   );
 }
 
-export default function ExamGrowthSummary({ improvement, totalSubjects, untestedSubjects = [], variant = "compact" }) {
+// countedSubjects = ชื่อวิชาที่นำมาคิด (สอบครบทั้งสองรอบ) · pendingSubjects = สอบไปแล้วแต่ยังไม่ครบสองรอบ
+export default function ExamGrowthSummary({ improvement, totalSubjects, untestedSubjects = [], countedSubjects = [], pendingSubjects = [], variant = "compact" }) {
   if (!improvement) return null;
   const { from, to, max, delta, basis, subjectsCounted, growth, growthCapped } = improvement;
   const tone = delta > 0 ? TONE.up : delta < 0 ? TONE.down : TONE.same;
@@ -44,16 +45,19 @@ export default function ExamGrowthSummary({ improvement, totalSubjects, untested
   const full = variant === "full";
 
   // ประโยคหลัก อ่านแล้วเข้าใจทันที
-  const headline = delta > 0 ? `ได้คะแนนเพิ่ม ${fmtScore(delta)} คะแนน`
-    : delta < 0 ? `คะแนนลดลง ${fmtScore(Math.abs(delta))} คะแนน`
-      : "คะแนนเท่าเดิม";
+  const multi = subjectsCounted > 1;
+  const scope = multi ? `คะแนนรวม ${subjectsCounted} วิชา` : "คะแนน";
+  const headline = delta > 0 ? `${scope}เพิ่มขึ้น ${fmtScore(delta)} คะแนน`
+    : delta < 0 ? `${scope}ลดลง ${fmtScore(Math.abs(delta))} คะแนน`
+      : `${scope}เท่าเดิม`;
 
   // หมายเหตุว่าเทียบจากอะไร
   const notes = [];
-  if (totalSubjects && subjectsCounted < totalSubjects) notes.push(`เทียบจาก ${subjectsCounted} ใน ${totalSubjects} วิชาที่สอบครบทั้งสองรอบ`);
-  else notes.push(`เทียบจาก ${subjectsCounted} วิชาที่สอบครบทั้งสองรอบ`);
+  if (totalSubjects && subjectsCounted < totalSubjects) notes.push(`คำนวณจาก ${subjectsCounted} จาก ${totalSubjects} วิชา (เฉพาะวิชาที่สอบครบทั้งสองรอบ วิชาละ ${fmtScore(max / Math.max(1, subjectsCounted))} คะแนน)`);
+  else notes.push(`คำนวณจาก ${subjectsCounted} วิชาที่สอบครบทั้งสองรอบ (วิชาละ ${fmtScore(max / Math.max(1, subjectsCounted))} คะแนน)`);
+  if (pendingSubjects.length) notes.push(`ยังไม่นับ ${pendingSubjects.join(", ")} (สอบยังไม่ครบสองรอบ)`);
   if (untestedSubjects.length) notes.push(`ยังไม่นับ ${untestedSubjects.join(", ")} (ยังไม่ได้สอบ)`);
-  if (basis === "pre-mid") notes.push("ยังไม่มี Post-test จึงเทียบกับ Mid-test ไปก่อน");
+  if (basis === "pre-mid") notes.push("ยังไม่มีผล Post-test จึงเทียบกับ Mid-test");
 
   return (
     <div className={full ? "grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]" : "space-y-3"}>
@@ -65,8 +69,16 @@ export default function ExamGrowthSummary({ improvement, totalSubjects, untested
             <ToneIcon className="h-3.5 w-3.5" aria-hidden="true" />{deltaText}
           </span>
         </div>
-        <ScoreBar label="Pre-test" score={from} max={max} barClass="bg-slate-400" />
-        <ScoreBar label={toLabel} score={to} max={max} barClass={tone.bar} />
+        <ScoreBar label={multi ? "Pre-test (รวม)" : "Pre-test"} score={from} max={max} barClass="bg-slate-400" />
+        <ScoreBar label={multi ? `${toLabel} (รวม)` : toLabel} score={to} max={max} barClass={tone.bar} />
+        {countedSubjects.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span className="text-[11px] text-slate-500">วิชาที่นำมาคิด:</span>
+            {countedSubjects.map((name) => (
+              <span key={name} className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700">{name}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── เก็บคะแนนที่ยังขาดได้กี่ % ── */}
@@ -81,12 +93,12 @@ export default function ExamGrowthSummary({ improvement, totalSubjects, untested
               <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${clampPct(growth)}%` }} />
             </div>
             <p className="mt-1.5 text-[11px] leading-5 text-slate-600">
-              รอบแรกยังขาดอีก {fmtScore(missing)} คะแนนถึงจะเต็ม
-              {delta > 0 ? ` · รอบนี้เก็บเพิ่มมาได้ ${fmtScore(delta)} คะแนน` : ""}
+              Pre-test ยังขาดอีก {fmtScore(missing)} คะแนนจากคะแนนเต็ม
+              {delta > 0 ? ` · ${toLabel} ทำเพิ่มได้ ${fmtScore(delta)} คะแนน` : ""}
             </p>
             {growthCapped && (
               <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                น้องพื้นฐานดีตั้งแต่แรก เหลือที่ให้เพิ่มน้อย จึงไม่ควรเทียบตัวเลขนี้กับน้องที่เริ่มจากคะแนนต่ำกว่า
+                ผู้เรียนมีพื้นฐานเดิมสูง จึงไม่ควรเทียบตัวเลขนี้กับผู้เรียนที่เริ่มจากคะแนนต่ำกว่าโดยตรง
               </p>
             )}
           </>

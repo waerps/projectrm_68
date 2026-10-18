@@ -520,11 +520,24 @@ export default function TutorStudentDetail() {
                     {/* สรุปพัฒนาการรวมทั้งแพ็กเกจ */}
                     <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                         {improvement ? (
-                            <ExamGrowthSummary
-                                variant="full"
-                                improvement={improvement}
-                                untestedSubjects={examData?.untestedSubjects || []}
-                            />
+                            (() => {
+                                // แยกวิชาที่ถูกนำมาคิด (สอบครบทั้งสองรอบ) กับวิชาที่สอบแล้วแต่ยังไม่ครบ
+                                const target = improvement.basis === "pre-mid" ? "mid" : "post";
+                                const subs = examData?.bySubject || [];
+                                const isUntested = (sub) => sub.pre == null && sub.mid == null && sub.post == null;
+                                const counted = subs.filter((sub) => sub.pre != null && sub[target] != null);
+                                const pending = subs.filter((sub) => !isUntested(sub) && !counted.includes(sub));
+                                return (
+                                    <ExamGrowthSummary
+                                        variant="full"
+                                        improvement={improvement}
+                                        totalSubjects={subs.length}
+                                        countedSubjects={counted.map((sub) => sub.subjectName)}
+                                        pendingSubjects={pending.map((sub) => sub.subjectName)}
+                                        untestedSubjects={examData?.untestedSubjects || []}
+                                    />
+                                );
+                            })()
                         ) : examData?.latest ? (
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
