@@ -118,7 +118,7 @@ export default function TutorQuestionBank() {
               คลังข้อสอบ{selected?.subjectName ? ` — ${selected.subjectName}` : ""}
             </h1>
             <p className="text-sm text-slate-500 mt-1">เพิ่ม แก้ไข และจัดหมวดหมู่ข้อสอบของคุณในวิชานี้</p>
-            {selected && <div className="mt-2"><CourseTypeBadges types={selected.courseTypes} /></div>}
+            <div className="mt-2 min-h-[22px]">{selected && <CourseTypeBadges types={selected.courseTypes} />}</div>
           </div>
           <button
             onClick={backToList}
@@ -128,6 +128,10 @@ export default function TutorQuestionBank() {
           </button>
         </div>
 
+        {/* รอรายการวิชาโหลดเสร็จก่อนค่อยแสดง (ป้าย/ประกาศสิทธิ์ขึ้นกับวิชา) — ไม่ให้แทรกขึ้นมาดันคลังลงทีหลัง (CLS)
+            คลังยัง mount อยู่ใต้ hidden จึงโหลดข้อสอบไปพร้อมกัน */}
+        {loading && <div className="flex min-h-[40vh] items-center justify-center text-orange-700" role="status"><Loader2 className="h-8 w-8 animate-spin" /><span className="sr-only">กำลังโหลด...</span></div>}
+        <div className={loading ? "hidden" : "space-y-6"}>
         {selected?.courseTypes?.includes("single") && <ExamRightsNotice standaloneBank />}
         {selected?.courseTypes?.includes("single") && selected?.courseTypes?.includes("bundle") && (
           <p className="text-xs text-slate-500">วิชานี้ใช้คลังข้อสอบชุดเดียวกันทั้งคอร์สเดี่ยวและคอร์สรวม</p>
@@ -140,6 +144,7 @@ export default function TutorQuestionBank() {
             showToast={showToast}
           />
         </Suspense>
+        </div>
       </div>
     );
   }

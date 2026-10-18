@@ -37,6 +37,7 @@ import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { aiAnalysisNotice, isVerifiedAiSummary, parentMessageAttribution } from "../utils/examAnalysisDisplay";
 import ExamRightsNotice from "./ExamRightsNotice";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 import { API_URL } from "../config";
 
 // ─── small shared bits ───────────────────────────────────────────────────────
@@ -956,8 +957,10 @@ function scaleScoresLocal(items, totalScore) {
 // คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
 export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = null }) {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // แคชข้อสอบของวิชานี้ไว้ในแท็บ — เปิดซ้ำจะเห็นรายการทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+  const bankCacheKey = `tutor-bank-${subjectId}`;
+  const [items, setItems] = useState(() => readSessionCache(bankCacheKey) || []);
+  const [loading, setLoading] = useState(() => !readSessionCache(bankCacheKey));
   const [loadError, setLoadError] = useState("");
   const [mode, setMode] = useState(null);        // null | picker | manual | excel
   const [editing, setEditing] = useState(null);
@@ -979,10 +982,15 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
 
   const load = useCallback(() => {
     if (!subjectId) return;
-    setLoading(true);
+    const cacheKey = `tutor-bank-${subjectId}`;
+    setLoading(!readSessionCache(cacheKey));
     setLoadError("");
     fetchBank(subjectId)
-      .then((rows) => setItems(Array.isArray(rows) ? rows : []))
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        setItems(list);
+        writeSessionCache(cacheKey, list);
+      })
       .catch((err) => { console.error("Fetch bank failed:", err); setLoadError("โหลดคลังข้อสอบไม่สำเร็จ"); })
       .finally(() => setLoading(false));
   }, [subjectId]);
@@ -1240,11 +1248,11 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
               className="w-full border border-slate-200 rounded-xl pl-9 pr-3 h-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
-          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
+          <select aria-label="กรองตามหมวดหมู่" value={fCat} onChange={(e) => setFCat(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
             <option value="">ทุกหมวดหมู่</option>
             {categoryOptions.map((c) => <option key={c.category} value={c.category}>{c.category} ({c.questionCount})</option>)}
           </select>
-          <select value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
+          <select aria-label="กรองตามระดับความยาก" value={fLevel} onChange={(e) => setFLevel(e.target.value)} className="border border-slate-200 rounded-xl px-3 h-10 text-sm max-w-full md:max-w-[240px] truncate">
             <option value="">ทุกระดับ</option>
             {BANK_LEVELS.map((lv) => <option key={lv} value={lv}>{lv}</option>)}
           </select>
@@ -1292,6 +1300,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
           ) : (
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <select
+                aria-label="เปลี่ยนระดับชั้นของข้อที่เลือก"
                 value=""
                 onChange={(e) => {
                   const v = e.target.value;
@@ -1310,6 +1319,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
               </select>
 
               <select
+                aria-label="เปลี่ยนหมวดหมู่ของข้อที่เลือก"
                 value=""
                 disabled={categoryOptions.length === 0}
                 onChange={(e) => {

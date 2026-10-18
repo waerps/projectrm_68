@@ -10,7 +10,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 const P = "layouts/ProfileLayout.jsx", T = "layouts/TutorLayout.jsx", A = "layouts/AdminLayout.jsx";
-// [regex ของ pathname, ไฟล์ใน src ที่หน้านั้นใช้] — ตรวจจากบนลงล่าง ใช้อันแรกที่ตรง
+// [regex ของ pathname, ไฟล์ใน src ที่หน้านั้นใช้, (ไม่บังคับ) true = ให้ regex ตรวจรวม query string ด้วย]
+// ตรวจจากบนลงล่าง ใช้อันแรกที่ตรง
 const ROUTES = [
   ["^/$", ["pages/Home.jsx"]],
   ["^/login", ["pages/Login.jsx"]],
@@ -52,6 +53,7 @@ const ROUTES = [
   ["^/tutor/exam", [T, "pagetutor/TutorExam.jsx"]],
   ["^/tutor/manage", [T, "pagetutor/TutorManage.jsx"]],
   ["^/tutor/video-questions/", [T, "pagetutor/TutorVideoQuestions.jsx"]],
+  ["^/tutor/question-bank\\?(.*&)?subjectId=", [T, "pagetutor/TutorQuestionBank.jsx", "pagetutor/TutorExamDetail.jsx"], true],
   ["^/tutor/question-bank", [T, "pagetutor/TutorQuestionBank.jsx"]],
   ["^/tutor/progress", [T, "pagetutor/TutorProgressOverview.jsx"]],
   ["^/admin/?$|^/admin/dashboard", [A, "pageadmin/AdminDashboard.jsx"]],
@@ -88,7 +90,7 @@ export default function routePreload() {
         while (stack.length) { const f = stack.pop(); if (entryFiles.has(f)) continue; entryFiles.add(f); stack.push(...(byFile.get(f)?.imports || [])); }
       }
       const table = [];
-      for (const [pattern, files] of ROUTES) {
+      for (const [pattern, files, withQuery] of ROUTES) {
         const js = new Set(), css = new Set();
         for (const file of files) {
           const chunk = byModule.get(path.normalize(path.resolve(root, "src", file)));
@@ -103,15 +105,15 @@ export default function routePreload() {
             stack.push(...(c?.imports || []));
           }
         }
-        if (js.size) table.push([pattern, [...js], [...css]]);
+        if (js.size) table.push([pattern, [...js], [...css], withQuery ? 1 : 0]);
       }
       // เก็บชื่อไฟล์ครั้งเดียวในลิสต์ f แล้วอ้างด้วยเลข index เพื่อให้สคริปต์เล็ก
       const files = [], index = new Map();
       const id = (name) => { const short = name.replace(/^assets\//, ""); if (!index.has(short)) { index.set(short, files.length); files.push(short); } return index.get(short); };
-      const compact = table.map(([pattern, js, css]) => [pattern, js.map(id), css.map(id)]);
+      const compact = table.map(([pattern, js, css, q]) => q ? [pattern, js.map(id), css.map(id), 1] : [pattern, js.map(id), css.map(id)]);
       const code = `(function(){var f=${JSON.stringify(files)},t=${JSON.stringify(compact)},p=location.pathname,h=document.head;` +
         `function l(r,i,a){var e=document.createElement("link");e.rel=r;e.href="/assets/"+f[i];if(a)e.as=a;e.crossOrigin="";h.appendChild(e)}` +
-        `for(var i=0;i<t.length;i++){if(new RegExp(t[i][0]).test(p)){t[i][1].forEach(function(x){l("modulepreload",x)});t[i][2].forEach(function(x){l("preload",x,"style")});break}}})();\n`;
+        `for(var i=0;i<t.length;i++){if(new RegExp(t[i][0]).test(t[i][3]?p+location.search:p)){t[i][1].forEach(function(x){l("modulepreload",x)});t[i][2].forEach(function(x){l("preload",x,"style")});break}}})();\n`;
       const name = `assets/route-preload-${crypto.createHash("sha256").update(code).digest("hex").slice(0, 8)}.js`;
       fs.writeFileSync(path.join(outDir, name), code);
       const htmlPath = path.join(outDir, "index.html");
