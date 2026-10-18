@@ -84,6 +84,8 @@ export default function Navbar() {
                                 <img
                                     src="/logo.png"
                                     alt="ศรเสริมติวเตอร์"
+                                    width={44}
+                                    height={25}
                                     className="h-auto w-full object-contain"
                                 />
                             </div>

@@ -15,14 +15,14 @@ const newsUrl = (path) => {
   return `${API_URL.replace(/\/$/, "")}/${String(path).replace(/^\//, "")}`;
 };
 
-function NewsImage({ src, alt, className = "", onLoad }) {
+function NewsImage({ src, alt, className = "", onLoad, priority = false }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
 
   if (!src || failed) {
     return <span className={`news-image-fallback ${className}`} role="img" aria-label={alt}><Newspaper size={36} strokeWidth={1.4} aria-hidden="true" /></span>;
   }
-  return <img className={className} src={optimizedImage(src, 640)} alt={alt} loading="lazy" decoding="async" onLoad={onLoad} onError={() => setFailed(true)} />;
+  return <img className={className} src={optimizedImage(src, 640)} alt={alt} loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : undefined} decoding="async" onLoad={onLoad} onError={() => setFailed(true)} />;
 }
 
 export function NewsTile({ item, index, onOpen, balanced = false, isWide, onImageAspect }) {
@@ -39,12 +39,11 @@ export function NewsTile({ item, index, onOpen, balanced = false, isWide, onImag
       type="button"
       className={`archive-news-story-card news-tile ${featured ? "news-tile-featured" : ""} ${wide ? "news-tile-wide" : ""}`}
       onClick={(event) => onOpen(item.id, event.currentTarget)}
-      aria-label={`อ่านข่าว ${item.title || "ข่าวประชาสัมพันธ์"}`}
       data-news-id={item.id}
       style={{ "--tile-order": Math.min(index, 9) }}
     >
       <span className="archive-news-story-cover news-tile-photo">
-        <NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} className="archive-news-story-image" onLoad={onImageAspect ? measureImage : undefined} />
+        <NewsImage src={newsUrl(item.img)} alt={item.title || "ภาพข่าว"} className="archive-news-story-image" priority={index === 0} onLoad={onImageAspect ? measureImage : undefined} />
         <span className="archive-news-story-image-mark"><ImageIcon size={14} aria-hidden="true" /> ดูภาพและรายละเอียด</span>
       </span>
       <span className="archive-news-story-content news-tile-content">

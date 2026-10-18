@@ -14,6 +14,28 @@ import ErrorState from "../components/ui/ErrorState";
 
 const SERVER_URL = API_URL;
 
+// แคชข่าวไว้ใน sessionStorage (เฉพาะแท็บนี้) — กลับมาหน้านี้จะเห็นข่าวทันที แล้วค่อยอัปเดตเบื้องหลัง
+const NEWS_CACHE_KEY = "tutor-news";
+const readNewsCache = () => { try { const v = JSON.parse(sessionStorage.getItem(NEWS_CACHE_KEY) || "null"); return Array.isArray(v) ? v : null; } catch { return null; } };
+const writeNewsCache = (list) => { try { sessionStorage.setItem(NEWS_CACHE_KEY, JSON.stringify(list)); } catch { /* ข้าม */ } };
+
+// โครงการ์ดข่าวระหว่างโหลด — สูงพอ ๆ กับข่าวจริง เพื่อไม่ให้ส่วนด้านล่างกระโดดตอนข่าวโหลดเสร็จ (Lighthouse CLS)
+function NewsGridSkeleton() {
+  return (
+    <div role="status" aria-live="polite">
+      <span className="sr-only">กำลังโหลดข่าวสาร...</span>
+      <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`animate-pulse rounded-2xl border border-orange-100 bg-white ${i === 0 ? "sm:col-span-2" : ""}`}>
+            <div className={`rounded-t-2xl bg-orange-50 ${i === 0 ? "h-56 sm:h-72" : "h-44"}`} />
+            <div className="space-y-2 p-4"><div className="h-3 w-1/3 rounded bg-orange-100" /><div className="h-4 w-4/5 rounded bg-neutral-100" /><div className="h-4 w-3/5 rounded bg-neutral-100" /></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function resolveImg(img) {
   if (!img) return null;
   if (img.startsWith("http") || img.startsWith("blob:")) return img;
@@ -67,8 +89,8 @@ function selectWideNews(newsItems, imageAspects) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 export default function TutorMain() {
-  const [news, setNews] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [news, setNews] = useState(() => readNewsCache() || []);
+  const [loading, setLoading] = useState(() => !readNewsCache());
   const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const lastOpenedId = useRef(null);
@@ -80,8 +102,12 @@ export default function TutorMain() {
     axios.get(`${SERVER_URL}/api/news?role=tutor`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((res) => setNews(res.data.map((n) => ({ ...n, img: resolveImg(n.img) }))))
-      .catch((err) => { console.error(err); setLoadError(true); })
+      .then((res) => {
+        const list = res.data.map((n) => ({ ...n, img: resolveImg(n.img) }));
+        setNews(list);
+        writeNewsCache(list);
+      })
+      .catch((err) => { console.error(err); if (!readNewsCache()) setLoadError(true); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -134,7 +160,7 @@ export default function TutorMain() {
           <div className="news-feed-heading">
             <div><span className="news-feed-line" /><h2>ข่าวประชาสัมพันธ์</h2>{!loading && !loadError && <span className="news-feed-total">{publicNews.length} เรื่อง</span>}</div>
           </div>
-          {loading ? <Spinner block label="กำลังโหลดข่าวสาร..." /> : loadError ? <ErrorState description="โหลดข่าวสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /> : publicNews.length ? (
+          {loading ? <NewsGridSkeleton /> : loadError ? <ErrorState description="โหลดข่าวสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /> : publicNews.length ? (
             <div className="news-grid tutor-public-news-grid">
               {publicNews.map((item, index) => <NewsTile key={item.id} item={item} index={index} onOpen={changeSelection} isWide={wideNewsIndices.has(index)} onImageAspect={handleImageAspect} />)}
             </div>
