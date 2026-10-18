@@ -31,7 +31,6 @@ import { fmtScore } from "../utils/examScore";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
-const registeredCourseCount = (student) => Number(student.EnrolledCourses || 0) + Number(student.SheetRegisteredCourses || 0);
 
 // ─── การ์ดเอียงตามเมาส์ + แสงเรือง (ชุดเดียวกับ Dashboard/การเงิน) — โทนส้มเดียวกันทั้งระบบ
 const studentTiltMove = (e) => {
@@ -738,8 +737,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   if (!data) return null;
 
   // ★ เพิ่ม: destructure parent ออกมาด้วย (backend คืน field นี้มาให้แล้ว)
-  const { student: s, parent, courses, attendance, videoProgress, examScores = [],
-    legacyPackages = [], legacyHourSnapshot = null } = data;
+  const { student: s, parent, courses, attendance, videoProgress, examScores = [] } = data;
   const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
 
   // ── ภาพรวมทั้งหมด (ไม่กรองคอร์ส) สำหรับ header การ์ดบนสุด ──────────────
@@ -806,7 +804,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
         "bg-amber-50 text-amber-700 border-amber-200";
 
   const TABS = [
-    { key: "courses", label: "คอร์สที่ลง", count: courses.length + legacyPackages.length },
+    { key: "courses", label: "คอร์สที่ลง", count: courses.length },
     { key: "attendance", label: "ประวัติเรียน", count: cAttendance.length },
     { key: "videos", label: "วิดีโอ", count: cVideos.length },
     { key: "scores", label: "คะแนนสอบ", count: subjectSummaries.length },      // ★ ใหม่
@@ -883,7 +881,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
             onAdded={loadDetail}
             showToast={showToast}
           />
-          {courses.length === 0 && legacyPackages.length === 0 ? (
+          {courses.length === 0 ? (
             <p className="text-center text-slate-400 py-8">ยังไม่มีคอร์สที่ลงทะเบียน</p>
           ) : courses.map(c => {
             const rate = c.TotalClassHeld > 0 ? Math.round((c.TotalAttended / c.TotalClassHeld) * 100) : null;
@@ -940,50 +938,6 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               </div>
             );
           })}
-        </div>
-      )}
-
-      {tab === "courses" && (legacyPackages.length > 0 || legacyHourSnapshot) && (
-        <div className="space-y-4">
-          <p className="text-xs text-slate-500">
-            รายการลงทะเบียนจากชีตจริง ยังไม่มีตารางสอนในเว็บ จึงยังไม่แสดงประวัติเข้าเรียนหรือหักชั่วโมงอัตโนมัติ
-          </p>
-          {legacyHourSnapshot && (
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-              <p className="text-sm font-bold text-orange-900">ชั่วโมงที่บันทึกไว้ในชีต</p>
-              <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <p>โควตา: <strong>{legacyHourSnapshot.PrivateHoursQuota ?? "ไม่ระบุ"} ชั่วโมง</strong></p>
-                <p>คงเหลือ: <strong>{legacyHourSnapshot.RemainingPrivateHours ?? "ไม่ระบุ"} ชั่วโมง</strong></p>
-              </div>
-              {legacyHourSnapshot.PrivateQuotaDetails && (
-                <p className="mt-2 text-xs text-slate-700">รายละเอียด: {legacyHourSnapshot.PrivateQuotaDetails}</p>
-              )}
-              <p className="mt-2 text-[11px] text-slate-500">อ้างอิงชีต Users แถว {legacyHourSnapshot.SourceRow}</p>
-            </div>
-          )}
-          {legacyPackages.map(pkg => (
-            <div key={pkg.SourcePackageId} className="rounded-xl border border-slate-200 bg-white p-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">
-                    คอร์สลงทะเบียนจากชีต · {pkg.SourceHoursText} ชั่วโมง
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">{pkg.SourceDateText}</p>
-                </div>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                  สถานะในชีต: {pkg.SourceStatus}
-                </span>
-              </div>
-              {pkg.Details && <p className="mt-2 text-sm text-slate-700">รายละเอียดในชีต: {pkg.Details}</p>}
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                {pkg.SubjectName && <span>วิชา: {pkg.SubjectName}</span>}
-                {pkg.LessonType && <span>รูปแบบ: {pkg.LessonType}</span>}
-                {pkg.LearningMode && <span>สถานที่: {pkg.LearningMode}</span>}
-                <span>ชำระเงินในชีต: {pkg.PaymentStatus || "ไม่ระบุ"}</span>
-                <span>อ้างอิง Packages แถว {pkg.SourceRow}</span>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
@@ -2185,7 +2139,6 @@ export default function AdminStudentsPage() {
   const [gradeLevels, setGradeLevels] = useState([]);
   const [genders, setGenders] = useState([]);
   const [parentProfileTypes, setParentProfileTypes] = useState([]); // ★ เพิ่ม
-  const [pendingLegacyPackages, setPendingLegacyPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
@@ -2206,18 +2159,16 @@ export default function AdminStudentsPage() {
 
   const fetchAll = async () => {
     try {
-      const [sRes, gRes, genRes, pptRes, pendingRes] = await Promise.all([
+      const [sRes, gRes, genRes, pptRes] = await Promise.all([
         axios.get(`${API}/students`),
         axios.get(`${API}/grade-levels`),
         axios.get(`${API}/genders`),
         axios.get(`${API}/parent-profile-types`), // ★ เพิ่ม
-        axios.get(`${API}/students/legacy-packages/pending`).catch(() => ({ data: [] })),
       ]);
       setStudents(sRes.data);
       setGradeLevels(gRes.data);
       setGenders(genRes.data);
       setParentProfileTypes(pptRes.data); // ★ เพิ่ม
-      setPendingLegacyPackages(pendingRes.data);
       setLoadError(false);
     } catch (e) {
       console.error("fetch error:", e);
@@ -2305,7 +2256,7 @@ export default function AdminStudentsPage() {
   const matchGradeFn = (s) => filterGrade === "all" ||
     (s.GradeLevelId != null && String(s.GradeLevelId) === filterGrade);
   const matchEnrolledFn = (s) => filterEnrolled === "all" ||
-    (filterEnrolled === "enrolled" ? registeredCourseCount(s) > 0 : registeredCourseCount(s) === 0);
+    (filterEnrolled === "enrolled" ? s.EnrolledCourses > 0 : !s.EnrolledCourses);
 
   const filtered = students.filter(s => matchSearchFn(s) && matchGradeFn(s) && matchEnrolledFn(s));
 
@@ -2321,8 +2272,8 @@ export default function AdminStudentsPage() {
 
   // ★ นับจำนวนสำหรับ dropdown สถานะลงทะเบียน (กรองตามค้นหา+ระดับชั้นที่เลือกไว้ก่อน)
   const baseForEnrolledCount = students.filter(s => matchSearchFn(s) && matchGradeFn(s));
-  const enrolledCount = baseForEnrolledCount.filter(s => registeredCourseCount(s) > 0).length;
-  const notEnrolledCount = baseForEnrolledCount.filter(s => registeredCourseCount(s) === 0).length;
+  const enrolledCount = baseForEnrolledCount.filter(s => s.EnrolledCourses > 0).length;
+  const notEnrolledCount = baseForEnrolledCount.filter(s => !s.EnrolledCourses).length;
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
@@ -2362,31 +2313,13 @@ export default function AdminStudentsPage() {
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "นักเรียนทั้งหมด", value: students.length, color: "bg-orange-600" },
-          { label: "ลงทะเบียนแล้ว", value: students.filter(s => registeredCourseCount(s) > 0).length, color: "bg-emerald-500" },
-          { label: "ยังไม่ลงทะเบียน", value: students.filter(s => registeredCourseCount(s) === 0).length, color: "bg-amber-500" },
+          { label: "ลงทะเบียนแล้ว", value: students.filter(s => s.EnrolledCourses > 0).length, color: "bg-emerald-500" },
+          { label: "ยังไม่ลงทะเบียน", value: students.filter(s => !s.EnrolledCourses).length, color: "bg-amber-500" },
 
         ].map(({ label, value, color }, i) => (
           <StudentStatTile key={i} label={label} value={value} color={color} icon={GraduationCap} />
         ))}
       </div>
-
-      {pendingLegacyPackages.length > 0 && (
-        <details className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <summary className="cursor-pointer text-sm font-bold text-amber-900">
-            รายการลงทะเบียนจากชีตที่รอจับคู่นักเรียน {pendingLegacyPackages.length} รายการ
-          </summary>
-          <p className="mt-2 text-xs text-amber-800">ยังไม่พบบัญชีนักเรียนตรงกับ username ในชีต จึงยังไม่ผูกคอร์สให้ใคร</p>
-          <div className="mt-3 space-y-2">
-            {pendingLegacyPackages.map(pkg => (
-              <div key={pkg.SourcePackageId} className="rounded-lg border border-amber-200 bg-white p-3 text-xs text-slate-700">
-                <p className="font-semibold">Packages แถว {pkg.SourceRow} · username {pkg.SourceUsername} · {pkg.SourceHoursText} ชั่วโมง</p>
-                <p className="mt-1">{pkg.SourceDateText}{pkg.SubjectName ? ` · ${pkg.SubjectName}` : ""}</p>
-                {pkg.Details && <p className="mt-1">{pkg.Details}</p>}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
 
       {/* Top 5 Attendance Ranking */}
       <StudentPerformanceRanking
@@ -2455,8 +2388,8 @@ export default function AdminStudentsPage() {
                   <div className="flex flex-wrap gap-1 pt-0.5">
                     {s.GradeDetail && <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{s.GradeDetail}</span>}
                     {s.GenderName && <span className="px-2.5 py-0.5 bg-pink-50 text-pink-700 border border-pink-200 rounded-full text-xs font-semibold">{s.GenderName}</span>}
-                    {registeredCourseCount(s) > 0 && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"><BookOpen className="h-3 w-3" /> {registeredCourseCount(s)} คอร์ส</span>
+                    {s.EnrolledCourses > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold"><BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส</span>
                     )}
                   </div>
                 </div>
@@ -2541,9 +2474,9 @@ export default function AdminStudentsPage() {
 
                       {/* คอลัมน์: คอร์ส */}
                       <td className="px-4 py-3 text-center">
-                        {registeredCourseCount(s) > 0 ? (
+                        {s.EnrolledCourses > 0 ? (
                           <span className="inline-flex items-center gap-1 whitespace-nowrap lg:whitespace-normal px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold">
-                            <BookOpen className="h-3 w-3" /> {registeredCourseCount(s)} คอร์ส
+                            <BookOpen className="h-3 w-3" /> {s.EnrolledCourses} คอร์ส
                           </span>
                         ) : (
                           <span className="text-xs text-slate-300">—</span>
