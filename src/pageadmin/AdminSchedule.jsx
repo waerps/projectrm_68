@@ -122,9 +122,11 @@ export default function AdminSchedule() {
 
   // filters
   const [fTutor, setFTutor] = useState('all');
+  const [fCourse, setFCourse] = useState('all');
   const [fRoom, setFRoom] = useState('all');
   const [fSubject, setFSubject] = useState('all');
   const [fSearch, setFSearch] = useState('');
+  const [expandedCells, setExpandedCells] = useState({});
 
   // ── fetch ──────────────────────────────────────────────────
   const fetchSchedule = useCallback(async (ws = weekStart) => {
@@ -173,6 +175,7 @@ export default function AdminSchedule() {
   const goPrevWeek = () => setWeekStart(w => addDays(w, -7));
   const goNextWeek = () => setWeekStart(w => addDays(w, +7));
   const goToday = () => setWeekStart(getMondayOf(new Date()));
+  useEffect(() => setExpandedCells({}), [weekStart]);
 
   // ── build grid map ─────────────────────────────────────────
   const scheduleMap = {};
@@ -210,6 +213,7 @@ export default function AdminSchedule() {
   // ── filter ─────────────────────────────────────────────────
   const pass = e => {
     if (fTutor !== 'all' && String(e.AdminId) !== fTutor) return false;
+    if (fCourse !== 'all' && String(e.CourseID) !== fCourse) return false;
     if (fRoom !== 'all' && String(e.RoomId) !== fRoom) return false;
     if (fSubject !== 'all' && String(e.SubjectId) !== fSubject) return false;
 
@@ -411,6 +415,14 @@ export default function AdminSchedule() {
     e.CheckinCount === 0 &&
     new Date(`${e.WeekDate}T${e.StartTime}`) < new Date()
   ).length;
+  const selectedCourse = meta.courses.find(c => String(c.CourseID) === fCourse);
+  const courseHours = selectedCourse && Number(selectedCourse.TotalCourseHours) > 0
+    ? {
+        total: Number(selectedCourse.TotalCourseHours),
+        scheduled: Number(selectedCourse.ScheduledMinutes || 0) / 60,
+        remaining: Math.max(0, Number(selectedCourse.TotalCourseHours) - Number(selectedCourse.ScheduledMinutes || 0) / 60),
+      }
+    : null;
 
   // ── render ─────────────────────────────────────────────────
   const weekEndDate = addDays(weekStart, 6);
@@ -509,7 +521,7 @@ export default function AdminSchedule() {
 
         {/* ── Filters ── */}
         <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
@@ -528,6 +540,13 @@ export default function AdminSchedule() {
             />
 
             <Select
+              value={fCourse}
+              onChange={setFCourse}
+              options={meta.courses.map(c => ({ value: String(c.CourseID), label: c.CourseName }))}
+              placeholder="ทุกคอร์ส"
+            />
+
+            <Select
               value={fRoom}
               onChange={setFRoom}
               options={meta.rooms.map(r => ({ value: String(r.RoomId), label: r.RoomDetail }))}
@@ -541,14 +560,22 @@ export default function AdminSchedule() {
               placeholder="ทุกวิชา"
             />
 
-            <ClearFiltersButton show={fTutor !== 'all' || fRoom !== 'all' || fSubject !== 'all' || !!fSearch} onClick={() => {
+            <ClearFiltersButton show={fTutor !== 'all' || fCourse !== 'all' || fRoom !== 'all' || fSubject !== 'all' || !!fSearch} onClick={() => {
                 setFTutor('all');
+                setFCourse('all');
                 setFRoom('all');
                 setFSubject('all');
                 setFSearch('');
               }} />
           </div>
         </div>
+
+        {courseHours && (
+          <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
+            <p className="font-bold">{selectedCourse.CourseName}</p>
+            <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
+          </div>
+        )}
 
         {/* ── Grid ── */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
@@ -570,6 +597,7 @@ export default function AdminSchedule() {
               <span className="block h-3 w-3 rounded-full bg-slate-300" />
               ยังไม่ถึงวัน
             </span>
+            <span className="ml-auto text-slate-400">มุมมองสัปดาห์แสดง 2 คาบแรกต่อช่อง กดดูทั้งหมดเพื่อขยาย</span>
           </div>
 
           {loading ? (
@@ -705,6 +733,9 @@ export default function AdminSchedule() {
 
                         const entries = (scheduleMap[dow]?.[`${slot.start}-${slot.end}`] || []).filter(pass);
                         const hasEntries = entries.length > 0;
+                        const cellKey = `${dateStr}:${slot.start}-${slot.end}`;
+                        const expanded = !!expandedCells[cellKey];
+                        const visibleEntries = expanded ? entries : entries.slice(0, 2);
 
                         // วันหยุดไม่ disable การเลือกวันอีกต่อไป — สามารถเพิ่มคาบสอนได้
                         // แต่ถ้าเลือกวันหยุด ให้ยืนยันก่อนเสมอ
@@ -722,7 +753,7 @@ export default function AdminSchedule() {
                         return (
                           <div
                             key={dow}
-                            className={`min-h-[110px] rounded-xl border transition-all p-1 space-y-1 relative
+                            className={`min-h-[110px] rounded-xl border transition-all p-1.5 space-y-1.5 relative
                                   ${hasEntries
                                 ? 'border-slate-200 bg-white hover:shadow-sm'
                                 : isHoliday
@@ -739,18 +770,32 @@ export default function AdminSchedule() {
                               </span>
                             )}
                             {hasEntries ? (
-                              entries.map(e => (
-                                <ClassCard
-                                  key={e.CourseScheduleDetailId}
-                                  entry={e}
-                                  onEdit={() => openEdit(e)}
-                                  onDelete={() => {
-                                    setSelected(e);
-                                    setDeleteScope('this');
-                                    setShowDelete(true);
-                                  }}
-                                />
-                              ))
+                              <>
+                                <div className="flex items-center justify-between px-1 text-[11px] font-semibold text-slate-500">
+                                  <span>{entries.length} คาบ</span>
+                                </div>
+                                {visibleEntries.map(e => (
+                                  <ClassCard
+                                    key={e.CourseScheduleDetailId}
+                                    entry={e}
+                                    compact
+                                    onEdit={() => openEdit(e)}
+                                    onDelete={() => {
+                                      setSelected(e);
+                                      setDeleteScope('this');
+                                      setShowDelete(true);
+                                    }}
+                                  />
+                                ))}
+                                {entries.length > 2 && (
+                                  <button type="button"
+                                    onClick={e => { e.stopPropagation(); setExpandedCells(current => ({ ...current, [cellKey]: !expanded })); }}
+                                    aria-expanded={expanded}
+                                    className="w-full rounded-lg bg-slate-100 px-2 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-orange-50 hover:text-orange-700">
+                                    {expanded ? 'ย่อรายการ' : `ดูอีก ${entries.length - 2} คาบ`}
+                                  </button>
+                                )}
+                              </>
                             ) : (
                               <div className="flex items-center justify-center h-full">
                                 <Plus className={`h-4 w-4 transition ${isHoliday ? 'text-red-200 group-hover:text-red-400' : 'text-slate-300 group-hover:text-orange-400'}`} />
@@ -887,7 +932,7 @@ export default function AdminSchedule() {
 }
 
 // ─── ClassCard ────────────────────────────────────────────────
-function ClassCard({ entry, onEdit, onDelete }) {
+function ClassCard({ entry, onEdit, onDelete, compact = false }) {
   const colorClass = SUBJECT_COLOR(entry.SubjectName || '');
   const pct = entry.MaxStudents
     ? Math.min(Math.round((entry.StudentCount / entry.MaxStudents) * 100), 100)
@@ -941,6 +986,30 @@ function ClassCard({ entry, onEdit, onDelete }) {
     upcoming: 'border-yellow-200',
     future: 'border-slate-200',
   }[checkinStatus];
+  const compactBorderColor = {
+    done: 'border-l-green-400',
+    missed: 'border-l-red-400',
+    upcoming: 'border-l-yellow-400',
+    future: 'border-l-slate-300',
+  }[checkinStatus];
+
+  if (compact) return (
+    <div className={`group relative min-w-0 rounded-lg border-l-[3px] bg-slate-50 px-2 py-1.5 hover:bg-white hover:shadow-sm ${compactBorderColor}`}>
+      <div className="flex items-center gap-1.5 pr-7">
+        <span className="min-w-0 truncate text-[11px] font-bold text-slate-800" title={entry.SubjectName}>{entry.SubjectName || '—'}</span>
+        {statusIcon}
+      </div>
+      <p className="truncate text-[11px] text-slate-600" title={entry.CourseName}>{entry.CourseName}</p>
+      <div className="mt-0.5 flex items-center justify-between gap-1 text-[11px] text-slate-500">
+        <span className="min-w-0 truncate">{entry.TutorNickname || 'ยังไม่ระบุครู'}</span>
+        <span className="flex shrink-0 items-center gap-0.5" aria-label={`นักเรียน ${entry.StudentCount || 0} คน`}><Users className="h-3 w-3" />{entry.StudentCount || 0}</span>
+      </div>
+      <div className="absolute right-1 top-1 flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-within:opacity-100">
+        <button type="button" aria-label="แก้ไข" onClick={e => { e.stopPropagation(); onEdit(); }} className="rounded p-1 text-slate-500 hover:bg-orange-50 hover:text-orange-600"><Pencil className="h-3 w-3" /></button>
+        <button type="button" aria-label="ลบ" onClick={e => { e.stopPropagation(); onDelete(); }} className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-3 w-3" /></button>
+      </div>
+    </div>
+  );
 
   return (
     <div className={`relative group bg-white border rounded-lg p-2 hover:shadow-sm transition ${borderColor}`}>
@@ -968,7 +1037,7 @@ function ClassCard({ entry, onEdit, onDelete }) {
       <div className="flex items-center gap-1 text-[11px] mb-1">
         <Users className="h-2.5 w-2.5 text-slate-400" />
         <span className={`font-medium ${isFull ? 'text-red-600' : 'text-slate-700'}`}>
-          {entry.StudentCount}/{entry.MaxStudents || '—'}
+          {entry.StudentCount || 0}
         </span>
         {isFull && <span className="text-red-500 text-[11px]">เต็ม</span>}
       </div>
