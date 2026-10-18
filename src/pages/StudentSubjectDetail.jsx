@@ -484,7 +484,7 @@ export default function StudentSubjectDetail() {
           <ClipboardList className="h-12 w-12 text-green-500 mx-auto mb-3" />
           <h2 className="font-bold text-neutral-900 mb-1">การสอบประจำวิชา</h2>
           <Link to={`/profile/course/${courseId}/exams?subjectId=${subjectId}`} className="inline-flex items-center gap-2 text-green-700 font-semibold hover:underline my-3">
-            ดูผลสอบก่อนเรียน กลางเรียน และท้ายเรียน <ChevronRight className="h-4 w-4" />
+            ดูผลสอบ Pre-test, Mid-test และ Post-test <ChevronRight className="h-4 w-4" />
           </Link>
           <p className="text-sm text-neutral-500 mb-5">กดปุ่มด้านล่างเพื่อเข้าสอบวิชานี้</p>
           <button

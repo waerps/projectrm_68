@@ -107,7 +107,7 @@ export default function TutorExam() {
 
       {/* Exam Cards — Pre / Mid / Post, always exist for this Subject */}
       {!loading && !error && exams.length === 0 && (
-        <EmptyState icon={FileQuestion} title="ยังไม่มีชุดข้อสอบของวิชานี้" description="ชุดข้อสอบก่อนเรียน / กลางภาค / หลังเรียนจะแสดงที่นี่เมื่อถูกสร้าง" />
+        <EmptyState icon={FileQuestion} title="ยังไม่มีชุดข้อสอบของวิชานี้" description="ชุดข้อสอบ Pre-test / Mid-test / Post-test จะแสดงที่นี่เมื่อถูกสร้าง" />
       )}
       {!loading && !error && exams.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

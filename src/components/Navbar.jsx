@@ -257,7 +257,7 @@ const cartTotal = cart.reduce((sum, item) => {
         <Link to="/" className="flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center">
-              <img src="/logo.png" alt="ศรเสริมติวเตอร์" className="h-auto w-full object-contain" />
+              <img src="/logo.png" alt="ศรเสริมติวเตอร์" width={44} height={25} className="h-auto w-full object-contain" />
             </div>
             <div className="hidden flex-col lg:flex">
               <span className="font-sans font-bold text-xs leading-tight text-gray-800">SORNSERM</span>

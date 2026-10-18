@@ -1073,9 +1073,9 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { label: sub.preCount > 1 ? "คะแนนเฉลี่ยก่อนเรียน" : "คะแนนก่อนเรียน", value: sub.pre, points: sub.prePoints },
-                      { label: sub.midCount > 1 ? "คะแนนเฉลี่ยกลางภาค" : "คะแนนกลางภาค", value: sub.mid, points: sub.midPoints },
-                      { label: sub.postCount > 1 ? "คะแนนเฉลี่ยหลังเรียน" : "คะแนนหลังเรียน", value: sub.post, points: sub.postPoints },
+                      { label: sub.preCount > 1 ? "คะแนนเฉลี่ย Pre-test" : "คะแนน Pre-test", value: sub.pre, points: sub.prePoints },
+                      { label: sub.midCount > 1 ? "คะแนนเฉลี่ย Mid-test" : "คะแนน Mid-test", value: sub.mid, points: sub.midPoints },
+                      { label: sub.postCount > 1 ? "คะแนนเฉลี่ย Post-test" : "คะแนน Post-test", value: sub.post, points: sub.postPoints },
                     ].map(({ label, value, points }) => (
                       <div key={label} className="bg-white p-2 rounded-lg text-center border border-slate-200">
                         <p className="text-[11px] text-slate-500 mb-1">{label}</p>
@@ -1111,7 +1111,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
             {subjectSummaries.length > 0 && (
               <div className="bg-white border border-slate-200 rounded-2xl p-4">
-                <p className="text-sm font-bold text-slate-800 mb-3">คะแนนเฉลี่ยหลังเรียนรายวิชา</p>
+                <p className="text-sm font-bold text-slate-800 mb-3">คะแนนเฉลี่ย Post-test รายวิชา</p>
                 <div className="space-y-2">
                   {subjectSummaries.map(sub => (
                     <div key={sub.subject} className="flex items-center gap-3">
@@ -1460,7 +1460,7 @@ const BOARDS = {
     tab: 'ความสามารถ',
     Icon: Award,
     heading: 'ความสามารถโดดเด่น',
-    formula: 'คะแนนเฉลี่ยหลังเรียน 70% + คะแนนเฉลี่ยทุกรอบ 30%',
+    formula: 'คะแนนเฉลี่ย Post-test 70% + คะแนนเฉลี่ยทุกรอบ 30%',
     hint: 'วัดระดับความสามารถปัจจุบัน โดยใช้ค่าเฉลี่ยทุกรอบเพื่อให้ผลสม่ำเสมอมีน้ำหนักมากกว่าคะแนนสูงเพียงรอบเดียว',
     score: (s) => s.ExcellenceScore,
     eligible: (s) => s.ExcellenceEvaluable === true,
@@ -1526,7 +1526,7 @@ function ceilingGuardNote(growthPct, preScore) {
   if (preScore <= HAKE_ROOM_UNCLAMPED) return null;
   return {
     label: 'นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขพัฒนาการนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้',
-    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนนก่อนเรียนสูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
+    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนน Pre-test สูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
   };
 }
 
@@ -1719,8 +1719,8 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
         {isExcellence ? (
           board.eligible(s) ? (
             <>
-              <ScoreBar label="คะแนนเฉลี่ยหลังเรียน" value={s.PostTestScore} weight={70}
-                sub={`สอบหลังเรียน ${s.PostTestCount} ครั้ง`} />
+              <ScoreBar label="คะแนนเฉลี่ย Post-test" value={s.PostTestScore} weight={70}
+                sub={`สอบ Post-test ${s.PostTestCount} ครั้ง`} />
               <ScoreBar label="คะแนนเฉลี่ยทุกรอบ" value={s.OverallScore} weight={30}
                 sub={`ตัวชี้ว่าสูงต่อเนื่องหรือฟลุกรอบเดียว — เฉลี่ยจาก ${(s.PreTestCount || 0) + (s.MidTestCount || 0) + (s.PostTestCount || 0)} ครั้ง`} />
             </>
@@ -1731,7 +1731,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
           s.ImprovementScore != null ? (
             <>
               <ScoreBar label="อัตราพัฒนาการ" value={s.ImprovementGrowth} weight={80}
-                sub={`คะแนนเฉลี่ยก่อนเรียน ${s.PreTestScore}% → คะแนนเฉลี่ยหลังเรียน ${s.PostTestScore}%`} />
+                sub={`คะแนนเฉลี่ย Pre-test ${s.PreTestScore}% → คะแนนเฉลี่ย Post-test ${s.PostTestScore}%`} />
               <ScoreBar label="อัตราเข้าเรียน" value={s.AttendanceRate} weight={20}
                 sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
               {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}
@@ -1770,9 +1770,9 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
       {/* ── ข้อมูลประกอบ ─────────────────────────────────────────── */}
       <p className="text-xs text-slate-500 pt-3 border-t border-slate-200">
         เข้าเรียน {s.AttendanceRate}% ({s.TotalAttended ?? 0}/{s.TotalClasses ?? 0} คาบ)
-        {s.PreTestScore != null ? ` · คะแนนเฉลี่ยก่อนเรียน ${s.PreTestScore}%` : ''}
-        {s.MidTestScore != null ? ` · คะแนนเฉลี่ยกลางภาค ${s.MidTestScore}%` : ''}
-        {s.PostTestScore != null ? ` · คะแนนเฉลี่ยหลังเรียน ${s.PostTestScore}%` : ''}
+        {s.PreTestScore != null ? ` · คะแนนเฉลี่ย Pre-test ${s.PreTestScore}%` : ''}
+        {s.MidTestScore != null ? ` · คะแนนเฉลี่ย Mid-test ${s.MidTestScore}%` : ''}
+        {s.PostTestScore != null ? ` · คะแนนเฉลี่ย Post-test ${s.PostTestScore}%` : ''}
       </p>
     </div>
   );

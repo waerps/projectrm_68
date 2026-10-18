@@ -6,7 +6,7 @@ import Breadcrumb from '../components/ui/Breadcrumb';
 import { PAGE_TITLE, PAGE_SUBTITLE } from '../components/ui/tokens';
 
 const slugs = ['pre-test', 'mid-test', 'post-test'];
-const labels = ['ก่อนเรียน', 'กลางเรียน', 'ท้ายเรียน'];
+const labels = ['Pre-test', 'Mid-test', 'Post-test'];
 const statuses = { submitted: 'สอบแล้ว', 'in-progress': 'กำลังทำข้อสอบ', open: 'เปิดสอบแล้ว', closed: 'ปิดสอบแล้ว', upcoming: 'ยังไม่เปิดสอบ' };
 const number = value => new Intl.NumberFormat('th-TH', { maximumFractionDigits: 1 }).format(value);
 const date = value => value && !Number.isNaN(new Date(value).getTime())
@@ -68,8 +68,8 @@ export function ExamOverviewContent({ data, initialSubjectId }) {
       </select>
     </div>}
     <div id="student-exam-subject" role="tabpanel" aria-labelledby={`exam-tab-${selected.id}`} className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-bold text-neutral-900">{subject.subjectName}</h2><p className="text-sm text-neutral-500">{subject.tutorName ? `ติวเตอร์ ${subject.tutorName} · ` : ''}ผลสอบก่อนเรียน → กลางเรียน → ท้ายเรียน</p></div>
-        {subject.growth && <p className={`rounded-xl px-4 py-2 text-sm font-semibold ${subject.growth.delta < 0 ? 'bg-orange-50 text-orange-800' : 'bg-green-50 text-green-800'}`}>ท้ายเรียนเทียบก่อนเรียน: {subject.growth.delta > 0 ? '+' : ''}{number(subject.growth.delta)} จุดเปอร์เซ็นต์</p>}</div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-bold text-neutral-900">{subject.subjectName}</h2><p className="text-sm text-neutral-500">{subject.tutorName ? `ติวเตอร์ ${subject.tutorName} · ` : ''}ผลสอบ Pre-test → Mid-test → Post-test</p></div>
+        {subject.growth && <p className={`rounded-xl px-4 py-2 text-sm font-semibold ${subject.growth.delta < 0 ? 'bg-orange-50 text-orange-800' : 'bg-green-50 text-green-800'}`}>Post-test เทียบ Pre-test: {subject.growth.delta > 0 ? '+' : ''}{number(subject.growth.delta)} จุดเปอร์เซ็นต์</p>}</div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">{slugs.map((slug, i) => <div key={slug} className="space-y-3">{subject.rounds.filter(r => r.slug === slug).length ? subject.rounds.filter(r => r.slug === slug).map(r => <RoundCard key={r.examId} round={r} label={labels[i]} course={data} subject={subject} />) : <RoundCard label={labels[i]} course={data} subject={subject} />}</div>)}</div>
       <p className="text-xs text-neutral-500">คะแนนแสดงเป็น % เพื่ออ่านเทียบกันได้ แต่แต่ละรอบอาจมีโจทย์และความยากต่างกัน</p>
       {!subject.analysisAllowed ? <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-5 text-sm text-neutral-600">แสดงคะแนนส่วนตัวได้ แต่ไม่แสดงการวิเคราะห์รายบทและพัฒนาการ เนื่องจากไม่ได้ยินยอมให้ใช้ข้อมูลการสอบรอบล่าสุด</div> : <>
@@ -89,7 +89,7 @@ export function ExamOverviewContent({ data, initialSubjectId }) {
 export function ExamOverviewHeader({ courseName }) {
   return <header>
     <h1 className={PAGE_TITLE}>การสอบ</h1>
-    <p className={PAGE_SUBTITLE}>{courseName ? `${courseName} · ` : ''}ดูผลสอบก่อนเรียน กลางเรียน และท้ายเรียน แยกตามวิชา</p>
+    <p className={PAGE_SUBTITLE}>{courseName ? `${courseName} · ` : ''}ดูผลสอบ Pre-test, Mid-test และ Post-test แยกตามวิชา</p>
   </header>;
 }
 
