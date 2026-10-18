@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronLeft, Settings2,
@@ -6,7 +6,9 @@ import {
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects } from "../utils/examShared";
-import { BankTab } from "./TutorExamDetail.jsx";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
+// ตัวจัดการคลัง (ไฟล์ใหญ่ รวมตัวแสดงสูตรคณิต) โหลดเมื่อเลือกวิชาแล้วเท่านั้น — หน้ารายการวิชาจึงเปิดเร็วขึ้น
+const BankTab = lazy(() => import("./TutorExamDetail.jsx").then((m) => ({ default: m.BankTab })));
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
@@ -32,7 +34,7 @@ const fmtDate = (v) => {
 };
 
 function CourseTypeBadges({ types = [] }) {
-  if (!types.length) return <span className="text-[11px] text-slate-400">ไม่มีคอร์สที่สอนอยู่</span>;
+  if (!types.length) return <span className="text-[11px] text-slate-500">ไม่มีคอร์สที่สอนอยู่</span>;
   return (
     <span className="inline-flex flex-wrap gap-1">
       {types.includes("single") && <span className="rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[11px] font-semibold text-purple-700">คอร์สเดี่ยว</span>}
@@ -46,17 +48,22 @@ export default function TutorQuestionBank() {
   const [searchParams, setSearchParams] = useSearchParams();
   const subjectId = searchParams.get("subjectId") || "";
 
-  const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // แสดงรายการวิชาจากแคชของแท็บนี้ทันที (ถ้ามี) แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+  const [subjects, setSubjects] = useState(() => readSessionCache("tutor-bank-subjects") || []);
+  const [loading, setLoading] = useState(() => !readSessionCache("tutor-bank-subjects"));
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [courseTypeFilter, setCourseTypeFilter] = useState("all");
 
   const load = useCallback(() => {
-    setLoading(true);
+    setLoading(!readSessionCache("tutor-bank-subjects"));
     setError("");
     fetchMySubjects()
-      .then((rows) => setSubjects(Array.isArray(rows) ? rows : []))
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : [];
+        setSubjects(list);
+        writeSessionCache("tutor-bank-subjects", list);
+      })
       .catch((err) => {
         console.error("Load my subjects failed:", err);
         setError("โหลดรายการวิชาไม่สำเร็จ");
@@ -115,7 +122,7 @@ export default function TutorQuestionBank() {
           </div>
           <button
             onClick={backToList}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-600 transition shrink-0 self-start md:self-auto"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:text-orange-700 transition shrink-0 self-start md:self-auto"
           >
             <ChevronLeft className="h-3.5 w-3.5" /> เปลี่ยนวิชา
           </button>
@@ -126,25 +133,34 @@ export default function TutorQuestionBank() {
           <p className="text-xs text-slate-500">วิชานี้ใช้คลังข้อสอบชุดเดียวกันทั้งคอร์สเดี่ยวและคอร์สรวม</p>
         )}
 
-        <BankTab
-          subjectId={subjectId}
-          subjectName={selected?.subjectName || ""}
-          showToast={showToast}
-        />
+        <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-orange-700" role="status"><Loader2 className="h-8 w-8 animate-spin" /><span className="sr-only">กำลังโหลดคลังข้อสอบ...</span></div>}>
+          <BankTab
+            subjectId={subjectId}
+            subjectName={selected?.subjectName || ""}
+            showToast={showToast}
+          />
+        </Suspense>
       </div>
     );
   }
 
+  // ระหว่างโหลด: แสดงหัวข้อหน้าทันที (ช่วย LCP) — key แยกเพื่อไม่ให้ React ย้ายของเดิมจนหน้ากระโดด
   if (loading) return (
-    <div className="px-4 lg:px-0 flex flex-col items-center justify-center h-64 text-orange-600">
-      <Loader2 className="w-8 h-8 animate-spin mb-3" />
-      <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลคลังข้อสอบ...</p>
+    <div key="bank-loading" className="space-y-6 px-4 lg:px-0">
+      <div>
+        <h1 className={PAGE_TITLE}>คลังข้อสอบของฉัน</h1>
+        <p className={PAGE_SUBTITLE}>เลือกวิชาที่ต้องการจัดการข้อสอบ</p>
+      </div>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center text-orange-700" role="status">
+        <Loader2 className="w-8 h-8 animate-spin mb-3" />
+        <p className="text-sm font-medium text-slate-600">กำลังโหลดข้อมูลคลังข้อสอบ...</p>
+      </div>
     </div>
   );
 
   // ── ยังไม่เลือกวิชา: ให้เลือกก่อน ──
   return (
-    <div className="space-y-6 px-4 lg:px-0">
+    <div key="bank-list" className="space-y-6 px-4 lg:px-0">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       {/* Header */}
@@ -181,7 +197,7 @@ export default function TutorQuestionBank() {
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -239,7 +255,7 @@ export default function TutorQuestionBank() {
                 </span>
                 <span className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                   <span className="block text-xs text-slate-500"><span className="text-sm font-bold text-slate-900">{s.total}</span> ข้อ{s.categories > 0 ? ` · หมวดหมู่ ${s.categories}` : ""}</span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-orange-600"><Settings2 className="h-4 w-4" /> จัดการคลัง</span>
+                  <span className="flex items-center gap-1 text-xs font-bold text-orange-700"><Settings2 className="h-4 w-4" /> จัดการคลัง</span>
                 </span>
               </button>
             ))}
@@ -299,7 +315,7 @@ export default function TutorQuestionBank() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => openSubject(s.subjectId)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition whitespace-nowrap lg:whitespace-normal"
+                            className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-orange-700 bg-orange-50 border border-orange-100 rounded-lg hover:bg-orange-100 transition whitespace-nowrap lg:whitespace-normal"
                           >
                             <Settings2 className="h-3.5 w-3.5" /> จัดการคลัง
                           </button>
