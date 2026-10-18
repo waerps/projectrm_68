@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
+import { optimizedImage } from "../utils/responsiveImage";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -29,12 +30,16 @@ function StudentAvatar({ student, className = "h-full w-full object-cover" }) {
     const [imgErr, setImgErr] = useState(false);
     const uploaded = student?.Photo || student?.photo || "";
     const src = uploaded && !imgErr
-        ? getFileUrl(uploaded)
+        ? optimizedImage(getFileUrl(uploaded), 160)
         : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student?.name || "student")}&backgroundColor=fef3c7`;
     return (
         <img
             src={src}
             alt={student?.name || "นักเรียน"}
+            width={80}
+            height={80}
+            loading="lazy"
+            decoding="async"
             className={className}
             onError={() => { if (uploaded) setImgErr(true); }}
         />
@@ -193,13 +198,13 @@ export default function TutorStudents() {
     useEffect(() => { setCurrentPage(1); }, [search, sortBy]);
 
     const getTrendIcon = (trend) => {
-        if (trend === "up") return <TrendingUp className="h-4 w-4 text-green-600" />;
+        if (trend === "up") return <TrendingUp className="h-4 w-4 text-green-700" />;
         if (trend === "down") return <TrendingDown className="h-4 w-4 text-red-600" />;
         return <Minus className="h-4 w-4 text-yellow-600" />;
     };
 
     const getTrendColor = (trend) => {
-        if (trend === "up") return "text-green-600 bg-green-50 border-green-200";
+        if (trend === "up") return "text-green-700 bg-green-50 border-green-200";
         if (trend === "down") return "text-red-600 bg-red-50 border-red-200";
         return "text-yellow-600 bg-yellow-50 border-yellow-200";
     };
@@ -250,9 +255,9 @@ export default function TutorStudents() {
     };
 
     const getAttendanceColor = (rate) => {
-        if (rate === null) return 'text-slate-400';
-        if (rate >= 80) return 'text-green-600';
-        if (rate >= 60) return 'text-orange-500';
+        if (rate === null) return 'text-slate-500';
+        if (rate >= 80) return 'text-green-700';
+        if (rate >= 60) return 'text-orange-700';
         return 'text-red-500';
     };
 
@@ -288,11 +293,25 @@ export default function TutorStudents() {
     const getLowAttendanceStudents = () =>
         filteredStudents.filter(s => { const r = getAttendanceRate(s); return r !== null && r < 60; });
 
-    if (loading) return <Spinner block label="กำลังโหลดข้อมูลนักเรียน..." />;
+    // ระหว่างโหลด: แสดงหัวข้อหน้าทันที (ช่วย LCP) — key แยกจากหน้าจริงเพื่อไม่ให้ React ย้ายของเดิมจนหน้ากระโดด
+    if (loading) return (
+        <div key="students-loading" className="space-y-6 px-4 lg:px-0">
+            <div className="mb-6">
+                <Breadcrumb className="mb-6" items={[
+                    { label: "หน้าแรก", to: "/tutor" },
+                    { label: "คอร์สที่สอน", to: "/tutor/courses" },
+                    { label: "ข้อมูลนักเรียน" },
+                ]} />
+                <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
+                <p className={PAGE_SUBTITLE}>กำลังโหลดรายชื่อนักเรียน...</p>
+            </div>
+            <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูลนักเรียน..." /></div>
+        </div>
+    );
     if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดรายชื่อนักเรียนไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); setReloadKey((k) => k + 1); }} /></div>;
 
     return (
-        <div className="space-y-6 px-4 lg:px-0">
+        <div key="students-content" className="space-y-6 px-4 lg:px-0">
             <div className="">
                 {/* Header */}
                 <div className="mb-6">
@@ -316,8 +335,8 @@ export default function TutorStudents() {
                                 <Download className="h-4 w-4" />ดาวน์โหลดรายงาน<ChevronDown className="h-4 w-4" />
                             </button>
                             <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl border border-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all z-10">
-                                <button onClick={downloadExcel} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-t-xl transition font-medium"><LuFileSpreadsheet className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด Excel</button>
-                                <button onClick={downloadPDF} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-600 rounded-b-xl transition font-medium"><LuFileText className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด PDF</button>
+                                <button onClick={downloadExcel} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 rounded-t-xl transition font-medium"><LuFileSpreadsheet className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด Excel</button>
+                                <button onClick={downloadPDF} className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-700 hover:bg-orange-50 hover:text-orange-700 rounded-b-xl transition font-medium"><LuFileText className="inline h-4 w-4 shrink-0" /> ดาวน์โหลด PDF</button>
                             </div>
                         </div>
                     </div>
@@ -327,12 +346,12 @@ export default function TutorStudents() {
                 <div className="bg-white border border-slate-200 rounded-xl p-3 mb-6">
                     <div className="flex flex-col md:flex-row gap-3">
                         <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                             <input type="text" placeholder="ค้นหานักเรียน (ชื่อ, Line ID, โรงเรียน, เบอร์โทร)..."
                                 value={search} onChange={(e) => setSearch(e.target.value)}
                                 className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent transition" />
                         </div>
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                        <select aria-label="เรียงลำดับนักเรียน" value={sortBy} onChange={(e) => setSortBy(e.target.value)}
                             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px] max-w-full md:max-w-[240px] truncate">
                             <option value="name">เรียงตามชื่อ</option>
                             <option value="attendance">เรียงตามการเข้าเรียน</option>
@@ -403,7 +422,7 @@ export default function TutorStudents() {
                                             <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs text-slate-600 mt-1">
                                                 <div className="flex items-center gap-1"><span className="text-green-500 font-bold text-xs">LINE</span><span>{student.lineId}</span></div>
                                                 <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{student.phone}</span></div>
-                                                <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border"><LuSchool className="h-3.5 w-3.5 text-slate-400" /> {student.school}</div>
+                                                <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border"><LuSchool className="h-3.5 w-3.5 text-slate-500" /> {student.school}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">{student.gradeLevel}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">อายุ {calculateAge(student.birthDate)} ปี</div>
                                             </div>
@@ -424,7 +443,7 @@ export default function TutorStudents() {
                                         )}
                                         <button
                                             onClick={() => navigate(`/tutor/students/detail?courseId=${courseId}&studentId=${student.id}`)}
-                                            className={`${BTN.secondary} flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition hover:border-orange-300 hover:text-orange-600`}
+                                            className={`${BTN.secondary} flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-xl transition hover:border-orange-300 hover:text-orange-700`}
                                         >
                                             ดูรายละเอียด <ChevronRight className="h-3.5 w-3.5" />
                                         </button>
@@ -435,7 +454,7 @@ export default function TutorStudents() {
                             {/* Quick Overview (stats cards ยังคงอยู่) */}
                             <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 bg-slate-50">
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
-                                    <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">การเข้าเรียน</span></div>
+                                    <div className="flex items-center gap-2 mb-2"><Users className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">การเข้าเรียน</span></div>
                                     {getAttendanceRate(student) === null ? <p className="text-xs text-slate-500">ยังไม่มีข้อมูล</p> : (
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between text-xs">
@@ -449,11 +468,11 @@ export default function TutorStudents() {
                                     )}
                                 </div>
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
-                                    <div className="flex items-center gap-2 mb-2"><Video className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">การดูคลิป</span></div>
+                                    <div className="flex items-center gap-2 mb-2"><Video className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">การดูคลิป</span></div>
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between text-xs">
                                             <span className="text-slate-600">{student.videoViews}/{student.totalVideos}</span>
-                                            <span className="font-bold text-orange-600">{student.totalVideos ? `${Math.round((student.videoViews / student.totalVideos) * 100)}%` : "—"}</span>
+                                            <span className="font-bold text-orange-700">{student.totalVideos ? `${Math.round((student.videoViews / student.totalVideos) * 100)}%` : "—"}</span>
                                         </div>
                                         <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                                             <div className="h-full bg-gradient-to-r from-orange-500 to-orange-600" style={{ width: `${student.totalVideos ? (student.videoViews / student.totalVideos) * 100 : 0}%` }} />
@@ -461,15 +480,15 @@ export default function TutorStudents() {
                                     </div>
                                 </div>
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
-                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-600" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
+                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
                                     {student.exam?.improvement ? (
                                         <>
                                             <p className="text-sm font-bold text-slate-800 leading-relaxed">
                                                 Pre-test {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} {fmtScoreNum(student.exam.improvement.to)}
                                             </p>
-                                            <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
+                                            <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-700' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
                                                 {getAverageImprovement(student)} คะแนน
-                                                <span className="font-medium text-slate-400">
+                                                <span className="font-medium text-slate-500">
                                                     {" "}· เต็ม {student.exam.improvement.max} (นับ {student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา)
                                                 </span>
                                             </p>
