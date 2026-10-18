@@ -61,6 +61,8 @@ export default function TutorStudents() {
     const [examSummary, setExamSummary] = useState(null);
     // โหลดสรุปคะแนนสอบไม่สำเร็จ — แยกจาก "ยังไม่มีข้อมูลสอบ"
     const [examError, setExamError] = useState(false);
+    // สรุปคะแนนสอบโหลดแยกจากรายชื่อ — แสดงรายชื่อได้ก่อน ไม่ต้องรอคะแนน
+    const [examLoading, setExamLoading] = useState(true);
     const [examRetrying, setExamRetrying] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
     const navigate = useNavigate();
@@ -76,7 +78,7 @@ export default function TutorStudents() {
         ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
         คะแนนสอบ: student.exam?.improvement
             ? `Pre-test ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
-            : examError ? "—" : "ยังไม่มีข้อมูลสอบ",
+            : examLoading ? "กำลังโหลด" : examError ? "—" : "ยังไม่มีข้อมูลสอบ",
         // แยกคอลัมน์: คะแนนดิบใช้ดูรายคน ส่วน "พัฒนาการ" คือตัวที่เอาไปเรียง/เทียบข้ามคนได้
         พัฒนาการ: getGrowthText(student),
     }));
@@ -128,20 +130,26 @@ export default function TutorStudents() {
                 // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
                 const token = localStorage.getItem("student_token");
                 const authHeaders = { headers: { Authorization: `Bearer ${token}` } };
-                const [response, summaryRes] = await Promise.all([
-                    axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders),
-                    axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders).catch((err) => {
+                // ยิงสองคำขอพร้อมกัน แต่ไม่รอกัน: รายชื่อมาถึงก็แสดงเลย คะแนนสอบตามมาเติมทีหลัง
+                setExamLoading(true);
+                const summaryPromise = axios.get(`${API_URL}/coursestutor/${courseId}/exam-summary`, authHeaders)
+                    .then((res) => ({ data: res.data }))
+                    .catch((err) => {
                         console.error("Fetch exam summary failed:", err);
                         return { failed: true };
-                    }),
-                ]);
+                    });
+                const response = await axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders);
                 const dataFromApi = response.data;
                 setCourseInfo(dataFromApi.courseInfo);
-
-                const summary = summaryRes?.data || null;
-                setExamSummary(summary);
-                setExamError(!!summaryRes?.failed);
-                const examByUserId = new Map((summary?.students || []).map((s) => [s.userId, s]));
+                summaryPromise.then((summaryRes) => {
+                    const summary = summaryRes?.data || null;
+                    const examByUserId = new Map((summary?.students || []).map((s) => [s.userId, s]));
+                    setExamSummary(summary);
+                    setExamError(!!summaryRes?.failed);
+                    setStudents((prev) => prev.map((st) => ({ ...st, exam: examByUserId.get(st.id) || null })));
+                    setExamLoading(false);
+                });
+                const examByUserId = new Map();
                 const mappedStudents = dataFromApi.students.map((std, index) => {
                     const studentId = std.UserId || std.id || (index + 1);
                     return {
@@ -304,6 +312,7 @@ export default function TutorStudents() {
                 ]} />
                 <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
                 <p className={PAGE_SUBTITLE}>กำลังโหลดรายชื่อนักเรียน...</p>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้ เพื่อดูว่าน้องคนไหนควรได้รับการดูแลเพิ่มเป็นพิเศษ</p>
             </div>
             <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูลนักเรียน..." /></div>
         </div>
@@ -329,6 +338,8 @@ export default function TutorStudents() {
                             <p className={PAGE_SUBTITLE}>
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
+                            {/* คำอธิบายหน้า — แสดงตั้งแต่ตอนโหลด ผู้ใช้เห็นเนื้อหาเร็วขึ้น (LCP) */}
+                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้ เพื่อดูว่าน้องคนไหนควรได้รับการดูแลเพิ่มเป็นพิเศษ</p>
                         </div>
                         <div className="relative group w-full sm:w-auto md:self-auto">
                             <button className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>
@@ -511,7 +522,7 @@ export default function TutorStudents() {
                                             </p>
                                         </>
                                     ) : (
-                                        <p className="text-lg font-bold text-slate-300">{examError ? "—" : "ยังไม่มีข้อมูลสอบ"}</p>
+                                        <p className="text-lg font-bold text-slate-400">{examLoading ? "กำลังโหลดคะแนน..." : examError ? "—" : "ยังไม่มีข้อมูลสอบ"}</p>
                                     )}
                                 </div>
                             </div>
