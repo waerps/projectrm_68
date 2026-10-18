@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
+import { optimizedImage } from "../utils/responsiveImage";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
 import ExamGrowthSummary from "../components/ExamGrowthSummary";
 import { useSearchParams } from "react-router-dom";
@@ -35,7 +36,7 @@ function StudentAvatar({ student, className = "h-full w-full object-cover" }) {
     const [imgErr, setImgErr] = useState(false);
     const uploaded = student?.Photo || student?.photo || "";
     const src = uploaded && !imgErr
-        ? getFileUrl(uploaded)
+        ? optimizedImage(getFileUrl(uploaded), 192)
         : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(student?.name || "student")}&backgroundColor=fef3c7`;
     return (
         <img
@@ -149,13 +150,15 @@ export default function TutorStudentDetail() {
             setLoading(true);
             setLoadError(false);
             try {
+                // ยิงทุกคำขอพร้อมกัน (เดิมโหลดทีละตัวต่อกัน 4 รอบ ทำให้หน้าขึ้นช้า ~4 วินาที)
+                // ข้อมูลย่อยแต่ละส่วนจัดการ error ของตัวเองอยู่แล้ว จึงไม่ทำให้ทั้งหน้าพัง
+                const subLoads = Promise.all([loadExamSummary(studentId), loadAttendance(), loadVideos()]);
                 const res = await axios.get(`${API_URL}/coursestutor/${courseId}/students`, authHeaders);
                 const found = res.data.students.find(
                     s => String(s.UserId || s.id) === String(studentId)
                 );
-                if (!found) { setLoading(false); return; }
+                if (!found) { await subLoads; setLoading(false); return; }
 
-                const sid = found.UserId || found.id || Number(studentId);
                 setStudent({
                     ...found,
                     name: found.name,
@@ -165,9 +168,7 @@ export default function TutorStudentDetail() {
                     totalClassHeld: found.totalClassHeld ?? 0,
                 });
 
-                await loadExamSummary(sid);
-                await loadAttendance();
-                await loadVideos();
+                await subLoads;
             } catch (err) {
                 console.error(err);
                 setLoadError(true);
@@ -237,13 +238,13 @@ export default function TutorStudentDetail() {
     };
     
     const getTrendColor = (trend) => {
-        if (trend === "up")   return "text-green-600 bg-green-50 border-green-200";
-        if (trend === "down") return "text-red-600 bg-red-50 border-red-200";
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
+        if (trend === "up")   return "text-green-700 bg-green-50 border-green-200";
+        if (trend === "down") return "text-red-700 bg-red-50 border-red-200";
+        return "text-amber-800 bg-amber-50 border-amber-200";
     };
 
     const rateColor = attendanceRate >= 80 ? "bg-green-500" : attendanceRate >= 60 ? "bg-orange-500" : "bg-red-500";
-    const rateText  = attendanceRate >= 80 ? "text-green-600" : attendanceRate >= 60 ? "text-orange-500" : "text-red-500";
+    const rateText  = attendanceRate >= 80 ? "text-green-700" : attendanceRate >= 60 ? "text-orange-700" : "text-red-600";
 
     if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." />;
     if (loadError) return <div className="px-4 lg:px-0"><ErrorState onRetry={() => setReloadKey((k) => k + 1)} /></div>;
@@ -286,11 +287,11 @@ export default function TutorStudentDetail() {
                         </div>
                         <div className="bg-white border border-orange-200 rounded-xl px-2 sm:px-4 py-2 text-center">
                             <p className={`${STAT_LABEL} mb-0.5`}>ดูคลิป</p>
-                            <p className={`${STAT_NUM} ${videosError ? "text-slate-400" : "text-orange-600"}`}>{videosError ? "—" : `${videoRate}%`}</p>
+                            <p className={`${STAT_NUM} ${videosError ? "text-slate-500" : "text-orange-700"}`}>{videosError ? "—" : `${videoRate}%`}</p>
                             <p className={STAT_SUB}>{videosError ? "โหลดไม่สำเร็จ" : `${watchedCount}/${videos.length} คลิป`}</p>
                         </div>
                         <div className={`bg-white border rounded-xl px-2 sm:px-4 py-2 text-center min-w-0 ${getTrendColor(getOverallTrend())}`}>
-                            <p className="text-xs font-medium mb-0.5 opacity-70">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
+                            <p className="text-xs font-medium mb-0.5">พัฒนาการ{improvement ? ` (${improvement.subjectsCounted} วิชา)` : ""}</p>
                             <div className="flex items-center justify-center gap-1">
                                 {getTrendIcon(getOverallTrend())}
                                 <p className={STAT_NUM}>{improvement?.growth != null ? getGrowthText() : getAverageImprovement()}</p>
@@ -315,7 +316,7 @@ export default function TutorStudentDetail() {
                 ].map(tab => (
                     <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition ${
-                            activeTab === tab.key ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"
+                            activeTab === tab.key ? "bg-white shadow text-orange-700" : "text-slate-600 hover:text-slate-800"
                         }`}>
                         {tab.icon}{tab.label}
                     </button>
@@ -358,7 +359,7 @@ export default function TutorStudentDetail() {
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold text-slate-800">
                                         {new Date(rec.date + 'T00:00:00').toLocaleDateString("th-TH", { weekday: "short", day: "numeric", month: "short", year: "2-digit" })}
-                                        <span className="ml-1.5 text-xs font-normal text-slate-500">{rec.startTime} – {rec.endTime} น.</span>
+                                        <span className="ml-1.5 text-xs font-normal text-slate-600">{rec.startTime} – {rec.endTime} น.</span>
                                     </p>
                                     <p className="mt-0.5 truncate text-xs text-slate-600">{rec.subject}</p>
                                 </div>
@@ -367,7 +368,7 @@ export default function TutorStudentDetail() {
                                         <CheckCircle className="h-3.5 w-3.5" /> มาเรียน
                                     </span>
                                 ) : (
-                                    <span className="inline-flex shrink-0 items-center gap-1 bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                                    <span className="inline-flex shrink-0 items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                                         <XCircle className="h-3.5 w-3.5" /> ขาดเรียน
                                     </span>
                                 )}
@@ -400,7 +401,7 @@ export default function TutorStudentDetail() {
                                                     <CheckCircle className="h-3.5 w-3.5" /> มาเรียน
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                                                <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                                                     <XCircle className="h-3.5 w-3.5" /> ขาดเรียน
                                                 </span>
                                             )}
@@ -441,7 +442,7 @@ export default function TutorStudentDetail() {
                     <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
                         <div className="flex justify-between text-xs text-slate-500 mb-1">
                             <span>ความคืบหน้าการดูคลิป</span>
-                            <span className="font-bold text-orange-600">{videoRate}%</span>
+                            <span className="font-bold text-orange-700">{videoRate}%</span>
                         </div>
                         <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all" style={{ width: `${videoRate}%` }} />
@@ -468,7 +469,7 @@ export default function TutorStudentDetail() {
                                             <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                                 <div className="h-full bg-orange-400 rounded-full" style={{ width: `${vid.progress}%` }} />
                                             </div>
-                                            <span className="text-xs text-orange-500 font-medium">{vid.progress}%</span>
+                                            <span className="text-xs text-orange-700 font-medium">{vid.progress}%</span>
                                         </div>
                                     )}
                                 </div>
@@ -589,8 +590,8 @@ export default function TutorStudentDetail() {
                                             { label: "Post-test", val: s.post, hi: true },
                                         ].map((cell) => (
                                             <div key={cell.label} className={`p-2 sm:p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-slate-200"}`}>
-                                                <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-slate-500"}`}>{cell.label}</p>
-                                                <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-slate-300" : cell.hi ? "text-orange-600" : "text-slate-900"}`}>
+                                                <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-700" : "text-slate-600"}`}>{cell.label}</p>
+                                                <p className={`text-base sm:text-lg font-bold ${cell.val == null ? "text-slate-300" : cell.hi ? "text-orange-700" : "text-slate-900"}`}>
                                                     {cell.val == null ? "—" : fmtScoreNum(cell.val)}
                                                     {cell.val != null && <span className="text-xs font-semibold text-slate-500">/{s.cap}</span>}
                                                 </p>
@@ -636,7 +637,7 @@ export default function TutorStudentDetail() {
                             { label: "คาบทั้งหมด",     value: attendance.length, unit: "คาบ", color: "text-slate-700", icon: <Calendar className="h-5 w-5 text-slate-500" /> },
                             { label: "มาเรียน",         value: attendedCount, unit: "คาบ", color: "text-green-600",   icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
                             { label: "ขาดเรียน",        value: absentCount, unit: "คาบ", color: "text-red-500",     icon: <XCircle className="h-5 w-5 text-red-400" /> },
-                            { label: "คลิปที่ยังไม่ดู", value: videos.length - watchedCount, unit: "คลิป", color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-500" /> },
+                            { label: "คลิปที่ยังไม่ดู", value: videos.length - watchedCount, unit: "คลิป", color: "text-orange-600",  icon: <Video className="h-5 w-5 text-orange-700" /> },
                         ].map((s, i) => (
                             <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
                                 <div className="flex items-center gap-2 mb-2">{s.icon}<span className={STAT_LABEL}>{s.label}</span></div>
@@ -688,7 +689,7 @@ export default function TutorStudentDetail() {
                                         <div className={`h-full rounded-full ${vid.watched ? "bg-orange-500" : "bg-slate-300"}`}
                                             style={{ width: `${vid.watched ? 100 : vid.progress}%` }} />
                                     </div>
-                                    <span className={`text-xs font-bold w-10 text-right ${vid.watched ? "text-orange-600" : "text-slate-400"}`}>
+                                    <span className={`text-xs font-bold w-10 text-right ${vid.watched ? "text-orange-700" : "text-slate-500"}`}>
                                         {vid.watched ? "100%" : `${vid.progress}%`}
                                     </span>
                                 </div>
