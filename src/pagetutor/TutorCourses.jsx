@@ -13,6 +13,7 @@ import { ClipboardList } from "lucide-react";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 
 const WEEKDAY_SHORT = ['', 'อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const dayShort = (d) => WEEKDAY_SHORT[Number(d)] || 'วันอื่น';
@@ -60,11 +61,12 @@ export default function CoursesPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
 
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // แสดงคอร์สจากแคชของแท็บนี้ทันที (ถ้ามี) แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+  const [courses, setCourses] = useState(() => readSessionCache('tutor-courses')?.courses || []);
+  const [loading, setLoading] = useState(() => !readSessionCache('tutor-courses'));
   const [loadError, setLoadError] = useState(false);
   const [viewMode, setViewMode] = useState('primary');
-  const [acceptedClasses, setAcceptedClasses] = useState([]);
+  const [acceptedClasses, setAcceptedClasses] = useState(() => readSessionCache('tutor-courses')?.accepted || []);
 
   const navigate = useNavigate();
   const [subjectModal, setSubjectModal] = useState(null); // { course, action } | null
@@ -183,15 +185,24 @@ export default function CoursesPage() {
         }));
 
         setCourses(formattedData);
+        // แสดงคอร์สได้เลย ไม่ต้องรอรายการ "คลาสที่รับมาสอน" (โหลดต่อเบื้องหลัง)
+        setLoading(false);
+        let accepted = readSessionCache('tutor-courses')?.accepted || [];
         if (token) {
-          const accepted = await axios.get(`${API_URL}/api/tutor/releases/accepted-classes`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setAcceptedClasses(Array.isArray(accepted.data) ? accepted.data : []);
+          try {
+            const res = await axios.get(`${API_URL}/api/tutor/releases/accepted-classes`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            accepted = Array.isArray(res.data) ? res.data : [];
+            setAcceptedClasses(accepted);
+          } catch (acceptedError) {
+            console.error("Error fetching accepted classes:", acceptedError);
+          }
         }
+        writeSessionCache('tutor-courses', { courses: formattedData, accepted });
       } catch (error) {
         console.error("Error fetching courses:", error);
-        setLoadError(true);
+        if (!readSessionCache('tutor-courses')) setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -275,6 +286,7 @@ export default function CoursesPage() {
               />
             </div>
             <select
+              aria-label="กรองตามประเภทคอร์ส"
               className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[150px] max-w-full md:max-w-[200px] truncate"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
@@ -284,6 +296,7 @@ export default function CoursesPage() {
               <option value="single">คอร์สเดี่ยว</option>
             </select>
             <select
+              aria-label="กรองตามสถานะคอร์ส"
               className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[180px] max-w-full md:max-w-[240px] truncate"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -385,7 +398,7 @@ export default function CoursesPage() {
                                 : course.lastDateISO && course.lastDateISO < today ? course.lastDateISO : null;
                               return target ? `/tutor/schedule?date=${target}` : '/tutor/schedule';
                             })()}
-                            className="mt-1 inline-flex items-center gap-1 font-bold text-orange-600 hover:text-orange-700"
+                            className="mt-1 inline-flex items-center gap-1 font-bold text-orange-700 hover:text-orange-800"
                           >
                             ไปหน้าตารางสอน <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
                           </Link>
@@ -415,9 +428,9 @@ export default function CoursesPage() {
                   <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-600 font-bold">
-                        ความคืบหน้า <span className="text-slate-400 font-medium ml-1">({course.completedHours}/{course.totalHours} ชม.)</span>
+                        ความคืบหน้า <span className="text-slate-500 font-medium ml-1">({course.completedHours}/{course.totalHours} ชม.)</span>
                       </span>
-                      <span className="font-bold text-orange-600">{course.progress}%</span>
+                      <span className="font-bold text-orange-700">{course.progress}%</span>
                     </div>
                     <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                       <div
@@ -550,7 +563,7 @@ export default function CoursesPage() {
                     วิชาที่รับผิดชอบ
                   </p>
 
-                  <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-600">
+                  <span className="rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-semibold text-orange-700">
                     {subjectModal.course.subjects.length} วิชา
                   </span>
                 </div>
