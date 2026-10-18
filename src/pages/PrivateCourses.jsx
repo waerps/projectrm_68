@@ -385,7 +385,7 @@ export default function PrivateCourses() {
               </div>
               <p className="mt-2 text-xs text-slate-500">แพ็กเกจเรียน 1–2 คน เริ่มที่ 15 ชั่วโมง · ดูรายละเอียดราคาด้านล่าง</p>
               <PrivateContactButtons className="mt-6" />
-              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="group mt-3 inline-flex items-center gap-3 rounded-2xl border border-orange-200 bg-white px-5 py-3 text-sm font-extrabold text-orange-600 shadow-[0_8px_25px_-14px_rgba(249,115,22,.65)] transition hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50 hover:shadow-lg">ฝากข้อมูลให้ติดต่อกลับ <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></button>
+              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="group mt-3 inline-flex items-center gap-3 rounded-2xl border border-orange-200 bg-white px-5 py-3 text-sm font-extrabold text-orange-700 shadow-[0_8px_25px_-14px_rgba(249,115,22,.65)] transition hover:-translate-y-0.5 hover:border-orange-400 hover:bg-orange-50 hover:shadow-lg">ฝากข้อมูลให้ติดต่อกลับ <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></button>
             </div>
             <PrivateCourseOrbit variant="hero" orbitCoin>
               <PrivateSubjectStack subjects={subjects} iconOf={iconOf} onSelect={setSelected} className="relative h-[214px] w-[244px] sm:w-[272px]" />
@@ -469,7 +469,7 @@ export default function PrivateCourses() {
                 </button>
               )}
               <PrivateContactButtons compact className="justify-center" />
-              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-orange-600">ฝากข้อมูลให้ติดต่อกลับ</button>
+              <button type="button" onClick={() => setSelected(GENERAL_INQUIRY)} className="rounded-xl border border-orange-300 bg-white px-4 py-2.5 text-sm font-bold text-orange-700">ฝากข้อมูลให้ติดต่อกลับ</button>
             </div>
           )}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
