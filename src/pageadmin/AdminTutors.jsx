@@ -1146,11 +1146,12 @@ function GroupedTutorCourseList({ courses, onRemoveSubject, onUpdateHours, compa
 }
 
 // ─── TutorForm ─────────────────────────────────────────────────────────────────
-function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, allTutors, allSubjects }) {
+function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, allTutors, allSubjects, genders = [] }) {
   const [form, setForm] = useState({
     firstname: initial.Firstname || initial.firstname || "",
     lastname: initial.Lastname || initial.lastname || "",
     nickname: initial.Nickname || initial.nickname || "",
+    genderId: initial.GenderId || initial.genderId || "",
     phoneNo: initial.PhoneNo || initial.phoneNo || "",
     occupation: initial.Occupation || initial.occupation || "",
     birthOfDate: initial.BirthOfDate || initial.birthOfDate || "",
@@ -1222,6 +1223,15 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <label className={lbl}>ชื่อเล่น / ชื่อที่ใช้เรียก</label>
           <input className={inp} value={form.nickname || ""} onChange={e => set("nickname", e.target.value)} placeholder="เช่น ครูเป้ว" />
         </div>
+        <div>
+          <label className={lbl}>เพศ</label>
+          <select className={inp} value={form.genderId || ""} onChange={e => set("genderId", e.target.value)}>
+            <option value="">ยังไม่ระบุ</option>
+            {genders.map(g => <option key={g.GenderId} value={g.GenderId}>{g.GenderName}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>เบอร์โทร</label>
           <input
@@ -1928,6 +1938,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
           <p className="font-bold text-lg">{displayName}</p>
           <p className="text-sm text-orange-100">{tutor.Firstname} {tutor.Lastname}</p>
           <div className="flex flex-wrap gap-2 mt-2 text-xs">
+            {tutor.GenderName && <span className="bg-white/20 px-2 py-0.5 rounded-full">เพศ: {tutor.GenderName}</span>}
             {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-lg sm:rounded-full">{tutor.TeachingSubjects}</span>}
             <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
             {/* ★ เพิ่ม: บอกด้วยว่าถ้าข้อมูลยังไม่พอ จะไม่ถูกจัดอันดับโพเดียม */}
@@ -2022,6 +2033,7 @@ export default function AdminTutorsPage() {
   const { toasts, showToast, removeToast } = useToast(); //alert ต่างๆ
   const [tutors, setTutors] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]); // ★ เพิ่ม: รายวิชาทั้งหมดในระบบ สำหรับ multi-select
+  const [genders, setGenders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterSubject, setFilterSubject] = useState("all");
@@ -2066,6 +2078,15 @@ export default function AdminTutorsPage() {
     }
   };
 
+  const fetchGenders = async () => {
+    try {
+      const res = await axios.get(`${API}/genders`);
+      setGenders(res.data || []);
+    } catch (e) {
+      console.error('fetch genders error:', e);
+    }
+  };
+
   const fetchApplications = async () => {
     try {
       const res = await axios.get(`${API}/tutor-applications`, getAdminAuthConfig());
@@ -2084,7 +2105,7 @@ export default function AdminTutorsPage() {
     }
   };
 
-  useEffect(() => { fetchTutors(); fetchSubjects(); fetchApplications(); }, []);
+  useEffect(() => { fetchTutors(); fetchSubjects(); fetchGenders(); fetchApplications(); }, []);
   useEffect(() => { setCurrentPage(1); }, [search, filterSubject, filterStatus, filterHasStudents]);
 
   const handleCreate = async (data) => {
@@ -2360,6 +2381,7 @@ export default function AdminTutorsPage() {
               showToast={showToast}
               allTutors={tutors}
               allSubjects={allSubjects}
+              genders={genders}
             />
           </Modal>
         )}
@@ -2373,6 +2395,7 @@ export default function AdminTutorsPage() {
               showToast={showToast}
               allTutors={tutors}
               allSubjects={allSubjects}
+              genders={genders}
             />
           </Modal>
         )}
