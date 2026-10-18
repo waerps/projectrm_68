@@ -129,23 +129,30 @@ export default function CoursePaymentsTab({ courseId, courseType = "bundle", ful
 
   if (courseType === "single" && sourcePurchases.length) {
     const confirmed = sourcePurchases.reduce((sum, purchase) => sum + Number(purchase.amount || 0), 0);
-    const unknown = sourcePurchases.filter((purchase) => purchase.status !== 'paid').length;
+    const unpaid = sourcePurchases.filter((purchase) => purchase.status === 'unpaid')
+      .reduce((sum, purchase) => sum + Number(purchase.expectedPrice || 0), 0);
+    const unknown = sourcePurchases.filter((purchase) => purchase.status === 'unknown').length;
     return <div className="space-y-4">
       <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5">
         <h2 className="font-bold text-neutral-900">ข้อมูลการชำระคอร์สเดี่ยว</h2>
-        <p className="mt-1 text-sm text-neutral-600">แสดงการชำระตามรายการที่สถาบันบันทึกไว้ แต่ละรอบแยกกัน</p>
+        <p className="mt-1 text-sm text-neutral-600">แสดงแต่ละรอบแยกกัน ยอดจ่ายแล้วเป็นยอดยืนยัน ส่วนราคาที่ยังไม่จ่ายเป็นราคาประเมินตามอัตราคอร์ส</p>
       </div>
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
         <p className="text-xs text-emerald-700">ยอดที่ยืนยันว่าจ่ายแล้ว</p>
         <p className="mt-1 text-xl font-bold text-emerald-800">{money(confirmed)}</p>
       </div>
+      {unpaid > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="text-xs text-amber-700">ยังไม่จ่ายตามราคาประเมิน</p>
+        <p className="mt-1 text-xl font-bold text-amber-800">{money(unpaid)}</p>
+        <p className="mt-1 text-xs text-amber-700">ติดต่อสถาบันเพื่อยืนยันยอดก่อนชำระ</p>
+      </div>}
       {unknown > 0 && <p className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-        อีก {unknown} รอบไม่มีสถานะการชำระหรือจำนวนเงิน จึงยังไม่แสดงเป็นยอดค้างชำระ
+        อีก {unknown} รอบยังไม่มีข้อมูลสถานะการชำระ
       </p>}
       <div className="space-y-2">
         {sourcePurchases.map((purchase, index) => <div key={`${index}:${purchase.hours}`} className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
           <span className="font-semibold">รอบที่ {index + 1} · {purchase.hours} ชั่วโมง</span>
-          <span className="ml-2 text-slate-600">{purchase.status === 'paid' ? `จ่ายแล้ว ${money(purchase.amount)}` : 'ยังไม่ทราบสถานะการชำระ'}</span>
+          <span className="ml-2 text-slate-600">{purchase.status === 'paid' ? `จ่ายแล้ว ${money(purchase.amount)}` : purchase.status === 'unpaid' ? `ยังไม่จ่าย ${money(purchase.expectedPrice)} (ราคาประเมิน)` : 'ยังไม่ทราบสถานะการชำระ'}</span>
           {purchase.paidDate && <span className="ml-2 text-slate-500">วันที่โอน {thaiDate(purchase.paidDate)}</span>}
         </div>)}
       </div>

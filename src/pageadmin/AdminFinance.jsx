@@ -584,6 +584,7 @@ export default function AdminFinance() {
     const monthlyProfit = summary?.monthlyProfit ?? 0;
     const totalRevenueAllTime = summary?.totalRevenueAllTime ?? 0;
     const historicalPrivatePaidAmount = summary?.historicalPrivatePaidAmount ?? 0;
+    const estimatedPrivateUnpaidAmount = summary?.estimatedPrivateUnpaidAmount ?? 0;
     const paidEnrollCount = summary?.paidEnrollCount ?? 0;
     const totalEnrollCount = summary?.totalEnrollCount ?? 0;
     const outstandingTotalAmount = summary?.outstandingTotalAmount ?? 0;
@@ -689,6 +690,12 @@ export default function AdminFinance() {
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                     <b>ยอดชำระคอร์สเดี่ยวเดิมที่ยืนยันแล้ว {formatNumber(historicalPrivatePaidAmount)} บาท</b>
                     <p className="mt-1 text-emerald-800">เก็บแยกจากรายการโอนในระบบการเงิน และยังไม่รวมในรายรับรายเดือน เพราะบางรอบไม่มีวันที่โอนที่ยืนยันได้</p>
+                </div>
+            )}
+            {estimatedPrivateUnpaidAmount > 0 && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <b>คอร์สเดิมที่ยังไม่จ่ายตามราคาประเมิน {formatNumber(estimatedPrivateUnpaidAmount)} บาท</b>
+                    <p className="mt-1 text-amber-800">คำนวณจากอัตราคอร์สเดี่ยวและคำสั่งให้ถือว่ารายการที่ไม่ระบุสถานะเป็นยังไม่จ่าย แยกจากยอดหนี้ที่ออกคำสั่งซื้อในระบบ ควรตรวจสอบยอดก่อนเรียกเก็บ</p>
                 </div>
             )}
 
