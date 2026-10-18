@@ -8,12 +8,19 @@ import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
+
+// แคชโปรไฟล์ในแท็บนี้ (ไม่เก็บข้อมูลบัญชีธนาคาร) — เปิดหน้าซ้ำจะเห็นชื่อ/รายละเอียดทันที
+const PROFILE_CACHE = "tutor-profile";
+const BANK_FIELDS = ["bankName", "bankAccount", "bankAccountName"];
 
 
 export default function TutorProfile() {
     const fileInputRef = useRef(null);
     const [isEditing, setIsEditing] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
+    const [isLoading, setIsLoading] = useState(() => !readSessionCache(PROFILE_CACHE))
+    // true เมื่อได้ข้อมูลจริงจากเซิร์ฟเวอร์แล้ว — ก่อนหน้านั้น (แสดงจากแคช) ยังไม่ให้กดแก้ไข
+    const [isFresh, setIsFresh] = useState(false)
     const [loadError, setLoadError] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [alertModal, setAlertModal] = useState({ show: false, fields: [] })
@@ -22,7 +29,7 @@ export default function TutorProfile() {
     // ก่อนแล้ว ถ้าไม่แนบ Authorization header จะโดน 401 ทันที
     const token = localStorage.getItem("student_token");
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => readSessionCache(PROFILE_CACHE) || {
         firstname: "", lastname: "", nickname: "", phone: "",
         lineId: "", birthDate: "", occupation: "",
         emergencyName: "", emergencyPhone: "",
@@ -61,6 +68,8 @@ export default function TutorProfile() {
                 setFormData(mappedData);
                 setOriginalData(mappedData);
                 setIsLoading(false);
+                setIsFresh(true);
+                writeSessionCache(PROFILE_CACHE, Object.fromEntries(Object.entries(mappedData).filter(([k]) => !BANK_FIELDS.includes(k))));
             } catch (error) {
                 console.error("Error:", error);
                 setLoadError(true);
@@ -182,18 +191,19 @@ export default function TutorProfile() {
         setIsEditing(false)
     }
 
+    // key แยกตัวโหลดกับหน้าจริง — เดิม React นำ <div> ของตัวโหลดกลางจอมาใช้เป็นเนื้อหา ทำให้ทั้งหน้ากระโดดขึ้น (CLS)
     if (isLoading) return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div key="profile-loading" className="min-h-screen flex items-center justify-center" role="status">
             <div className="flex flex-col items-center gap-3">
                 <Spinner size="lg" />
-                <p className="text-orange-600 font-medium text-sm">กำลังโหลด...</p>
+                <p className="text-orange-700 font-medium text-sm">กำลังโหลด...</p>
             </div>
         </div>
     );
     if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
 
     return (
-        <div className="space-y-6 px-4 lg:px-0">
+        <div key="profile-content" className="space-y-6 px-4 lg:px-0">
             <div className="">
 
                 {/* ── Edit Mode Banner ── */}
@@ -215,7 +225,7 @@ export default function TutorProfile() {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-600 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
+                                className="flex items-center gap-1.5 rounded-xl bg-white px-4 py-1.5 text-sm text-orange-700 font-bold hover:bg-orange-50 transition shadow-sm disabled:opacity-60"
                             >
                                 <Save className="h-3.5 w-3.5" />
                                 {isSaving ? 'กำลังบันทึก...' : 'บันทึก'}
@@ -302,7 +312,8 @@ export default function TutorProfile() {
                             {!isEditing && (
                                 <button
                                     onClick={() => setIsEditing(true)}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-orange-600 font-bold hover:bg-orange-50 shadow-lg transition-all text-sm shrink-0"
+                                    disabled={!isFresh}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-orange-700 font-bold disabled:opacity-60 hover:bg-orange-50 shadow-lg transition-all text-sm shrink-0"
                                 >
                                     <Pencil className="h-4 w-4" />
                                     แก้ไขข้อมูล
@@ -348,7 +359,7 @@ export default function TutorProfile() {
                         <div className="flex flex-wrap gap-3 justify-between items-center rounded-xl border border-orange-200 p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
                             <div>
                                 <p className={`${STAT_LABEL} mb-1`}>ค่าตอบแทนต่อคาบ</p>
-                                <p className={`${STAT_NUM} text-orange-600`}>
+                                <p className={`${STAT_NUM} text-orange-700`}>
                                     {Number(formData.ratePerTutors).toLocaleString()}
                                     <span className={STAT_UNIT}>บาท</span>
                                 </p>

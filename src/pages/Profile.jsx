@@ -257,10 +257,10 @@ export default function StudentProfile() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div key="profile-loading" className="min-h-screen flex items-center justify-center" role="status">
         <div className="flex flex-col items-center gap-3">
           <Spinner size="lg" />
-          <p className="text-orange-600 font-medium text-sm">กำลังโหลด...</p>
+          <p className="text-orange-700 font-medium text-sm">กำลังโหลด...</p>
         </div>
       </div>
     );
@@ -268,7 +268,7 @@ export default function StudentProfile() {
   if (loadError) return <div className="mt-[100px] rounded-xl bg-red-50 p-6 text-center text-red-700"><p>{loadError}</p><button type="button" onClick={fetchProfile} className="mt-3 font-semibold underline">ลองใหม่</button></div>;
 
   return (
-    <div className="space-y-6 mt-[100px]">
+    <div key="profile-content" className="space-y-6 mt-[100px]">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div className="">
         {/* ── Edit Mode Banner ── */}
