@@ -583,6 +583,7 @@ export default function AdminFinance() {
     const monthlyRevenue = summary?.monthlyRevenue ?? 0;
     const monthlyProfit = summary?.monthlyProfit ?? 0;
     const totalRevenueAllTime = summary?.totalRevenueAllTime ?? 0;
+    const historicalPrivatePaidAmount = summary?.historicalPrivatePaidAmount ?? 0;
     const paidEnrollCount = summary?.paidEnrollCount ?? 0;
     const totalEnrollCount = summary?.totalEnrollCount ?? 0;
     const outstandingTotalAmount = summary?.outstandingTotalAmount ?? 0;
@@ -683,6 +684,13 @@ export default function AdminFinance() {
                     <KPICard label="ชำระตรงเวลา" value={onTimePaymentRate === null ? '—' : onTimePaymentRate} unit="%" icon={CheckCircle} tone="green" />
                 </div>
             </ApiState>
+
+            {historicalPrivatePaidAmount > 0 && (
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    <b>ยอดชำระคอร์สเดี่ยวเดิมที่ยืนยันแล้ว {formatNumber(historicalPrivatePaidAmount)} บาท</b>
+                    <p className="mt-1 text-emerald-800">เก็บแยกจากรายการโอนในระบบการเงิน และยังไม่รวมในรายรับรายเดือน เพราะบางรอบไม่มีวันที่โอนที่ยืนยันได้</p>
+                </div>
+            )}
 
             {/* ── Overview Tab ── */}
             {selectedTab === 'overview' && (
