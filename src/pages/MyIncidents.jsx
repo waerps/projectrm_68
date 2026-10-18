@@ -7,13 +7,19 @@ import { Paperclip, FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
+import { optimizedImage } from "../utils/responsiveImage";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
     in_review: { label: "กำลังตรวจสอบ", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
     resolved: { label: "ดำเนินการเสร็จสิ้น", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-    dismissed: { label: "ไม่ดำเนินการ", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
+    dismissed: { label: "ไม่ดำเนินการ", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
 };
+
+// แคชรายการไว้ใน sessionStorage (เฉพาะแท็บนี้ ปิดแท็บแล้วหาย) — กลับมาหน้านี้จะเห็นรายการทันที แล้วค่อยอัปเดตเบื้องหลัง
+const cacheKey = (token) => `my-incidents:${String(token).slice(-16)}`;
+const readCache = (token) => { try { const v = JSON.parse(sessionStorage.getItem(cacheKey(token)) || "null"); return Array.isArray(v) ? v : null; } catch { return null; } };
+const writeCache = (token, list) => { try { sessionStorage.setItem(cacheKey(token), JSON.stringify(list)); } catch { /* ข้าม */ } };
 
 const formatDate = (d) => {
     if (!d) return "—";
@@ -70,8 +76,12 @@ function IncidentCard({ incident, onClick }) {
                                             </span>
                                         ) : (
                                             <img
-                                                src={getFileUrl(att.url)}
+                                                src={optimizedImage(getFileUrl(att.url), 112)}
                                                 alt="หลักฐานแนบ"
+                                                width={56}
+                                                height={56}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="h-14 w-14 rounded-lg object-cover border border-slate-200 hover:border-orange-300 transition"
                                             />
                                         )}
@@ -81,7 +91,7 @@ function IncidentCard({ incident, onClick }) {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-slate-500">
                         <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> แจ้งเมื่อ {formatDate(incident.Created_at)}
                         </span>
@@ -97,8 +107,8 @@ function IncidentCard({ incident, onClick }) {
 
 export default function MyIncidents() {
     const token = localStorage.getItem("student_token");
-    const [incidents, setIncidents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [incidents, setIncidents] = useState(() => readCache(token) || []);
+    const [loading, setLoading] = useState(() => !readCache(token));
     const [error, setError] = useState("");
     const [selectedId, setSelectedId] = useState(null);
 
@@ -106,7 +116,9 @@ export default function MyIncidents() {
         getMyIncidents(token)
             .then((payload) => {
                 const list = Array.isArray(payload) ? payload : payload?.incidents ?? payload?.data?.incidents ?? [];
-                setIncidents(Array.isArray(list) ? list : []);
+                const safeList = Array.isArray(list) ? list : [];
+                setIncidents(safeList);
+                writeCache(token, safeList);
                 setError("");
             })
             .catch((err) => setError(
@@ -123,26 +135,7 @@ export default function MyIncidents() {
         load();
     };
 
-    if (loading) {
-        return (
-            <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-orange-600">
-                <Loader2 className="w-8 h-8 animate-spin mb-3" />
-                <p className="text-sm font-medium text-slate-500">กำลังโหลดประวัติการแจ้งเรื่อง...</p>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <ErrorState
-                className="mt-[90px]"
-                title="โหลดประวัติการแจ้งเรื่องไม่สำเร็จ"
-                description={error}
-                onRetry={retry}
-            />
-        );
-    }
-
+    // หัวข้อหน้าแสดงทันที ไม่ต้องรอข้อมูลจากเซิร์ฟเวอร์ (ช่วยให้หน้าขึ้นเร็ว — Lighthouse LCP)
     return (
         <div className="space-y-6 mt-[90px]">
             <div>
@@ -150,7 +143,18 @@ export default function MyIncidents() {
                 <p className={PAGE_SUBTITLE}>รายการที่คุณเคยแจ้งไปและความคืบหน้าปัจจุบัน</p>
             </div>
 
-            {incidents.length === 0 ? (
+            {loading ? (
+                <div className="flex h-48 flex-col items-center justify-center text-orange-700" role="status">
+                    <Loader2 className="mb-3 h-8 w-8 animate-spin" />
+                    <p className="text-sm font-medium text-slate-600">กำลังโหลดประวัติการแจ้งเรื่อง...</p>
+                </div>
+            ) : error ? (
+                <ErrorState
+                    title="โหลดประวัติการแจ้งเรื่องไม่สำเร็จ"
+                    description={error}
+                    onRetry={retry}
+                />
+            ) : incidents.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-200">
                     <Inbox className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                     <p className="text-slate-500 font-medium">ยังไม่มีเรื่องที่แจ้งไป</p>
