@@ -128,13 +128,10 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
   const stats = useMemo(() => {
     const active = courses.filter((c) => [1, 2].includes(Number(c.Status_Course_Id))).length;
-    const outstanding = courses.reduce((sum, course) => sum + (course.SourcePurchases?.length ? 0 : (course.Students || []).reduce((studentSum, student) =>
+    const outstanding = courses.reduce((sum, course) => sum + (course.Students || []).reduce((studentSum, student) =>
       studentSum + (student.OrderId || course.FullCost !== null
-        ? Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost) - Number(student.PaidAmount || 0)) : 0), 0)), 0);
-    const estimatedUnpaid = courses.reduce((sum, course) => sum + (course.SourcePurchases || [])
-      .filter((purchase) => purchase.PaymentStatus === 'unpaid')
-      .reduce((subtotal, purchase) => subtotal + Number(purchase.ExpectedPrice || 0), 0), 0);
-    return { active, outstanding, estimatedUnpaid, shownOffers: offers.filter((o) => o.IsActive).length };
+        ? Math.max(0, Number(student.OrderId ? student.TotalAmount : course.FullCost) - Number(student.PaidAmount || 0)) : 0), 0), 0);
+    return { active, outstanding, shownOffers: offers.filter((o) => o.IsActive).length };
   }, [courses, offers]);
 
   const navigate = useNavigate();
@@ -174,11 +171,10 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
 
   return (
     <div className="space-y-5">
-      <div className={`grid grid-cols-2 gap-3 sm:gap-4 ${stats.estimatedUnpaid > 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
         <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} unit="คอร์ส" sub={`ทั้งหมด ${courses.length} คอร์ส`} />
         <Stat icon={Layers} color="bg-blue-500" label="วิชาที่แสดงบนเว็บไซต์" value={stats.shownOffers} unit="วิชา" sub={`ซ่อนอยู่ ${offers.length - stats.shownOffers} วิชา`} />
         <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} sub="รวมทุกคอร์สเดี่ยว" className="col-span-2 md:col-span-1" />
-        {stats.estimatedUnpaid > 0 && <Stat icon={Wallet} color="bg-sky-500" label="ยังไม่จ่าย" value={money(stats.estimatedUnpaid)} sub="คอร์สที่นำเข้า" className="col-span-2 md:col-span-1" />}
       </div>
 
       {/* แถวเดียว: สลับแท็บ (ซ้าย) · ค้นหา (กลาง ใช้ได้ทั้งสองแท็บ) · ปุ่มเพิ่ม (ขวา) */}
@@ -342,7 +338,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
     const items = [
       (!c.IsPublished || Number(c.PendingDraftActions) > 0) && { key: 'publish', label: 'เผยแพร่คอร์ส', icon: CheckCircle2, onClick: publish },
       (c.Students || []).length < Number(c.MaxStudents || 1) && { key: 'enroll', label: 'ลงทะเบียนนักเรียน', icon: UserPlus, onClick: () => onEnroll(c) },
-      !c.SourcePurchases?.length && (c.Students || []).some((student) => (student.OrderId || c.FullCost !== null) &&
+      (c.Students || []).some((student) => (student.OrderId || c.FullCost !== null) &&
         Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost)) &&
         { key: 'pay', label: 'บันทึกรับเงิน', icon: Wallet, onClick: () => onPay(c) },
       onManage && { key: 'manage', label: 'จัดการคอร์ส', icon: Settings2, onClick: () => onManage(c.CourseID), title: 'วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส', secondary: true },
@@ -360,43 +356,13 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
     );
   };
   const PayCell = ({ c }) => {
-    if (c.SourcePurchases?.length) {
-      const byUser = new Map();
-      for (const purchase of c.SourcePurchases) {
-        if (!byUser.has(purchase.UserId)) byUser.set(purchase.UserId, []);
-        byUser.get(purchase.UserId).push(purchase);
-      }
-      return <div className="min-w-[190px] space-y-2">
-        {(c.Students || []).map((student) => {
-          const purchases = byUser.get(student.UserId) || [];
-          const paid = purchases.reduce((sum, purchase) => sum + Number(purchase.ConfirmedPaidAmount || 0), 0);
-          const unpaid = purchases.filter((purchase) => purchase.PaymentStatus === 'unpaid')
-            .reduce((sum, purchase) => sum + Number(purchase.ExpectedPrice || 0), 0);
-          const unknown = purchases.filter((purchase) => purchase.PaymentStatus === 'unknown').length;
-          return <details key={student.EnrollId} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs">
-            <summary className="cursor-pointer font-semibold text-slate-700">
-              {student.Nickname || student.Firstname}
-              {paid > 0 ? ` · จ่ายแล้ว ${money(paid)}` : ''}
-              {unpaid > 0 ? ` · ยังไม่จ่าย ${money(unpaid)}` : ''}
-              {unknown > 0 ? ` · อีก ${unknown} รอบไม่ระบุสถานะ` : ''}
-            </summary>
-            <div className="mt-2 space-y-1 border-t border-slate-200 pt-2 text-slate-600">
-              {purchases.map((purchase) => <p key={purchase.PurchaseId}>
-                {purchase.Hours} ชม. · {purchase.PaymentStatus === 'paid'
-                  ? `จ่ายแล้ว ${knownMoney(purchase.ConfirmedPaidAmount)}`
-                  : purchase.PaymentStatus === 'unpaid'
-                    ? `ยังไม่จ่าย ${knownMoney(purchase.ExpectedPrice)}` : 'ไม่ระบุสถานะชำระ'}
-                {purchase.PaidDate ? ` · โอน ${purchase.PaidDate}` : ''}
-              </p>)}
-              {unknown > 0 && <p className="text-slate-400">รอบที่ไม่ระบุสถานะไม่ถูกนับเป็นยอดค้างชำระ</p>}
-            </div>
-          </details>;
-        })}
-      </div>;
-    }
     return (
       <div className="min-w-[190px] space-y-1.5">
         {(c.Students || []).length ? c.Students.map((student) => {
+          if (!student.OrderId && c.FullCost === null) return <div key={student.EnrollId} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs">
+            <span className="max-w-[80px] truncate font-medium text-slate-700" title={fullName(student)}>{student.Nickname || student.Firstname}</span>
+            <span className="text-slate-500">ยังไม่ระบุราคา</span>
+          </div>;
           const total = Number(student.OrderId ? student.TotalAmount : c.FullCost || 0);
           const paid = Number(student.PaidAmount || 0);
           const label = paid >= total && total > 0 ? "ครบ" : paid > 0 ? "บางส่วน" : "ยังไม่ชำระ";
