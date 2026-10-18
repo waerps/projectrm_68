@@ -16,6 +16,7 @@ import { Folder as LuFolder } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 
 // Cloudinary รับไฟล์ที่อัปโหลดแบบส่งครั้งเดียวได้ไม่เกิน 100 MB (เกินนี้ต้องอัปแบบแบ่งก้อน)
 const MAX_VIDEO_MB = 100;
@@ -46,9 +47,15 @@ export default function TutorCourseManagePage() {
   const token = localStorage.getItem("student_token");
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
-  const [loading, setLoading] = useState(true);
+  // แคชคลิป/เอกสารของวิชานี้ในแท็บ — เปิดซ้ำจะแสดงทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+  const contentCacheKey = `tutor-content:${courseId}:${subjectId}`;
+  const cachedContent = readSessionCache(contentCacheKey);
+  const [loading, setLoading] = useState(() => !cachedContent);
   const [loadError, setLoadError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // รอส่วน "หัวข้อการสอน" ด้านบนโหลดเสร็จก่อนค่อยแสดงกล่องคลิป/เอกสาร
+  // ไม่อย่างนั้นหัวข้อที่โหลดเสร็จทีหลังจะดันกล่องด้านล่างลง (Lighthouse CLS)
+  const [topicsReady, setTopicsReady] = useState(false);
 
   const [isAddVideoOpen, setIsAddVideoOpen] = useState(false);
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false);
@@ -65,8 +72,8 @@ export default function TutorCourseManagePage() {
   const [editDocName, setEditDocName] = useState("");
   const [editDocFile, setEditDocFile] = useState(null);
 
-  const [videos, setVideos] = useState([]);
-  const [documents, setDocuments] = useState([]);
+  const [videos, setVideos] = useState(() => cachedContent?.videos || []);
+  const [documents, setDocuments] = useState(() => cachedContent?.files || []);
   const navigate = useNavigate();
 
   const editFileInputRef = useRef(null);
@@ -93,10 +100,11 @@ export default function TutorCourseManagePage() {
       const res = await axios.get(`${API_URL}/api/tutor-content?courseId=${courseId}&subjectId=${subjectId}`, { headers: authHeaders });
       setVideos(res.data.videos || []);
       setDocuments(res.data.files || []);
+      writeSessionCache(contentCacheKey, { videos: res.data.videos || [], files: res.data.files || [] });
       setLoadError(false);
     } catch (e) {
       console.error("Error fetching content:", e);
-      setLoadError(true);
+      if (!readSessionCache(contentCacheKey)) setLoadError(true);
     } finally { setLoading(false); }
   };
 
@@ -250,12 +258,12 @@ export default function TutorCourseManagePage() {
   </p>
 </div>
 
-        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} assignmentId={assignmentId} subjectName={subjectName} />
+        <TutorTeachingTopics courseId={courseId} subjectId={subjectId} assignmentId={assignmentId} subjectName={subjectName} onReady={() => setTopicsReady(true)} />
 
         {/* ===== GRID ===== */}
         {/* ✅ items-start ทำให้สูงตามเนื้อหาตัวเอง + overflow-hidden + fixed max-height */}
         {/* หัวข้อหน้าและหัวข้อการสอนแสดง/โหลดทันที ส่วนคลิปและเอกสารรอข้อมูล (เดิมรอทั้งหน้า) */}
-        {loading ? (
+        {loading || !topicsReady ? (
           <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดคลิปและเอกสาร..." /></div>
         ) : loadError ? (
           <ErrorState description="โหลดคลิปและเอกสารไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { setLoading(true); fetchContent(); }} />

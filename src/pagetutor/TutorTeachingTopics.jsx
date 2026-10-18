@@ -2,14 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { ArrowDown, ArrowUp, BookOpenText, CalendarDays, Check, ChevronDown, Info, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { API_URL } from "../config";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 
 const MAX_TOPICS = 30;
 const MAX_TITLE_LENGTH = 200;
 
-export default function TutorTeachingTopics({ courseId, subjectId, assignmentId, subjectName }) {
-  const [topics, setTopics] = useState([]);
-  const [savedTopics, setSavedTopics] = useState([]);
-  const [loading, setLoading] = useState(true);
+// แปลงข้อมูลจาก API เป็น state ของหน้า (ใช้ทั้งกับข้อมูลจริงและข้อมูลจากแคช)
+const parseTopics = (data) => {
+  const scheduled = data?.lessons || [];
+  const loaded = (data?.topics || []).map((topic) => ({ id: topic.id, title: topic.title, plannedLessonIds: scheduled.filter(lesson => lesson.plannedTopicIds?.includes(topic.id)).map(lesson => lesson.id) }));
+  return { scheduled, loaded, course: data?.course || null };
+};
+
+export default function TutorTeachingTopics({ courseId, subjectId, assignmentId, subjectName, onReady }) {
+  // แคชหัวข้อในแท็บนี้ — เปิดหน้าซ้ำจะแสดงทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+  const cacheKey = `teaching-topics:${courseId}:${subjectId}:${assignmentId || ""}`;
+  const [initial] = useState(() => { const c = readSessionCache(cacheKey); return c ? parseTopics(c) : null; });
+  const [topics, setTopics] = useState(() => initial?.loaded || []);
+  const [savedTopics, setSavedTopics] = useState(() => initial?.loaded || []);
+  const [loading, setLoading] = useState(() => !initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [loadFailed, setLoadFailed] = useState(false);
@@ -17,15 +28,15 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [lessons, setLessons] = useState([]);
-  const [courseDates, setCourseDates] = useState(null);
+  const [lessons, setLessons] = useState(() => initial?.scheduled || []);
+  const [courseDates, setCourseDates] = useState(() => initial?.course || null);
   const changed = JSON.stringify(topics) !== JSON.stringify(savedTopics);
   const requestData = useMemo(() => ({ courseId, subjectId, ...(assignmentId ? { assignmentId } : {}) }), [courseId, subjectId, assignmentId]);
 
   useEffect(() => {
     if (!courseId || !subjectId) { setLoading(false); return; }
     let active = true;
-    setLoading(true);
+    setLoading(!readSessionCache(cacheKey));
     setLoadFailed(false);
     setError("");
     const token = localStorage.getItem("student_token");
@@ -34,10 +45,10 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     }).then(({ data }) => {
       if (!active) return;
-      const scheduled = data.lessons || [];
-      const loaded = (data.topics || []).map((topic) => ({ id: topic.id, title: topic.title, plannedLessonIds: scheduled.filter(lesson => lesson.plannedTopicIds?.includes(topic.id)).map(lesson => lesson.id) }));
+      const { scheduled, loaded, course } = parseTopics(data);
+      writeSessionCache(cacheKey, data);
       setLessons(scheduled);
-      setCourseDates(data.course || null);
+      setCourseDates(course);
       setTopics(loaded);
       setSavedTopics(loaded);
       setLoadFailed(false);
@@ -48,7 +59,10 @@ export default function TutorTeachingTopics({ courseId, subjectId, assignmentId,
       }
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [courseId, subjectId, requestData, reloadKey]);
+  }, [courseId, subjectId, requestData, reloadKey, cacheKey]);
+
+  // แจ้งหน้าแม่ว่าส่วนนี้แสดงผลเสร็จแล้ว (ใช้กันกล่องด้านล่างถูกดันลงตอนหัวข้อโหลดเสร็จ)
+  useEffect(() => { if (!loading) onReady?.(); }, [loading, onReady]);
 
   const updateAt = (index, title) => setTopics((items) => items.map((item, i) => i === index ? { ...item, title } : item));
   const addLesson = (index, lessonId) => setTopics(items => items.map((item, i) => i === index && !item.plannedLessonIds.includes(lessonId) ? { ...item, plannedLessonIds: [...item.plannedLessonIds, lessonId] } : item));
