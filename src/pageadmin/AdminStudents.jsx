@@ -737,7 +737,8 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
   if (!data) return null;
 
   // ★ เพิ่ม: destructure parent ออกมาด้วย (backend คืน field นี้มาให้แล้ว)
-  const { student: s, parent, courses, attendance, videoProgress, examScores = [] } = data;
+  const { student: s, parent, courses, attendance, videoProgress, examScores = [],
+    legacyPackages = [], legacyHourSnapshot = null } = data;
   const displayName = s.Nickname || `${s.Firstname} ${s.Lastname}`;
 
   // ── ภาพรวมทั้งหมด (ไม่กรองคอร์ส) สำหรับ header การ์ดบนสุด ──────────────
@@ -805,6 +806,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   const TABS = [
     { key: "courses", label: "คอร์สที่ลง", count: courses.length },
+    { key: "packages", label: "แพ็กเกจเดิม", count: legacyPackages.length },
     { key: "attendance", label: "ประวัติเรียน", count: cAttendance.length },
     { key: "videos", label: "วิดีโอ", count: cVideos.length },
     { key: "scores", label: "คะแนนสอบ", count: subjectSummaries.length },      // ★ ใหม่
@@ -855,7 +857,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
 
       {/* คอร์สที่เลือกอยู่ (breadcrumb เล็กๆ) */}
-      {selectedCourse && tab !== "courses" && (
+      {selectedCourse && tab !== "courses" && tab !== "packages" && (
         <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <span className="text-slate-400">กำลังดูคอร์ส:</span>
           <span className="bg-orange-50 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full font-semibold">
@@ -938,6 +940,51 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {tab === "packages" && (
+        <div className="space-y-4">
+          <p className="text-xs text-slate-500">
+            ข้อมูลจากชีตเดิม ใช้ตรวจย้อนหลัง ยังไม่หักชั่วโมงตามการเข้าเรียนในเว็บนี้
+          </p>
+          {legacyHourSnapshot && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+              <p className="text-sm font-bold text-orange-900">ชั่วโมงตามชีตเดิม</p>
+              <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                <p>โควตา: <strong>{legacyHourSnapshot.PrivateHoursQuota ?? "ไม่ระบุ"} ชั่วโมง</strong></p>
+                <p>คงเหลือ: <strong>{legacyHourSnapshot.RemainingPrivateHours ?? "ไม่ระบุ"} ชั่วโมง</strong></p>
+              </div>
+              {legacyHourSnapshot.PrivateQuotaDetails && (
+                <p className="mt-2 text-xs text-slate-700">รายละเอียด: {legacyHourSnapshot.PrivateQuotaDetails}</p>
+              )}
+              <p className="mt-2 text-[11px] text-slate-500">อ้างอิงชีต Users แถว {legacyHourSnapshot.SourceRow}</p>
+            </div>
+          )}
+          {legacyPackages.length === 0 ? (
+            <p className="py-8 text-center text-sm text-slate-400">ไม่มีแพ็กเกจที่ผูกกับนักเรียนคนนี้ในชีตเดิม</p>
+          ) : legacyPackages.map(pkg => (
+            <div key={pkg.SourcePackageId} className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">
+                    {pkg.SubjectName || "ไม่ระบุวิชา"} · {pkg.SourceHoursText} ชั่วโมง
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">{pkg.SourceDateText}</p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                  สถานะในชีต: {pkg.SourceStatus}
+                </span>
+              </div>
+              {pkg.Details && <p className="mt-2 text-sm text-slate-700">{pkg.Details}</p>}
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+                {pkg.LessonType && <span>รูปแบบ: {pkg.LessonType}</span>}
+                {pkg.LearningMode && <span>สถานที่: {pkg.LearningMode}</span>}
+                <span>ชำระเงินในชีต: {pkg.PaymentStatus || "ไม่ระบุ"}</span>
+                <span>อ้างอิง Packages แถว {pkg.SourceRow}</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -2139,6 +2186,7 @@ export default function AdminStudentsPage() {
   const [gradeLevels, setGradeLevels] = useState([]);
   const [genders, setGenders] = useState([]);
   const [parentProfileTypes, setParentProfileTypes] = useState([]); // ★ เพิ่ม
+  const [pendingLegacyPackages, setPendingLegacyPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterGrade, setFilterGrade] = useState("all");
@@ -2159,16 +2207,18 @@ export default function AdminStudentsPage() {
 
   const fetchAll = async () => {
     try {
-      const [sRes, gRes, genRes, pptRes] = await Promise.all([
+      const [sRes, gRes, genRes, pptRes, pendingRes] = await Promise.all([
         axios.get(`${API}/students`),
         axios.get(`${API}/grade-levels`),
         axios.get(`${API}/genders`),
         axios.get(`${API}/parent-profile-types`), // ★ เพิ่ม
+        axios.get(`${API}/students/legacy-packages/pending`).catch(() => ({ data: [] })),
       ]);
       setStudents(sRes.data);
       setGradeLevels(gRes.data);
       setGenders(genRes.data);
       setParentProfileTypes(pptRes.data); // ★ เพิ่ม
+      setPendingLegacyPackages(pendingRes.data);
       setLoadError(false);
     } catch (e) {
       console.error("fetch error:", e);
@@ -2320,6 +2370,24 @@ export default function AdminStudentsPage() {
           <StudentStatTile key={i} label={label} value={value} color={color} icon={GraduationCap} />
         ))}
       </div>
+
+      {pendingLegacyPackages.length > 0 && (
+        <details className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-amber-900">
+            แพ็กเกจจากชีตที่รอจับคู่นักเรียน {pendingLegacyPackages.length} รายการ
+          </summary>
+          <p className="mt-2 text-xs text-amber-800">ยังไม่พบบัญชีนักเรียนตรงกับ username ในชีต จึงยังไม่ผูกแพ็กเกจให้ใคร</p>
+          <div className="mt-3 space-y-2">
+            {pendingLegacyPackages.map(pkg => (
+              <div key={pkg.SourcePackageId} className="rounded-lg border border-amber-200 bg-white p-3 text-xs text-slate-700">
+                <p className="font-semibold">Packages แถว {pkg.SourceRow} · username {pkg.SourceUsername} · {pkg.SourceHoursText} ชั่วโมง</p>
+                <p className="mt-1">{pkg.SourceDateText}{pkg.SubjectName ? ` · ${pkg.SubjectName}` : ""}</p>
+                {pkg.Details && <p className="mt-1">{pkg.Details}</p>}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* Top 5 Attendance Ranking */}
       <StudentPerformanceRanking

@@ -29,7 +29,7 @@ export const STATUS_BADGE = {
   draft: { cls: "bg-neutral-100 text-neutral-600", label: "Draft" },
   ready: { cls: "bg-blue-50 text-blue-700", label: "Ready" },
   active: { cls: "bg-green-100 text-green-700", label: "Open / กำลังสอบ" },
-  closed: { cls: "bg-neutral-100 text-neutral-500", label: "Closed" },
+  closed: { cls: "bg-neutral-100 text-neutral-600", label: "Closed" },
 };
 
 export const LEVEL_BADGE = {
@@ -317,6 +317,22 @@ export async function fetchBank(subjectId) {
   return data;
 }
 
+// ยิงโหลดคลังล่วงหน้าตั้งแต่เปิดหน้า (พร้อมกับข้อมูลรอบสอบ) แล้วให้ BankTab มารับผลไปใช้ครั้งเดียว
+// เดิม BankTab เริ่มโหลดได้ก็ต่อเมื่อข้อมูลรอบสอบโหลดเสร็จก่อน → ช้าไปหนึ่งรอบ (Lighthouse LCP)
+const prefetchedBank = new Map();
+export function prefetchBank(subjectId) {
+  if (!subjectId || prefetchedBank.has(String(subjectId))) return;
+  const p = fetchBank(subjectId);
+  p.catch(() => prefetchedBank.delete(String(subjectId)));
+  prefetchedBank.set(String(subjectId), p);
+}
+// รับผลที่โหลดล่วงหน้าไว้ (ใช้ได้ครั้งเดียว — โหลดครั้งถัดไปจะดึงข้อมูลใหม่เสมอ)
+export function takeBank(subjectId) {
+  const p = prefetchedBank.get(String(subjectId));
+  prefetchedBank.delete(String(subjectId));
+  return p || fetchBank(subjectId);
+}
+
 // GET /api/bank/my-subjects → [{ subjectId, subjectName, total, categories, lastUpdatedAt }]
 // วิชาที่ครูคนนี้สอน พร้อมจำนวนข้อในคลังของตัวเอง ใช้เปิดคลังตรงจากเมนู
 export async function fetchMySubjects() {
@@ -332,9 +348,14 @@ export async function uploadBankQuestionImage(file) {
 }
 
 // GET /api/bank/grade-levels → [{ id, label }] รายการระดับชั้นให้เลือกตอนเพิ่มข้อในคลัง
-export async function fetchGradeLevels() {
-  const { data } = await axios.get(`${BANK_BASE}/grade-levels`, { headers: authHeaders() });
-  return data;
+// รายการระดับชั้นแทบไม่เปลี่ยน — โหลดครั้งเดียวต่อการเปิดเว็บ แล้วใช้ซ้ำ (ถ้าล้มเหลวจะลองใหม่ครั้งหน้า)
+let gradeLevelsPromise = null;
+export function fetchGradeLevels() {
+  if (!gradeLevelsPromise) {
+    gradeLevelsPromise = axios.get(`${BANK_BASE}/grade-levels`, { headers: authHeaders() }).then((res) => res.data);
+    gradeLevelsPromise.catch(() => { gradeLevelsPromise = null; });
+  }
+  return gradeLevelsPromise;
 }
 
 // POST /api/bank → เพิ่มเข้าคลัง ใช้ได้ทั้งพิมพ์เองทีละข้อและ import Excel หลายข้อ

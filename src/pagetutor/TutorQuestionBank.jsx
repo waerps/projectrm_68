@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
-import { fetchMySubjects } from "../utils/examShared";
+import { fetchMySubjects, prefetchBank } from "../utils/examShared";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 // ตัวจัดการคลัง (ไฟล์ใหญ่ รวมตัวแสดงสูตรคณิต) โหลดเมื่อเลือกวิชาแล้วเท่านั้น — หน้ารายการวิชาจึงเปิดเร็วขึ้น
 const BankTab = lazy(() => import("./TutorExamDetail.jsx").then((m) => ({ default: m.BankTab })));
@@ -72,6 +72,8 @@ export default function TutorQuestionBank() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  // เปิดหน้ามาพร้อม ?subjectId= : เริ่มโหลดข้อสอบในคลังทันที ระหว่างรอไฟล์ตัวจัดการคลังโหลด
+  useEffect(() => { if (subjectId) prefetchBank(subjectId); }, [subjectId]);
 
   const selected = subjects.find((s) => String(s.subjectId) === String(subjectId));
 

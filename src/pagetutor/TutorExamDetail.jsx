@@ -17,7 +17,7 @@ import {
   fetchExamDetail, updateExamSettings,
   openExamSession, closeExamSession, fetchExamResults, fetchExamJoinDetail,
   fetchBankCategories, renameBankCategory,
-  fetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
+  fetchBank, takeBank, prefetchBank, addBankQuestions, updateBankQuestion, deleteBankQuestion, fetchGradeLevels,
   uploadBankQuestionImage,
   bulkDeleteBankQuestions, bulkUpdateBankQuestions, exportBankXlsx, upsertBankQuestions,
   assembleExamSet, applyExamSet,
@@ -985,7 +985,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     const cacheKey = `tutor-bank-${subjectId}`;
     setLoading(!readSessionCache(cacheKey));
     setLoadError("");
-    fetchBank(subjectId)
+    takeBank(subjectId)
       .then((rows) => {
         const list = Array.isArray(rows) ? rows : [];
         setItems(list);
@@ -3587,6 +3587,12 @@ export default function TutorExamDetail() {
 
   useEffect(() => { setLoading(true); reload(); }, [reload]);
 
+  // เริ่มโหลดคลังข้อสอบและระดับชั้นพร้อมกับข้อมูลรอบสอบเลย ไม่ต้องรอให้แท็บคลังแสดงก่อน
+  useEffect(() => {
+    if (subjectId) prefetchBank(subjectId);
+    fetchGradeLevels().catch(() => {});
+  }, [subjectId]);
+
   // รองรับ Backend รุ่นที่ยังไม่ส่ง courseType ในข้อมูลสอบ โดยอ่านจากรายการคอร์ส
   // ที่ติวเตอร์คนนี้สอนจริง แทนการเดาประเภทคอร์สจากชื่อหรือ URL
   useEffect(() => {
@@ -3702,7 +3708,7 @@ export default function TutorExamDetail() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition ${active ? "border-orange-500 text-orange-700" : "border-transparent text-slate-600 hover:text-slate-800"}`}
             >
               <Icon className="h-4 w-4" /> {t.label}
             </button>
