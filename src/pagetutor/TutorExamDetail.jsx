@@ -1634,7 +1634,7 @@ function AssembleDialog({ exam, courseId, subjectId, onClose, onDone }) {
         <span>
           <span className="text-sm font-medium text-slate-800">ทุกรอบ Pre / Mid / Post <span className="text-orange-600 font-normal">(แนะนำ)</span></span>
           <span className="block text-xs text-slate-500 mt-0.5">
-            ใช้ข้อสอบชุดเดียวกันทุกรอบ เพื่อให้เทียบคะแนนก่อนเรียนและหลังเรียนได้แม่นยำ
+            ใช้ข้อสอบชุดเดียวกันทุกรอบ เพื่อให้เทียบคะแนน Pre-test และ Post-test ได้แม่นยำ
             โดยไม่มีผลจากความยากง่ายของข้อสอบที่ต่างกัน
           </span>
         </span>

@@ -327,7 +327,7 @@ export default function AdminProgressOverview() {
             unit: `/ ${summary.groups} รายการ`,
             color: "bg-orange-600", icon: BookOpen,
           },
-          { label: "คะแนนหลังเรียนเฉลี่ย", help: "ค่าเฉลี่ยคะแนน Post-test ของแต่ละรายการ คิดเป็นร้อยละของคะแนนเต็ม", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
+          { label: "คะแนน Post-test เฉลี่ย", help: "ค่าเฉลี่ยคะแนน Post-test ของแต่ละรายการ คิดเป็นร้อยละของคะแนนเต็ม", value: summary.avgPost, unit: "%", color: "bg-emerald-500", icon: BarChart2 },
           {
             label: "ผลคะแนนดีขึ้น",
             help: `สัดส่วนผลสอบที่คะแนน Post-test สูงกว่า Pre-test โดยนับแยกตามรายการสอน (${summary.improved} จาก ${summary.comparableResults} ผล)`,

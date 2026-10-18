@@ -70,7 +70,7 @@ export default function TutorStudents() {
             : "ไม่มีข้อมูล",
         ดูคลิป: student.totalVideos ? `${student.videoViews}/${student.totalVideos} (${Math.round((student.videoViews / student.totalVideos) * 100)}%)` : "ยังไม่มีคลิปในคอร์ส",
         คะแนนสอบ: student.exam?.improvement
-            ? `ก่อนเรียน ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
+            ? `Pre-test ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
             : examError ? "—" : "ยังไม่มีข้อมูลสอบ",
         // แยกคอลัมน์: คะแนนดิบใช้ดูรายคน ส่วน "พัฒนาการ" คือตัวที่เอาไปเรียง/เทียบข้ามคนได้
         พัฒนาการ: getGrowthText(student),
@@ -464,7 +464,7 @@ export default function TutorStudents() {
                                     {student.exam?.improvement ? (
                                         <>
                                             <p className="text-sm font-bold text-slate-800 leading-relaxed">
-                                                ก่อนเรียน {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'กลางภาค' : 'หลังเรียน'} {fmtScoreNum(student.exam.improvement.to)}
+                                                Pre-test {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} {fmtScoreNum(student.exam.improvement.to)}
                                             </p>
                                             <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-600' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
                                                 {getAverageImprovement(student)} คะแนน

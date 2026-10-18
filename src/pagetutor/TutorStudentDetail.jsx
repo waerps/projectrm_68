@@ -296,7 +296,7 @@ export default function TutorStudentDetail() {
                             </div>
                             <div className={STAT_SUB}>
                                 {improvement
-                                    ? `${getAverageImprovement()} คะแนน · ก่อนเรียน ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"} ${fmtScoreNum(improvement.to)}`
+                                    ? `${getAverageImprovement()} คะแนน · Pre-test ${fmtScoreNum(improvement.from)} → ${improvement.basis === "pre-mid" ? "Mid-test" : "Post-test"} ${fmtScoreNum(improvement.to)}`
                                     : examError ? "โหลดข้อมูลสอบไม่สำเร็จ" : "ยังไม่มีข้อมูลสอบ"}
                             </div>
                         </div>
@@ -522,8 +522,8 @@ export default function TutorStudentDetail() {
                             <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div>
                                     <p className="text-sm font-bold text-slate-800 leading-relaxed">
-                                        คะแนนรวมทุกวิชา: ก่อนเรียนได้ <span className="text-slate-900">{fmtScoreNum(improvement.from)}</span> คะแนน
-                                        {" → "}{improvement.basis === "pre-mid" ? "กลางภาค" : "หลังเรียน"}ได้ <span className="text-orange-600">{fmtScoreNum(improvement.to)}</span> คะแนน
+                                        คะแนนรวมทุกวิชา: Pre-test ได้ <span className="text-slate-900">{fmtScoreNum(improvement.from)}</span> คะแนน
+                                        {" → "}{improvement.basis === "pre-mid" ? "Mid-test" : "Post-test"} ได้ <span className="text-orange-600">{fmtScoreNum(improvement.to)}</span> คะแนน
                                         <span className="text-slate-400 font-semibold"> (จากเต็ม {improvement.max})</span>
                                     </p>
                                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -531,7 +531,7 @@ export default function TutorStudentDetail() {
                                         {(examData?.untestedSubjects || []).length > 0
                                             ? ` (ยังไม่นับ ${examData.untestedSubjects.join(", ")} เพราะยังไม่ได้สอบ)`
                                             : ""}
-                                        {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบหลังเรียน จึงเทียบกับกลางภาคก่อน" : ""}
+                                        {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบ Post-test จึงเทียบกับ Mid-test ก่อน" : ""}
                                     </p>
                                     {improvement.growth != null && (
                                         <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
@@ -556,7 +556,7 @@ export default function TutorStudentDetail() {
                         ) : examData?.latest ? (
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
-                                <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ ต้องมีผลสอบก่อนเรียนและหลังเรียนของวิชาเดียวกัน</span>
+                                <span className="text-slate-400"> · ยังเทียบพัฒนาการไม่ได้ ต้องมีผลสอบ Pre-test และ Post-test ของวิชาเดียวกัน</span>
                             </p>
                         ) : (
                             <p className="text-sm text-slate-500">ยังไม่มีข้อมูลการสอบของนักเรียนคนนี้</p>
@@ -599,9 +599,9 @@ export default function TutorStudentDetail() {
                                     </div>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { label: "ก่อนเรียน", val: s.pre, hi: false },
-                                            { label: "กลางภาค", val: s.mid, hi: false },
-                                            { label: "หลังเรียน", val: s.post, hi: true },
+                                            { label: "Pre-test", val: s.pre, hi: false },
+                                            { label: "Mid-test", val: s.mid, hi: false },
+                                            { label: "Post-test", val: s.post, hi: true },
                                         ].map((cell) => (
                                             <div key={cell.label} className={`p-2 sm:p-2.5 rounded-lg text-center border ${cell.hi && cell.val != null ? "bg-orange-50 border-orange-200" : "bg-white border-slate-200"}`}>
                                                 <p className={`text-xs mb-1 ${cell.hi && cell.val != null ? "text-orange-600" : "text-slate-500"}`}>{cell.label}</p>
