@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
 import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound, Search } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
@@ -68,8 +69,8 @@ function groupByDate(items) {
 
 export default function AdminNotifications() {
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => readSessionCache('admin-notifications') || []);
+  const [loading, setLoading] = useState(() => !readSessionCache('admin-notifications'));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -78,7 +79,7 @@ export default function AdminNotifications() {
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    setLoading(!readSessionCache('admin-notifications')); setError('');
     try {
       const { data } = await axios.get(API, auth());
       setItems(Array.isArray(data.items) ? data.items : []);
@@ -87,6 +88,8 @@ export default function AdminNotifications() {
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+  // เก็บรายการล่าสุดไว้แสดงทันทีครั้งหน้า
+  useEffect(() => { if (!loading && !error) writeSessionCache('admin-notifications', items); }, [items, loading, error]);
 
   const unreadCount = items.filter(item => !item.isRead).length;
   const actionRequiredCount = items.filter(item => item.actionRequired && !item.isRead).length;
@@ -213,7 +216,7 @@ export default function AdminNotifications() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
@@ -245,7 +248,7 @@ export default function AdminNotifications() {
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
                         {!item.isRead && (
                           <button disabled={busy === item.id} onClick={() => markRead(item.id)} title="ทำเครื่องหมายว่าอ่าน"
-                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-700 hover:bg-orange-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                             <Check className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -283,7 +286,7 @@ export default function AdminNotifications() {
                             <span className="text-xs text-slate-500">{timeAgo(item.createdAt)}</span>
                             {item.link && (
                               <button onClick={() => takeAction(item)}
-                                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+                                className="flex items-center gap-1 text-xs font-bold text-orange-700 hover:text-orange-800 transition">
                                 {item.actionLabel || 'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>
                             )}

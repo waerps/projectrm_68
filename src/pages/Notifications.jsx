@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
 import { Bell, ChevronRight, Calendar, DollarSign, AlertCircle, Megaphone, PlayCircle, Trash2, Check, Loader2, Search } from 'lucide-react';
 
 const API=`${API_URL}/api/student/notifications`;
@@ -40,13 +41,13 @@ function groupByDate(items){
 }
 
 const pillClass = (active) =>
-  `flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border ${
-    active ? 'bg-orange-500 text-white border-orange-500 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+  `flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition border ${
+    active ? 'bg-orange-700 text-white border-orange-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
 
 export default function StudentNotifications(){
-  const navigate=useNavigate();const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
-  const load=useCallback(async()=>{setLoading(true);setError('');try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);useEffect(()=>{load();},[load]);
+  const navigate=useNavigate();const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState(()=>readSessionCache('student-notifications')||[]);const [loading,setLoading]=useState(()=>!readSessionCache('student-notifications'));const [error,setError]=useState('');const [busy,setBusy]=useState('');
+  const load=useCallback(async()=>{setLoading(!readSessionCache('student-notifications'));setError('');try{const {data}=await axios.get(API,auth());const list=Array.isArray(data.items)?data.items:[];setItems(list);writeSessionCache('student-notifications',list);}catch(err){setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);useEffect(()=>{load();},[load]);useEffect(()=>{if(!loading&&!error)writeSessionCache('student-notifications',items);},[items,loading,error]);
   const unread=items.filter(x=>!x.isRead).length;const filtered=useMemo(()=>items.filter(x=>{const query=search.trim().toLocaleLowerCase('th-TH');return (filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter)&&(!query||[x.title,x.message,meta[x.type]?.label].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(query)));}),[items,filter,search]);const types=[...new Set(items.map(x=>x.type))];
   const mark=async id=>{setBusy(id);try{await axios.patch(`${API}/${encodeURIComponent(id)}/read`,{},auth());setItems(xs=>xs.map(x=>x.id===id?{...x,isRead:true}:x));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
   const markAll=async()=>{setBusy('all');try{await axios.patch(`${API}/read-all`,{},auth());setItems(xs=>xs.map(x=>({...x,isRead:true})));}catch(err){setError(err.response?.data?.message||'บันทึกสถานะไม่สำเร็จ');}finally{setBusy('');}};
@@ -83,7 +84,7 @@ export default function StudentNotifications(){
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <label className="relative mb-3 block"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาการแจ้งเตือน" aria-label="ค้นหาการแจ้งเตือน" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-400" /></label>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           <button onClick={()=>setFilter('all')} className={pillClass(filter==='all')}>ทั้งหมด ({items.length})</button>
           <button onClick={()=>setFilter('unread')} className={pillClass(filter==='unread')}>ยังไม่ได้อ่าน ({unread})</button>
           {types.map(type=>(
@@ -96,7 +97,7 @@ export default function StudentNotifications(){
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลของคุณ...</p>
         </div>
@@ -127,7 +128,7 @@ export default function StudentNotifications(){
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
                         {!item.isRead && (
                           <button disabled={busy===item.id} onClick={()=>mark(item.id)} title="อ่านแล้ว"
-                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50">
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-700 hover:bg-orange-50 shadow-sm transition disabled:opacity-50">
                             <Check className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -157,7 +158,7 @@ export default function StudentNotifications(){
                             <span className="text-xs text-slate-400">{ago(item.createdAt)}</span>
                             {item.link && (
                               <button onClick={()=>act(item)}
-                                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+                                className="flex items-center gap-1 text-xs font-bold text-orange-700 hover:text-orange-800 transition">
                                 {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>
                             )}

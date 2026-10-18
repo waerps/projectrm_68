@@ -5,6 +5,7 @@ import { API_URL } from '../config';
 import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2, Search } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 
 const API=`${API_URL}/api/tutor/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};
@@ -43,17 +44,19 @@ function groupByDate(items){
 }
 
 const pillClass = (active) =>
-  `flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition border ${
-    active ? 'bg-orange-500 text-white border-orange-500 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+  `flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold transition border ${
+    active ? 'bg-orange-700 text-white border-orange-700 shadow-sm' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
   }`;
 
 export default function TutorNotifications(){
   const navigate=useNavigate();
-  const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [busy,setBusy]=useState('');
+  const [filter,setFilter]=useState('all');const [search,setSearch]=useState('');const [items,setItems]=useState(()=>readSessionCache('tutor-notifications')||[]);const [loading,setLoading]=useState(()=>!readSessionCache('tutor-notifications'));const [error,setError]=useState('');const [busy,setBusy]=useState('');
   // โหลดรายการไม่สำเร็จ — ใช้ซ่อนข้อความ "ไม่มีการแจ้งเตือน" ไม่ให้ซ้อนใต้แถบ error
   const [loadFailed,setLoadFailed]=useState(false);
-  const load=useCallback(async()=>{setLoading(true);setError('');setLoadFailed(false);try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setLoadFailed(true);setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);
+  const load=useCallback(async()=>{setLoading(!readSessionCache('tutor-notifications'));setError('');setLoadFailed(false);try{const {data}=await axios.get(API,auth());setItems(Array.isArray(data.items)?data.items:[]);}catch(err){setLoadFailed(true);setError(err.response?.data?.message||'โหลดการแจ้งเตือนไม่สำเร็จ');}finally{setLoading(false);}},[]);
   useEffect(()=>{load();},[load]);
+  // เก็บรายการล่าสุด (รวมที่อ่าน/ซ่อนแล้ว) ไว้แสดงทันทีครั้งหน้า
+  useEffect(()=>{if(!loading&&!loadFailed)writeSessionCache('tutor-notifications',items);},[items,loading,loadFailed]);
   const unread=items.filter(x=>!x.isRead).length;
   const filtered=useMemo(()=>items.filter(x=>{const query=search.trim().toLocaleLowerCase('th-TH');return (filter==='all'?true:filter==='unread'?!x.isRead:filter==='read'?x.isRead:x.type===filter)&&(!query||[x.title,x.message,meta[x.type]?.label].some(v=>String(v||'').toLocaleLowerCase('th-TH').includes(query)));}),[items,filter,search]);
   const types=[...new Set(items.map(x=>x.type))];
@@ -92,7 +95,7 @@ export default function TutorNotifications(){
       {/* Filter bar */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <label className="relative mb-3 block"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input type="search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="ค้นหาการแจ้งเตือน" aria-label="ค้นหาการแจ้งเตือน" className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-orange-400" /></label>
-        <div className="flex flex-wrap gap-2">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           <button onClick={()=>setFilter('all')} className={pillClass(filter==='all')}>ทั้งหมด ({items.length})</button>
           <button onClick={()=>setFilter('unread')} className={pillClass(filter==='unread')}>ยังไม่ได้อ่าน ({unread})</button>
           {types.map(type=>(
@@ -105,7 +108,7 @@ export default function TutorNotifications(){
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200">
+        <div className="flex min-h-[60vh] flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
           <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูล...</p>
         </div>
@@ -137,7 +140,7 @@ export default function TutorNotifications(){
                       <div className="absolute top-3 right-3 flex items-center gap-1.5">
                         {!item.isRead && (
                           <button disabled={busy===item.id} onClick={()=>mark(item.id)} title="อ่านแล้ว"
-                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-600 hover:bg-orange-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
+                            className="h-7 w-7 flex items-center justify-center rounded-full bg-white border border-orange-200 text-orange-700 hover:bg-orange-50 shadow-sm transition disabled:opacity-50 min-h-10 min-w-10 lg:min-h-0 lg:min-w-0">
                             <Check className="h-3.5 w-3.5" />
                           </button>
                         )}
@@ -167,7 +170,7 @@ export default function TutorNotifications(){
                             <span className="text-xs text-slate-500">{ago(item.createdAt)}</span>
                             {item.link && (
                               <button onClick={()=>act(item)}
-                                className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
+                                className="flex items-center gap-1 text-xs font-bold text-orange-700 hover:text-orange-800 transition">
                                 {item.actionLabel||'ดูรายละเอียด'} <ChevronRight className="h-3.5 w-3.5" />
                               </button>
                             )}
