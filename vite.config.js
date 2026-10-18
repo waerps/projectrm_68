@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwind from '@tailwindcss/vite'
+import routePreload from './vite-route-preload.js'
 
 export default defineConfig({
-  plugins: [react(), tailwind()],
+  plugins: [react(), tailwind(), routePreload()],
   build: {
     // เดิมมี manualChunks แยก recharts เป็นก้อน 'charts' แต่ทำให้ React ถูกดึงไปอยู่ในก้อนนั้นด้วย
     // ทุกหน้าจึงต้องโหลดไลบรารีกราฟ (~117 KB) — ลบออกแล้ว recharts จะโหลดเฉพาะหน้าที่มีกราฟ

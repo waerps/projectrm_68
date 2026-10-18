@@ -56,7 +56,8 @@ import AppShell from "./layouts/AppShell.jsx"
 const ProfileLayout = lazyPage(() => import("./layouts/ProfileLayout.jsx"));
 
 // Pages Imports
-import Home from "./pages/Home.jsx"
+// หน้าแรกโหลดแบบ lazy เพื่อลดขนาดไฟล์หลักของทุกหน้า — ปลั๊กอิน route-preload จะโหลดหน้านี้พร้อมไฟล์หลักเมื่อเปิด "/"
+const Home = lazyPage(() => import("./pages/Home.jsx"));
 import RouteErrorPage from "./pages/RouteErrorPage.jsx"
 const VirtualTour = lazyPage(() => import("./pages/VirtualTour.jsx"));
 const Schedule = lazyPage(() => import("./pages/Schedule.jsx"));

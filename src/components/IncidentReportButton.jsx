@@ -1,11 +1,12 @@
 // src/components/IncidentReportButton.jsx
 // ★ ปุ่มลอย "แจ้งปัญหา" — ฝังใน AppShell.jsx (student) และ TutorLayout.jsx (tutor)
 // ตัวอย่างการฝัง: <IncidentReportButton role="student" /> วางไว้นอก <Outlet /> ระดับเดียวกับ Navbar
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { AlertOctagon, X } from "lucide-react";
 import { useToast } from "./useToast";
 import { ToastContainer } from "./Toast";
-import IncidentReportForm from "./IncidentReportForm";
+// ฟอร์มโหลดเมื่อกดปุ่มเท่านั้น (ไม่ต้องอยู่ในไฟล์หลักของทุกหน้า)
+const IncidentReportForm = lazy(() => import("./IncidentReportForm"));
 
 export default function IncidentReportButton({ role }) {
   const [open, setOpen] = useState(false);
@@ -41,7 +42,7 @@ export default function IncidentReportButton({ role }) {
               </button>
             </div>
             <div className="overflow-y-auto flex-1 p-6">
-              <IncidentReportForm role={role} onClose={() => setOpen(false)} showToast={showToast} />
+              <Suspense fallback={<p className="p-6 text-center text-sm text-slate-600" role="status">กำลังโหลดฟอร์ม...</p>}><IncidentReportForm role={role} onClose={() => setOpen(false)} showToast={showToast} /></Suspense>
             </div>
           </div>
         </div>
