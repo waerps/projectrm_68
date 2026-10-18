@@ -1,6 +1,7 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { optimizedImage } from "../utils/responsiveImage";
+import ExamGrowthSummary from "../components/ExamGrowthSummary";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -312,7 +313,7 @@ export default function TutorStudents() {
                 ]} />
                 <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
                 <p className={PAGE_SUBTITLE}>กำลังโหลดรายชื่อนักเรียน...</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้ เพื่อดูว่าน้องคนไหนควรได้รับการดูแลเพิ่มเป็นพิเศษ</p>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้</p>
             </div>
             <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูลนักเรียน..." /></div>
         </div>
@@ -339,7 +340,7 @@ export default function TutorStudents() {
                                 {courseInfo.name} • นักเรียนทั้งหมด {courseInfo.studentCount} คน
                             </p>
                             {/* คำอธิบายหน้า — แสดงตั้งแต่ตอนโหลด ผู้ใช้เห็นเนื้อหาเร็วขึ้น (LCP) */}
-                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้ เพื่อดูว่าน้องคนไหนควรได้รับการดูแลเพิ่มเป็นพิเศษ</p>
+                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">ติดตามการเข้าเรียน การดูคลิป และพัฒนาการคะแนนสอบของนักเรียนแต่ละคนในคอร์สนี้</p>
                         </div>
                         <div className="relative group w-full sm:w-auto md:self-auto">
                             <button className={`${BTN.primary} flex w-full sm:w-auto items-center justify-center gap-2 whitespace-nowrap px-4 py-2 rounded-xl transition font-medium`}>
@@ -493,25 +494,10 @@ export default function TutorStudents() {
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
                                     <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
                                     {student.exam?.improvement ? (
-                                        <>
-                                            <p className="text-sm font-bold text-slate-800 leading-relaxed">
-                                                Pre-test {fmtScoreNum(student.exam.improvement.from)} → {student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} {fmtScoreNum(student.exam.improvement.to)}
-                                            </p>
-                                            <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === 'up' ? 'text-green-700' : getOverallTrend(student) === 'down' ? 'text-red-600' : 'text-yellow-600'}`}>
-                                                {getAverageImprovement(student)} คะแนน
-                                                <span className="font-medium text-slate-500">
-                                                    {" "}· เต็ม {student.exam.improvement.max} (นับ {student.exam.improvement.subjectsCounted} จาก {examSummary?.subjectCount ?? student.exam.bySubject.length} วิชา)
-                                                </span>
-                                            </p>
-                                            {student.exam.improvement.growth != null && (
-                                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                                    พัฒนาการ <span className="font-bold text-slate-700">{getGrowthText(student)}</span> ของช่องว่างที่เหลือ
-                                                    {student.exam.improvement.growthCapped
-                                                        ? " · พื้นฐานสูงอยู่แล้ว จึงเทียบโดยตรงกับนักเรียนที่พื้นฐานต่ำกว่าไม่ได้"
-                                                        : ""}
-                                                </p>
-                                            )}
-                                        </>
+                                        <ExamGrowthSummary
+                                            improvement={student.exam.improvement}
+                                            totalSubjects={examSummary?.subjectCount ?? student.exam.bySubject?.length}
+                                        />
                                     ) : student.exam?.latest ? (
                                         <>
                                             <p className="text-sm font-bold text-slate-800 leading-relaxed">

@@ -1,6 +1,7 @@
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
+import ExamGrowthSummary from "../components/ExamGrowthSummary";
 import { useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -519,40 +520,11 @@ export default function TutorStudentDetail() {
                     {/* สรุปพัฒนาการรวมทั้งแพ็กเกจ */}
                     <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 bg-slate-50">
                         {improvement ? (
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                                <div>
-                                    <p className="text-sm font-bold text-slate-800 leading-relaxed">
-                                        คะแนนรวมทุกวิชา: Pre-test ได้ <span className="text-slate-900">{fmtScoreNum(improvement.from)}</span> คะแนน
-                                        {" → "}{improvement.basis === "pre-mid" ? "Mid-test" : "Post-test"} ได้ <span className="text-orange-600">{fmtScoreNum(improvement.to)}</span> คะแนน
-                                        <span className="text-slate-400 font-semibold"> (จากเต็ม {improvement.max})</span>
-                                    </p>
-                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                        คะแนนเต็ม {improvement.max} มาจาก {improvement.subjectsCounted} วิชาที่สอบครบทั้งสองรอบ × วิชาละ {examSummary?.cap ?? 20} คะแนน
-                                        {(examData?.untestedSubjects || []).length > 0
-                                            ? ` (ยังไม่นับ ${examData.untestedSubjects.join(", ")} เพราะยังไม่ได้สอบ)`
-                                            : ""}
-                                        {improvement.basis === "pre-mid" ? " · ยังไม่มีรอบ Post-test จึงเทียบกับ Mid-test ก่อน" : ""}
-                                    </p>
-                                    {improvement.growth != null && (
-                                        <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                                            คิดเป็นพัฒนาการ <span className="font-bold text-slate-700">{getGrowthText()}</span>
-                                            {" "}— จากรอบแรกที่ได้ {improvement.fromPct}% ยังมีช่องว่างให้พัฒนาอีก {improvement.room}% และปิดช่องว่างนั้นไปได้แล้ว {getGrowthText()}
-                                            {improvement.growthCapped
-                                                ? " · นักเรียนมีพื้นฐานสูงตั้งแต่ต้น จึงเทียบโดยตรงกับนักเรียนที่พื้นฐานต่ำกว่าไม่ได้"
-                                                : ""}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-full border ${getTrendColor(getOverallTrend())}`}>
-                                    <span className="flex items-center gap-1.5 text-sm font-bold">
-                                        {getTrendIcon(getOverallTrend())}
-                                        {improvement.growth != null ? getGrowthText() : `${getAverageImprovement()} คะแนน`}
-                                    </span>
-                                    {improvement.growth != null && (
-                                        <span className="text-[11px] font-medium opacity-70">{getAverageImprovement()} คะแนน</span>
-                                    )}
-                                </div>
-                            </div>
+                            <ExamGrowthSummary
+                                variant="full"
+                                improvement={improvement}
+                                untestedSubjects={examData?.untestedSubjects || []}
+                            />
                         ) : examData?.latest ? (
                             <p className="text-sm text-slate-600 leading-relaxed">
                                 สอบไปแล้ว {examData.latest.subjectsCounted} วิชา ได้รวม {fmtScoreNum(examData.latest.score)} คะแนน จากเต็ม {examData.latest.max}
