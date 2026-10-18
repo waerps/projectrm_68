@@ -3466,11 +3466,6 @@ export default function AdminCoursesPage() {
   // แท็บคอร์สรวมแสดงเฉพาะคอร์สเรียนกลุ่ม (คอร์สเดี่ยวอยู่อีกแท็บ)
   const groupCourses = courses.filter((c) => c.Course_Type !== "single");
   const singleCount = courses.length - groupCourses.length;
-  const openManageCourse = (id) => {
-    const c = courses.find((x) => Number(x.CourseID) === Number(id));
-    if (c) setEditingCourse(c);
-    else showToast("error", "ไม่พบคอร์สนี้", "ลองรีเฟรชหน้าอีกครั้ง");
-  };
 
   // ตัวกรองรายการคอร์สรวม — นับจำนวนในแต่ละตัวเลือกโดยคิดจากตัวกรองอื่นที่เลือกอยู่
   const matchesFilters = (c, skip = "") => {
@@ -3564,7 +3559,7 @@ export default function AdminCoursesPage() {
       </div>
 
       {courseTab === "single" ? (
-        <PrivateCoursesPanel onManageCourse={openManageCourse} version={dataVersion} onDataChanged={fetchAll} />
+        <PrivateCoursesPanel version={dataVersion} onDataChanged={fetchAll} statusOptions={statusOptions} />
       ) : (<>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">

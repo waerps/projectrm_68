@@ -69,10 +69,9 @@ const card = "bg-white rounded-2xl border border-slate-200 shadow-sm";
 const labelCls = "mb-1 block text-xs font-semibold text-slate-600";
 
 /* ═════════ หน้า ═════════ */
-// onManageCourse(courseId) : เปิดฟอร์มจัดการคอร์สเต็มของหน้าคอร์ส (วิชา/นักเรียน/ตาราง/คลิป)
 // version                  : เปลี่ยนเมื่อหน้าคอร์สโหลดข้อมูลใหม่ → แท็บนี้โหลดตาม
 // onDataChanged()          : แจ้งหน้าคอร์สว่ามีการสร้าง/ลงทะเบียน/รับเงิน
-export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDataChanged }) {
+export default function PrivateCoursesPanel({ version = 0, onDataChanged, statusOptions = [] }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get("tab") === "inquiries" ? "inquiries" : searchParams.get("tab") === "offers" ? "offers" : "courses";
   const [tab, setTab] = useState(requestedTab);
@@ -200,7 +199,11 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       ) : error ? (
         <UIErrorState description={error} onRetry={load} />
       ) : tab === "courses" ? (
-        <CoursesTab courses={courses} search={search} onManage={onManageCourse} onCreate={() => setModal({ type: "create" })} onChanged={load}
+        <CoursesTab courses={courses} search={search} onManage={(id) => {
+          const course = courses.find((item) => Number(item.CourseID) === Number(id));
+          if (course) setModal({ type: "manage", data: course });
+          else toast("ไม่พบคอร์สนี้ กรุณารีเฟรชหน้าอีกครั้ง");
+        }} onCreate={() => setModal({ type: "create" })} onChanged={load}
           onPay={(c) => setModal({ type: "payment", data: c })} onEnroll={(c) => setModal({ type: "enroll", data: c })} />
       ) : tab === "offers" ? (
         <OffersTab offers={offers} search={search} subjects={lookups.subjects} onAdd={() => setModal({ type: "offer" })}
@@ -211,6 +214,8 @@ export default function PrivateCoursesPanel({ onManageCourse, version = 0, onDat
       )}
 
       {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} inquiry={modal.data} preselectUserId={modal.preselectUserId} onRegister={registerStudent} onClose={close} onDone={done} />}
+      {modal?.type === "manage" && <ManagePrivateCourseModal course={modal.data} lookups={lookups} statusOptions={statusOptions} onClose={close} onDone={done}
+        onEnroll={() => setModal({ type: "enroll", data: modal.data })} onSchedule={() => { close(); navigate("/admin/schedule"); }} />}
       {modal?.type === "payment" && <PaymentModal course={modal.data} onClose={close} onDone={done} />}
       {modal?.type === "enroll" && <EnrollModal course={modal.data} students={lookups.students} onClose={close} onDone={done} />}
       {modal?.type === "offer" && <OfferModal offer={modal.data} subjects={lookups.subjects} onClose={close} onDone={done} />}
@@ -341,7 +346,7 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
       (c.Students || []).some((student) => (student.OrderId || c.FullCost !== null) &&
         Number(student.PaidAmount || 0) < Number(student.OrderId ? student.TotalAmount : c.FullCost)) &&
         { key: 'pay', label: 'บันทึกรับเงิน', icon: Wallet, onClick: () => onPay(c) },
-      onManage && { key: 'manage', label: 'จัดการคอร์ส', icon: Settings2, onClick: () => onManage(c.CourseID), title: 'วิชา นักเรียน ตารางเรียน คลิป และสถานะคอร์ส', secondary: true },
+      onManage && { key: 'manage', label: 'จัดการคอร์สเดี่ยว', icon: Settings2, onClick: () => onManage(c.CourseID), title: 'วิชา ติวเตอร์ ชั่วโมง นักเรียน และสถานะคอร์สเดี่ยว', secondary: true },
     ].filter(Boolean);
     const primaryKey = items.find((it) => !it.secondary)?.key;
     return (
@@ -550,6 +555,122 @@ function Combobox({ label, required, options, value, onChange, idKey, labelOf, p
         </div>
       )}
     </div>
+  );
+}
+
+function ManagePrivateCourseModal({ course, lookups, statusOptions, onClose, onDone, onEnroll, onSchedule }) {
+  const [form, setForm] = useState({
+    CourseName: course.CourseName || "",
+    SubjectId: String(course.SubjectId || ""),
+    AdminId: String(course.AdminId || ""),
+    TotalHours: String(course.TotalHours ?? course.TotalCourseHours ?? ""),
+    Course_Availability_Id: String(course.Course_Availability_Id || ""),
+    StartDate: String(course.StartDate || "").slice(0, 10),
+    LastDate: String(course.LastDate || "").slice(0, 10),
+    Remark: course.Remark || "",
+  });
+  const [statusId, setStatusId] = useState(String(course.Status_Course_Id || ""));
+  const [saving, setSaving] = useState(false);
+  const set = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+
+  const saveDetails = async () => {
+    if (!form.CourseName.trim() || !form.SubjectId || !form.AdminId || !(Number(form.TotalHours) > 0)) {
+      return toast("กรุณากรอกชื่อคอร์ส วิชา ติวเตอร์ และชั่วโมงเรียนให้ครบ");
+    }
+    setSaving(true);
+    try {
+      const { data } = await axios.patch(`${API}/courses/${course.CourseID}/private-details`, form, auth());
+      await onDone(data?.drafted ? "บันทึกข้อมูลคอร์สเดี่ยวเป็นฉบับร่างแล้ว กดเผยแพร่เมื่อพร้อม" : "บันทึกข้อมูลคอร์สเดี่ยวแล้ว");
+    } catch (error) {
+      toast(errMsg(error, "แก้ไขคอร์สเดี่ยวไม่สำเร็จ"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveStatus = async () => {
+    if (String(statusId) === String(course.Status_Course_Id)) return;
+    setSaving(true);
+    try {
+      await axios.patch(`${API}/courses/${course.CourseID}/status`, { Status_Course_Id: Number(statusId) }, auth());
+      await onDone("เปลี่ยนสถานะคอร์สแล้ว");
+    } catch (error) {
+      toast(errMsg(error, "เปลี่ยนสถานะคอร์สไม่สำเร็จ"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="จัดการคอร์สเดี่ยว" subtitle={course.CourseName} icon={Settings2} size="lg" onClose={onClose}
+      footer={<>
+        <button type="button" onClick={onClose} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>ปิด</button>
+        <button type="button" onClick={saveDetails} disabled={saving} className={`${BTN.base} ${BTN.primary} ${BTN.md}`}>
+          {saving ? "กำลังบันทึก…" : "บันทึกข้อมูลคอร์สเดี่ยว"}
+        </button>
+      </>}>
+      <div className="space-y-5">
+        {Number(course.PendingDraftActions) > 0 && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">คอร์สนี้มีฉบับร่างรอเผยแพร่ ข้อมูลที่แสดงอาจยังเป็นค่าปัจจุบันก่อนเผยแพร่</p>
+        )}
+        <section className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className={labelCls}>ชื่อคอร์ส <span className="text-red-500">*</span></label>
+            <input value={form.CourseName} onChange={(event) => set("CourseName", event.target.value)} className={INPUT} />
+          </div>
+          <Combobox required label="วิชา" options={lookups.subjects} idKey="SubjectId" labelOf={(item) => item.SubjectName}
+            value={form.SubjectId} onChange={(value) => set("SubjectId", value)} placeholder="พิมพ์ชื่อวิชาเพื่อค้นหา" />
+          <Combobox required label="ติวเตอร์" options={lookups.tutors} idKey="AdminId" labelOf={fullName}
+            value={form.AdminId} onChange={(value) => set("AdminId", value)} placeholder="พิมพ์ชื่อติวเตอร์เพื่อค้นหา" />
+          <div>
+            <label className={labelCls}>ชั่วโมงเรียนรวม <span className="text-red-500">*</span></label>
+            <input type="number" min="0.5" step="0.5" value={form.TotalHours} onChange={(event) => set("TotalHours", event.target.value)} className={INPUT} />
+          </div>
+          <div>
+            <label className={labelCls}>รูปแบบการเรียน</label>
+            <select value={form.Course_Availability_Id} onChange={(event) => set("Course_Availability_Id", event.target.value)} className={INPUT}>
+              <option value="">— ไม่ระบุ —</option>
+              {lookups.availability.map((item) => <option key={item.Course_Availability_Id} value={item.Course_Availability_Id}>{item.Course_Availability_Name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls}>วันเริ่มสอน</label>
+            <input type="date" value={form.StartDate} onChange={(event) => set("StartDate", event.target.value)} className={INPUT} />
+          </div>
+          <div>
+            <label className={labelCls}>วันสิ้นสุด</label>
+            <input type="date" value={form.LastDate} onChange={(event) => set("LastDate", event.target.value)} className={INPUT} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={labelCls}>หมายเหตุคอร์ส</label>
+            <textarea rows={3} value={form.Remark} onChange={(event) => set("Remark", event.target.value)} className={`${INPUT} h-auto py-2`} />
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 p-4">
+          <h3 className="font-bold text-slate-800">นักเรียนในคลาส ({course.Students?.length || 0}/{course.MaxStudents || 1} คน)</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(course.Students || []).map((student) => <Badge key={student.EnrollId} tone="info">{personName(student)}</Badge>)}
+            {!course.Students?.length && <span className="text-sm text-slate-500">ยังไม่มีนักเรียน</span>}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(course.Students || []).length < Number(course.MaxStudents || 1) &&
+              <button type="button" onClick={onEnroll} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><UserPlus className="h-4 w-4" />เพิ่มนักเรียน</button>}
+            <button type="button" onClick={onSchedule} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><BookOpen className="h-4 w-4" />จัดตารางเรียน</button>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 p-4">
+          <label className={labelCls}>สถานะคอร์ส</label>
+          <div className="flex flex-wrap gap-2">
+            <select value={statusId} onChange={(event) => setStatusId(event.target.value)} className={`${INPUT} min-w-[180px] flex-1`}>
+              {statusOptions.map((item) => <option key={item.Status_Course_Id} value={item.Status_Course_Id}>{item.Status_Course_Name}</option>)}
+            </select>
+            <button type="button" onClick={saveStatus} disabled={saving || String(statusId) === String(course.Status_Course_Id)} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>เปลี่ยนสถานะ</button>
+          </div>
+        </section>
+      </div>
+    </Modal>
   );
 }
 
