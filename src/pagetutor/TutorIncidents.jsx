@@ -11,12 +11,14 @@ import UIEmptyState from "../components/ui/EmptyState";
 import { Inbox as LuInbox } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
+import { optimizedImage } from "../utils/responsiveImage";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 
 const STATUS_META = {
     new: { label: "รอตรวจสอบ", bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
     in_review: { label: "กำลังตรวจสอบ", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
     resolved: { label: "ดำเนินการเสร็จสิ้น", bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
-    dismissed: { label: "ไม่ดำเนินการ", bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
+    dismissed: { label: "ไม่ดำเนินการ", bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" },
 };
 
 const formatDate = (d) => {
@@ -88,8 +90,12 @@ function IncidentCard({ incident, showReporter, onClick }) {
                                             </span>
                                         ) : (
                                             <img
-                                                src={getFileUrl(att.url)}
+                                                src={optimizedImage(getFileUrl(att.url), 112)}
                                                 alt="หลักฐานแนบ"
+                                                width={56}
+                                                height={56}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="h-14 w-14 rounded-lg object-cover border border-slate-200 hover:border-orange-300 transition"
                                             />
                                         )}
@@ -117,9 +123,10 @@ function EmptyState({ text }) {
 export default function TutorIncidents() {
     const token = localStorage.getItem("student_token");
     const [tab, setTab] = useState("mine"); // 'mine' | 'against'
-    const [mine, setMine] = useState([]);
-    const [against, setAgainst] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // แสดงข้อมูลจากแคชของแท็บนี้ทันที (ถ้ามี) แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
+    const [mine, setMine] = useState(() => readSessionCache("tutor-incidents")?.mine || []);
+    const [against, setAgainst] = useState(() => readSessionCache("tutor-incidents")?.against || []);
+    const [loading, setLoading] = useState(() => !readSessionCache("tutor-incidents"));
     const [error, setError] = useState("");
     const [selectedId, setSelectedId] = useState(null);
 
@@ -128,22 +135,13 @@ export default function TutorIncidents() {
             .then(([mineData, againstData]) => {
                 setMine(mineData);
                 setAgainst(againstData);
+                writeSessionCache("tutor-incidents", { mine: mineData, against: againstData });
             })
-            .catch((err) => setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"))
+            .catch((err) => { if (!readSessionCache("tutor-incidents")) setError(typeof err === "string" ? err : "โหลดข้อมูลไม่สำเร็จ"); })
             .finally(() => setLoading(false));
     };
 
     useEffect(() => { load(); }, [token]);
-
-    if (loading) {
-        return (
-            <Spinner block label="กำลังโหลดข้อมูล..." />
-        );
-    }
-
-    if (error) {
-        return <ErrorState />;
-    }
 
     const list = tab === "mine" ? mine : against;
 
@@ -161,7 +159,12 @@ export default function TutorIncidents() {
                 ]} />
             </div>
 
-            {list.length === 0 ? (
+            {/* หัวข้อหน้าแสดงทันที ส่วนรายการรอข้อมูล (ช่วย LCP) */}
+            {loading ? (
+                <div className="min-h-[50vh]"><Spinner block label="กำลังโหลดข้อมูล..." /></div>
+            ) : error ? (
+                <ErrorState />
+            ) : list.length === 0 ? (
                 <EmptyState text={tab === "mine" ? "ยังไม่มีเรื่องที่แจ้ง" : "ยังไม่มีเรื่องที่ถูกแจ้งเกี่ยวกับคุณ"} />
             ) : (
                 <div className="space-y-3">
