@@ -923,9 +923,7 @@ export default function Home() {
           </SectionTitle>
 
           {!newsLoaded ? (
-            <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm" role="status">
-              กำลังโหลดข่าวประชาสัมพันธ์...
-            </div>
+            <Spinner block label="กำลังโหลดข่าวประชาสัมพันธ์..." wrapperClassName="rounded-3xl bg-white p-10 shadow-sm" />
           ) : newsError ? (
             <div className="rounded-3xl bg-white p-10 text-center text-gray-400 shadow-sm" role="alert">
               โหลดข่าวประชาสัมพันธ์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง

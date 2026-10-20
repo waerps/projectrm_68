@@ -1,4 +1,5 @@
 // ===================== 1) StudentCourses.jsx =====================
+import Spinner from "../components/ui/Spinner";
 import { BookOpen, Users, Clock, Video, FileText, Search, ClipboardList, RefreshCw, Star } from "lucide-react";
 import { lazy, Suspense, useState, useEffect } from "react";
 const StudentTutorFeedback = lazy(() => import("../components/StudentTutorFeedback"));
@@ -198,7 +199,7 @@ export default function StudentCourses() {
   });
 
   if (loading) {
-    return <div className="mt-[90px] text-center p-10 font-medium text-neutral-500">กำลังโหลดข้อมูลคอร์ส...</div>;
+    return <Spinner block label="กำลังโหลดข้อมูลคอร์ส..." wrapperClassName="mt-[90px] p-10" />;
   }
 
   if (error) {

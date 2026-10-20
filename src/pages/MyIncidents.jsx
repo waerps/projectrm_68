@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import Spinner from "../components/ui/Spinner";
 import { AlertOctagon, Loader2, Clock, EyeOff, Inbox } from "lucide-react";
 import { getMyIncidents } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
@@ -144,10 +145,7 @@ export default function MyIncidents() {
             </div>
 
             {loading ? (
-                <div className="flex h-48 flex-col items-center justify-center text-orange-700" role="status">
-                    <Loader2 className="mb-3 h-8 w-8 animate-spin" />
-                    <p className="text-sm font-medium text-slate-600">กำลังโหลดประวัติการแจ้งเรื่อง...</p>
-                </div>
+                <Spinner block label="กำลังโหลดประวัติการแจ้งเรื่อง..." wrapperClassName="h-48" />
             ) : error ? (
                 <ErrorState
                     title="โหลดประวัติการแจ้งเรื่องไม่สำเร็จ"

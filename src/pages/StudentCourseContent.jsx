@@ -1,5 +1,6 @@
 // ===================== 2) StudentCourseContent.jsx =====================
 // สไตล์เป๊ะจาก TutorCourseManagePage.jsx แต่ตัดปุ่มแก้ไข/ลบ/เพิ่มออก (view-only)
+import Spinner from "../components/ui/Spinner";
 import { downloadFile } from "../utils/downloadFile";
 import { API_URL } from "../config";
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -311,10 +312,7 @@ export default function StudentCourseContent() {
 
   if (loading) {
     return (
-      <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-neutral-500">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-        กำลังดึงข้อมูล...
-      </div>
+      <Spinner block label="กำลังโหลดข้อมูล..." wrapperClassName="mt-[90px] h-64" />
     );
   }
 

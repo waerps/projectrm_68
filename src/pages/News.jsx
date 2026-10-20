@@ -1,4 +1,5 @@
 import { optimizedImage } from "../utils/responsiveImage";
+import Spinner from "../components/ui/Spinner";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import axios from "axios";
@@ -171,7 +172,7 @@ export default function News({ role = "public", embedded = false }) {
           description="ข่าวสาร กิจกรรม และเรื่องน่ารู้ล่าสุดจากสถาบัน"
           icon={Newspaper}
         />
-        {loading ? <div className="news-page-state" role="status">กำลังโหลดข่าวสาร...</div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง<div className="mt-4"><button type="button" onClick={() => setReloadKey((k) => k + 1)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">ลองใหม่</button></div></div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
+        {loading ? <div className="news-page-state"><Spinner block label="กำลังโหลดข่าวสาร..." wrapperClassName="" /></div> : error ? <div className="news-page-state" role="alert">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง<div className="mt-4"><button type="button" onClick={() => setReloadKey((k) => k + 1)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">ลองใหม่</button></div></div> : news.length === 0 && role !== "tutor" ? <div className="news-page-state">ยังไม่มีข่าวประชาสัมพันธ์ในขณะนี้</div> : sections.map((section) => {
           const selectedItem = section.items.find((item) => item.id === selectedId);
           return (
             <section key={section.key} className="news-feed" aria-labelledby={`news-section-${section.key}`}>

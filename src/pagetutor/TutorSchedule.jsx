@@ -1093,7 +1093,7 @@ export default function TutorSchedule() {
 
                     <div className="grid grid-cols-1 gap-2">
                       {studentsLoading ? (
-                        <div className="text-center py-8 bg-slate-50 rounded-2xl text-slate-500 text-sm">กำลังโหลดรายชื่อนักเรียน...</div>
+                        <Spinner block label="กำลังโหลดรายชื่อนักเรียน..." wrapperClassName="py-8 bg-slate-50 rounded-2xl" />
                       ) : studentsError ? (
                         <div role="alert" className="text-center py-8 bg-red-50 rounded-2xl border border-red-200 text-red-700 text-sm">{studentsError}</div>
                       ) : studentsList.length === 0 ? (

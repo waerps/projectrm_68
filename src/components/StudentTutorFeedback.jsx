@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Spinner from "./ui/Spinner";
 import axios from "axios";
 import { CheckCircle2, Heart, Loader2, Star } from "lucide-react";
 import Modal from "./ui/Modal";
@@ -55,6 +56,6 @@ export default function StudentTutorFeedback({ course, onClose }) {
   const reviewed = targets.filter(t => t.rating).length;
   return <Modal title="ส่งดาวให้ครู ✨" subtitle={course.name} icon={Star} onClose={onClose} size="lg">
     <div className="mb-5 rounded-xl bg-orange-50 p-4"><p className="text-sm font-semibold text-orange-900">จบคอร์สแล้ว มาช่วยให้ครูรู้จักการเรียนของน้องมากขึ้น</p><p className="mt-1 text-xs leading-relaxed text-orange-800">เลือกดาวแยกตามวิชาและครูที่สอน ข้อความไม่บังคับ แอดมินจะใช้รีวิวเพื่อพัฒนาการสอน และรายงานไม่แสดงชื่อนักเรียน</p>{targets.length > 0 && <p className="mt-2 text-xs font-bold text-orange-700">รีวิวแล้ว {reviewed}/{targets.length} รายการ · กลับมาแก้ไขได้</p>}</div>
-    {loading ? <div role="status" className="flex justify-center gap-2 py-8 text-slate-500"><Loader2 className="animate-spin" />กำลังโหลดติวเตอร์</div> : error ? <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => setRetry(n => n + 1)} className="ml-3 underline">ลองอีกครั้ง</button></div> : targets.length ? <div className="space-y-4">{targets.map(t => <ReviewCard key={`${t.subjectId}-${t.tutorId}`} target={t} courseId={course.id} onSaved={updated => setTargets(items => items.map(item => item.subjectId === updated.subjectId && item.tutorId === updated.tutorId ? updated : item))} />)}</div> : <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">ยังไม่มีคาบสอนที่สิ้นสุดแล้วสำหรับคอร์สนี้ จึงยังไม่มีติวเตอร์ให้รีวิว</p>}
+    {loading ? <Spinner block label="กำลังโหลดติวเตอร์..." wrapperClassName="py-8" /> : error ? <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => setRetry(n => n + 1)} className="ml-3 underline">ลองอีกครั้ง</button></div> : targets.length ? <div className="space-y-4">{targets.map(t => <ReviewCard key={`${t.subjectId}-${t.tutorId}`} target={t} courseId={course.id} onSaved={updated => setTargets(items => items.map(item => item.subjectId === updated.subjectId && item.tutorId === updated.tutorId ? updated : item))} />)}</div> : <p className="rounded-xl bg-slate-50 p-6 text-center text-sm text-slate-500">ยังไม่มีคาบสอนที่สิ้นสุดแล้วสำหรับคอร์สนี้ จึงยังไม่มีติวเตอร์ให้รีวิว</p>}
   </Modal>;
 }

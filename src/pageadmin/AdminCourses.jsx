@@ -557,9 +557,7 @@ function StudentPreviewModal({ course, onClose }) {
               <h3 className="text-sm font-bold text-slate-800">คลิปวิดีโอเนื้อหาเพิ่มเติม</h3>
             </div>
             {loadingVideos ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-orange-500" />
-              </div>
+              <Spinner block label="กำลังโหลดคลิป..." wrapperClassName="py-6" />
             ) : videos.length === 0 ? (
               <div className="px-5 py-4 text-sm text-slate-500">ยังไม่มีคลิปเพิ่มเติม</div>
             ) : (
@@ -1532,7 +1530,7 @@ function CoursePreviewVideos({ courseId, showToast }) {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
+        <Spinner block label="กำลังโหลด..." wrapperClassName="py-6" />
       ) : videos.length === 0 && !adding ? (
         <p className="text-xs text-slate-500 text-center py-6">ยังไม่มีคลิปตัวอย่าง</p>
       ) : (

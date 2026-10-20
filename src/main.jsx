@@ -21,6 +21,7 @@
   }
 })();
 
+import Spinner from "./components/ui/Spinner";
 import React from "react"
 
 // หลัง deploy เวอร์ชันใหม่ ไฟล์ JS ของเวอร์ชันเก่าจะถูกลบ แท็บที่เปิดค้างไว้จึงเปิดหน้าใหม่ไม่ได้
@@ -244,7 +245,7 @@ const router = createBrowserRouter(
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <React.Suspense fallback={<div role="status" className="min-h-screen p-8 text-center text-slate-600">กำลังโหลดหน้า…</div>}>
+    <React.Suspense fallback={<Spinner block label="กำลังโหลดหน้า..." wrapperClassName="min-h-screen" />}>
       <ShopProvider>
         <RouterProvider router={router} />
       </ShopProvider>

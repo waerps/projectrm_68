@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Spinner from "../components/ui/Spinner";
 import { useParams, useNavigate } from "react-router-dom";
 import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2, X, RefreshCw } from "lucide-react";
 import { getCourseBasic, getStudentSubjectsProgress } from "../callapi/callusers_student";
@@ -62,10 +63,7 @@ export default function SubjectList() {
 
   if (loading) {
     return (
-      <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-neutral-500">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-        กำลังโหลดรายวิชา...
-      </div>
+      <Spinner block label="กำลังโหลดรายวิชา..." wrapperClassName="mt-[90px] h-64" />
     );
   }
 

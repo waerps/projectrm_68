@@ -101,7 +101,7 @@ function IncidentDetailModal({ incidentId, onClose, showToast, onUpdated }) {
 
   if (loading) return (
     <Modal title="รายละเอียดเคส" icon={AlertOctagon} onClose={onClose} wide>
-      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
+      <Spinner block label="กำลังโหลด..." wrapperClassName="h-40" />
     </Modal>
   );
   if (!data) return null;

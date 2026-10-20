@@ -313,12 +313,7 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
         {/* Sessions List */}
         <div className="overflow-y-auto flex-1">
           {sessionsLoading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400">
-              <div className="text-center">
-                <Spinner size="lg" className="mx-auto mb-3" />
-                <p className="text-sm">กำลังโหลด...</p>
-              </div>
-            </div>
+            <Spinner block label="กำลังโหลด..." wrapperClassName="py-16" />
           ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
               <BookOpen className="w-10 h-10 mb-3 opacity-30" />
@@ -876,10 +871,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
       {loadError && !loading && <ErrorState className="mb-4" onRetry={() => fetchData(selectedMonth)} />}
       <div className={`lg:hidden ${loadError && !loading ? "hidden" : ""}`}>
         {loading ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-            <Spinner size="lg" />
-            <p className="text-sm">กำลังโหลด...</p>
-          </div>
+          <Spinner block label="กำลังโหลด..." />
         ) : processed.length === 0 ? (
           <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-slate-200">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -965,10 +957,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
               {loading ? (
                 <tr>
                   <td colSpan={9} className="text-center py-16 text-slate-400">
-                    <div className="flex flex-col items-center gap-3">
-                      <Spinner size="lg" />
-                      <p className="text-sm">กำลังโหลด...</p>
-                    </div>
+                    <Spinner block label="กำลังโหลด..." wrapperClassName="" />
                   </td>
                 </tr>
               ) : processed.length === 0 ? (
@@ -1234,10 +1223,7 @@ function DrillDownModal({ info, onClose }) {
         {/* body */}
         <div className="overflow-y-auto flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400">
-              <Spinner size="lg" className="mr-3" />
-              กำลังโหลด...
-            </div>
+            <Spinner block label="กำลังโหลด..." wrapperClassName="py-16" />
           ) : sessions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-400">
               <BookOpen className="w-8 h-8 mb-2 opacity-30" />
@@ -1331,10 +1317,7 @@ function ReleaseDetailModal({ tutor, selectedMonth, onClose }) {
         </div>
         <div className="overflow-y-auto flex-1">
           {loading ? (
-            <div className="flex items-center justify-center py-16 text-slate-400">
-              <Spinner size="lg" className="mr-3" />
-              กำลังโหลด...
-            </div>
+            <Spinner block label="กำลังโหลด..." wrapperClassName="py-16" />
           ) : rows.length === 0 ? (
             <p className="text-center py-16 text-sm text-slate-500">ไม่พบรายการ</p>
           ) : (
@@ -1651,12 +1634,7 @@ function AbsenceHeatmap({ selectedMonth }) {
   };
 
   if (loading) return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 flex items-center justify-center">
-      <div className="text-center text-slate-400">
-        <Spinner size="lg" className="mx-auto mb-3" />
-        <p className="text-sm">กำลังโหลด Heatmap...</p>
-      </div>
-    </div>
+    <Spinner block label="กำลังโหลด Heatmap..." wrapperClassName="bg-white rounded-2xl border border-slate-200 shadow-sm p-10" />
   );
 
   if (!data) return null;

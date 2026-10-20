@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Spinner from "../components/ui/Spinner";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -97,10 +98,7 @@ export default function StudentNotifications(){
 
       {/* Content */}
       {loading ? (
-        <div className="flex min-h-[60vh] flex-col items-center justify-center py-16 bg-white rounded-2xl border border-slate-200" role="status">
-          <Loader2 className="h-8 w-8 animate-spin text-orange-500 mb-3" />
-          <p className="text-sm font-medium text-slate-500">กำลังโหลดข้อมูลของคุณ...</p>
-        </div>
+        <Spinner block label="กำลังโหลดข้อมูลของคุณ..." wrapperClassName="min-h-[60vh] py-16 bg-white rounded-2xl border border-slate-200" />
       ) : error && filtered.length===0 ? null : filtered.length===0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
           <Bell className="h-12 w-12 text-slate-300 mx-auto mb-3" />

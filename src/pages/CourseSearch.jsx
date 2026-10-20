@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import Spinner from "../components/ui/Spinner";
 import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react"
 import { getCourses } from "../callapi/callusers"
@@ -259,9 +260,7 @@ export default function CourseSearch() {
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center h-64 text-orange-500">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+            <Spinner block label="กำลังโหลดคอร์สเรียน..." wrapperClassName="h-64" />
           ) : loadError ? (
             <ErrorState
               title="โหลดรายการคอร์สไม่สำเร็จ"

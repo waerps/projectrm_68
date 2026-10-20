@@ -619,12 +619,7 @@ export default function TutorIncome() {
           <h1 className={PAGE_TITLE}>รายรับของฉัน</h1>
           <p className={PAGE_SUBTITLE}>ติดตามรายได้และประวัติการรับเงินของคุณ</p>
         </div>
-        <div className="flex min-h-[60vh] items-center justify-center" role="status">
-          <div className="text-center space-y-3">
-            <Spinner size="lg" className="mx-auto" />
-            <p className="text-slate-600 text-sm">กำลังโหลดข้อมูลรายรับ...</p>
-          </div>
-        </div>
+        <Spinner block label="กำลังโหลดข้อมูลรายรับ..." wrapperClassName="min-h-[60vh]" />
       </div>
     );
   }

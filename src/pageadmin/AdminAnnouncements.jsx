@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import Spinner from "../components/ui/Spinner";
 import UIModal from "../components/ui/Modal";
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -537,9 +538,7 @@ export default function AdminAnnouncements() {
 
             {/* List */}
             {isLoading ? (
-                <div className="flex justify-center items-center py-24">
-                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
-                </div>
+                <Spinner block label="กำลังโหลดข่าวประชาสัมพันธ์..." wrapperClassName="py-24" />
             ) : loadError ? (
                 <ErrorState description="โหลดรายการข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => { fetchAnnouncements(currentPage); fetchStats(); }} />
             ) : displayed.length === 0 ? (

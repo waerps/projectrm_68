@@ -724,7 +724,7 @@ function StudentDetailModal({ studentId, onClose, showToast }) {
 
   if (loading) return (
     <Modal title="ข้อมูลนักเรียน" icon={Eye} onClose={onClose} wide>
-      <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
+      <Spinner block label="กำลังโหลด..." wrapperClassName="h-40" />
     </Modal>
   );
 
@@ -1303,7 +1303,7 @@ function ConsentTab({ studentId, showToast }) {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-40"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
+    return <Spinner block label="กำลังโหลด..." wrapperClassName="h-40" />;
   }
 
   if (!courses.length) {
@@ -2006,9 +2006,7 @@ function StudentPerformanceRanking({ onViewStudent, gradeLevels = [] }) {
 
       <div className="px-4 sm:px-5 pb-5 space-y-4">
         {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
-          </div>
+          <Spinner block label="กำลังโหลดคะแนนนักเรียน..." wrapperClassName="h-32" />
         ) : filtered.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-slate-500 text-sm">ไม่มีนักเรียนในระดับชั้นนี้</p>

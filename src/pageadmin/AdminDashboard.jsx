@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import Spinner from "../components/ui/Spinner";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -1137,10 +1138,7 @@ export default function AdminDashboard() {
       <div className="space-y-6 px-4 lg:px-0">
         <div className="relative">
           <Skeleton className="h-64 w-full rounded-3xl" />
-          <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-600">
-            <span className="h-9 w-9 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600" aria-hidden="true" />
-            <span className="text-sm font-medium">กำลังโหลดข้อมูลภาพรวม...</span>
-          </div>
+          <Spinner block label="กำลังโหลดข้อมูลภาพรวม..." wrapperClassName="absolute inset-0" />
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><Skeleton className="h-[420px]" /><Skeleton className="h-[420px]" /></div>

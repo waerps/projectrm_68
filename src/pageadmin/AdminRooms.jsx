@@ -235,7 +235,7 @@ function FacilityEditor({ roomId, showToast }) {
         }
     };
 
-    if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>;
+    if (loading) return <Spinner block label="กำลังโหลด..." wrapperClassName="py-4" />;
 
     return (
         <FacilityPicker
@@ -622,7 +622,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">สิ่งอำนวยความสะดวก</p>
                 {loadingFacilities ? (
-                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-orange-500" /></div>
+                    <Spinner block label="กำลังโหลด..." wrapperClassName="py-3" />
                 ) : facilities.length === 0 ? (
                     <p className="text-xs text-slate-500 text-center py-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีสิ่งอำนวยความสะดวก
@@ -693,7 +693,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ตารางการใช้ห้อง (คาบที่กำลังจะถึง)</p>
                 {loadingSchedule ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
+                    <Spinner block label="กำลังโหลด..." wrapperClassName="py-6" />
                 ) : schedule.length === 0 ? (
                     <p className="text-xs text-slate-500 text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีคาบสอนที่จองห้องนี้
@@ -724,7 +724,7 @@ function RoomDetailModal({ room, onClose }) {
             <div className="mt-5">
                 <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">ประวัติการเปลี่ยนสถานะ</p>
                 {loadingLogs ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
+                    <Spinner block label="กำลังโหลด..." wrapperClassName="py-6" />
                 ) : statusLogs.length === 0 ? (
                     <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนสถานะ

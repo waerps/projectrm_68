@@ -1,5 +1,6 @@
 // ===================== 3) StudentCourseDetail.jsx =====================
 // สไตล์เป๊ะจาก TutorStudentDetail.jsx แต่ดึงข้อมูลของนักเรียนคนที่ล็อกอินอยู่เอง ในคอร์สที่เลือก
+import Spinner from "../components/ui/Spinner";
 import { API_URL } from "../config";
 import { Link, useSearchParams, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -192,7 +193,7 @@ export default function StudentCourseDetail() {
   const rateColor = attendanceRate >= 80 ? "bg-green-500" : attendanceRate >= 60 ? "bg-orange-500" : "bg-red-500";
   const rateText = attendanceRate >= 80 ? "text-green-700" : attendanceRate >= 60 ? "text-orange-700" : "text-red-600";
 
-  if (loading) return <div className="mt-[90px] text-center p-10 text-orange-700 font-medium">กำลังโหลดข้อมูล...</div>;
+  if (loading) return <Spinner block label="กำลังโหลดข้อมูล..." wrapperClassName="mt-[90px] p-10" />;
   if (error) return (
     <div className="mt-[90px] text-center p-10 text-red-600" role="alert">
       {error}

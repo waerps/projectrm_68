@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Spinner from "../components/ui/Spinner";
 import { flushSync } from "react-dom";
 import { Link } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
@@ -46,7 +47,7 @@ export default function NewsMarqueeArchive({ role = "public", items = null, embe
     <div className={`archive-news-page ${embedded ? "is-embedded" : ""}`}>
       <div className="archive-news-page-inner">
         {items === null && loading ? (
-          <div className="archive-news-page-state">กำลังโหลดข่าวสาร...</div>
+          <div className="archive-news-page-state"><Spinner block label="กำลังโหลดข่าวสาร..." wrapperClassName="" /></div>
         ) : items === null && error ? (
           <div className="archive-news-page-state">โหลดข่าวไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>
         ) : visibleNews.length === 0 ? (

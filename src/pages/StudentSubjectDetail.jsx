@@ -1,4 +1,5 @@
 import { downloadFile } from "../utils/downloadFile";
+import Spinner from "../components/ui/Spinner";
 import { API_URL } from "../config";
 import { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
@@ -361,10 +362,7 @@ export default function StudentSubjectDetail() {
 
   if (loading) {
     return (
-      <div className="mt-[90px] flex flex-col items-center justify-center h-64 text-neutral-500">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-4" />
-        กำลังดึงข้อมูล...
-      </div>
+      <Spinner block label="กำลังโหลดข้อมูล..." wrapperClassName="mt-[90px] h-64" />
     );
   }
 

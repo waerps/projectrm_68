@@ -1,4 +1,5 @@
 import { downloadFile } from "../utils/downloadFile";
+import Spinner from "./ui/Spinner";
 import { useState, useEffect } from "react";
 import { X, Loader2, Clock, AlertTriangle, Paperclip, FileText } from "lucide-react";
 import { getIncidentDetail, cancelIncident } from "../callapi/callusers_student";
@@ -61,7 +62,7 @@ export default function MyIncidentDetailModal({ incidentId, onClose, onCancelled
         </div>
         <div className="overflow-y-auto flex-1 p-6">
           {loading ? (
-            <div className="flex items-center justify-center h-32"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
+            <Spinner block label="กำลังโหลด..." wrapperClassName="h-32" />
           ) : error ? (
             <p className="text-sm text-red-500">{error}</p>
           ) : (() => {

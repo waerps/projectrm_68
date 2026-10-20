@@ -1966,7 +1966,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
         options={TABS.map(t => ({ id: t.key, label: t.label, count: t.count }))} />
 
       {loading ? (
-        <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-orange-500" /></div>
+        <Spinner block label="กำลังโหลด..." wrapperClassName="py-10" />
       ) : (
         <>
           {tab === 'courses' && (

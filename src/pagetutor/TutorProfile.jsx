@@ -193,12 +193,7 @@ export default function TutorProfile() {
 
     // key แยกตัวโหลดกับหน้าจริง — เดิม React นำ <div> ของตัวโหลดกลางจอมาใช้เป็นเนื้อหา ทำให้ทั้งหน้ากระโดดขึ้น (CLS)
     if (isLoading) return (
-        <div key="profile-loading" className="min-h-screen flex items-center justify-center" role="status">
-            <div className="flex flex-col items-center gap-3">
-                <Spinner size="lg" />
-                <p className="text-orange-700 font-medium text-sm">กำลังโหลด...</p>
-            </div>
-        </div>
+        <div key="profile-loading"><Spinner block label="กำลังโหลดข้อมูลโปรไฟล์..." wrapperClassName="min-h-screen" /></div>
     );
     if (loadError) return <div className="px-4 lg:px-0"><ErrorState description="โหลดข้อมูลโปรไฟล์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" /></div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import Spinner from "../components/ui/Spinner";
 import { useSearchParams } from "react-router-dom";
 import {
   FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronLeft, Settings2,
@@ -132,14 +133,14 @@ export default function TutorQuestionBank() {
 
         {/* รอรายการวิชาโหลดเสร็จก่อนค่อยแสดง (ป้าย/ประกาศสิทธิ์ขึ้นกับวิชา) — ไม่ให้แทรกขึ้นมาดันคลังลงทีหลัง (CLS)
             คลังยัง mount อยู่ใต้ hidden จึงโหลดข้อสอบไปพร้อมกัน */}
-        {loading && <div className="flex min-h-[40vh] items-center justify-center text-orange-700" role="status"><Loader2 className="h-8 w-8 animate-spin" /><span className="sr-only">กำลังโหลด...</span></div>}
+        {loading && <Spinner block label="กำลังโหลดคลังข้อสอบ..." wrapperClassName="min-h-[40vh]" />}
         <div className={loading ? "hidden" : "space-y-6"}>
         {selected?.courseTypes?.includes("single") && <ExamRightsNotice standaloneBank />}
         {selected?.courseTypes?.includes("single") && selected?.courseTypes?.includes("bundle") && (
           <p className="text-xs text-slate-500">วิชานี้ใช้คลังข้อสอบชุดเดียวกันทั้งคอร์สเดี่ยวและคอร์สรวม</p>
         )}
 
-        <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center text-orange-700" role="status"><Loader2 className="h-8 w-8 animate-spin" /><span className="sr-only">กำลังโหลดคลังข้อสอบ...</span></div>}>
+        <Suspense fallback={<Spinner block label="กำลังโหลดคลังข้อสอบ..." wrapperClassName="min-h-[40vh]" />}>
           <BankTab
             subjectId={subjectId}
             subjectName={selected?.subjectName || ""}
@@ -158,10 +159,7 @@ export default function TutorQuestionBank() {
         <h1 className={PAGE_TITLE}>คลังข้อสอบของฉัน</h1>
         <p className={PAGE_SUBTITLE}>เลือกวิชาที่ต้องการจัดการข้อสอบ</p>
       </div>
-      <div className="flex min-h-[60vh] flex-col items-center justify-center text-orange-700" role="status">
-        <Loader2 className="w-8 h-8 animate-spin mb-3" />
-        <p className="text-sm font-medium text-slate-600">กำลังโหลดข้อมูลคลังข้อสอบ...</p>
-      </div>
+      <Spinner block label="กำลังโหลดข้อมูลคลังข้อสอบ..." wrapperClassName="min-h-[60vh]" />
     </div>
   );
 

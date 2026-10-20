@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Spinner from "./ui/Spinner";
 import { CheckCircle2, Clock3, Loader2, MessageCircle, QrCode, Unlink, UploadCloud, WalletCards } from "lucide-react";
 import {
   disconnectLine,
@@ -121,7 +122,7 @@ export default function CoursePaymentsTab({ courseId, courseType = "bundle", ful
     } finally { setSlipLoading(false); }
   };
 
-  if (loading) return <div className="rounded-2xl border bg-white p-10 text-center text-orange-600"><Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin" />กำลังโหลดค่าชำระคอร์ส...</div>;
+  if (loading) return <Spinner block label="กำลังโหลดค่าชำระคอร์ส..." wrapperClassName="rounded-2xl border bg-white p-10" />;
 
   if (courseType === "single") {
     const latest = rows[0];

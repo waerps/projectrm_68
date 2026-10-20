@@ -257,12 +257,7 @@ export default function StudentProfile() {
 
   if (isLoading)
     return (
-      <div key="profile-loading" className="min-h-screen flex items-center justify-center" role="status">
-        <div className="flex flex-col items-center gap-3">
-          <Spinner size="lg" />
-          <p className="text-orange-700 font-medium text-sm">กำลังโหลด...</p>
-        </div>
-      </div>
+      <div key="profile-loading"><Spinner block label="กำลังโหลดข้อมูลโปรไฟล์..." wrapperClassName="min-h-screen" /></div>
     );
 
   if (loadError) return <div className="mt-[100px] rounded-xl bg-red-50 p-6 text-center text-red-700"><p>{loadError}</p><button type="button" onClick={fetchProfile} className="mt-3 font-semibold underline">ลองใหม่</button></div>;

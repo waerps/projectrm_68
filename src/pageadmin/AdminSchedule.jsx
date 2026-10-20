@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import Spinner from "../components/ui/Spinner";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen,
@@ -601,10 +602,7 @@ export default function AdminSchedule() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <span>กำลังโหลด...</span>
-            </div>
+            <Spinner block label="กำลังโหลดตารางเรียน..." wrapperClassName="py-20" />
           ) : (
             <>
             {!error && schedule.length === 0 && (

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import Spinner from "../components/ui/Spinner";
 import { Link, useNavigate } from "react-router-dom"
 import { BadgeCheck, BookOpen, Calendar, Heart, Loader2, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt"
@@ -161,7 +162,7 @@ export default function Promotion() {
           note={loading ? "กำลังโหลดคอร์สที่มีส่วนลด..." : loadError ? "โหลดคอร์สที่มีส่วนลดไม่สำเร็จ" : `พบ ${promotionCourses.length} คอร์สที่มีส่วนลดพิเศษตอนนี้`}
         />
       </div>
-      {loading ? <div className="flex h-64 items-center justify-center text-orange-500"><Loader2 className="h-6 w-6 animate-spin" /></div> : loadError ? (
+      {loading ? <Spinner block label="กำลังโหลดคอร์สที่มีส่วนลด..." wrapperClassName="h-64" /> : loadError ? (
         <ErrorState title="โหลดคอร์สโปรโมชันไม่สำเร็จ" onRetry={() => setReloadKey((k) => k + 1)} />
       ) : promotionCourses.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-gray-200 bg-white py-20 text-center"><Tag className="mx-auto mb-3 h-12 w-12 text-gray-200" /><p className="font-medium text-gray-500">ยังไม่มีคอร์สที่มีโปรโมชันในขณะนี้</p></div>

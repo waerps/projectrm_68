@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Spinner from "../components/ui/Spinner";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -216,7 +217,7 @@ export default function StudentSchedule() {
 
   const goToCourse = (courseId) => courseId && navigate(`/profile/course-detail/${courseId}`);
 
-  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>;
+  if (loading) return <Spinner block label="กำลังโหลดตารางเรียน..." wrapperClassName="min-h-[60vh]" />;
   if (error) return (
     <div className="mt-[90px] py-12 text-center text-red-500" role="alert">
       {error}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Spinner from "../components/ui/Spinner";
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ClipboardList, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { fetchExamOverview } from '../utils/studentExamShared';
@@ -111,7 +112,7 @@ export default function StudentExamOverview() {
   return <div className="min-w-0 space-y-6 mt-[90px] pb-10">
     <Breadcrumb items={[{ label: 'คอร์สของฉัน', to: '/profile/my-courses' }, { label: data?.courseName || 'คอร์สเรียน', to: `/profile/course/${courseId}/subjects` }, { label: 'การสอบ' }]} />
     <ExamOverviewHeader courseName={data?.courseName} />
-    {loading ? <div role="status" className="py-16 text-center text-neutral-500"><Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />กำลังโหลดข้อมูลการสอบ…</div>
+    {loading ? <Spinner block label="กำลังโหลดข้อมูลการสอบ..." wrapperClassName="py-16" />
       : error ? <div role="alert" className="rounded-2xl bg-orange-50 p-6 text-orange-800"><p>{error}</p><button onClick={() => setRetry(r => r + 1)} className="mt-3 inline-flex gap-2 items-center font-semibold"><RefreshCw className="h-4 w-4" />ลองอีกครั้ง</button></div>
         : data && <ExamOverviewContent key={courseId} data={data} initialSubjectId={params.get('subjectId')} />}
   </div>;

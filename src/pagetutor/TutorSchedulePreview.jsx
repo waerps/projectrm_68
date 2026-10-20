@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import Spinner from "../components/ui/Spinner";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { ArrowRight, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
@@ -99,7 +100,7 @@ export default function TutorSchedulePreview() {
           <button type="button" onClick={() => setMonthKey((month) => moveMonth(month, 1))} className="grid h-7 w-7 place-items-center rounded-lg border border-orange-100 bg-white text-orange-700 transition hover:bg-orange-50 focus-visible:outline-2 focus-visible:outline-orange-500" aria-label="เดือนถัดไป"><ChevronRight className="h-4 w-4" /></button>
         </div>
 
-        {loading ? <div className="rounded-xl bg-orange-50/70 px-3 py-10 text-center text-xs text-neutral-500" role="status">กำลังโหลดตารางสอน...</div> : error ? <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-8 text-center text-xs text-neutral-600" role="alert">โหลดตารางสอนไม่สำเร็จ<button type="button" onClick={() => setReloadKey((k) => k + 1)} className="mt-2 block w-full font-bold text-orange-700 hover:underline">ลองใหม่</button></div> : (
+        {loading ? <Spinner block label="กำลังโหลดตารางสอน..." wrapperClassName="rounded-xl bg-orange-50/70 px-3 py-10" /> : error ? <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-8 text-center text-xs text-neutral-600" role="alert">โหลดตารางสอนไม่สำเร็จ<button type="button" onClick={() => setReloadKey((k) => k + 1)} className="mt-2 block w-full font-bold text-orange-700 hover:underline">ลองใหม่</button></div> : (
           <div className="grid grid-cols-7 gap-1" role="group" aria-label={`ปฏิทินตารางสอน ${formatDay(`${monthKey}-01`, { month: "long", year: "numeric" })}`}>
             {WEEKDAYS.map((day) => <span key={day} className="pb-0.5 text-center text-[10px] font-bold text-neutral-500">{day}</span>)}
             {calendarCells.map((date, index) => {

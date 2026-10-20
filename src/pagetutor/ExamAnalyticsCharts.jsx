@@ -35,18 +35,45 @@ export function ScoreHistogramChart({ hist }) {
   );
 }
 
-// ตัดชื่อหมวดยาวบนแกนกราฟ (นับตามตัวอักษรที่เห็น ไม่ตัดสระ/วรรณยุกต์ไทยแยกจากพยัญชนะ)
-const shortTopic = (text, max = 18) => {
-  const str = String(text ?? "");
-  const chars = typeof Intl !== "undefined" && Intl.Segmenter
-    ? [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(str)].map((x) => x.segment)
-    : [...str];
-  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : str;
+// ชื่อหมวดบนแกนกราฟ: ตัดคำภาษาไทยตามคำ แบ่งได้สูงสุด 2 บรรทัด เกินนั้นต่อท้ายด้วย …
+// (นับตามตัวอักษรที่เห็น ไม่แยกสระ/วรรณยุกต์ออกจากพยัญชนะ) ชื่อเต็มดูได้ใน tooltip
+const graphemes = (str) => (typeof Intl !== "undefined" && Intl.Segmenter
+  ? [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(str)].map((x) => x.segment)
+  : [...str]);
+const words = (str) => (typeof Intl !== "undefined" && Intl.Segmenter
+  ? [...new Intl.Segmenter("th", { granularity: "word" }).segment(str)].map((x) => x.segment)
+  : str.split(/(\s+)/));
+const wrapTopic = (text, perLine = 14) => {
+  const lines = [""];
+  for (const w of words(String(text ?? ""))) {
+    const cur = lines[lines.length - 1];
+    if (graphemes(cur + w).length <= perLine || !cur) {
+      lines[lines.length - 1] = cur + w;
+    } else if (lines.length < 2) {
+      lines.push(w.trimStart());
+    } else {
+      lines[1] += w;
+    }
+  }
+  return lines.map((l, i) => {
+    const g = graphemes(l.trim());
+    return i === 1 && g.length > perLine ? `${g.slice(0, perLine - 1).join("")}…` : g.slice(0, i === 0 ? perLine + 2 : perLine + 1).join("");
+  });
 };
+function TopicTick({ x, y, payload }) {
+  const lines = wrapTopic(payload?.value);
+  const dy0 = lines.length > 1 ? -5 : 3;
+  return (
+    <text x={x} y={y} textAnchor="end" fontSize={10} fill="#475569">
+      <title>{payload?.value}</title>
+      {lines.map((l, i) => <tspan key={i} x={x} dy={i === 0 ? dy0 : 12}>{l}</tspan>)}
+    </text>
+  );
+}
 
 export function TopicAvgChart({ topicStats }) {
   // หมวดเยอะ → กราฟสูงขึ้นตาม ชื่อไม่ทับกัน
-  const height = Math.max(220, topicStats.length * 36);
+  const height = Math.max(220, topicStats.length * 40);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={topicStats} layout="vertical" barCategoryGap="20%">
@@ -63,9 +90,9 @@ export function TopicAvgChart({ topicStats }) {
         <YAxis
           dataKey="topic"
           type="category"
-          width={120}
-          tickFormatter={(v) => shortTopic(v)}
-          tick={{ fontSize: 10, fill: "#475569" }}
+          width={110}
+          interval={0}
+          tick={<TopicTick />}
           tickLine={false}
           axisLine={false}
         />

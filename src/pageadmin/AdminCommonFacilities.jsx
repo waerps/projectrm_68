@@ -648,7 +648,7 @@ function DetailModal({ item, statuses, onClose, onEdit, onAdjustQty }) {
                     <History className="h-3.5 w-3.5" /> ประวัติการเปลี่ยนแปลง
                 </p>
                 {loadingLogs ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-orange-500" /></div>
+                    <Spinner block label="กำลังโหลด..." wrapperClassName="py-6" />
                 ) : logs.length === 0 ? (
                     <p className="text-xs text-slate-500 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         ยังไม่มีประวัติการเปลี่ยนแปลง
