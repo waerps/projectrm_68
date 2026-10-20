@@ -2633,11 +2633,7 @@ function StudentDetailModal({
 
   const pct = displayExamPercent(student?.totalScore, student?.maxScore);
   // เวลาที่ใช้: ใช้ค่าจากระบบก่อน ถ้าไม่มีให้คำนวณจากเวลาเริ่มสอบถึงเวลาส่ง
-  const usedSeconds = student?.secondsUsed != null
-    ? student.secondsUsed
-    : detail?.joinedAt && detail?.submittedAt
-      ? Math.max(0, Math.round((new Date(detail.submittedAt) - new Date(detail.joinedAt)) / 1000))
-      : null;
+  const usedSeconds = usedSecondsOf(student) ?? usedSecondsOf(detail);
   const usedTimeText = usedSeconds != null ? formatTime(usedSeconds) : "ยังไม่ส่งข้อสอบ";
   const passed = student?.submittedAt && pct != null ? isPassingScore(student.totalScore, student.maxScore) : null;
   const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
@@ -2914,9 +2910,9 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
   if (!results) return;
 
   const submitted = results.students.filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
-  const avgTimeList = results.students.filter((s) => s.submittedAt && s.secondsUsed != null);
+  const avgTimeList = results.students.map(usedSecondsOf).filter((v) => v != null);
   const avgTimeSec = avgTimeList.length
-    ? Math.round(avgTimeList.reduce((sum, s) => sum + s.secondsUsed, 0) / avgTimeList.length)
+    ? Math.round(avgTimeList.reduce((sum, v) => sum + v, 0) / avgTimeList.length)
     : null;
   const passedCount = submitted.filter((s) => isPassingScore(s.totalScore, s.maxScore)).length;
   const passRatePct = submitted.length ? Math.round((passedCount / submitted.length) * 1000) / 10 : null;
@@ -3074,6 +3070,17 @@ function AiStatusStrip({ examId, onSummariesChange }) {
   return null;
 }
 
+// เวลาที่นักเรียนใช้สอบ (วินาที): ใช้เวลาทำข้อสอบจริงที่ระบบจับได้ก่อน
+// ถ้าระบบจับเวลาไม่ครบ ใช้เวลาตั้งแต่เริ่มสอบจนส่งแทน — ไม่ให้การ์ดว่าง
+const usedSecondsOf = (s) => {
+  if (!s?.submittedAt) return null;
+  if (s.secondsUsed != null) return s.secondsUsed;
+  if (s.elapsedSeconds != null) return s.elapsedSeconds;
+  if (!s.joinedAt) return null;
+  const sec = Math.round((new Date(s.submittedAt) - new Date(s.joinedAt)) / 1000);
+  return Number.isFinite(sec) && sec >= 0 ? sec : null;
+};
+
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
@@ -3188,10 +3195,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   // ค่าเฉลี่ยต้องคำนวณจากนักเรียนที่มีค่าจริงเท่านั้น — คนที่ยังสอบไม่เสร็จ
   // หรือ secondsUsed เป็น null ต้องไม่ถูกนำมารวมจนค่าเฉลี่ยผิดเพี้ยน
-  const submittedWithTime = (results?.students || []).filter((s) => s.submittedAt && s.secondsUsed != null);
-  const avgTimeSec = submittedWithTime.length
-    ? Math.round(submittedWithTime.reduce((sum, s) => sum + s.secondsUsed, 0) / submittedWithTime.length)
-    : null;
+  const usedTimes = (results?.students || []).map(usedSecondsOf).filter((v) => v != null);
+  const avgTimeSec = usedTimes.length ? Math.round(usedTimes.reduce((a, b) => a + b, 0) / usedTimes.length) : null;
   // ใช้กลุ่มเดียวกับ averageScorePct ของ backend และหน้าวิเคราะห์ (ส่งแล้ว + มีคะแนนเต็ม + ไม่ได้
   // ปฏิเสธความยินยอม exam_behavior) — เดิมอัตราผ่านนับทุกคน ตัวเลขการ์ดข้างกันจึงมาจากคนละกลุ่ม
   const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
@@ -3250,14 +3255,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           icon={CheckCircle}
           label="สัดส่วนผู้สอบผ่าน"
           value={passRatePct != null ? `${passRatePct}%` : "—"}
-          sub={passRatePct != null ? `${passedCount}/${passEligible.length} คน · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม` : "ยังไม่มีผู้ส่ง"}
+          sub={passRatePct != null ? `ผ่าน ${passedCount}/${passEligible.length} คน · เกณฑ์ ${PASS_PCT}%` : "ยังไม่มีผู้ส่ง"}
           color="bg-emerald-500"
         />
         <StatCard
           icon={Clock}
           label="เวลาเฉลี่ย"
-          value={avgTimeSec != null ? `${formatTime(avgTimeSec)} น.` : "—"}
-          sub="ต่อคน"
+          value={avgTimeSec != null ? formatTime(avgTimeSec) : "—"}
+          sub={avgTimeSec != null ? `ต่อคน · จาก ${usedTimes.length} คนที่ส่ง` : "ยังไม่มีผู้ส่ง"}
           color="bg-amber-500"
         />
       </div>
