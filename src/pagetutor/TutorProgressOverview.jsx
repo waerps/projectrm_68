@@ -232,7 +232,7 @@ export default function TutorProgressOverview() {
 
       {/* Search & Filter */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,2fr)_repeat(2,minmax(0,1fr))]">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(260px,3fr)_repeat(2,minmax(0,1fr))]">
           <label className="relative sm:col-span-2 lg:col-span-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input

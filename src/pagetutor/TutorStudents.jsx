@@ -1,5 +1,6 @@
 import { API_URL } from "../config";
-import { GROWTH_LABEL, CHANGE_LABEL, growthLevel, fmtGrowth, basisLabel } from "../utils/growthText";
+import { GROWTH_LABEL, CHANGE_LABEL, fmtGrowth, basisLabel } from "../utils/growthText";
+import GrowthLevelBadge from "../components/ui/GrowthLevelBadge";
 import { getFileUrl } from "../utils/fileUrl";
 import { optimizedImage } from "../utils/responsiveImage";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -505,8 +506,9 @@ export default function TutorStudents() {
                                                     </p>
                                                     <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === "up" ? "text-green-700" : getOverallTrend(student) === "down" ? "text-red-700" : "text-amber-800"}`}>
                                                         {getAverageImprovement(student)} คะแนน
-                                                        {imp.growth != null && imp.delta > 0 && <span className="font-medium text-slate-600"> · {GROWTH_LABEL} {getGrowthText(student)}{growthLevel(imp.growth) ? ` (${growthLevel(imp.growth).label})` : ""}</span>}
+                                                        {imp.growth != null && imp.delta > 0 && <span className="font-medium text-slate-600"> · {GROWTH_LABEL} {getGrowthText(student)}</span>}
                                                     </p>
+                                                    {imp.growth != null && imp.delta > 0 && <GrowthLevelBadge growth={imp.growth} size="sm" className="mt-1.5" />}
                                                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                                                         คำนวณจาก{counted.length ? ` ${counted.join(", ")}` : ` ${imp.subjectsCounted} วิชา`}
                                                         {total > imp.subjectsCounted ? ` (${imp.subjectsCounted} จาก ${total} วิชา)` : ""}
