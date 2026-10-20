@@ -47,10 +47,25 @@ html, body {
 @keyframes sa-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes sa-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes sa-caret { 50% { opacity: 0; } }
-/* แถบรอแบบไม่รู้ความคืบหน้า — วิ่งซ้ายไปขวา (ใช้ตอนรอ AI ประมวลผล) */
-@keyframes sa-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
-.sa-indeterminate { animation: sa-indeterminate 1.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .sa-indeterminate { animation: none; transform: none; width: 100% !important; opacity: .5; } }
+/* น้องหมาวิ่ง (RunningPuppy) — ตอนรอ AI ประมวลผล: วิ่งไป-กลับช้าๆ รอบละ 8 วินาที */
+@keyframes puppy-run { 0% { transform: translateX(0); } 50% { transform: translateX(calc(100% - 2.75rem)); } 100% { transform: translateX(0); } }
+@keyframes puppy-face { 0%, 49.9% { transform: scaleX(1); } 50%, 100% { transform: scaleX(-1); } }
+@keyframes puppy-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes puppy-leg { 0%, 100% { transform: rotate(22deg); } 50% { transform: rotate(-22deg); } }
+@keyframes puppy-tail { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(18deg); } }
+@keyframes puppy-ear { 0%, 100% { transform: rotate(-25deg); } 50% { transform: rotate(-10deg); } }
+.puppy-runner { animation: puppy-run 8s ease-in-out infinite; }
+.puppy-face { animation: puppy-face 8s linear infinite; }
+.puppy-bob { animation: puppy-bob .4s ease-in-out infinite; }
+.puppy-leg-a, .puppy-leg-b, .puppy-tail, .puppy-ear { transform-box: fill-box; }
+.puppy-leg-a, .puppy-leg-b { transform-origin: 50% 0; animation: puppy-leg .4s ease-in-out infinite; }
+.puppy-leg-b { animation-delay: -.2s; }
+.puppy-tail { transform-origin: 100% 100%; animation: puppy-tail .3s ease-in-out infinite; }
+.puppy-ear { transform-origin: 50% 0; animation: puppy-ear .4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .puppy-runner, .puppy-face, .puppy-bob, .puppy-leg-a, .puppy-leg-b, .puppy-tail, .puppy-ear { animation: none; }
+  .puppy-runner { transform: translateX(calc(50% - 1.375rem)); }
+}
 .sa-rise { animation: sa-rise .5s ease both; }
 .sa-grow { transform-origin: left; animation: sa-grow .8s cubic-bezier(.2,.8,.2,1) both; }
 .sa-draw { stroke-dasharray: var(--len); animation: sa-draw 1.2s ease both; }

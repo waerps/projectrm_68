@@ -2632,6 +2632,13 @@ function StudentDetailModal({
   }, [enrichedQuestions]);
 
   const pct = displayExamPercent(student?.totalScore, student?.maxScore);
+  // เวลาที่ใช้: ใช้ค่าจากระบบก่อน ถ้าไม่มีให้คำนวณจากเวลาเริ่มสอบถึงเวลาส่ง
+  const usedSeconds = student?.secondsUsed != null
+    ? student.secondsUsed
+    : detail?.joinedAt && detail?.submittedAt
+      ? Math.max(0, Math.round((new Date(detail.submittedAt) - new Date(detail.joinedAt)) / 1000))
+      : null;
+  const usedTimeText = usedSeconds != null ? formatTime(usedSeconds) : "ยังไม่ส่งข้อสอบ";
   const passed = student?.submittedAt && pct != null ? isPassingScore(student.totalScore, student.maxScore) : null;
   const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
   const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
@@ -2652,7 +2659,7 @@ function StudentDetailModal({
             </div>
             <div className="flex-1 min-w-[160px]">
               <p className="font-bold text-lg">{detail?.studentName || student?.name}</p>
-              <p className="text-sm text-orange-100">{detail?.examName || examName} · ใช้เวลา {student?.secondsUsed != null ? formatTime(student.secondsUsed) : "—"}</p>
+              <p className="text-sm text-orange-100">{detail?.examName || examName} · ใช้เวลา {usedTimeText}</p>
             </div>
             <div className="flex gap-3 flex-shrink-0">
               {passed != null && (
@@ -2732,7 +2739,7 @@ function StudentDetailModal({
                     </span>
                   )}
                 </p>
-                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">โมเดล: {aiSummary.model}</span>}
+                {aiSummary.model && <span className="hidden sm:inline text-[11px] text-slate-500 flex-shrink-0">วิเคราะห์โดย AI จาก Google Gemini ({aiSummary.model})</span>}
               </div>
               <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{aiSummary.overview}</p>
               <div className="mt-3 flex items-center justify-between gap-2 flex-wrap">
@@ -3054,47 +3061,17 @@ function QuestionFlagsCard({ flags, submittedCount }) {
 // ประมวลผล AI ทั้งหมด (ดูละเอียด/แก้ไข/สั่งวิเคราะห์ใหม่/ส่งออก PDF) อยู่หน้า analytics
 // อย่างเดียว ส่วนหน้านี้ ("จัดการรอบสอบ") เหลือไว้แค่สรุปสถานะสั้นๆ ให้ติวเตอร์เห็นเร็วๆ
 // ตอนปิดสอบพอ ถ้าอยากดูเชิงลึกกดลิงก์ไปหน้า analytics แทน (ดู StudentDetailModal ด้านบน)
-function AiStatusStrip({ examId, examStatus, submittedCount, onSummariesChange }) {
-  const [summaries, setSummaries] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(() => {
-    setLoading(true);
+function AiStatusStrip({ examId, onSummariesChange }) {
+  useEffect(() => {
+    let cancelled = false;
     fetchAiSummaries(examId)
-      .then((rows) => {
-        const list = Array.isArray(rows) ? rows : [];
-        setSummaries(list);
-        onSummariesChange?.(list);
-      })
-      .catch((err) => { console.error("Fetch AI summaries failed:", err); })
-      .finally(() => setLoading(false));
+      .then((rows) => { if (!cancelled) onSummariesChange?.(Array.isArray(rows) ? rows : []); })
+      .catch((err) => { console.error("Fetch AI summaries failed:", err); });
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const verifiedCount = summaries.filter(isVerifiedAiSummary).length;
-  const unavailableCount = summaries.length - verifiedCount;
-
-  // สอบยังไม่ปิด ยังไม่มีอะไรให้วิเคราะห์ (auto-trigger ทำงานตอนปิดสอบเท่านั้น) — ไม่ต้องโชว์แถบนี้เลย
-  if (examStatus !== "closed") return null;
-
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl px-5 py-3.5 flex items-center gap-2">
-      <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
-      <p className="text-xs text-slate-500 min-w-0 lg:truncate">
-        {loading
-          ? "กำลังตรวจสอบผลวิเคราะห์โดย AI…"
-          : verifiedCount > 0
-            ? `ผลวิเคราะห์โดย AI ผ่านการตรวจสอบ ${verifiedCount} จาก ${submittedCount || 0} คน${unavailableCount ? ` · ต้องวิเคราะห์ใหม่ ${unavailableCount} คน` : ""}`
-            : unavailableCount > 0
-              ? `ผลวิเคราะห์โดย AI ของ ${unavailableCount} คนยังไม่ผ่านการตรวจสอบ กรุณาวิเคราะห์ใหม่ที่หน้าภาพรวมพัฒนาการ`
-            : submittedCount
-              ? "ยังไม่มีผลวิเคราะห์โดย AI — ปกติจะขึ้นเองไม่นานหลังปิดสอบ (ดูรายละเอียดหรือกดวิเคราะห์ใหม่ด้วย AI ได้ที่หน้าวิเคราะห์เชิงลึก)"
-              : "ยังไม่มีนักเรียนส่งคำตอบ จึงยังวิเคราะห์ไม่ได้"}
-      </p>
-    </div>
-  );
+  // แถบสถานะ AI ถูกเอาออกจากหน้าแล้ว (ไม่จำเป็น) — คอมโพเนนต์นี้เหลือหน้าที่ดึงผล AI ให้ตาราง/โมดัลรายคนเท่านั้น
+  return null;
 }
 
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
@@ -3287,7 +3264,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
       <QuestionFlagsCard flags={results.questionFlags} submittedCount={results.submittedCount} />
 
-      <AiStatusStrip examId={exam.id} examStatus={status} submittedCount={results.submittedCount} onSummariesChange={setAiSummaries} />
+      <AiStatusStrip examId={exam.id} onSummariesChange={setAiSummaries} />
 
       {/* Search & Filter */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">

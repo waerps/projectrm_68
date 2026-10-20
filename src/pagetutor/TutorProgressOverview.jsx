@@ -11,6 +11,7 @@ import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { TrendingUp as LuTrendingUp } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
+import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
 // ─── ภาพรวมพัฒนาการ — ทางลัดจากเมนู ──────────────────────────────────────────
 // หน้าวิเคราะห์ผูกกับ "คอร์ส + วิชา" โดยธรรมชาติ (TutorExamAnalytics ต้องมีทั้งสองค่า
@@ -32,6 +33,20 @@ const fmtDate = (v) => {
   return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
 };
 
+// รูปแบบช่องเลือกเดียวกับหน้าภาพรวมพัฒนาการฝั่งแอดมิน
+const SELECT_CLASS = "h-10 w-full min-w-0 truncate rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm outline-none focus:ring-2 focus:ring-orange-400";
+
+// สถานะคอร์สจากวันเริ่ม/วันสุดท้าย
+const dayStart = (v) => { if (!v) return null; const d = new Date(v); if (Number.isNaN(d.getTime())) return null; d.setHours(0, 0, 0, 0); return d.getTime(); };
+const courseStatusOf = (startDate, lastDate) => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const s = dayStart(startDate), e = dayStart(lastDate);
+  if (s != null && today.getTime() < s) return "upcoming";
+  if (e != null && today.getTime() > e) return "ended";
+  if (s == null && e == null) return "unknown";
+  return "active";
+};
+
 export default function TutorProgressOverview() {
   const tutorId = JSON.parse(localStorage.getItem("user") || "{}")?.id;
   // (แก้บั๊ก) เดิมไม่แนบ token เลย ตอนนี้ backend ต้อง login ก่อนแล้ว
@@ -42,6 +57,8 @@ export default function TutorProgressOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [filterSubject, setFilterSubject] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -73,6 +90,7 @@ export default function TutorProgressOverview() {
             subjectId: r.SubjectId,
             subjectName: r.SubjectName || "",
             startDate: r.StartDate,
+            lastDate: r.LastDate,
             studentCount: Number(r.StudentCount) || 0,
           });
         }
@@ -109,6 +127,7 @@ export default function TutorProgressOverview() {
           courseId: r.courseId,
           courseName: r.courseName,
           startDate: r.startDate,
+          status: courseStatusOf(r.startDate, r.lastDate),
           studentCount: r.studentCount,
           subjects: [],
         });
@@ -119,21 +138,37 @@ export default function TutorProgressOverview() {
         subjectName: r.subjectName,
       });
     }
-    const all = [...byId.values()];
-
+    // เรียงคอร์สที่เริ่มล่าสุดขึ้นก่อน (ไม่ระบุวันไว้ท้าย) — แบบเดียวกับฝั่งแอดมิน
+    const all = [...byId.values()].sort((a, b) => {
+      const da = dayStart(a.startDate), db = dayStart(b.startDate);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db - da;
+    });
     const kw = search.trim().toLowerCase();
-    if (!kw) return all;
-
     return all
+      .filter((c) => filterStatus === "all" || c.status === filterStatus)
       .map((c) => {
-        const courseMatches = c.courseName.toLowerCase().includes(kw);
-        const subjects = courseMatches
-          ? c.subjects
-          : c.subjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
+        let subjects = c.subjects;
+        if (filterSubject !== "all") subjects = subjects.filter((s) => String(s.subjectId) === filterSubject);
+        if (kw && !c.courseName.toLowerCase().includes(kw)) {
+          subjects = subjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
+        }
         return { ...c, subjects };
       })
       .filter((c) => c.subjects.length > 0);
-  }, [rows, search]);
+  }, [rows, search, filterSubject, filterStatus]);
+
+  // ตัวเลือกวิชาจากข้อมูลจริง ไม่ซ้ำ เรียงตามชื่อ
+  const subjectOptions = useMemo(() => {
+    const m = new Map();
+    rows.forEach((r) => { if (!m.has(String(r.subjectId))) m.set(String(r.subjectId), r.subjectName || `วิชา #${r.subjectId}`); });
+    return [...m].sort((a, b) => a[1].localeCompare(b[1], "th"));
+  }, [rows]);
+
+  const hasFilter = search.trim() !== "" || filterSubject !== "all" || filterStatus !== "all";
+  const clearFilters = () => { setSearch(""); setFilterSubject("all"); setFilterStatus("all"); setPage(1); };
 
   const matchedSubjectCount = useMemo(
     () => courseCards.reduce((sum, c) => sum + c.subjects.length, 0),
@@ -197,20 +232,33 @@ export default function TutorProgressOverview() {
 
       {/* Search & Filter */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-        <div className="flex flex-col md:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(220px,2fr)_repeat(2,minmax(0,1fr))]">
+          <label className="relative sm:col-span-2 lg:col-span-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              type="search"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="ค้นหาชื่อคอร์สหรือวิชา..."
-              className="pl-10 pr-4 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition"
+              aria-label="ค้นหาชื่อคอร์สหรือวิชา"
+              className="pl-9 pr-3 h-10 w-full bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition"
             />
-          </div>
+          </label>
+          <select value={filterSubject} onChange={(e) => { setFilterSubject(e.target.value); setPage(1); }} aria-label="กรองตามวิชา" className={SELECT_CLASS}>
+            <option value="all">ทุกวิชา</option>
+            {subjectOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} aria-label="กรองตามสถานะคอร์ส" className={SELECT_CLASS}>
+            <option value="all">ทุกสถานะคอร์ส</option>
+            <option value="active">กำลังเรียน</option>
+            <option value="upcoming">ยังไม่เริ่ม</option>
+            <option value="ended">จบแล้ว</option>
+          </select>
         </div>
-        <p className="text-xs text-slate-500 mt-2 pl-1">
-          แสดง {matchedSubjectCount} จาก {rows.length} วิชา ({courseCards.length} คอร์ส)
-        </p>
+        <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
+          <span>แสดง {matchedSubjectCount} จาก {rows.length} วิชา ({courseCards.length} คอร์ส)</span>
+          <ClearFiltersButton show={hasFilter} onClick={clearFilters} />
+        </div>
       </div>
 
       {error && <ErrorState title={error} onRetry={() => setReloadKey((k) => k + 1)} />}
@@ -219,9 +267,9 @@ export default function TutorProgressOverview() {
         <div className="flex flex-col items-center justify-center text-center px-6 py-12 bg-white rounded-2xl border border-dashed border-slate-200">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-orange-50"><LuTrendingUp className="h-7 w-7 text-orange-400" /></div>
           <p className="text-base font-semibold text-slate-700">
-            {search.trim() ? "ไม่พบคอร์สหรือวิชาที่ค้นหา" : "ยังไม่มีคอร์สที่คุณสอน"}
+            {hasFilter ? "ไม่พบคอร์สหรือวิชาที่ตรงกับตัวกรอง" : "ยังไม่มีคอร์สที่คุณสอน"}
           </p>
-          {!search.trim() && (
+          {!hasFilter && (
             <p className="text-xs text-slate-500 mt-1">คอร์สจะแสดงที่นี่เมื่อผู้ดูแลระบบมอบหมายการสอน</p>
           )}
         </div>

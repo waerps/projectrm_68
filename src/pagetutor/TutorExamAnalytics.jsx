@@ -18,6 +18,7 @@ import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWi
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { toast, confirmDialog } from "../components/ui/dialogs";
+import RunningPuppy from "../components/ui/RunningPuppy";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
@@ -1696,7 +1697,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           </div>
           <div className="bg-white/10 rounded-2xl border border-white/20 backdrop-blur-sm p-3 overflow-x-auto sa-scroll">
             <JourneyChart roundAvg={cmp.roundAvg} />
-            <p className="text-[11px] text-white/85 px-1">
+            <p className="text-[11px] text-white/85 px-1 text-center">
               คิดเฉพาะนักเรียนที่สอบครบทุกรอบ{cmp.excludedCount > 0 ? ` (ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ)` : ""} ตัวเลขจึงอาจไม่ตรงกับแท็บภาพรวม
             </p>
           </div>
@@ -1735,7 +1736,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               </div>
             ); })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">เทียบคะแนนรายบุคคล {cmp.fromLabel} กับ {cmp.toLabel} (% ของคะแนนเต็ม)</p>
+          <p className="text-[11px] text-slate-500 mt-3 text-center">เทียบคะแนนรายบุคคล {cmp.fromLabel} กับ {cmp.toLabel}</p>
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
@@ -2706,13 +2707,11 @@ export function ExamAnalyticsView({
               : "วิเคราะห์ใหม่ด้วย AI"}
           </button>
 
-          {/* ระหว่างรอ: แถบวิ่ง + เวลาที่ผ่านไป (backend ไม่ได้บอกความคืบหน้าเป็น % จึงใช้แถบแบบวิ่ง) */}
+          {/* ระหว่างรอ: น้องหมาวิ่ง + เวลาที่ผ่านไป (backend ไม่ได้บอกความคืบหน้าเป็น % จึงใช้ภาพเคลื่อนไหวแทนแถบ %) */}
           {reanalyzing && (
             <div className="w-full" role="status" aria-live="polite">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-orange-100">
-                <div className="sa-indeterminate h-full w-2/5 rounded-full bg-gradient-to-r from-orange-400 to-amber-400" />
-              </div>
-              <p className="mt-1.5 text-[11px] text-slate-500 tabular-nums">
+              <RunningPuppy />
+              <p className="mt-1 text-[11px] text-slate-500 tabular-nums">
                 AI กำลังวิเคราะห์ผลสอบ {examLabel} · ผ่านไป {elapsed} วินาที (ปกติใช้เวลาไม่เกิน 1–2 นาที)
               </p>
             </div>
