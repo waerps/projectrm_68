@@ -41,6 +41,36 @@ function JourneyBar({ from, to, max, toLabel }) {
   );
 }
 
+// ไม้บรรทัดระดับ 4 ช่วง + หมุดบอกว่านักเรียนอยู่ตรงไหน (มองเห็นตลอด ไม่ต้องกดเปิด)
+const LEVEL_SEGMENTS = [
+  { to: 25, label: "ต้น", cls: "bg-slate-300" },
+  { to: 50, label: "กลาง", cls: "bg-amber-300" },
+  { to: 75, label: "สูง", cls: "bg-emerald-400" },
+  { to: 100, label: "สูงมาก", cls: "bg-green-600" },
+];
+function LevelRuler({ growth }) {
+  const g = Math.max(0, Math.min(100, Number(growth) || 0));
+  return (
+    <div className="mt-3" aria-label={`พัฒนาการสัมพัทธ์ ${Math.round(g)}% บนเกณฑ์ 4 ระดับ`} role="img">
+      <div className="relative">
+        <div className="flex h-2.5 overflow-hidden rounded-full">
+          {LEVEL_SEGMENTS.map((s) => <div key={s.label} className={`h-full flex-1 ${s.cls}`} />)}
+        </div>
+        {/* หมุดตำแหน่งนักเรียน */}
+        <div className="absolute -top-1.5 h-5 w-5 -translate-x-1/2 rounded-full border-[3px] border-white bg-slate-900 shadow" style={{ left: `${g}%` }} />
+      </div>
+      <div className="mt-1.5 grid grid-cols-4 text-center text-[10.5px] leading-4 text-slate-500">
+        {LEVEL_SEGMENTS.map((s, i) => (
+          <span key={s.label}>
+            <b className="block font-semibold text-slate-700">{s.label}</b>
+            {i === 0 ? 0 : LEVEL_SEGMENTS[i - 1].to + 1}–{s.to}%
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // countedSubjects = ชื่อวิชาที่นำมาคิด (สอบครบทั้งสองรอบ) · pendingSubjects = สอบไปแล้วแต่ยังไม่ครบสองรอบ
 export default function ExamGrowthSummary({ improvement, totalSubjects, untestedSubjects = [], countedSubjects = [], pendingSubjects = [], variant = "compact" }) {
   if (!improvement) return null;
@@ -101,6 +131,7 @@ export default function ExamGrowthSummary({ improvement, totalSubjects, untested
             <p className="mt-1 text-xs leading-5 text-slate-600">
               เพิ่มขึ้น {fmtScore(delta)} คะแนน จาก {fmtScore(roomPts)} คะแนนที่ยังพัฒนาได้
             </p>
+            <LevelRuler growth={growth} />
             <details className="group mt-2 rounded-lg bg-orange-50/60 px-3 py-2 text-xs leading-5 text-slate-700">
               <summary className="flex cursor-pointer list-none items-center gap-1 font-semibold text-orange-700">
                 <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" /> วิธีอ่านตัวเลขนี้
@@ -110,7 +141,7 @@ export default function ExamGrowthSummary({ improvement, totalSubjects, untested
                 <li>{toLabel} ได้ {fmtScore(to)} คะแนน เพิ่มขึ้น {fmtScore(delta)} คะแนน</li>
                 <li>{fmtScore(delta)} ÷ {fmtScore(roomPts)} × 100 = <b>{fmtGrowth(growth)}</b> หมายถึง จากส่วนที่ยังทำไม่ได้ตอน Pre-test นักเรียนทำได้เพิ่มแล้ว {fmtGrowth(growth)}</li>
               </ol>
-              <p className="mt-1.5 text-slate-600">เกณฑ์: 0–25% ระดับต้น · 26–50% ระดับกลาง · 51–75% ระดับสูง · 76–100% ระดับสูงมาก</p>
+              <p className="mt-1.5 text-slate-600">ระดับใช้เกณฑ์คะแนนพัฒนาการสัมพัทธ์ 4 ระดับ (ศิริชัย กาญจนวาสี, 2552)</p>
               {growthCapped && (
                 <p className="mt-1.5 text-slate-600">นักเรียนมีพื้นฐานเดิมสูง ระบบจึงใช้ฐานขั้นต่ำ 30% ของคะแนนเต็ม ({fmtScore(roomPts)} คะแนน) เป็นตัวหาร เพื่อไม่ให้ค่าสูงเกินจริงจากคะแนนที่เพิ่มเพียงเล็กน้อย</p>
               )}
