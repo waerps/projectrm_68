@@ -1486,8 +1486,8 @@ const BOARDS = {
     tab: 'พัฒนาการ',
     Icon: TrendingUp,
     heading: 'พัฒนาการโดดเด่น',
-    formula: 'พัฒนาการ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
-    hint: 'วัดสัดส่วนช่องว่างคะแนนที่ปิดได้ (%) แทนคะแนนที่เพิ่มขึ้นโดยตรง เพื่อให้นักเรียนที่เริ่มต้นคะแนนต่ำหรือสูงได้รับการประเมินอย่างเป็นธรรม',
+    formula: 'คะแนนจัดอันดับพัฒนาการ = พัฒนาการสัมพัทธ์ 80% + เข้าเรียน 20% · ต้องเข้าเรียน ≥ 80%',
+    hint: 'ใช้พัฒนาการสัมพัทธ์ (Pre-test → Post-test) คือคะแนนที่เพิ่มขึ้นคิดเป็นกี่ % ของคะแนนที่ยังพัฒนาได้ แทนการดูคะแนนที่เพิ่มขึ้นโดยตรง เพื่อให้นักเรียนที่เริ่มต้นคะแนนต่ำหรือสูงได้รับการประเมินอย่างเป็นธรรม',
     score: (s) => s.ImprovementScore,
     eligible: (s) => s.ImprovementEligible === true,
     reason: (s) => s.ImprovementReason,
@@ -1525,8 +1525,8 @@ function ceilingGuardNote(growthPct, preScore) {
   if (growthPct == null || preScore == null) return null;
   if (preScore <= HAKE_ROOM_UNCLAMPED) return null;
   return {
-    label: 'นักเรียนคนนี้พื้นฐานสูงอยู่แล้วตั้งแต่ต้น ตัวเลขพัฒนาการนี้จึงเทียบกับเด็กที่พื้นฐานต่ำกว่าตรง ๆ ไม่ได้',
-    detail: 'ระบบกันไม่ให้คะแนนพัฒนาการพุ่งเกินจริงเมื่อคะแนน Pre-test สูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
+    label: 'นักเรียนมีพื้นฐานสูงตั้งแต่ Pre-test พัฒนาการสัมพัทธ์จึงไม่ควรเทียบกับนักเรียนที่พื้นฐานต่ำกว่าโดยตรง',
+    detail: 'ระบบกันไม่ให้พัฒนาการสัมพัทธ์สูงเกินจริงเมื่อคะแนน Pre-test สูงอยู่แล้ว (เหลือพื้นที่ให้พัฒนาน้อย) โดยอ้างอิงวิธีวัดพัฒนาการที่ใช้ในงานวิจัยด้านการศึกษา: Normalized Gain — Hake, R. R. (1998). Interactive-engagement versus traditional methods. American Journal of Physics, 66(1), 64-74. สูตร: (Post − Pre) / (100 − Pre) โดยกำหนดพื้นที่พัฒนาขั้นต่ำไว้ที่ 30%',
   };
 }
 
@@ -1703,6 +1703,7 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
             <p className="text-xs text-slate-500 mt-0.5">{board.formula}</p>
           </div>
           <div className="text-right shrink-0">
+            {!isExcellence && <p className="text-[11px] font-semibold text-slate-500">คะแนนจัดอันดับพัฒนาการ</p>}
             <p className={STAT_VALUE}>
               {board.score(s) ?? '—'}
               {board.score(s) != null && <span className={STAT_UNIT}>/ 100</span>}
@@ -1730,8 +1731,8 @@ function StudentMetricBreakdown({ student, board, totalEligible, onSwitchBoard }
         ) : (
           s.ImprovementScore != null ? (
             <>
-              <ScoreBar label="อัตราพัฒนาการ" value={s.ImprovementGrowth} weight={80}
-                sub={`คะแนนเฉลี่ย Pre-test ${s.PreTestScore}% → คะแนนเฉลี่ย Post-test ${s.PostTestScore}%`} />
+              <ScoreBar label="พัฒนาการสัมพัทธ์ (Pre-test → Post-test)" value={s.ImprovementGrowth} weight={80}
+                sub={`คะแนนเฉลี่ย Pre-test ${s.PreTestScore}% → Post-test ${s.PostTestScore}% (เต็ม 100 คะแนน)`} />
               <ScoreBar label="อัตราเข้าเรียน" value={s.AttendanceRate} weight={20}
                 sub={`${s.TotalAttended ?? 0} / ${s.TotalClasses ?? 0} คาบ`} />
               {guardNote && <InfoNote label={guardNote.label} detail={guardNote.detail} />}

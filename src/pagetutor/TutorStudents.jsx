@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { GROWTH_LABEL, CHANGE_LABEL, growthLevel, fmtGrowth, basisLabel } from "../utils/growthText";
 import { getFileUrl } from "../utils/fileUrl";
 import { optimizedImage } from "../utils/responsiveImage";
 import { useSearchParams, useNavigate } from "react-router-dom";
@@ -80,7 +81,7 @@ export default function TutorStudents() {
             ? `Pre-test ${fmtScoreNum(student.exam.improvement.from)} → ${student.exam.improvement.basis === 'pre-mid' ? 'Mid-test' : 'Post-test'} ${fmtScoreNum(student.exam.improvement.to)} (${getAverageImprovement(student)} จากเต็ม ${student.exam.improvement.max})`
             : examLoading ? "กำลังโหลด" : examError ? "—" : "ยังไม่มีข้อมูลสอบ",
         // แยกคอลัมน์: คะแนนดิบใช้ดูรายคน ส่วน "พัฒนาการ" คือตัวที่เอาไปเรียง/เทียบข้ามคนได้
-        พัฒนาการ: getGrowthText(student),
+        "พัฒนาการสัมพัทธ์": getGrowthText(student),
     }));
 
     const downloadExcel = async () => {
@@ -238,7 +239,7 @@ export default function TutorStudents() {
     };
     const getGrowthText = (student) => {
         const g = getGrowth(student);
-        return g == null ? "—" : `${g}%`;
+        return fmtGrowth(g);
     };
 
     const getOverallTrend = (student) => {
@@ -363,7 +364,7 @@ export default function TutorStudents() {
                             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent md:min-w-[200px] max-w-full md:max-w-[240px] truncate">
                             <option value="name">เรียงตามชื่อ</option>
                             <option value="attendance">เรียงตามการเข้าเรียน</option>
-                            <option value="improvement">เรียงตามพัฒนาการ</option>
+                            <option value="improvement">เรียงตามพัฒนาการสัมพัทธ์</option>
                             <option value="videoProgress">เรียงตามการดูคลิป</option>
                         </select>
                     </div>
@@ -443,7 +444,7 @@ export default function TutorStudents() {
                                         {student.exam?.improvement && (
                                             <div
                                                 className={`px-3 py-1.5 rounded-full border flex items-center gap-1.5 ${getTrendColor(getOverallTrend(student))}`}
-                                                title={`พัฒนาการ ${getGrowthText(student)} — ปิดช่องว่างที่เหลือจากรอบแรกไปได้เท่านี้ (คะแนนดิบ ${getAverageImprovement(student)} คะแนน)`}
+                                                title={`${GROWTH_LABEL} ${getGrowthText(student)} (${basisLabel(student.exam.improvement.basis)}) · ${CHANGE_LABEL} ${getAverageImprovement(student)} คะแนน`}
                                             >
                                                 {getTrendIcon(getOverallTrend(student))}
                                                 <span className="font-bold text-sm">{getGrowthText(student)}</span>
@@ -488,7 +489,7 @@ export default function TutorStudents() {
                                     </div>
                                 </div>
                                 <div className="bg-white rounded-xl p-3 border border-slate-200">
-                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">พัฒนาการรวม</span></div>
+                                    <div className="flex items-center gap-2 mb-2"><Award className="h-4 w-4 text-orange-700" /><span className="text-xs font-semibold text-slate-700">คะแนนสอบ</span></div>
                                     {student.exam?.improvement ? (
                                         (() => {
                                             // คะแนนรวมของ "ทุกวิชาที่สอบครบทั้งสองรอบ" (วิชาละ 20 คะแนน) — ระบุชื่อวิชาที่นำมาคิดให้ชัด
@@ -504,7 +505,7 @@ export default function TutorStudents() {
                                                     </p>
                                                     <p className={`text-xs font-bold mt-1 ${getOverallTrend(student) === "up" ? "text-green-700" : getOverallTrend(student) === "down" ? "text-red-700" : "text-amber-800"}`}>
                                                         {getAverageImprovement(student)} คะแนน
-                                                        {imp.growth != null && <span className="font-medium text-slate-600"> · พัฒนาการ {getGrowthText(student)} ของคะแนนที่ยังขาด</span>}
+                                                        {imp.growth != null && imp.delta > 0 && <span className="font-medium text-slate-600"> · {GROWTH_LABEL} {getGrowthText(student)}{growthLevel(imp.growth) ? ` (${growthLevel(imp.growth).label})` : ""}</span>}
                                                     </p>
                                                     <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
                                                         คำนวณจาก{counted.length ? ` ${counted.join(", ")}` : ` ${imp.subjectsCounted} วิชา`}

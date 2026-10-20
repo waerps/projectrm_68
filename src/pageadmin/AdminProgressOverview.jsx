@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { growthLevel } from "../utils/growthText";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
@@ -127,6 +128,7 @@ function StatTile({ card, ready }) {
           {hasValue ? shown.toLocaleString() : "—"}
           {hasValue && card.unit && <span className={STAT_UNIT}>{card.unit}</span>}
         </p>
+        {card.sub && <p className="mt-0.5 text-[11px] font-medium text-slate-500">{card.sub}</p>}
       </div>
     </div>
   );
@@ -337,10 +339,12 @@ export default function AdminProgressOverview() {
             color: "bg-purple-500", icon: Users,
           },
           {
-            label: "พัฒนาการเฉลี่ย",
-            help: "ค่าเฉลี่ยอัตราพัฒนาการจากรายการที่มีทั้งคะแนน Pre-test และ Post-test",
+            label: "พัฒนาการสัมพัทธ์เฉลี่ย",
+            help: "Pre-test → Post-test: คะแนนเฉลี่ยของห้องที่เพิ่มขึ้น คิดเป็นกี่ % ของคะแนนที่ยังพัฒนาได้ แล้วเฉลี่ยทุกรายการที่มีทั้งสองรอบ (0–25% ระดับต้น · 26–50% ระดับกลาง · 51–75% ระดับสูง · 76–100% ระดับสูงมาก)",
             value: summary.avgGrowth,
             unit: "%",
+            // ป้ายระดับ + รอบที่เทียบ ให้อ่านแบบเดียวกับฝั่งติวเตอร์
+            sub: summary.avgGrowth != null ? `${growthLevel(summary.avgGrowth)?.label} · Pre-test → Post-test` : "Pre-test → Post-test",
             color: "bg-blue-500", icon: TrendingUp,
           },
         ].map((card, i) => (

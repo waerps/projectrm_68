@@ -186,6 +186,8 @@ const prefersReducedMotion = () => {
 };
 
 // +12.5% / −3% / ±0% — ใช้หน่วย % แทนคำว่า "จุด" ทั้งหน้า
+// unit "%" ใช้กับคะแนนรายหมวด (แสดงเป็น % อยู่แล้ว) · PTS ใช้กับคะแนนสอบรวมที่ปรับเป็นเต็ม 100
+const PTS = " คะแนน";
 const signed = (v, unit = "%") => (v == null ? "—" : `${v > 0 ? "+" : v < 0 ? "−" : "±"}${Math.abs(v)}${unit}`);
 
 // ชื่อจาก backend เป็นรูป "ชื่อ นามสกุล (ชื่อเล่น)"
@@ -748,7 +750,7 @@ function StudentProgressTab({ crossExamData, selectedExamIndex, loading, onOpenS
                     </span>
                     <span className="min-w-0">
                       <span className="block font-bold truncate">{nick || full.split(" ")[0]} <span className="font-normal text-slate-500 text-xs">{nick ? full.split(" ")[0] : ""}</span></span>
-                      <span className={`block ${STAT_NUM} text-emerald-300`}>คะแนนสอบ {signed(s.scoreChange)}</span>
+                      <span className={`block ${STAT_NUM} text-emerald-300`}>คะแนนสอบ {signed(s.scoreChange, PTS)}</span>
                     </span>
                   </button>
                 );
@@ -829,7 +831,7 @@ function StudentProgressTab({ crossExamData, selectedExamIndex, loading, onOpenS
                 <span className={`tabular-nums text-lg font-bold leading-none ${s.latestPct != null && s.latestPct * 100 < PASS_PCT ? "text-rose-500" : "text-slate-900"}`}>{s.latestPctText ?? "—"}</span>
                 <span className="text-[10px] text-slate-500">คะแนนรอบ {EXAMS_META[selectedExamIndex].label}</span>
                 <span className={`tabular-nums text-[11px] font-bold ${s.scoreChange > 0 ? "text-emerald-600" : s.scoreChange < 0 ? "text-rose-500" : "text-slate-300"}`}>
-                  {s.scoreChange == null ? "ยังเทียบไม่ได้" : `${signed(s.scoreChange)} จากรอบแรก`}
+                  {s.scoreChange == null ? "ยังเทียบไม่ได้" : `${signed(s.scoreChange, PTS)} จากรอบแรก`}
                 </span>
               </span>
             </button>
@@ -1568,7 +1570,7 @@ function GainSwarm({ people, fromLabel, toLabel, onOpenStudent }) {
         {dots.map((d) => (
           <g key={d.userId} className="cursor-pointer" tabIndex={0} role="button"
             onClick={() => onOpenStudent(d.userId)} onKeyDown={(e) => e.key === "Enter" && onOpenStudent(d.userId)}>
-            <title>{`${d.name} · คะแนนสอบเปลี่ยนไป ${signed(d.gain)} (${fromLabel} → ${toLabel})`}</title>
+            <title>{`${d.name} · คะแนนสอบเปลี่ยนไป ${signed(d.gain, PTS)} (${fromLabel} → ${toLabel})`}</title>
             <circle cx={d.x} cy={d.y} r="11" fill={d.gain > 0 ? "#10b981" : d.gain < 0 ? "#f43f5e" : "#94a3b8"} stroke="#fff" strokeWidth="2.5" />
             <text x={d.x} y={d.y + 4} textAnchor="middle" fontSize="10.5" fontWeight="700" fill="#fff">{initialOf(d.name)}</text>
           </g>
@@ -1609,7 +1611,7 @@ function GainSlope({ people, fromLabel, toLabel, onOpenStudent }) {
               <line className="sa-slope-line" x1={X1} y1={y(l.a)} x2={X2} y2={y(l.b)} stroke={c} strokeWidth="2.4" strokeLinecap="round" />
               <circle cx={X1} cy={y(l.a)} r="4" fill="#fff" stroke={c} strokeWidth="2" />
               <circle cx={X2} cy={y(l.b)} r="5" fill={c} stroke="#fff" strokeWidth="2" />
-              <text className="sa-slope-line" x={X2 + 12} y={labelY.get(l.userId) + 4} fontSize="11" fontWeight="700" fill={c}>{nick || full.split(" ")[0]} {signed(l.gain)}</text>
+              <text className="sa-slope-line" x={X2 + 12} y={labelY.get(l.userId) + 4} fontSize="11" fontWeight="700" fill={c}>{nick || full.split(" ")[0]} {signed(l.gain, PTS)}</text>
             </g>
           );
         })}
@@ -1671,9 +1673,9 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
           <div>
             <p className="text-xs font-semibold text-white/80 flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {cmp.avgGain >= 0 ? "คะแนนสอบเฉลี่ยของห้องเพิ่มขึ้น" : "คะแนนสอบเฉลี่ยของห้องเปลี่ยนแปลง"}</p>
             <p className="tabular-nums text-3xl sm:text-4xl font-bold leading-none mt-2 drop-shadow-sm">
-              <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
+              <CountUp value={cmp.avgGain} /><span className="text-xl font-bold"> คะแนน</span>
             </p>
-            <p className="text-sm font-semibold mt-3">{cmp.fromLabel} → {cmp.toLabel}</p>
+            <p className="text-sm font-semibold mt-3">{cmp.fromLabel} → {cmp.toLabel} <span className="font-normal text-white/85">(คิดจากคะแนนเต็ม 100)</span></p>
             <p className="text-xs text-white/85 mt-0.5">นักเรียนที่สอบครบทุกรอบ {cmp.cohortSize} คน</p>
             {/* รายการสรุป — เรียงเป็นแถว ป้ายเล็กด้านบน ค่าอยู่ด้านล่าง ข้อความยาวก็ไม่ล้นแบบเม็ดยา */}
             <ul className="mt-4 space-y-2">

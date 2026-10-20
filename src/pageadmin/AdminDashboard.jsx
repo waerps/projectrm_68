@@ -712,9 +712,9 @@ function StudentsCard({ students, onNavigate }) {
                           </span>
                           {Math.round(post)}
                         </div>
-                      ) : <p className="text-[11px] text-slate-500">คะแนนพัฒนาการ {s.TopScore}/100</p>}
+                      ) : <p className="text-[11px] text-slate-500">คะแนนจัดอันดับพัฒนาการ {s.TopScore}/100</p>}
                     </div>
-                    <span className="text-sm font-bold text-emerald-600 tabular-nums">{delta != null ? `${delta >= 0 ? "+" : ""}${Math.round(delta)}` : s.TopScore}</span>
+                    <span className="text-sm font-bold text-emerald-700 tabular-nums" title={delta != null ? "คะแนนเปลี่ยนแปลง Pre-test → Post-test (เต็ม 100 คะแนน)" : "คะแนนจัดอันดับพัฒนาการ"}>{delta != null ? `${delta >= 0 ? "+" : ""}${Math.round(delta)} คะแนน` : s.TopScore}</span>
                   </div>
                 );
               })}
