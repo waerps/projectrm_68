@@ -35,9 +35,20 @@ export function ScoreHistogramChart({ hist }) {
   );
 }
 
+// ตัดชื่อหมวดยาวบนแกนกราฟ (นับตามตัวอักษรที่เห็น ไม่ตัดสระ/วรรณยุกต์ไทยแยกจากพยัญชนะ)
+const shortTopic = (text, max = 18) => {
+  const str = String(text ?? "");
+  const chars = typeof Intl !== "undefined" && Intl.Segmenter
+    ? [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(str)].map((x) => x.segment)
+    : [...str];
+  return chars.length > max ? `${chars.slice(0, max - 1).join("")}…` : str;
+};
+
 export function TopicAvgChart({ topicStats }) {
+  // หมวดเยอะ → กราฟสูงขึ้นตาม ชื่อไม่ทับกัน
+  const height = Math.max(220, topicStats.length * 36);
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={height}>
       <BarChart data={topicStats} layout="vertical" barCategoryGap="20%">
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
         <ReferenceLine x={0.5} stroke="#f97316" strokeDasharray="4 3" strokeWidth={1.5} />
@@ -52,7 +63,8 @@ export function TopicAvgChart({ topicStats }) {
         <YAxis
           dataKey="topic"
           type="category"
-          width={100}
+          width={120}
+          tickFormatter={(v) => shortTopic(v)}
           tick={{ fontSize: 10, fill: "#475569" }}
           tickLine={false}
           axisLine={false}

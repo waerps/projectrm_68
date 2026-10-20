@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 import { useSearchParams } from "react-router-dom";
 // กราฟ recharts แยกไฟล์และโหลดแบบ lazy (ดู ExamAnalyticsCharts.jsx)
 const ScoreHistogramChart = lazy(() => import("./ExamAnalyticsCharts.jsx").then((m) => ({ default: m.ScoreHistogramChart })));
@@ -9,13 +10,14 @@ import {
   X, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
   Target, MessageCircle, Copy, Pencil, Check, Flame,
   PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
-  FileSpreadsheet, FileText,
+  FileSpreadsheet, FileText, Loader2, RotateCcw,
 } from "lucide-react";
 // ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import { fmtScore, PASS_PCT, isPassingScore, displayExamPercent } from "../utils/examScore";
 import { tutorExamAnalyticsApi, fetchAiSummaries, updateAiSummary, analyzeExamWithAi } from "../utils/examShared";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE } from "../components/ui/tokens";
+import { toast, confirmDialog } from "../components/ui/dialogs";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
@@ -641,20 +643,15 @@ function OverviewTab({ results, topicBreakdown, loading }) {
             </div>
           ) : (
             <>
-              <p className="text-xs text-slate-500 mb-3">คะแนนเฉลี่ยรายหมวดเทียบคะแนนเต็มของหมวดหมู่นั้น</p>
-              <div className="flex items-center gap-4 mb-4 flex-wrap">
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> คะแนนรายหมวด ≥70% ระดับดี
-                </span>
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-amber-400" /> คะแนนรายหมวด 50–69% พอใช้
-                </span>
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                  <span className="h-2 w-2 rounded-full bg-red-400" /> ควรทบทวน (คะแนนรายหมวดต่ำกว่า 50%)
-                </span>
-              </div>
-
               <Suspense fallback={<div className="h-[220px] animate-pulse rounded-xl bg-slate-50" aria-hidden="true" />}><TopicAvgChart topicStats={topicStats} /></Suspense>
+              {/* คำอธิบายสี — รูปแบบเดียวกับกราฟการกระจายคะแนนด้านซ้าย (สีตรงกับแท่งกราฟ) */}
+              <div className="flex gap-4 justify-center mt-2 flex-wrap">
+                {[["#ef4444", "0–49% ควรทบทวน"], ["#f97316", "50–69% พอใช้"], ["#22c55e", "70% ขึ้นไป ดี"]].map(([c, l]) => (
+                  <span key={l} className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: c }} />{l}
+                  </span>
+                ))}
+              </div>
 
               {topicStats.some(t => t.avgPct < 0.5) && (
                 <div className="mt-3 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
@@ -732,9 +729,8 @@ function StudentProgressTab({ crossExamData, selectedExamIndex, loading, onOpenS
           <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-orange-500/30 blur-3xl" />
           <div className="relative flex flex-col lg:flex-row lg:items-center gap-5">
             <div className="lg:w-56 flex-shrink-0">
-              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> นักเรียนที่พัฒนาสูงสุด</p>
-              <p className="text-lg font-bold mt-1 leading-snug">พัฒนาจากคะแนนเดิมของตนเองมากที่สุด</p>
-              <p className="text-[11px] text-slate-400 mt-1">เทียบรอบแรกที่สอบกับ {EXAMS_META[selectedExamIndex].label} ของแต่ละคน</p>
+              <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5"><Rocket className="h-4 w-4" /> คะแนนเพิ่มขึ้นสูงสุดในวิชานี้</p>
+              <p className="text-sm text-slate-300 mt-1">เทียบคะแนนรอบแรกกับ {EXAMS_META[selectedExamIndex].label} ของแต่ละคน</p>
             </div>
             <div className="grid sm:grid-cols-3 gap-3 flex-1">
               {rising.map((s, i) => {
@@ -1377,7 +1373,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                             <summary className={`list-none grid grid-cols-[1fr_auto] gap-3 items-center ${t.comment ? "cursor-pointer" : "cursor-default"}`} onClick={(e) => { if (!t.comment) e.preventDefault(); }}>
                               <span className="block min-w-0">
                                 <span className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 min-w-0">
-                                  <span className="block text-sm font-bold text-slate-800 truncate" title={t.topic}>{t.topic}</span>
+                                  <span className="block text-sm font-bold text-slate-800 line-clamp-2 break-words leading-snug" title={t.topic}>{t.topic}</span>
                                   {t.trend && (
                                     <span className={`flex-shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded-full ${dir === "up" ? "bg-emerald-100 text-emerald-700" : dir === "down" ? "bg-rose-100 text-rose-600" : "bg-slate-200 text-slate-600"}`}>ข้อสังเกตจาก Google Gemini ({aiModelName(aiRow)}): {t.trend}</span>
                                   )}
@@ -1676,18 +1672,32 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             <p className="tabular-nums text-3xl sm:text-4xl font-bold leading-none mt-2 drop-shadow-sm">
               <CountUp value={cmp.avgGain} /><span className="text-xl font-bold">%</span>
             </p>
-            <p className="text-sm text-white/90 mt-3">{cmp.fromLabel} → {cmp.toLabel} · จากนักเรียน <b>{cmp.cohortSize} คน</b> ที่สอบครบทุกรอบ</p>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <p className="text-sm font-semibold mt-3">{cmp.fromLabel} → {cmp.toLabel}</p>
+            <p className="text-xs text-white/85 mt-0.5">นักเรียนที่สอบครบทุกรอบ {cmp.cohortSize} คน</p>
+            {/* รายการสรุป — เรียงเป็นแถว ป้ายเล็กด้านบน ค่าอยู่ด้านล่าง ข้อความยาวก็ไม่ล้นแบบเม็ดยา */}
+            <ul className="mt-4 space-y-2">
               {best && best.delta > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Flame className="h-3.5 w-3.5" /> คะแนนรายหมวดเพิ่มมากสุด: {best.topic} {signed(best.delta)}</span>
+                <li className="flex items-start gap-2.5 rounded-xl bg-white/15 backdrop-blur px-3 py-2">
+                  <Flame className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block text-[11px] text-white/80">หมวดที่คะแนนเพิ่มมากสุด</span>
+                    <span className="block text-sm font-semibold leading-snug">{best.topic} <span className="tabular-nums">{signed(best.delta)}</span></span>
+                  </span>
+                </li>
               )}
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 backdrop-blur px-2.5 py-0.5 text-xs font-semibold"><Users className="h-3.5 w-3.5" /> ดีขึ้น {cmp.improved}/{cmp.cohortSize} คน</span>
-            </div>
+              <li className="flex items-start gap-2.5 rounded-xl bg-white/15 backdrop-blur px-3 py-2">
+                <Users className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[11px] text-white/80">นักเรียนที่คะแนนดีขึ้น</span>
+                  <span className="block text-sm font-semibold tabular-nums">{cmp.improved}/{cmp.cohortSize} คน</span>
+                </span>
+              </li>
+            </ul>
           </div>
           <div className="bg-white/10 rounded-2xl border border-white/20 backdrop-blur-sm p-3 overflow-x-auto sa-scroll">
             <JourneyChart roundAvg={cmp.roundAvg} />
             <p className="text-[11px] text-white/85 px-1">
-              คะแนนเฉลี่ยของกลุ่มเดียวกันทุกรอบ{cmp.excludedCount > 0 ? ` · ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ` : ""} และไม่นับผู้ที่ไม่ยินยอมให้ใช้ข้อมูลพฤติกรรม (ค่าจึงอาจต่างจากแท็บภาพรวม ซึ่งใช้ผู้ยินยอมของแต่ละรอบ)
+              คิดเฉพาะนักเรียนที่สอบครบทุกรอบ{cmp.excludedCount > 0 ? ` (ไม่นับ ${cmp.excludedCount} คนที่ขาดบางรอบ)` : ""} ตัวเลขจึงอาจไม่ตรงกับแท็บภาพรวม
             </p>
           </div>
         </div>
@@ -1725,7 +1735,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
               </div>
             ); })}
           </div>
-          <p className="text-[11px] text-slate-500 mt-3">เทียบคะแนนสอบ (% ของคะแนนเต็ม) ของแต่ละคนระหว่าง {cmp.fromLabel} กับ {cmp.toLabel} ไม่ได้เทียบกับเพื่อน</p>
+          <p className="text-[11px] text-slate-500 mt-3">เทียบคะแนนรายบุคคล {cmp.fromLabel} กับ {cmp.toLabel} (% ของคะแนนเต็ม)</p>
         </div>
 
         {/* ── ใครขยับไปเท่าไร ── */}
@@ -1766,8 +1776,8 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
             </div>
           </div>
           <div className="overflow-x-auto sa-scroll">
-            <div className="min-w-[520px] space-y-2">
-              <div className="grid gap-2 text-[11px] font-semibold text-slate-500 px-1" style={{ gridTemplateColumns: `10rem repeat(${cmp.labels.length}, 1fr) 9rem` }}>
+            <div className="min-w-[560px] space-y-2">
+              <div className="grid gap-2 text-[11px] font-semibold text-slate-500 px-1" style={{ gridTemplateColumns: `12rem repeat(${cmp.labels.length}, 1fr) 9rem` }}>
                 <span>หมวดหมู่</span>
                 {cmp.labels.map((l) => <span key={l} className="text-center">{l}</span>)}
                 <span className="text-right">คะแนนเปลี่ยนไป</span>
@@ -1777,11 +1787,12 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
                 const isBest = best && row.topic === best.topic && best.delta > 0 && !isWorst;
                 return (
                   <div key={row.topic} className={`grid gap-2 items-center rounded-2xl p-1 transition ${isWorst ? "bg-rose-50/70 ring-1 ring-rose-100" : isBest ? "bg-amber-50/80 ring-1 ring-amber-200" : "hover:bg-slate-50"}`}
-                    style={{ gridTemplateColumns: `10rem repeat(${cmp.labels.length}, 1fr) 9rem` }}>
+                    style={{ gridTemplateColumns: `12rem repeat(${cmp.labels.length}, 1fr) 9rem` }}>
                     <span className="text-sm font-semibold text-slate-700 flex items-center gap-1.5 pl-1 min-w-0">
                       {isWorst && <AlertTriangle className="h-3.5 w-3.5 text-rose-500 flex-shrink-0" />}
                       {isBest && <span className="sa-float inline-flex h-6 w-6 flex-shrink-0 rounded-lg bg-gradient-to-br from-amber-300 to-orange-500 text-white items-center justify-center shadow"><Trophy className="h-3.5 w-3.5" /></span>}
-                      <span className="truncate" title={row.topic}>{row.topic}</span>
+                      {/* ชื่อหมวดยาว → ขึ้นบรรทัดใหม่ได้ 2 บรรทัด เกินนั้นตัด … (ชี้ดูชื่อเต็มได้) */}
+                      <span className="min-w-0 line-clamp-2 break-words leading-snug" title={row.topic}>{row.topic}</span>
                     </span>
                     {row.values.map((v, k) => (
                       <span key={k} className={`tabular-nums h-11 rounded-xl flex items-center justify-center text-sm font-bold shadow-inner ${heatCell(v)}`}>{v != null ? `${Math.round(v * 100)}%` : "—"}</span>
@@ -2371,9 +2382,13 @@ export function ExamAnalyticsView({
   // หน้าต่างรายคนอยู่ระดับหน้า — เปิดได้ทั้งจากแท็บรายคนและจากกราฟในแท็บเปรียบเทียบ
   const [openStudentId, setOpenStudentId] = useState(initialStudentId);
 
+  // แคชผลวิเคราะห์ชุดล่าสุดใน sessionStorage — เปิดหน้าซ้ำแล้วเห็นข้อมูลทันที แล้วค่อยโหลดของใหม่มาแทนเบื้องหลัง
+  const cacheName = `exam-analytics:${api?.cacheScope || "tutor"}:${courseId}:${subjectId}`;
+  const [cached] = useState(() => readSessionCache(cacheName));
+
   // ── Step 1: รายชื่อ exam จริงจาก backend ─────────────────────────────────
-  const [examList, setExamList] = useState([]);
-  const [loadingExams, setLoadingExams] = useState(true);
+  const [examList, setExamList] = useState(() => cached?.examList || []);
+  const [loadingExams, setLoadingExams] = useState(() => !cached);
 
   const [examListError, setExamListError] = useState(false);
   const [examListReloadKey, setExamListReloadKey] = useState(0);
@@ -2383,21 +2398,27 @@ export function ExamAnalyticsView({
       return;
     }
     let cancelled = false;
-    setLoadingExams(true);
+    if (!cached) setLoadingExams(true);
     api
       .fetchExams()
-      .then((data) => { if (!cancelled) { setExamList(Array.isArray(data) ? data : []); setExamListError(false); } })
+      .then((data) => {
+        if (cancelled) return;
+        const next = Array.isArray(data) ? data : [];
+        // รายชื่อเหมือนในแคช → ไม่ต้องเปลี่ยน state (ไม่งั้นผลสอบจะถูกโหลดซ้ำอีกรอบ)
+        setExamList((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+        setExamListError(false);
+      })
       .catch((err) => { console.error("Fetch exam list failed:", err); if (!cancelled) setExamListError(true); })
       .finally(() => { if (!cancelled) setLoadingExams(false); });
     return () => { cancelled = true; };
-  }, [courseId, subjectId, api, examListReloadKey]);
+  }, [courseId, subjectId, api, examListReloadKey, cached]);
 
   // จับคู่ EXAMS_META (pre/mid/post) กับ examId จริงจาก backend ตามลำดับ type
   const realExamId = (id) => examList.find((e) => e.type === ["pre-test", "mid-test", "post-test"][id])?.id ?? null;
 
   // ── Step 2: ผลสอบจริงต่อรอบ ──────────────────────────────────────────────
-  const [examResults, setExamResults] = useState([null, null, null]); // ผลจริงของ pre/mid/post
-  const [loadingResults, setLoadingResults] = useState(true);
+  const [examResults, setExamResults] = useState(() => cached?.examResults || [null, null, null]); // ผลจริงของ pre/mid/post
+  const [loadingResults, setLoadingResults] = useState(() => !cached);
   // รอบที่โหลดผลไม่สำเร็จ — แยกจาก "ยังไม่มีผลสอบ" เพื่อไม่ให้ผู้ใช้เข้าใจผิด
   const [resultsErrors, setResultsErrors] = useState([false, false, false]);
 
@@ -2408,7 +2429,7 @@ export function ExamAnalyticsView({
     // ติวเตอร์เร็วๆ แล้ว request ของอันเก่า resolve ช้ากว่าอันใหม่ จะเผลอเอาผลลัพธ์เก่าทับผล
     // ลัพธ์ใหม่ที่โหลดเสร็จไปแล้ว ใช้ pattern เดียวกับ effect โหลด examList ด้านบน (cancelled flag)
     let cancelled = false;
-    setLoadingResults(true);
+    if (!cached) setLoadingResults(true);
     const errs = [false, false, false];
     Promise.all(
       [0, 1, 2].map((i) => {
@@ -2423,7 +2444,7 @@ export function ExamAnalyticsView({
     ).then((data) => { if (!cancelled) { setExamResults(data); setResultsErrors(errs); } })
       .finally(() => { if (!cancelled) setLoadingResults(false); });
     return () => { cancelled = true; };
-  }, [loadingExams, examList]);
+  }, [loadingExams, examList, cached]);
 
   // ลองโหลดผลสอบใหม่เฉพาะรอบที่ล้มเหลว
   const [retryingRound, setRetryingRound] = useState(null);
@@ -2444,7 +2465,7 @@ export function ExamAnalyticsView({
   };
 
   // ── Step 6: คะแนนรายหัวข้อจริงต่อรอบ (topic-breakdown) ───────────────────
-  const [topicResults, setTopicResults] = useState([null, null, null]); // topic-breakdown ของ pre/mid/post
+  const [topicResults, setTopicResults] = useState(() => cached?.topicResults || [null, null, null]); // topic-breakdown ของ pre/mid/post
   const [topicErrors, setTopicErrors] = useState([false, false, false]);
   const [topicReloadKey, setTopicReloadKey] = useState(0);
 
@@ -2471,7 +2492,7 @@ export function ExamAnalyticsView({
   // ดึงพร้อมกับข้อมูลรอบอื่นๆ ตั้งแต่โหลดหน้า ไม่ต้องรอกดเข้าแท็บไหนก่อน (แพทเทิร์นเดียวกับ
   // topicResults ด้านบน) — เดิมตอนยังมีแท็บ "ผล AI" แยก ปล่อยให้ AiSummaryPanel ดึงเองตอน
   // กดเข้าแท็บ แต่ตอนนี้ย้ายมาดึงรวมตรงนี้แทน เพื่อให้ StudentProgressModal ใช้ได้ทันที
-  const [aiSummaries, setAiSummaries] = useState([null, null, null]); // ผลวิเคราะห์ AI ของ pre/mid/post
+  const [aiSummaries, setAiSummaries] = useState(() => cached?.aiSummaries || [null, null, null]); // ผลวิเคราะห์ AI ของ pre/mid/post
   const [aiErrors, setAiErrors] = useState([false, false, false]);
   const [aiReloadKey, setAiReloadKey] = useState(0);
 
@@ -2494,6 +2515,12 @@ export function ExamAnalyticsView({
     return () => { cancelled = true; };
   }, [loadingExams, examList, aiReloadKey]);
 
+  // เก็บข้อมูลชุดล่าสุดลงแคชทุกครั้งที่โหลดเสร็จ
+  useEffect(() => {
+    if (loadingExams || loadingResults || examListError) return;
+    writeSessionCache(cacheName, { examList, examResults, topicResults, aiSummaries });
+  }, [cacheName, loadingExams, loadingResults, examListError, examList, examResults, topicResults, aiSummaries]);
+
   const examLabel = EXAMS_META[examId].label;
   const dataLoading = loadingExams || loadingResults;
   const verifiedAiCount = (aiSummaries[examId] || []).filter(isVerifiedAiSummary).length;
@@ -2512,10 +2539,28 @@ export function ExamAnalyticsView({
   // ไม่กระทบรอบอื่น — รีเฟรช aiSummaries เฉพาะ index ของรอบนั้นหลังวิเคราะห์เสร็จ
   const [reanalyzing, setReanalyzing] = useState(false);
   const [reanalyzeError, setReanalyzeError] = useState("");
+  // ตัวนับเวลาระหว่างรอ AI — ให้ผู้ใช้เห็นว่าระบบยังทำงานอยู่ ไม่ได้ค้าง
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!reanalyzing) return;
+    setElapsed(0);
+    const t0 = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [reanalyzing]);
 
   const handleReanalyze = async () => {
     const realId = realExamId(examId);
     if (!realId) return;
+    // มีข้อความถึงผู้ปกครองที่ผู้สอนแก้ไว้ → ถามก่อน เพราะวิเคราะห์ใหม่จะเขียนทับ
+    const editedCount = (aiSummaries[examId] || []).filter((r) => r?.teacherEdited).length;
+    if (editedCount > 0) {
+      const ok = await confirmDialog(
+        `มีข้อความถึงผู้ปกครองที่ผู้สอนแก้ไขไว้ ${editedCount} คน การวิเคราะห์ใหม่จะเขียนทับข้อความเหล่านี้ ต้องการดำเนินการต่อหรือไม่`,
+        { title: "วิเคราะห์ใหม่ด้วย AI", confirmText: "วิเคราะห์ใหม่", danger: true }
+      );
+      if (!ok) return;
+    }
     setReanalyzing(true);
     setReanalyzeError("");
     try {
@@ -2528,12 +2573,22 @@ export function ExamAnalyticsView({
       });
       setAiErrors((prev) => { const next = [...prev]; next[examId] = false; return next; });
       const notes = [];
-      if (res?.failed > 0) notes.push(`AI ประมวลผลสำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน กดวิเคราะห์ใหม่ด้วย AI เพื่อลองอีกครั้ง`);
-      if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในผลวิเคราะห์โดย AI ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
-      if (notes.length) setReanalyzeError(notes.join(" · "));
+      if (res?.failed > 0) notes.push(`สำเร็จ ${res.analyzed} คน ไม่สำเร็จ ${res.failed} คน`);
+      if (res?.withNumberWarnings > 0) notes.push(`มี ${res.withNumberWarnings} คนที่ตัวเลขในผลวิเคราะห์ไม่ตรงกับคะแนนจริง กรุณาตรวจสอบ`);
+      if (notes.length) {
+        setReanalyzeError(notes.join(" · "));
+        toast(`วิเคราะห์เสร็จบางส่วน\n${notes.join(" · ")}`, "warning");
+      } else {
+        const n = res?.analyzed ?? (Array.isArray(list) ? list.length : 0);
+        toast(`วิเคราะห์ด้วย AI เสร็จแล้ว${n ? ` ${n} คน` : ""}\nรอบ ${EXAMS_META[examId].label}`, "success");
+      }
     } catch (err) {
       console.error("Analyze failed:", err);
-      setReanalyzeError(err.response?.data?.message || "ประมวลผลด้วย AI ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const msg = err.code === "ECONNABORTED"
+        ? "AI ใช้เวลานานเกินกำหนด กรุณาลองใหม่อีกครั้ง"
+        : err.response?.data?.message || "ประมวลผลด้วย AI ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+      setReanalyzeError(msg);
+      toast(`วิเคราะห์ด้วย AI ไม่สำเร็จ\n${msg}`, "error");
     } finally {
       setReanalyzing(false);
     }
@@ -2642,12 +2697,37 @@ export function ExamAnalyticsView({
           <button
             onClick={handleReanalyze}
             disabled={reanalyzing || !examResults[examId]?.submittedCount}
-            className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 disabled:opacity-40 border border-orange-100 rounded-xl px-3 py-1.5 transition flex-shrink-0"
+            aria-busy={reanalyzing}
+            className={`flex items-center gap-1.5 text-xs font-semibold text-orange-700 hover:text-orange-800 bg-orange-50 hover:bg-orange-100 border border-orange-100 rounded-xl px-3 py-1.5 transition flex-shrink-0 ${reanalyzing ? "cursor-wait" : "disabled:opacity-40"}`}
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            {reanalyzing ? "กำลังประมวลผลด้วย AI…" : "วิเคราะห์ใหม่ด้วย AI"}
+            {reanalyzing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {reanalyzing
+              ? `กำลังวิเคราะห์${examResults[examId]?.submittedCount ? ` ${examResults[examId].submittedCount} คน` : ""}…`
+              : "วิเคราะห์ใหม่ด้วย AI"}
           </button>
-          {reanalyzeError && <p className="w-full text-[11px] text-amber-600">{reanalyzeError}</p>}
+
+          {/* ระหว่างรอ: แถบวิ่ง + เวลาที่ผ่านไป (backend ไม่ได้บอกความคืบหน้าเป็น % จึงใช้แถบแบบวิ่ง) */}
+          {reanalyzing && (
+            <div className="w-full" role="status" aria-live="polite">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-orange-100">
+                <div className="sa-indeterminate h-full w-2/5 rounded-full bg-gradient-to-r from-orange-400 to-amber-400" />
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500 tabular-nums">
+                AI กำลังวิเคราะห์ผลสอบ {examLabel} · ผ่านไป {elapsed} วินาที (ปกติใช้เวลาไม่เกิน 1–2 นาที)
+              </p>
+            </div>
+          )}
+
+          {/* เสร็จบางส่วน / ล้มเหลว — ค้างไว้พร้อมปุ่มลองอีกครั้ง (toast หายไปเอง แต่ข้อความนี้อยู่จนกว่าจะลองใหม่) */}
+          {!reanalyzing && reanalyzeError && (
+            <div className="w-full flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="min-w-0 flex-1">{reanalyzeError}</span>
+              <button type="button" onClick={handleReanalyze} className="inline-flex items-center gap-1 font-semibold underline hover:text-amber-900">
+                <RotateCcw className="h-3 w-3" /> ลองอีกครั้ง
+              </button>
+            </div>
+          )}
         </div>
       )}
 

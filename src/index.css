@@ -47,6 +47,10 @@ html, body {
 @keyframes sa-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes sa-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes sa-caret { 50% { opacity: 0; } }
+/* แถบรอแบบไม่รู้ความคืบหน้า — วิ่งซ้ายไปขวา (ใช้ตอนรอ AI ประมวลผล) */
+@keyframes sa-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+.sa-indeterminate { animation: sa-indeterminate 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sa-indeterminate { animation: none; transform: none; width: 100% !important; opacity: .5; } }
 .sa-rise { animation: sa-rise .5s ease both; }
 .sa-grow { transform-origin: left; animation: sa-grow .8s cubic-bezier(.2,.8,.2,1) both; }
 .sa-draw { stroke-dasharray: var(--len); animation: sa-draw 1.2s ease both; }

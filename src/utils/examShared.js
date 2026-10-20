@@ -283,23 +283,39 @@ export function tutorExamAnalyticsApi({ courseId, subjectId, adminId }) {
 //
 // ฝั่งแอดมินต้องส่ง tutorId ไปด้วยทุกครั้ง เพราะแถวข้อสอบผูกกับติวเตอร์เจ้าของ
 // และ backend จะเช็คว่า examId ที่ขอเป็นของ คอร์ส+วิชา+ติวเตอร์ ชุดนั้นจริง
+// request ที่เพิ่งยิงไป (ไม่เกิน 20 วินาที) ใช้ซ้ำได้ — ให้การโหลดล่วงหน้าตอนกดจากหน้าภาพรวม
+// กับการโหลดในหน้าวิเคราะห์ใช้ request เดียวกัน ไม่ยิงซ้ำ
+const recentGets = new Map();
+function sharedGet(url, params) {
+  const key = `${url}?${JSON.stringify(params)}`;
+  const hit = recentGets.get(key);
+  if (hit && Date.now() - hit.t < 20000) return hit.p;
+  const p = axios.get(url, { params, headers: authHeaders() }).then((r) => r.data);
+  p.catch(() => recentGets.delete(key)); // ล้มเหลว → ครั้งหน้ายิงใหม่
+  recentGets.set(key, { p, t: Date.now() });
+  return p;
+}
+
 export function adminExamAnalyticsApi({ courseId, subjectId, tutorId }) {
   const params = { courseId, subjectId, tutorId };
   const base = `${API_URL}/api/admin/progress`;
   return {
-    fetchExams: async () => {
-      const { data } = await axios.get(`${base}/exams`, { params, headers: authHeaders() });
-      return data;
-    },
-    fetchExamResults: async (examId) => {
-      const { data } = await axios.get(`${base}/exams/${examId}/results`, { params, headers: authHeaders() });
-      return data;
-    },
-    fetchTopicBreakdown: async (examId) => {
-      const { data } = await axios.get(`${base}/exams/${examId}/topic-breakdown`, { params, headers: authHeaders() });
-      return data;
-    },
+    cacheScope: `admin-${tutorId}`, // แยกแคชหน้าวิเคราะห์ตามติวเตอร์
+    fetchExams: () => sharedGet(`${base}/exams`, params),
+    fetchExamResults: (examId) => sharedGet(`${base}/exams/${examId}/results`, params),
+    fetchTopicBreakdown: (examId) => sharedGet(`${base}/exams/${examId}/topic-breakdown`, params),
   };
+}
+
+// เริ่มโหลดข้อมูลหน้าวิเคราะห์ตั้งแต่ตอนกด (ระหว่างที่โค้ดหน้าใหม่ยังโหลดอยู่)
+export function prefetchAdminExamAnalytics(ids) {
+  const api = adminExamAnalyticsApi(ids);
+  api.fetchExams()
+    .then((list) => (Array.isArray(list) ? list : []).forEach((e) => {
+      api.fetchExamResults(e.id).catch(() => {});
+      api.fetchTopicBreakdown(e.id).catch(() => {});
+    }))
+    .catch(() => {});
 }
 
 export async function fetchTopicBreakdown(examId) {

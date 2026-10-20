@@ -171,9 +171,9 @@ export default function PrivateCoursesPanel({ version = 0, onDataChanged, status
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-        <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} unit="คอร์ส" sub={`ทั้งหมด ${courses.length} คอร์ส`} />
-        <Stat icon={Layers} color="bg-blue-500" label="วิชาที่แสดงบนเว็บไซต์" value={stats.shownOffers} unit="วิชา" sub={`ซ่อนอยู่ ${offers.length - stats.shownOffers} วิชา`} />
-        <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} sub="รวมทุกคอร์สเดี่ยว" className="col-span-2 md:col-span-1" />
+        <Stat icon={BookOpen} color="bg-orange-500" label="กำลังเรียน" value={stats.active} unit="คอร์ส" />
+        <Stat icon={Layers} color="bg-blue-500" label="วิชาที่แสดงบนเว็บไซต์" value={stats.shownOffers} unit="วิชา" />
+        <Stat icon={Wallet} color="bg-amber-500" label="ยอดค้างชำระ" value={money(stats.outstanding)} className="col-span-2 md:col-span-1" />
       </div>
 
       {/* แถวเดียว: สลับแท็บ (ซ้าย) · ค้นหา (กลาง ใช้ได้ทั้งสองแท็บ) · ปุ่มเพิ่ม (ขวา) */}

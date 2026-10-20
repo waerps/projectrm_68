@@ -10,6 +10,7 @@ import {
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 
 const API_BASE = `${API_URL}/api/admin/dashboard`;
@@ -1053,18 +1054,20 @@ function FacilitiesCard({ facilities, onNavigate }) {
 /* ─── Main Component ──────────────────────────────────────────────────── */
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // แสดงข้อมูลชุดล่าสุดจากแคชทันที แล้วโหลดของใหม่มาแทนเบื้องหลัง
+  const [data, setData] = useState(() => readSessionCache("admin-dashboard"));
+  const [loading, setLoading] = useState(() => !readSessionCache("admin-dashboard"));
   const [error, setError] = useState(null);
   const [nowMin, setNowMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    if (!readSessionCache("admin-dashboard")) setLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem("student_token");
       const res = await axios.get(`${API_BASE}/summary`, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
       setData(res.data);
+      writeSessionCache("admin-dashboard", res.data);
     } catch (e) {
       setError(e.response?.data?.message || "โหลดข้อมูลแดชบอร์ดไม่สำเร็จ");
     } finally {
@@ -1132,7 +1135,13 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="space-y-6 px-4 lg:px-0">
-        <Skeleton className="h-64 w-full rounded-3xl" />
+        <div className="relative">
+          <Skeleton className="h-64 w-full rounded-3xl" />
+          <div role="status" className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-slate-600">
+            <span className="h-9 w-9 animate-spin rounded-full border-4 border-orange-200 border-t-orange-600" aria-hidden="true" />
+            <span className="text-sm font-medium">กำลังโหลดข้อมูลภาพรวม...</span>
+          </div>
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}</div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4"><Skeleton className="h-[420px]" /><Skeleton className="h-[420px]" /></div>
       </div>

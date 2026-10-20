@@ -70,7 +70,7 @@ const ROUTES = [
   ["^/admin/profile", [A, "pageadmin/AdminProfile.jsx"]],
   ["^/admin/incidents", [A, "pageadmin/AdminIncidents.jsx"]],
   ["^/admin/progress", [A, "pageadmin/AdminProgressOverview.jsx"]],
-  ["^/admin/exam-analytics", [A, "pageadmin/AdminExamAnalytics.jsx"]],
+  ["^/admin/exam-analytics", [A, "pageadmin/AdminExamAnalytics.jsx", "pagetutor/TutorExamAnalytics.jsx"]],
 ];
 
 export default function routePreload() {

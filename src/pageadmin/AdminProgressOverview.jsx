@@ -14,6 +14,7 @@ import PageHeader from "../components/ui/PageHeader";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import { BarChart3 as LuBarChart3 } from "lucide-react";
 import Spinner from "../components/ui/Spinner";
+import { prefetchAdminExamAnalytics } from "../utils/examShared";
 import ErrorState from "../components/ui/ErrorState";
 import ClearFiltersButton from "../components/ui/ClearFiltersButton";
 
@@ -150,7 +151,8 @@ export default function AdminProgressOverview() {
   const [filterSubject, setFilterSubject] = useState(presetSubjectId || "all");
   const [filterTutor, setFilterTutor] = useState(presetTutorId || "all");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("newest");
+  // ตัวเลือกเรียงลำดับถูกเอาออกจากหน้าแล้ว — เรียงตามคอร์สที่เริ่มเรียนล่าสุดเสมอ
+  const sortBy = "newest";
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -212,9 +214,9 @@ export default function AdminProgressOverview() {
     return list;
   }, [presetRows, search, filterStatus]);
 
-  const hasFilter = search.trim() !== "" || filterSubject !== "all" || filterTutor !== "all" || filterStatus !== "all" || sortBy !== "newest";
+  const hasFilter = search.trim() !== "" || filterSubject !== "all" || filterTutor !== "all" || filterStatus !== "all";
   const clearFilters = () => {
-    setSearch(""); setFilterSubject("all"); setFilterTutor("all"); setFilterStatus("all"); setSortBy("newest"); setPage(1);
+    setSearch(""); setFilterSubject("all"); setFilterTutor("all"); setFilterStatus("all"); setPage(1);
   };
 
   // สรุปพัฒนาการ — ใช้เฉพาะตัวเลขที่ /overview คืนมาแล้ว (pre/post avgPct, growth, improvement)
@@ -278,6 +280,7 @@ export default function AdminProgressOverview() {
     });
     // ส่งต้นทางต่อไปด้วย breadcrumb หน้าถัดไปจะได้ลากกลับได้ถึงจุดเริ่ม
     if (cameFrom) params.set("from", cameFrom);
+    prefetchAdminExamAnalytics({ courseId: String(row.courseId), subjectId: String(row.subjectId), tutorId: String(row.tutorId) });
     navigate(`/admin/exam-analytics?${params.toString()}`);
   }, [navigate, cameFrom]);
 
@@ -307,13 +310,11 @@ export default function AdminProgressOverview() {
           <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-100 text-orange-700 px-2.5 py-1 text-[11px] font-bold">
             <LuBarChart3 className="h-3.5 w-3.5" /> ข้อมูลผลสอบล่าสุด
           </span>
-          <h2 className="mt-2 flex items-center gap-1.5 text-lg font-bold text-slate-900">
-            สรุปพัฒนาการ
-            <button type="button" title="เปรียบเทียบคะแนน Pre-test และ Post-test แยกตามคอร์ส วิชา และติวเตอร์" aria-label="คำอธิบายสรุปพัฒนาการ" className="rounded-full text-slate-400 hover:text-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-300">
-              <CircleHelp className="h-4 w-4" />
-            </button>
-          </h2>
-          {presetLabel && <p className={PAGE_SUBTITLE}>กรองเฉพาะ {presetLabel}</p>}
+          <h2 className="mt-2 text-lg font-bold text-slate-900">สรุปพัฒนาการ</h2>
+          <p className={PAGE_SUBTITLE}>
+            เปรียบเทียบคะแนน Pre-test กับ Post-test ของนักเรียนในแต่ละคอร์ส
+            {presetLabel && <> · กรองเฉพาะ {presetLabel}</>}
+          </p>
         </div>
       </div>
 
@@ -374,12 +375,6 @@ export default function AdminProgressOverview() {
             <option value="comparable">เทียบ Pre/Post ได้แล้ว</option>
             <option value="partial">มีผลสอบบางส่วน</option>
             <option value="none">ยังไม่มีผลสอบ</option>
-          </select>
-          <select value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1); }} aria-label="เรียงลำดับ" className={SELECT_CLASS}>
-            <option value="newest">เริ่มเรียนล่าสุด</option>
-            <option value="oldest">เริ่มเรียนเก่าสุด</option>
-            <option value="name">ชื่อคอร์ส ก–ฮ</option>
-            <option value="students">นักเรียนมากสุด</option>
           </select>
         </div>
         <div className="text-xs text-slate-500 mt-2 pl-1 flex items-center justify-between gap-2">
