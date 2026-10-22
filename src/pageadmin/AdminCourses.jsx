@@ -28,6 +28,7 @@ import SegmentedControl from "../components/ui/SegmentedControl";
 import PageHeader from "../components/ui/PageHeader";
 import { UsersRound as LuUsersRound, UserRoundCheck as LuUserRoundCheck } from "lucide-react";
 import PrivateCoursesPanel from "./AdminPrivateCourses";
+import { levelTypeOf, estimateBundleTutorCost } from "../utils/tutorRates";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const API_BASE = `${API_URL}/api/admin`;
@@ -750,7 +751,7 @@ function RateInlineEdit({ tutorRate, studentRate, onSave, onCancel }) {
 }
 
 // ─── ฟอร์มเพิ่มวิชา+ติวเตอร์ (ใช้ร่วมกันทั้งตอนสร้างและแก้ไขคอร์ส) ──────────────
-function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOptions, onAdd, onCancel, totalCourseHours, busy }) {
+function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOptions, onAdd, onCancel, totalCourseHours, busy, showRates = true }) {
   const ready = !!newRow.SubjectId;
   const lossPerHour = Number(newRow.TutorRatePerHourOverride || 0) - Number(newRow.StudentRatePerHourOverride || 0);
   const labelCls = "block text-xs font-medium text-slate-600 mb-1";
@@ -784,14 +785,15 @@ function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOption
                 setNewRow(r => ({
                   ...r,
                   AdminId: adminId,
-                  TutorRatePerHourOverride: r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? ""),
+                  // ค่าเริ่มต้นจาก "เรทตั้งต้นคอร์สเดี่ยว" ของติวเตอร์ — ใช้เฉพาะคอร์สเดี่ยว
+                  TutorRatePerHourOverride: showRates ? (r.TutorRatePerHourOverride || (tutor?.RatePerTutors ?? "")) : "",
                 }));
               }}
             />
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className={`grid grid-cols-1 gap-3 ${showRates ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <div>
           <label className={labelCls}>ชั่วโมง</label>
           <input
@@ -806,6 +808,7 @@ function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOption
             className={INPUT}
           />
         </div>
+        {showRates ? <>
         <div>
           <label className={labelCls}>เรทปัจจุบัน/ชม.</label>
           <input
@@ -826,9 +829,14 @@ function SubjectAddForm({ newRow, setNewRow, allSubjects, allTutors, tutorOption
             className={INPUT}
           />
         </div>
+        </> : (
+          <p className="flex items-center gap-1.5 self-end pb-2 text-xs text-slate-500">
+            <Info className="h-3.5 w-3.5 shrink-0" /> ค่าสอนคอร์สรวมใช้เรทสถาบัน (ระดับชั้น + จำนวนนักเรียนที่มา)
+          </p>
+        )}
       </div>
 
-      {!isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
+      {showRates && !isValidRatePair(newRow.TutorRatePerHourOverride, newRow.StudentRatePerHourOverride) && (
         <p className="text-xs text-red-600 flex items-center gap-1">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> เรทใหม่ต่ำกว่าเรทติวเตอร์ ขาดทุน {lossPerHour.toFixed(0)} บาท/ชม.
         </p>
@@ -869,7 +877,7 @@ function HoursSuggestionBar({ remaining, perItem, onApply, busy }) {
   );
 }
 
-function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned }) {
+function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursChange, onSubjectCountChange, totalCourseHours, monthsSpanned, showRates = true }) {
   const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [allSubjects, setAllSubjects] = useState([]);
@@ -1141,6 +1149,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
         tutorOptions={tutorOptions}
         onAdd={handleAdd}
         totalCourseHours={totalCourseHours}
+        showRates={showRates}
       />
 
       {hasSuggestion && (
@@ -1215,7 +1224,9 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              {editingRateId === s.TutorCourseDetailId ? (
+              {!showRates ? (
+                <span className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-500">ค่าสอน: เรทสถาบัน</span>
+              ) : editingRateId === s.TutorCourseDetailId ? (
                 <RateInlineEdit
                   tutorRate={s.TutorRatePerHourOverride}
                   studentRate={s.StudentRatePerHourOverride}
@@ -2078,12 +2089,18 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     const rate = Number(it.StudentRatePerHourOverride || it.TutorRatePerHourOverride || 0);
     return sum + Number(it.TotalHours || 0) * rate;
   }, 0);
-  const totalTutorCost = isEdit ? existingSubjectsCost : pendingTotalCost;
+  const isSingleCourse = form.Course_Type === "single";
   const currentStudentCount = isEdit ? existingStudentCount : pendingStudents.length;
   const tutorCount = isEdit ? existingTutorCount : pendingSubjects.length;
   const addedSubjectHours = isEdit
     ? existingSubjectsHours
     : pendingSubjects.reduce((sum, it) => sum + Number(it.TotalHours || 0), 0);
+  // ต้นทุนติวเตอร์: คอร์สเดี่ยว = เรทที่ตั้งในคอร์ส × ชั่วโมง / คอร์สรวม = เรทสถาบัน × (ชั่วโมง ÷ 1.5)
+  // คอร์สรวมประเมินที่ "นักเรียนมาครบตามที่นั่ง" (ถ้าไม่ได้กรอกที่นั่ง ใช้จำนวนที่ลงทะเบียนแล้ว)
+  const costLevelType = levelTypeOf(gradeLevelOptions.find((g) => String(g.GradeLevelId) === String(form.GradeLevelId))?.GradeDetail, form.CourseName);
+  const costStudents = Number(form.MaxStudents) > 0 ? Number(form.MaxStudents) : currentStudentCount;
+  const bundleEstimate = estimateBundleTutorCost(addedSubjectHours, costLevelType, costStudents);
+  const totalTutorCost = isSingleCourse ? (isEdit ? existingSubjectsCost : pendingTotalCost) : bundleEstimate.cost;
   const targetCourseHours = Number(form.TotalCourseHours || 0);
   const hoursDiff = targetCourseHours - addedSubjectHours;
   const hoursMismatch = targetCourseHours > 0 && Math.abs(hoursDiff) > 0.01;
@@ -2353,7 +2370,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     {form.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}
                   </div>
                 </FormField>
-                <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้กรองข้อสอบจากคลัง ไม่จำกัดผู้สมัคร">
+                <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้กรองข้อสอบจากคลัง และใช้เลือกเรทค่าสอนสถาบัน (ประถม/มัธยม) ไม่จำกัดผู้สมัคร">
                   <select
                     value={form.GradeLevelId ?? ""}
                     onChange={(e) => set("GradeLevelId", e.target.value === "" ? "" : Number(e.target.value))}
@@ -2478,6 +2495,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                   onSubjectCountChange={setExistingTutorCount}
                   totalCourseHours={Number(form.TotalCourseHours || 0)}
                   monthsSpanned={monthsSpanned}
+                  showRates={isSingleCourse}
                 />
                 : <PendingSubjectPicker
                   items={pendingSubjects}
@@ -2485,6 +2503,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                   showToast={showToast}
                   totalCourseHours={Number(form.TotalCourseHours || 0)}
                   monthsSpanned={monthsSpanned}
+                  showRates={isSingleCourse}
                 />}
             </FormSection>
 
@@ -2503,7 +2522,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                   </div>
                 </div>
                 <p className="px-4 py-2 text-[11px] text-slate-500 border-t border-slate-100">
-                  คิดเฉพาะค่าติวเตอร์ · ดูกำไรได้ที่ขั้น “ราคาและที่นั่ง”
+                  {isSingleCourse
+                    ? "คิดจากเรทติวเตอร์ที่ตั้งในคอร์ส × ชั่วโมง"
+                    : `ประมาณจากเรทสถาบัน${costLevelType === "elementary" ? "ประถม" : "มัธยม"} คาบละ ${bundleEstimate.rate} บาท ถ้านักเรียนมาครบ ${costStudents || 0} คน · ค่าสอนจริงขึ้นกับจำนวนที่มาเรียนแต่ละคาบ`}
+                  {" "}· คิดเฉพาะค่าติวเตอร์ · ดูกำไรได้ที่ขั้น “ราคาและที่นั่ง”
                 </p>
               </div>
             )}
@@ -2916,7 +2938,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
 }
 
 // ─── Pending Subject Picker (สำหรับเลือกวิชาก่อนสร้างคอร์ส) ───────────────────
-function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, monthsSpanned }) {
+function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, monthsSpanned, showRates = true }) {
   const [allSubjects, setAllSubjects] = useState([]);
   const [allTutors, setAllTutors] = useState([]);
   const [newRow, setNewRow] = useState({ SubjectId: "", AdminId: "", TotalHours: "", TutorRatePerHourOverride: "", StudentRatePerHourOverride: "" });
@@ -3015,6 +3037,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
         tutorOptions={tutorOptions}
         onAdd={add}
         totalCourseHours={totalCourseHours}
+        showRates={showRates}
       />
 
       {hasSuggestion && (
@@ -3057,7 +3080,9 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
             </div>
 
             <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              {editingRateIndex === idx ? (
+              {!showRates ? (
+                <span className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-500 shrink-0">ค่าสอน: เรทสถาบัน</span>
+              ) : editingRateIndex === idx ? (
                 <RateInlineEdit
                   tutorRate={it.TutorRatePerHourOverride}
                   studentRate={it.StudentRatePerHourOverride}

@@ -3,7 +3,7 @@ import Spinner from "../components/ui/Spinner";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2, Search } from 'lucide-react';
+import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2, Search, ShieldCheck } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
@@ -17,6 +17,8 @@ const meta={
   schedule:{label:'ตารางสอน',Icon:Calendar,accent:'border-orange-400',bg:'bg-orange-50',text:'text-orange-700',border:'border-orange-200'},
   alert:{label:'ต้องจัดการ',Icon:AlertCircle,accent:'border-red-400',bg:'bg-red-50',text:'text-red-700',border:'border-red-200'},
   success:{label:'สำเร็จ',Icon:CheckCircle,accent:'border-teal-400',bg:'bg-teal-50',text:'text-teal-700',border:'border-teal-200'},
+  // เรื่องที่มีคนแจ้งเกี่ยวกับติวเตอร์ — แอดมินเป็นผู้ดูแล ติวเตอร์แค่รับทราบ (ไม่ใช่งานค้าง)
+  admin_review:{label:'รอแอดมินตรวจสอบ',Icon:ShieldCheck,accent:'border-slate-300',bg:'bg-slate-100',text:'text-slate-700',border:'border-slate-200'},
   release:{label:'คาบสอนแทน',Icon:Repeat2,accent:'border-blue-400',bg:'bg-blue-50',text:'text-blue-700',border:'border-blue-200'},
 };
 const fallbackMeta = {label:'',Icon:Bell,accent:'border-slate-300',bg:'bg-slate-100',text:'text-slate-600',border:'border-slate-200'};

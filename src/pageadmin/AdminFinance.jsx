@@ -9,7 +9,7 @@ import {
     Target, Wallet, BarChart3,
     Clock, CheckCircle, AlertCircle, XCircle, Banknote,
     Receipt, User, Phone, ChevronLeft, ChevronRight, PieChart,
-    Loader2, RefreshCw, FileText, Inbox,
+    Loader2, RefreshCw, FileText, Inbox, Plus,
 } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
@@ -466,6 +466,7 @@ export default function AdminFinance() {
     const [tutorError, setTutorError] = useState(null);
     const [payoutItem, setPayoutItem] = useState(null);
     const [tutorDetailItem, setTutorDetailItem] = useState(null);
+    const [extraOpen, setExtraOpen] = useState(false);
 
     /* filters state */
     const [searchInput, setSearchInput] = useState(urlParams.get('q') || '');
@@ -870,9 +871,16 @@ export default function AdminFinance() {
                                         <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
                                     ))}
                                 </select>
-                            </> : <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
-                                <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
-                            </select>}
+                            </> : <>
+                                <select value={tutorStatus} onChange={e => setTutorStatus(e.target.value)} className={`h-10 px-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none ${T.transition}`}>
+                                    <option value="all">ค้างจ่ายและจ่ายแล้ว</option><option value="unpaid">รอโอน</option><option value="paid">จ่ายแล้ว</option>
+                                </select>
+                                {/* โอนเพิ่มที่ไม่ใช่ค่าสอนรายคาบ เช่น ค่าเดินทาง/โบนัส — แยกจากใบจ่ายค่าสอน */}
+                                <button type="button" onClick={() => setExtraOpen(true)}
+                                    className={`h-10 px-3 inline-flex items-center justify-center gap-1.5 rounded-xl border border-orange-200 bg-white text-orange-700 text-sm font-bold hover:bg-orange-50 ${T.transition}`}>
+                                    <Plus className="h-4 w-4" /> บันทึกโอนเพิ่ม
+                                </button>
+                            </>}
                         </div>
                         {filtersError && (
                             <div className="flex items-center gap-2 mt-2 text-xs text-red-500">
@@ -964,14 +972,14 @@ export default function AdminFinance() {
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
                                                     <p className="font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">{item.tutorName}<TypeMixBadge typeMix={item.typeMix} /></p>
-                                                    <p className={T.caption}>{item.period || '—'} · {item.sessionCount} คาบ</p>
+                                                    <p className={T.caption}>{item.period || '—'} · {item.kind === 'extra' ? 'โอนเพิ่ม' : `${item.sessionCount} คาบ`}</p>
                                                 </div>
                                                 <p className="shrink-0 font-bold text-slate-900">{formatMoney(item.amount)}</p>
                                             </div>
                                             <p className={`${T.caption} mt-1 line-clamp-2`}>{item.courses.join(', ')}</p>
                                             <div className="mt-2 flex items-center justify-between gap-2">
                                                 <p className="text-xs text-slate-600 min-w-0 truncate">{item.bankName || 'ข้อมูลไม่ครบ'} · {item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p>
-                                                <StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} />
+                                                <StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : item.blockReason ? 'รอตั้งเรท' : 'กำลังสะสม'} />
                                             </div>
                                             <div className="mt-auto pt-3">
                                                 <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
@@ -982,7 +990,7 @@ export default function AdminFinance() {
                                                     <div className="flex-1 flex justify-end">
                                                         {item.status === 'unpaid' ? (item.canPay
                                                             ? <button onClick={() => setPayoutItem(item)} className="h-10 px-4 bg-orange-500 text-white rounded-xl text-xs font-bold">บันทึกการโอน</button>
-                                                            : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
+                                                            : <span className={`${T.caption} ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.missingRateCourses?.join(', ') || undefined}>{item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : 'จ่ายได้วันสิ้นเดือน'}</span>)
                                                             : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="h-10 px-3 flex items-center text-orange-600 text-xs font-bold">ดูสลิป</a> : null}
                                                     </div>
                                                 </div>
@@ -1006,10 +1014,10 @@ export default function AdminFinance() {
                                                         <span className="flex items-center gap-1.5">{item.tutorName}<TypeMixBadge typeMix={item.typeMix} /></span>
                                                     </td>
                                                     <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
-                                                    <td className="px-4 py-3 whitespace-nowrap lg:whitespace-normal">{item.sessionCount} คาบ</td>
+                                                    <td className="px-4 py-3 whitespace-nowrap lg:whitespace-normal">{item.kind === 'extra' ? 'โอนเพิ่ม' : `${item.sessionCount} คาบ`}</td>
                                                     <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
                                                     <td className="px-4 py-3 min-w-[140px] lg:min-w-0"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
-                                                    <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : 'กำลังสะสม'} /></td>
+                                                    <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : item.blockReason ? 'รอตั้งเรท' : 'กำลังสะสม'} /></td>
                                                     <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                                         <div className="flex items-center justify-end gap-2">
                                                             <button
@@ -1021,7 +1029,7 @@ export default function AdminFinance() {
                                                             </button>
                                                             {item.status === 'unpaid' ? (item.canPay
                                                                 ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
-                                                                : <span className={T.caption}>จ่ายได้วันสิ้นเดือน</span>)
+                                                                : <span className={`${T.caption} ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.missingRateCourses?.join(', ') || undefined}>{item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : 'จ่ายได้วันสิ้นเดือน'}</span>)
                                                                 : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}
                                                         </div>
                                                     </td>
@@ -1048,6 +1056,7 @@ export default function AdminFinance() {
             )}
             {payoutItem && <TutorPayoutModal item={payoutItem} onClose={() => setPayoutItem(null)} onSuccess={() => { fetchTutorPayables(); fetchSummary(); fetchMonthly(); }} />}
             {tutorDetailItem && <TutorPaymentDetailModal item={tutorDetailItem} onClose={() => setTutorDetailItem(null)} />}
+            {extraOpen && <TutorExtraPaymentModal onClose={() => setExtraOpen(false)} onSuccess={() => { fetchTutorPayables(); fetchSummary(); fetchMonthly(); }} />}
         </div>
     );
 }
@@ -1168,11 +1177,33 @@ function TutorPaymentDetailModal({ item, onClose }) {
                             <p className={`mt-1 ${STAT_VALUE}`}>{item.sessionCount}<span className={STAT_UNIT}>คาบ</span></p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                            <p className={T.label}>เรทในโปรไฟล์ติวเตอร์</p>
-                            <p className={`mt-1 ${STAT_VALUE}`}>{item.profileRate != null ? <>{Number(item.profileRate).toLocaleString('th-TH')}<span className={STAT_UNIT}>บาท/ชม.</span></> : 'ไม่ได้ระบุ'}</p>
+                            {/* เดิมแสดง "เรทในโปรไฟล์ติวเตอร์" ซึ่งไม่ได้ใช้คิดยอดนี้ — แสดงวิธีคิดจริงแทน */}
+                            <p className={T.label}>วิธีคิดค่าสอน</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-800">
+                                {item.kind === 'extra' ? 'โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ)'
+                                    : item.typeMix === 'single' ? 'คอร์สเดี่ยว: เรทที่ตั้งในคอร์ส × ชั่วโมง'
+                                    : item.typeMix === 'mixed' ? 'คอร์สรวมใช้เรทสถาบัน · คอร์สเดี่ยวใช้เรทของคอร์ส'
+                                    : 'คอร์สรวม: เรทสถาบันตามระดับชั้นและจำนวนนักเรียนที่มา'}
+                            </p>
                         </div>
                     </div>
-                    <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                    {Array.isArray(item.extras) && item.extras.length > 0 && (
+                        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm">
+                            <p className="font-bold text-amber-800">โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ)</p>
+                            {item.kind !== 'extra' && (
+                                <p className="mt-1 text-xs text-amber-800">ยอดโอนใบนี้ {formatMoney(item.amount)} = ค่าสอนรายคาบ {formatMoney(item.sessionsAmount || 0)} + โอนเพิ่ม {formatMoney(item.extras.reduce((sum, e) => sum + e.amount, 0))}</p>
+                            )}
+                            <ul className="mt-2 space-y-1.5">
+                                {item.extras.map(e => (
+                                    <li key={e.extraPaymentId} className="flex flex-wrap items-baseline justify-between gap-2">
+                                        <span className="text-slate-700"><b>{e.categoryLabel}</b> · {e.reason}</span>
+                                        <span className="font-bold text-amber-800 tabular-nums">{formatMoney(e.amount)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                    {item.kind !== 'extra' && <div className="overflow-x-auto rounded-2xl border border-slate-200">
                         <table className="w-full min-w-[900px] text-sm">
                             <thead className="bg-slate-50 text-xs text-slate-500">
                                 <tr>
@@ -1203,7 +1234,10 @@ function TutorPaymentDetailModal({ item, onClose }) {
                                         <td className="px-4 py-3 text-center">{Number(session.durationHours).toFixed(1)} ชม.</td>
                                         <td className="px-4 py-3 text-center">{Number(session.ratePerSession).toLocaleString('th-TH')} บาท/1.5 ชม.</td>
                                         <td className="px-4 py-3 text-xs text-slate-500">{Number(session.ratePerSession).toLocaleString('th-TH')} × ({Number(session.durationHours).toFixed(1)} ÷ 1.5)</td>
-                                        <td className="px-4 py-3 text-right font-bold text-orange-600">{formatMoney(session.earnedAmount)}</td>
+                                        <td className="px-4 py-3 text-right font-bold text-orange-600">
+                                            {session.rateMissing ? <span className="text-amber-700">ยังไม่ได้ตั้งเรท</span> : formatMoney(session.earnedAmount)}
+                                            {session.isSnapshot && <span className="block text-[11px] font-medium text-slate-500">ยอดที่บันทึกตอนจ่าย</span>}
+                                        </td>
                                     </tr>
                                 ))}
                                 {!sessions.length && (
@@ -1211,11 +1245,85 @@ function TutorPaymentDetailModal({ item, onClose }) {
                                 )}
                             </tbody>
                         </table>
-                    </div>
+                    </div>}
                 </div>
             </div>
         </div>
     );
+}
+
+/* ─── โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ) — ต้องมีประเภท เหตุผล และสลิป ─────────── */
+const EXTRA_CATEGORIES = [
+    ['travel', 'ค่าเดินทาง'], ['bonus', 'โบนัส'], ['adjustment', 'ปรับยอด'], ['other', 'อื่น ๆ'],
+];
+function TutorExtraPaymentModal({ onClose, onSuccess }) {
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+    const [tutors, setTutors] = useState([]);
+    const [form, setForm] = useState({ adminId: '', amount: '', category: 'travel', reason: '', paymentDate: today });
+    const [slip, setSlip] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    useEffect(() => {
+        axios.get(`${API_URL}/api/admin/tutors`)
+            .then(r => setTutors((Array.isArray(r.data) ? r.data : [])))
+            .catch(() => setError('โหลดรายชื่อติวเตอร์ไม่สำเร็จ'));
+    }, []);
+    const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+    const submit = async (e) => {
+        e.preventDefault(); setError('');
+        if (!form.adminId) return setError('กรุณาเลือกติวเตอร์');
+        if (!(Number(form.amount) > 0)) return setError('กรุณาระบุยอดเงินมากกว่า 0');
+        if (form.reason.trim().length < 3) return setError('กรุณาระบุเหตุผล');
+        if (!slip) return setError('กรุณาแนบสลิปการโอนเงิน');
+        const data = new FormData();
+        Object.entries(form).forEach(([k, v]) => data.append(k, k === 'reason' ? v.trim() : v));
+        data.append('slip', slip);
+        setSaving(true);
+        try {
+            await axios.post(`${API_URL}/api/admin/tutor-extra-payments`, data);
+            onSuccess(); onClose();
+        } catch (err) { setError(err.response?.data?.message || 'บันทึกการโอนเพิ่มไม่สำเร็จ'); }
+        finally { setSaving(false); }
+    };
+    const inp = "w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:border-transparent outline-none transition";
+    return <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
+        <form onSubmit={submit} className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500">
+                <h3 className="flex items-center gap-2.5 text-base font-bold text-white">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/20"><Plus className="h-4 w-4 text-white" /></span>
+                    บันทึกโอนเพิ่มให้ติวเตอร์
+                </h3>
+                <button aria-label="ปิด" type="button" onClick={onClose} className={`p-1.5 rounded-xl text-white/70 hover:bg-white/20 hover:text-white ${T.transition} min-h-10 min-w-10 inline-flex items-center justify-center`}><X className="h-5 w-5" /></button>
+            </div>
+            <p className="px-4 sm:px-6 pt-3 text-xs text-slate-500">ใช้กับเงินที่ไม่ใช่ค่าสอนรายคาบ เช่น ค่าเดินทาง หรือโบนัส — ค่าสอนรายคาบให้บันทึกผ่านปุ่ม "บันทึกการโอน" ของรอบนั้น</p>
+            <div className="p-4 sm:p-6 space-y-4">
+                <label className="block"><span className={T.label}>ติวเตอร์ *</span>
+                    <select required value={form.adminId} onChange={set('adminId')} className={`mt-1 ${inp}`}>
+                        <option value="">เลือกติวเตอร์</option>
+                        {tutors.map(t => <option key={t.AdminId} value={t.AdminId}>{t.Nickname ? `${t.Nickname} (${t.Firstname || ''} ${t.Lastname || ''})`.trim() : `${t.Firstname || ''} ${t.Lastname || ''}`.trim()}</option>)}
+                    </select>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                    <label className="block"><span className={T.label}>ยอดเงิน (บาท) *</span><input required type="number" min="1" max="100000" step="0.01" value={form.amount} onChange={set('amount')} className={`mt-1 ${inp}`} /></label>
+                    <label className="block"><span className={T.label}>วันที่โอน *</span><input required type="date" max={today} value={form.paymentDate} onChange={set('paymentDate')} className={`mt-1 ${inp}`} /></label>
+                </div>
+                <label className="block"><span className={T.label}>ประเภท *</span>
+                    <select value={form.category} onChange={set('category')} className={`mt-1 ${inp}`}>
+                        {EXTRA_CATEGORIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                </label>
+                <label className="block"><span className={T.label}>เหตุผล *</span><textarea required maxLength={500} rows={3} value={form.reason} onChange={set('reason')} placeholder="เช่น ค่าเดินทางไปสอนนอกสถานที่ 3 ครั้ง เดือน ต.ค." className={`mt-1 ${inp}`} /></label>
+                <label className="block"><span className={T.label}>สลิปการโอน *</span><input required type="file" accept="image/*" onChange={e => setSlip(e.target.files?.[0] || null)} className={`mt-1 ${inp}`} /></label>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+            </div>
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-100 flex gap-3">
+                <button type="button" onClick={onClose} disabled={saving} className={`${BTN.secondary} flex-1 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>ยกเลิก</button>
+                <button disabled={saving} className={`${BTN.primary} flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold disabled:opacity-50 transition text-sm`}>
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'บันทึกโอนเพิ่ม'}
+                </button>
+            </div>
+        </form>
+    </div>;
 }
 
 /* ─── Tutor payout modal — บันทึกการโอนเงิน, แก้วันที่ได้ + โชว์บัญชีให้เช็คก่อนโอน ── */

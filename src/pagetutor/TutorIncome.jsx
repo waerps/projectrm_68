@@ -505,7 +505,8 @@ export default function TutorIncome() {
       { 'หัวข้อ': 'รายรับสะสมทั้งหมด', 'จำนวน (บาท)': summary.totalEarned },
       { 'หัวข้อ': 'รับแล้ว', 'จำนวน (บาท)': summary.totalPaid },
       { 'หัวข้อ': 'ค้างรับ', 'จำนวน (บาท)': summary.totalPending },
-      { 'หัวข้อ': 'ยอดโอนเกินค่าสอน', 'จำนวน (บาท)': summary.overpaid || 0 },
+      { 'หัวข้อ': 'โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ)', 'จำนวน (บาท)': summary.totalExtra || 0 },
+      { 'หัวข้อ': 'ยอดโอนที่ยังไม่ระบุรายละเอียด', 'จำนวน (บาท)': summary.overpaid || 0 },
       { 'หัวข้อ': 'คลาสทั้งหมด (คลาส)', 'จำนวน (บาท)': summary.totalSessions },
     ];
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
@@ -640,6 +641,9 @@ export default function TutorIncome() {
   }
 
   const { summary, payments, admin } = data;
+  // โอนเพิ่มที่ไม่ใช่ค่าสอนรายคาบ (ค่าเดินทาง โบนัส ส่วนต่างสูตรเดิม ฯลฯ)
+  const extraPayments = Array.isArray(data.extraPayments) ? data.extraPayments : [];
+  const totalExtra = Number(summary.totalExtra) || 0;
 
   const availableYears = [...new Set(monthly.map(m => m.year))].sort();
   const filteredMonthly = selectedYear === 'all'
@@ -802,6 +806,7 @@ export default function TutorIncome() {
                   <p className="text-xs font-medium text-green-700 mt-2">รับแล้ว</p>
                   <p className={STAT_VALUE}><MoneyCountUp value={summary.totalPaid} /><span className={STAT_UNIT}>บาท</span></p>
                   <p className="text-[11px] text-green-800">โอนแล้ว {payments.length} ครั้ง</p>
+                  {totalExtra > 0 && <p className="text-[11px] text-green-800">+ โอนเพิ่ม (ไม่ใช่ค่าสอน) {totalExtra.toLocaleString()} บาท</p>}
                 </div>
               </div>
               <div className="mt-4">
@@ -818,9 +823,8 @@ export default function TutorIncome() {
                 <div className={`${CALLOUT.box} ${CALLOUT.warning} mt-3 text-xs`}>
                   <AlertCircle className={`h-4 w-4 shrink-0 ${CALLOUT_ICON.warning}`} />
                   <p>
-                    ยอดโอนรวม {Number(summary.totalTransferred || 0).toLocaleString()} บาท สูงกว่าค่าสอนที่คำนวณจากคลาสที่บันทึกไว้{' '}
-                    <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b> (ยอดนี้ไม่นับรวมใน "รับแล้ว")
-                    กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ
+                    มียอดโอน <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b> ที่ยังไม่ได้ระบุว่าเป็นค่าสอนคาบไหนหรือเป็นการโอนเพิ่มเรื่องอะไร
+                    (ยอดนี้ไม่นับรวมใน "รับแล้ว") ผู้ดูแลระบบสามารถตรวจและบันทึกรายละเอียดให้ได้
                   </p>
                 </div>
               )}
@@ -1231,8 +1235,8 @@ export default function TutorIncome() {
                 <div className={`${CALLOUT.box} ${CALLOUT.warning}`}>
                   <AlertCircle className={`h-5 w-5 shrink-0 ${CALLOUT_ICON.warning}`} />
                   <p>
-                    ยอดโอนรวมสูงกว่าค่าสอนที่คำนวณจากคลาสที่บันทึกไว้ <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b>{' '}
-                    ระบบนับเป็น "รับแล้ว" ไม่เกินค่าสอนของคลาสที่เกี่ยวข้อง กรุณาติดต่อผู้ดูแลระบบเพื่อตรวจสอบ
+                    มียอดโอน <b className="tabular-nums">{overpaid.toLocaleString()} บาท</b> ที่ยังไม่ได้ระบุว่าเป็นค่าสอนคาบไหนหรือเป็นการโอนเพิ่มเรื่องอะไร{' '}
+                    ผู้ดูแลระบบสามารถตรวจและบันทึกรายละเอียดให้ได้
                   </p>
                 </div>
               )}
@@ -1278,6 +1282,14 @@ export default function TutorIncome() {
                               +{Number(payment.paymentCost).toLocaleString()} <span className="text-sm font-medium text-slate-500">บาท</span>
                             </p>
                             {payment.billNo && <p className="text-[11px] text-slate-500">เลขที่ใบจ่าย: {payment.billNo}</p>}
+                            {Number(payment.extraAmount) > 0 && (
+                              <p className="text-[11px] font-semibold text-slate-600 mt-0.5">
+                                ค่าสอน {Number(payment.appliedAmount || 0).toLocaleString()} บาท ({payment.sessionCount || 0} คลาส) + โอนเพิ่ม {Number(payment.extraAmount).toLocaleString()} บาท
+                              </p>
+                            )}
+                            {extraPayments.filter(e => e.tutorPaymentId === payment.tutorPaymentId).map(e => (
+                              <p key={e.extraPaymentId} className="text-[11px] text-slate-500">โอนเพิ่ม · {e.categoryLabel}: {e.reason}</p>
+                            ))}
                             {Number(payment.overpaidAmount) > 0 && (
                               <p className="text-[11px] font-semibold text-amber-700 mt-0.5">
                                 โอนเกินค่าสอนของคลาสที่เกี่ยวข้อง {Number(payment.overpaidAmount).toLocaleString()} บาท (ค่าสอน {Number(payment.sessionEarned || 0).toLocaleString()} บาท · {payment.sessionCount || 0} คลาส)
@@ -1305,6 +1317,33 @@ export default function TutorIncome() {
                     </li>
                   ))}
                 </ol>
+              )}
+
+              {/* ── โอนเพิ่มที่โอนแยก (ไม่ผูกกับใบจ่ายค่าสอน) ── */}
+              {extraPayments.some(e => !e.tutorPaymentId) && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+                  <p className="text-sm font-bold text-slate-900">โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ)</p>
+                  <p className="text-[11px] text-slate-500">เช่น ค่าเดินทาง หรือโบนัส — แยกจากค่าสอนของแต่ละคลาส</p>
+                  <ul className="mt-3 divide-y divide-slate-100">
+                    {extraPayments.filter(e => !e.tutorPaymentId).map(e => (
+                      <li key={e.extraPaymentId} className="py-2.5 flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-800">{e.categoryLabel}</p>
+                          <p className="text-xs text-slate-500 break-words">{e.reason}</p>
+                          <p className="text-[11px] text-slate-400">{e.paymentDate ? new Date(e.paymentDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="tabular-nums font-bold text-slate-900">+{e.amount.toLocaleString()} บาท</span>
+                          {e.paymentPicture && (
+                            <button onClick={() => setSlipUrl(e.paymentPicture)} className="flex items-center gap-1 rounded-lg border border-orange-200 bg-white px-2 py-1 text-[11px] font-semibold text-orange-700 hover:bg-orange-100">
+                              <ImageIcon className="h-3 w-3" />สลิป
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           );

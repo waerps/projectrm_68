@@ -59,6 +59,8 @@ export default function TutorProfile() {
                     emergencyPhone: dbData.EmergencyContactPhoneNo || "",
                     studentCount: dbData.StudentCount || 0,
                     ratePerTutors: dbData.RatePerTutors || 0,
+                    institutionRates: dbData.institutionRates || null,
+                    singleCourseRates: Array.isArray(dbData.singleCourseRates) ? dbData.singleCourseRates : [],
                     subjects: dbData.Subjects ? dbData.Subjects.split(', ') : ["ยังไม่มีรายวิชา"],
                     experience: dbData.ExperienceYear || 1,
                     photo: dbData.Photo || null,
@@ -351,19 +353,13 @@ export default function TutorProfile() {
                         icon={<Landmark className="h-4.5 w-4.5 text-orange-500" />}
                         isEditing={isEditing}
                     >
-                        {/* ส่วนโชว์เรทค่าสอน */}
-                        <div className="flex flex-wrap gap-3 justify-between items-center rounded-xl border border-orange-200 p-4 sm:p-5 bg-gradient-to-br from-orange-50 to-amber-50 mt-1 mb-4">
-                            <div>
-                                <p className={`${STAT_LABEL} mb-1`}>ค่าตอบแทนต่อคาบ</p>
-                                <p className={`${STAT_NUM} text-orange-700`}>
-                                    {Number(formData.ratePerTutors).toLocaleString()}
-                                    <span className={STAT_UNIT}>บาท</span>
-                                </p>
-                            </div>
-                            <span className="text-xs font-semibold bg-orange-100 text-orange-700 px-2.5 py-0.5 rounded-full border border-orange-200">
-                                ต่อ 1.5 ชม.
-                            </span>
-                        </div>
+                        {/* วิธีคิดค่าสอนจริง: คอร์สรวม = เรทสถาบัน, คอร์สเดี่ยว = เรทที่ตั้งในแต่ละคอร์ส
+                            (เดิมโชว์ "เรทติวเตอร์" เป็นค่าตอบแทนต่อคาบ ซึ่งไม่ได้ใช้คิดเงินคอร์สรวม และหน่วยไม่ตรงกับฝั่งแอดมิน) */}
+                        <TeachingRates
+                            institutionRates={formData.institutionRates}
+                            singleCourseRates={formData.singleCourseRates || []}
+                            defaultSingleRate={formData.ratePerTutors}
+                        />
 
                         {/* ส่วนข้อมูลบัญชีธนาคาร */}
                         <div className="border-t border-slate-100 pt-2 space-y-0.5">
@@ -416,6 +412,50 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
+function TeachingRates({ institutionRates, singleCourseRates, defaultSingleRate }) {
+    const levels = [["elementary", "ประถม"], ["secondary", "มัธยม"]];
+    const range = (t) => t.maxStudents == null ? `${t.minStudents} คนขึ้นไป` : t.minStudents === t.maxStudents ? `${t.minStudents} คน` : `${t.minStudents}–${t.maxStudents} คน`;
+    return (
+        <div className="mt-1 mb-4 space-y-3">
+            <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-4">
+                <p className="text-sm font-bold text-slate-800">คอร์สรวม: เรทสถาบัน</p>
+                <p className="text-[11px] text-slate-500">บาทต่อคาบ 1.5 ชม. ตามระดับชั้นของคอร์สและจำนวนนักเรียนที่มาเรียนจริง (คาบยาวกว่านี้คิดตามสัดส่วน)</p>
+                {institutionRates ? (
+                    <div className="mt-2 overflow-x-auto">
+                        <table className="w-full text-xs">
+                            <thead><tr className="text-slate-500"><th className="py-1 text-left font-semibold">นักเรียนที่มา</th>{levels.map(([k, l]) => <th key={k} className="py-1 text-right font-semibold">{l}</th>)}</tr></thead>
+                            <tbody>
+                                {institutionRates.elementary.map((tier, i) => (
+                                    <tr key={i} className="border-t border-orange-100">
+                                        <td className="py-1 text-slate-600">{range(tier)}</td>
+                                        {levels.map(([k]) => <td key={k} className="py-1 text-right font-semibold tabular-nums text-orange-700">{Number(institutionRates[k][i]?.ratePerSession || 0).toLocaleString()} บาท</td>)}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : <p className="mt-2 text-xs text-slate-500">ไม่สามารถโหลดตารางเรทได้</p>}
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-bold text-slate-800">คอร์สเดี่ยว: เรทที่ตกลงในแต่ละคอร์ส</p>
+                <p className="text-[11px] text-slate-500">
+                    เรทตั้งต้นของคุณ {Number(defaultSingleRate) > 0 ? `${Number(defaultSingleRate).toLocaleString()} บาท/ชม.` : "ยังไม่ได้กำหนด"} — แต่ละคอร์สอาจต่างกันตามความยากง่าย
+                </p>
+                {singleCourseRates.length > 0 ? (
+                    <ul className="mt-2 divide-y divide-slate-100">
+                        {singleCourseRates.map((c) => (
+                            <li key={`${c.courseId}-${c.subjectName}`} className="flex items-baseline justify-between gap-3 py-1.5 text-xs">
+                                <span className="min-w-0 text-slate-600">{c.courseName}{c.subjectName ? ` · ${c.subjectName}` : ""}</span>
+                                <span className={`shrink-0 font-semibold tabular-nums ${c.ratePerHour ? "text-slate-800" : "text-amber-700"}`}>{c.ratePerHour ? `${c.ratePerHour.toLocaleString()} บาท/ชม.` : "รอแอดมินตั้งเรท"}</span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : <p className="mt-2 text-xs text-slate-400">ยังไม่มีคอร์สเดี่ยวที่สอนอยู่</p>}
+            </div>
+        </div>
+    );
+}
+
 function InfoRow({ label, required, value, name, isEditing, onChange, type = "text", max }) {
     return (
         <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">

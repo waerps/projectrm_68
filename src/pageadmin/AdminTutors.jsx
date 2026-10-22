@@ -1260,7 +1260,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           <input className={inp} value={form.occupation || ""} onChange={e => set("occupation", e.target.value)} placeholder="เช่น นักศึกษา" />
         </div>
         <div>
-          <label className={lbl}>อัตราค่าสอน (บาท/ชม.)</label>
+          <label className={lbl}>เรทตั้งต้นสำหรับคอร์สเดี่ยว (บาท/ชม.)</label>
           <input
             type="text" inputMode="numeric"
             className={inp}
@@ -1269,6 +1269,8 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             onKeyDown={blockNegativeKeys}
             placeholder="180"
           />
+          {/* ตัวเลขนี้ไม่ได้ใช้คิดค่าสอนโดยตรง: คอร์สรวมใช้เรทสถาบัน คอร์สเดี่ยวใช้เรทที่ตั้งในแต่ละคอร์ส */}
+          <p className="mt-1 text-[11px] leading-4 text-slate-500">ใช้เป็นค่าเริ่มต้นตอนสร้างคอร์สเดี่ยว ปรับได้ในแต่ละคอร์ส · คอร์สรวมจ่ายตามเรทสถาบัน (ระดับชั้น + จำนวนนักเรียนที่มา)</p>
         </div>
       </div>
 
@@ -1685,7 +1687,7 @@ function TutorCard({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, set
         {t.PhoneNo && t.PhoneNo !== "000-000-0000" && <p className="flex items-center gap-1.5 text-slate-600"><Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />{t.PhoneNo}</p>}
         <div className="flex flex-wrap gap-1.5 pt-0.5">
           <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold">นักเรียน {t.StudentCount || 0}</span>
-          {t.RatePerTutors ? <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">{Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
+          {t.RatePerTutors ? <span className="px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full text-xs font-semibold">คอร์สเดี่ยว {Number(t.RatePerTutors).toLocaleString()} บาท/ชม.</span> : null}
         </div>
       </div>
       <div className="mt-auto pt-3">
@@ -2346,7 +2348,7 @@ export default function AdminTutorsPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">ติดต่อ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">สถานะ</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">นักเรียน</th>
-                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทค่าสอน (บาท/ชม.)</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">เรทตั้งต้นคอร์สเดี่ยว (บาท/ชม.)</th>
                     <th className="sticky right-0 bg-slate-50 lg:static text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">จัดการ</th>
                   </tr>
                 </thead>
