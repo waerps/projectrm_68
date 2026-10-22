@@ -105,7 +105,8 @@ export default function CoursesPage() {
       return { id: "closed-registration", text: "ปิดรับสมัคร", colorClass: "bg-amber-100 text-amber-700" };
     }
     if (Number(statusId) === 4 || today > end) {
-      return { id: "completed", text: "สอนจบแล้ว", colorClass: "bg-slate-200 text-slate-700" };
+      // "คอร์สปิดแล้ว" = หมดช่วงคอร์ส/แอดมินปิด ไม่ได้แปลว่าสอนครบ — ผลการสอนดูจากป้ายแยก (teachingResult)
+      return { id: "completed", text: "คอร์สปิดแล้ว", colorClass: "bg-slate-200 text-slate-700" };
     }
     if (today >= start && today <= end) {
       return { id: "active", text: "กำลังสอน", colorClass: "bg-emerald-100 text-emerald-700" };
@@ -114,10 +115,8 @@ export default function CoursesPage() {
   };
 
   // 2. ฟังก์ชันคำนวณ Progress จากชั่วโมงสอนจริง
-  const calculateProgressByHours = (completedHours, totalHours, statusId) => {
-    // ✅ ถ้าคอร์สจบแล้ว ให้ progress = 100 เสมอ
-    if (statusId === 'completed') return 100;
-
+  // ใช้ชั่วโมงที่สอนจริงเสมอ ไม่ว่าสถานะคอร์สจะเป็นอะไร (เดิมคอร์สที่จบแล้วถูกบังคับเป็น 100%)
+  const calculateProgressByHours = (completedHours, totalHours) => {
     if (!totalHours || Number(totalHours) === 0) return 0;
     let percent = (Number(completedHours) / Number(totalHours)) * 100;
     if (percent > 100) return 100;
@@ -155,6 +154,7 @@ export default function CoursesPage() {
                 : "ไม่ระบุ",
               totalHours: 0,
               completedHours: 0,
+              pendingHours: 0,
               StudentCount: row.StudentCount || 0, // ค่าเดียวกันทุกแถวของ Course นี้
               VideoCount: 0,
               FileCount: 0,
@@ -171,7 +171,9 @@ export default function CoursesPage() {
 
           const c = courseMap.get(row.CourseID);
           c.totalHours += subjectTotalHours;
-          c.completedHours += statusInfo.id === 'completed' ? subjectTotalHours : subjectCompletedHours;
+          // ชั่วโมงจริงเสมอ — เดิมคอร์สที่จบแล้วถูกเติมเป็นชั่วโมงเต็มตามแผน
+          c.completedHours += subjectCompletedHours;
+          c.pendingHours += Number(row.PendingHours) || 0;
           c.VideoCount += row.VideoCount || 0;
           c.FileCount += row.FileCount || 0;
           c.subjects.push({ subjectId: row.SubjectId, subjectName: row.SubjectName, assignmentId: row.TutorCourseDetailId });
@@ -181,7 +183,11 @@ export default function CoursesPage() {
         const formattedData = Array.from(courseMap.values()).map(c => ({
           ...c,
           subjectSchedule: buildSubjectSchedule(c.subjectPatterns),
-          progress: calculateProgressByHours(c.completedHours, c.totalHours, c.statusId),
+          progress: calculateProgressByHours(c.completedHours, c.totalHours),
+          // ผลการสอน แสดงเฉพาะคอร์สที่ปิดแล้ว: ครบตามแผน หรือขาดกี่ชั่วโมง
+          teachingResult: c.statusId !== 'completed' || !c.totalHours ? null
+            : c.completedHours >= c.totalHours - 0.01 ? { complete: true, missing: 0 }
+            : { complete: false, missing: c.totalHours - c.completedHours },
         }));
 
         setCourses(formattedData);
@@ -216,11 +222,14 @@ export default function CoursesPage() {
   const uniqueCourses = [...new Map(courses.map(c => [c.id, c])).values()];
   const totalStudents = uniqueCourses.reduce((sum, c) => sum + Number(c.StudentCount), 0);
   const totalHoursAllCourses = courses.reduce((sum, course) => sum + Number(course.totalHours), 0);
+  const taughtHoursAllCourses = courses.reduce((sum, course) => sum + Number(course.completedHours || 0), 0);
+  const fmtHours = (h) => Number(h || 0).toLocaleString("th-TH", { maximumFractionDigits: 1 });
 
   const stats = [
     { label: "คอร์สทั้งหมด", value: courses.length.toString(), unit: "คอร์ส", icon: BookOpen, color: "bg-blue-500" },
     { label: "นักเรียนรวม", value: Number(totalStudents || 0).toLocaleString("th-TH"), unit: "คน", icon: Users, color: "bg-emerald-500" },
-    { label: "ชั่วโมงสอน", value: Number(totalHoursAllCourses || 0).toLocaleString("th-TH", { maximumFractionDigits: 1 }), unit: "ชม.", icon: Clock, color: "bg-amber-500" },
+    // เดิมขึ้นแค่ชั่วโมงตามแผนแต่ตั้งชื่อว่า "ชั่วโมงสอน" ทำให้ดูเหมือนสอนไปแล้ว
+    { label: "ชั่วโมงสอนแล้ว / ตามแผน", value: `${fmtHours(taughtHoursAllCourses)} / ${fmtHours(totalHoursAllCourses)}`, unit: "ชม.", icon: Clock, color: "bg-amber-500" },
   ];
   
   const visibleStats = viewMode === 'primary' ? stats : [
@@ -304,7 +313,7 @@ export default function CoursesPage() {
               <option value="all">ทั้งหมด</option>
               <option value="active">กำลังสอน</option>
               <option value="closed-registration">ปิดรับสมัคร</option>
-              <option value="completed">สอนจบแล้ว</option>
+              <option value="completed">คอร์สปิดแล้ว</option>
               <option value="upcoming">ยังไม่เริ่มสอน</option>
             </select>
             <ClearFiltersButton
@@ -419,25 +428,35 @@ export default function CoursesPage() {
                         </div>
                       )}
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm border border-white/50 ${course.statusColor}`}>
-                      {course.statusText}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap shadow-sm border border-white/50 ${course.statusColor}`}>
+                        {course.statusText}
+                      </span>
+                      {course.teachingResult && (
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap border ${course.teachingResult.complete ? "bg-green-50 text-green-700 border-green-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                          {course.teachingResult.complete ? "สอนครบตามแผน" : `สอนไม่ครบ (ขาด ${fmtHours(course.teachingResult.missing)} ชม.)`}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* ⚡ Progress Bar แบบใหม่ */}
                   <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-600 font-bold">
-                        ความคืบหน้า <span className="text-slate-500 font-medium ml-1">({course.completedHours}/{course.totalHours} ชม.)</span>
+                        ความคืบหน้า <span className="text-slate-500 font-medium ml-1">({fmtHours(course.completedHours)}/{fmtHours(course.totalHours)} ชม.)</span>
                       </span>
-                      <span className="font-bold text-orange-700">{course.progress}%</span>
+                      <span className={`font-bold ${course.teachingResult && !course.teachingResult.complete ? "text-amber-700" : "text-orange-700"}`}>{course.progress}%</span>
                     </div>
                     <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
                       <div
-                        className="h-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-700 ease-out"
+                        className={`h-full bg-gradient-to-r transition-all duration-700 ease-out ${course.teachingResult && !course.teachingResult.complete ? "from-amber-300 to-amber-500" : "from-orange-400 to-orange-600"}`}
                         style={{ width: `${course.progress}%` }}
                       ></div>
                     </div>
+                    {course.pendingHours > 0 && (
+                      <p className="text-[11px] font-medium text-amber-700">ค้างปิดคาบ {fmtHours(course.pendingHours)} ชม. (มีรูปต้นคาบ ยังไม่มีรูปท้ายคาบ — ยังไม่นับเป็นชั่วโมงที่สอนแล้ว)</p>
+                    )}
                   </div>
                 </div>
 

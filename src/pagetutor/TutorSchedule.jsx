@@ -93,6 +93,13 @@ function getSlotStatus(cls, slotPhases, now) {
   const key = slotKey(cls.day, cls.time)
   const phase = slotPhases[key]?.phase
 
+  // คอร์สที่ปิดแล้ว: หลังบ้านส่งมาเฉพาะคาบในอดีต (ประวัติการสอน) — ดูได้อย่างเดียว กดทำอะไรต่อไม่ได้
+  if (cls.courseClosed) {
+    if (phase === 'completed') return 'closed_completed'
+    if (phase === 'phase1_done') return 'closed_partial'
+    return 'closed_missed'
+  }
+
   if (phase === 'completed') return 'completed'
   if (phase === 'phase1_done') return 'phase1_done'
 
@@ -141,6 +148,24 @@ const STATUS_STYLE = {
     card: 'bg-red-50 border-red-200 cursor-default',
     badge: 'bg-red-50 text-red-600 border-red-100',
     label: 'เกินเวลา/ไม่มีเช็กอิน',
+    Icon: AlertTriangle,
+  },
+  closed_completed: {
+    card: 'bg-green-50 border-green-200 cursor-default',
+    badge: 'bg-slate-100 text-slate-600 border-slate-200',
+    label: 'เช็กอินแล้ว · คอร์สปิดแล้ว',
+    Icon: CheckCircle,
+  },
+  closed_partial: {
+    card: 'bg-slate-50 border-slate-200 cursor-default',
+    badge: 'bg-slate-100 text-slate-600 border-slate-200',
+    label: 'ไม่มีรูปท้ายคาบ · คอร์สปิดแล้ว',
+    Icon: Clock,
+  },
+  closed_missed: {
+    card: 'bg-slate-50 border-slate-200 cursor-default',
+    badge: 'bg-slate-100 text-slate-600 border-slate-200',
+    label: 'ไม่มีเช็กอิน · คอร์สปิดแล้ว',
     Icon: AlertTriangle,
   },
   upcoming: {

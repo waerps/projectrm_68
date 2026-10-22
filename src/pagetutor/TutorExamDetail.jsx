@@ -2637,7 +2637,9 @@ function StudentDetailModal({
   const usedTimeText = usedSeconds != null ? formatTime(usedSeconds) : "ยังไม่ส่งข้อสอบ";
   const passed = student?.submittedAt && pct != null ? isPassingScore(student.totalScore, student.maxScore) : null;
   const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
-  const wrongCount = detail?.questions ? detail.questions.length - correctCount : null;
+  // ตอบผิด = มีคำตอบจริงแต่ไม่ถูก — ข้อที่ไม่ได้ตอบ (selected เป็น null) ไม่นับเป็นผิด
+  // เดิมใช้ ข้อทั้งหมด − ข้อถูก ทำให้ข้อที่ไม่ตอบถูกนับซ้ำเป็นตอบผิดด้วย
+  const wrongCount = detail?.questions ? detail.questions.filter((q) => !q.isCorrect && q.selected != null).length : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4" onClick={onClose}>
@@ -2872,19 +2874,24 @@ function StudentDetailModal({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-slate-800">รายข้อ</p>
-                <p className="text-[11px] text-slate-500">เขียว = ตอบถูก · แดง = ตอบผิด</p>
+                <p className="text-[11px] text-slate-500">เขียว = ตอบถูก · แดง = ตอบผิด · เทา = ไม่ได้ตอบ</p>
               </div>
               <div className="space-y-2.5">
-                {enrichedQuestions.map((q, i) => (
-                  <div key={q.id} className={`border rounded-xl p-3.5 ${q.isCorrect ? "border-green-200 bg-green-50/40" : "border-red-200 bg-red-50/40"}`}>
+                {enrichedQuestions.map((q, i) => {
+                  const state = q.isCorrect ? "correct" : q.selected == null ? "unanswered" : "wrong";
+                  const boxTone = { correct: "border-green-200 bg-green-50/40", wrong: "border-red-200 bg-red-50/40", unanswered: "border-slate-200 bg-slate-50" }[state];
+                  const chipTone = { correct: "bg-green-100 text-green-700", wrong: "bg-red-100 text-red-600", unanswered: "bg-slate-200 text-slate-600" }[state];
+                  return (
+                  <div key={q.id} className={`border rounded-xl p-3.5 ${boxTone}`}>
                     <div className="flex flex-col sm:flex-row items-start justify-between gap-2 sm:gap-3 mb-1.5">
                       <p className="text-sm font-medium text-slate-900 flex-1 leading-relaxed whitespace-pre-wrap break-words">
-                        <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>{i + 1}</span>
+                        <span className={`inline-flex h-5 w-5 rounded-md items-center justify-center text-[11px] font-bold mr-2 align-text-bottom ${chipTone}`}>{i + 1}</span>
                         {q.text ? <ExamMathText text={q.text} /> : q.imagePath ? "โจทย์เป็นรูปภาพ" : ""}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
-                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${q.isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+                        {state === "unanswered" && <span className="text-[11px] font-semibold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md">ไม่ได้ตอบ</span>}
+                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${chipTone}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
                         <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
@@ -2893,7 +2900,8 @@ function StudentDetailModal({
                     {q.imagePath && <img src={q.imagePath} alt="รูปโจทย์" className="mb-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
                     <QuestionPeriods periods={q.periods} />
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
