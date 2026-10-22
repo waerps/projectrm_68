@@ -2327,8 +2327,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 >
                   <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
                 </FormField>
-                <FormField label="ปีการศึกษา (พ.ศ.)" optional error={errOf("YearId")}>
-                  <select value={form.YearId ?? ""} onChange={(e) => set("YearId", e.target.value)} className={inputCls(errOf("YearId"))}>
+                <FormField label="ปีการศึกษา (พ.ศ.)" optional hint={Number(initial.StudentCount || existingStudentCount) > 0 ? "มีนักเรียนแล้ว เปลี่ยนปีไม่ได้; ปีใหม่ให้สร้างคอร์สใหม่" : "เว้นว่างได้ตอนร่าง ต้องเลือกก่อนเผยแพร่คอร์สที่เปิดขาย"} error={errOf("YearId")}>
+                  <select value={form.YearId ?? ""} onChange={(e) => set("YearId", e.target.value)} disabled={Number(initial.StudentCount || existingStudentCount) > 0} className={inputCls(errOf("YearId"))}>
                     <option value="">เลือกปีการศึกษา</option>
                     {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
                   </select>
@@ -2537,11 +2537,11 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <div className={FORM_GRID}>
                 <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint="เว้นว่าง = ไม่จำกัด">
                   <input
-                    type="number" min="0" step="1" value={form.MaxStudents ?? ""}
+                    type="number" min="1" step="1" value={form.MaxStudents ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === "" || (/^\d*$/.test(v) && Number(v) >= 0)) set("MaxStudents", v);
+                      if (v === "" || (/^\d*$/.test(v) && Number(v) > 0)) set("MaxStudents", v);
                     }}
                     className={inputCls()} placeholder="ไม่จำกัด" />
                 </FormField>

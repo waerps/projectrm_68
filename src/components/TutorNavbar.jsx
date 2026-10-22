@@ -5,6 +5,7 @@ import { Calendar, ChevronDown, Menu, X, Home, BookOpen, Wallet, Library, Trendi
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
 import InitialAvatar from "./ui/InitialAvatar"
+import { logout } from "../utils/logout"
 
 
 export default function Navbar() {
@@ -33,11 +34,6 @@ export default function Navbar() {
         document.addEventListener("keydown", onKey)
         return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey) }
     }, [menuOpen])
-
-    const logout = () => {
-        localStorage.removeItem("token")
-        window.location.href = "/login"
-    }
 
     const mobileItems = [
         { to: ".", end: true, label: "หน้าแรก", icon: Home },
@@ -240,10 +236,7 @@ export default function Navbar() {
 
                                 <li>
                                     <button
-                                        onClick={() => {
-                                            localStorage.removeItem("token")
-                                            window.location.href = "/login"
-                                        }}
+                                        onClick={logout}
                                         className="w-full text-right px-4 py-2 text-red-600 hover:bg-red-50 transition"
                                     >
                                         ออกจากระบบ

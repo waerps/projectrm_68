@@ -9,6 +9,7 @@ import { getCourses } from "../callapi/callusers"
 import { getStudentProfile } from "../callapi/callusers_student"
 import { getFileUrl } from "../utils/fileUrl"
 import NotificationBell from "./NotificationBell"
+import { logout } from "../utils/logout"
 
 // ── ตัวเลือกฟิลเตอร์: อ้างอิงจากตาราง subjects / course_availability ที่ส่งมา ──
 // ⚠️ เทอม ยังไม่มีตารางอ้างอิงให้ดู ใส่ placeholder ไว้ก่อน รอพี่ยืนยันชื่อ table/column
@@ -631,7 +632,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   {userData ? (
                     <button
                       type="button"
-                      onClick={() => { localStorage.clear(); window.location.href = "/login" }}
+                      onClick={logout}
                       className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-red-600 transition-colors hover:bg-red-50"
                     >
                       <LogOut className="h-5 w-5 shrink-0" />
@@ -821,7 +822,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   <li><Link to="/profile/incidents" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ประวัติการแจ้งเรื่อง</Link></li>
                   <li>
                     <button
-                      onClick={() => { localStorage.clear(); window.location.href = "/login" }}
+                      onClick={logout}
                       className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition border-t border-gray-50 mt-1"
                     >
                       ออกจากระบบ

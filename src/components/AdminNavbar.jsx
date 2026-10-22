@@ -5,6 +5,7 @@ import { Link, useLocation } from "react-router-dom"
 import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
+import { logout } from "../utils/logout"
 import { AlertOctagon, ChevronDown, Menu, X, LayoutDashboard, BookOpen, GraduationCap, Users, TrendingUp, CalendarDays, DoorOpen, Package, Megaphone, Wallet, ShieldCheck, UserCircle, LogOut } from "lucide-react";
 
 export default function Navbar() {
@@ -25,11 +26,6 @@ export default function Navbar() {
         document.addEventListener("keydown", onKey)
         return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey) }
     }, [menuOpen])
-
-    const logout = () => {
-        localStorage.removeItem("token")
-        window.location.href = "/login"
-    }
 
     // เมนูหลักบนเดสก์ท็อป เริ่มจากทางกลับแดชบอร์ด
     const mainNavItems = [
@@ -263,10 +259,7 @@ export default function Navbar() {
 
                                 <li>
                                     <button
-                                        onClick={() => {
-                                            localStorage.removeItem("token")
-                                            window.location.href = "/login"
-                                        }}
+                                        onClick={logout}
                                         className="w-full text-right px-4 py-2 text-red-600 hover:bg-red-50 transition"
                                     >
                                         ออกจากระบบ

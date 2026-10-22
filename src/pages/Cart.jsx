@@ -451,6 +451,8 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const [checkingSlip, setCheckingSlip] = useState(false);
   const [paymentIndex, setPaymentIndex] = useState(0);
   const [activeInstallment, setActiveInstallment] = useState(null);
+  const [reservationExpiry, setReservationExpiry] = useState(null);
+  const [reservationClock, setReservationClock] = useState(Date.now());
   const [lineLoading, setLineLoading] = useState(false);
   const [lineLinked, setLineLinked] = useState(false);
   const [slipToast, setSlipToast] = useState(null); // { type: 'success' | 'error', message: string }
@@ -712,6 +714,14 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   const dueNow = activeInstallment?.amount ?? (payPlan === "full"
     ? paymentItem?.salePrice ?? total
     : paymentItem?.installmentAmounts?.[0] ?? paymentItem?.salePrice ?? total);
+  const reservationSeconds = reservationExpiry === null ? null : Math.max(0, Math.ceil((reservationExpiry - reservationClock) / 1000));
+  const reservationExpired = reservationSeconds === 0;
+
+  useEffect(() => {
+    if (step !== 2 || reservationExpiry === null) return undefined;
+    const timer = setInterval(() => setReservationClock(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [step, reservationExpiry]);
 
   useEffect(() => {
     const closeOnEscape = (event) => event.key === "Escape" && onClose();
@@ -731,6 +741,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
     const createQr = async () => {
       setQrDataUrl("");
       setQrError("");
+      setReservationExpiry(null);
       setQrLoading(true);
       try {
         const token = checkoutToken;
@@ -752,7 +763,11 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
         }
         if (orderResponse.ok) {
           orderId = orderResult.orderId;
-        } else if (orderResponse.status === 409) {
+          if (active) {
+            setReservationClock(Date.now());
+            setReservationExpiry(Date.now() + Number(orderResult.reservationSecondsRemaining ?? 1800) * 1000);
+          }
+        } else if (orderResponse.status === 409 && orderResult.data?.OrderId) {
           orderId = orderResult.data?.OrderId;
         } else {
           throw new Error(orderResult.message || "สร้างรายการชำระเงินไม่สำเร็จ");
@@ -782,7 +797,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
   }, [API_BASE, checkoutToken, payPlan, paymentIndex, paymentItem, purchaseNotes, step]);
 
   const downloadQr = async () => {
-    if (!activeInstallment) return;
+    if (!activeInstallment || reservationExpired) return;
     try {
       const response = await fetch(`${API_BASE}/api/payments/installments/${activeInstallment.installmentId}/qr-download`, {
         headers: { Authorization: `Bearer ${checkoutToken}` },
@@ -1133,13 +1148,16 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
                   <>
                     <div className="mx-auto grid h-52 w-52 place-items-center overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-md sm:h-64 sm:w-64">
                       {qrLoading && <div className="text-xs font-semibold text-slate-400">กำลังสร้าง PromptPay QR…</div>}
-                      {!qrLoading && qrDataUrl && <img src={qrDataUrl} alt={`PromptPay QR ยอด ${money(dueNow)}`} className="h-full w-full object-contain" />}
+                      {!qrLoading && qrDataUrl && !reservationExpired && <img src={qrDataUrl} alt={`PromptPay QR ยอด ${money(dueNow)}`} className="h-full w-full object-contain" />}
+                      {reservationExpired && <div className="px-4 text-center text-xs font-semibold text-red-600">หมดเวลาจองที่นั่ง กรุณาสั่งซื้อใหม่ก่อนโอนเงิน</div>}
                       {!qrLoading && qrError && <div className="px-4 text-center text-xs font-semibold leading-relaxed text-red-600">{qrError}</div>}
                     </div>
                     <p className="mt-4 text-sm font-bold text-[#14213D]">สแกนด้วยแอปธนาคาร · ล็อกยอด {money(dueNow)}</p>
                     <p className="mt-1 text-xs text-slate-500">{promptPayAccountName}</p>
                     <p className="mt-1 text-[10px] text-slate-400">กรุณาตรวจสอบชื่อผู้รับในแอปธนาคารก่อนยืนยันทุกครั้ง</p>
-                    <button type="button" onClick={downloadQr} disabled={!qrDataUrl} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 disabled:opacity-40">
+                    <p className="mt-2 text-xs font-semibold text-amber-700">{reservationSeconds === null ? "ระบบจองที่นั่งไว้ 30 นาทีหลังสร้างรายการชำระ" : reservationExpired ? "หมดเวลาจองที่นั่งแล้ว หากโอนเงินไปแล้วสามารถแนบสลิปได้" : `เหลือเวลาจองที่นั่ง ${Math.floor(reservationSeconds / 60)}:${String(reservationSeconds % 60).padStart(2, "0")} นาที`}</p>
+                    {reservationExpired && <button type="button" onClick={() => setStep(1)} className="mt-3 rounded-xl bg-orange-600 px-4 py-2 text-xs font-bold text-white">สั่งซื้อใหม่</button>}
+                    <button type="button" onClick={downloadQr} disabled={!qrDataUrl || reservationExpired} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 transition hover:bg-orange-100 disabled:opacity-40">
                       บันทึก QR เป็นรูปภาพ
                     </button>
                   </>
