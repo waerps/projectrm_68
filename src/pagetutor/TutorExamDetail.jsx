@@ -2633,8 +2633,11 @@ function StudentDetailModal({
 
   const pct = displayExamPercent(student?.totalScore, student?.maxScore);
   // เวลาที่ใช้: ใช้ค่าจากระบบก่อน ถ้าไม่มีให้คำนวณจากเวลาเริ่มสอบถึงเวลาส่ง
-  const usedSeconds = usedSecondsOf(student) ?? usedSecondsOf(detail);
-  const usedTimeText = usedSeconds != null ? formatTime(usedSeconds) : "ยังไม่ส่งข้อสอบ";
+  // ใช้เวลาที่ระบบจับได้จริงก่อน (จากแถวในตาราง แล้วจากรายละเอียด) ถ้าไม่มีทั้งคู่ค่อยใช้เวลาประมาณ
+  const timeSource = student?.secondsUsed != null ? student
+    : detail?.secondsUsed != null ? detail
+    : usedSecondsOf(student) != null ? student : detail;
+  const usedTimeText = usedSecondsOf(timeSource) != null ? usedTimeLabel(timeSource) : "ยังไม่ส่งข้อสอบ";
   const passed = student?.submittedAt && pct != null ? isPassingScore(student.totalScore, student.maxScore) : null;
   const correctCount = detail?.questions ? detail.questions.filter((q) => q.isCorrect).length : null;
   // ตอบผิด = มีคำตอบจริงแต่ไม่ถูก — ข้อที่ไม่ได้ตอบ (selected เป็น null) ไม่นับเป็นผิด
@@ -2943,7 +2946,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
       <td>${s.joinedAt ? new Date(s.joinedAt).toLocaleString("th-TH") : "—"}</td>
       <td style="text-align:right">${pct != null ? `${fmtScore(s.totalScore)}/${fmtScore(s.maxScore)} คะแนน (${pct}%)` : "—"}</td>
       <td style="text-align:center">${s.answeredCount ?? "—"} / ${s.unansweredCount ?? "—"}</td>
-      <td style="text-align:right">${s.submittedAt && s.secondsUsed != null ? formatTime(s.secondsUsed) : "—"}</td>
+      <td style="text-align:right">${usedTimeLabel(s)}</td>
       <td>${esc(s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ"))}</td>
       <td style="text-align:center;${passed == null ? "" : passed ? "color:#16a34a" : "color:#dc2626"}">${passed == null ? "—" : passed ? "ผ่าน" : "ไม่ผ่าน"}</td>
     </tr>`;
@@ -2978,6 +2981,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     <h2>รายชื่อนักเรียน</h2>
     <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>เข้าสอบเมื่อ</th><th style="text-align:right">คะแนนที่ได้ / คะแนนเต็ม</th><th style="text-align:center">ตอบ/ไม่ตอบ</th><th style="text-align:right">เวลาที่ใช้</th><th>สถานะ</th><th style="text-align:center">ผล</th></tr></thead>
     <tbody>${studentRows}</tbody></table>
+    ${results.students.some(isEstimatedTime) ? `<p style="font-size:11px;color:#64748b;margin-top:6px">≈ = ${ESTIMATED_TIME_HINT}</p>` : ""}
     ${absentRows ? `<h2>นักเรียนที่ขาดสอบ (${results.absentStudents.length} คน)</h2><table><tbody>${absentRows}</tbody></table>` : ""}
     <div class="footer">ออกรายงานโดยระบบจัดการติวเตอร์ &nbsp;|&nbsp; ${today}</div></body></html>`);
   printWindow.document.close();
@@ -3089,6 +3093,16 @@ const usedSecondsOf = (s) => {
   return Number.isFinite(sec) && sec >= 0 ? sec : null;
 };
 
+// เวลาที่ใช้แบบพร้อมแสดง — ใช้ทุกจุดในหน้า (ตาราง/การ์ดมือถือ/PDF/หน้าต่างดูผล) ให้ตัวเลขตรงกัน
+// ถ้าไม่ได้มาจากเวลาที่ระบบจับขณะทำข้อสอบจริง ใส่ "≈" เพราะรวมช่วงที่ไม่ได้ทำข้อสอบด้วย
+const ESTIMATED_TIME_HINT = "ประมาณจากเวลาเข้า–ส่ง (ระบบจับเวลาทำข้อสอบได้ไม่ครบ)";
+const isEstimatedTime = (s) => usedSecondsOf(s) != null && s.secondsUsed == null;
+const usedTimeLabel = (s) => {
+  const sec = usedSecondsOf(s);
+  if (sec == null) return "—";
+  return isEstimatedTime(s) ? `≈ ${formatTime(sec)}` : formatTime(sec);
+};
+
 function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const status = deriveStatus(exam);
   const [results, setResults] = useState(null);
@@ -3175,8 +3189,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
         const pb = b.maxScore ? b.totalScore / b.maxScore : -1;
         res = pa - pb;
       } else if (sortKey === "time") {
-        const ta = a.secondsUsed ?? -1;
-        const tb = b.secondsUsed ?? -1;
+        const ta = usedSecondsOf(a) ?? -1;
+        const tb = usedSecondsOf(b) ?? -1;
         res = ta - tb;
       } else {
         res = a.rank - b.rank; // "rank" = ลำดับคะแนนตามธรรมชาติ
@@ -3374,7 +3388,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                   <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold"><Check className="h-3 w-3" />{s.answeredCount ?? "—"}</span>
                   <span className="inline-flex items-center gap-1 text-slate-400 font-semibold"><X className="h-3 w-3" />{s.unansweredCount ?? "—"}</span>
                   <span className={`tabular-nums ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
-                    {s.submittedAt ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—") : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
+                    {s.submittedAt ? <span title={isEstimatedTime(s) ? ESTIMATED_TIME_HINT : undefined}>{usedTimeLabel(s)}</span> : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                   </span>
                   <span className={`font-medium ${s.submittedAt ? "text-green-700" : "text-slate-400"}`}>{s.status || (s.submittedAt ? "ส่งข้อสอบแล้ว" : "กำลังทำ")}</span>
                   {(s.integrity?.leaveCount > 0 || s.integrity?.copyCount > 0) && (
@@ -3459,7 +3473,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
                       </td>
                       <td className={`px-4 py-3 tabular-nums text-xs ${!s.submittedAt && remainingSec != null ? "text-orange-600 font-semibold" : "text-slate-500"}`}>
                         {s.submittedAt
-                          ? (s.secondsUsed != null ? formatTime(s.secondsUsed) : "—")
+                          ? <span title={isEstimatedTime(s) ? ESTIMATED_TIME_HINT : undefined}>{usedTimeLabel(s)}</span>
                           : (remainingSec != null ? `เหลือ ${formatTime(remainingSec)}` : "—")}
                       </td>
                       <td className="px-4 py-3">

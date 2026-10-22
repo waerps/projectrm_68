@@ -9,6 +9,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
+import { birthDateMax } from "../utils/birthDateInput";
 
 // แคชโปรไฟล์ในแท็บนี้ (ไม่เก็บข้อมูลบัญชีธนาคาร) — เปิดหน้าซ้ำจะเห็นชื่อ/รายละเอียดทันที
 const PROFILE_CACHE = "tutor-profile";
@@ -330,7 +331,7 @@ export default function TutorProfile() {
                         <InfoRow required label="ชื่อ" name="firstname" value={formData.firstname} isEditing={isEditing} onChange={handleChange} />
                         <InfoRow required label="นามสกุล" name="lastname" value={formData.lastname} isEditing={isEditing} onChange={handleChange} />
                         <InfoRow required label="ชื่อเล่น" name="nickname" value={formData.nickname} isEditing={isEditing} onChange={handleChange} />
-                        <InfoRow required label="วันเกิด" name="birthDate" value={formData.birthDate} isEditing={isEditing} onChange={handleChange} type="date" />
+                        <InfoRow required label="วันเกิด" name="birthDate" value={formData.birthDate} isEditing={isEditing} onChange={handleChange} type="date" max={birthDateMax()} />
                         <InfoRow required label="อาชีพ" name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
@@ -415,7 +416,7 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
-function InfoRow({ label, required, value, name, isEditing, onChange, type = "text" }) {
+function InfoRow({ label, required, value, name, isEditing, onChange, type = "text", max }) {
     return (
         <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}{required && isEditing && <span className="text-red-500 normal-case"> *</span>}</span>
@@ -425,6 +426,7 @@ function InfoRow({ label, required, value, name, isEditing, onChange, type = "te
                         type={type}
                         name={name}
                         value={value}
+                        max={max}
                         onChange={onChange}
                         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-left text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
                     />

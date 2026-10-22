@@ -28,6 +28,7 @@ import { BTN } from "../components/ui/tokens";
 
 import RecoveryEmailPanel from "../components/RecoveryEmailPanel";
 import CredentialSetupButton from "../components/CredentialSetupButton";
+import { birthDateMax } from "../utils/birthDateInput";
 
 function maskUsername(username) {
   if (!username) return "";
@@ -387,6 +388,7 @@ export default function StudentProfile() {
               isEditing={isEditing}
               onChange={handleChange}
               type="date"
+              max={birthDateMax()}
             />
             <InfoRow label="ระดับชั้น" value={formData.gradeDetail} isEditing={false} />
           </SectionCard>
@@ -457,7 +459,7 @@ export default function StudentProfile() {
             <InfoRow label="ชื่อเล่น" name="parentNickname" value={formData.parentNickname} isEditing={isEditing} onChange={handleChange} />
             <InfoRow label="เบอร์โทร" name="parentPhone" value={formData.parentPhone} isEditing={isEditing} onChange={handleChange} />
             <InfoRow label="LINE ID" name="parentLineId" value={formData.parentLineId} isEditing={isEditing} onChange={handleChange} />
-            <InfoRow label="วันเกิด" name="parentBirthDate" value={formData.parentBirthDate} isEditing={isEditing} onChange={handleChange} type="date" />
+            <InfoRow label="วันเกิด" name="parentBirthDate" value={formData.parentBirthDate} isEditing={isEditing} onChange={handleChange} type="date" max={birthDateMax()} />
             {isEditing ? <label className="block py-3 text-xs font-semibold text-slate-500">ความสัมพันธ์
               <select name="parentProfilesTypeId" value={formData.parentProfilesTypeId} onChange={handleChange} className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-800">
                 <option value="">เลือกความสัมพันธ์</option>
@@ -512,7 +514,7 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
-function InfoRow({ label, required, value, displayValue, name, isEditing, onChange, type = "text" }) {
+function InfoRow({ label, required, value, displayValue, name, isEditing, onChange, type = "text", max }) {
   return (
     <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center py-3 border-b border-slate-50 last:border-0 min-h-[52px] gap-4">
       <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
@@ -525,6 +527,7 @@ function InfoRow({ label, required, value, displayValue, name, isEditing, onChan
             name={name}
             value={value ?? ""}
             step={type === "number" ? "0.01" : undefined}
+            max={max}
             onChange={onChange}
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 h-10 text-left text-sm text-slate-800 font-medium outline-none focus:border-orange-400 focus:bg-white focus:ring-2 focus:ring-orange-400 transition-all"
           />

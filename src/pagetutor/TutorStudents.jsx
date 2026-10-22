@@ -329,14 +329,22 @@ export default function TutorStudents() {
         return imp.delta > 0 ? "up" : imp.delta < 0 ? "down" : "stable";
     };
 
+    // คืนอายุเป็นตัวเลข, null = ไม่มีข้อมูล, NaN = วันเกิดไม่สมเหตุสมผล (อยู่ในอนาคต / อ่านไม่ได้ / เกิน 100 ปี)
     const calculateAge = (birthDate) => {
-        if (!birthDate) return '-';
+        if (!birthDate) return null;
         const today = new Date();
         const birth = new Date(birthDate);
-        const age = today.getFullYear() - birth.getFullYear();
+        if (Number.isNaN(birth.getTime()) || birth > today) return NaN;
+        let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) return age - 1;
-        return age;
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
+        return age > 100 ? NaN : age;
+    };
+    const ageText = (birthDate) => {
+        const age = calculateAge(birthDate);
+        if (age === null) return 'อายุ -';
+        if (Number.isNaN(age)) return 'ข้อมูลวันเกิดไม่ถูกต้อง';
+        return `อายุ ${age} ปี`;
     };
 
     const getAttendanceRate = (student) => {
@@ -517,7 +525,7 @@ export default function TutorStudents() {
                                                 <div className="flex items-center gap-1"><Phone className="h-3 w-3" /><span>{student.phone}</span></div>
                                                 <div className="flex items-center gap-1 font-medium bg-white px-2 py-0.5 rounded border"><LuSchool className="h-3.5 w-3.5 text-slate-500" /> {student.school}</div>
                                                 <div className="flex items-center gap-1 font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">{student.gradeLevel}</div>
-                                                <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">อายุ {calculateAge(student.birthDate)} ปี</div>
+                                                <div className="flex items-center gap-1 font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded border border-purple-200">{ageText(student.birthDate)}</div>
                                             </div>
                                             {student.purchaseNote && <p className="mt-2 rounded-lg border border-orange-100 bg-white/80 px-3 py-2 text-xs text-orange-900">สิ่งที่อยากให้เน้น: {student.purchaseNote}</p>}
                                         </div>

@@ -9,6 +9,7 @@ import TutorApply from "./TutorApply";
 import { getParentProfileTypes } from "../callapi/callusers_student";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 import "./AuthPage.css";
+import { birthDateMax } from "../utils/birthDateInput";
 
 const emptyRegistration = {
   firstname: "", lastname: "", nickname: "", phoneNo: "", schoolName: "",
@@ -222,7 +223,7 @@ export function Login({ initialMode = "login" }) {
                   </div>
                   <div className="auth-two-columns">
                     <div><label htmlFor="register-gender">เพศ</label><select id="register-gender" className={inputClass} name="genderId" value={registration.genderId} onChange={updateRegistration}><option value="">เลือกเพศ</option><option value="1">ชาย</option><option value="2">หญิง</option><option value="3">ไม่ระบุ</option></select></div>
-                    <div><label htmlFor="register-birth">วันเกิด</label><input id="register-birth" className={inputClass} name="birthOfDate" type="date" value={registration.birthOfDate} onChange={updateRegistration} /></div>
+                    <div><label htmlFor="register-birth">วันเกิด</label><input id="register-birth" className={inputClass} name="birthOfDate" type="date" max={birthDateMax()} value={registration.birthOfDate} onChange={updateRegistration} /></div>
                   </div>
                   <div><label htmlFor="register-line">LINE ID</label><input id="register-line" className={inputClass} name="lineId" value={registration.lineId} onChange={updateRegistration} /></div>
                   <div className="auth-parent-fields">
@@ -238,7 +239,7 @@ export function Login({ initialMode = "login" }) {
                     </div>
                     <div className="auth-two-columns">
                       <div><label htmlFor="register-parent-line">LINE ID</label><input id="register-parent-line" className={inputClass} name="parentLineId" value={registration.parentLineId} onChange={updateRegistration} /></div>
-                      <div><label htmlFor="register-parent-birth">วันเกิด</label><input id="register-parent-birth" type="date" className={inputClass} name="parentBirthOfDate" value={registration.parentBirthOfDate} onChange={updateRegistration} /></div>
+                      <div><label htmlFor="register-parent-birth">วันเกิด</label><input id="register-parent-birth" type="date" className={inputClass} name="parentBirthOfDate" max={birthDateMax()} value={registration.parentBirthOfDate} onChange={updateRegistration} /></div>
                     </div>
                     <label htmlFor="register-parent-type">ความสัมพันธ์</label><select id="register-parent-type" className={inputClass} name="parentProfilesTypeId" value={registration.parentProfilesTypeId} onChange={updateRegistration}><option value="">เลือกความสัมพันธ์</option>{parentTypes.map((type) => <option key={type.ParentProfilesType_Id} value={type.ParentProfilesType_Id}>{type.ParentProfilesType_Name}</option>)}</select>
                     {(registration.parentFirstname || registration.parentLastname) && <label className="auth-parent-consent"><input type="checkbox" checked={registration.parentAcknowledged === "true"} onChange={(event) => setRegistration((current) => ({ ...current, parentAcknowledged: event.target.checked ? "true" : "false" }))} />รับทราบเรื่องการเก็บข้อมูลผู้ปกครองเพื่อดูแลการเรียนและการชำระเงิน</label>}

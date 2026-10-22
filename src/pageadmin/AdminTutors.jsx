@@ -27,6 +27,7 @@ import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/to
 import Spinner from "../components/ui/Spinner";
 import { PendingDraftsCallout } from "../components/CourseDrafts";
 import AdminTutorFeedback from "../components/AdminTutorFeedback";
+import { birthDateMax } from "../utils/birthDateInput";
 
 const API = `${API_URL}/api/admin`;
 const ITEMS_PER_PAGE = 12;
@@ -1250,7 +1251,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
         </div>
         <div>
           <label className={lbl}>วันเกิด</label>
-          <input type="date" className={inp} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
+          <input type="date" className={inp} max={birthDateMax()} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

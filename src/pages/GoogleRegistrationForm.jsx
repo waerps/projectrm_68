@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { clearGoogleRegistration, finishStudentLogin, postStudentAuth } from "../utils/studentSession";
+import { birthDateMax } from "../utils/birthDateInput";
 
 const emptyGoogleForm = profile => ({
   firstname: profile?.firstname || "",
@@ -75,7 +76,7 @@ export default function GoogleRegistrationForm({ pending, onCancel, onComplete }
               <div><label htmlFor="google-phone">เบอร์โทรศัพท์</label><input id="google-phone" className="auth-input" name="phoneNo" value={form.phoneNo} onChange={change} maxLength={20} inputMode="tel" autoComplete="tel" /></div>
             </div>
             <div className="auth-two-columns">
-              <div><label htmlFor="google-birth">วันเกิด</label><input id="google-birth" className="auth-input" type="date" name="birthOfDate" value={form.birthOfDate} onChange={change} max={new Date().toISOString().slice(0, 10)} /></div>
+              <div><label htmlFor="google-birth">วันเกิด</label><input id="google-birth" className="auth-input" type="date" name="birthOfDate" value={form.birthOfDate} onChange={change} max={birthDateMax()} /></div>
               <div><label htmlFor="google-gender">เพศ</label><select id="google-gender" className="auth-input" name="genderId" value={form.genderId} onChange={change}><option value="">เลือกเพศ</option><option value="1">ชาย</option><option value="2">หญิง</option><option value="3">ไม่ระบุ</option></select></div>
             </div>
             <div className="auth-two-columns">

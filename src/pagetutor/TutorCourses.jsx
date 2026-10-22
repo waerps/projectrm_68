@@ -242,7 +242,11 @@ export default function CoursesPage() {
   const filteredCourses = courses.filter((course) => {
     const statusMatch = filterStatus === "all" || course.statusId === filterStatus;
     const typeMatch = filterType === "all" || course.courseType === filterType;
-    const searchMatch = search === "" || course.name.toLowerCase().includes(search.toLowerCase());
+    // ค้นได้ทั้งชื่อคอร์สและชื่อวิชาที่ครูสอน ตามที่ช่องค้นหาบอกไว้
+    const q = search.trim().toLowerCase();
+    const searchMatch = q === ""
+      || (course.name || "").toLowerCase().includes(q)
+      || (course.subjects || []).some((s) => (s.subjectName || "").toLowerCase().includes(q));
     return statusMatch && typeMatch && searchMatch;
   });
 
