@@ -18,7 +18,6 @@ const navigationByRole = {
     { label: "หน้าหลักติวเตอร์", to: "/tutor" },
     { label: "ตารางสอน", to: "/tutor/schedule" },
     { label: "คอร์สที่สอน", to: "/tutor/courses" },
-    { label: "นักเรียน", to: "/tutor/students" },
   ],
   admin: [
     { label: "แดชบอร์ด", to: "/admin" },

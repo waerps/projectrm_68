@@ -3,7 +3,7 @@ import { GROWTH_LABEL, CHANGE_LABEL, fmtGrowth, basisLabel } from "../utils/grow
 import GrowthLevelBadge from "../components/ui/GrowthLevelBadge";
 import { getFileUrl } from "../utils/fileUrl";
 import { optimizedImage } from "../utils/responsiveImage";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { escapeHtml as esc } from "../utils/escapeHtml";
@@ -19,7 +19,6 @@ import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
 import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet, FileText as LuFileText, GraduationCap as LuGraduationCap, School as LuSchool } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
-import EmptyState from "../components/ui/EmptyState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
 import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
@@ -46,85 +45,6 @@ function StudentAvatar({ student, className = "h-full w-full object-cover" }) {
             className={className}
             onError={() => { if (uploaded) setImgErr(true); }}
         />
-    );
-}
-
-
-// ── เข้าหน้านักเรียนโดยไม่มี courseId (เช่น ลิงก์ "นักเรียน" ท้ายเว็บ) ──────────
-// ให้เลือกคอร์สก่อน ถ้าสอนอยู่คอร์สเดียวพาเข้าคอร์สนั้นเลย
-function StudentCoursePicker() {
-    const navigate = useNavigate();
-    const [courses, setCourses] = useState(null);
-    const [error, setError] = useState(false);
-    const [reloadKey, setReloadKey] = useState(0);
-
-    useEffect(() => {
-        let cancelled = false;
-        const load = async () => {
-            setError(false);
-            setCourses(null);
-            try {
-                let tutorId = null;
-                try { tutorId = JSON.parse(localStorage.getItem("user") || "null")?.id; } catch { tutorId = null; }
-                const token = localStorage.getItem("student_token");
-                const res = await axios.get(`${API_URL}/coursestutor?adminId=${tutorId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                // API คืนหนึ่งแถวต่อวิชา — รวมเป็นหนึ่งรายการต่อคอร์ส
-                const byId = new Map();
-                (Array.isArray(res.data) ? res.data : []).forEach((row) => {
-                    if (!row?.CourseID || byId.has(row.CourseID)) return;
-                    byId.set(row.CourseID, { id: row.CourseID, name: row.CourseName || "ไม่ระบุชื่อคอร์ส", studentCount: Number(row.StudentCount) || 0 });
-                });
-                const list = [...byId.values()];
-                if (cancelled) return;
-                if (list.length === 1) { navigate(`/tutor/students?courseId=${list[0].id}`, { replace: true }); return; }
-                setCourses(list);
-            } catch (err) {
-                console.error("Fetch tutor courses failed:", err);
-                if (!cancelled) setError(true);
-            }
-        };
-        load();
-        return () => { cancelled = true; };
-    }, [navigate, reloadKey]);
-
-    return (
-        <div className="space-y-6 px-4 lg:px-0">
-            <div className="mb-6">
-                <Breadcrumb className="mb-6" items={[
-                    { label: "หน้าแรก", to: "/tutor" },
-                    { label: "ข้อมูลนักเรียน" },
-                ]} />
-                <h1 className={PAGE_TITLE}>ข้อมูลนักเรียน</h1>
-                <p className={PAGE_SUBTITLE}>เลือกคอร์สที่ต้องการดูรายชื่อนักเรียน</p>
-            </div>
-            {error ? (
-                <ErrorState description="โหลดรายการคอร์สไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" onRetry={() => setReloadKey((k) => k + 1)} />
-            ) : courses === null ? (
-                <div className="min-h-[40vh]"><Spinner block label="กำลังโหลดรายการคอร์ส..." /></div>
-            ) : courses.length === 0 ? (
-                <EmptyState icon={LuSchool} title="ยังไม่มีคอร์สที่คุณสอน" description="เมื่อได้รับมอบหมายให้สอนคอร์สแล้ว รายชื่อนักเรียนจะแสดงที่นี่" />
-            ) : (
-                <ul className="grid gap-3 sm:grid-cols-2">
-                    {courses.map((course) => (
-                        <li key={course.id}>
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/tutor/students?courseId=${course.id}`)}
-                                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-orange-400 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400"
-                            >
-                                <span className="min-w-0">
-                                    <span className="block truncate font-semibold text-slate-800">{course.name}</span>
-                                    <span className="mt-1 flex items-center gap-1 text-sm text-slate-500"><Users className="h-4 w-4" aria-hidden="true" />นักเรียน {course.studentCount} คน</span>
-                                </span>
-                                <ChevronRight className="h-5 w-5 shrink-0 text-orange-500" aria-hidden="true" />
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </div>
     );
 }
 
@@ -391,8 +311,8 @@ export default function TutorStudents() {
     const getLowAttendanceStudents = () =>
         filteredStudents.filter(s => { const r = getAttendanceRate(s); return r !== null && r < 60; });
 
-    // ไม่มีคอร์สติดมา (เช่น กดลิงก์ "นักเรียน" ท้ายเว็บ) → ให้เลือกคอร์สก่อน แทนหน้า "กำลังโหลด..." ค้าง
-    if (!courseId || courseId === "undefined") return <StudentCoursePicker />;
+    // หน้านักเรียนต้องมาจากการ์ดคอร์สเสมอ — ถ้าไม่มีคอร์สติดมา พากลับไปหน้าคอร์สที่สอน (ไม่ให้ค้างที่ "กำลังโหลด...")
+    if (!courseId || courseId === "undefined") return <Navigate to="/tutor/courses" replace />;
 
     // ระหว่างโหลด: แสดงหัวข้อหน้าทันที (ช่วย LCP) — key แยกจากหน้าจริงเพื่อไม่ให้ React ย้ายของเดิมจนหน้ากระโดด
     if (loading) return (

@@ -431,7 +431,13 @@ function InstitutionRatesBox({ institutionRates }) {
     );
 }
 
+const SINGLE_RATE_PREVIEW = 5;
+
 function SingleCourseRatesBox({ singleCourseRates, defaultSingleRate }) {
+    // สอนคอร์สเดี่ยวเยอะ: แสดง 5 รายการแรกก่อน ไม่ให้กล่องยืดยาวจนตารางเรทฝั่งซ้ายถูกยืดตาม
+    const [showAll, setShowAll] = useState(false);
+    const visible = showAll ? singleCourseRates : singleCourseRates.slice(0, SINGLE_RATE_PREVIEW);
+    const hidden = singleCourseRates.length - SINGLE_RATE_PREVIEW;
     return (
         <div className="rounded-xl border border-slate-200 bg-white p-4">
             <p className="text-sm font-bold text-slate-800">คอร์สเดี่ยว: เรทที่ตกลงในแต่ละคอร์ส</p>
@@ -439,14 +445,22 @@ function SingleCourseRatesBox({ singleCourseRates, defaultSingleRate }) {
                 เรทตั้งต้นของคุณ {Number(defaultSingleRate) > 0 ? `${Number(defaultSingleRate).toLocaleString()} บาท/ชม.` : "ยังไม่ได้กำหนด"} — แต่ละคอร์สอาจต่างกันตามความยากง่าย
             </p>
             {singleCourseRates.length > 0 ? (
-                <ul className="mt-2 divide-y divide-slate-100">
-                    {singleCourseRates.map((c) => (
+                <>
+                <ul className={`mt-2 divide-y divide-slate-100 ${showAll ? "max-h-64 overflow-y-auto pr-1" : ""}`}>
+                    {visible.map((c) => (
                         <li key={`${c.courseId}-${c.subjectName}`} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
                             <span className="min-w-0 text-slate-600">{c.courseName}{c.subjectName ? ` · ${c.subjectName}` : ""}</span>
                             <span className={`shrink-0 font-semibold tabular-nums ${c.ratePerHour ? "text-slate-800" : "text-amber-700"}`}>{c.ratePerHour ? `${c.ratePerHour.toLocaleString()} บาท/ชม.` : "รอแอดมินตั้งเรท"}</span>
                         </li>
                     ))}
                 </ul>
+                {hidden > 0 && (
+                    <button type="button" onClick={() => setShowAll(v => !v)}
+                        className="mt-2 text-xs font-semibold text-orange-600 hover:text-orange-700">
+                        {showAll ? "ย่อรายการ" : `ดูทั้งหมด (อีก ${hidden} คอร์ส)`}
+                    </button>
+                )}
+                </>
             ) : <p className="mt-2 text-xs text-slate-400">ยังไม่มีคอร์สเดี่ยวที่สอนอยู่</p>}
         </div>
     );
