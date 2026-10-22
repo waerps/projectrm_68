@@ -12,6 +12,7 @@ import {
   Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
   AlertTriangle, KeyRound, CreditCard, Briefcase, Shield, ImagePlus,
   UserCog, UserCheck, UserX, Info, ChevronDown, ChevronUp, BarChart2, Download,
+  Star,
 } from "lucide-react";
 import AdminAttendanceDashboard from './AdminAttendanceDashboard';
 import UIModal from "../components/ui/Modal";
@@ -1232,6 +1233,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
           </select>
         </div>
       </div>
+      {/* จัดเป็นคู่ให้ครบทุกแถว: เบอร์โทร | LINE ID, วันเกิด | อาชีพ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>เบอร์โทร</label>
@@ -1243,34 +1245,41 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             inputMode="numeric"
           />
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>Line ID</label>
           <input className={inp} value={form.lineId || ""} onChange={e => set("lineId", e.target.value)} placeholder="@lineid" />
         </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>วันเกิด</label>
           <input type="date" className={inp} max={birthDateMax()} value={form.birthOfDate?.slice(0, 10) || ""} onChange={e => set("birthOfDate", e.target.value)} />
         </div>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className={lbl}>อาชีพ / สาขาวิชา</label>
           <input className={inp} value={form.occupation || ""} onChange={e => set("occupation", e.target.value)} placeholder="เช่น นักศึกษา" />
         </div>
-        <div>
-          <label className={lbl}>เรทตั้งต้นสำหรับคอร์สเดี่ยว (บาท/ชม.)</label>
-          <input
-            type="text" inputMode="numeric"
-            className={inp}
-            value={moneyDisplay(form.ratePerTutors)}
-            onChange={handleMoneyChange("ratePerTutors")}
-            onKeyDown={blockNegativeKeys}
-            placeholder="180"
-          />
+      </div>
+
+      {/* ค่าสอน — แยกเป็นกล่องของตัวเอง (แบบเดียวกับข้อมูลธนาคาร) คำอธิบายอยู่ข้างช่อง ไม่ดันแถวให้สูงไม่เท่ากัน */}
+      <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/60">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:items-end">
+          <div>
+            <label className={lbl}>เรทตั้งต้นสำหรับคอร์สเดี่ยว (บาท/ชม.)</label>
+            <input
+              type="text" inputMode="numeric"
+              className={inp}
+              value={moneyDisplay(form.ratePerTutors)}
+              onChange={handleMoneyChange("ratePerTutors")}
+              onKeyDown={blockNegativeKeys}
+              placeholder="180"
+            />
+          </div>
           {/* ตัวเลขนี้ไม่ได้ใช้คิดค่าสอนโดยตรง: คอร์สรวมใช้เรทสถาบัน คอร์สเดี่ยวใช้เรทที่ตั้งในแต่ละคอร์ส */}
-          <p className="mt-1 text-[11px] leading-4 text-slate-500">ใช้เป็นค่าเริ่มต้นตอนสร้างคอร์สเดี่ยว ปรับได้ในแต่ละคอร์ส · คอร์สรวมจ่ายตามเรทสถาบัน (ระดับชั้น + จำนวนนักเรียนที่มา)</p>
+          <ul className="space-y-1 text-xs leading-5 text-slate-500 sm:pb-1">
+            <li>• ใช้เป็นค่าเริ่มต้นตอนสร้างคอร์สเดี่ยว ปรับได้ในแต่ละคอร์ส</li>
+            <li>• คอร์สรวมจ่ายตามเรทสถาบันเสมอ</li>
+          </ul>
         </div>
       </div>
 
@@ -1805,97 +1814,99 @@ function TutorRow({ t, setEditingTutor, setResetPwdTutor, setDeletingTutor, setS
   );
 }
 
-// ─── ★ ใหม่: Performance Score helpers (ย้ายมาจาก AdminAttendanceDashboard) ──
-function calcBadge(score) {
-  if (score === null || score === undefined) return { label: 'ยังไม่มีคะแนน', bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200' };
-  if (score >= 90) return { label: 'ดีเด่น', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' };
-  if (score >= 80) return { label: 'เยี่ยม', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
-  if (score >= 70) return { label: 'ดี', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' };
-  if (score >= 55) return { label: 'พอใช้', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' };
-  return { label: 'ต้องปรับปรุง', bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' };
+// ─── ภาพรวมติวเตอร์ = คะแนนรีวิวจริงจากนักเรียน (student_tutor_feedback) ─────────
+// เดิมใช้คะแนนโพเดียม (เช็กอิน/ภาระงาน/ความสม่ำเสมอ) ซึ่งเลิกใช้แล้ว
+function reviewBadge(review) {
+  if (!review || !review.count) return { label: 'ยังไม่มีรีวิว', bg: 'bg-white/20', text: 'text-white' };
+  return { label: `★ ${review.average.toFixed(1)} · ${review.count} รีวิว`, bg: 'bg-white', text: 'text-orange-700' };
 }
 
-function MetricBreakdown({ tutor, minWeeksForConsistency = 3 }) {
-  // ★ เพิ่ม: ถ้าข้อมูลไม่พอ (สัปดาห์น้อยกว่าเกณฑ์) ConsistencyScore ที่ backend ส่งมาคือค่ากลาง (50) ไม่ใช่ค่าที่วัดได้จริง
-  const isConsistencyDefault = typeof tutor.WeeksWithData === 'number' && tutor.WeeksWithData < minWeeksForConsistency;
-
-  const noSchedule = tutor.ScheduledHours === null || tutor.ScheduledHours === undefined;
-
-  const metrics = [
-    {
-      name: 'อัตราเช็กอิน', val: tutor.CheckinRate, weight: 35,
-      sub: `${tutor.TotalCheckin} / ${tutor.TotalScheduled} คาบ`,
-      warn: false,
-    },
-    {
-      name: 'ปฏิบัติหน้าที่ตามภาระงาน', val: noSchedule ? 0 : tutor.ResponsibilityScore, weight: 45,
-      sub: noSchedule
-        ? 'เดือนนี้ไม่มีชั่วโมงสอนตามตาราง — ไม่มีข้อมูลเปรียบเทียบ (N/A)'
-        : `${tutor.ActualHours} ชม. / ตารางสอน ${tutor.ScheduledHours} ชม.`,
-      warn: noSchedule,
-    },
-    {
-      name: 'ความสม่ำเสมอ', val: tutor.ConsistencyScore, weight: 20,
-      sub: isConsistencyDefault
-        ? `มีข้อมูลเพียง ${tutor.WeeksWithData ?? 0} สัปดาห์ (ต้องมีอย่างน้อย ${minWeeksForConsistency} สัปดาห์) จึงให้คะแนนกลางแทนค่าจริง`
-        : 'วัดจาก stddev การสอนต่อสัปดาห์',
-      warn: isConsistencyDefault,
-    },
-  ];
-
+function StarRow({ value, size = 'h-4 w-4' }) {
   return (
-    <div className="mt-3 bg-slate-50 rounded-xl px-3 sm:px-4 py-3 space-y-2">
-      {/* ★ เพิ่ม: เตือนรวมด้านบนถ้าคาบสอนน้อยกว่าเกณฑ์ขึ้นโพเดียม */}
-      {tutor.LowDataWarning && (
-        <div className="flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-1">
-          <Info className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-700 leading-relaxed">
-            ติวเตอร์คนนี้มีคาบสอนสะสมน้อย ({tutor.TotalScheduled} คาบ) คะแนนนี้จึงอาจยังไม่สะท้อนผลงานจริง และจะไม่ถูกนำไปจัดอันดับบนโพเดียม
-          </p>
+    <span className="inline-flex items-center gap-0.5" aria-label={`${value.toFixed(1)} จาก 5 ดาว`}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <Star key={n} className={`${size} ${value >= n - 0.25 ? 'fill-amber-400 text-amber-400' : value >= n - 0.75 ? 'fill-amber-200 text-amber-400' : 'text-slate-300'}`} />
+      ))}
+    </span>
+  );
+}
+
+function ReviewOverview({ review }) {
+  if (!review || !review.count) {
+    return (
+      <div className="rounded-xl bg-slate-50 px-4 py-10 text-center">
+        <Star className="mx-auto h-8 w-8 text-slate-300" />
+        <p className="mt-2 text-sm font-semibold text-slate-600">ยังไม่มีรีวิวจากนักเรียน</p>
+        <p className="mt-1 text-xs text-slate-500">นักเรียนรีวิวได้หลังวันสิ้นสุดคอร์ส</p>
+      </div>
+    );
+  }
+  const max = Math.max(...review.distribution, 1);
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-[auto_1fr] sm:items-center">
+        <div className="text-center sm:border-r sm:border-slate-200 sm:pr-6">
+          <p className="text-4xl font-bold tabular-nums text-slate-900">{review.average.toFixed(1)}</p>
+          <StarRow value={review.average} />
+          <p className="mt-1 text-xs text-slate-500">จาก {review.count} รีวิว</p>
+        </div>
+        <div className="space-y-1.5">
+          {[5, 4, 3, 2, 1].map(star => {
+            const n = review.distribution[star - 1] || 0;
+            return (
+              <div key={star} className="flex items-center gap-2 text-xs">
+                <span className="w-8 shrink-0 text-slate-500">{star} ดาว</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200">
+                  <div className={`h-full rounded-full ${star >= 4 ? 'bg-emerald-500' : star === 3 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${(n / max) * 100}%` }} />
+                </div>
+                <span className="w-6 shrink-0 text-right font-semibold tabular-nums text-slate-700">{n}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <p className="flex items-start gap-1.5 rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-xs leading-5 text-orange-800">
+        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />{review.analysis}
+      </p>
+
+      {review.subjects?.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500">คะแนนแยกตามวิชา</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {review.subjects.map(sub => (
+              <div key={sub.subjectId} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                <span className="min-w-0 truncate text-slate-700">{sub.subjectName}</span>
+                <span className="shrink-0 text-xs text-slate-500"><b className="text-slate-800 tabular-nums">★ {sub.average.toFixed(1)}</b> · {sub.count} รีวิว</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
-      {metrics.map(m => {
-        const contrib = Math.round(m.val * m.weight / 100);
-        const barColor = m.warn ? 'bg-amber-400' : m.val >= 80 ? 'bg-emerald-500'
-          : m.val >= 60 ? 'bg-amber-500' : 'bg-red-500';
-        const textColor = m.warn ? 'text-amber-600' : m.val >= 80 ? 'text-emerald-700'
-          : m.val >= 60 ? 'text-amber-700' : 'text-red-700';
-        return (
-          <div key={m.name}>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-28 sm:w-36 shrink-0">
-                {m.name}
-                <span className="text-[11px] ml-1">(×{m.weight}%)</span>
-              </span>
-              <div className="flex-1 h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                <div className={`h-full rounded-full ${barColor}`}
-                  style={{ width: `${m.val}%` }} />
-              </div>
-              <span className={`text-xs font-semibold w-6 text-right ${textColor}`}>
-                {contrib}
-              </span>
-            </div>
-            <p className={`text-[11px] ml-[7.5rem] sm:ml-[9.5rem] mt-0.5 ${m.warn ? 'text-amber-600 font-medium' : 'text-slate-400'}`}>
-              {m.warn && <Info className="inline h-2.5 w-2.5 mr-0.5 -mt-0.5" />}{m.sub}
-            </p>
-          </div>
-        );
-      })}
 
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center gap-3">
-        <span className="text-xs text-slate-500">คะแนนรวม</span>
-        <span className="text-base font-semibold text-right">
-          {tutor.PerformanceScore === null ? 'ยังไม่มีข้อมูล (ไม่มีตารางสอนเดือนนี้)' : `${tutor.PerformanceScore} / 100`}
-        </span>
-      </div>
+      {review.comments?.length > 0 && (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-slate-500">ความคิดเห็นล่าสุด</p>
+          <ul className="space-y-2">
+            {review.comments.slice(0, 5).map(c => (
+              <li key={c.id} className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <StarRow value={Number(c.rating)} size="h-3 w-3" />
+                  <span className="text-[11px] text-slate-400">{c.subjectName} · {c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }) : ''}</span>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-slate-700 break-words">{c.comment}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
 
 function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   const [data, setData] = useState(null);
-  const [perf, setPerf] = useState(null);   // ★ เพิ่ม
-  const [minWeeksForConsistency, setMinWeeksForConsistency] = useState(3); // ★ เพิ่ม
+  const [review, setReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
 
@@ -1903,18 +1914,18 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
     setLoading(true);
     return Promise.all([
       axios.get(`${API}/tutors/${tutor.AdminId}/courses-students`),
-      axios.get(`${API}/tutors/performance`),
+      // คะแนนรีวิวจริงจากนักเรียนทั้งหมด (ทุกเดือน) — ถ้าโหลดไม่ได้ยังเปิดแท็บอื่นได้ตามปกติ
+      axios.get(`${API}/tutor-feedback`, { params: { month: 'all' } }).catch(() => ({ data: { tutors: [] } })),
     ])
-      .then(([csRes, perfRes]) => {
+      .then(([csRes, reviewRes]) => {
         setData(csRes.data);
-        const found = (perfRes.data.tutors || []).find(t => t.AdminId === tutor.AdminId);
-        setPerf(found || null);
-        if (perfRes.data.minWeeksForConsistency) setMinWeeksForConsistency(perfRes.data.minWeeksForConsistency); // ★ เพิ่ม
+        const found = (reviewRes.data.tutors || []).find(t => Number(t.tutorId) === Number(tutor.AdminId));
+        setReview(found || null);
       })
       .catch(e => {
         console.error('[TutorDetailModal]', e);
         setData({ courses: [], students: [] });
-        setPerf(null);
+        setReview(null);
       })
       .finally(() => setLoading(false));
   };
@@ -1922,7 +1933,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
   useEffect(() => { loadDetail(); }, [tutor.AdminId]);
 
   const displayName = tutor.Nickname || `${tutor.Firstname} ${tutor.Lastname}`;
-  const badge = calcBadge(perf?.PerformanceScore ?? 0);
+  const badge = reviewBadge(review);
 
   const uniqueCourseCount = new Set((data?.courses || []).map(c => c.CourseID)).size;
 
@@ -1944,12 +1955,6 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
             {tutor.GenderName && <span className="bg-white/20 px-2 py-0.5 rounded-full">เพศ: {tutor.GenderName}</span>}
             {tutor.TeachingSubjects && <span className="bg-white/20 px-2 py-0.5 rounded-lg sm:rounded-full">{tutor.TeachingSubjects}</span>}
             <span className={`px-2 py-0.5 rounded-full font-semibold ${badge.bg} ${badge.text}`}>{badge.label}</span>
-            {/* ★ เพิ่ม: บอกด้วยว่าถ้าข้อมูลยังไม่พอ จะไม่ถูกจัดอันดับโพเดียม */}
-            {perf?.LowDataWarning && (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold bg-white/20">
-                <Info className="h-3 w-3" /> ข้อมูลยังไม่พอสำหรับจัดอันดับ
-              </span>
-            )}
           </div>
         </div>
         <div className="flex gap-3 shrink-0 w-full sm:w-auto">
@@ -2020,11 +2025,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
               </div>
           )}
 
-          {tab === 'overview' && (
-            perf
-              ? <MetricBreakdown tutor={perf} minWeeksForConsistency={minWeeksForConsistency} />
-              : <p className="text-center text-slate-400 py-8">ยังไม่มีข้อมูล Performance เดือนนี้</p>
-          )}
+          {tab === 'overview' && <ReviewOverview review={review} />}
         </>
       )}
     </Modal>

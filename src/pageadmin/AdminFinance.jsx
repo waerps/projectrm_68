@@ -978,7 +978,7 @@ export default function AdminFinance() {
                                             </div>
                                             <p className={`${T.caption} mt-1 line-clamp-2`}>{item.courses.join(', ')}</p>
                                             <div className="mt-2 flex items-center justify-between gap-2">
-                                                <p className="text-xs text-slate-600 min-w-0 truncate">{item.bankName || 'ข้อมูลไม่ครบ'} · {item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p>
+                                                <p className="text-xs text-slate-600 min-w-0 truncate">{item.kind === 'extra' ? 'โอนเพิ่ม (ไม่ใช่ค่าสอนรายคาบ)' : `${item.bankName || 'ข้อมูลไม่ครบ'} · ${item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}`}</p>
                                                 <StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : item.blockReason ? 'รอตั้งเรท' : 'กำลังสะสม'} />
                                             </div>
                                             <div className="mt-auto pt-3">
@@ -990,7 +990,7 @@ export default function AdminFinance() {
                                                     <div className="flex-1 flex justify-end">
                                                         {item.status === 'unpaid' ? (item.canPay
                                                             ? <button onClick={() => setPayoutItem(item)} className="h-10 px-4 bg-orange-500 text-white rounded-xl text-xs font-bold">บันทึกการโอน</button>
-                                                            : <span className={`${T.caption} ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.missingRateCourses?.join(', ') || undefined}>{item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : 'จ่ายได้วันสิ้นเดือน'}</span>)
+                                                            : <span className={`${T.caption} whitespace-nowrap ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : undefined}>{item.blockReason ? 'ตั้งเรทคอร์สเดี่ยวก่อน' : 'จ่ายได้วันสิ้นเดือน'}</span>)
                                                             : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="h-10 px-3 flex items-center text-orange-600 text-xs font-bold">ดูสลิป</a> : null}
                                                     </div>
                                                 </div>
@@ -1010,13 +1010,13 @@ export default function AdminFinance() {
                                         <tbody className="divide-y divide-slate-100">
                                             {tutorData.map(item => (
                                                 <tr key={item.key} className={`hover:bg-orange-50/40 ${T.transition}`}>
-                                                    <td className="px-4 py-3 font-semibold whitespace-nowrap lg:whitespace-normal">
+                                                    <td className="px-4 py-3 font-semibold whitespace-nowrap">
                                                         <span className="flex items-center gap-1.5">{item.tutorName}<TypeMixBadge typeMix={item.typeMix} /></span>
                                                     </td>
                                                     <td className="px-4 py-3"><p>{item.period || '—'}</p><p className={`${T.caption} max-w-[280px] truncate`}>{item.courses.join(', ')}</p></td>
                                                     <td className="px-4 py-3 whitespace-nowrap lg:whitespace-normal">{item.kind === 'extra' ? 'โอนเพิ่ม' : `${item.sessionCount} คาบ`}</td>
                                                     <td className="px-4 py-3 text-right font-bold">{formatMoney(item.amount)}</td>
-                                                    <td className="px-4 py-3 min-w-[140px] lg:min-w-0"><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></td>
+                                                    <td className="px-4 py-3 min-w-[140px] lg:min-w-0">{item.kind === 'extra' ? <p className={T.caption}>—</p> : <><p>{item.bankName || 'ข้อมูลไม่ครบ'}</p><p className={T.caption}>{item.bankAccountNumber || 'ยังไม่มีเลขบัญชี'}</p></>}</td>
                                                     <td className="px-4 py-3"><StatusBadge name={item.status === 'paid' ? 'จ่ายแล้ว' : item.canPay ? 'รอโอน' : item.blockReason ? 'รอตั้งเรท' : 'กำลังสะสม'} /></td>
                                                     <td className="px-4 py-3 sticky right-0 bg-white lg:static lg:bg-transparent">
                                                         <div className="flex items-center justify-end gap-2">
@@ -1029,7 +1029,7 @@ export default function AdminFinance() {
                                                             </button>
                                                             {item.status === 'unpaid' ? (item.canPay
                                                                 ? <button onClick={() => setPayoutItem(item)} className={`px-3 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold hover:bg-orange-600 ${T.transition}`}>บันทึกการโอน</button>
-                                                                : <span className={`${T.caption} ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.missingRateCourses?.join(', ') || undefined}>{item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : 'จ่ายได้วันสิ้นเดือน'}</span>)
+                                                                : <span className={`${T.caption} whitespace-nowrap ${item.blockReason ? 'text-amber-700 font-semibold' : ''}`} title={item.blockReason ? `${item.blockReason}: ${item.missingRateCourses.join(', ')}` : undefined}>{item.blockReason ? 'ตั้งเรทคอร์สเดี่ยวก่อน' : 'จ่ายได้วันสิ้นเดือน'}</span>)
                                                                 : item.slipUrl ? <a href={getFileUrl(item.slipUrl)} target="_blank" rel="noreferrer" className="text-orange-600 text-xs font-bold">ดูสลิป</a> : '—'}
                                                         </div>
                                                     </td>
@@ -1149,7 +1149,7 @@ function TutorPaymentDetailModal({ item, onClose }) {
     const sessions = Array.isArray(item.sessions) ? item.sessions : [];
     return (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
-            <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl">
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl">
                 <div className="flex items-center justify-between border-b border-orange-100 bg-gradient-to-r from-orange-500 to-amber-500 px-4 sm:px-6 py-4">
                     <div>
                         <h3 className="flex items-center gap-2 text-base font-bold text-white">
@@ -1203,6 +1203,9 @@ function TutorPaymentDetailModal({ item, onClose }) {
                             </ul>
                         </div>
                     )}
+                    {sessions.some(sItem => sItem.isSnapshot) && (
+                        <p className="mb-2 text-xs text-slate-500">ยอดของแต่ละคาบเป็นยอดที่บันทึกไว้ตอนจ่าย — ไม่เปลี่ยนตามการแก้ไขข้อมูลคอร์สหรือเรทภายหลัง</p>
+                    )}
                     {item.kind !== 'extra' && <div className="overflow-x-auto rounded-2xl border border-slate-200">
                         <table className="w-full min-w-[900px] text-sm">
                             <thead className="bg-slate-50 text-xs text-slate-500">
@@ -1236,7 +1239,6 @@ function TutorPaymentDetailModal({ item, onClose }) {
                                         <td className="px-4 py-3 text-xs text-slate-500">{Number(session.ratePerSession).toLocaleString('th-TH')} × ({Number(session.durationHours).toFixed(1)} ÷ 1.5)</td>
                                         <td className="px-4 py-3 text-right font-bold text-orange-600">
                                             {session.rateMissing ? <span className="text-amber-700">ยังไม่ได้ตั้งเรท</span> : formatMoney(session.earnedAmount)}
-                                            {session.isSnapshot && <span className="block text-[11px] font-medium text-slate-500">ยอดที่บันทึกตอนจ่าย</span>}
                                         </td>
                                     </tr>
                                 ))}

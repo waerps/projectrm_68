@@ -806,7 +806,7 @@ export default function TutorIncome() {
                   <p className="text-xs font-medium text-green-700 mt-2">รับแล้ว</p>
                   <p className={STAT_VALUE}><MoneyCountUp value={summary.totalPaid} /><span className={STAT_UNIT}>บาท</span></p>
                   <p className="text-[11px] text-green-800">โอนแล้ว {payments.length} ครั้ง</p>
-                  {totalExtra > 0 && <p className="text-[11px] text-green-800">+ โอนเพิ่ม (ไม่ใช่ค่าสอน) {totalExtra.toLocaleString()} บาท</p>}
+                  {totalExtra > 0 && <p className="text-[11px] text-green-800" title="เงินที่ไม่ใช่ค่าสอนรายคาบ เช่น ค่าเดินทาง โบนัส">+ โอนเพิ่ม {totalExtra.toLocaleString()} บาท</p>}
                 </div>
               </div>
               <div className="mt-4">

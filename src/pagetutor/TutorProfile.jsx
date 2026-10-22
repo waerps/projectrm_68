@@ -321,7 +321,9 @@ export default function TutorProfile() {
                     </div>
                 </div>
 
-                {/* ── Detail Cards ── */}
+                {/* ── Detail Cards ──
+                    แถวบน: ข้อมูลส่วนตัว | ข้อมูลติดต่อ+ผู้ติดต่อฉุกเฉิน (5 แถวเท่ากันทั้งสองฝั่ง)
+                    แถวล่าง: ค่าสอนและบัญชีรับเงิน เต็มความกว้าง แบ่งซ้าย-ขวาให้สูงเท่ากัน */}
                 <div className="grid gap-5 md:grid-cols-2">
 
                     {/* ข้อมูลส่วนตัว */}
@@ -337,7 +339,7 @@ export default function TutorProfile() {
                         <InfoRow required label="อาชีพ" name="occupation" value={formData.occupation} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
 
-                    {/* ข้อมูลติดต่อ */}
+                    {/* ข้อมูลติดต่อ + ผู้ติดต่อฉุกเฉิน รวมการ์ดเดียว ให้สูงเท่ากับการ์ดข้อมูลส่วนตัว */}
                     <SectionCard
                         title="ข้อมูลติดต่อ"
                         icon={<Phone className="h-4.5 w-4.5 text-orange-500" />}
@@ -345,44 +347,36 @@ export default function TutorProfile() {
                     >
                         <InfoRow required label="เบอร์โทรศัพท์" name="phone" value={formData.phone} isEditing={isEditing} onChange={handleChange} />
                         <InfoRow required label="Line ID" name="lineId" value={formData.lineId} isEditing={isEditing} onChange={handleChange} />
-                    </SectionCard>
-
-                    {/* 🟢 ข้อมูลการเงินและเรทค่าสอน (รวมกันแล้ว) */}
-                    <SectionCard
-                        title="ข้อมูลการเงินและเรทค่าสอน"
-                        icon={<Landmark className="h-4.5 w-4.5 text-orange-500" />}
-                        isEditing={isEditing}
-                    >
-                        {/* วิธีคิดค่าสอนจริง: คอร์สรวม = เรทสถาบัน, คอร์สเดี่ยว = เรทที่ตั้งในแต่ละคอร์ส
-                            (เดิมโชว์ "เรทติวเตอร์" เป็นค่าตอบแทนต่อคาบ ซึ่งไม่ได้ใช้คิดเงินคอร์สรวม และหน่วยไม่ตรงกับฝั่งแอดมิน) */}
-                        <TeachingRates
-                            institutionRates={formData.institutionRates}
-                            singleCourseRates={formData.singleCourseRates || []}
-                            defaultSingleRate={formData.ratePerTutors}
-                        />
-
-                        {/* ส่วนข้อมูลบัญชีธนาคาร */}
-                        <div className="border-t border-slate-100 pt-2 space-y-0.5">
-                            <InfoRow label="ธนาคาร" name="bankName" value={formData.bankName} isEditing={isEditing} onChange={handleChange} />
-                            <InfoRow label="เลขที่บัญชี" name="bankAccount" value={formData.bankAccount} isEditing={isEditing} onChange={handleChange} />
-                            <InfoRow label="ชื่อบัญชี" name="bankAccountName" value={formData.bankAccountName} isEditing={isEditing} onChange={handleChange} />
-                        </div>
-
-                        {/* หมายเหตุ */}
-                        <p className="mt-4 text-xs text-slate-500 text-center">
-                            * เรทค่าสอนถูกกำหนดโดยฝ่ายบริหาร
+                        <p className="flex items-center gap-1.5 pt-3 pb-1 text-xs font-bold text-red-600">
+                            <AlertTriangle className="h-3.5 w-3.5" /> ผู้ติดต่อฉุกเฉิน
                         </p>
-                    </SectionCard>
-
-                    {/* ผู้ติดต่อฉุกเฉิน */}
-                    <SectionCard
-                        title="ผู้ติดต่อฉุกเฉิน"
-                        icon={<AlertTriangle className="h-4.5 w-4.5 text-red-500" />}
-                        isEditing={isEditing}
-                    >
                         <InfoRow required label="ชื่อผู้ติดต่อ" name="emergencyName" value={formData.emergencyName} isEditing={isEditing} onChange={handleChange} />
                         <InfoRow required label="เบอร์โทรฉุกเฉิน" name="emergencyPhone" value={formData.emergencyPhone} isEditing={isEditing} onChange={handleChange} />
                     </SectionCard>
+
+                    {/* ค่าสอนและบัญชีรับเงิน — เต็มความกว้าง */}
+                    <div className="md:col-span-2">
+                        <SectionCard
+                            title="ค่าสอนและบัญชีรับเงิน"
+                            icon={<Landmark className="h-4.5 w-4.5 text-orange-500" />}
+                            isEditing={isEditing}
+                        >
+                            {/* วิธีคิดค่าสอนจริง: คอร์สรวม = เรทสถาบัน, คอร์สเดี่ยว = เรทที่ตั้งในแต่ละคอร์ส */}
+                            <div className="grid gap-4 lg:grid-cols-2">
+                                <InstitutionRatesBox institutionRates={formData.institutionRates} />
+                                <div className="flex flex-col gap-4">
+                                    <SingleCourseRatesBox singleCourseRates={formData.singleCourseRates || []} defaultSingleRate={formData.ratePerTutors} />
+                                    <div className="flex-1 rounded-xl border border-slate-200 px-4 py-2">
+                                        <p className="pt-2 text-sm font-bold text-slate-800">บัญชีรับเงิน</p>
+                                        <InfoRow label="ธนาคาร" name="bankName" value={formData.bankName} isEditing={isEditing} onChange={handleChange} />
+                                        <InfoRow label="เลขที่บัญชี" name="bankAccount" value={formData.bankAccount} isEditing={isEditing} onChange={handleChange} />
+                                        <InfoRow label="ชื่อบัญชี" name="bankAccountName" value={formData.bankAccountName} isEditing={isEditing} onChange={handleChange} />
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="mt-4 text-xs text-slate-500 text-center">* เรทค่าสอนถูกกำหนดโดยฝ่ายบริหาร</p>
+                        </SectionCard>
+                    </div>
                 </div>
             </div>
             {/* วางใต้สุดของ return ก่อนปิด div สุดท้าย */}
@@ -412,46 +406,48 @@ function SectionCard({ title, icon, children, isEditing }) {
 }
 
 // ── Info Row ──────────────────────────────────────────────────
-function TeachingRates({ institutionRates, singleCourseRates, defaultSingleRate }) {
+const rateRange = (t) => t.maxStudents == null ? `${t.minStudents} คนขึ้นไป` : t.minStudents === t.maxStudents ? `${t.minStudents} คน` : `${t.minStudents}–${t.maxStudents} คน`;
+
+function InstitutionRatesBox({ institutionRates }) {
     const levels = [["elementary", "ประถม"], ["secondary", "มัธยม"]];
-    const range = (t) => t.maxStudents == null ? `${t.minStudents} คนขึ้นไป` : t.minStudents === t.maxStudents ? `${t.minStudents} คน` : `${t.minStudents}–${t.maxStudents} คน`;
     return (
-        <div className="mt-1 mb-4 space-y-3">
-            <div className="rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-4">
-                <p className="text-sm font-bold text-slate-800">คอร์สรวม: เรทสถาบัน</p>
-                <p className="text-[11px] text-slate-500">บาทต่อคาบ 1.5 ชม. ตามระดับชั้นของคอร์สและจำนวนนักเรียนที่มาเรียนจริง (คาบยาวกว่านี้คิดตามสัดส่วน)</p>
-                {institutionRates ? (
-                    <div className="mt-2 overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead><tr className="text-slate-500"><th className="py-1 text-left font-semibold">นักเรียนที่มา</th>{levels.map(([k, l]) => <th key={k} className="py-1 text-right font-semibold">{l}</th>)}</tr></thead>
-                            <tbody>
-                                {institutionRates.elementary.map((tier, i) => (
-                                    <tr key={i} className="border-t border-orange-100">
-                                        <td className="py-1 text-slate-600">{range(tier)}</td>
-                                        {levels.map(([k]) => <td key={k} className="py-1 text-right font-semibold tabular-nums text-orange-700">{Number(institutionRates[k][i]?.ratePerSession || 0).toLocaleString()} บาท</td>)}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : <p className="mt-2 text-xs text-slate-500">ไม่สามารถโหลดตารางเรทได้</p>}
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <p className="text-sm font-bold text-slate-800">คอร์สเดี่ยว: เรทที่ตกลงในแต่ละคอร์ส</p>
-                <p className="text-[11px] text-slate-500">
-                    เรทตั้งต้นของคุณ {Number(defaultSingleRate) > 0 ? `${Number(defaultSingleRate).toLocaleString()} บาท/ชม.` : "ยังไม่ได้กำหนด"} — แต่ละคอร์สอาจต่างกันตามความยากง่าย
-                </p>
-                {singleCourseRates.length > 0 ? (
-                    <ul className="mt-2 divide-y divide-slate-100">
-                        {singleCourseRates.map((c) => (
-                            <li key={`${c.courseId}-${c.subjectName}`} className="flex items-baseline justify-between gap-3 py-1.5 text-xs">
-                                <span className="min-w-0 text-slate-600">{c.courseName}{c.subjectName ? ` · ${c.subjectName}` : ""}</span>
-                                <span className={`shrink-0 font-semibold tabular-nums ${c.ratePerHour ? "text-slate-800" : "text-amber-700"}`}>{c.ratePerHour ? `${c.ratePerHour.toLocaleString()} บาท/ชม.` : "รอแอดมินตั้งเรท"}</span>
-                            </li>
+        <div className="flex h-full flex-col rounded-xl border border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 p-4">
+            <p className="text-sm font-bold text-slate-800">คอร์สรวม: เรทสถาบัน</p>
+            <p className="text-xs leading-5 text-slate-500">บาทต่อคาบ 1.5 ชม. ตามระดับชั้นของคอร์สและจำนวนนักเรียนที่มาเรียนจริง (คาบยาวกว่านี้คิดตามสัดส่วน)</p>
+            {institutionRates ? (
+                <table className="mt-3 w-full flex-1 text-sm">
+                    <thead><tr className="text-xs text-slate-500"><th className="py-1.5 text-left font-semibold">นักเรียนที่มา</th>{levels.map(([k, l]) => <th key={k} className="py-1.5 text-right font-semibold">{l}</th>)}</tr></thead>
+                    <tbody>
+                        {institutionRates.elementary.map((tier, i) => (
+                            <tr key={i} className="border-t border-orange-100">
+                                <td className="py-2 text-slate-600">{rateRange(tier)}</td>
+                                {levels.map(([k]) => <td key={k} className="py-2 text-right font-semibold tabular-nums text-orange-700">{Number(institutionRates[k][i]?.ratePerSession || 0).toLocaleString()} บาท</td>)}
+                            </tr>
                         ))}
-                    </ul>
-                ) : <p className="mt-2 text-xs text-slate-400">ยังไม่มีคอร์สเดี่ยวที่สอนอยู่</p>}
-            </div>
+                    </tbody>
+                </table>
+            ) : <p className="mt-3 text-xs text-slate-500">ไม่สามารถโหลดตารางเรทได้</p>}
+        </div>
+    );
+}
+
+function SingleCourseRatesBox({ singleCourseRates, defaultSingleRate }) {
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <p className="text-sm font-bold text-slate-800">คอร์สเดี่ยว: เรทที่ตกลงในแต่ละคอร์ส</p>
+            <p className="text-xs leading-5 text-slate-500">
+                เรทตั้งต้นของคุณ {Number(defaultSingleRate) > 0 ? `${Number(defaultSingleRate).toLocaleString()} บาท/ชม.` : "ยังไม่ได้กำหนด"} — แต่ละคอร์สอาจต่างกันตามความยากง่าย
+            </p>
+            {singleCourseRates.length > 0 ? (
+                <ul className="mt-2 divide-y divide-slate-100">
+                    {singleCourseRates.map((c) => (
+                        <li key={`${c.courseId}-${c.subjectName}`} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+                            <span className="min-w-0 text-slate-600">{c.courseName}{c.subjectName ? ` · ${c.subjectName}` : ""}</span>
+                            <span className={`shrink-0 font-semibold tabular-nums ${c.ratePerHour ? "text-slate-800" : "text-amber-700"}`}>{c.ratePerHour ? `${c.ratePerHour.toLocaleString()} บาท/ชม.` : "รอแอดมินตั้งเรท"}</span>
+                        </li>
+                    ))}
+                </ul>
+            ) : <p className="mt-2 text-xs text-slate-400">ยังไม่มีคอร์สเดี่ยวที่สอนอยู่</p>}
         </div>
     );
 }

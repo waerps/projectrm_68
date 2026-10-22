@@ -2117,6 +2117,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   // ── ช่องที่ยังไม่ครบ/ไม่ถูกต้อง (กติกาเดียวกับตอนบันทึกและฝั่ง backend) ──
   const errors = {};
   if (!String(form.CourseName || "").trim()) errors.CourseName = "กรุณากรอกชื่อคอร์ส";
+  // บังคับตั้งแต่สร้างคอร์ส: ตารางสอน รายงาน และการเปิดขายต้องรู้ช่วงเวลาและปีการศึกษาเสมอ
+  if (!form.StartDate) errors.StartDate = "กรุณาเลือกวันเริ่มสอน";
+  if (!form.LastDate) errors.LastDate = "กรุณาเลือกวันสิ้นสุด";
+  if (!form.YearId) errors.YearId = "กรุณาเลือกปีการศึกษา";
   if (form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) errors.StartDate = "รูปแบบวันที่ไม่ถูกต้อง";
   if (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง";
   if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
@@ -2334,17 +2338,17 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     placeholder="เช่น คอร์สรวม ป.3 ทั้งหมด 4 วิชา"
                   />
                 </FormField>
-                <FormField label="วันเริ่มสอน" optional error={errOf("StartDate")}>
+                <FormField label="วันเริ่มสอน" required error={errOf("StartDate")}>
                   <input type="date" value={form.StartDate?.slice(0, 10) || ""} onChange={(e) => set("StartDate", e.target.value)} className={inputCls(errOf("StartDate"))} />
                 </FormField>
                 <FormField
-                  label="วันสิ้นสุด" optional
+                  label="วันสิ้นสุด" required
                   error={errOf("LastDate") || (form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) ? "วันสิ้นสุดต้องมาหลังวันเริ่มสอน" : undefined)}
                   hint={monthsSpanned > 0 ? `ระยะเวลาประมาณ ${monthsSpanned} เดือน` : undefined}
                 >
                   <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
                 </FormField>
-                <FormField label="ปีการศึกษา (พ.ศ.)" optional hint={Number(initial.StudentCount || existingStudentCount) > 0 ? "มีนักเรียนแล้ว เปลี่ยนปีไม่ได้; ปีใหม่ให้สร้างคอร์สใหม่" : "เว้นว่างได้ตอนร่าง ต้องเลือกก่อนเผยแพร่คอร์สที่เปิดขาย"} error={errOf("YearId")}>
+                <FormField label="ปีการศึกษา (พ.ศ.)" required hint={Number(initial.StudentCount || existingStudentCount) > 0 ? "มีนักเรียนแล้ว เปลี่ยนปีไม่ได้; ปีใหม่ให้สร้างคอร์สใหม่" : undefined} error={errOf("YearId")}>
                   <select value={form.YearId ?? ""} onChange={(e) => set("YearId", e.target.value)} disabled={Number(initial.StudentCount || existingStudentCount) > 0} className={inputCls(errOf("YearId"))}>
                     <option value="">เลือกปีการศึกษา</option>
                     {yearOptions.map((y) => <option key={y.YearId} value={y.YearId}>{y.YearName}</option>)}
