@@ -10,6 +10,7 @@ import { getParentProfileTypes } from "../callapi/callusers_student";
 import ForgotPasswordForm from "./ForgotPasswordForm";
 import "./AuthPage.css";
 import { birthDateMax } from "../utils/birthDateInput";
+import { startAuthSession } from "../utils/authSession";
 
 const emptyRegistration = {
   firstname: "", lastname: "", nickname: "", phoneNo: "", schoolName: "",
@@ -91,6 +92,7 @@ export function Login({ initialMode = "login" }) {
       if (role === "user") {
         finishStudentLogin(data, navigate, studentReturnContext(location));
       } else {
+        startAuthSession();
         localStorage.setItem("student_token", data.token);
         localStorage.setItem("user_role", data.user?.roleId || "student");
         localStorage.setItem("user", JSON.stringify(data.user));

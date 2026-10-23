@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { initNotifySound, isNotifySoundMuted, playNotifySound, setNotifySoundMuted } from '../utils/notifySound';
+import { getAuthenticatedRole } from '../utils/authSession';
 
 const POLL_MS = 30000;
 
@@ -53,12 +54,11 @@ export default function NotificationBell({ role, pagePath }) {
   const load = async ({ silent = false } = {}) => {
     let token = null;
     try { token = localStorage.getItem('student_token'); } catch { token = null; }
-    let storedRole;
-    try { const user = JSON.parse(localStorage.getItem('user') || 'null'); const raw = user?.role || localStorage.getItem('user_role'); storedRole = ({1:'admin',2:'tutor',3:'student'})[raw] || raw; } catch { storedRole = null; }
-    if (!token || storedRole !== role) return;
+    if (!token || getAuthenticatedRole() !== role) return;
     if (!silent) setLoading(true);
     try {
       const { data } = await axios.get(api, { headers: { Authorization: `Bearer ${token}` } });
+      if (getAuthenticatedRole() !== role || localStorage.getItem('student_token') !== token) return;
       const list = Array.isArray(data.items) ? data.items : [];
       setItems(list);
       detectNew(list);
@@ -75,6 +75,7 @@ export default function NotificationBell({ role, pagePath }) {
   useEffect(() => {
     seenIdsRef.current = null;
     prevUnreadRef.current = 0;
+    setItems([]);
     loadRef.current();
     const poll = () => { if (document.visibilityState === 'visible') loadRef.current({ silent: true }); };
     const timer = setInterval(poll, POLL_MS);

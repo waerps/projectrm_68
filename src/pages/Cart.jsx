@@ -6,6 +6,7 @@ import { getCourseById, getCourseSchedule, getCourseSubjects } from "../callapi/
 import { getConsentCatalog, saveConsents, getMyConsents, getStudentProfile, getParentProfileTypes, submitParentProfile, updateParentProfile, updateStudentProfile } from "../callapi/callusers_student";
 import CheckoutIdentity from "./CheckoutIdentity";
 import { getFileUrl } from "../utils/fileUrl";
+import { startAuthSession } from "../utils/authSession";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -888,6 +889,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
           setSlipName("");
         } else {
           if (pendingUser && checkoutToken) {
+            startAuthSession();
             localStorage.setItem("student_token", checkoutToken);
             localStorage.setItem("user_role", "student");
             localStorage.setItem("user", JSON.stringify(pendingUser));

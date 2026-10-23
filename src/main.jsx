@@ -1,25 +1,28 @@
 
 
-// ★ เพิ่ม: บังคับใช้ "จำฉันไว้ในระบบ" — รันครั้งเดียวตอนแอปเริ่มโหลด ก่อน React จะ render อะไรเลย
-//   ถ้าตอน login ไม่ได้ติ๊ก "จำฉันไว้ในระบบ" (remember_me === "false") แล้วเบราว์เซอร์/แท็บถูกปิด
-//   ไปจริง ๆ (sessionStorage ของแท็บนั้นหายไป) เมื่อเปิดใหม่จะเจอว่า session_active ไม่มีอยู่แล้ว
-//   → เคลียร์ข้อมูลล็อกอินทิ้ง ถือว่า session หมดอายุ (ถ้าเป็นแค่ refresh หน้า/เปลี่ยนหน้าในแท็บเดิม
-//   sessionStorage ยังอยู่ตามปกติ จึงไม่ถูกเคลียร์)
-(function enforceRememberMe() {
-  try {
-    const rememberMe = localStorage.getItem("remember_me");
-    const sessionActive = sessionStorage.getItem("session_active");
-    if (rememberMe === "false" && !sessionActive) {
-      localStorage.removeItem("student_token");
-      localStorage.removeItem("user_role");
-      localStorage.removeItem("user");
-      localStorage.removeItem("remember_me");
-    }
-    sessionStorage.setItem("session_active", "1");
-  } catch {
-    // localStorage/sessionStorage อาจใช้ไม่ได้ (เช่น private mode) — ไม่ทำให้แอปพัง
+import { enforceAuthSessionOnStartup, readTokenClaims } from "./utils/authSession.js";
+
+const signedOutOnStartup = await enforceAuthSessionOnStartup();
+if (signedOutOnStartup && window.location.pathname === "/") {
+  window.history.replaceState(window.history.state, "", "/login");
+}
+
+// หลัง logout จากแท็บอื่น หรือกด Back ไปหน้าเก่าที่เบราว์เซอร์เก็บไว้ ต้องไม่แสดงหน้าส่วนตัวค้าง
+const redirectIfSignedOut = () => {
+  if (/^\/(?:admin|tutor|profile)(?:\/|$)/.test(window.location.pathname) && !readTokenClaims()) {
+    window.location.replace("/login");
   }
-})();
+};
+window.addEventListener("pageshow", () => {
+  redirectIfSignedOut();
+  window.dispatchEvent(new Event("auth-session-changed"));
+});
+window.addEventListener("storage", (event) => {
+  if (event.key === "student_token" || event.key === null) {
+    if (!event.newValue) sessionStorage.removeItem("session_active");
+    redirectIfSignedOut();
+  }
+});
 
 import Spinner from "./components/ui/Spinner";
 import React from "react"

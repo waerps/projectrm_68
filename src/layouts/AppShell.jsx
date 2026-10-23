@@ -5,6 +5,7 @@ import Footer from "../components/footer.jsx"
 import ChatWidget from "../components/Chat/ChatWidget"
 import ChatFullscreen from "../components/Chat/ChatFullscreen"
 import IncidentReportButton from "../components/IncidentReportButton.jsx"
+import { getAuthenticatedRole } from "../utils/authSession"
 import {
   readExamActive, markExamActive, clearExamActive,
   fetchActiveExam, EXAM_ACTIVE_CHANGED_EVENT,
@@ -12,15 +13,18 @@ import {
 
 export default function AppShell() {
   const location = useLocation()
+  const [, setAuthVersion] = useState(0)
+  useEffect(() => {
+    const sync = () => setAuthVersion(version => version + 1)
+    window.addEventListener("auth-session-changed", sync)
+    window.addEventListener("storage", sync)
+    return () => {
+      window.removeEventListener("auth-session-changed", sync)
+      window.removeEventListener("storage", sync)
+    }
+  }, [])
   // role ที่เป็นไปได้: null (guest) | 'student' | 'tutor' | 'admin'
-  let currentRole = null
-  try {
-    const storedUser = JSON.parse(localStorage.getItem("user") || "null")
-    const roleId = Number(storedUser?.roleId ?? localStorage.getItem("user_role"))
-    currentRole = storedUser?.role || (roleId === 1 ? "admin" : roleId === 2 ? "tutor" : roleId === 3 ? "student" : null)
-  } catch {
-    currentRole = null
-  }
+  const currentRole = getAuthenticatedRole()
 
   // ปุ่มแจ้งปัญหา: เฉพาะ student และ tutor
   const canReportIncident = currentRole === "student" || currentRole === "tutor"

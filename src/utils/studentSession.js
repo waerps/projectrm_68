@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { startAuthSession } from "./authSession";
 
 const GOOGLE_REGISTRATION_KEY = "student_google_registration";
 
@@ -68,6 +69,7 @@ export function finishStudentLogin(data, navigate, returnContext) {
     throw new Error("เข้าสู่ระบบนักเรียนไม่สำเร็จ กรุณาลองอีกครั้ง");
   }
   try {
+    startAuthSession();
     localStorage.setItem("student_token", data.token);
     localStorage.setItem("user_role", "student");
     localStorage.setItem("user", JSON.stringify(data.user));

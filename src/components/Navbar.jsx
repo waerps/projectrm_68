@@ -10,6 +10,7 @@ import { getStudentProfile } from "../callapi/callusers_student"
 import { getFileUrl } from "../utils/fileUrl"
 import NotificationBell from "./NotificationBell"
 import { logout } from "../utils/logout"
+import { getAuthenticatedRole, readTokenClaims } from "../utils/authSession"
 
 // ── ตัวเลือกฟิลเตอร์: อ้างอิงจากตาราง subjects / course_availability ที่ส่งมา ──
 // ⚠️ เทอม ยังไม่มีตารางอ้างอิงให้ดู ใส่ placeholder ไว้ก่อน รอพี่ยืนยันชื่อ table/column
@@ -54,6 +55,24 @@ const PROFILE_LINKS = [
   { to: "/profile/my-courses", label: "คอร์สเรียนของฉัน", icon: BookOpen },
   { to: "/profile/incidents", label: "ประวัติการแจ้งเรื่อง", icon: History },
 ]
+const ACCOUNT_LINKS = {
+  student: PROFILE_LINKS,
+  tutor: [
+    { to: "/tutor", label: "หน้าหลักติวเตอร์", icon: Home },
+    { to: "/tutor/profile", label: "ข้อมูลส่วนตัว", icon: UserCircle },
+    { to: "/tutor/schedule", label: "ตารางสอน", icon: CalendarDays },
+    { to: "/tutor/courses", label: "คอร์สที่สอน", icon: BookOpen },
+    { to: "/tutor/incidents", label: "ประวัติการแจ้งเรื่อง", icon: History },
+  ],
+  admin: [
+    { to: "/admin", label: "หน้าแอดมิน", icon: Home },
+    { to: "/admin/profile", label: "ข้อมูลส่วนตัว", icon: UserCircle },
+    { to: "/admin/schedule", label: "ตารางเรียน", icon: CalendarDays },
+    { to: "/admin/incidents", label: "รับแจ้งเหตุการณ์", icon: History },
+  ],
+}
+const ACCOUNT_HOME = { student: "/profile", tutor: "/tutor", admin: "/admin" }
+const NOTIFICATION_PATH = { student: "/profile/notifications", tutor: "/tutor/notification", admin: "/admin/notification" }
 
 export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -73,6 +92,9 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { cart, favorites, removeFromCart, toggleFavorite } = useShop()
+  const accountRole = userData?.sessionRole
+  const accountHome = ACCOUNT_HOME[accountRole] || "/login"
+  const accountLinks = ACCOUNT_LINKS[accountRole] || []
 
   const searchRef = useRef(null)
   const favRef = useRef(null)
@@ -107,31 +129,38 @@ export default function Navbar() {
 
   useEffect(() => {
     const syncUser = () => {
-      const savedUser = localStorage.getItem("user")
-      if (savedUser) {
-        const user = JSON.parse(savedUser)
+      const role = getAuthenticatedRole()
+      if (!role) { setUserData(null); return }
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "null") || readTokenClaims() || {}
         setUserData({
           ...user,
+          sessionRole: role,
           id: user.id ?? user.UserId ?? user.userId,
-          nickname: user.nickname ?? user.Nickname ?? user.username ?? user.Username ?? "นักเรียน",
+          nickname: user.nickname ?? user.Nickname ?? user.firstname ?? user.username ?? user.Username ?? "ผู้ใช้",
           username: user.username ?? user.Username ?? "",
           photo: user.photo ?? user.Photo ?? null,
         })
-      } else setUserData(null)
+      } catch { setUserData(null) }
     }
     syncUser()
     window.addEventListener("student-profile-updated", syncUser)
-    return () => window.removeEventListener("student-profile-updated", syncUser)
-  }, [])
+    window.addEventListener("auth-session-changed", syncUser)
+    window.addEventListener("storage", syncUser)
+    return () => {
+      window.removeEventListener("student-profile-updated", syncUser)
+      window.removeEventListener("auth-session-changed", syncUser)
+      window.removeEventListener("storage", syncUser)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     const token = localStorage.getItem("student_token")
-    const role = localStorage.getItem("user_role")
-    if (!token || (role && role !== "student" && role !== "3")) return
+    if (!token || getAuthenticatedRole() !== "student") return
 
     let cancelled = false
     getStudentProfile(token).then((response) => {
-      if (cancelled) return
+      if (cancelled || getAuthenticatedRole() !== "student" || localStorage.getItem("student_token") !== token) return
       const profile = response?.profile ?? response?.student ?? response?.data ?? response ?? {}
       const savedUser = JSON.parse(localStorage.getItem("user") || "{}")
       const mergedUser = {
@@ -146,7 +175,7 @@ export default function Navbar() {
             : savedUser.photo ?? savedUser.Photo ?? null,
       }
       localStorage.setItem("user", JSON.stringify(mergedUser))
-      setUserData(mergedUser)
+      setUserData({ ...mergedUser, sessionRole: "student" })
     }).catch((error) => console.warn("โหลดชื่อเล่นนักเรียนไม่สำเร็จ:", error))
 
     return () => { cancelled = true }
@@ -612,7 +641,7 @@ const cartTotal = cart.reduce((sum, item) => {
                   {userData && (
                     <>
                       <li className="my-1.5 border-t border-gray-100" />
-                      {PROFILE_LINKS.map(({ to, label, icon }) => (
+                      {accountLinks.map(({ to, label, icon }) => (
                         <li key={to}>
                           <Link
                             to={to}
@@ -653,7 +682,7 @@ const cartTotal = cart.reduce((sum, item) => {
             )}
           </div>
 
-          <NotificationBell role="student" pagePath="/profile/notifications" />
+          <NotificationBell role={accountRole || "student"} pagePath={NOTIFICATION_PATH[accountRole] || "/profile/notifications"} />
 
           {/* ── Favorites ── */}
           <div className="relative hidden xl:block" ref={favRef}>
@@ -795,7 +824,7 @@ const cartTotal = cart.reduce((sum, item) => {
           {/* ── User / Login (โชว์รูป + ชื่อเล่นเท่านั้น) ── */}
           {userData ? (
             <div className="relative group hidden xl:ml-3 xl:flex items-center gap-2">
-              <Link to="/profile" className="flex items-center gap-2 cursor-pointer pb-1">
+              <Link to={accountHome} className="flex items-center gap-2 cursor-pointer pb-1">
                 <div className="h-8 w-8 rounded-full overflow-hidden border border-orange-200 bg-orange-50 flex-shrink-0">
                   <img
                     src={
@@ -810,16 +839,15 @@ const cartTotal = cart.reduce((sum, item) => {
                     }}
                   />
                 </div>
-                <span className={`max-w-20 truncate font-bold text-sm transition-colors ${isActive("/profile") ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
+                <span className={`max-w-20 truncate font-bold text-sm transition-colors ${isActive(accountHome) ? "text-orange-500" : "text-gray-700 hover:text-orange-500"}`}>
                   {userData.nickname || userData.username || "นักเรียน"}
                 </span>
               </Link>
               <div className="absolute right-0 top-full mt-1 w-48 rounded-xl bg-white shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50 border border-gray-100">
                 <ul className="py-2 text-sm text-gray-700">
-                  <li><Link to="/profile" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ข้อมูลส่วนตัว</Link></li>
-                  <li><Link to="/profile/schedule" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ตารางเรียน</Link></li>
-                  <li><Link to="/profile/my-courses" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">คอร์สเรียนของฉัน</Link></li>
-                  <li><Link to="/profile/incidents" className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">ประวัติการแจ้งเรื่อง</Link></li>
+                  {accountLinks.map(({ to, label }) => (
+                    <li key={to}><Link to={to} className="block px-4 py-2 hover:bg-orange-50 hover:text-orange-500 transition">{label}</Link></li>
+                  ))}
                   <li>
                     <button
                       onClick={logout}
