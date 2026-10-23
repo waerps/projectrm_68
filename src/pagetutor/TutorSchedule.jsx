@@ -11,6 +11,7 @@ import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { CalendarDays } from "lucide-react";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache"
+import { scheduleSubjectColor } from "../utils/scheduleSubjectColor"
 
 // ─── ค่าคงที่ ──────────────────────────────────────────────────────
 const DAY_THAI = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์']
@@ -32,12 +33,7 @@ const DEFAULT_TIME_SLOTS = [
   { label: '19:00-20:30', start: '19:00', end: '20:30' },
 ]
 
-const SUBJECT_COLOR = (name) => {
-  if (name?.includes('คณิต')) return 'bg-orange-500'
-  if (name?.includes('วิทย์')) return 'bg-blue-500'
-  if (name?.includes('อังกฤษ')) return 'bg-purple-500'
-  return 'bg-teal-500'
-}
+const SUBJECT_COLOR = scheduleSubjectColor
 
 // slotKey ใช้ระบุ slot เดียวกันในทุก state
 const slotKey = (day, time) => `${day}||${time}`

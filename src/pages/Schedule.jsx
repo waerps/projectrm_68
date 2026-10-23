@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { getStudentCourses, getStudentSchedule } from "../callapi/callusers_student";
+import { scheduleSubjectColor } from "../utils/scheduleSubjectColor";
 
 const DAY_MAP = { 1: "อาทิตย์", 2: "จันทร์", 3: "อังคาร", 4: "พุธ", 5: "พฤหัสบดี", 6: "ศุกร์", 7: "เสาร์" };
 const DAY_ORDER = [2, 3, 4, 5, 6, 7, 1];
@@ -38,7 +39,6 @@ const STATUS_STYLE = {
   noClasses: { card: "bg-neutral-50 border-neutral-200", dot: "bg-neutral-300", badge: "bg-neutral-100 text-neutral-600 border-neutral-200", label: "ไม่มีคาบเรียน", Icon: Calendar },
 };
 
-const SUBJECT_COLORS = ["bg-orange-500", "bg-blue-500", "bg-pink-500", "bg-purple-500", "bg-teal-500", "bg-amber-600"];
 const TIMELINE_CELL_STYLE = {
   present: "bg-emerald-500 text-white hover:bg-emerald-600",
   absent: "bg-red-500 text-white hover:bg-red-600",
@@ -101,6 +101,7 @@ function normalizeSchedule(item) {
     DayOfWeek: jsDay === undefined ? Number(item.DayOfWeek ?? item.dayOfWeek) : jsDay === 0 ? 1 : jsDay + 1,
     AttendanceStatus: String(item.AttendanceStatus ?? item.attendanceStatus ?? item.Status ?? item.status ?? "").toLowerCase(),
     RoomDetail: item.RoomDetail ?? item.roomDetail ?? item.RoomName ?? item.roomName,
+    ClassGroup: item.ClassGroup ?? item.classGroup ?? null,
     TutorNickname: item.TutorNickname ?? item.tutorNickname ?? item.TutorName ?? item.tutorName,
   };
 }
@@ -267,7 +268,7 @@ export default function StudentSchedule() {
                 const style = STATUS_STYLE[status];
                 return <button type="button" key={item.CourseScheduleDetailId ?? `${item.CourseID}-${itemIndex}`} onClick={() => goToCourse(item.CourseID)} className={`w-full rounded-xl border p-3 text-left ${style.card}`}>
                   <span className="flex flex-wrap items-center justify-between gap-2 text-xs"><b>{item.StartTime || "—"}–{item.EndTime || "—"}</b><span className={`rounded-full border px-2 py-0.5 font-bold ${style.badge}`}>{style.label}</span></span>
-                  <span className="mt-1 block break-words text-sm font-semibold text-neutral-900">{item.CourseName}</span>
+                  <span className="mt-1 block break-words text-sm font-semibold text-neutral-900">{item.CourseName}{item.ClassGroup ? ` · กลุ่ม ${item.ClassGroup}` : ''}</span>
                   <span className="mt-1 block text-xs text-neutral-600">{item.SubjectName} · {item.RoomDetail || "ยังไม่ระบุห้อง"}</span>
                 </button>;
               })}</div> : <p className="text-xs text-neutral-400">ไม่มีคาบเรียน</p>}
@@ -307,8 +308,8 @@ function ScheduleRow({ slot, scheduleMap, onSelect }) {
         const status = getSlotStatus(item);
         const style = STATUS_STYLE[status];
         return <button type="button" key={item.CourseScheduleDetailId ?? `${item.CourseID}-${index}`} onClick={() => onSelect(item.CourseID)} className={`w-full rounded-xl border-2 p-2.5 text-left transition hover:-translate-y-0.5 hover:shadow-md ${style.card}`}>
-          <span className={`block w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold text-white ${SUBJECT_COLORS[Math.abs(Number(item.CourseID) || 0) % SUBJECT_COLORS.length]}`}>{item.SubjectName}</span>
-          <span className="mt-1 block line-clamp-2 text-xs font-semibold text-neutral-800">{item.CourseName}</span>
+          <span className={`block w-fit max-w-full truncate rounded px-1.5 py-0.5 text-[10px] font-bold text-white ${scheduleSubjectColor(item.SubjectName)}`}>{item.SubjectName}</span>
+          <span className="mt-1 block line-clamp-2 text-xs font-semibold text-neutral-800">{item.CourseName}{item.ClassGroup ? ` · กลุ่ม ${item.ClassGroup}` : ''}</span>
           <span className="mt-2 flex items-center justify-between border-t border-dashed border-neutral-200 pt-2 text-[10px] text-neutral-600"><span className="flex min-w-0 items-center gap-1"><MapPin className="h-3 w-3 shrink-0" /><span className="truncate">{item.RoomDetail || "-"}</span></span>{item.TutorNickname && <span className="ml-1 flex min-w-0 items-center gap-1"><User className="h-3 w-3 shrink-0" /><span className="truncate">{item.TutorNickname}</span></span>}</span>
           <span className={`mt-2 flex items-center justify-center gap-1 rounded-md border px-1.5 py-1 text-[9px] font-bold ${style.badge}`}><style.Icon className="h-3 w-3" />{style.label}</span>
         </button>;
