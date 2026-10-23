@@ -100,6 +100,7 @@ export default function AdminSchedule() {
   const [mobileDow, setMobileDow] = useState(() => new Date().getDay() + 1);
   // data
   const [schedule, setSchedule] = useState([]);
+  const [scheduleWeek, setScheduleWeek] = useState(null);
   const [meta, setMeta] = useState({ rooms: [], tutors: [], subjects: [], courses: [] });
   const [weekStart, setWeekStart] = useState(getMondayOf(new Date()));
   const [loading, setLoading] = useState(true);
@@ -133,17 +134,30 @@ export default function AdminSchedule() {
   // ── fetch ──────────────────────────────────────────────────
   const fetchSchedule = useCallback(async (ws = weekStart) => {
     const request = ++scheduleRequest.current;
+    const requestedWeek = isoDate(ws);
+    const requestedWeekEnd = isoDate(addDays(ws, 6));
     setLoading(true);
     setError(null);
     setSchedule([]);
+    setScheduleWeek(null);
     setHolidays([]);
 
     try {
-      const r = await fetch(`${API_BASE}/schedule/weekly?week=${isoDate(ws)}`);
+      const r = await fetch(`${API_BASE}/schedule/weekly?week=${requestedWeek}`, { cache: 'no-store' });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
       if (request !== scheduleRequest.current) return;
-      setSchedule(data.schedule || []);
+      if (data.weekStart !== requestedWeek) throw new Error('API ส่งตารางสอนผิดสัปดาห์');
+      const rows = Array.isArray(data.schedule) ? data.schedule : [];
+      setSchedule(rows.filter(e => {
+        const date = e.WeekDate ? isoDate(e.WeekDate) : '';
+        const courseStart = String(e.CourseStartDate || '').slice(0, 10);
+        const courseEnd = String(e.CourseEndDate || '').slice(0, 10);
+        return date >= requestedWeek && date <= requestedWeekEnd
+          && (!courseStart || date >= courseStart)
+          && (!courseEnd || date <= courseEnd);
+      }));
+      setScheduleWeek(requestedWeek);
       setHolidays(data.holidays || []);
     } catch (e) {
       if (request === scheduleRequest.current) setError(e.message);
@@ -152,12 +166,19 @@ export default function AdminSchedule() {
     }
   }, [weekStart]);
 
+  const displayedSchedule = useMemo(
+    () => scheduleWeek === isoDate(weekStart) ? schedule : [],
+    [schedule, scheduleWeek, weekStart]
+  );
+
   // holidayMap สำหรับ lookup เร็ว
   const holidayMap = useMemo(() => {
     const m = {};
-    holidays.forEach(h => { m[h.date] = h.Name; });
+    if (scheduleWeek === isoDate(weekStart)) {
+      holidays.forEach(h => { m[h.date] = h.Name; });
+    }
     return m;
-  }, [holidays]);
+  }, [holidays, scheduleWeek, weekStart]);
 
   const fetchMeta = useCallback(async () => {
     setMetaError(null);
@@ -194,7 +215,7 @@ export default function AdminSchedule() {
 
   // ── build grid map ─────────────────────────────────────────
   const scheduleMap = {};
-  schedule.forEach(e => {
+  displayedSchedule.forEach(e => {
     const key = `${e.StartTime}-${e.EndTime}`;
     if (!scheduleMap[e.DayOfWeek]) scheduleMap[e.DayOfWeek] = {};
     if (!scheduleMap[e.DayOfWeek][key]) scheduleMap[e.DayOfWeek][key] = [];
@@ -209,7 +230,7 @@ export default function AdminSchedule() {
       slotMap.set(`${slot.start}-${slot.end}`, slot);
     });
 
-    schedule.forEach((e) => {
+    displayedSchedule.forEach((e) => {
       if (!e.StartTime || !e.EndTime) return;
       const key = `${e.StartTime}-${e.EndTime}`;
 
@@ -223,7 +244,7 @@ export default function AdminSchedule() {
     });
 
     return Array.from(slotMap.values()).sort((a, b) => a.start.localeCompare(b.start));
-  }, [schedule]);
+  }, [displayedSchedule]);
 
   // ── filter ─────────────────────────────────────────────────
   const pass = e => {
@@ -430,9 +451,9 @@ export default function AdminSchedule() {
   };
 
   // ── stats ──────────────────────────────────────────────────
-  const totalClasses = schedule.length;
-  const totalStudents = [...new Set(schedule.map(e => e.CourseID))].length;
-  const noCheckin = schedule.filter(e =>
+  const totalClasses = displayedSchedule.length;
+  const totalStudents = [...new Set(displayedSchedule.map(e => e.CourseID))].length;
+  const noCheckin = displayedSchedule.filter(e =>
     e.WeekDate &&
     e.CheckinCount === 0 &&
     new Date(`${e.WeekDate}T${e.StartTime}`) < new Date()
@@ -543,8 +564,8 @@ export default function AdminSchedule() {
 
         {/* ── Filters ── */}
         <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 mb-3">
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-2">
-            <div className="relative col-span-2">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-8 gap-2">
+            <div className="relative col-span-2 xl:col-span-4">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <input
                 value={fSearch}
@@ -626,11 +647,11 @@ export default function AdminSchedule() {
             <span className="ml-auto text-slate-400">มุมมองสัปดาห์แสดง 2 คาบแรกต่อช่อง กดดูทั้งหมดเพื่อขยาย</span>
           </div>
 
-          {loading ? (
+          {loading || (!error && scheduleWeek !== isoDate(weekStart)) ? (
             <Spinner block label="กำลังโหลดตารางเรียน..." wrapperClassName="py-20" />
           ) : (
             <>
-            {!error && schedule.length === 0 && (
+            {!error && displayedSchedule.length === 0 && (
               <div className="flex items-center gap-2 p-3 mb-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-sm">
                 <Info className="h-4 w-4 flex-shrink-0 text-slate-400" />
                 <span>สัปดาห์นี้ยังไม่มีคาบเรียน — กด "เพิ่มคาบสอน" เพื่อเพิ่มคาบใหม่</span>
