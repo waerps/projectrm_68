@@ -133,6 +133,8 @@ export default function StudentCourses() {
             id: courseId,
             enrollId: c.enrollId ?? c.EnrollId,
             name: c.courseName ?? c.CourseName ?? c.name ?? "คอร์สเรียน",
+            classGroup: c.classGroup ?? c.ClassGroup ?? null,
+            hasClassGroups: Boolean(c.hasClassGroups ?? c.HasClassGroups),
 
             startDate: startDate
               ? new Date(startDate).toLocaleDateString("th-TH", {
@@ -297,6 +299,9 @@ export default function StudentCourses() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1 pr-4">
                       <h2 className="text-lg font-bold text-neutral-900 leading-tight mb-1">{course.name}</h2>
+                      {course.hasClassGroups && <p className="mb-1 text-xs font-semibold text-orange-700">
+                        {course.classGroup ? `กลุ่ม ${course.classGroup}` : 'รอจัดกลุ่มเรียน'}
+                      </p>}
                       <p className="text-xs text-neutral-500 flex items-center gap-1 font-medium">
                         <Clock className="w-3 h-3" /> เริ่มเรียน: {course.startDate}
                       </p>

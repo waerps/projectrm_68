@@ -997,7 +997,7 @@ function ClassCard({ entry, onEdit, onDelete, compact = false }) {
         <span className="min-w-0 truncate text-[11px] font-bold text-slate-800" title={entry.SubjectName}>{entry.SubjectName || '—'}</span>
         {statusIcon}
       </div>
-      <p className="truncate text-[11px] text-slate-600" title={entry.CourseName}>{entry.CourseName}</p>
+      <p className="truncate text-[11px] text-slate-600" title={entry.CourseName}>{entry.CourseName}{entry.ClassGroup ? ` · กลุ่ม ${entry.ClassGroup}` : ''}</p>
       <div className="mt-0.5 flex items-center justify-between gap-1 text-[11px] text-slate-500">
         <span className="min-w-0 truncate">{entry.TutorNickname || 'ยังไม่ระบุครู'}</span>
         <span className="flex shrink-0 items-center gap-0.5" aria-label={`นักเรียน ${entry.StudentCount || 0} คน`}><Users className="h-3 w-3" />{entry.StudentCount || 0}</span>
@@ -1019,7 +1019,7 @@ function ClassCard({ entry, onEdit, onDelete, compact = false }) {
       </div>
 
       <p className="text-[11px] text-slate-700 font-medium line-clamp-1 mb-1 leading-tight">
-        {entry.CourseName}
+        {entry.CourseName}{entry.ClassGroup ? ` · กลุ่ม ${entry.ClassGroup}` : ''}
       </p>
 
       <div className="flex items-center gap-1 text-[11px] text-slate-500 mb-0.5">

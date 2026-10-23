@@ -585,6 +585,7 @@ export default function TutorSchedule() {
     setStudentsLoading(true)
     try {
       const res = await axios.get(`${API_URL}/coursestutor/${cId}/students`, {
+        params: { scheduleDetailId: data.courseScheduleDetailId },
         headers: { Authorization: `Bearer ${token}` },
       })
       const students = res.data.students || []

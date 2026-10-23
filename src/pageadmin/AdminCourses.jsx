@@ -1273,6 +1273,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
 
 function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) {
   const [students, setStudents] = useState([]);
+  const [savingGroupId, setSavingGroupId] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
   const [adding, setAdding] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -1295,6 +1296,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
   }, [students, onCountChange]);
 
   const enrolledIds = new Set(students.map(s => String(s.UserId)));
+  const hasGroups = students.some(s => s.ClassGroup === 'A' || s.ClassGroup === 'B');
   const available = allStudents.filter(s => !enrolledIds.has(String(s.UserId)));
   const filtered = available.filter(s => {
     const name = (s.Nickname || `${s.Firstname} ${s.Lastname}`).toLowerCase();
@@ -1356,7 +1358,30 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
           <Avatar photo={s.Photo} size="w-7 h-7" name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
           <span className="flex-1 text-sm font-semibold text-slate-800">
             {s.Nickname || `${s.Firstname} ${s.Lastname}`}
+            {students.filter(other => other.Nickname && other.Nickname === s.Nickname).length > 1 &&
+              <span className="ml-1 text-xs font-normal text-slate-500">({s.Firstname})</span>}
           </span>
+          {hasGroups && <select
+            aria-label={`กลุ่มเรียนของ ${s.Nickname || s.Firstname}`}
+            value={s.ClassGroup || ''}
+            disabled={savingGroupId === s.EnrollId}
+            onChange={async e => {
+              const group = e.target.value || null;
+              setSavingGroupId(s.EnrollId);
+              try {
+                await axios.patch(`${API_BASE}/courses/${courseId}/students/${s.EnrollId}/group`, { ClassGroup: group });
+                await fetchStudents();
+                showToast('success', 'บันทึกกลุ่มเรียนแล้ว');
+              } catch (error) {
+                showToast('error', error.response?.data?.message || 'บันทึกกลุ่มเรียนไม่สำเร็จ');
+              } finally { setSavingGroupId(null); }
+            }}
+            className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+          >
+            <option value="">รอจัดกลุ่ม</option>
+            <option value="A">กลุ่ม A</option>
+            <option value="B">กลุ่ม B</option>
+          </select>}
           <button
             onClick={async () => {
               try {

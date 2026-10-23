@@ -157,6 +157,7 @@ export default function TutorStudents() {
                     return {
                         id: studentId,
                         name: std.name ?? 'ไม่ระบุชื่อ',
+                        classGroup: std.ClassGroup || null,
                         // ★ แก้: ของเดิมไม่ได้ copy field รูปโปรไฟล์มาเลย ทำให้ StudentAvatar
                         //   เห็น student.Photo เป็น undefined เสมอ แม้ backend จะส่งรูปมาถูกต้องแล้ว
                         //   จึง fallback ไปใช้ avatar การ์ตูนตลอด ทั้งที่นักเรียนมีรูปจริงอยู่แล้ว
@@ -435,6 +436,7 @@ export default function TutorStudents() {
                                         </div>
                                         <div className="min-w-0">
                                             <h2 className="text-lg font-bold text-slate-900 break-words">{student.name}</h2>
+                                            {student.classGroup && <span className="inline-flex mt-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-800">กลุ่ม {student.classGroup}</span>}
                                             {getAttendanceRate(student) !== null && getAttendanceRate(student) < 60 && (
                                                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-red-100 text-red-600 text-xs font-semibold border border-red-200 mt-1">
                                                     <LuAlertTriangle className="h-3 w-3" /> เข้าเรียนต่ำกว่า 60%
