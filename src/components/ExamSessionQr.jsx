@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Spinner from "./ui/Spinner";
 import axios from "axios";
-import { Copy, Download, Loader2, QrCode } from "lucide-react";
+import { Copy, Download, QrCode } from "lucide-react";
 import { API_URL } from "../config";
 
 export default function ExamSessionQr({ examId, sessionId }) {

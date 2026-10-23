@@ -2,9 +2,7 @@ import { API_URL } from "../config";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import {
-  BarChart2, BookOpen, Users, Search, Loader2, Calendar, ChevronRight, ChevronLeft,
-} from "lucide-react";
+import { BarChart2, BookOpen, Users, Search, Calendar, ChevronRight } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";

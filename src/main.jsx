@@ -123,7 +123,6 @@ const AdminAnnouncements = lazyPage(() => import("./pageadmin/AdminAnnouncements
 const AdminNotification = lazyPage(() => import("./pageadmin/AdminNotification.jsx"));
 const AdminRooms = lazyPage(() => import("./pageadmin/AdminRooms.jsx"));
 const AdminCommonFacilities = lazyPage(() => import("./pageadmin/AdminCommonFacilities.jsx"));
-const AdminAttendanceDashboard = lazyPage(() => import("./pageadmin/AdminAttendanceDashboard.jsx"));
 const AdminManagement = lazyPage(() => import("./pageadmin/AdminManagement.jsx"));
 const AdminProfile = lazyPage(() => import("./pageadmin/AdminProfile.jsx"));
 const AdminIncidents = lazyPage(() => import("./pageadmin/AdminIncidents.jsx"));

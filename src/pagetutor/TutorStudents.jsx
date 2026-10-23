@@ -8,9 +8,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { escapeHtml as esc } from "../utils/escapeHtml";
 import {
-    TrendingUp, TrendingDown, Minus, Award,
-    Phone, Video, Search, Download, ChevronDown, ChevronRight,
-    ChevronLeft, Users
+  TrendingUp, TrendingDown, Minus, Award, Phone, Video, Search, Download, ChevronDown,
+  ChevronRight, Users,
 } from "lucide-react";
 // ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import { fmtScore as fmtScoreNum } from "../utils/examScore";
@@ -21,7 +20,7 @@ import { AlertTriangle as LuAlertTriangle, FileSpreadsheet as LuFileSpreadsheet,
 import ErrorState from "../components/ui/ErrorState";
 import Spinner from "../components/ui/Spinner";
 import { BTN } from "../components/ui/tokens";
-import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
+import { CALLOUT } from "../components/ui/tokens";
 
 const ITEMS_PER_PAGE = 5;
 

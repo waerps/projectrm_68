@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Spinner from "../components/ui/Spinner";
 import { Link, useNavigate } from "react-router-dom"
-import { BadgeCheck, BookOpen, Calendar, Heart, Loader2, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
+import { BadgeCheck, BookOpen, Calendar, Heart, LockKeyhole, ShoppingCart, Sparkles, Tag, X } from "lucide-react"
 import { cardTiltHandlers, cardIdleDelay } from "../utils/cardTilt"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"

@@ -1,5 +1,5 @@
 import { API_URL } from "../config";
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import axios from "axios";
 import { flushSync } from "react-dom";
 import { Newspaper } from "lucide-react";

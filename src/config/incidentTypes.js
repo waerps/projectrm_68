@@ -79,12 +79,6 @@ export const SEVERITY = {
   export const getIncidentTypeById = (id) => INCIDENT_TYPES.find((t) => t.id === id) || null;
   export const getSeverityMeta = (severity) => SEVERITY_META[severity] || SEVERITY_META[SEVERITY.LOW];
   
-  export const sortBySeverityThenTime = (list, dateKey = "Created_at") =>
-    [...list].sort((a, b) => {
-      const rankDiff = SEVERITY_RANK[a.Severity] - SEVERITY_RANK[b.Severity];
-      if (rankDiff !== 0) return rankDiff;
-      return new Date(b[dateKey]) - new Date(a[dateKey]);
-    });
   
   export const CRITICAL_SAFETY_NOTICE =
     "⚠️ เรื่องนี้เกี่ยวข้องกับความปลอดภัยและควรได้รับการดูแลโดยผู้รับผิดชอบโดยเร็ว หากมีอันตรายเกิดขึ้นในขณะนี้ กรุณาติดต่อผู้ปกครอง/ผู้ดูแลสถาบันหรือหน่วยฉุกเฉินที่เหมาะสมทันที";

@@ -2,7 +2,7 @@ import { API_URL } from "../config";
 import { useState, useEffect, useMemo, useRef } from 'react'
 import React from 'react'
 import axios from 'axios'
-import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight, Paperclip } from 'lucide-react'
+import { Users, Camera, CheckCircle, Clock, X, AlertTriangle, MapPin, MessageCircle, Unlink, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useToast } from '../components/useToast'
 import { ToastContainer } from '../components/Toast'
 import { confirmDialog } from "../components/ui/dialogs";
@@ -218,7 +218,7 @@ function MobileDayView({ weekDates, todayDate, slots, scheduleMap, slotPhases, c
                   <span className="mt-1 text-sm text-slate-700 leading-snug line-clamp-2">{cls.courseName}</span>
                   <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
                     <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 opacity-70" />{cls.room}</span>
-                    <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5 opacity-70" />{cls.students}/{cls.maxStudents}</span>
+                    <span className="flex items-center gap-1" title={cls.maxStudents ? `นักเรียนในคาบ / ${cls.capacityKind === 'room' ? 'ความจุห้อง' : 'จำนวนรับของคอร์ส'}` : 'นักเรียนในคาบ'}><Users className="h-3.5 w-3.5 opacity-70" />{cls.maxStudents ? `${cls.students}/${cls.maxStudents}` : `${cls.students} คน`}</span>
                   </span>
                   {style && (
                     <span className={`mt-2 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold ${style.badge}`}>
@@ -914,7 +914,7 @@ export default function TutorSchedule() {
                               {/* ไอคอน Users แทนคำว่าเด็ก */}
                               <div className="flex items-center gap-1 font-medium">
                                 <Users className="h-3 w-3 opacity-70" />
-                                <span>{cls.students}/{cls.maxStudents}</span>
+                                <span title={cls.maxStudents ? `นักเรียนในคาบ / ${cls.capacityKind === 'room' ? 'ความจุห้อง' : 'จำนวนรับของคอร์ส'}` : 'นักเรียนในคาบ'}>{cls.maxStudents ? `${cls.students}/${cls.maxStudents}` : `${cls.students} คน`}</span>
                               </div>
                             </div>
 

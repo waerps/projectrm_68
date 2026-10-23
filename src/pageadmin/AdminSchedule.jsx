@@ -2,9 +2,9 @@ import { API_URL } from "../config";
 import Spinner from "../components/ui/Spinner";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen,
-  Users, MapPin, RefreshCw, AlertCircle, Loader2, ChevronLeft,
-  ChevronRight, ChevronDown, CheckCircle, Clock, AlertTriangle, Layers, Info,
+  Plus, Pencil, Trash2, Search, X, Save, UserCheck, BookOpen, Users, MapPin, RefreshCw,
+  AlertCircle, Loader2, ChevronLeft, ChevronRight, ChevronDown, CheckCircle, Clock,
+  AlertTriangle, Info,
 } from 'lucide-react';
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
@@ -72,6 +72,21 @@ function isoDate(d) {
   return new Date(d)
     .toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' })
     .slice(0, 10);
+}
+
+function checkinStatusFor(entry, now = new Date()) {
+  if (!entry.WeekDate) return 'future';
+  if (Number(entry.CheckinCount) > 0) return 'done';
+
+  const classDate = isoDate(entry.WeekDate);
+  const endTime = /^(\d{1,2}):(\d{2})/.exec(String(entry.EndTime || ''));
+  if (!endTime) return 'future';
+
+  const [year, month, day] = classDate.split('-').map(Number);
+  const endWithGrace = Date.UTC(year, month - 1, day, Number(endTime[1]) - 7, Number(endTime[2]))
+    + 2 * 60 * 60 * 1000;
+  if (now.getTime() > endWithGrace) return 'missed';
+  return classDate > isoDate(now) ? 'future' : 'upcoming';
 }
 
 // คืนรายวิชาที่ Course นั้นรองรับ
@@ -453,11 +468,7 @@ export default function AdminSchedule() {
   // ── stats ──────────────────────────────────────────────────
   const totalClasses = displayedSchedule.length;
   const totalStudents = [...new Set(displayedSchedule.map(e => e.CourseID))].length;
-  const noCheckin = displayedSchedule.filter(e =>
-    e.WeekDate &&
-    e.CheckinCount === 0 &&
-    new Date(`${e.WeekDate}T${e.StartTime}`) < new Date()
-  ).length;
+  const noCheckin = displayedSchedule.filter(e => checkinStatusFor(e) === 'missed').length;
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === fCourse);
   const courseHours = selectedCourse && Number(selectedCourse.TotalCourseHours) > 0
     ? {
@@ -984,38 +995,7 @@ function ClassCard({ entry, onEdit, onDelete, compact = false }) {
   const isFull = pct >= 100;
 
   // สถานะ checkin
-  const now = new Date();
-  let checkinStatus = 'future';
-
-  if (entry.WeekDate) {
-    // 1. แปลงวันที่จากฐานข้อมูลให้เป็น YYYY-MM-DD (เวลาไทย) ที่สะอาดเป๊ะๆ
-    const entryDateStr = new Date(entry.WeekDate).toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
-    const todayStr = now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).slice(0, 10);
-
-    // 2. ประกอบวันที่ + เวลาจบคาบ ให้ถูกต้อง (ใช้ entryDateStr ที่สะอาดแล้ว)
-    const classEnd = new Date(`${entryDateStr}T${entry.EndTime}:00`);
-
-    // 3. ตั้งค่าเวลาผ่อนผัน: 2 ชั่วโมง (แปลงเป็นมิลลิวินาที)
-    const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000;
-    const classEndWithGrace = new Date(classEnd.getTime() + GRACE_PERIOD_MS);
-
-    if (entry.CheckinCount > 0) {
-      // 1. เช็กอินแล้ว (เขียว)
-      checkinStatus = 'done';
-    } else if (now > classEndWithGrace) {
-      // 2. เลยเวลาจบคาบ + หมดเวลาผ่อนผัน 2 ชม. แล้วยังไม่เช็กอิน (แดง)
-      checkinStatus = 'missed';
-    } else if (entryDateStr === todayStr) {
-      // 3. คาบของวันนี้ ที่ยังอยู่ในช่วงเวลาผ่อนผัน (ส้ม)
-      checkinStatus = 'upcoming';
-    } else if (entryDateStr < todayStr) {
-      // 4. คาบของเมื่อวานที่ลืมเช็ก (แดง)
-      checkinStatus = 'missed';
-    } else {
-      // 5. อนาคต พรุ่งนี้เป็นต้นไป (เทา)
-      checkinStatus = 'future';
-    }
-  }
+  const checkinStatus = checkinStatusFor(entry);
 
   const statusIcon = {
     done: <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />,

@@ -3,14 +3,11 @@ import Spinner from "../components/ui/Spinner";
 import UIModal from "../components/ui/Modal";
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Megaphone, Plus, Search, Filter, Pencil, Trash2,
-    Image as ImageIcon, Calendar, Users, X, Save,
-    TrendingUp, Bell, BookOpen, PartyPopper, AlertCircle,
-    ChevronLeft, ChevronRight, Loader2, Inbox, Images,
+  Megaphone, Plus, Search, Pencil, Trash2, Image as ImageIcon, Calendar, Users, X, Save,
+  TrendingUp, Bell, BookOpen, PartyPopper, AlertCircle, Loader2, Inbox, Images,
 } from 'lucide-react';
 import { toast } from "../components/ui/dialogs";
 import UIPagination from "../components/ui/Pagination";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
@@ -454,6 +451,7 @@ export default function AdminAnnouncements() {
             setCurrentPage(goTo);
             setShowDeleteModal(false);
             setSelectedNews(null);
+            toast('ลบข่าวแล้ว', 'success');
         } catch (err) { console.error(err); toast('เกิดข้อผิดพลาด ไม่สามารถลบข่าวได้'); }
         finally { setSubmitting(false); }
     };
@@ -666,11 +664,11 @@ export default function AdminAnnouncements() {
                             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-red-100"><AlertCircle className="h-7 w-7 text-red-600" /></div>
                             <h2 className="text-lg font-bold text-slate-900">ยืนยันการลบข่าว</h2>
                         </div>
-                        <p className="text-sm text-slate-500 text-center mt-1 mb-5">
-                            คุณแน่ใจหรือไม่ว่าต้องการลบข่าว{' '}
-                            <span className="font-semibold text-slate-900">"{selectedNews.Title}"</span>
-                            {' '}การลบนี้ไม่สามารถกู้คืนได้
-                        </p>
+                        <div className="text-center mt-2 mb-6 space-y-1.5">
+                            <p className="text-sm text-slate-500">คุณแน่ใจหรือไม่ว่าต้องการลบข่าวนี้</p>
+                            <p className="text-sm font-semibold text-slate-900 break-words line-clamp-2">“{selectedNews.Title}”</p>
+                            <p className="text-xs text-red-600">ลบแล้วจะกู้คืนไม่ได้</p>
+                        </div>
                         <div className="flex flex-col-reverse sm:flex-row gap-2">
                             <button onClick={() => { setShowDeleteModal(false); setSelectedNews(null); }}
                                 disabled={submitting}
@@ -678,7 +676,7 @@ export default function AdminAnnouncements() {
                                 ยกเลิก
                             </button>
                             <button onClick={handleDelete} disabled={submitting}
-                                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition flex items-center gap-2 disabled:opacity-50">
+                                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition flex items-center justify-center gap-2 disabled:opacity-50">
                                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 {submitting ? 'กำลังลบ...' : 'ลบข่าว'}
                             </button>

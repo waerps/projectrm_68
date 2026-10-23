@@ -2,18 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import Spinner from "../components/ui/Spinner";
 import { useNavigate } from "react-router-dom";
 import {
-  AlertCircle,
-  BookOpen,
-  Calendar,
-  CheckCircle,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Loader2,
-  MapPin,
-  RefreshCw,
-  User,
-  XCircle,
+  AlertCircle, BookOpen, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, MapPin,
+  RefreshCw, User, XCircle,
 } from "lucide-react";
 import { getStudentCourses, getStudentSchedule } from "../callapi/callusers_student";
 import { scheduleSubjectColor } from "../utils/scheduleSubjectColor";

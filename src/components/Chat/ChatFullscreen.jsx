@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { BotMessageBubbles, UserMessageText, RetryButton } from "./ChatMessageBody"
 import { QUICK_REPLIES } from "./chatQuickReplies"
 import { useChat } from "./ChatProvider"

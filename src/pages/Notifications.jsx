@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
-import { Bell, ChevronRight, Calendar, DollarSign, AlertCircle, Megaphone, PlayCircle, Trash2, Check, Loader2, Search } from 'lucide-react';
+import { Bell, ChevronRight, Calendar, DollarSign, AlertCircle, Megaphone, PlayCircle, Trash2, Check, Search } from 'lucide-react';
 
 const API=`${API_URL}/api/student/notifications`;
 const auth=()=>{const token=localStorage.getItem('student_token');return token?{headers:{Authorization:`Bearer ${token}`}}:{};};

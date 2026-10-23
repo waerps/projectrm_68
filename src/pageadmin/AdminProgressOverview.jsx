@@ -5,8 +5,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { PROGRESS_ORIGINS } from "./progressOrigins";
 import axios from "axios";
 import {
-  TrendingUp, BookOpen, Search, Loader2, ChevronLeft, ChevronRight,
-  BarChart2, GraduationCap, Calendar, Users, CircleHelp,
+  TrendingUp, BookOpen, Search, ChevronRight, BarChart2, GraduationCap, Calendar, Users,
+  CircleHelp,
 } from "lucide-react";
 import UIPagination from "../components/ui/Pagination";
 import { PAGE_SUBTITLE } from "../components/ui/tokens";

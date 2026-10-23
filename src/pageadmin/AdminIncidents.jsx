@@ -8,18 +8,14 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  AlertOctagon, Loader2, X, Eye, EyeOff, Clock, User, GraduationCap,
-  BookOpen, ChevronDown, ChevronLeft, ChevronRight, UserCheck,
+  AlertOctagon, Eye, EyeOff, Clock, User, GraduationCap, BookOpen, ChevronDown, UserCheck,
   MessageSquare, Phone, Search, CheckCircle2, Paperclip, FileText,
 } from "lucide-react";
-import {
-  INCIDENT_CATEGORIES, getIncidentTypeById, getSeverityMeta, SEVERITY,
-} from "../config/incidentTypes";
+import { getIncidentTypeById, getSeverityMeta, SEVERITY } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
 import UIModal from "../components/ui/Modal";
 import UIPagination from "../components/ui/Pagination";
 import Badge from "../components/ui/Badge";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";

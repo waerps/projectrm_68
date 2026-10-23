@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Spinner from "./ui/Spinner";
 import axios from "axios";
-import { ChevronDown, Heart, Loader2, Medal, MessageSquare, Star, Users } from "lucide-react";
+import { ChevronDown, Heart, Medal, MessageSquare, Star, Users } from "lucide-react";
 import { API_URL } from "../config";
 
 import Pagination from "./ui/Pagination";

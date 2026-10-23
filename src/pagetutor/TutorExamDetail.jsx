@@ -23,7 +23,7 @@ import {
   assembleExamSet, applyExamSet,
   fetchAiSummaries,
 } from "../utils/examShared";
-import { EXAM_SCORE_CAP, PASS_PCT, isPassingScore, displayExamPercent, sumScores, fmtScore } from "../utils/examScore";
+import { PASS_PCT, isPassingScore, displayExamPercent, sumScores, fmtScore } from "../utils/examScore";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { PAGE_TITLE } from "../components/ui/tokens";

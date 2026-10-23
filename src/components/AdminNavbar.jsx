@@ -1,8 +1,6 @@
-import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
-import { Calendar } from "lucide-react"
 import { NavLink } from "react-router-dom"
 import NotificationBell from "./NotificationBell"
 import { logout } from "../utils/logout"

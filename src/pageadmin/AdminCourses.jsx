@@ -2,12 +2,10 @@ import { API_URL } from "../config";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
 import {
-  BookOpen, Plus, Search, Trash2, X, Check,
-  Calendar, DollarSign, Users, Tag, Filter,
-  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus,
-  ToggleLeft, ToggleRight, Info, AlertTriangle, Sparkles, Copy,
-  Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video, PlayCircle, Link as LinkIcon,
-  BadgeCheck, Clock, ChevronsUpDown, TrendingUp,
+  BookOpen, Plus, Search, Trash2, X, Check, Calendar, DollarSign, Users, Tag, ChevronLeft,
+  ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus, ToggleLeft, ToggleRight, Info,
+  AlertTriangle, Sparkles, Copy, Pencil, Eye, Youtube, FolderOpen, UploadCloud, Video,
+  PlayCircle, BadgeCheck, ChevronsUpDown, TrendingUp,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -17,7 +15,7 @@ import UIModal from "../components/ui/Modal";
 import { confirmDialog, toast } from "../components/ui/dialogs";
 import { CoursePublishModal, PendingDraftsCallout } from "../components/CourseDrafts";
 import UIPagination from "../components/ui/Pagination";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { PAGE_SUBTITLE } from "../components/ui/tokens";
 import { AlertTriangle as LuAlertTriangle, BookOpen as LuBookOpen, CheckCircle2 as LuCheckCircle2 } from "lucide-react";
 import UIErrorState from "../components/ui/ErrorState";
 import { BTN, INPUT, BADGE_BASE, BADGE_TONE, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";

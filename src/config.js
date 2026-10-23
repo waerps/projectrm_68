@@ -6,4 +6,3 @@ const DEFAULT_API_URL = import.meta.env.DEV
 // deployed API keeps public pages usable, while local development still points
 // to the local backend.
 export const API_URL = String(import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, "");
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;

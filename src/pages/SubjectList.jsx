@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Spinner from "../components/ui/Spinner";
 import { useParams, useNavigate } from "react-router-dom";
-import { BookOpen, Video, FileText, Trophy, ChevronRight, Loader2, X, RefreshCw } from "lucide-react";
+import { BookOpen, Video, FileText, Trophy, ChevronRight, X, RefreshCw } from "lucide-react";
 import { getCourseBasic, getStudentSubjectsProgress } from "../callapi/callusers_student";
 
 export default function SubjectList() {

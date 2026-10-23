@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Spinner from "../components/ui/Spinner";
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { ClipboardList, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
+import { ClipboardList, ArrowRight, RefreshCw } from 'lucide-react';
 import { fetchExamOverview } from '../utils/studentExamShared';
 import Breadcrumb from '../components/ui/Breadcrumb';
 import { PAGE_TITLE, PAGE_SUBTITLE } from '../components/ui/tokens';

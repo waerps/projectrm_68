@@ -2,12 +2,10 @@ import { escapeHtml as esc } from "../utils/escapeHtml";
 import { API_URL } from "../config";
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  TrendingUp, TrendingDown, Clock, Calendar,
-  Download, Search, Check, AlertCircle, FileText,
-  BarChart3, Eye, RefreshCw, BookOpen, ChevronDown,
-  ChevronLeft, ChevronRight,
-  Wallet, Hourglass, CheckCircle2, Trophy, Coins, Users, CalendarDays, CalendarCheck, Receipt,
-  Image as ImageIcon, Gauge, Presentation, BadgeCheck, Timer, Banknote, Sparkles, Crown,
+  TrendingUp, TrendingDown, Clock, Calendar, Download, Search, Check, AlertCircle, FileText,
+  BarChart3, Eye, BookOpen, ChevronDown, Wallet, Hourglass, Coins, Users, CalendarDays,
+  CalendarCheck, Receipt, Image as ImageIcon, Gauge, Presentation, BadgeCheck, Timer,
+  Sparkles, Crown,
 } from 'lucide-react';
 // ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import UIPagination from "../components/ui/Pagination";

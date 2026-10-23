@@ -2,10 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
-  ChevronDown, ChevronUp, BadgeCheck, Clock, CreditCard, Heart,
-  Calendar, Users, PlayCircle, X, AlertTriangle, BookOpen, Loader2,
-  Youtube, FolderOpen, Video, Sparkles, ShieldCheck, ArrowRight, ArrowLeft,
-  Tag, Check, RefreshCw,
+  BadgeCheck, Clock, CreditCard, Heart, Calendar, Users, PlayCircle, X, AlertTriangle,
+  BookOpen, Youtube, FolderOpen, Video, Sparkles, ShieldCheck, ArrowRight, ArrowLeft, Tag,
+  Check, RefreshCw,
 } from "lucide-react";
 import {
   getCourseById,

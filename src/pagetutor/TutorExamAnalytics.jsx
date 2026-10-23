@@ -5,12 +5,11 @@ import { useSearchParams } from "react-router-dom";
 const ScoreHistogramChart = lazy(() => import("./ExamAnalyticsCharts.jsx").then((m) => ({ default: m.ScoreHistogramChart })));
 const TopicAvgChart = lazy(() => import("./ExamAnalyticsCharts.jsx").then((m) => ({ default: m.TopicAvgChart })));
 import {
-  BarChart2, Users, TrendingUp, Download, AlertTriangle,
-  CheckCircle, Search, Award, Clock, BookOpen, Info,
-  X, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
-  Target, MessageCircle, Copy, Pencil, Check, Flame,
-  PieChart, ScatterChart, LayoutGrid, Trophy, Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote,
-  FileSpreadsheet, FileText, Loader2, RotateCcw,
+  BarChart2, Users, TrendingUp, Download, AlertTriangle, CheckCircle, Search, Award,
+  BookOpen, Info, X, ArrowUpRight, ArrowDownRight, ChevronDown, Sparkles, Minus,
+  MessageCircle, Copy, Pencil, Check, Flame, PieChart, ScatterChart, LayoutGrid, Trophy,
+  Rocket, Crown, Star, LifeBuoy, CalendarX, Medal, Quote, FileSpreadsheet, FileText, Loader2,
+  RotateCcw,
 } from "lucide-react";
 // ไลบรารี Excel (xlsx ~400 KB) โหลดเมื่อกดส่งออก/นำเข้าเท่านั้น ไม่ต้องโหลดตอนเปิดหน้า (Lighthouse Performance)
 import { fmtScore, PASS_PCT, isPassingScore, displayExamPercent } from "../utils/examScore";
@@ -28,19 +27,9 @@ import { aiAnalysisNotice, examTimingForDisplay, isVerifiedAiSummary, parentMess
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const TOPICS = [
-  "พีชคณิต", "เรขาคณิต", "ตรีโกณมิติ",
-  "อัลกอริทึม", "ลำดับและอนุกรม", "สถิติ",
-];
-
 const TOPIC_COLORS = {
   "พีชคณิต": "#f97316", "เรขาคณิต": "#3b82f6", "ตรีโกณมิติ": "#10b981",
   "อัลกอริทึม": "#ef4444", "ลำดับและอนุกรม": "#8b5cf6", "สถิติ": "#ec4899",
-};
-
-const TOPIC_LIGHT = {
-  "พีชคณิต": "#fff7ed", "เรขาคณิต": "#eff6ff", "ตรีโกณมิติ": "#f0fdf4",
-  "อัลกอริทึม": "#fef2f2", "ลำดับและอนุกรม": "#f5f3ff", "สถิติ": "#fdf4ff",
 };
 
 const EXAMS_META = [
@@ -477,8 +466,6 @@ function buildProgressRows(crossExamData, selectedExamIndex = null) {
 }
 
 // ─── UI Primitives ──────────────────────────────────────────────────────────
-
-const LevelBadge = { "ง่าย": "bg-emerald-100 text-emerald-700", "ปานกลาง": "bg-amber-100 text-amber-700", "ยาก": "bg-red-100 text-red-700" };
 
 
 // หน่วยตัวเล็กต่อท้ายตัวเลขบนการ์ดสรุป (มาตรฐานเดียวกันทั้งระบบ)

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Loader2, Inbox, Clock, EyeOff } from "lucide-react";
+import { Clock, EyeOff } from "lucide-react";
 import { getMyIncidents, getIncidentsAgainstMe } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
-import { Paperclip, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";

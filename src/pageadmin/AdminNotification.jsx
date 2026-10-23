@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
-import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, Loader2, ChevronRight, AlertTriangle, AlertOctagon, KeyRound, Search } from 'lucide-react';
+import { Bell, DollarSign, Users, BookOpen, AlertCircle, Trash2, Check, Filter, Boxes, DoorOpen, ChevronRight, AlertTriangle, AlertOctagon, KeyRound, Search } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";

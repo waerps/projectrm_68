@@ -8,8 +8,6 @@
 
 export const CHANGE_LABEL = "คะแนนเปลี่ยนแปลง";
 export const GROWTH_LABEL = "พัฒนาการสัมพัทธ์";
-export const RANK_LABEL = "คะแนนจัดอันดับพัฒนาการ";
-
 // ระดับพัฒนาการสัมพัทธ์ — เกณฑ์ 4 ระดับที่ใช้ทั่วไปในการวัดผลการศึกษาไทย
 const LEVELS = [
   { max: 25, label: "ระดับต้น", cls: "bg-slate-100 text-slate-700 border-slate-200" },

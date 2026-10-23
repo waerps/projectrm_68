@@ -36,7 +36,6 @@ export const PAGE_SUBTITLE = "text-sm text-slate-500 mt-1";
    - ตารางข้อมูลหลัก (รายชื่อ/ธุรกรรม/เคส ฯลฯ): จอ < lg แสดงเป็นการ์ด  → `lg:hidden` / `hidden lg:block`
    - ตารางสอนรายสัปดาห์ (ติวเตอร์/แอดมิน): จอ < lg แสดงแบบรายวัน       → `lg:hidden` / `hidden lg:block`
    - Navbar: เมนูเต็มแสดงที่ md ขึ้นไป */
-export const BREAKPOINT = { table: "lg", schedule: "lg", navbar: "md" };
 
 /* แถบแจ้งเตือนในหน้า (Callout) — ใช้กล่อง + สีตามระดับเดียวกันทุกหน้า
    ใช้คู่กัน: className={`${CALLOUT.box} ${CALLOUT.warning}`} + ไอคอน h-5 w-5 สี CALLOUT_ICON.warning */

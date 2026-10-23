@@ -2,12 +2,11 @@ import { API_URL } from "../config";
 import InitialAvatar from "../components/ui/InitialAvatar";
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
-import { Star, Phone, Pencil, Save, X, AlertTriangle, Camera, Users, Clock, ImagePlus, Landmark, Trash2 } from "lucide-react"
+import { Phone, Pencil, Save, X, AlertTriangle, Users, Clock, ImagePlus, Landmark, Trash2 } from "lucide-react"
 import { toast, confirmDialog } from "../components/ui/dialogs";
 import Spinner from "../components/ui/Spinner";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
-import { STAT_LABEL, STAT_NUM, STAT_UNIT } from "../components/ui/tokens";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
 import { birthDateMax } from "../utils/birthDateInput";
 

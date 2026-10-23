@@ -6,13 +6,10 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff,
-  Phone, BookOpen, ChevronLeft, ChevronRight, Loader2,
-  AlertTriangle, KeyRound, GraduationCap, School,
-  CheckCircle, XCircle, Video, Calendar, BarChart2,
-  PlayCircle, Clock, Shield,
-  ChevronDown, ChevronUp, ArrowLeft,
-  Award, TrendingUp, TrendingDown, Minus, ImagePlus, Flag,   // ★ เพิ่ม
+  Users, Plus, Search, Pencil, Trash2, X, Check, Eye, EyeOff, Phone, BookOpen, ChevronRight,
+  Loader2, AlertTriangle, KeyRound, GraduationCap, School, CheckCircle, XCircle, BarChart2,
+  PlayCircle, Clock, Shield, ChevronDown, ChevronUp, ArrowLeft, Award, TrendingUp,
+  TrendingDown, Minus, ImagePlus, Flag,
 } from "lucide-react";
 import { getFileUrl } from "../utils/fileUrl";
 import { getConsentCatalog } from "../callapi/callusers_student";   // ← เพิ่ม: PDPA (endpoint สาธารณะ ไม่ต้องใช้ token)
@@ -21,7 +18,7 @@ import { confirmDialog, toast } from "../components/ui/dialogs";
 import SegmentedControl from "../components/ui/SegmentedControl";
 import PageHeader from "../components/ui/PageHeader";
 import UIPagination from "../components/ui/Pagination";
-import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
+import { PAGE_SUBTITLE } from "../components/ui/tokens";
 import { GraduationCap as LuGraduationCap } from "lucide-react";
 import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";

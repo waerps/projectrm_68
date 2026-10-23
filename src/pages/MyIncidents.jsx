@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Spinner from "../components/ui/Spinner";
-import { AlertOctagon, Loader2, Clock, EyeOff, Inbox } from "lucide-react";
+import { AlertOctagon, Clock, Inbox } from "lucide-react";
 import { getMyIncidents } from "../callapi/callusers_student";
 import { getIncidentTypeById, getSeverityMeta } from "../config/incidentTypes";
 import { getFileUrl } from "../utils/fileUrl";
-import { Paperclip, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import MyIncidentDetailModal from "../components/MyIncidentDetailModal";
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import ErrorState from "../components/ui/ErrorState";

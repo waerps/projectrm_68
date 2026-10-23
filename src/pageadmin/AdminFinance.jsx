@@ -4,12 +4,9 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { getFileUrl } from '../utils/fileUrl';
 import {
-    TrendingUp, TrendingDown, Users, Calendar,
-    CreditCard, Download, Search, Eye, X,
-    Target, Wallet, BarChart3,
-    Clock, CheckCircle, AlertCircle, XCircle, Banknote,
-    Receipt, User, Phone, ChevronLeft, ChevronRight, PieChart,
-    Loader2, RefreshCw, FileText, Inbox, Plus,
+  TrendingUp, Users, CreditCard, Search, Eye, X, Wallet, BarChart3, Clock, CheckCircle,
+  AlertCircle, XCircle, Banknote, Receipt, User, PieChart, Loader2, RefreshCw, FileText,
+  Inbox, Plus,
 } from 'lucide-react';
 import {
     LineChart, Line, BarChart, Bar, PieChart as RePieChart, Pie, Cell,
@@ -107,12 +104,6 @@ function useCountUp(target, { duration = 900, active = true } = {}) {
 }
 
 const studentDisplayName = (t) => t.Nickname || `${t.Firstname || ''} ${t.Lastname || ''}`.trim() || '—';
-
-const txDescription = (t) => {
-    const course = t.CourseName || 'ไม่ระบุคอร์ส';
-    const term = t.Term_Name ? ` (${t.Term_Name})` : '';
-    return `${course}${term} - ${studentDisplayName(t)}`;
-};
 
 function getStatusStyle(name = '') {
     if (name.includes('รอ')) return { text: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', icon: Clock };
@@ -368,60 +359,6 @@ function HeroSummary({ loading, error, onRetry, revenue, cashNet, tutorPayable, 
                 </ApiState>
             </div>
         </div>
-    );
-}
-
-/* ─── Transaction Row ────────────────────────────────────────────────── */
-function TransactionRow({ txn, onView }) {
-    return (
-        <tr className={`hover:bg-orange-50/40 ${T.transition}`}>
-            <td className="px-4 py-3">
-                <span className="tabular-nums text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-                    #{txn.StudentPaymentId}
-                </span>
-            </td>
-            <td className="px-4 py-3">
-                <p className="text-sm font-semibold text-slate-900 leading-tight max-w-[220px] truncate">{txDescription(txn)}</p>
-                <p className={`${T.caption} mt-0.5 flex items-center gap-1`}>
-                    <Calendar className="h-3 w-3" />{formatDate(txn.PaymentDate)}
-                </p>
-            </td>
-            <td className="px-4 py-3">
-                <span className="text-xs text-slate-600 bg-slate-100 px-2.5 py-1 rounded-lg font-medium">
-                    {txn.CourseTypeName || txn.Course_Type || '—'}
-                </span>
-            </td>
-            <td className="px-4 py-3">
-                <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {studentDisplayName(txn)}
-                </div>
-                {txn.PhoneNo && (
-                    <div className={`flex items-center gap-1.5 ${T.caption} mt-0.5`}>
-                        <Phone className="h-3 w-3 shrink-0" />{txn.PhoneNo}
-                    </div>
-                )}
-            </td>
-            <td className="px-4 py-3">
-                <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <CreditCard className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                    {txn.PaymentType || '—'}
-                </span>
-            </td>
-            <td className="px-4 py-3 text-right">
-                <p className="text-sm font-bold text-green-600">+{formatMoney(txn.Price)}</p>
-            </td>
-            <td className="px-4 py-3"><StatusBadge name={txn.Status_Payment_Name} /></td>
-            <td className="px-4 py-3">
-                <button
-                    onClick={() => onView(txn.StudentPaymentId)}
-                    className={`p-1.5 text-slate-500 bg-slate-50 border border-slate-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 ${T.transition} min-h-10 min-w-10 lg:min-h-0 lg:min-w-0 inline-flex items-center justify-center`}
-                    title="ดูรายละเอียด"
-                >
-                    <Eye className="h-3.5 w-3.5" />
-                </button>
-            </td>
-        </tr>
     );
 }
 

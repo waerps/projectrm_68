@@ -5,8 +5,8 @@ import axios from "axios";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import {
-  Pencil, Save, X, Camera, ImagePlus, Phone, User, ShieldCheck,
-  KeyRound, Eye, EyeOff, Loader2, CalendarDays, AlertTriangle, Trash2,
+  Pencil, Save, X, ImagePlus, Phone, User, ShieldCheck, KeyRound, Eye, EyeOff, Loader2,
+  CalendarDays, AlertTriangle, Trash2,
 } from "lucide-react";
 import { confirmDialog } from "../components/ui/dialogs";
 import { BTN } from "../components/ui/tokens";

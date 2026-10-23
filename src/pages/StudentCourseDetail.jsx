@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { getStudentCourseDetail } from "../callapi/callusers_student";
 import CoursePaymentsTab from "../components/CoursePaymentsTab";
-import Breadcrumb from "../components/ui/Breadcrumb";
 import { optimizedImage } from "../utils/responsiveImage";
 
 const API_BASE = API_URL;

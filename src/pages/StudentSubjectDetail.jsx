@@ -8,17 +8,12 @@ import {
   ClipboardList, BookOpen, ChevronRight, RefreshCw,
 } from "lucide-react";
 import {
-  getCourseBasic,
-  getStudentSubjectVideos,
-  getStudentSubjectFiles,
-  getStudentSubjectsProgress,
-  getVideoLearningState,
-  updateVideoWatchSegments,
+  getCourseBasic, getStudentSubjectVideos, getStudentSubjectFiles,
+  getStudentSubjectsProgress, getVideoLearningState,
 } from "../callapi/callusers_student";
 import { fetchExamEntry, fetchExamSchedule, getCurrentUserId } from "../utils/studentExamShared";
 import { useToast } from "../components/useToast";
 import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
-import Breadcrumb from "../components/ui/Breadcrumb";
 import { ToastContainer } from "../components/Toast";
 
 const API_BASE_URL = API_URL;
@@ -58,27 +53,6 @@ function getVideoThumbnail(url, type) {
   return m ? `https://img.youtube.com/vi/${m[1]}/mqdefault.jpg` : null;
 }
 
-function WatchProgressRing({ percent }) {
-  const value = Math.max(0, Math.min(100, Math.round(Number(percent || 0))));
-  const radius = 18;
-  const circumference = 2 * Math.PI * radius;
-  const dash = (value / 100) * circumference;
-  const color = value >= 80 ? "#16a34a" : value > 0 ? "#f97316" : "#94a3b8";
-
-  return (
-    <div className="relative h-12 w-12 shrink-0" title={`ดูแล้ว ${value}%`} role="img" aria-label={`ดูแล้ว ${value}%`}>
-      <svg viewBox="0 0 48 48" className="h-12 w-12 -rotate-90">
-        <circle cx="24" cy="24" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="5" />
-        <circle cx="24" cy="24" r={radius} fill="none" stroke={color} strokeWidth="5"
-          strokeDasharray={`${dash} ${circumference - dash}`} strokeLinecap="round" />
-      </svg>
-      <span className="absolute inset-0 grid place-items-center text-[10px] font-bold" style={{ color }}>
-        {value}%
-      </span>
-    </div>
-  );
-}
-
 function YoutubePlayer({ videoId, youtubeId }) {
   const player = useRef(null);
   const elementId = `player-${videoId}`;
@@ -104,106 +78,6 @@ function YoutubePlayer({ videoId, youtubeId }) {
   }, [videoId, youtubeId, elementId]);
 
   return <div className="w-full aspect-video bg-black"><div id={elementId} className="w-full h-full" /></div>;
-}
-
-function UploadedVideoPlayer({ video, token }) {
-  const videoRef = useRef(null);
-  const progressRef = useRef(video.WatchPercent);
-  progressRef.current = video.WatchPercent;
-  const pendingSegments = useRef(new Set());
-  const watchedSeconds = useRef(new Map());
-  const lastSample = useRef(null);
-  const flushTimer = useRef(null);
-  const furthestAllowed = useRef(0);
-  const correctingSeek = useRef(false);
-
-  useEffect(() => {
-    const element = videoRef.current;
-    if (!element) return undefined;
-
-    const flush = async () => {
-      if (!element.duration || !Number.isFinite(element.duration)) return;
-      const indexes = [...pendingSegments.current];
-      if (!indexes.length) return;
-      pendingSegments.current.clear();
-      try {
-        await updateVideoWatchSegments(token, video.VideoId, {
-          segmentIndexes: indexes,
-          duration: element.duration,
-          lastWatchTime: element.currentTime,
-        });
-      } catch (error) {
-        indexes.forEach(index => pendingSegments.current.add(index));
-        console.error("บันทึกช่วงการรับชมไม่สำเร็จ", error);
-      }
-    };
-
-    const resetSample = () => { lastSample.current = null; };
-    const sample = () => {
-      const now = performance.now();
-      const current = element.currentTime;
-      const previous = lastSample.current;
-      lastSample.current = { current, now };
-      if (!previous || element.paused || element.seeking || document.hidden) return;
-
-      const mediaDelta = current - previous.current;
-      const wallDelta = (now - previous.now) / 1000;
-      if (mediaDelta <= 0 || mediaDelta > 1.5 || wallDelta > 2 || Math.abs(mediaDelta - wallDelta * element.playbackRate) > 0.75) return;
-
-      const segmentIndex = Math.floor(previous.current / 10);
-      if (Math.floor(current / 10) !== segmentIndex) return;
-      const next = Math.min(10, (watchedSeconds.current.get(segmentIndex) || 0) + mediaDelta);
-      watchedSeconds.current.set(segmentIndex, next);
-      furthestAllowed.current = Math.max(furthestAllowed.current, current);
-      const segmentLength = Math.min(10, element.duration - segmentIndex * 10);
-      if (next >= Math.max(1, segmentLength * 0.8)) pendingSegments.current.add(segmentIndex);
-    };
-
-    const resume = () => {
-      const saved = Number(video.LastWatchTime || 0);
-      const verifiedSeconds = Math.max(0, Math.min(element.duration, element.duration * Number(progressRef.current || 0) / 100));
-      furthestAllowed.current = Math.min(saved, verifiedSeconds);
-      if (furthestAllowed.current > 0 && furthestAllowed.current < element.duration - 3) element.currentTime = furthestAllowed.current;
-    };
-    const guardSeeking = () => {
-      resetSample();
-      if (correctingSeek.current) return;
-      if (element.currentTime > furthestAllowed.current + 1) {
-        correctingSeek.current = true;
-        element.currentTime = furthestAllowed.current;
-        queueMicrotask(() => { correctingSeek.current = false; });
-      }
-    };
-    const onPause = () => { resetSample(); flush(); };
-    const onVisibility = () => { resetSample(); if (document.hidden) flush(); };
-
-    element.addEventListener("loadedmetadata", resume, { once: true });
-    element.addEventListener("timeupdate", sample);
-    element.addEventListener("seeking", guardSeeking);
-    element.addEventListener("seeked", resetSample);
-    element.addEventListener("pause", onPause);
-    element.addEventListener("ended", flush);
-    document.addEventListener("visibilitychange", onVisibility);
-    flushTimer.current = setInterval(flush, 10000);
-
-    return () => {
-      clearInterval(flushTimer.current);
-      flush();
-      element.removeEventListener("timeupdate", sample);
-      element.removeEventListener("seeking", guardSeeking);
-      element.removeEventListener("seeked", resetSample);
-      element.removeEventListener("pause", onPause);
-      element.removeEventListener("ended", flush);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [token, video.VideoId, video.LastWatchTime]);
-
-  return (
-    <video ref={videoRef} src={video.VideoUrl} controls controlsList="nodownload" playsInline
-      className="aspect-video w-full bg-black" preload="metadata">
-      เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
-    </video>
-  );
 }
 
 function FileRow({ file }) {

@@ -3,7 +3,7 @@ import Spinner from "../components/ui/Spinner";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Loader2, Repeat2, Search, ShieldCheck } from 'lucide-react';
+import { Bell, ChevronRight, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2, Check, Repeat2, Search, ShieldCheck } from 'lucide-react';
 import { PAGE_TITLE } from "../components/ui/tokens";
 import { BTN } from "../components/ui/tokens";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";

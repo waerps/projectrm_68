@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Spinner from "../components/ui/Spinner";
 import { useSearchParams } from "react-router-dom";
-import {
-  FileQuestion, BookOpen, AlertTriangle, Search, Loader2, ChevronLeft, Settings2,
-} from "lucide-react";
+import { FileQuestion, BookOpen, AlertTriangle, Search, ChevronLeft, Settings2 } from "lucide-react";
 import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects, prefetchBank } from "../utils/examShared";

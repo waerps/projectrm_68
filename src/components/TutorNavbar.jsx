@@ -1,5 +1,4 @@
-import { API_URL } from "../config";
-import React, { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Calendar, ChevronDown, Menu, X, Home, BookOpen, Wallet, Library, TrendingUp, History, UserCircle, LogOut } from "lucide-react"
 import { NavLink } from "react-router-dom"

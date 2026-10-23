@@ -6,7 +6,7 @@ import { API_URL } from "../config";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import { Video, FileText, Download, Loader2, PlayCircle, X, RefreshCw } from "lucide-react";
-import { getStudentCourses, getStudentVideos, getStudentFiles, getVideoLearningState, updateVideoWatchSegments } from "../callapi/callusers_student";
+import { getStudentCourses, getStudentVideos, getStudentFiles, getVideoLearningState } from "../callapi/callusers_student";
 import InteractiveVideoPlayer from "../components/InteractiveVideoPlayer";
 import Breadcrumb from "../components/ui/Breadcrumb";
 
@@ -57,113 +57,6 @@ function YoutubePlayer({ videoId, youtubeId }) {
   }, [videoId, youtubeId, elementId]);
 
   return <div className="w-full aspect-video bg-black"><div id={elementId} className="w-full h-full" /></div>;
-}
-
-function UploadedVideoPlayer({ video, token, onProgress }) {
-  const videoRef = useRef(null);
-  const progressRef = useRef(video.WatchPercent);
-  const watchTimeRef = useRef(video.LastWatchTime);
-  progressRef.current = video.WatchPercent;
-  watchTimeRef.current = video.LastWatchTime;
-  const pendingSegments = useRef(new Set());
-  const watchedSeconds = useRef(new Map());
-  const lastSample = useRef(null);
-  const flushTimer = useRef(null);
-  const furthestAllowed = useRef(0);
-  const correctingSeek = useRef(false);
-
-  useEffect(() => {
-    const element = videoRef.current;
-    if (!element) return undefined;
-
-    const flush = async () => {
-      if (!element.duration || !Number.isFinite(element.duration)) return;
-      const indexes = [...pendingSegments.current];
-      if (!indexes.length) return;
-      pendingSegments.current.clear();
-      try {
-        const result = await updateVideoWatchSegments(token, video.VideoId, {
-          segmentIndexes: indexes,
-          duration: element.duration,
-          lastWatchTime: element.currentTime,
-        });
-        onProgress?.(
-          video.VideoId,
-          Number(result?.data?.watchPercent ?? result?.watchPercent ?? progressRef.current ?? 0),
-          Number(result?.data?.lastWatchTime ?? result?.lastWatchTime ?? element.currentTime)
-        );
-      } catch (error) {
-        indexes.forEach(index => pendingSegments.current.add(index));
-        console.error("บันทึกช่วงการรับชมไม่สำเร็จ", error);
-      }
-    };
-
-    const resetSample = () => { lastSample.current = null; };
-    const sample = () => {
-      const now = performance.now();
-      const current = element.currentTime;
-      const previous = lastSample.current;
-      lastSample.current = { current, now };
-      if (!previous || element.paused || element.seeking || document.hidden) return;
-
-      const mediaDelta = current - previous.current;
-      const wallDelta = (now - previous.now) / 1000;
-      if (mediaDelta <= 0 || mediaDelta > 1.5 || wallDelta > 2 || Math.abs(mediaDelta - wallDelta * element.playbackRate) > 0.75) return;
-
-      const segmentIndex = Math.floor(previous.current / 10);
-      if (Math.floor(current / 10) !== segmentIndex) return;
-      const next = Math.min(10, (watchedSeconds.current.get(segmentIndex) || 0) + mediaDelta);
-      watchedSeconds.current.set(segmentIndex, next);
-      furthestAllowed.current = Math.max(furthestAllowed.current, current);
-      const segmentLength = Math.min(10, element.duration - segmentIndex * 10);
-      if (next >= Math.max(1, segmentLength * 0.8)) pendingSegments.current.add(segmentIndex);
-    };
-
-    const resume = () => {
-      const saved = Number(watchTimeRef.current || 0);
-      const verifiedSeconds = Math.max(0, Math.min(element.duration, element.duration * Number(progressRef.current || 0) / 100));
-      furthestAllowed.current = Math.min(saved, verifiedSeconds);
-      if (furthestAllowed.current > 0 && furthestAllowed.current < element.duration - 3) element.currentTime = furthestAllowed.current;
-    };
-    const guardSeeking = () => {
-      resetSample();
-      if (correctingSeek.current) return;
-      if (element.currentTime > furthestAllowed.current + 1) {
-        correctingSeek.current = true;
-        element.currentTime = furthestAllowed.current;
-        queueMicrotask(() => { correctingSeek.current = false; });
-      }
-    };
-    const onPause = () => { resetSample(); flush(); };
-    const onVisibility = () => { resetSample(); if (document.hidden) flush(); };
-
-    element.addEventListener("loadedmetadata", resume, { once: true });
-    element.addEventListener("timeupdate", sample);
-    element.addEventListener("seeking", guardSeeking);
-    element.addEventListener("seeked", resetSample);
-    element.addEventListener("pause", onPause);
-    element.addEventListener("ended", flush);
-    document.addEventListener("visibilitychange", onVisibility);
-    flushTimer.current = setInterval(flush, 10000);
-
-    return () => {
-      clearInterval(flushTimer.current);
-      flush();
-      element.removeEventListener("timeupdate", sample);
-      element.removeEventListener("seeking", guardSeeking);
-      element.removeEventListener("seeked", resetSample);
-      element.removeEventListener("pause", onPause);
-      element.removeEventListener("ended", flush);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [token, video.VideoId, onProgress]);
-
-  return (
-    <video ref={videoRef} src={video.VideoUrl} controls controlsList="nodownload" playsInline
-      className="aspect-video w-full bg-black" preload="metadata">
-      เบราว์เซอร์นี้ไม่รองรับการเล่นวิดีโอ
-    </video>
-  );
 }
 
 const API_BASE_URL = API_URL;

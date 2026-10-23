@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Spinner from "../components/ui/Spinner";
-import { useSearchParams, Link, useNavigate } from "react-router-dom"
-import { Search, SlidersHorizontal, X, Loader2 } from "lucide-react"
+import { useSearchParams, useNavigate } from "react-router-dom"
+import { Search, SlidersHorizontal, X } from "lucide-react"
 import { getCourses } from "../callapi/callusers"
 import { useShop } from "../context/ShopContext"
 import ErrorState from "../components/ui/ErrorState"

@@ -25,18 +25,6 @@ export function isPassingScore(totalScore, maxScore) {
     && Number.isFinite(max) && max > 0 && score * 100 >= max * PASS_PCT;
 }
 
-// แบ่งคะแนนเต็มให้ข้อสอบ n ข้อเท่า ๆ กัน โดยผลรวมต้องเท่ากับ cap "เป๊ะ"
-// วิธี: คิดเป็นหน่วยสตางค์เพื่อเลี่ยงปัญหาทศนิยมลอยตัว แล้วแจกเศษที่เหลือ
-// ให้ข้อแรก ๆ ทีละ 0.01 — เช่น 30 ข้อ จะได้ 0.67 x 20 ข้อ + 0.66 x 10 ข้อ = 20.00 พอดี
-// (ถ้าหารตรง ๆ แล้วปัดจะได้ 0.67 x 30 = 20.10 ซึ่งเกินเพดาน)
-export function splitScoreEvenly(n, cap = EXAM_SCORE_CAP) {
-  if (!n || n < 1) return [];
-  const totalCents = Math.round(cap * 100);
-  const base = Math.floor(totalCents / n);
-  const remainder = totalCents - base * n;
-  return Array.from({ length: n }, (_, i) => (base + (i < remainder ? 1 : 0)) / 100);
-}
-
 // รวมคะแนนของข้อสอบทั้งชุด — ปัดที่ 2 ตำแหน่งเพื่อกันเศษทศนิยมลอยตัว
 // (0.1 + 0.2 ใน JavaScript ได้ 0.30000000000000004 ถ้าไม่ปัดจะโผล่บนหน้าจอ)
 export function sumScores(questions) {

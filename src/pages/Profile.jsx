@@ -2,18 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { API_URL } from "../config";
 import { getFileUrl } from "../utils/fileUrl";
-import {
-  Phone,
-  Pencil,
-  Save,
-  X,
-  AlertTriangle,
-  ImagePlus,
-  Users,
-  BookOpen,
-  ShieldCheck,
-  Check,
-} from "lucide-react";
+import { Phone, Pencil, Save, X, AlertTriangle, ImagePlus, Users, BookOpen } from "lucide-react";
 import {
   getStudentProfile,
   updateStudentProfile,
