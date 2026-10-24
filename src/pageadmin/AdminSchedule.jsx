@@ -524,6 +524,12 @@ export default function AdminSchedule() {
         over: Math.max(0, Number(selectedCourse.ScheduledMinutes || 0) / 60 - Number(selectedCourse.TotalCourseHours)),
       }
     : null;
+  const subjectHours = getCourseSubjects(selectedCourse).map(subject => {
+    const planned = Number(subject.PlannedHours || 0);
+    const scheduled = Number(subject.ScheduledMinutes || 0) / 60;
+    return { ...subject, planned, scheduled, remaining: Math.max(0, planned - scheduled), over: Math.max(0, scheduled - planned) };
+  });
+  const hasSubjectPlans = subjectHours.some(subject => subject.planned > 0);
 
   // ── render ─────────────────────────────────────────────────
   const weekEndDate = addDays(weekStart, 6);
@@ -675,16 +681,35 @@ export default function AdminSchedule() {
           </div>}
         </div>
 
-        {isSchedulableCourse(selectedCourse) && Number(selectedCourse.ScheduledMinutes || 0) === 0 && (
+        {isSchedulableCourse(selectedCourse) && !courseHours && !hasSubjectPlans && Number(selectedCourse.ScheduledMinutes || 0) === 0 && (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
             {selectedCourse.CourseName} ยังไม่จัดตารางสอน
           </div>
         )}
 
-        {courseHours && isSchedulableCourse(selectedCourse) && Number(selectedCourse.ScheduledMinutes || 0) > 0 && (
-          <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 || courseHours.over > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
-            <p className="font-bold">{selectedCourse.CourseName}</p>
-            <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.over > 0 ? `เกินชั่วโมงคอร์ส ${courseHours.over} ชม. กรุณาตรวจตาราง` : courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
+        {(courseHours || hasSubjectPlans) && isSchedulableCourse(selectedCourse) && (
+          <div className="mb-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900">{selectedCourse.CourseName}</p>
+                {courseHours && <p className="mt-0.5 text-xs text-slate-500">รวม {courseHours.scheduled} / {courseHours.total} ชม.</p>}
+              </div>
+              {courseHours && <span className={`shrink-0 text-xs font-bold ${courseHours.over > 0 ? 'text-red-700' : courseHours.remaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                {courseHours.over > 0 ? `เกิน ${courseHours.over} ชม.` : courseHours.remaining > 0 ? `เหลือ ${courseHours.remaining} ชม.` : 'ครบแล้ว'}
+              </span>}
+            </div>
+            {subjectHours.length > 0 && (
+              <div className="mt-2 divide-y divide-slate-100 border-t border-slate-100 pt-1">
+                {subjectHours.map(subject => (
+                  <div key={subject.SubjectId} className="flex items-center justify-between gap-3 py-1.5 text-xs">
+                    <span className="min-w-0 truncate text-slate-700">{subject.SubjectName} <span className="text-slate-400">· {subject.scheduled}{subject.planned > 0 ? ` / ${subject.planned}` : ''} ชม.</span></span>
+                    <span className={`shrink-0 font-semibold ${subject.over > 0 ? 'text-red-700' : subject.remaining > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {subject.planned <= 0 ? 'ไม่กำหนดชั่วโมง' : subject.over > 0 ? `เกิน ${subject.over} ชม.` : subject.remaining > 0 ? `เหลือ ${subject.remaining} ชม.` : 'ครบแล้ว'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1252,7 +1277,7 @@ function ScheduleModal({
   }, [showTermFields, formData.DaysOfWeek, formData.TermStartDate, formData.TermEndDate,
     formData.IncludeHolidays, formData.IncludeHolidayDates]);
 
-  // ── ชั่วโมงแพ็กเกจคอร์สเดี่ยว: คำนวณให้ก่อนกดบันทึก พร้อมทางเลือกที่พอดี ──
+  // ── ชั่วโมงรวมที่กำหนดของคอร์ส: คำนวณก่อนบันทึก ──
   const [capacity, setCapacity] = useState(null);
   const [capacityLoading, setCapacityLoading] = useState(false);
   const [capacityVersion, setCapacityVersion] = useState(0);
@@ -1302,12 +1327,19 @@ function ScheduleModal({
     return (b[0] * 60 + b[1]) - (a[0] * 60 + a[1]);
   };
   // ช่วงเวลามาตรฐานที่สั้นกว่าและทำให้ "ครบทุกคาบในช่วงวันที่เดิม" ได้พอดีแพ็กเกจ (เรียงจากยาวสุด)
-  const fittingSlots = capacity?.isPrivate && !capacity.fits && capacity.sessions > 0
+  const fittingSlots = capacity?.isLimited && !capacity.fits && capacity.sessions > 0
     ? timeSlots.filter(sl => !sl.isBreak && slotMinutes(sl) > 0 && slotMinutes(sl) < capacity.perSession
         && slotMinutes(sl) * capacity.sessions <= capacity.remainMinutes)
       .sort((x, y) => slotMinutes(y) - slotMinutes(x)).slice(0, 2)
     : [];
-  const overCapacity = Boolean(capacity?.isPrivate && !capacity.fits);
+  const overCapacity = Boolean(capacity?.isLimited && !capacity.fits);
+  const subjectLimitMinutes = Number(selectedSubject?.PlannedHours || 0) > 0
+    ? Math.round(Number(selectedSubject.PlannedHours) * 60) : null;
+  const subjectUsedMinutes = Number(selectedSubject?.ScheduledMinutes || 0);
+  const subjectAddMinutes = showTermFields && occurrences?.dates?.length && formData.StartTime < formData.EndTime
+    ? occurrences.dates.length * slotMinutes({ start: formData.StartTime, end: formData.EndTime }) : 0;
+  const subjectOverCapacity = subjectLimitMinutes !== null
+    && subjectUsedMinutes + subjectAddMinutes > subjectLimitMinutes;
 
   const [roomSuggestions, setRoomSuggestions] = useState(null);
   const [suggestLoading, setSuggestLoading] = useState(false);
@@ -1426,7 +1458,8 @@ function ScheduleModal({
     !timeError &&
     (!showTermFields || (!previewLoading && occurrences?.dates?.length > 0)) &&
     (!showTermFields || !capacityLoading) &&
-    !overCapacity;
+    !overCapacity &&
+    (!showTermFields || !subjectOverCapacity);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4">
@@ -1537,34 +1570,11 @@ function ScheduleModal({
             </select>
           </div>
 
-          {/* Course info card — แสดงข้อมูลคอร์สที่เลือกก่อนสร้างตาราง */}
-          {selectedCourse && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-1">
-                <Info className="h-3.5 w-3.5" /> ข้อมูลคอร์ส
-              </div>
-              <p className="text-xs text-slate-700">
-                <span className="text-slate-500">คอร์ส:</span> {selectedCourse.CourseName}
-              </p>
-              {selectedCourse.StartDate && selectedCourse.LastDate && (
-                <p className="text-xs text-slate-700">
-                  <span className="text-slate-500">ระยะเวลา:</span>{' '}
-                  {new Date(selectedCourse.StartDate).toLocaleDateString('th-TH')} - {new Date(selectedCourse.LastDate).toLocaleDateString('th-TH')}
-                </p>
-              )}
-              {Array.isArray(availableSubjects) && availableSubjects.length > 0 && (
-                <p className="text-xs text-slate-700">
-                  <span className="text-slate-500">วิชาที่รองรับ:</span>{' '}
-                  {availableSubjects.map(s => s.SubjectName).join(', ')}
-                </p>
-              )}
-              {selectedCourse.EnrolledCount != null && (
-                <p className="text-xs text-slate-700">
-                  <span className="text-slate-500">นักเรียน:</span>{' '}
-                  {selectedCourse.EnrolledCount} คน
-                </p>
-              )}
-            </div>
+          {selectedCourse?.StartDate && selectedCourse?.LastDate && (
+            <p className="text-xs text-slate-500">
+              ช่วงคอร์ส {new Date(selectedCourse.StartDate).toLocaleDateString('th-TH')} – {new Date(selectedCourse.LastDate).toLocaleDateString('th-TH')}
+              {selectedCourse.EnrolledCount != null && ` · นักเรียน ${selectedCourse.EnrolledCount} คน`}
+            </p>
           )}
 
           {/* Subject + Room */}
@@ -1653,66 +1663,88 @@ function ScheduleModal({
                 สอนวันหยุดที่อยู่ในช่วงนี้ด้วย
               </label>
 
-              {!dateError && days.length > 0 && formData.TermStartDate && formData.TermEndDate && (
-                <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-xs text-slate-700" role="status">
-                  {previewLoading ? 'กำลังคำนวณคาบ...' : occurrences?.error ? occurrences.error : occurrences?.dates ? (
-                    <>
-                      <p className="font-semibold text-orange-800">
-                        จะสร้าง {occurrences.dates.length} คาบ
-                        {formData.StartTime && formData.EndTime && formData.StartTime < formData.EndTime
-                          ? ` · รวม ${fmtH(occurrences.dates.length * slotMinutes({ start: formData.StartTime, end: formData.EndTime }))}` : ''}
-                      </p>
-                      <p className="mt-1 leading-5">{occurrences.dates.length
-                        ? <>{occurrences.dates.slice(0, 7).map(fmtDate).join(', ')}{occurrences.dates.length > 7 ? ` และอีก ${occurrences.dates.length - 7} วัน` : ''}</>
-                        : 'ไม่มีคาบในช่วงวันที่เลือก'}</p>
-                      {occurrences.skippedHolidays?.length > 0 && <p className="mt-1 text-amber-700">ข้ามวันหยุด {occurrences.skippedHolidays.length} วัน</p>}
-                    </>
-                  ) : null}
-                </div>
-              )}
-
               {dateError && (
                 <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3 flex-shrink-0" /> {dateError}
                 </p>
               )}
 
-              {capacity?.isPrivate && !dateError && (
-                <div className={`mt-2 rounded-xl border p-3 text-xs ${overCapacity ? 'border-red-200 bg-red-50 text-red-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`} role={overCapacity ? 'alert' : 'status'}>
-                  <p className="font-semibold">
-                    ชั่วโมงแพ็กเกจคอร์สเดี่ยว: ใช้ {fmtH(capacity.usedMinutes)} จาก {fmtH(capacity.limitMinutes)}
-                    {capacity.pendingMinutes > 0 && <span className="font-normal"> (รวมตารางที่รอเผยแพร่ {fmtH(capacity.pendingMinutes)})</span>}
-                  </p>
-                  <p className="mt-0.5">
-                    ตารางนี้ {capacity.sessions} คาบ × {fmtH(capacity.perSession)} = <strong>{fmtH(capacity.addMinutes)}</strong>
-                    {overCapacity
-                      ? <> — เกิน {fmtH(capacity.addMinutes - capacity.remainMinutes)} (เหลือได้อีก {fmtH(capacity.remainMinutes)})</>
-                      : <> — หลังบันทึกเหลือ {fmtH(capacity.remainMinutes - capacity.addMinutes)}</>}
-                  </p>
+              {!dateError && days.length > 0 && formData.TermStartDate && formData.TermEndDate && (
+                <div className={`mt-3 rounded-xl border px-3 py-3 text-xs ${subjectOverCapacity || overCapacity || occurrences?.error
+                  ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-slate-50'}`} role={subjectOverCapacity || overCapacity || occurrences?.error ? 'alert' : 'status'}>
+                  <p className="font-bold text-slate-800">สรุปก่อนบันทึก</p>
+                  {previewLoading ? <p className="mt-2 text-slate-500">กำลังคำนวณคาบ...</p>
+                    : occurrences?.error ? <p className="mt-2 text-red-700">{occurrences.error}</p>
+                    : occurrences?.dates && <>
+                      <div className="mt-2 flex items-start justify-between gap-2">
+                        <span className="text-slate-600">วันที่สอน</span>
+                        <strong className="text-right text-slate-800">{occurrences.dates.length} คาบ
+                          {formData.StartTime && formData.EndTime && formData.StartTime < formData.EndTime
+                            ? ` · ${fmtH(subjectAddMinutes)}` : ''}</strong>
+                      </div>
+                      {occurrences.dates.length > 1 ? (
+                        <details className="mt-1 text-slate-500">
+                          <summary className="cursor-pointer text-right text-orange-700">ดูวันที่ทั้งหมด</summary>
+                          <p className="mt-1 leading-5">{occurrences.dates.map(fmtDate).join(', ')}</p>
+                        </details>
+                      ) : occurrences.dates.length === 1
+                        ? <p className="mt-1 text-right text-slate-500">{fmtDate(occurrences.dates[0])}</p>
+                        : <p className="mt-1 text-red-700">ไม่มีคาบในช่วงวันที่เลือก</p>}
+                      {occurrences.skippedHolidays?.length > 0 && <p className="mt-1 text-slate-500">ข้ามวันหยุด {occurrences.skippedHolidays.length} วัน</p>}
+                    </>}
+
+                  {selectedSubject && <div className="mt-2 flex items-start justify-between gap-2 border-t border-slate-200 pt-2">
+                    <span className="min-w-0 text-slate-600">{selectedSubject.SubjectName}
+                      {subjectLimitMinutes !== null && <span className="block text-[11px] text-slate-500">ลงแล้ว {fmtH(subjectUsedMinutes)} / {fmtH(subjectLimitMinutes)}</span>}
+                    </span>
+                    <strong className={`shrink-0 text-right ${subjectOverCapacity ? 'text-red-700' : 'text-slate-800'}`}>
+                      {subjectLimitMinutes === null ? 'ไม่กำหนดชั่วโมง' : subjectOverCapacity
+                        ? `เกิน ${fmtH(subjectUsedMinutes + subjectAddMinutes - subjectLimitMinutes)}`
+                        : `เหลือ ${fmtH(Math.max(0, subjectLimitMinutes - subjectUsedMinutes - subjectAddMinutes))}`}
+                    </strong>
+                  </div>}
+
+                  {capacity?.isLimited && <div className="mt-2 flex items-start justify-between gap-2 border-t border-slate-200 pt-2">
+                    <span className="text-slate-600">รวมทั้งคอร์ส
+                      <span className="block text-[11px] text-slate-500">ลงแล้ว {fmtH(capacity.usedMinutes)} / {fmtH(capacity.limitMinutes)}</span>
+                    </span>
+                    <strong className={`shrink-0 text-right ${overCapacity ? 'text-red-700' : 'text-slate-800'}`}>
+                      {overCapacity ? `เกิน ${fmtH(capacity.addMinutes - capacity.remainMinutes)}`
+                        : `เหลือ ${fmtH(capacity.remainMinutes - capacity.addMinutes)}`}
+                    </strong>
+                  </div>}
+                  {capacity?.pendingMinutes > 0 && <p className="mt-1 text-slate-500">รวมตารางที่รอเผยแพร่ {fmtH(capacity.pendingMinutes)}</p>}
+                  {(subjectOverCapacity || overCapacity) && <p className="mt-2 font-semibold text-red-700">ชั่วโมงเกินแผน ลดวันสอนหรือเลือกคาบสั้นลง</p>}
+
+                  {capacity?.isLimited && <>
                   {overCapacity && (capacity.suggestions?.length > 0 || fittingSlots.length > 0) && (
-                    <div className="mt-2 space-y-1.5">
-                      <p className="font-semibold">เลือกแบบที่พอดีแพ็กเกจ:</p>
-                      {capacity.suggestions.filter(sg => sg.kind === 'endDate').map(sg => (
+                    <details className="mt-2 text-slate-700">
+                      <summary className="cursor-pointer font-semibold text-orange-700">ดูตัวเลือกที่พอดีชั่วโมง</summary>
+                      <div className="mt-2 space-y-1.5">
+                      {(capacity.suggestions || []).filter(sg => sg.kind === 'endDate').map(sg => (
                         <button key="endDate" type="button" onClick={() => set('TermEndDate', sg.termEndDate)}
-                          className="block w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
+                          className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
                           จบเร็วขึ้น: {sg.label}
                         </button>
                       ))}
                       {fittingSlots.map(sl => (
                         <button key={sl.label} type="button" onClick={() => handleSlot(sl.label)}
-                          className="block w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
+                          className="block w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-left font-semibold text-slate-700 hover:border-orange-300 hover:text-orange-700">
                           คาบสั้นลง: {sl.label} ({fmtH(slotMinutes(sl))}) — ครบ {capacity.sessions} คาบ รวม {fmtH(slotMinutes(sl) * capacity.sessions)}
                         </button>
                       ))}
-                    </div>
+                      </div>
+                    </details>
                   )}
                   {overCapacity && !capacity.suggestions?.length && !fittingSlots.length && !(capacity.pendingSchedules?.length > 0) && (
-                    <p className="mt-1">ชั่วโมงที่เหลือไม่พอแม้ 1 คาบ — เพิ่มชั่วโมงแพ็กเกจในข้อมูลคอร์ส หรือลบคาบเดิมที่ไม่ใช้ก่อน</p>
+                    <p className="mt-1 text-red-700">ชั่วโมงที่เหลือไม่พอแม้ 1 คาบ — ปรับชั่วโมงคอร์สหรือลบคาบเดิมที่ไม่ใช้ก่อน</p>
                   )}
                   {/* ร่างสร้างตารางที่รอเผยแพร่ — ถ้าชั่วโมงไม่พอเพราะร่างเหล่านี้ ให้ยกเลิกได้ตรงนี้ */}
                   {overCapacity && capacity.pendingSchedules?.length > 0 && (
-                    <div className="mt-2 space-y-1.5">
-                      <p className="font-semibold">
+                    <details className="mt-2 text-slate-700">
+                      <summary className="cursor-pointer font-semibold text-orange-700">ดูตารางร่างที่รอเผยแพร่</summary>
+                      <div className="mt-2 space-y-1.5">
+                      <p>
                         {capacity.usedMinutes - capacity.pendingMinutes < capacity.limitMinutes && capacity.usedMinutes >= capacity.limitMinutes
                           ? 'ชั่วโมงเต็มเพราะตารางที่ยังรอเผยแพร่ — ยกเลิกร่างที่ไม่ใช้แล้ว ระบบจะคำนวณใหม่ทันที:'
                           : 'ตารางที่รอเผยแพร่ของคอร์สนี้ (ยกเลิกได้ถ้าไม่ใช้แล้ว):'}
@@ -1726,12 +1758,10 @@ function ScheduleModal({
                           </button>
                         </div>
                       ))}
-                    </div>
+                      </div>
+                    </details>
                   )}
-
-                  {!overCapacity && capacity.remainMinutes - capacity.addMinutes > 0 && capacity.perSession > 0 && (
-                    <p className="mt-0.5 text-emerald-700">ยังจัดเพิ่มได้อีกประมาณ {Math.floor((capacity.remainMinutes - capacity.addMinutes) / capacity.perSession)} คาบ (คาบละ {fmtH(capacity.perSession)})</p>
-                  )}
+                  </>}
                 </div>
               )}
             </div>
@@ -1820,31 +1850,22 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
   }
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-xs text-slate-500 p-3 bg-slate-50 rounded-xl">
+      <div className="flex items-center gap-2 text-xs text-slate-500">
         <Loader2 className="h-3.5 w-3.5 animate-spin" /> กำลังหาห้องที่เหมาะสม...
       </div>
     );
   }
 
-  if (!data) {
-    return (
-      <div className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-        เลือกคอร์ส วัน และเวลาก่อน ระบบจะแนะนำห้องให้อัตโนมัติ
-      </div>
-    );
-  }
+  if (!data) return null;
 
   const { suggestions, busyButFits, studentCount, hasEnrollment } = data;
 
   return (
-    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-      <p className="text-xs font-semibold text-slate-600">
-        <LuLightbulb className="inline h-4 w-4 shrink-0 text-amber-500" /> แนะนำห้องสำหรับคาบนี้
-        {hasEnrollment ? ` (นักเรียน ${studentCount} คน)` : ' (ยังไม่มีนักเรียนลงทะเบียน)'}
-      </p>
+    <div className="space-y-1.5 text-xs">
+      <p className="font-semibold text-slate-600">ห้องที่แนะนำ{hasEnrollment ? ` · นักเรียน ${studentCount} คน` : ''}</p>
 
       {!hasEnrollment && (
-        <p className="text-[11px] text-amber-600">
+        <p className="text-[11px] text-amber-700">
           <LuAlertTriangle className="inline h-3.5 w-3.5 shrink-0" /> คอร์สนี้ยังไม่มีผู้ลงทะเบียน ระบบจึงแนะนำห้องขนาดเล็กที่สุดที่ว่าง
           หากมีผู้ลงทะเบียนเพิ่ม ควรปรับห้องอีกครั้ง
         </p>
@@ -1853,7 +1874,7 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
       {suggestions.length === 0 ? (
         <p className="text-xs text-red-600">ไม่พบห้องที่ว่างและจุพอสำหรับจำนวนนักเรียนนี้</p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {[suggestions[0]].map(r => {
             const isSelected = String(r.RoomId) === String(selectedRoomId);
             const isTop = r.rank === 1;
@@ -1862,31 +1883,21 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
                 key={r.RoomId}
                 type="button"
                 onClick={() => onPick(r.RoomId)}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-left transition
         ${isSelected
                     ? 'border-orange-500 bg-orange-50'
                     : isTop
                       ? 'border-orange-300 bg-white hover:bg-orange-50'
                       : 'border-slate-200 bg-white hover:bg-slate-50'}`}
               >
-                <span className="block">
-                  <span className={`block text-xs font-bold ${isTop ? 'text-orange-600' : 'text-slate-600'}`}>
-                    {isTop ? 'ห้องที่แนะนำ' : `ตัวเลือกที่ ${r.rank}`}
-                  </span>
-                  <span className="block text-[11px] text-slate-600">
-                    {r.RoomDetail} — {r.Capacity} ที่นั่ง — ว่าง
-                    {r.isOversized && (
-                      <span className="text-amber-600"> · ที่นั่งเกินความจำเป็น {r.extraSeats} ที่นั่ง</span>
-                    )}
-                  </span>
-                </span>
+                <span className="text-slate-700"><strong>{r.RoomDetail}</strong> · {r.Capacity} ที่นั่ง · ว่าง</span>
                 {isSelected && <CheckCircle className="h-4 w-4 text-orange-600 shrink-0" />}
               </button>
             );
           })}
           {suggestions.length > 1 && (
             <details className="text-xs text-slate-600">
-              <summary className="cursor-pointer py-1 font-semibold text-orange-700">ดูห้องอื่นอีก {suggestions.length - 1} ห้อง</summary>
+              <summary className="cursor-pointer py-1 text-orange-700">ดูห้องอื่นอีก {suggestions.length - 1} ห้อง</summary>
               <div className="mt-1 space-y-1.5">
                 {suggestions.slice(1).map(r => (
                   <button key={r.RoomId} type="button" onClick={() => onPick(r.RoomId)}
