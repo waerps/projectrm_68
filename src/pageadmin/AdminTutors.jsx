@@ -24,7 +24,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
-import { PendingDraftsCallout } from "../components/CourseDrafts";
+import { PendingDraftsCallout, COURSE_DRAFTS_CHANGED } from "../components/CourseDrafts";
 import AdminTutorFeedback from "../components/AdminTutorFeedback";
 import { birthDateMax } from "../utils/birthDateInput";
 
@@ -957,8 +957,10 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
         onAdded();
         return;
       }
-      const { success = [], skipped = [], failed = [] } = res.data;
+      const { success = [], skipped = [], failed = [], drafts = [] } = res.data;
+      if (drafts.length) window.dispatchEvent(new Event(COURSE_DRAFTS_CHANGED));
       let msg = `เพิ่มสำเร็จ ${success.length} รายการ`;
+      if (drafts.length) msg += ` · วิชาใหม่รอเผยแพร่ ${drafts.length} รายการ`;
       if (skipped.length) msg += ` · ข้าม ${skipped.length} รายการ (มีอยู่แล้ว)`;
       if (failed.length) msg += ` · ล้มเหลว ${failed.length} รายการ`;
       showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
@@ -1401,7 +1403,7 @@ function TutorForm({ initial = {}, onSave, onCancel, isSubmitting, showToast, al
             onRemoveSubject={async (tutorCourseDetailId) => {
               try {
                 const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
-                if (res.data?.drafted) showToast("success", res.data.message);
+                showToast("success", res.data?.message || "ถอดติวเตอร์ออกแล้ว");
                 loadCourses();
               } catch (err) {
                 showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");
@@ -1991,7 +1993,7 @@ function TutorDetailModal({ tutor, onClose, showToast, allSubjects }) {
                   if (!await confirmDialog(`ถอด "${label}" ออกจากคอร์สที่ติวเตอร์คนนี้สอนอยู่?`)) return;
                   try {
                     const res = await axios.delete(`${API}/tutor-courses/${tutorCourseDetailId}`);
-                    if (res.data?.drafted) showToast("success", res.data.message);
+                    showToast("success", res.data?.message || "ถอดติวเตอร์ออกแล้ว");
                     loadDetail();
                   } catch (err) {
                     showToast("error", err.response?.data?.message || "ถอดไม่สำเร็จ");

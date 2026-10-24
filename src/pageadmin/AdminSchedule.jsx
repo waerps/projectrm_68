@@ -1,4 +1,5 @@
 import { API_URL } from "../config";
+import { useSearchParams } from "react-router-dom";
 import Spinner from "../components/ui/Spinner";
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
@@ -89,17 +90,8 @@ function checkinStatusFor(entry, now = new Date()) {
   return classDate > isoDate(now) ? 'future' : 'upcoming';
 }
 
-// คืนรายวิชาที่ Course นั้นรองรับ
-// รองรับทั้งกรณี backend ส่ง course.Subjects (array ของ {SubjectId, SubjectName})
-// หรือ course.SubjectIds (array ของ id) ถ้ายังไม่มีข้อมูลนี้จาก backend
-// จะ fallback ไปแสดงวิชาทั้งหมดแทน (ไม่บล็อกการทำงานเดิม)
-function getCourseSubjects(course, allSubjects) {
-  if (!course) return allSubjects;
-  if (Array.isArray(course.Subjects) && course.Subjects.length) return course.Subjects;
-  if (Array.isArray(course.SubjectIds) && course.SubjectIds.length) {
-    return allSubjects.filter(s => course.SubjectIds.includes(s.SubjectId));
-  }
-  return allSubjects;
+function getCourseSubjects(course) {
+  return Array.isArray(course?.Subjects) ? course.Subjects : [];
 }
 
 function tutorLabel(tutor) {
@@ -111,6 +103,7 @@ function tutorLabel(tutor) {
 
 // ─── component ────────────────────────────────────────────────
 export default function AdminSchedule() {
+  const [searchParams, setSearchParams] = useSearchParams();
   // มือถือ: วันที่เลือกดูในมุมมองรายวัน (1=อาทิตย์ … 7=เสาร์ แบบเดียวกับ DayOfWeek)
   const [mobileDow, setMobileDow] = useState(() => new Date().getDay() + 1);
   // data
@@ -139,7 +132,7 @@ export default function AdminSchedule() {
 
   // filters
   const [fTutor, setFTutor] = useState('all');
-  const [fCourse, setFCourse] = useState('all');
+  const [fCourse, setFCourse] = useState(() => searchParams.get('courseId') || 'all');
   const [fRoom, setFRoom] = useState('all');
   const [fSubject, setFSubject] = useState('all');
   const [fSearch, setFSearch] = useState('');
@@ -222,6 +215,18 @@ export default function AdminSchedule() {
     fetchMeta();
   }, []);
 
+  useEffect(() => {
+    const courseId = searchParams.get('courseId');
+    const course = meta.courses.find(item => String(item.CourseID) === courseId);
+    if (!courseId || !course) return;
+    setFCourse(courseId);
+    setFormData({ ...EMPTY_FORM, CourseID: courseId,
+      TermStartDate: course.StartDate > isoDate(new Date()) ? course.StartDate : isoDate(new Date()),
+      TermEndDate: course.LastDate || '' });
+    setShowAdd(true);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, meta.courses, setSearchParams]);
+
   // ── week navigation ────────────────────────────────────────
   const goPrevWeek = () => setWeekStart(w => addDays(w, -7));
   const goNextWeek = () => setWeekStart(w => addDays(w, +7));
@@ -279,7 +284,7 @@ export default function AdminSchedule() {
   };
 
   // ── conflict check (debounced) ─────────────────────────────
-  const checkConflicts = useCallback(async (form, excludeId = null) => {
+  const checkConflicts = useCallback(async (form, excludeId = null, occurrenceDate = null) => {
     if (!form.DayOfWeek || !form.StartTime || !form.EndTime) {
       setConflicts([]);
       return;
@@ -292,9 +297,11 @@ export default function AdminSchedule() {
           dayOfWeek: form.DayOfWeek,
           startTime: form.StartTime,
           endTime: form.EndTime,
+          ...(form.CourseID ? { courseId: form.CourseID } : {}),
           ...(form.RoomId ? { roomId: form.RoomId } : {}),
           ...(form.AdminId ? { adminId: form.AdminId } : {}),
           ...(excludeId ? { excludeId } : {}),
+          ...(occurrenceDate ? { occurrenceDate: isoDate(occurrenceDate) } : {}),
           ...(form.TermStartDate && form.TermEndDate ? {
             termStart: form.TermStartDate, termEnd: form.TermEndDate,
             includeHolidayDates: (form.IncludeHolidayDates || []).join(','),
@@ -372,16 +379,18 @@ export default function AdminSchedule() {
 
       if (!r.ok) {
         if (r.status === 409) {
-          setConflicts(d.conflicts || []);
+          if (d.conflicts?.length) setConflicts(d.conflicts);
+          else toast(d.message || 'บันทึกคาบสอนไม่สำเร็จ');
           return;
         }
         throw new Error(d.message);
       }
 
-      if (d.drafted) toast(d.message);
+      toast(d.drafted ? d.message : 'สร้างคาบสอนแล้ว ตารางมีผลทันที');
 
       setShowAdd(false);
       await fetchSchedule(weekStart);
+      await fetchMeta();
     } catch (e) {
       toast(`ไม่สามารถสร้างคาบสอนได้: ${e.message}`);
     } finally {
@@ -411,17 +420,19 @@ export default function AdminSchedule() {
 
       if (!r.ok) {
         if (r.status === 409) {
-          setConflicts(d.conflicts || []);
+          if (d.conflicts?.length) setConflicts(d.conflicts);
+          else toast(d.message || 'แก้ไขคาบสอนไม่สำเร็จ');
           return;
         }
         throw new Error(d.message);
       }
 
-      if (d.drafted) toast(d.message);
+      toast(d.drafted ? d.message : 'แก้คาบสอนแล้ว ตารางมีผลทันที');
 
       setShowEdit(false);
       setSelected(null);
       await fetchSchedule(weekStart);
+      await fetchMeta();
     } catch (e) {
       toast(`แก้ไขไม่สำเร็จ: ${e.message}`);
     } finally {
@@ -455,9 +466,10 @@ export default function AdminSchedule() {
       }
 
       setShowDelete(false);
-      if (d.drafted) toast(d.message);
+      toast(d.drafted ? d.message : 'ลบคาบสอนแล้ว ตารางมีผลทันที');
       setSelected(null);
       await fetchSchedule(weekStart);
+      await fetchMeta();
     } catch (e) {
       toast(`ลบไม่สำเร็จ: ${e.message}`);
     } finally {
@@ -532,14 +544,14 @@ export default function AdminSchedule() {
           <StatCard
             icon={<BookOpen className="h-5 w-5 text-white" />}
             bg="bg-blue-500"
-            label="คาบสอนทั้งหมด"
+            label="คาบในสัปดาห์นี้"
             value={totalClasses}
             unit="คาบ"
           />
           <StatCard
             icon={<Users className="h-5 w-5 text-white" />}
             bg="bg-emerald-500"
-            label="คอร์สที่เปิดอยู่"
+            label="คอร์สที่มีคาบสัปดาห์นี้"
             value={totalStudents}
             unit="คอร์ส"
           />
@@ -628,7 +640,13 @@ export default function AdminSchedule() {
           </div>}
         </div>
 
-        {courseHours && (
+        {selectedCourse && Number(selectedCourse.ScheduledMinutes || 0) === 0 && (
+          <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
+            {selectedCourse.CourseName} ยังไม่จัดตารางสอน
+          </div>
+        )}
+
+        {courseHours && Number(selectedCourse.ScheduledMinutes || 0) > 0 && (
           <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
             <p className="font-bold">{selectedCourse.CourseName}</p>
             <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
@@ -914,7 +932,7 @@ export default function AdminSchedule() {
             setSelected(null);
           }}
           onSave={handleUpdate}
-          onFormChange={(f) => checkConflicts(f, selected.CourseScheduleDetailId)}
+          onFormChange={(f) => checkConflicts(f, selected.CourseScheduleDetailId, selected.WeekDate)}
           scopeSelector
           scope={editScope}
           setScope={setEditScope}
@@ -937,12 +955,11 @@ export default function AdminSchedule() {
             {selected.TotalOccurrences > 1 && (
               <div className="mb-4 space-y-2">
                 <p className="text-xs font-semibold text-slate-600">
-                  เลือกขอบเขตการลบ (มีทั้งหมด {selected.TotalOccurrences} คาบในระบบ)
+                  เลือกขอบเขตการลบ ({selected.TotalOccurrences} คาบที่มีวันเวลาและครูเดียวกัน)
                 </p>
                 {[
                   { v: 'this', l: 'ลบเฉพาะคาบนี้' },
                   { v: 'future', l: 'ลบคาบนี้และคาบถัดไปทั้งหมด' },
-                  { v: 'all', l: 'ลบทุกคาบในเทอมนี้' },
                 ].map(o => (
                   <label key={o.v} className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -959,7 +976,7 @@ export default function AdminSchedule() {
               </div>
             )}
 
-            <p className="text-xs text-red-500 mb-4">* การเช็กอินที่เกี่ยวข้องจะถูกยกเลิกด้วย</p>
+            <p className="text-xs text-red-500 mb-4">* คาบที่มีประวัติเช็กอินแล้วจะลบไม่ได้</p>
 
             <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
@@ -1077,7 +1094,7 @@ function ClassCard({ entry, onEdit, onDelete, compact = false }) {
       )}
 
       {entry.TotalOccurrences > 1 && (
-        <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบในเทอม</p>
+        <p className="text-[11px] text-slate-500">{entry.TotalOccurrences} คาบรูปแบบเดียวกัน</p>
       )}
 
       <div className="mt-1 border-t border-slate-100 pt-1 text-[11px] leading-4">
@@ -1155,7 +1172,8 @@ function ScheduleModal({
 
   // คอร์สที่เลือกอยู่ตอนนี้ (ใช้แสดงข้อมูลคอร์ส + กรอง dropdown วิชา)
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === String(formData.CourseID));
-  const availableSubjects = getCourseSubjects(selectedCourse, meta.subjects);
+  const availableSubjects = getCourseSubjects(selectedCourse);
+  const selectedSubject = availableSubjects.find(s => String(s.SubjectId) === String(formData.SubjectId));
 
   // ── ชั่วโมงแพ็กเกจคอร์สเดี่ยว: คำนวณให้ก่อนกดบันทึก พร้อมทางเลือกที่พอดี ──
   const [capacity, setCapacity] = useState(null);
@@ -1244,8 +1262,9 @@ function ScheduleModal({
   // auto-fill term dates เมื่อเลือก course + ล้างวิชาที่ไม่ตรงกับคอร์สใหม่
   const handleCourseChange = val => {
     const course = meta.courses.find(c => String(c.CourseID) === val);
-    const subjectsForCourse = getCourseSubjects(course, meta.subjects);
+    const subjectsForCourse = getCourseSubjects(course);
     const subjectStillValid = subjectsForCourse.some(s => String(s.SubjectId) === String(formData.SubjectId));
+    const subject = subjectStillValid ? subjectsForCourse.find(s => String(s.SubjectId) === String(formData.SubjectId)) : null;
 
     const holidayDate = formData.IncludeHolidayDates?.[0];
     const selectedHolidayFits = holidayDate && course?.StartDate <= holidayDate && course?.LastDate >= holidayDate;
@@ -1253,9 +1272,10 @@ function ScheduleModal({
       ...formData,
       CourseID: val,
       SubjectId: subjectStillValid ? formData.SubjectId : '',
+      AdminId: subject?.AdminId ? String(subject.AdminId) : '',
       ...(course
         ? {
-          TermStartDate: selectedHolidayFits ? holidayDate : course.StartDate || '',
+          TermStartDate: selectedHolidayFits ? holidayDate : course.StartDate > isoDate(new Date()) ? course.StartDate : isoDate(new Date()),
           TermEndDate: selectedHolidayFits ? holidayDate : course.LastDate || '',
           IncludeHolidayDates: selectedHolidayFits ? [holidayDate] : [],
         }
@@ -1298,8 +1318,11 @@ function ScheduleModal({
 
   const canSave =
     formData.CourseID &&
+    selectedSubject?.AdminId &&
+    Number(selectedSubject.Status_Tutor_Id) === 1 &&
     formData.DayOfWeek &&
     formData.StartTime &&
+    formData.EndTime &&
     (!showTermFields || (formData.TermStartDate && formData.TermEndDate)) &&
     conflicts.length === 0 &&
     !dateError &&
@@ -1322,13 +1345,12 @@ function ScheduleModal({
           {scopeSelector && totalOccurrences > 1 && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
               <p className="text-xs font-semibold text-amber-700 mb-2">
-                เลือกขอบเขตการแก้ไข (มีทั้งหมด {totalOccurrences} คาบในระบบ)
+                เลือกขอบเขตการแก้ไข ({totalOccurrences} คาบที่มีวันเวลาและครูเดียวกัน)
               </p>
               <div className="space-y-1.5">
                 {[
                   { v: 'this', l: 'แก้เฉพาะคาบนี้เท่านั้น' },
                   { v: 'future', l: 'แก้คาบนี้และคาบถัดไปทั้งหมด' },
-                  { v: 'all', l: 'แก้ทุกคาบในเทอมนี้' },
                 ].map(o => (
                   <label key={o.v} className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -1390,7 +1412,8 @@ function ScheduleModal({
             <select
               value={formData.CourseID}
               onChange={e => handleCourseChange(e.target.value)}
-              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
+              disabled={!showTermFields}
+              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-slate-100"
             >
               <option value="">เลือกคอร์ส</option>
               {meta.courses.map(c => (
@@ -1440,10 +1463,15 @@ function ScheduleModal({
           {/* Subject + Room */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-slate-600 mb-1 block">วิชา</label>
+              <label className="text-xs text-slate-600 mb-1 block">วิชา <span className="text-red-500">*</span></label>
               <select
                 value={formData.SubjectId}
-                onChange={e => set('SubjectId', e.target.value)}
+                onChange={e => {
+                  const subject = availableSubjects.find(s => String(s.SubjectId) === e.target.value);
+                  const next = { ...formData, SubjectId: e.target.value, AdminId: subject?.AdminId ? String(subject.AdminId) : '' };
+                  setFormData(next);
+                  onFormChange?.(next);
+                }}
                 className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
               >
                 <option value="">เลือกวิชา</option>
@@ -1470,23 +1498,18 @@ function ScheduleModal({
             </div>
           </div>
 
-          {/* Tutor */}
+          {/* Tutor is assigned to the course subject; replacements use tutor release. */}
           <div>
-            <label className="text-xs text-slate-600 mb-1 block">ติวเตอร์</label>
-            <select
-              value={formData.AdminId}
-              onChange={e => set('AdminId', e.target.value)}
-              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-            >
-              <option value="">เลือกติวเตอร์</option>
-              {meta.tutors
-                .filter(t => Number(t.Status_Tutor_Id) === 1 || String(t.AdminId) === String(formData.AdminId))
-                .map(t => (
-                  <option key={t.AdminId} value={t.AdminId}>
-                    {tutorLabel(t)}{Number(t.Status_Tutor_Id) === 1 ? '' : ' (ไม่ได้สอนแล้ว)'}
-                  </option>
-                ))}
-            </select>
+            <label className="text-xs text-slate-600 mb-1 block">ครูประจำวิชา</label>
+            <div className="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700">
+              {Number(selectedSubject?.TutorCount) > 1
+                ? 'วิชานี้มีครูประจำหลายคน กรุณากำหนดให้ชัดเจนในหน้าคอร์ส'
+                : selectedSubject?.AdminId ? tutorLabel(selectedSubject) : 'ยังไม่ได้มอบหมายครูประจำวิชาในหน้าคอร์ส'}
+            </div>
+            {!showTermFields && selectedSubject?.AdminId && formData.AdminId && String(formData.AdminId) !== String(selectedSubject.AdminId) && (
+              <p className="mt-1 text-xs text-amber-700">ผู้สอนที่บันทึกในคาบนี้คือ {tutorLabel(meta.tutors.find(t => String(t.AdminId) === String(formData.AdminId)) || { AdminId: formData.AdminId })} ซึ่งต่างจากครูประจำวิชา</p>
+            )}
+            {selectedSubject && !selectedSubject.AdminId && Number(selectedSubject.TutorCount) === 0 && <p className="mt-1 text-xs text-amber-700">กรุณามอบหมายครูในหน้าคอร์สก่อนจัดคาบ</p>}
           </div>
 
           {/* Term dates (add only) */}

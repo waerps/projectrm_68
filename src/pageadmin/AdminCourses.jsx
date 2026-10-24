@@ -999,10 +999,20 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
 
   // มอบหมายติวเตอร์ให้วิชาที่เพิ่มไว้แบบยังไม่ระบุติวเตอร์
   const handleAssignTutor = async (tutorCourseDetailId, adminId) => {
+    const current = subjects.find(s => s.TutorCourseDetailId === tutorCourseDetailId);
+    if (String(current?.AdminId || '') === String(adminId || '')) return;
+    if (current?.AdminId) {
+      const nextTutor = allTutors.find(t => String(t.AdminId) === String(adminId));
+      const nextName = nextTutor ? tutorLabel(nextTutor) : 'ยังไม่ระบุติวเตอร์';
+      if (!await confirmDialog(`เปลี่ยนผู้สอนวิชา ${current.SubjectName} จาก ${tutorLabel(current)} เป็น ${nextName}?\nคาบในอนาคตของผู้สอนเดิมจะเปลี่ยนตามด้วย`)) return;
+    }
     try {
       const res = await axios.put(`${API_BASE}/tutorcoursedetails/${tutorCourseDetailId}`, { AdminId: adminId || null });
       fetchSubjects();
-      if (!draftedNotice(res, "การมอบหมายติวเตอร์")) showToast("success", adminId ? "มอบหมายติวเตอร์แล้ว" : "นำติวเตอร์ออกจากวิชาแล้ว");
+      if (!draftedNotice(res, "การมอบหมายติวเตอร์")) {
+        const count = Number(res.data?.updatedLessons || 0);
+        showToast("success", `${adminId ? "มอบหมายติวเตอร์แล้ว" : "นำติวเตอร์ออกจากวิชาแล้ว"}${count ? ` · ปรับคาบในอนาคต ${count} คาบ` : ''}`);
+      }
     } catch (e) {
       showToast("error", e.response?.data?.message || "มอบหมายติวเตอร์ไม่สำเร็จ");
     }
@@ -1192,7 +1202,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
                 <div className="min-w-0">
                   <p className={`text-sm font-semibold truncate ${pendingDelete ? "text-slate-400 line-through" : "text-slate-800"}`}>{s.SubjectName}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{tutorLabel(s)}</p>
-                  {!s.AdminId && !pendingDelete && <div className="mt-1.5 flex max-w-[240px]"><AvatarSelect options={tutorOptions.filter(o => o.id !== "")} value="" placeholder="เลือกติวเตอร์ให้วิชานี้" onChange={(adminId) => handleAssignTutor(s.TutorCourseDetailId, adminId)} /></div>}
+                  {!pendingDelete && <div className="mt-1.5 flex max-w-[240px]"><AvatarSelect options={s.AdminId && !tutorOptions.some(o => String(o.id) === String(s.AdminId)) ? [...tutorOptions, { id: s.AdminId, label: tutorLabel(s), Photo: s.Photo }] : tutorOptions} value={String(s.AdminId || '')} placeholder="เลือกติวเตอร์ให้วิชานี้" onChange={(adminId) => handleAssignTutor(s.TutorCourseDetailId, adminId)} /></div>}
                   {pendingDelete && <p className="mt-1 inline-block rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">รอลบเมื่อเผยแพร่</p>}
                   {!pendingDelete && hasPendingEdit(s.TutorCourseDetailId) && <p className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">มีการแก้ไขรอเผยแพร่</p>}
                 </div>
@@ -3154,8 +3164,10 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 }
 
 // ─── Course Card ─────────────────────────────────────────────────────────────
-function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statusOptions, onDuplicate }) {
+function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSchedule, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
+  const canSchedule = Number(course.Status_Course_Id) !== 4 &&
+    String(course.LastDate || '').slice(0, 10) >= new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -3203,6 +3215,20 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statu
         <h3 className="font-bold text-slate-900 text-sm leading-snug mb-3 line-clamp-2">
           {course.CourseName}
         </h3>
+
+        <div className="mb-3 flex items-center justify-between gap-2 text-xs">
+          <span className={Number(course.ScheduledLessonCount) === 0 ? 'font-semibold text-amber-700' : 'text-slate-600'}>
+            {Number(course.ScheduledLessonCount) === 0
+              ? 'ยังไม่จัดตาราง'
+              : Number(course.UpcomingLessonCount) === 0
+                ? 'ไม่มีคาบถัดไป'
+                : `มีตารางแล้ว ${course.ScheduledLessonCount} คาบ`}
+          </span>
+          <button type="button" onClick={() => onSchedule(course)} disabled={!canSchedule}
+            className="font-semibold text-orange-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-400">
+            จัดตาราง
+          </button>
+        </div>
 
         <div className="space-y-1.5 text-xs text-slate-500 mb-3">
           <div className="flex items-center gap-1.5">
@@ -3292,6 +3318,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, statu
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function AdminCoursesPage() {
+  const navigate = useNavigate();
   const { toasts, showToast, removeToast } = useToast();
   const [courses, setCourses] = useState([]);
   const [statusOptions, setStatusOptions] = useState([]);
@@ -3308,6 +3335,7 @@ export default function AdminCoursesPage() {
   const [filterTerm, setFilterTerm] = useState("all"); // "all" | Term_Id
   const [filterGrade, setFilterGrade] = useState("all"); // "all" | "none" | GradeLevelId
   const [filterAvailability, setFilterAvailability] = useState("all");
+  const [filterSchedule, setFilterSchedule] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -3351,7 +3379,7 @@ export default function AdminCoursesPage() {
   };
 
   useEffect(() => { fetchAll(); }, []);
-  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterGrade, filterAvailability]);
+  useEffect(() => { setCurrentPage(1); }, [search, filterStatus, filterTerm, filterGrade, filterAvailability, filterSchedule]);
 
   const handleCreate = async (data) => {
     if (createInFlight.current) return;
@@ -3525,7 +3553,9 @@ export default function AdminCoursesPage() {
     const matchGrade = skip === "grade" || filterGrade === "all"
       || (filterGrade === "none" ? (c.GradeLevelId === null || c.GradeLevelId === undefined || c.GradeLevelId === "") : String(c.GradeLevelId) === filterGrade);
     const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
-    return matchSearch && matchStatus && matchTerm && matchGrade && matchAvailability;
+    const matchSchedule = filterSchedule === 'all' ||
+      (filterSchedule === 'none' ? Number(c.ScheduledLessonCount) === 0 : Number(c.UpcomingLessonCount) === 0 && Number(c.ScheduledLessonCount) > 0);
+    return matchSearch && matchStatus && matchTerm && matchGrade && matchAvailability && matchSchedule;
   };
 
   const baseForStatusCount = groupCourses.filter((c) => matchesFilters(c, "status"));
@@ -3669,11 +3699,18 @@ export default function AdminCoursesPage() {
               <option key={t.id} value={t.id}>{t.name} ({termCountOf(t.id)})</option>
             ))}
           </select>
+          <select value={filterSchedule} onChange={(e) => setFilterSchedule(e.target.value)}
+            aria-label="กรองตามตารางสอน"
+            className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none">
+            <option value="all">ทุกสถานะตาราง</option>
+            <option value="none">ยังไม่จัดตาราง</option>
+            <option value="no-upcoming">ไม่มีคาบถัดไป</option>
+          </select>
         </div>
         <div className="mt-2 pl-1 flex items-center justify-between gap-2">
           <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {groupCourses.length} คอร์ส</p>
-          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterGrade !== "all" || filterAvailability !== "all"}
-            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterGrade("all"); setFilterAvailability("all"); }} />
+          <ClearFiltersButton show={!!search || filterStatus !== "all" || filterTerm !== "all" || filterGrade !== "all" || filterAvailability !== "all" || filterSchedule !== "all"}
+            onClick={() => { setSearch(""); setFilterStatus("all"); setFilterTerm("all"); setFilterGrade("all"); setFilterAvailability("all"); setFilterSchedule("all"); }} />
         </div>
       </div>
 
@@ -3693,6 +3730,7 @@ export default function AdminCoursesPage() {
               onDelete={(c) => setDeletingCourse(c)}
               onStatusChange={fetchAll}
               onPublish={(c) => setPublishingCourse(c)}
+              onSchedule={(c) => navigate(`/admin/schedule?courseId=${c.CourseID}`)}
               statusOptions={statusOptions}
               onDuplicate={handleDuplicate}
             />

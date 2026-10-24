@@ -215,7 +215,7 @@ export default function PrivateCoursesPanel({ version = 0, onDataChanged, status
 
       {modal?.type === "create" && <CreateCourseModal offers={offers} lookups={lookups} inquiry={modal.data} preselectUserId={modal.preselectUserId} onRegister={registerStudent} onClose={close} onDone={done} />}
       {modal?.type === "manage" && <ManagePrivateCourseModal course={modal.data} lookups={lookups} statusOptions={statusOptions} onClose={close} onDone={done}
-        onEnroll={() => setModal({ type: "enroll", data: modal.data })} onSchedule={() => { close(); navigate("/admin/schedule"); }} />}
+        onEnroll={() => setModal({ type: "enroll", data: modal.data })} onSchedule={() => { const courseId = modal.data.CourseID; close(); navigate(`/admin/schedule?courseId=${courseId}`); }} />}
       {modal?.type === "payment" && <PaymentModal course={modal.data} onClose={close} onDone={done} />}
       {modal?.type === "enroll" && <EnrollModal course={modal.data} students={lookups.students} onClose={close} onDone={done} />}
       {modal?.type === "offer" && <OfferModal offer={modal.data} subjects={lookups.subjects} onClose={close} onDone={done} />}
@@ -403,6 +403,9 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                   <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
                   <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                   <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
+                  <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
+                    {Number(c.ScheduledLessonCount) === 0 ? 'ยังไม่จัดตาราง' : Number(c.UpcomingLessonCount) === 0 ? 'ไม่มีคาบถัดไป' : `มีตารางแล้ว ${c.ScheduledLessonCount} คาบ`}
+                  </p>
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.TotalHours ?? "—"}</td>
@@ -428,6 +431,9 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                 <p className="truncate font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : "ยังไม่มีนักเรียน"}</p>
                 <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                 <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
+                <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
+                  {Number(c.ScheduledLessonCount) === 0 ? 'ยังไม่จัดตาราง' : Number(c.UpcomingLessonCount) === 0 ? 'ไม่มีคาบถัดไป' : `มีตารางแล้ว ${c.ScheduledLessonCount} คาบ`}
+                </p>
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
             </div>
