@@ -24,7 +24,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT } from "../components/ui/tokens";
 import Spinner from "../components/ui/Spinner";
-import { PendingDraftsCallout, COURSE_DRAFTS_CHANGED } from "../components/CourseDrafts";
+import { PendingDraftsCallout } from "../components/CourseDrafts";
 import AdminTutorFeedback from "../components/AdminTutorFeedback";
 import { birthDateMax } from "../utils/birthDateInput";
 
@@ -898,7 +898,7 @@ function EmergencyContactSelect({ allTutors, excludeId, value, onSelectName, onS
   );
 }
 
-// ★ ใหม่: ผูกติวเตอร์เข้าคอร์ส พร้อมเลือกวิชาที่จะสอนในคอร์สนั้น (แอดมินเลือกวิชาเอง)
+// Assign a tutor only to subjects already defined in the course.
 // รองรับให้ติวเตอร์สอนได้มากกว่า 1 วิชาในคอร์สเดียวกัน — คลิกคอร์สซ้ำได้เพื่อเพิ่มแถววิชาใหม่
 function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, showToast }) {
   const [allCourses, setAllCourses] = useState([]);
@@ -911,6 +911,7 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
 
   const available = allCourses.filter(c => [1, 2].includes(Number(c.Status_Course_Id)));
   const filtered = available.filter(c => !search || c.CourseName?.toLowerCase().includes(search.toLowerCase()));
+  const subjectIdsOf = course => String(course.SubjectIds || '').split(',').filter(Boolean);
 
   // วิชาที่ผูกกับคอร์สนี้อยู่แล้วใน DB
   const assignedSubjectIdsOf = (courseId) =>
@@ -951,16 +952,8 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
         AdminId: tutorId,
         Assignments: selected.map(x => ({ CourseID: x.CourseID, SubjectId: x.SubjectId })),
       });
-      if (res.data?.drafted) {
-        showToast('success', res.data.message);
-        setSelected([]); setAdding(false); setSearch('');
-        onAdded();
-        return;
-      }
-      const { success = [], skipped = [], failed = [], drafts = [] } = res.data;
-      if (drafts.length) window.dispatchEvent(new Event(COURSE_DRAFTS_CHANGED));
+      const { success = [], skipped = [], failed = [] } = res.data;
       let msg = `เพิ่มสำเร็จ ${success.length} รายการ`;
-      if (drafts.length) msg += ` · วิชาใหม่รอเผยแพร่ ${drafts.length} รายการ`;
       if (skipped.length) msg += ` · ข้าม ${skipped.length} รายการ (มีอยู่แล้ว)`;
       if (failed.length) msg += ` · ล้มเหลว ${failed.length} รายการ`;
       showToast(failed.length && !success.length ? "error" : "success", msg, failed[0]?.message);
@@ -988,8 +981,10 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
         <div className="divide-y divide-orange-100 border-b border-orange-200 bg-white">
           {selectedRows.map(({ localId, course, SubjectId, CourseID }) => {
             const excludeIds = [...assignedSubjectIdsOf(CourseID), ...selectedSubjectIdsOf(CourseID, localId)];
-            const subjectOptions = allSubjects.filter(
-              s => !excludeIds.includes(String(s.SubjectId)) || String(s.SubjectId) === String(SubjectId)
+            const courseSubjectIds = subjectIdsOf(course);
+            const subjectOptions = allSubjects.filter(s =>
+              courseSubjectIds.includes(String(s.SubjectId))
+              && (!excludeIds.includes(String(s.SubjectId)) || String(s.SubjectId) === String(SubjectId))
             );
             return (
               <div key={localId} className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-3 py-2">
@@ -1020,7 +1015,7 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
       </div>
 
       <p className="px-3 -mt-1 pb-1 text-[11px] text-slate-500">
-        แสดงเฉพาะคอร์สที่เปิดรับสมัครหรือกำลังสอนอยู่ · คลิกคอร์สเดิมซ้ำได้เพื่อเพิ่มวิชาที่สอง
+        เลือกได้เฉพาะวิชาที่มีอยู่ในคอร์ส · ถ้ายังไม่มีวิชา ให้เพิ่มที่หน้าคอร์สก่อน
       </p>
 
       <div className="max-h-48 overflow-y-auto px-3 space-y-1 pb-2">
@@ -1030,16 +1025,22 @@ function AddCourseToTutor({ tutorId, assignedCourses, onAdded, allSubjects, show
           const id = String(c.CourseID);
           const dbCount = assignedSubjectIdsOf(id).length;
           const pendingCount = selected.filter(x => String(x.CourseID) === id).length;
+          const hasAvailableSubject = subjectIdsOf(c).some(subjectId =>
+            !assignedSubjectIdsOf(id).includes(subjectId) && !selectedSubjectIdsOf(id).includes(subjectId)
+          );
           return (
             <button
               type="button"
               key={id}
               onClick={() => addRow(id)}
-              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm transition hover:bg-white text-left"
+              disabled={!hasAvailableSubject}
+              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-sm transition hover:bg-white text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="h-3.5 w-3.5 text-orange-400 shrink-0" />
               <span className="flex-1 font-medium text-slate-700 truncate">{c.CourseName}</span>
-              {(dbCount + pendingCount) > 0 && (
+              {!subjectIdsOf(c).length ? (
+                <span className="text-[11px] text-slate-500 shrink-0">ยังไม่มีวิชา</span>
+              ) : (dbCount + pendingCount) > 0 && (
                 <span className="text-[11px] text-orange-500 font-semibold shrink-0">
                   {dbCount} วิชาแล้ว{pendingCount ? ` +${pendingCount}` : ""}
                 </span>

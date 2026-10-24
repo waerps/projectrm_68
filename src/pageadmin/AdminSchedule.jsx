@@ -94,6 +94,11 @@ function getCourseSubjects(course) {
   return Array.isArray(course?.Subjects) ? course.Subjects : [];
 }
 
+function isSchedulableCourse(course) {
+  return course && Number(course.Status_Course_Id) !== 4 &&
+    String(course.LastDate || '').slice(0, 10) >= isoDate(new Date());
+}
+
 function tutorLabel(tutor) {
   const nickname = String(tutor.Nickname || '').trim();
   const fullName = [tutor.Firstname, tutor.Lastname]
@@ -220,10 +225,12 @@ export default function AdminSchedule() {
     const course = meta.courses.find(item => String(item.CourseID) === courseId);
     if (!courseId || !course) return;
     setFCourse(courseId);
-    setFormData({ ...EMPTY_FORM, CourseID: courseId,
-      TermStartDate: course.StartDate > isoDate(new Date()) ? course.StartDate : isoDate(new Date()),
-      TermEndDate: course.LastDate || '' });
-    setShowAdd(true);
+    if (isSchedulableCourse(course)) {
+      setFormData({ ...EMPTY_FORM, CourseID: courseId,
+        TermStartDate: course.StartDate > isoDate(new Date()) ? course.StartDate : isoDate(new Date()),
+        TermEndDate: course.LastDate || '' });
+      setShowAdd(true);
+    }
     setSearchParams({}, { replace: true });
   }, [searchParams, meta.courses, setSearchParams]);
 
@@ -318,9 +325,21 @@ export default function AdminSchedule() {
   }, []);
 
   // ── open modals ────────────────────────────────────────────
-  const openAdd = (dow, start, end, holidayDate = null) => {
-    setFormData({
+  const initialAddForm = (requestedDate = null) => {
+    const course = meta.courses.find(item => String(item.CourseID) === fCourse && isSchedulableCourse(item));
+    const today = isoDate(new Date());
+    return {
       ...EMPTY_FORM,
+      CourseID: course ? String(course.CourseID) : '',
+      TermStartDate: [today, course?.StartDate, requestedDate].filter(Boolean).sort().at(-1) || today,
+      TermEndDate: course?.LastDate || '',
+    };
+  };
+
+  const openAdd = (dow, start, end, holidayDate = null) => {
+    const cellDate = isoDate(addDays(weekStart, Number(dow) === 1 ? 6 : Number(dow) - 2));
+    setFormData({
+      ...initialAddForm(cellDate),
       DayOfWeek: String(dow),
       StartTime: start,
       EndTime: end,
@@ -478,15 +497,17 @@ export default function AdminSchedule() {
   };
 
   // ── stats ──────────────────────────────────────────────────
-  const totalClasses = displayedSchedule.length;
-  const totalStudents = [...new Set(displayedSchedule.map(e => e.CourseID))].length;
-  const noCheckin = displayedSchedule.filter(e => checkinStatusFor(e) === 'missed').length;
+  const visibleSchedule = displayedSchedule.filter(pass);
+  const totalClasses = visibleSchedule.length;
+  const totalStudents = [...new Set(visibleSchedule.map(e => e.CourseID))].length;
+  const noCheckin = visibleSchedule.filter(e => checkinStatusFor(e) === 'missed').length;
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === fCourse);
   const courseHours = selectedCourse && Number(selectedCourse.TotalCourseHours) > 0
     ? {
         total: Number(selectedCourse.TotalCourseHours),
         scheduled: Number(selectedCourse.ScheduledMinutes || 0) / 60,
         remaining: Math.max(0, Number(selectedCourse.TotalCourseHours) - Number(selectedCourse.ScheduledMinutes || 0) / 60),
+        over: Math.max(0, Number(selectedCourse.ScheduledMinutes || 0) / 60 - Number(selectedCourse.TotalCourseHours)),
       }
     : null;
 
@@ -512,7 +533,7 @@ export default function AdminSchedule() {
             </button> */}
             <button
               onClick={() => {
-                setFormData(EMPTY_FORM);
+                setFormData(initialAddForm());
                 setConflicts([]);
                 setShowAdd(true);
               }}
@@ -647,9 +668,9 @@ export default function AdminSchedule() {
         )}
 
         {courseHours && Number(selectedCourse.ScheduledMinutes || 0) > 0 && (
-          <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
+          <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 || courseHours.over > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
             <p className="font-bold">{selectedCourse.CourseName}</p>
-            <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
+            <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.over > 0 ? `เกินชั่วโมงคอร์ส ${courseHours.over} ชม. กรุณาตรวจตาราง` : courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
           </div>
         )}
 
@@ -1416,7 +1437,7 @@ function ScheduleModal({
               className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-slate-100"
             >
               <option value="">เลือกคอร์ส</option>
-              {meta.courses.map(c => (
+              {meta.courses.filter(c => !showTermFields || isSchedulableCourse(c) || String(c.CourseID) === String(formData.CourseID)).map(c => (
                 <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
               ))}
             </select>
