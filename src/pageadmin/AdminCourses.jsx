@@ -86,6 +86,8 @@ const formatDate = (d) => {
 const formatPrice = (p) =>
   Number(p || 0).toLocaleString("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
+const seatLimitOf = (value) => Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : null;
+
 // ★ moneyDisplay อยู่ระดับโมดูล (ไม่ผูกกับ CourseForm) เพื่อให้ component แยก เช่น
 // InstallmentAmountsEditor เรียกใช้ได้โดยตรง — เดิมเคยประกาศซ้อนใน CourseForm ทำให้ใช้นอก scope ไม่ได้
 const moneyDisplay = (v) => (v === "" || v === null || v === undefined ? "" : formatPrice(v));
@@ -1292,7 +1294,7 @@ function CourseSubjects({ courseId, showToast, onTotalCostChange, onTotalHoursCh
   );
 }
 
-function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) {
+function CourseStudents({ courseId, courseStatusId, maxStudents, showToast, onCountChange }) {
   const [students, setStudents] = useState([]);
   const [savingGroupId, setSavingGroupId] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
@@ -1301,6 +1303,8 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const canAddStudents = [1, 2].includes(Number(courseStatusId));
+  const seatLimit = seatLimitOf(maxStudents);
+  const remainingSeats = seatLimit === null ? null : Math.max(0, seatLimit - students.length);
 
   const fetchStudents = async () => {
     const res = await axios.get(`${API_BASE}/courses/${courseId}/students`);
@@ -1324,11 +1328,16 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
     return !search || name.includes(search.toLowerCase()) || String(s.UserId).includes(search);
   });
 
-  const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
-  const toggleAll = () => setSelectedIds(selectedIds.length === filtered.length ? [] : filtered.map(s => String(s.UserId)));
+  const toggle = (id) => setSelectedIds(p => p.includes(id) ? p.filter(x => x !== id) : remainingSeats === null || p.length < remainingSeats ? [...p, id] : p);
+  const filteredIds = filtered.map(s => String(s.UserId));
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id));
+  const toggleAll = () => setSelectedIds(p => allFilteredSelected
+    ? p.filter(id => !filteredIds.includes(id))
+    : [...new Set([...p, ...filteredIds.filter(id => !p.includes(id)).slice(0, remainingSeats === null ? undefined : Math.max(0, remainingSeats - p.length))])]);
 
   const handleAdd = async () => {
     if (!selectedIds.length) return showToast("error", "กรุณาเลือกนักเรียนอย่างน้อย 1 คน");
+    if (remainingSeats !== null && selectedIds.length > remainingSeats) return showToast("error", `เหลือที่นั่ง ${remainingSeats} คน กรุณาเลือกนักเรียนให้น้อยลง`);
     setSaving(true);
     try {
       const res = await axios.post(`${API_BASE}/enroll/bulk`, { UserIds: selectedIds, CourseID: courseId });
@@ -1352,7 +1361,7 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
     <div className="border border-slate-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
         <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">นักเรียนในคอร์สนี้ ({students.length})</p>
-        {!adding && canAddStudents && (
+        {!adding && canAddStudents && remainingSeats !== 0 && (
           <button onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition">
             <Plus className="h-3.5 w-3.5" /> เพิ่มนักเรียน
@@ -1367,6 +1376,9 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
             คอร์สนี้ปิดรับสมัคร/ปิดคอร์สแล้ว จึงไม่สามารถเพิ่มนักเรียนใหม่ได้ (นำนักเรียนออกได้ตามปกติ)
           </p>
         </div>
+      )}
+      {canAddStudents && remainingSeats === 0 && (
+        <p className="px-4 py-2.5 text-xs font-medium text-amber-700 bg-amber-50">คอร์สเต็มแล้ว ({students.length}/{seatLimit} คน)</p>
       )}
 
       {students.length === 0 && !adding && (
@@ -1426,8 +1438,8 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
           <div className="flex items-center gap-2 px-4 py-2.5">
             <input type="text" placeholder="ค้นหานักเรียน..." value={search}
               onChange={e => setSearch(e.target.value)} className={inp + " flex-1"} />
-            <button onClick={toggleAll} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap">
-              {selectedIds.length === filtered.length && filtered.length > 0 ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมด"}
+            <button onClick={toggleAll} disabled={remainingSeats !== null && selectedIds.length >= remainingSeats && !allFilteredSelected} className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap disabled:opacity-40">
+              {allFilteredSelected ? "ยกเลิกทั้งหมด" : seatLimit === null ? "เลือกทั้งหมด" : "เลือกเท่าที่ว่าง"}
             </button>
           </div>
           <div className="max-h-48 overflow-y-auto px-4 space-y-1 pb-2">
@@ -1436,9 +1448,10 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
             ) : filtered.map(s => {
               const id = String(s.UserId);
               const checked = selectedIds.includes(id);
+              const atLimit = remainingSeats !== null && selectedIds.length >= remainingSeats;
               return (
-                <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-white"}`}>
-                  <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                <label key={id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition ${checked ? "bg-orange-100" : atLimit ? "opacity-50 cursor-not-allowed" : "hover:bg-white cursor-pointer"}`}>
+                  <input type="checkbox" checked={checked} disabled={!checked && atLimit} onChange={() => toggle(id)} className="accent-orange-500" />
                   {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
                   <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                   <span className="flex-1 font-medium text-slate-700">{s.Nickname || `${s.Firstname} ${s.Lastname}`}</span>
@@ -1447,8 +1460,8 @@ function CourseStudents({ courseId, courseStatusId, showToast, onCountChange }) 
             })}
           </div>
           <div className="flex items-center gap-2 px-4 py-3 border-t border-orange-100">
-            <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คน</span>
-            <button onClick={handleAdd} disabled={saving || !selectedIds.length}
+            <span className="text-xs text-slate-500 flex-1">เลือกแล้ว {selectedIds.length} คน{remainingSeats !== null ? ` · เลือกได้อีก ${Math.max(0, remainingSeats - selectedIds.length)} คน` : ""}</span>
+            <button onClick={handleAdd} disabled={saving || !selectedIds.length || (remainingSeats !== null && selectedIds.length > remainingSeats)}
               className={`${BTN.primary} px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-50 transition flex items-center gap-1.5`}>
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} เพิ่ม
             </button>
@@ -2036,7 +2049,7 @@ const COURSE_FORM_STEPS = [
   { key: "review", label: "ตรวจสอบและบันทึก", short: "ตรวจสอบ", icon: BadgeCheck, desc: "ตรวจสอบข้อมูลก่อนบันทึก" },
 ];
 // ช่องที่มีข้อผิดพลาดแต่ละช่องอยู่ในขั้นไหน (ใช้พาผู้ใช้กลับไปแก้)
-const COURSE_ERROR_STEP = { CourseName: 0, StartDate: 0, LastDate: 0, YearId: 0, hours: 1, Price: 2, Discount: 2, installments: 2 };
+const COURSE_ERROR_STEP = { CourseName: 0, StartDate: 0, LastDate: 0, YearId: 0, hours: 1, Price: 2, Discount: 2, installments: 2, seats: 3 };
 const COURSE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function FormField({ label, required, optional, hint, error, children, className = "" }) {
@@ -2146,6 +2159,8 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const bundleEstimate = estimateBundleTutorCost(addedSubjectHours, costLevelType, costStudents);
   const totalTutorCost = isSingleCourse ? (isEdit ? existingSubjectsCost : pendingTotalCost) : bundleEstimate.cost;
   const targetCourseHours = Number(form.TotalCourseHours || 0);
+  const seatLimit = seatLimitOf(form.MaxStudents);
+  const studentCountForCapacity = isEdit ? existingStudentCount : pendingStudents.length;
   const hoursDiff = targetCourseHours - addedSubjectHours;
   const hoursMismatch = targetCourseHours > 0 && Math.abs(hoursDiff) > 0.01;
 
@@ -2169,6 +2184,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   if (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง";
   if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
   if (maxCourseHours > 0 && Number(form.TotalCourseHours) > maxCourseHours) errors.hours = `ชั่วโมงรวมต้องไม่เกิน ${maxCourseHours} ชม. ตามช่วงวันที่เลือก`;
+  if (seatLimit !== null && studentCountForCapacity > seatLimit) errors.seats = `เลือกนักเรียนไว้ ${studentCountForCapacity} คน แต่กำหนดที่นั่งเพียง ${seatLimit} คน`;
   if (form.Price !== "" && form.Price !== null && (!Number.isFinite(Number(form.Price)) || Number(form.Price) < 0)) errors.Price = "ราคาที่กรอกต้องไม่ติดลบ";
   if (form.Discount !== "" && Number(form.Discount || 0) > Number(form.Price || 0) && Number(form.Price) > 0) {
     errors.Discount = "ส่วนลดต้องไม่มากกว่าราคาเต็ม";
@@ -2220,6 +2236,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
     }
     if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
     if (errors.hours) return toast(errors.hours);
+    if (errors.seats) return toast(errors.seats);
     if (errors.Price) return toast(errors.Price);
     if (errors.Discount) return toast(errors.Discount);
 
@@ -2603,7 +2620,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
 
             <FormSection title="ที่นั่งและการผ่อนชำระ">
               <div className={FORM_GRID}>
-                <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint="เว้นว่าง = ไม่จำกัด">
+                <FormField label="จำนวนที่รับสูงสุด (คน)" optional hint={studentCountForCapacity > 0 ? `เลือกนักเรียนไว้แล้ว ${studentCountForCapacity} คน · เว้นว่าง = ไม่จำกัด` : "เว้นว่าง = ไม่จำกัด"} error={errors.seats}>
                   <input
                     type="number" min="1" step="1" value={form.MaxStudents ?? ""}
                     onKeyDown={blockNegativeKeys}
@@ -2705,9 +2722,10 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
           {/* ═══ ขั้นที่ 4: นักเรียน ═══ */}
           <div className={step === 3 ? "space-y-4" : "hidden"}>
             <FormSection title="นักเรียนในคอร์ส" subtitle="ไม่บังคับ · เพิ่มภายหลังได้">
+              {errors.seats && <p role="alert" className="text-sm font-medium text-red-600">{errors.seats} กรุณาเพิ่มที่นั่งหรือนำนักเรียนออก</p>}
               {isEdit
-                ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} showToast={showToast} onCountChange={setExistingStudentCount} />
-                : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} />}
+                ? <CourseStudents courseId={initial.CourseID} courseStatusId={form.Status_Course_Id} maxStudents={initial.SavedMaxStudents !== undefined ? initial.SavedMaxStudents : initial.MaxStudents} showToast={showToast} onCountChange={setExistingStudentCount} />
+                : <PendingStudentPicker items={pendingStudents} onChange={setPendingStudents} statusCourseId={form.Status_Course_Id} maxStudents={form.MaxStudents} />}
             </FormSection>
           </div>
 
@@ -2864,10 +2882,12 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   );
 }
 
-function PendingStudentPicker({ items, onChange, statusCourseId }) {
+function PendingStudentPicker({ items, onChange, statusCourseId, maxStudents }) {
   const [allStudents, setAllStudents] = useState([]);
   const [search, setSearch] = useState("");
   const willBeBlocked = ![1, 2].includes(Number(statusCourseId));
+  const seatLimit = seatLimitOf(maxStudents);
+  const remainingSeats = seatLimit === null ? null : Math.max(0, seatLimit - items.length);
 
   useEffect(() => {
     axios.get(`${API_BASE}/students`).then(r => setAllStudents(r.data));
@@ -2879,7 +2899,8 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
   });
 
   const toggle = (id) => {
-    onChange(items.includes(id) ? items.filter(x => x !== id) : [...items, id]);
+    if (items.includes(id)) onChange(items.filter(x => x !== id));
+    else if (remainingSeats === null || remainingSeats > 0) onChange([...items, id]);
   };
 
   const remove = (id) => {
@@ -2892,7 +2913,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
     onChange(
       allSelected
         ? items.filter(id => !filteredIds.includes(id))
-        : [...new Set([...items, ...filteredIds])]
+        : [...new Set([...items, ...filteredIds.filter(id => !items.includes(id)).slice(0, remainingSeats === null ? undefined : remainingSeats)])]
     );
   };
 
@@ -2903,7 +2924,7 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden">
       <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-        <p className="text-xs font-bold text-slate-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length})</p>
+        <p className="text-xs font-bold text-slate-600 uppercase">นักเรียนที่จะเพิ่ม ({items.length}{seatLimit !== null ? `/${seatLimit}` : ""})</p>
       </div>
 
       {willBeBlocked && items.length > 0 && (
@@ -2947,11 +2968,12 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
         />
         <button
           onClick={toggleAll}
-          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap"
+          disabled={remainingSeats === 0 && !filtered.every(s => items.includes(String(s.UserId)))}
+          className="text-[11px] font-bold text-orange-600 hover:text-orange-700 whitespace-nowrap disabled:opacity-40"
         >
           {filtered.length > 0 && filtered.every(s => items.includes(String(s.UserId)))
             ? "ยกเลิกทั้งหมด"
-            : "เลือกทั้งหมด"}
+            : seatLimit === null ? "เลือกทั้งหมด" : "เลือกเท่าที่ว่าง"}
         </button>
       </div>
 
@@ -2962,13 +2984,14 @@ function PendingStudentPicker({ items, onChange, statusCourseId }) {
           filtered.map(s => {
             const id = String(s.UserId);
             const checked = items.includes(id);
+            const atLimit = remainingSeats === 0;
             return (
               <label
                 key={id}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer text-sm transition ${checked ? "bg-orange-100" : "hover:bg-slate-50"
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition ${checked ? "bg-orange-100 cursor-pointer" : atLimit ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50 cursor-pointer"
                   }`}
               >
-                <input type="checkbox" checked={checked} onChange={() => toggle(id)} className="accent-orange-500" />
+                <input type="checkbox" checked={checked} disabled={!checked && atLimit} onChange={() => toggle(id)} className="accent-orange-500" />
                 {/* ★ เพิ่ม (ข้อ 4): รูปโปรไฟล์นักเรียนในรายการให้เลือก */}
                 <Avatar photo={s.Photo} name={s.Nickname || `${s.Firstname} ${s.Lastname}`} seed={s.UserId} />
                 <span className="flex-1 font-medium text-slate-700">

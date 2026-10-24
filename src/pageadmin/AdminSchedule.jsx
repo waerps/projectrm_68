@@ -20,6 +20,7 @@ const API_BASE = `${API_URL}/api/admin`;
 
 // ─── constants ────────────────────────────────────────────────
 const DAY_MAP = { 2: 'จันทร์', 3: 'อังคาร', 4: 'พุธ', 5: 'พฤหัสบดี', 6: 'ศุกร์', 7: 'เสาร์', 1: 'อาทิตย์' };
+const DAY_SHORT = { 2: 'จ', 3: 'อ', 4: 'พ', 5: 'พฤ', 6: 'ศ', 7: 'ส', 1: 'อา' };
 const DAY_ORDER = [2, 3, 4, 5, 6, 7, 1];
 
 const DEFAULT_TIME_SLOTS = [
@@ -38,11 +39,13 @@ const EMPTY_FORM = {
   AdminId: '',
   RoomId: '',
   DayOfWeek: '',
+  DaysOfWeek: [],
   StartTime: '',
   EndTime: '',
   TermStartDate: '',
   TermEndDate: '',
   IncludeHolidayDates: [],
+  IncludeHolidays: false,
 };
 
 // วันจันทร์ของสัปดาห์ที่มี date นี้
@@ -134,6 +137,7 @@ export default function AdminSchedule() {
   // conflict warning in form
   const [conflicts, setConflicts] = useState([]);
   const conflictTimer = useRef(null);
+  const conflictRequest = useRef(0);
 
   // filters
   const [fTutor, setFTutor] = useState('all');
@@ -292,16 +296,21 @@ export default function AdminSchedule() {
 
   // ── conflict check (debounced) ─────────────────────────────
   const checkConflicts = useCallback(async (form, excludeId = null, occurrenceDate = null) => {
-    if (!form.DayOfWeek || !form.StartTime || !form.EndTime) {
+    const days = Array.isArray(form.DaysOfWeek) && !occurrenceDate ? form.DaysOfWeek : [form.DayOfWeek].filter(Boolean);
+    const request = ++conflictRequest.current;
+    clearTimeout(conflictTimer.current);
+    if (!days.length || !form.StartTime || !form.EndTime
+      || (!occurrenceDate && Array.isArray(form.DaysOfWeek) && (!form.TermStartDate || !form.TermEndDate))) {
       setConflicts([]);
       return;
     }
 
-    clearTimeout(conflictTimer.current);
+    setConflicts([]);
     conflictTimer.current = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
-          dayOfWeek: form.DayOfWeek,
+          dayOfWeek: days[0],
+          ...(!occurrenceDate ? { daysOfWeek: days.join(',') } : {}),
           startTime: form.StartTime,
           endTime: form.EndTime,
           ...(form.CourseID ? { courseId: form.CourseID } : {}),
@@ -311,15 +320,16 @@ export default function AdminSchedule() {
           ...(occurrenceDate ? { occurrenceDate: isoDate(occurrenceDate) } : {}),
           ...(form.TermStartDate && form.TermEndDate ? {
             termStart: form.TermStartDate, termEnd: form.TermEndDate,
+            includeHolidays: String(Boolean(form.IncludeHolidays)),
             includeHolidayDates: (form.IncludeHolidayDates || []).join(','),
           } : {}),
         });
 
         const r = await fetch(`${API_BASE}/schedule/conflicts?${params}`);
         const d = await r.json();
-        setConflicts(d.conflicts || []);
+        if (request === conflictRequest.current) setConflicts(d.conflicts || []);
       } catch {
-        setConflicts([]);
+        if (request === conflictRequest.current) setConflicts([]);
       }
     }, 400);
   }, []);
@@ -341,6 +351,7 @@ export default function AdminSchedule() {
     setFormData({
       ...initialAddForm(cellDate),
       DayOfWeek: String(dow),
+      DaysOfWeek: [Number(dow)],
       StartTime: start,
       EndTime: end,
       ...(holidayDate ? { TermStartDate: holidayDate, TermEndDate: holidayDate,
@@ -364,10 +375,13 @@ export default function AdminSchedule() {
       AdminId: String(entry.AdminId || ''),
       RoomId: String(entry.RoomId || ''),
       DayOfWeek: String(entry.DayOfWeek || ''),
+      DaysOfWeek: [],
       StartTime: entry.StartTime || '',
       EndTime: entry.EndTime || '',
       TermStartDate: '',
       TermEndDate: '',
+      IncludeHolidayDates: [],
+      IncludeHolidays: false,
     };
 
     setFormData(f);
@@ -1169,7 +1183,8 @@ function ScheduleModal({
   excludeId,   // ★ เพิ่ม
 }) {
   const set = (key, val) => {
-    const next = { ...formData, [key]: val };
+    const next = { ...formData, [key]: val,
+      ...(['TermStartDate', 'TermEndDate'].includes(key) ? { IncludeHolidayDates: [] } : {}) };
     setFormData(next);
     onFormChange?.(next);
   };
@@ -1195,9 +1210,51 @@ function ScheduleModal({
   const selectedCourse = meta.courses.find(c => String(c.CourseID) === String(formData.CourseID));
   const availableSubjects = getCourseSubjects(selectedCourse);
   const selectedSubject = availableSubjects.find(s => String(s.SubjectId) === String(formData.SubjectId));
+  const days = showTermFields ? (formData.DaysOfWeek || []) : [Number(formData.DayOfWeek)].filter(Boolean);
+  const setDays = nextDays => {
+    const ordered = DAY_ORDER.filter(day => nextDays.includes(day));
+    const next = { ...formData, DaysOfWeek: ordered, DayOfWeek: ordered[0] ? String(ordered[0]) : '',
+      IncludeHolidayDates: (formData.IncludeHolidayDates || []).filter(date =>
+        ordered.includes(new Date(`${date}T00:00:00Z`).getUTCDay() + 1)) };
+    setFormData(next);
+    onFormChange?.(next);
+  };
+
+  const [occurrences, setOccurrences] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  useEffect(() => {
+    if (!showTermFields || !days.length || !formData.TermStartDate || !formData.TermEndDate
+      || formData.TermEndDate < formData.TermStartDate) {
+      setOccurrences(null);
+      setPreviewLoading(false);
+      return;
+    }
+    let active = true;
+    setOccurrences(null);
+    setPreviewLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({
+          daysOfWeek: days.join(','), termStart: formData.TermStartDate, termEnd: formData.TermEndDate,
+          includeHolidays: String(Boolean(formData.IncludeHolidays)),
+          includeHolidayDates: (formData.IncludeHolidayDates || []).join(','),
+        });
+        const response = await fetch(`${API_BASE}/schedule/occurrences-preview?${params}`);
+        const data = await response.json();
+        if (active) setOccurrences(response.ok ? data : { error: data.message || 'คำนวณวันสอนไม่สำเร็จ' });
+      } catch {
+        if (active) setOccurrences({ error: 'คำนวณวันสอนไม่สำเร็จ' });
+      } finally {
+        if (active) setPreviewLoading(false);
+      }
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [showTermFields, formData.DaysOfWeek, formData.TermStartDate, formData.TermEndDate,
+    formData.IncludeHolidays, formData.IncludeHolidayDates]);
 
   // ── ชั่วโมงแพ็กเกจคอร์สเดี่ยว: คำนวณให้ก่อนกดบันทึก พร้อมทางเลือกที่พอดี ──
   const [capacity, setCapacity] = useState(null);
+  const [capacityLoading, setCapacityLoading] = useState(false);
   const [capacityVersion, setCapacityVersion] = useState(0);
   const [cancellingDraft, setCancellingDraft] = useState(null);
   // ยกเลิกร่าง "สร้างตาราง" ที่ค้างอยู่ (เช่นร่างที่เกินแพ็กเกจตั้งแต่ก่อนมีตัวเช็กนี้) จากในฟอร์มเลย
@@ -1213,22 +1270,29 @@ function ScheduleModal({
     } finally { setCancellingDraft(null); }
   };
   useEffect(() => {
-    const ready = showTermFields && formData.CourseID && formData.DayOfWeek && formData.StartTime && formData.EndTime
+    const ready = showTermFields && formData.CourseID && days.length && formData.StartTime && formData.EndTime
       && formData.TermStartDate && formData.TermEndDate && formData.StartTime < formData.EndTime;
-    if (!ready) { setCapacity(null); return; }
+    if (!ready) { setCapacity(null); setCapacityLoading(false); return; }
+    let active = true;
+    setCapacity(null);
+    setCapacityLoading(true);
     const t = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
           courseId: formData.CourseID, dayOfWeek: formData.DayOfWeek, startTime: formData.StartTime,
+          daysOfWeek: days.join(','), includeHolidays: String(Boolean(formData.IncludeHolidays)),
           endTime: formData.EndTime, termStart: formData.TermStartDate, termEnd: formData.TermEndDate,
           includeHolidayDates: (formData.IncludeHolidayDates || []).join(','),
         });
         const r = await fetch(`${API_BASE}/schedule/private-capacity?${params}`);
-        setCapacity(r.ok ? await r.json() : null);
-      } catch { setCapacity(null); }
+        const result = r.ok ? await r.json() : null;
+        if (active) setCapacity(result);
+      } catch { if (active) setCapacity(null); }
+      finally { if (active) setCapacityLoading(false); }
     }, 300);
-    return () => clearTimeout(t);
-  }, [showTermFields, formData.CourseID, formData.DayOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate, formData.TermEndDate, capacityVersion]);
+    return () => { active = false; clearTimeout(t); };
+  }, [showTermFields, formData.CourseID, formData.DaysOfWeek, formData.StartTime, formData.EndTime,
+    formData.TermStartDate, formData.TermEndDate, formData.IncludeHolidays, formData.IncludeHolidayDates, capacityVersion]);
   const fmtH = (min) => {
     const h = Math.floor(min / 60), m = Math.round(min % 60);
     return m ? (h ? `${h} ชม. ${m} นาที` : `${m} นาที`) : `${h} ชม.`;
@@ -1251,15 +1315,20 @@ function ScheduleModal({
 
   useEffect(() => {
     clearTimeout(suggestTimer.current);
-    if (!formData.DayOfWeek || !formData.StartTime || !formData.EndTime) {
+    if (!days.length || !formData.StartTime || !formData.EndTime
+      || (showTermFields && (!formData.TermStartDate || !formData.TermEndDate))) {
       setRoomSuggestions(null);
+      setSuggestLoading(false);
       return;
     }
+    let active = true;
+    setRoomSuggestions(null);
     setSuggestLoading(true);
     suggestTimer.current = setTimeout(async () => {
       try {
         const params = new URLSearchParams({
           dayOfWeek: formData.DayOfWeek,
+          ...(showTermFields ? { daysOfWeek: days.join(','), includeHolidays: String(Boolean(formData.IncludeHolidays)) } : {}),
           startTime: formData.StartTime,
           endTime: formData.EndTime,
           studentCount: selectedCourse?.EnrolledCount ?? 0,
@@ -1270,15 +1339,18 @@ function ScheduleModal({
           ...(excludeId ? { excludeId } : {}),
         });
         const r = await fetch(`${API_BASE}/schedule/room-suggestions?${params}`);
-        setRoomSuggestions(await r.json());
+        const result = await r.json();
+        if (active) setRoomSuggestions(r.ok ? result : null);
       } catch {
-        setRoomSuggestions(null);
+        if (active) setRoomSuggestions(null);
       } finally {
-        setSuggestLoading(false);
+        if (active) setSuggestLoading(false);
       }
     }, 400);
-  }, [formData.DayOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate,
-      formData.TermEndDate, formData.IncludeHolidayDates, selectedCourse?.EnrolledCount, excludeId]);
+    return () => { active = false; clearTimeout(suggestTimer.current); };
+  }, [formData.DayOfWeek, formData.DaysOfWeek, formData.StartTime, formData.EndTime, formData.TermStartDate,
+      formData.TermEndDate, formData.IncludeHolidays, formData.IncludeHolidayDates,
+      selectedCourse?.EnrolledCount, excludeId, showTermFields]);
 
   // auto-fill term dates เมื่อเลือก course + ล้างวิชาที่ไม่ตรงกับคอร์สใหม่
   const handleCourseChange = val => {
@@ -1345,13 +1417,15 @@ function ScheduleModal({
     formData.CourseID &&
     selectedSubject?.AdminId &&
     Number(selectedSubject.Status_Tutor_Id) === 1 &&
-    formData.DayOfWeek &&
+    days.length > 0 &&
     formData.StartTime &&
     formData.EndTime &&
     (!showTermFields || (formData.TermStartDate && formData.TermEndDate)) &&
     conflicts.length === 0 &&
     !dateError &&
     !timeError &&
+    (!showTermFields || (!previewLoading && occurrences?.dates?.length > 0)) &&
+    (!showTermFields || !capacityLoading) &&
     !overCapacity;
 
   return (
@@ -1393,35 +1467,51 @@ function ScheduleModal({
             </div>
           )}
 
-          {/* Day + Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Days and time */}
+          {showTermFields ? (
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <label className="text-xs font-semibold text-slate-700">สอนวันไหนบ้าง <span className="text-red-500">*</span></label>
+                <div className="flex gap-1">
+                  <button type="button" onClick={() => setDays([2, 3, 4, 5, 6])}
+                    className="rounded-lg px-2 py-1 text-[11px] font-semibold text-orange-700 hover:bg-orange-50">จ.–ศ.</button>
+                  <button type="button" onClick={() => setDays(DAY_ORDER)}
+                    className="rounded-lg px-2 py-1 text-[11px] font-semibold text-orange-700 hover:bg-orange-50">ทุกวัน</button>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {DAY_ORDER.map(day => {
+                  const active = days.includes(day);
+                  return (
+                    <button key={day} type="button" aria-pressed={active} aria-label={`วัน${DAY_MAP[day]}`}
+                      onClick={() => setDays(active ? days.filter(selected => selected !== day) : [...days, day])}
+                      className={`h-10 rounded-xl border text-xs font-semibold transition ${active
+                        ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-orange-300'}`}>
+                      {DAY_SHORT[day]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
             <div>
               <label className="text-xs text-slate-600 mb-1 block">วัน <span className="text-red-500">*</span></label>
-              <select
-                value={formData.DayOfWeek}
-                onChange={e => set('DayOfWeek', e.target.value)}
-                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              >
+              <select value={formData.DayOfWeek} onChange={e => set('DayOfWeek', e.target.value)}
+                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
                 <option value="">เลือกวัน</option>
-                {DAY_ORDER.map(d => (
-                  <option key={d} value={d}>{DAY_MAP[d]}</option>
-                ))}
+                {DAY_ORDER.map(day => <option key={day} value={day}>{DAY_MAP[day]}</option>)}
               </select>
             </div>
+          )}
 
-            <div>
-              <label className="text-xs text-slate-600 mb-1 block">ช่วงเวลา <span className="text-red-500">*</span></label>
-              <select
-                value={currentSlotLabel}
-                onChange={e => handleSlot(e.target.value)}
-                className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none"
-              >
-                <option value="">เลือกเวลา</option>
-                {timeSlots.filter(s => !s.isBreak).map(s => (
-                  <option key={s.label} value={s.label}>{s.label}</option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="text-xs text-slate-600 mb-1 block">ช่วงเวลา <span className="text-red-500">*</span></label>
+            <select value={currentSlotLabel} onChange={e => handleSlot(e.target.value)}
+              className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none">
+              <option value="">เลือกเวลา</option>
+              {timeSlots.filter(s => !s.isBreak).map(slot => <option key={slot.label} value={slot.label}>{slot.label}</option>)}
+            </select>
           </div>
 
           {/* ── ใหม่: แสดง timeError ── */}
@@ -1477,14 +1567,6 @@ function ScheduleModal({
             </div>
           )}
 
-          {/* ★ แผงแนะนำห้อง */}
-          <RoomSuggestionPanel
-            data={roomSuggestions}
-            loading={suggestLoading}
-            onPick={(roomId) => set('RoomId', String(roomId))}
-            selectedRoomId={formData.RoomId}
-          />
-
           {/* Subject + Room */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -1523,6 +1605,13 @@ function ScheduleModal({
             </div>
           </div>
 
+          <RoomSuggestionPanel
+            data={roomSuggestions}
+            loading={suggestLoading}
+            onPick={(roomId) => set('RoomId', String(roomId))}
+            selectedRoomId={formData.RoomId}
+          />
+
           {/* Tutor is assigned to the course subject; replacements use tutor release. */}
           <div>
             <label className="text-xs text-slate-600 mb-1 block">ครูประจำวิชา</label>
@@ -1541,7 +1630,7 @@ function ScheduleModal({
           {showTermFields && (
             <div>
               <label className="text-xs text-slate-600 mb-1 block">
-                ช่วงเทอม * <span className="text-slate-400">(จะสร้างทุกสัปดาห์อัตโนมัติ)</span>
+                ช่วงวันที่สอน <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
@@ -1558,13 +1647,28 @@ function ScheduleModal({
                 />
               </div>
 
-              {formData.TermStartDate && formData.TermEndDate && formData.DayOfWeek && !dateError && (
-                <p className="text-[11px] text-orange-600 mt-1">
-                  * จะสร้างคาบสอนทุกวัน{DAY_MAP[formData.DayOfWeek]} ตั้งแต่ {new Date(formData.TermStartDate).toLocaleDateString('th-TH')} ถึง {new Date(formData.TermEndDate).toLocaleDateString('th-TH')}
-                </p>
-              )}
-              {formData.IncludeHolidayDates?.length > 0 && (
-                <p className="mt-1 text-[11px] font-semibold text-red-700">รวมคาบวันหยุด {formData.IncludeHolidayDates.join(', ')} ตามที่เลือกจากตาราง</p>
+              <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                <input type="checkbox" checked={Boolean(formData.IncludeHolidays)}
+                  onChange={e => set('IncludeHolidays', e.target.checked)} className="accent-orange-500" />
+                สอนวันหยุดที่อยู่ในช่วงนี้ด้วย
+              </label>
+
+              {!dateError && days.length > 0 && formData.TermStartDate && formData.TermEndDate && (
+                <div className="mt-3 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2.5 text-xs text-slate-700" role="status">
+                  {previewLoading ? 'กำลังคำนวณคาบ...' : occurrences?.error ? occurrences.error : occurrences?.dates ? (
+                    <>
+                      <p className="font-semibold text-orange-800">
+                        จะสร้าง {occurrences.dates.length} คาบ
+                        {formData.StartTime && formData.EndTime && formData.StartTime < formData.EndTime
+                          ? ` · รวม ${fmtH(occurrences.dates.length * slotMinutes({ start: formData.StartTime, end: formData.EndTime }))}` : ''}
+                      </p>
+                      <p className="mt-1 leading-5">{occurrences.dates.length
+                        ? <>{occurrences.dates.slice(0, 7).map(fmtDate).join(', ')}{occurrences.dates.length > 7 ? ` และอีก ${occurrences.dates.length - 7} วัน` : ''}</>
+                        : 'ไม่มีคาบในช่วงวันที่เลือก'}</p>
+                      {occurrences.skippedHolidays?.length > 0 && <p className="mt-1 text-amber-700">ข้ามวันหยุด {occurrences.skippedHolidays.length} วัน</p>}
+                    </>
+                  ) : null}
+                </div>
               )}
 
               {dateError && (
@@ -1750,7 +1854,7 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
         <p className="text-xs text-red-600">ไม่พบห้องที่ว่างและจุพอสำหรับจำนวนนักเรียนนี้</p>
       ) : (
         <div className="space-y-1.5">
-          {suggestions.map(r => {
+          {[suggestions[0]].map(r => {
             const isSelected = String(r.RoomId) === String(selectedRoomId);
             const isTop = r.rank === 1;
             return (
@@ -1780,6 +1884,20 @@ function RoomSuggestionPanel({ data, loading, onPick, selectedRoomId }) {
               </button>
             );
           })}
+          {suggestions.length > 1 && (
+            <details className="text-xs text-slate-600">
+              <summary className="cursor-pointer py-1 font-semibold text-orange-700">ดูห้องอื่นอีก {suggestions.length - 1} ห้อง</summary>
+              <div className="mt-1 space-y-1.5">
+                {suggestions.slice(1).map(r => (
+                  <button key={r.RoomId} type="button" onClick={() => onPick(r.RoomId)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-left hover:border-orange-300">
+                    <span className="block font-semibold">{r.RoomDetail} · {r.Capacity} ที่นั่ง</span>
+                    <span className="text-[11px] text-slate-500">ว่าง{r.isOversized ? ` · ที่นั่งเกินความจำเป็น ${r.extraSeats} ที่นั่ง` : ''}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       )}
 
