@@ -146,7 +146,16 @@ function calcMonthsSpanned(startDate, endDate) {
   if (isNaN(s) || isNaN(e) || e < s) return 0;
   const diffDays = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
   const months = Math.floor(diffDays / 30);
-  return Math.max(1, months);
+  return months;
+}
+
+function calcCourseDayCount(startDate, endDate) {
+  if (!COURSE_DATE_RE.test(String(startDate || "").slice(0, 10)) || !COURSE_DATE_RE.test(String(endDate || "").slice(0, 10))) return 0;
+  const start = Date.parse(`${String(startDate).slice(0, 10)}T00:00:00Z`);
+  const end = Date.parse(`${String(endDate).slice(0, 10)}T00:00:00Z`);
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start
+    ? Math.round((end - start) / 86400000) + 1
+    : 0;
 }
 
 const AVATAR_COLORS = [
@@ -2114,9 +2123,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   const fullCost = Math.max(0, Number(form.Price || 0) - Number(form.Discount || 0));
 
   const monthsSpanned = calcMonthsSpanned(form.StartDate, form.LastDate);
-  const avgHoursPerMonth = form.TotalCourseHours && monthsSpanned > 0
-    ? Number(form.TotalCourseHours) / monthsSpanned
-    : null;
+  const maxCourseHours = calcCourseDayCount(form.StartDate, form.LastDate) * 24;
 
   const installmentsCount = Number(form.Installments || 1);
   const isInstallmentEnabled = installmentsCount > 1;
@@ -2161,6 +2168,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
   if (form.StartDate && !COURSE_DATE_RE.test(String(form.StartDate).slice(0, 10))) errors.StartDate = "รูปแบบวันที่ไม่ถูกต้อง";
   if (form.LastDate && !COURSE_DATE_RE.test(String(form.LastDate).slice(0, 10))) errors.LastDate = "รูปแบบวันที่ไม่ถูกต้อง";
   if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) errors.LastDate = "วันสิ้นสุดต้องมาหลังวันเริ่มสอน";
+  if (maxCourseHours > 0 && Number(form.TotalCourseHours) > maxCourseHours) errors.hours = `ชั่วโมงรวมต้องไม่เกิน ${maxCourseHours} ชม. ตามช่วงวันที่เลือก`;
   if (form.Price !== "" && form.Price !== null && (!Number.isFinite(Number(form.Price)) || Number(form.Price) < 0)) errors.Price = "ราคาที่กรอกต้องไม่ติดลบ";
   if (form.Discount !== "" && Number(form.Discount || 0) > Number(form.Price || 0) && Number(form.Price) > 0) {
     errors.Discount = "ส่วนลดต้องไม่มากกว่าราคาเต็ม";
@@ -2211,6 +2219,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
       );
     }
     if (form.StartDate && form.LastDate && new Date(form.StartDate) >= new Date(form.LastDate)) return toast("วันเริ่มสอนต้องมาก่อนวันสิ้นสุด");
+    if (errors.hours) return toast(errors.hours);
     if (errors.Price) return toast(errors.Price);
     if (errors.Discount) return toast(errors.Discount);
 
@@ -2353,7 +2362,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
         <div className="px-4 sm:px-6 py-5 sm:py-6 space-y-5">
           {/* หัวข้อขั้นปัจจุบัน (ซ้าย) + คำอธิบาย * (ขวา) บนเส้นฐานเดียวกัน */}
           <div className="flex items-baseline justify-between gap-3">
-            <div className="min-w-0">
+            <div className="min-w-0 pl-4 sm:pl-5">
               <h3 className="text-base font-bold text-slate-900">{current.label}</h3>
               <p className="text-xs text-slate-500 mt-0.5">{current.desc}</p>
             </div>
@@ -2381,7 +2390,6 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                 <FormField
                   label="วันสิ้นสุด" required
                   error={errOf("LastDate") || (form.StartDate && form.LastDate && new Date(form.LastDate) < new Date(form.StartDate) ? "วันสิ้นสุดต้องมาหลังวันเริ่มสอน" : undefined)}
-                  hint={monthsSpanned > 0 ? `ระยะเวลาประมาณ ${monthsSpanned} เดือน` : undefined}
                 >
                   <input type="date" value={form.LastDate?.slice(0, 10) || ""} onChange={(e) => set("LastDate", e.target.value)} className={inputCls(errOf("LastDate"))} />
                 </FormField>
@@ -2411,7 +2419,7 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
                     {form.Course_Type === "single" ? "คอร์สเดี่ยว" : "คอร์สรวม"}
                   </div>
                 </FormField>
-                <FormField label="ระดับชั้นของเนื้อหา" optional hint="ใช้กรองข้อสอบจากคลัง และใช้เลือกเรทค่าสอนสถาบัน (ประถม/มัธยม) ไม่จำกัดผู้สมัคร">
+                <FormField label="ระดับชั้นของเนื้อหา" optional>
                   <select
                     value={form.GradeLevelId ?? ""}
                     onChange={(e) => set("GradeLevelId", e.target.value === "" ? "" : Number(e.target.value))}
@@ -2474,20 +2482,17 @@ function CourseForm({ initial = {}, onSave, onCancel, isSubmitting, statusOption
               <div className={FORM_GRID}>
                 <FormField
                   label="ชั่วโมงรวมของคอร์ส (ชม.)" optional
-                  hint={!monthsSpanned
-                    ? "ระบุภายหลังได้ ชั่วโมงรายวิชาที่จัดไว้จะแสดงด้านข้าง"
-                    : !form.TotalCourseHours
-                      ? `ระยะเวลาเรียนประมาณ ${monthsSpanned} เดือน`
-                      : `เฉลี่ย ${formatHoursLabel(avgHoursPerMonth)}/เดือน (${monthsSpanned} เดือน)`}
+                  error={errOf("hours")}
+                  hint={maxCourseHours > 0 ? `สูงสุด ${maxCourseHours} ชม. ตามช่วงวันที่เลือก` : "ระบุภายหลังได้ ชั่วโมงรายวิชาที่จัดไว้จะแสดงด้านข้าง"}
                 >
                   <input
-                    type="number" min="0" step="0.5" value={form.TotalCourseHours ?? ""}
+                    type="number" min="0" max={maxCourseHours || undefined} step="0.5" value={form.TotalCourseHours ?? ""}
                     onKeyDown={blockNegativeKeys}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0)) set("TotalCourseHours", v);
+                      if (v === "" || (/^\d*\.?\d*$/.test(v) && Number(v) >= 0 && (!maxCourseHours || Number(v) <= maxCourseHours))) set("TotalCourseHours", v);
                     }}
-                    className={inputCls(errOf("hours"))} placeholder="เช่น 120"
+                    className={inputCls(errOf("hours"))} placeholder="เช่น 8"
                   />
                 </FormField>
 
