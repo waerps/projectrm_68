@@ -63,6 +63,8 @@ function inquiryStudentPrefill(inquiry, parent) {
 
 const fullName = (p) => [p?.Nickname && `${p.Nickname} ·`, p?.Firstname, p?.Lastname].filter(Boolean).join(" ");
 const todayStr = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
+const isPastCourseEnd = (course) => Boolean(course.LastDate && String(course.LastDate).slice(0, 10) < todayStr());
+const isClosedCourse = (course) => Number(course.Status_Course_Id) === 4 || isPastCourseEnd(course);
 const addMonths = (d, n) => { const x = new Date(d); x.setMonth(x.getMonth() + n); return x.toISOString().slice(0, 10); };
 const errMsg = (e, fallback) => e?.response?.data?.message || fallback;
 const card = "bg-white rounded-2xl border border-slate-200 shadow-sm";
@@ -101,7 +103,9 @@ export default function PrivateCoursesPanel({ version = 0, onDataChanged, status
         axios.get(`${API}/private-courses`, auth()),
         axios.get(`${API}/private-courses/offers`, auth()),
       ]);
-      setCourses(c.data || []);
+      setCourses((c.data || []).map((course) => isClosedCourse(course)
+        ? { ...course, Status_Course_Id: 4, Status_Course_Name: 'ปิดคอร์ส' }
+        : course));
       setOffers(o.data || []);
       try {
         const response = await axios.get(`${API}/private-courses/inquiries`, auth());
@@ -403,9 +407,9 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                   <p className="font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : <span className="text-slate-400">ยังไม่มีนักเรียน</span>}</p>
                   <p className="text-[11px] text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                   <p className="text-xs text-slate-500">{c.SubjectName || "—"} · {c.Status_Course_Name || ""} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
-                  <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
+                  {!isClosedCourse(c) && <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
                     {Number(c.ScheduledLessonCount) === 0 ? 'ยังไม่จัดตาราง' : Number(c.UpcomingLessonCount) === 0 ? 'ไม่มีคาบถัดไป' : `มีตารางแล้ว ${c.ScheduledLessonCount} คาบ`}
-                  </p>
+                  </p>}
                 </td>
                 <td className="px-4 py-3 text-slate-700">{personName(c, "Tutor")}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{c.TotalHours ?? "—"}</td>
@@ -431,9 +435,9 @@ function CoursesTab({ courses, search = "", onManage, onCreate, onPay, onEnroll,
                 <p className="truncate font-semibold text-slate-800">{(c.Students || []).length ? c.Students.map((student) => student.Nickname || `${student.Firstname} ${student.Lastname}`).join(" + ") : "ยังไม่มีนักเรียน"}</p>
                 <p className="text-xs text-orange-600">{(c.Students || []).length}/{c.MaxStudents || 1} คน · {knownMoney(c.FullCost)}/คน</p>
                 <p className="text-xs text-slate-500">{c.SubjectName || "—"} · ครู{personName(c, "Tutor")} · {c.IsPublished ? Number(c.PendingDraftActions) ? `มีร่าง ${c.PendingDraftActions} รายการ` : 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</p>
-                <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
+                {!isClosedCourse(c) && <p className={Number(c.ScheduledLessonCount) ? 'text-xs text-slate-500' : 'text-xs font-semibold text-amber-700'}>
                   {Number(c.ScheduledLessonCount) === 0 ? 'ยังไม่จัดตาราง' : Number(c.UpcomingLessonCount) === 0 ? 'ไม่มีคาบถัดไป' : `มีตารางแล้ว ${c.ScheduledLessonCount} คาบ`}
-                </p>
+                </p>}
               </div>
               <Badge tone="brand">{c.TotalHours ?? "—"} ชม.</Badge>
             </div>
@@ -662,14 +666,14 @@ function ManagePrivateCourseModal({ course, lookups, statusOptions, onClose, onD
           <div className="mt-4 flex flex-wrap gap-2">
             {(course.Students || []).length < Number(course.MaxStudents || 1) &&
               <button type="button" onClick={onEnroll} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><UserPlus className="h-4 w-4" />เพิ่มนักเรียน</button>}
-            <button type="button" onClick={onSchedule} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><BookOpen className="h-4 w-4" />จัดตารางเรียน</button>
+            {!isClosedCourse(course) && <button type="button" onClick={onSchedule} className={`${BTN.base} ${BTN.secondary} ${BTN.sm}`}><BookOpen className="h-4 w-4" />จัดตารางเรียน</button>}
           </div>
         </section>
 
         <section className="rounded-2xl border border-slate-200 p-4">
           <label className={labelCls}>สถานะคอร์ส</label>
           <div className="flex flex-wrap gap-2">
-            <select value={statusId} onChange={(event) => setStatusId(event.target.value)} className={`${INPUT} min-w-[180px] flex-1`}>
+            <select value={statusId} onChange={(event) => setStatusId(event.target.value)} disabled={isPastCourseEnd(course)} className={`${INPUT} min-w-[180px] flex-1`}>
               {statusOptions.map((item) => <option key={item.Status_Course_Id} value={item.Status_Course_Id}>{item.Status_Course_Name}</option>)}
             </select>
             <button type="button" onClick={saveStatus} disabled={saving || String(statusId) === String(course.Status_Course_Id)} className={`${BTN.base} ${BTN.secondary} ${BTN.md}`}>เปลี่ยนสถานะ</button>

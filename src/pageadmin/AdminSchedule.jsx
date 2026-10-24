@@ -661,13 +661,13 @@ export default function AdminSchedule() {
           </div>}
         </div>
 
-        {selectedCourse && Number(selectedCourse.ScheduledMinutes || 0) === 0 && (
+        {isSchedulableCourse(selectedCourse) && Number(selectedCourse.ScheduledMinutes || 0) === 0 && (
           <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">
             {selectedCourse.CourseName} ยังไม่จัดตารางสอน
           </div>
         )}
 
-        {courseHours && Number(selectedCourse.ScheduledMinutes || 0) > 0 && (
+        {courseHours && isSchedulableCourse(selectedCourse) && Number(selectedCourse.ScheduledMinutes || 0) > 0 && (
           <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${courseHours.remaining > 0 || courseHours.over > 0 ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-emerald-200 bg-emerald-50 text-emerald-950'}`}>
             <p className="font-bold">{selectedCourse.CourseName}</p>
             <p className="mt-0.5">ชั่วโมงรวม {courseHours.total} ชม. · ลงตารางแล้ว {courseHours.scheduled} ชม. · {courseHours.over > 0 ? `เกินชั่วโมงคอร์ส ${courseHours.over} ชม. กรุณาตรวจตาราง` : courseHours.remaining > 0 ? `รอจัดตารางอีก ${courseHours.remaining} ชม.` : 'ลงตารางครบแล้ว'}</p>
@@ -1319,6 +1319,10 @@ function ScheduleModal({
       return 'ไม่สามารถเพิ่มตารางสอนย้อนหลังได้';
     }
 
+    if (formData.TermEndDate < formData.TermStartDate) {
+      return 'วันสิ้นสุดต้องไม่ก่อนวันเริ่ม';
+    }
+
     if (selectedCourse?.StartDate && selectedCourse?.LastDate) {
       if (formData.TermStartDate < selectedCourse.StartDate || formData.TermEndDate > selectedCourse.LastDate) {
         return 'วันที่เลือกอยู่นอกช่วงเวลาของคอร์ส';
@@ -1437,7 +1441,7 @@ function ScheduleModal({
               className="w-full px-3 h-10 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 focus:outline-none disabled:bg-slate-100"
             >
               <option value="">เลือกคอร์ส</option>
-              {meta.courses.filter(c => !showTermFields || isSchedulableCourse(c) || String(c.CourseID) === String(formData.CourseID)).map(c => (
+              {meta.courses.filter(c => isSchedulableCourse(c) || String(c.CourseID) === String(formData.CourseID)).map(c => (
                 <option key={c.CourseID} value={c.CourseID}>{c.CourseName}</option>
               ))}
             </select>

@@ -68,6 +68,10 @@ const STATUS_MAP = {
   3: { label: "ปิดรับสมัคร", color: "bg-amber-100 text-amber-700 border-amber-200" },
   4: { label: "ปิดคอร์ส", color: "bg-slate-100 text-slate-500 border-slate-200" },
 };
+const bangkokToday = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+const isPastCourseEnd = (course) => Boolean((course.PublishedLastDate || course.LastDate) &&
+  String(course.PublishedLastDate || course.LastDate).slice(0, 10) < bangkokToday());
+const isClosedCourse = (course) => Number(course.Status_Course_Id) === 4 || isPastCourseEnd(course);
 
 
 const formatDate = (d) => {
@@ -3166,8 +3170,8 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 // ─── Course Card ─────────────────────────────────────────────────────────────
 function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSchedule, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
-  const canSchedule = Number(course.Status_Course_Id) !== 4 &&
-    String(course.LastDate || '').slice(0, 10) >= new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Bangkok' });
+  const canSchedule = !isClosedCourse(course) &&
+    String(course.PublishedLastDate || course.LastDate || '').slice(0, 10) >= bangkokToday();
   const [imgErr, setImgErr] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -3189,6 +3193,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
 
         <select
           value={course.Status_Course_Id}
+          disabled={isPastCourseEnd(course)}
           onChange={async (e) => {
             const response = await axios.patch(`${API_BASE}/courses/${course.CourseID}/status`, {
               Status_Course_Id: Number(e.target.value)
@@ -3216,7 +3221,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
           {course.CourseName}
         </h3>
 
-        <div className="mb-3 flex items-center justify-between gap-2 text-xs">
+        {!isClosedCourse(course) && <div className="mb-3 flex items-center justify-between gap-2 text-xs">
           <span className={Number(course.ScheduledLessonCount) === 0 ? 'font-semibold text-amber-700' : 'text-slate-600'}>
             {Number(course.ScheduledLessonCount) === 0
               ? 'ยังไม่จัดตาราง'
@@ -3228,7 +3233,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
             className="font-semibold text-orange-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-400">
             จัดตาราง
           </button>
-        </div>
+        </div>}
 
         <div className="space-y-1.5 text-xs text-slate-500 mb-3">
           <div className="flex items-center gap-1.5">
@@ -3362,7 +3367,9 @@ export default function AdminCoursesPage() {
         axios.get(`${API_BASE}/course-availability`),
         axios.get(`${API_BASE}/grade-levels`),
       ]);
-      setCourses(cRes.data);
+      setCourses(cRes.data.map((course) => isClosedCourse(course)
+        ? { ...course, Status_Course_Id: 4, Status_Course_Name: 'ปิดคอร์ส' }
+        : course));
       setStatusOptions(sRes.data);
       setTermOptions(tRes.data);
       setYearOptions(yRes.data);
@@ -3553,8 +3560,8 @@ export default function AdminCoursesPage() {
     const matchGrade = skip === "grade" || filterGrade === "all"
       || (filterGrade === "none" ? (c.GradeLevelId === null || c.GradeLevelId === undefined || c.GradeLevelId === "") : String(c.GradeLevelId) === filterGrade);
     const matchAvailability = filterAvailability === "all" || String(c.Course_Availability_Id) === filterAvailability;
-    const matchSchedule = filterSchedule === 'all' ||
-      (filterSchedule === 'none' ? Number(c.ScheduledLessonCount) === 0 : Number(c.UpcomingLessonCount) === 0 && Number(c.ScheduledLessonCount) > 0);
+    const matchSchedule = filterSchedule === 'all' || (!isClosedCourse(c) &&
+      (filterSchedule === 'none' ? Number(c.ScheduledLessonCount) === 0 : Number(c.UpcomingLessonCount) === 0 && Number(c.ScheduledLessonCount) > 0));
     return matchSearch && matchStatus && matchTerm && matchGrade && matchAvailability && matchSchedule;
   };
 
@@ -3666,7 +3673,10 @@ export default function AdminCoursesPage() {
           </div>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              if (e.target.value === '4') setFilterSchedule('all');
+            }}
             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none md:min-w-[160px] max-w-full md:max-w-[240px] truncate"
           >
             <option value="all">สถานะทั้งหมด ({allStatusCount})</option>
@@ -3699,13 +3709,13 @@ export default function AdminCoursesPage() {
               <option key={t.id} value={t.id}>{t.name} ({termCountOf(t.id)})</option>
             ))}
           </select>
-          <select value={filterSchedule} onChange={(e) => setFilterSchedule(e.target.value)}
+          {filterStatus !== '4' && <select value={filterSchedule} onChange={(e) => setFilterSchedule(e.target.value)}
             aria-label="กรองตามตารางสอน"
             className="px-4 h-10 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none">
             <option value="all">ทุกสถานะตาราง</option>
             <option value="none">ยังไม่จัดตาราง</option>
             <option value="no-upcoming">ไม่มีคาบถัดไป</option>
-          </select>
+          </select>}
         </div>
         <div className="mt-2 pl-1 flex items-center justify-between gap-2">
           <p className="text-xs text-slate-500">แสดง {filtered.length} จาก {groupCourses.length} คอร์ส</p>
