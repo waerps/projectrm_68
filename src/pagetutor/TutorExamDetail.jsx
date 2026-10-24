@@ -379,7 +379,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
         {/[\\$]/.test(q.explanation || "") && <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-slate-800 whitespace-pre-wrap break-words"><ExamMathText text={q.explanation} /></div>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${hideScore ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}>
         <div className={hideScore ? "hidden" : ""}>
           <label className="block text-xs font-semibold text-slate-600 mb-1.5">คะแนน</label>
           {/* รองรับทศนิยม เพราะกติกาใหม่คือเพดาน 20 คะแนนต่อรอบ ข้อสอบ 40 ข้อ = ข้อละ 0.5
@@ -470,11 +470,11 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
               </div>
             </div>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <select
                 value={q.category || ""}
                 onChange={(e) => patch({ category: e.target.value })}
-                className="flex-1 min-w-0 lg:min-w-auto border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 max-w-full md:max-w-[240px] truncate"
+                className="min-w-[10rem] flex-1 border border-slate-200 rounded-xl px-3 h-10 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
               >
                 <option value="">เลือกหมวดหมู่</option>
                 {(categoryOptions || []).map((c) => (
@@ -487,14 +487,14 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
               <button
                 type="button"
                 onClick={() => setAddingCategory(true)}
-                className="flex-shrink-0 border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
+                className="shrink-0 whitespace-nowrap border border-slate-200 hover:border-orange-300 hover:text-orange-600 text-slate-600 rounded-xl px-3 py-2 text-xs font-semibold transition"
               >
                 + หมวดหมู่ใหม่
               </button>
             </div>
           )}
         </div>
-        <div>
+        <div className={hideScore ? "md:col-span-2 xl:col-span-1" : ""}>
           <label className="block text-xs font-semibold text-slate-600 mb-1.5">
             ระดับชั้น <span className="text-[11px] font-normal text-slate-500">(ไม่บังคับ)</span>
           </label>
