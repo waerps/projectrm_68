@@ -525,7 +525,7 @@ function Stats() {
     { value: 1200, suffix: "+", label: "นักเรียนที่ผ่านการติว" },
     { value: 96, suffix: "%", label: "ผู้ปกครองแนะนำต่อ" },
     { value: 45, suffix: "+", label: "คอร์สเรียนต่อปี" },
-    { value: 8, suffix: " ปี", label: "ประสบการณ์การสอน" },
+    { value: 9, suffix: " ปี", label: "ประสบการณ์การสอน" },
   ];
   return (
     <section ref={ref} className="mt-6 overflow-hidden rounded-[32px] py-14" style={{ background: "#14213D" }}>
@@ -543,7 +543,7 @@ function Features() {
   const features = [
     { icon: GraduationCap, title: "ติวเตอร์คุณภาพ", desc: "คัดเลือกจากบัณฑิตครุศาสตร์ มข. อันดับต้น พร้อมอบรมเทคนิคการสอนต่อเนื่อง" },
     { icon: Users, title: "ห้องเรียนขนาดพอเหมาะ", desc: "เพื่อให้ครูดูแลนักเรียนแต่ละคนอย่างทั่วถึง" },
-    { icon: BookOpenCheck, title: "ติดตามพัฒนาการ", desc: "รายงานผลการเรียน คะแนนสอบ และการดูคลิปการสอน ทุกสัปดาห์" },
+    { icon: BookOpenCheck, title: "ติดตามพัฒนาการ", desc: "รายงานผลการเรียนและพัฒนาการเป็นระยะ โดยทั่วไปหลังสอบกลางเทอมและหลังเรียนแต่ละคอร์ส" },
     { icon: BadgeCheck, title: "ชำระเงินปลอดภัย", desc: "ตรวจสอบสลิปโอนเงินอัตโนมัติ พร้อมการผ่อนจ่าย ผ่าน LINE Official" },
   ];
   return (
