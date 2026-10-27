@@ -2877,7 +2877,7 @@ function StudentDetailModal({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-slate-800">รายข้อ</p>
-                <p className="text-[11px] text-slate-500">เขียว = ตอบถูก · แดง = ตอบผิด · เทา = ไม่ได้ตอบ</p>
+                <p className="text-[11px] text-slate-500">เขียว = เฉลย/ตอบถูก · แดง = ตัวเลือกที่นักเรียนเลือกผิด · เทา = ไม่ได้ตอบ</p>
               </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => {
@@ -2901,6 +2901,26 @@ function StudentDetailModal({
                       </div>
                     </div>
                     {q.imagePath && <img src={q.imagePath} alt="รูปโจทย์" className="mb-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
+                    {/* ตัวเลือกที่นักเรียนเลือกเทียบกับเฉลย — AI ใช้ตัวเลือกนี้อธิบายความเข้าใจผิด ครูจึงต้องเห็นเพื่อตรวจคำแนะนำได้ */}
+                    {Array.isArray(q.options) && q.options.some((o) => String(o ?? "").trim()) && (
+                      <ul className="mt-1.5 mb-1 grid gap-1.5 sm:grid-cols-2" aria-label={`ตัวเลือกข้อ ${i + 1}`}>
+                        {q.options.map((opt, oi) => {
+                          const isSel = q.selected === oi;
+                          const isKey = q.correct === oi;
+                          const tone = isKey ? "border-green-300 bg-green-50 text-green-800"
+                            : isSel ? "border-red-300 bg-red-50 text-red-700"
+                            : "border-slate-200 bg-white text-slate-600";
+                          return (
+                            <li key={oi} className={`flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-xs leading-relaxed ${tone}`}>
+                              <span className="font-bold">{"ABCD"[oi]}.</span>
+                              <span className="flex-1 min-w-0 break-words"><ExamMathText text={String(opt ?? "")} /></span>
+                              {isSel && <span className="shrink-0 rounded-full bg-white/80 px-1.5 text-[10px] font-bold">{isKey ? "นักเรียนเลือก ✓" : "นักเรียนเลือก ✗"}</span>}
+                              {isKey && !isSel && <span className="shrink-0 rounded-full bg-white/80 px-1.5 text-[10px] font-bold">เฉลย</span>}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                     <QuestionPeriods periods={q.periods} />
                   </div>
                   );
