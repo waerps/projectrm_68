@@ -10,6 +10,10 @@ export default function ChatWidget() {
     setIsOpen,
     setIsFullscreen,
     messages,
+    accountMode,
+    historyLoading,
+    historyError,
+    reloadHistory,
     inputValue,
     setInputValue,
     handleSend,
@@ -46,7 +50,7 @@ export default function ChatWidget() {
       setPlaceholderIndex((i) => (i + 1) % placeholders.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [placeholders.length])
 
   if (!isOpen && !isFullscreen) {
     return (
@@ -86,7 +90,7 @@ export default function ChatWidget() {
         <div className="px-5 py-4 border-b border-gray-100 rounded-t-3xl flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/chatbot.png" alt="Chatbot" className="h-9 w-9" />
-            <div className="font-semibold">ศรเสริมแชตบอต</div>
+            <div><div className="font-semibold">ศรเสริมแชตบอต</div><div className="text-[11px] text-gray-500">{accountMode ? "ประวัติบันทึกในบัญชีของคุณ" : "แชตชั่วคราว"}</div></div>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { setIsFullscreen(true); setIsOpen(false); }} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">⤢</button>
@@ -96,6 +100,8 @@ export default function ChatWidget() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3" ref={scrollContainerRef} onScroll={handleScroll}>
+          {historyLoading && <p className="text-sm text-gray-500">กำลังโหลดประวัติการสนทนา…</p>}
+          {historyError && <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{historyError} <button type="button" onClick={reloadHistory} className="ml-2 font-semibold underline">ลองใหม่</button></div>}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start items-end gap-2"} mb-4`}>
               {msg.sender === "bot" && (

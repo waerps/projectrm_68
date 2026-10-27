@@ -77,6 +77,7 @@ export function finishStudentLogin(data, navigate, returnContext) {
     throw new Error("ไม่สามารถจดจำการเข้าสู่ระบบได้ กรุณาอนุญาตพื้นที่จัดเก็บของเว็บไซต์แล้วลองใหม่");
   }
   clearGoogleRegistration();
+  window.dispatchEvent(new Event("auth-session-changed"));
   window.dispatchEvent(new Event("student-profile-updated"));
   navigate(safeStudentReturnTo(returnContext.returnTo), {
     replace: true,

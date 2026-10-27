@@ -14,6 +14,10 @@ export default function ChatFullscreen() {
     setInputValue,
     handleSend,
     chatHistory,
+    accountMode,
+    historyLoading,
+    historyError,
+    reloadHistory,
     currentChatId,
     handleNewChat,
     loadChat,
@@ -54,7 +58,7 @@ export default function ChatFullscreen() {
       setPlaceholderIndex((i) => (i + 1) % placeholders.length)
     }, 3000)
     return () => clearInterval(interval)
-  }, [])
+  }, [placeholders.length])
 
   if (!isFullscreen) return null
 
@@ -131,17 +135,28 @@ export default function ChatFullscreen() {
                   <div className="text-xs text-green-500 flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span> ออนไลน์
                   </div>
+                  <div className="text-[11px] text-gray-500">{accountMode ? "ประวัติบันทึกในบัญชีของคุณ" : "แชตชั่วคราวสำหรับผู้เยี่ยมชม"}</div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 {/* จอมือถือไม่มีแถบประวัติด้านซ้าย จึงมีปุ่มแชตใหม่ไว้ตรงนี้ */}
-                <button type="button" onClick={handleNewChat} className="md:hidden h-9 px-3 rounded-full border border-orange-200 text-sm font-semibold text-orange-600 hover:bg-orange-50">+ แชตใหม่</button>
                 <button onClick={() => { setIsFullscreen(false); setIsOpen(true); }} aria-label="ย่อหน้าต่างแชต" className="w-10 h-10 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center">✕</button>
               </div>
             </div>
 
+            <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-100">
+              <select aria-label="ประวัติการสนทนา" value={currentChatId || ""} onChange={(event) => loadChat(event.target.value)} disabled={isBusy}
+                className="min-w-0 flex-1 rounded-lg border border-gray-200 px-2 py-2 text-sm">
+                {chatHistory.map((chat) => <option key={chat.id} value={chat.id}>{chat.title}</option>)}
+              </select>
+              <button type="button" onClick={handleNewChat} disabled={isBusy} className="shrink-0 rounded-lg border border-orange-200 px-2 py-2 text-sm font-semibold text-orange-600 disabled:opacity-50">+ ใหม่</button>
+              <button type="button" onClick={() => deleteChat(currentChatId)} disabled={isBusy || !currentChatId} aria-label="ลบแชตนี้" className="rounded-lg border border-gray-200 p-2 text-gray-500 disabled:opacity-50"><Trash2 size={16} /></button>
+            </div>
+
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4 relative" ref={scrollContainerRef} onScroll={handleScroll}>
+              {historyLoading && <p className="text-sm text-gray-500">กำลังโหลดประวัติการสนทนา…</p>}
+              {historyError && <div className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{historyError} <button type="button" onClick={reloadHistory} className="ml-2 font-semibold underline">ลองใหม่</button></div>}
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
                   <div className="flex flex-col gap-2 max-w-[85%] md:max-w-[70%] min-w-0">

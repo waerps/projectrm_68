@@ -893,6 +893,7 @@ export function CheckoutModal({ items, total, onClose, onEnrollmentComplete }) {
             localStorage.setItem("student_token", checkoutToken);
             localStorage.setItem("user_role", "student");
             localStorage.setItem("user", JSON.stringify(pendingUser));
+            window.dispatchEvent(new Event("auth-session-changed"));
             window.dispatchEvent(new Event("student-profile-updated"));
           }
           onEnrollmentComplete(items.map((item) => item.id));

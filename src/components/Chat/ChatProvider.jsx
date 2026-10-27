@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { stripToolTrace } from "./chatText"
+import { getAuthenticatedRole } from "../../utils/authSession"
+import { studentChatApi } from "./studentChatApi"
 
 const ChatContext = createContext(null)
+// eslint-disable-next-line react-refresh/only-export-components
 export const useChat = () => useContext(ChatContext)
 
 const BOT_GREETING =
@@ -23,8 +26,18 @@ const newId = () => ++messageSeq
 const newSessionId = () => {
   try {
     if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID()
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16))
+      bytes[6] = (bytes[6] & 15) | 64
+      bytes[8] = (bytes[8] & 63) | 128
+      const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+    }
   } catch { /* ใช้วิธีสำรองด้านล่าง */ }
-  return Math.random().toString(16).slice(2) + Date.now().toString(16)
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (part) => {
+    const value = Math.floor(Math.random() * 16)
+    return (part === "x" ? value : (value & 3) | 8).toString(16)
+  })
 }
 
 const greetingMessage = () => ({ id: newId(), text: BOT_GREETING, sender: "bot" })
@@ -35,6 +48,7 @@ const createChat = (id, title) => ({
   messages: [greetingMessage()],
   date: new Date(),
 })
+const restoredChat = (chat) => ({ ...chat, messages: [greetingMessage(), ...(chat.messages || [])], loaded: Array.isArray(chat.messages) })
 
 function extractReply(data) {
   return (
@@ -66,9 +80,12 @@ export default function ChatProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const [chatHistory, setChatHistory] = useState(() => [createChat(1, "การสนทนาวันนี้")])
-  const [currentChatId, setCurrentChatId] = useState(1)
-  const [messages, setMessages] = useState(() => chatHistory[0].messages)
+  const [accountMode, setAccountMode] = useState(() => getAuthenticatedRole() === "student")
+  const [historyLoading, setHistoryLoading] = useState(() => getAuthenticatedRole() === "student")
+  const [historyError, setHistoryError] = useState("")
+  const [chatHistory, setChatHistory] = useState(() => getAuthenticatedRole() === "student" ? [] : [createChat(1, "การสนทนาวันนี้")])
+  const [currentChatId, setCurrentChatId] = useState(() => getAuthenticatedRole() === "student" ? null : 1)
+  const [messages, setMessages] = useState(() => chatHistory[0]?.messages || [])
   const [inputValue, setInputValue] = useState("")
   // แชตที่กำลังรอคำตอบ (null = ไม่มี) — ส่งได้ทีละข้อความ แต่สลับไปดูแชตอื่นระหว่างรอได้
   const [pendingChatId, setPendingChatId] = useState(null)
@@ -77,10 +94,11 @@ export default function ChatProvider({ children }) {
   const [loadingText, setLoadingText] = useState("")
   const [unreadCount, setUnreadCount] = useState(0)
   const abortRef = useRef(null)
+  const historyLoadSeqRef = useRef(0)
 
-  const isBusy = pendingChatId !== null
+  const isBusy = pendingChatId !== null || historyLoading || !!historyError
   // จุดรอ/สถานะแสดงเฉพาะในแชตที่กำลังรอจริง
-  const isLoading = isBusy && pendingChatId === currentChatId
+  const isLoading = pendingChatId !== null && pendingChatId === currentChatId
 
   // ref ของค่าล่าสุด ใช้ใน async callback (คำตอบมาถึงหลังผู้ใช้สลับแชตแล้ว)
   const currentChatIdRef = useRef(currentChatId)
@@ -187,7 +205,7 @@ export default function ChatProvider({ children }) {
 
   // เสียงรอเล่นเฉพาะช่วงยังไม่มีข้อความเข้ามา และหยุดเองหลัง 20 วิ ไม่ให้รบกวนถ้าบอตตอบช้ามาก
   useEffect(() => {
-    if (!isBusy || isStreaming) return
+    if (pendingChatId === null || isStreaming) return
     playTypingTick()
     const startedAt = Date.now()
     const interval = setInterval(() => {
@@ -196,16 +214,16 @@ export default function ChatProvider({ children }) {
     }, 1300)
     return () => clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBusy, isStreaming])
+  }, [pendingChatId, isStreaming])
 
   // ข้อความสถานะระหว่างรอ — บอกตามจริงว่ายังรอคำตอบอยู่ ไม่แสร้งว่ากำลังพิมพ์
   useEffect(() => {
-    if (!isBusy) { setLoadingText(""); return }
+    if (pendingChatId === null) { setLoadingText(""); return }
     setLoadingText("น้องศรเสริมกำลังคิด…")
     const t1 = setTimeout(() => setLoadingText("กำลังค้นข้อมูลให้อยู่นะครับ…"), 4000)
     const t2 = setTimeout(() => setLoadingText("ใช้เวลานานกว่าปกติเล็กน้อย รอสักครู่นะครับ…"), 15000)
     return () => { clearTimeout(t1); clearTimeout(t2) }
-  }, [isBusy])
+  }, [pendingChatId])
 
   // บันทึกข้อความลงแชตนั้น ๆ และแสดงบนจอเฉพาะถ้าผู้ใช้ยังเปิดแชตนั้นอยู่
   const commitMessages = (chatId, nextMessages, { history = true } = {}) => {
@@ -218,6 +236,60 @@ export default function ChatProvider({ children }) {
       )
     }
   }
+
+  const reloadHistory = async () => {
+    const seq = ++historyLoadSeqRef.current
+    const student = getAuthenticatedRole() === "student"
+    const token = localStorage.getItem("student_token")
+    abortRef.current?.abort()
+    setHistoryError("")
+    setPendingChatId(null)
+    setAccountMode(student)
+    if (!student) {
+      const guest = createChat(1, "การสนทนาวันนี้")
+      setChatHistory([guest])
+      setCurrentChatId(guest.id)
+      setMessages(guest.messages)
+      setHistoryLoading(false)
+      return
+    }
+    setHistoryLoading(true)
+    setChatHistory([])
+    setCurrentChatId(null)
+    setMessages([])
+    try {
+      const data = await studentChatApi.list()
+      let chats = data.conversations || []
+      if (seq !== historyLoadSeqRef.current || token !== localStorage.getItem("student_token")) return
+      if (!chats.length) {
+        const created = await studentChatApi.create("การสนทนาวันนี้")
+        chats = [created.conversation]
+      }
+      const active = await studentChatApi.get(chats[0].id)
+      if (seq !== historyLoadSeqRef.current || token !== localStorage.getItem("student_token")) return
+      const restored = chats.map((chat) => restoredChat(chat.id === active.conversation.id ? active.conversation : chat))
+      setChatHistory(restored)
+      setCurrentChatId(restored[0].id)
+      setMessages(restored[0].messages)
+    } catch (error) {
+      if (seq === historyLoadSeqRef.current) setHistoryError(error.message || "โหลดประวัติแชตไม่สำเร็จ")
+    } finally {
+      if (seq === historyLoadSeqRef.current) setHistoryLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    reloadHistory()
+    const onAuth = () => reloadHistory()
+    const onStorage = (event) => { if (event.key === "student_token" || event.key === null) reloadHistory() }
+    window.addEventListener("auth-session-changed", onAuth)
+    window.addEventListener("storage", onStorage)
+    return () => {
+      historyLoadSeqRef.current += 1
+      window.removeEventListener("auth-session-changed", onAuth)
+      window.removeEventListener("storage", onStorage)
+    }
+  }, [])
 
   // ยกเลิกคำขอที่ค้างอยู่เมื่อ component หายไป
   useEffect(() => () => abortRef.current?.abort(), [])
@@ -262,7 +334,7 @@ export default function ChatProvider({ children }) {
   }
 
   // ส่งข้อความไปบอต — base = รายการข้อความที่มีข้อความผู้ใช้อยู่แล้ว (ใช้ซ้ำตอนกด "ลองใหม่")
-  const askBot = async (text, base, chatId) => {
+  const askBot = async (text, base, chatId, requestId = null) => {
     const chat = chatHistoryRef.current.find((c) => c.id === chatId)
     const sessionId = chat?.sessionId || newSessionId()
     const controller = new AbortController()
@@ -287,6 +359,13 @@ export default function ChatProvider({ children }) {
     setPendingChatId(chatId)
     setIsStreaming(false)
     try {
+      if (accountMode) {
+        const result = await studentChatApi.ask(chatId, text, requestId, controller.signal)
+        const confirmed = base.map((message) => message.id === requestId ? result.userMessage : message)
+        commitMessages(chatId, [...confirmed, result.botMessage])
+        notifyArrived()
+        return
+      }
       const res = await fetch(N8N_CHAT_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -333,7 +412,7 @@ export default function ChatProvider({ children }) {
       // log แค่ชนิดข้อผิดพลาด ไม่ log ข้อความที่ผู้ใช้พิมพ์
       console.warn("[chat] request failed:", kind || "aborted", err?.message)
       if (!kind) return
-      commitMessages(chatId, [...base, { id: newId(), text: errorMessageFor(kind), sender: "bot", isError: true, retryText: text }])
+      commitMessages(chatId, [...base, { id: newId(), text: errorMessageFor(kind), sender: "bot", isError: true, retryText: text, requestId }])
     } finally {
       clearTimeout(timer)
       if (abortRef.current === controller) abortRef.current = null
@@ -347,11 +426,12 @@ export default function ChatProvider({ children }) {
     // กันส่งซ้ำ: ระหว่างรอคำตอบ กด Enter/ปุ่มลัดซ้ำจะไม่ส่งเพิ่ม
     if (!text || isBusy) return
     const chatId = currentChatId
-    const base = [...messages, { id: newId(), text, sender: "user" }]
+    const requestId = accountMode ? newSessionId() : null
+    const base = [...messages, { id: requestId || newId(), text, sender: "user" }]
     commitMessages(chatId, base)
     setInputValue("")
     playSendSound()
-    await askBot(text, base, chatId)
+    await askBot(text, base, chatId, requestId)
   }
 
   // กด "ลองใหม่" ใต้ข้อความแจ้งข้อผิดพลาด — ลบข้อความ error แล้วส่งคำถามเดิมซ้ำ (ไม่เพิ่มข้อความผู้ใช้ซ้ำ)
@@ -362,14 +442,25 @@ export default function ChatProvider({ children }) {
     const chatId = currentChatId
     const base = messages.filter((m) => m.id !== messageId)
     commitMessages(chatId, base)
-    await askBot(target.retryText, base, chatId)
+    await askBot(target.retryText, base, chatId, target.requestId || null)
   }
 
   // id ใหม่ = มากสุด + 1 (เดิมใช้จำนวนแชต + 1 → ลบแชตแล้วสร้างใหม่ได้ id ซ้ำ ข้อความปนกัน)
   const nextChatId = (list) => list.reduce((max, c) => Math.max(max, c.id), 0) + 1
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
+    if (isBusy) return
     const list = chatHistoryRef.current
+    if (accountMode) {
+      try {
+        const created = await studentChatApi.create(`การสนทนา ${list.length + 1}`)
+        const chat = restoredChat(created.conversation)
+        setChatHistory([chat, ...list])
+        setCurrentChatId(chat.id)
+        setMessages(chat.messages)
+      } catch (error) { setHistoryError(error.message || "สร้างแชตไม่สำเร็จ") }
+      return
+    }
     const id = nextChatId(list)
     const chat = createChat(id, `การสนทนา ${id}`)
     setChatHistory([chat, ...list])
@@ -377,9 +468,31 @@ export default function ChatProvider({ children }) {
     setMessages(chat.messages)
   }
 
-  const deleteChat = (chatId) => {
+  const deleteChat = async (chatId) => {
     // ห้ามลบแชตที่กำลังรอคำตอบ (คำตอบจะไม่มีที่ลง)
     if (chatId === pendingChatId) return
+    if (accountMode) {
+      try {
+        await studentChatApi.remove(chatId)
+        let remaining = chatHistoryRef.current.filter((chat) => chat.id !== chatId)
+        if (!remaining.length) {
+          const created = await studentChatApi.create("การสนทนาวันนี้")
+          remaining = [restoredChat(created.conversation)]
+        }
+        if (currentChatIdRef.current === chatId) {
+          let next = remaining[0]
+          if (!next.loaded) {
+            const fetched = await studentChatApi.get(next.id)
+            next = restoredChat(fetched.conversation)
+            remaining = remaining.map((chat) => chat.id === next.id ? next : chat)
+          }
+          setCurrentChatId(next.id)
+          setMessages(next.messages)
+        }
+        setChatHistory(remaining)
+      } catch (error) { setHistoryError(error.message || "ลบแชตไม่สำเร็จ") }
+      return
+    }
     const remaining = chatHistoryRef.current.filter((c) => c.id !== chatId)
     if (!remaining.length) {
       const chat = createChat(nextChatId(chatHistoryRef.current), "การสนทนาวันนี้")
@@ -395,17 +508,35 @@ export default function ChatProvider({ children }) {
     }
   }
 
-  const renameChat = (chatId, newTitle) => {
+  const renameChat = async (chatId, newTitle) => {
+    if (accountMode) {
+      try {
+        const result = await studentChatApi.rename(chatId, newTitle)
+        setChatHistory((prev) => prev.map((chat) => chat.id === chatId ? { ...chat, title: result.conversation.title, date: result.conversation.date } : chat))
+      } catch (error) { setHistoryError(error.message || "เปลี่ยนชื่อแชตไม่สำเร็จ") }
+      return
+    }
     setChatHistory((prev) =>
       prev.map((c) => (c.id === chatId ? { ...c, title: newTitle } : c))
     )
   }
 
-  const loadChat = (chatId) => {
-    const chat = chatHistoryRef.current.find((c) => c.id === chatId)
+  const loadChat = async (chatId) => {
+    if (isBusy) return
+    const chat = chatHistoryRef.current.find((c) => String(c.id) === String(chatId))
     if (!chat) return
-    setCurrentChatId(chatId)
+    setCurrentChatId(chat.id)
     setMessages(chat.messages)
+    if (accountMode && !chat.loaded) {
+      setHistoryLoading(true)
+      try {
+        const result = await studentChatApi.get(chat.id)
+        const loaded = restoredChat(result.conversation)
+        setChatHistory((prev) => prev.map((item) => item.id === chat.id ? loaded : item))
+        if (currentChatIdRef.current === chat.id) setMessages(loaded.messages)
+      } catch (error) { setHistoryError(error.message || "โหลดแชตไม่สำเร็จ") }
+      finally { setHistoryLoading(false) }
+    }
   }
 
   const formatDate = (date) => {
@@ -423,6 +554,10 @@ export default function ChatProvider({ children }) {
       messages,
       inputValue,
       chatHistory,
+      accountMode,
+      historyLoading,
+      historyError,
+      reloadHistory,
       currentChatId,
       messagesEndRef,
       unreadCount,
@@ -445,7 +580,7 @@ export default function ChatProvider({ children }) {
       renameChat,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, pendingChatId, isStreaming, loadingText, unreadCount]
+    [isOpen, isFullscreen, messages, inputValue, chatHistory, currentChatId, pendingChatId, isStreaming, loadingText, unreadCount, historyLoading, historyError, accountMode]
   )
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
