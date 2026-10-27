@@ -366,12 +366,18 @@ export default function ChatProvider({ children }) {
         notifyArrived()
         return
       }
-      const res = await fetch(N8N_CHAT_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatInput: text, sessionId, threadId: chatId }),
-        signal: controller.signal,
-      })
+      let res
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        res = await fetch(N8N_CHAT_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatInput: text, sessionId, threadId: chatId }),
+          signal: controller.signal,
+        })
+        if (![502, 503, 504].includes(res.status) || attempt === 2) break
+        await new Promise((resolve) => setTimeout(resolve, attempt === 0 ? 500 : 1500))
+        if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError")
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
       const type = res.headers.get("content-type") || ""
