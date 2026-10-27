@@ -2727,6 +2727,16 @@ function StudentDetailModal({
               สรุปสั้นๆ + แนวโน้มรายหมวดให้เห็นภาพเร็วๆ (โดยเฉพาะเวลาผู้ปกครองมาดู)
               บทวิเคราะห์แบบละเอียด (สาเหตุ/จุดที่เข้าใจผิด/คำแนะนำ) กดขยายดูได้ที่ปุ่มด้านล่าง
               ไม่บังคับเปิดให้เห็นตลอด กันหน้าจอรกเกินไปสำหรับคนที่แค่อยากดูสรุปเร็วๆ */}
+          {/* ผิดซ้ำจากรอบก่อน — ระบบคำนวณจากคำตอบจริง (ข้อเดียวกันในคลัง) ไม่ใช่ AI */}
+          {modalTab === "overview" && detail && enrichedQuestions.some((q) => q.repeatWrong?.length) && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span className="font-bold shrink-0">ผิดซ้ำจากรอบก่อน {enrichedQuestions.filter((q) => q.repeatWrong?.length).length} ข้อ</span>
+              <span className="min-w-0">
+                {enrichedQuestions.map((q, i) => (q.repeatWrong?.length ? `ข้อ ${i + 1}` : null)).filter(Boolean).join(", ")}
+                <span className="text-amber-700"> · ดูรายละเอียดในแท็บรายข้อ (คำนวณจากคำตอบจริง ไม่ใช้ AI)</span>
+              </span>
+            </div>
+          )}
           {modalTab === "overview" && isVerifiedAiSummary(aiSummary) && (
             <div className="mb-6 bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-xl px-4 py-3.5">
               {/* หน้านี้ = ดูเร็วหลังสอบ: AI แบบสั้น (สรุป 3 บรรทัด + คัดลอกข้อความถึงผู้ปกครอง)
@@ -2737,6 +2747,11 @@ function StudentDetailModal({
                   {aiSummary.misconceptions?.length > 0 && (
                     <span className="text-[11px] font-medium bg-amber-100 border border-amber-200 text-amber-800 rounded-full px-2 py-0.5">
                       เรื่องที่ควรทบทวน {aiSummary.misconceptions.length} เรื่อง
+                    </span>
+                  )}
+                  {!aiSummary.misconceptions?.length && aiSummary.facts && Number(aiSummary.facts.wrongCount) === 0 && Number(aiSummary.facts.unansweredCount) === 0 && (
+                    <span className="text-[11px] font-medium bg-green-100 border border-green-200 text-green-800 rounded-full px-2 py-0.5">
+                      ตอบถูกทุกข้อ ไม่มีเรื่องที่ต้องทบทวน
                     </span>
                   )}
                 </p>
@@ -2877,7 +2892,7 @@ function StudentDetailModal({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-bold text-slate-800">รายข้อ</p>
-                <p className="text-[11px] text-slate-500">เขียว = เฉลย/ตอบถูก · แดง = ตัวเลือกที่นักเรียนเลือกผิด · เทา = ไม่ได้ตอบ</p>
+                <p className="text-[11px] text-slate-500">เขียว = เฉลย/ตอบถูก · แดง = ตัวเลือกที่นักเรียนเลือกผิด · เทา = ไม่ได้ตอบ{enrichedQuestions.some((q) => q.repeatWrong?.length) ? ` · ผิดซ้ำจากรอบก่อน ${enrichedQuestions.filter((q) => q.repeatWrong?.length).length} ข้อ` : ""}</p>
               </div>
               <div className="space-y-2.5">
                 {enrichedQuestions.map((q, i) => {
@@ -2894,6 +2909,11 @@ function StudentDetailModal({
                       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                         {q.category && <span className="text-[11px] font-semibold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-md">{q.category}</span>}
                         {state === "unanswered" && <span className="text-[11px] font-semibold bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-md">ไม่ได้ตอบ</span>}
+                        {q.repeatWrong?.length > 0 && (
+                          <span className="text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-md" title="ข้อเดียวกันในคลังที่เคยตอบผิดในรอบก่อน">
+                            ผิดซ้ำจาก {q.repeatWrong.map((r) => r.round).join(", ")}{q.repeatWrong.some((r) => r.selected != null && r.selected === q.selected) ? " · เลือกตัวเดิม" : ""}
+                          </span>
+                        )}
                         <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${chipTone}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
@@ -2994,7 +3014,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
     <div class="summary-grid">
       <div class="summary-card"><div class="label">เข้าสอบ</div><div class="value">${joinedPct}%</div><div class="sub">${results.joinedCount} จาก ${results.enrolledCount} คน</div></div>
       <div class="summary-card"><div class="label">ส่งแล้ว</div><div class="value">${submittedPct}%</div><div class="sub">${results.submittedCount} จาก ${results.enrolledCount} คน</div></div>
-      <div class="summary-card"><div class="label">คะแนนเฉลี่ยห้อง</div><div class="value">${results.averageScorePct}%</div><div class="sub">${submitted.length ? `${fmtScore(submitted.reduce((sum, s) => sum + Number(s.totalScore), 0) / submitted.length)} / ${fmtScore(submitted[0].maxScore)} คะแนน` : "—"}</div></div>
+      <div class="summary-card"><div class="label">คะแนนเฉลี่ยห้อง</div><div class="value">${results.averageScorePct == null ? 'ไม่มีข้อมูล' : `${results.averageScorePct}%`}</div><div class="sub">${submitted.length ? `${fmtScore(submitted.reduce((sum, s) => sum + Number(s.totalScore), 0) / submitted.length)} / ${fmtScore(submitted[0].maxScore)} คะแนน` : "—"}</div></div>
       <div class="summary-card"><div class="label">สัดส่วนผู้สอบผ่าน</div><div class="value">${passRatePct != null ? `${passRatePct}%` : "—"}</div><div class="sub">${passedCount}/${submitted.length} คน · เกณฑ์ ${PASS_PCT}% ของคะแนนเต็ม</div></div>
       <div class="summary-card"><div class="label">เวลาเฉลี่ย</div><div class="value">${avgTimeSec != null ? formatTime(avgTimeSec) : "—"}</div></div>
     </div>
@@ -3289,8 +3309,8 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
         <StatCard
           icon={Award}
           label="คะแนนเฉลี่ยห้อง"
-          value={`${results.averageScorePct}%`}
-          sub={avgScoreRaw != null ? `${fmtScore(avgScoreRaw)}/${fmtScore(examMaxScore)} คะแนนเฉลี่ย` : "ยังไม่มีผู้ส่ง"}
+          value={results.averageScorePct == null ? "ไม่มีข้อมูล" : `${results.averageScorePct}%`}
+          sub={avgScoreRaw != null ? `${fmtScore(avgScoreRaw)}/${fmtScore(examMaxScore)} คะแนนเฉลี่ย` : results.submittedCount > 0 ? "ผู้ส่งทุกคนไม่ยินยอมให้รวมสถิติห้อง" : "ยังไม่มีผู้ส่ง"}
           color="bg-orange-500"
         />
         <StatCard

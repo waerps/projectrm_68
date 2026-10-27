@@ -1,4 +1,5 @@
 import { getFileUrl } from "../utils/fileUrl";
+import { optimizedImage } from "../utils/responsiveImage";
 import { useEffect, useRef, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { NavLink } from "react-router-dom"
@@ -55,7 +56,7 @@ export default function Navbar() {
     const avatar = (size) => (
         <span className={`block ${size} rounded-full overflow-hidden shrink-0`}>
             {user?.photo ? (
-                <img src={getFileUrl(user.photo)} alt="imgProfile" className="h-full w-full object-cover" />
+                <img src={optimizedImage(getFileUrl(user.photo), 96)} alt="" className="h-full w-full object-cover" />
             ) : (
                 <span className="h-full w-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
                     <span className="text-white text-xs font-bold select-none">
@@ -111,7 +112,7 @@ export default function Navbar() {
                         <button
                             type="button"
                             onClick={() => setMenuOpen(v => !v)}
-                            aria-label="เมนูบัญชี"
+                            aria-label={`เมนูบัญชี ${user?.firstname || "ไม่ทราบชื่อ"}`}
                             aria-expanded={menuOpen}
                             className={`flex h-11 items-center gap-2 rounded-full border pl-1 pr-2.5 transition-colors ${menuOpen ? "border-orange-200 bg-orange-50 text-orange-500" : "border-slate-200 text-slate-700 hover:border-orange-200 hover:bg-orange-50"}`}
                         >
@@ -162,8 +163,8 @@ export default function Navbar() {
                         <div className="h-8 w-8 rounded-full overflow-hidden shrink-0">
                             {user?.photo ? (
                                 <img
-                                    src={getFileUrl(user.photo)}
-                                    alt="imgProfile"
+                                    src={optimizedImage(getFileUrl(user.photo), 96)}
+                                    alt=""
                                     className="h-full w-full object-cover"
                                 />
                             ) : (

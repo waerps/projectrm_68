@@ -1,6 +1,7 @@
 import { API_URL } from "../config";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { getFileUrl } from "../utils/fileUrl";
+import { optimizedImage } from "../utils/responsiveImage";
 import {
   BookOpen, Plus, Search, Trash2, X, Check, Calendar, DollarSign, Users, Tag, ChevronLeft,
   ChevronRight, ChevronUp, ChevronDown, Loader2, ImagePlus, ToggleLeft, ToggleRight, Info,
@@ -3196,7 +3197,7 @@ function PendingSubjectPicker({ items, onChange, showToast, totalCourseHours, mo
 }
 
 // ─── Course Card ─────────────────────────────────────────────────────────────
-function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSchedule, statusOptions, onDuplicate }) {
+function CourseCard({ course, imagePriority = false, onEdit, onDelete, onStatusChange, onPublish, onSchedule, statusOptions, onDuplicate }) {
   const status = STATUS_MAP[course.Status_Course_Id] || STATUS_MAP[4];
   const canSchedule = !isClosedCourse(course) &&
     String(course.PublishedLastDate || course.LastDate || '').slice(0, 10) >= bangkokToday();
@@ -3208,9 +3209,14 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
       <div className="relative h-36 bg-gradient-to-br from-orange-50 to-amber-100 overflow-hidden">
         {course.CourseImage && !imgErr ? (
           <img
-            src={getFileUrl(course.CourseImage)}
+            src={optimizedImage(getFileUrl(course.CourseImage), 800).replace('/course-covers/netsat-onsite-october-2569.png', '/course-covers/netsat-onsite-october-2569.webp')}
             alt={course.CourseName}
             onError={() => setImgErr(true)}
+            loading={imagePriority ? "eager" : "lazy"}
+            fetchPriority={imagePriority ? "high" : "auto"}
+            decoding="async"
+            width="800"
+            height="310"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -3220,6 +3226,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
         )}
 
         <select
+          aria-label={`สถานะคอร์ส ${course.CourseName}`}
           value={course.Status_Course_Id}
           disabled={isPastCourseEnd(course)}
           onChange={async (e) => {
@@ -3272,7 +3279,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
             <span className="font-bold text-green-500 text-sm">฿</span>
             <span className="font-bold text-green-700 text-sm">{course.FullCost == null && course.Price == null ? 'ยังไม่ระบุราคา' : `${formatPrice(course.FullCost ?? course.Price)} บาท`}</span>
             {Number(course.Discount) > 0 && (
-              <span className="line-through text-slate-400">{formatPrice(course.Price)}</span>
+              <span className="line-through text-slate-600">{formatPrice(course.Price)}</span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
@@ -3317,7 +3324,7 @@ function CourseCard({ course, onEdit, onDelete, onStatusChange, onPublish, onSch
         <div className="flex gap-2 mt-auto pt-2 border-t border-slate-100">
           <button
             onClick={() => onEdit(course)}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-orange-800 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 hover:border-orange-200 transition"
           >
             <Pencil className="h-3.5 w-3.5" /> แก้ไข
           </button>
@@ -3700,6 +3707,7 @@ export default function AdminCoursesPage() {
             />
           </div>
           <select
+            aria-label="กรองตามสถานะคอร์ส"
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
@@ -3760,10 +3768,11 @@ export default function AdminCoursesPage() {
         </div>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {paginated.map((course) => (
+          {paginated.map((course, index) => (
             <CourseCard
               key={course.CourseID}
               course={course}
+              imagePriority={index === 0}
               onEdit={(c) => setEditingCourse(c)}
               onDelete={(c) => setDeletingCourse(c)}
               onStatusChange={fetchAll}

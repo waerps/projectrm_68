@@ -1561,6 +1561,8 @@ function AbsenceHeatmap({ selectedMonth }) {
   const [loading, setLoading] = useState(false);
   const [tooltip, setTooltip] = useState(null);
   const [drillDown, setDrillDown] = useState(null); // { adminId, nickname, weekStart, weekEnd, weekLabel, dayOfWeek, count }
+  // ตาราง heatmap ยาวเกินไปเมื่อมีติวเตอร์เยอะ — ค่าเริ่มต้นแสดงเฉพาะคนที่มีการขาดสอน เรียงจากขาดมากสุด
+  const [showAllTutors, setShowAllTutors] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -1638,6 +1640,9 @@ function AbsenceHeatmap({ selectedMonth }) {
   );
 
   if (!data) return null;
+  const sortedTutors = [...tutors].sort((a, b) => (b.totalMissed || 0) - (a.totalMissed || 0));
+  const missedTutors = sortedTutors.filter((t) => (t.totalMissed || 0) > 0);
+  const visibleTutors = showAllTutors ? sortedTutors : missedTutors;
   return (
     <div className="space-y-4">
 
@@ -1658,7 +1663,14 @@ function AbsenceHeatmap({ selectedMonth }) {
             <p className="text-xs text-slate-500 mt-0.5">
               คลิกที่ช่องเพื่อดูรายละเอียดคาบที่ขาด
               {selectedMonth ? ` · ${selectedMonth.label}` : ' · ทุกช่วงเวลา'}
+              {` · ${showAllTutors ? `แสดงติวเตอร์ทั้งหมด ${tutors.length} คน` : `แสดงเฉพาะติวเตอร์ที่มีการขาดสอน ${missedTutors.length} คน`}`}
             </p>
+            {tutors.length > missedTutors.length && (
+              <button type="button" onClick={() => setShowAllTutors((v) => !v)}
+                className="mt-1.5 text-xs font-semibold text-orange-600 hover:text-orange-700">
+                {showAllTutors ? 'แสดงเฉพาะคนที่ขาดสอน' : `แสดงติวเตอร์ทั้งหมด (${tutors.length} คน)`}
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 shrink-0">
             <span>น้อย</span>
@@ -1675,12 +1687,12 @@ function AbsenceHeatmap({ selectedMonth }) {
             <p className="text-sm">ไม่มีข้อมูลการสอนในช่วงนี้</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[560px]">
             <table className="text-sm border-collapse w-full">
-              <thead>
+              <thead className="sticky top-0 z-20">
                 {/* Row 1: สัปดาห์ */}
                 <tr className="border-b border-slate-200">
-                  <th className="px-3 sm:px-5 py-2 text-left text-xs font-semibold text-slate-500 bg-slate-50 w-28 sm:w-36 sticky left-0 z-10 border-r border-slate-200">
+                  <th className="px-3 sm:px-5 py-2 text-left text-xs font-semibold text-slate-500 bg-slate-50 w-28 sm:w-36 sticky left-0 z-30 border-r border-slate-200">
                     ติวเตอร์
                   </th>{weeks.map(w => {
                     const wTotal = weekSummary[w.YearWeek] || 0;
@@ -1718,7 +1730,7 @@ function AbsenceHeatmap({ selectedMonth }) {
 
                 {/* Row 2: วัน จ-อา */}
                 <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="px-5 py-1.5 sticky left-0 z-10 bg-slate-50 border-r border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
+                  <th className="px-5 py-1.5 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                   {weeks.map(w =>
                     DAY_ORDER.map(day => (
                       <th key={`${w.YearWeek}-${day}`}
@@ -1734,17 +1746,17 @@ function AbsenceHeatmap({ selectedMonth }) {
               </thead>
 
               <tbody className="divide-y divide-slate-50">
-                {tutors.length === 0 ? (
+                {visibleTutors.length === 0 ? (
                   <tr>
                     <td colSpan={weeks.length * 7 + 2}
                       className="text-center py-10 text-slate-500 text-sm">
                       ไม่มีการขาดสอนในช่วงนี้
                     </td>
                   </tr>
-                ) : tutors.map((t, idx) => {
+                ) : visibleTutors.map((t, idx) => {
                   return (
                     <tr key={t.AdminId} className="hover:bg-orange-50/20 transition-colors">
-                      <td className="px-2 sm:px-4 py-3 sticky left-0 bg-white border-r border-slate-100 z-10">
+                      <td className="px-2 sm:px-4 py-2 sticky left-0 bg-white border-r border-slate-100 z-10">
                         <div className="flex items-center gap-2">
                           <TutorAvatar tutor={t} idx={idx} className="w-7 h-7 rounded-lg" />
                           <div className="min-w-0">

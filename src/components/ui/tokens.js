@@ -6,7 +6,7 @@
 // ปุ่ม — มุม rounded-xl เท่ากันทุกแบบ
 export const BTN = {
   base: "inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed",
-  primary: "bg-orange-500 text-white hover:bg-orange-600 shadow-sm",
+  primary: "bg-orange-700 text-white hover:bg-orange-800 shadow-sm",
   secondary: "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50",
   ghost: "text-slate-600 hover:bg-slate-100",
   danger: "bg-red-500 text-white hover:bg-red-600 shadow-sm",

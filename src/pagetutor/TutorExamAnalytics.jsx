@@ -23,6 +23,8 @@ import ErrorState from "../components/ui/ErrorState";
 import { BTN, CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_NUM, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import ExamSupportPanel from "../components/exam/ExamSupportPanel";
+import ItemAnalysisCard from "../components/exam/ItemAnalysisCard";
+import AnswerSheetCard from "../components/exam/AnswerSheetCard";
 import { aiAnalysisNotice, examTimingForDisplay, isVerifiedAiSummary, parentMessageAttribution, parentMessageParts } from "../utils/examAnalysisDisplay";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -97,7 +99,9 @@ function computeRoundStats(results, topicBreakdown) {
 // แล้ว — รอบสอบที่นักเรียนไม่ยินยอมให้บันทึกพฤติกรรมสอบ ต้องไม่ถูกนำไปรวมคำนวณพัฒนาการ
 // เกณฑ์เดียวกับฝั่งแอดมิน (services/studentPerformance.js, admin.progress.routes.js)
 const scoreChangeOf = (exams) => {
-  const done = (exams || []).filter((e) => e.submitted && e.consent !== false);
+  // การเทียบคะแนนรอบของ "ตัวเด็กเอง" เป็นข้อมูลรายบุคคล — ข้อความยินยอมสัญญาว่ายังเห็นได้ตามปกติ
+  // (ความยินยอมมีผลแค่การรวมเป็นสถิติห้อง) เดิมกรอง consent ทำให้รายชื่อขึ้น "ยังเทียบไม่ได้" แต่หน้ารายคนกลับเทียบให้
+  const done = (exams || []).filter((e) => e.submitted && e.pct != null);
   if (done.length < 2) return null;
   return Math.round((done[done.length - 1].pct - done[0].pct) * 1000) / 10;
 };
@@ -328,6 +332,8 @@ function buildRealCrossExamData(examResults, topicResults) {
         entry.exams[examId] = {
           label: EXAMS_META[examId].label,
           submitted: true,
+          examJoinId: s.examJoinId,
+          examRealId: r.examId,
           consent: s.examBehaviorConsent !== false, // ใช้ตัดสินว่านับเข้า "ค่าเฉลี่ยห้อง" ไหม
           pct: s.totalScore / s.maxScore,
           totalScore: s.totalScore,
@@ -629,7 +635,7 @@ function OverviewTab({ results, topicBreakdown, loading }) {
           {topicStats.length === 0 ? (
             <div className="flex flex-col items-center text-center gap-2 py-10">
               <Info className="h-6 w-6 text-slate-300" />
-              <p className="text-xs text-slate-500">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
+              <p className="text-xs text-slate-500">{stats.stat.length === 0 && stats.excludedCount > 0 ? "ไม่มีข้อมูลสำหรับสถิติห้อง — ผู้ส่งข้อสอบทุกคนไม่ได้ยินยอมให้นำคะแนนไปรวมกับสถิติห้อง (ดูคะแนนรายหมวดรายคนได้ที่แท็บรายคน)" : stats.stat.length === 0 ? "ยังไม่มีผู้ส่งข้อสอบรอบนี้" : "ยังไม่มีคะแนนรายหมวด — ข้อสอบรอบนี้ยังไม่ได้กำหนดหมวดหมู่"}</p>
             </div>
           ) : (
             <>
@@ -989,7 +995,7 @@ const MODAL_SECTIONS = [
 ];
 const aiModelName = (row) => row?.model || "ไม่ทราบรุ่น";
 
-function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamData, aiSummaries, courseName, subjectName, onClose }) {
+function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamData, aiSummaries, courseName, subjectName, onClose, api = null }) {
   // hook ต้องอยู่บนสุดก่อน early return เสมอ (Rules of Hooks)
   const [draft, setDraft] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
@@ -1090,7 +1096,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
       trend: ai?.trend || null, comment: ai?.comment || null,
     };
   }).sort((a, b) => (a.pct ?? 2) - (b.pct ?? 2));
-  // นักเรียนที่ไม่ยินยอมเก็บข้อมูลพฤติกรรมจะไม่มี topicPcts → แสดงความเห็น AI รายหมวดแบบไม่มีเปอร์เซ็นต์แทน
+  // ไม่มี topicPcts (เช่น ข้อมูลเก่าก่อนแก้ให้คะแนนรายบุคคลแสดงได้ทุกคน) → แสดงความเห็น AI รายหมวดแบบไม่มีเปอร์เซ็นต์แทน
   const aiOnlyTopics = topics.length === 0 ? (aiRow?.byCategory || []).filter((c) => c.topic && (c.comment || c.trend)) : [];
   const factualSummary = latest ? (aiRow?.overview || `ผลสอบได้ ${fmtScore(latest.totalScore)}/${fmtScore(latest.maxScore)} คะแนน (${fmtIndividualPct(latest)})`) : "";
   // ไม่มีผลวิเคราะห์ AI ที่ผ่านการตรวจ → ยังแสดงข้อมูลจริงจากผลสอบ (หมวดที่ยังได้ไม่เต็ม เรียงจากคะแนนน้อยสุด)
@@ -1337,7 +1343,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
                     <p className="text-[10.5px] text-slate-400 pl-1">ไม่มีคะแนนรายหมวดของนักเรียนคนนี้ จึงแสดงเฉพาะผลวิเคราะห์โดย AI</p>
                   </div>
                 ) : topics.length === 0 ? (
-                  <p className="text-xs text-slate-500">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
+                  <p className="text-xs text-slate-500">{!latest?.submitted ? "ยังไม่ได้ส่งข้อสอบรอบนี้" : "ยังไม่มีคะแนนรายหมวด — ข้อสอบรอบนี้ยังไม่ได้กำหนดหมวดหมู่"}</p>
                 ) : (
                   <div className={`grid gap-5 items-center ${topics.length >= 3 ? "lg:grid-cols-[18rem_1fr]" : ""}`}>
                     {topics.length >= 3 && (
@@ -1391,6 +1397,7 @@ function StudentProgressModal({ studentId, selectedExamIndex = null, crossExamDa
               </div>
 
               <ExamSupportPanel aiRow={aiRow} notice={noAiNote} factTopics={factReviewTopics} />
+              <AnswerSheetCard api={api} exam={latest} />
 
               {/* ── 5) ข้อความถึงผู้ปกครอง ── */}
               <div id="sec-parent" className="sa-rise rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-white" style={{ animationDelay: ".22s" }}>
@@ -1750,7 +1757,7 @@ function ComparisonTab({ examResults, topicResults, loading, onOpenStudent }) {
       {cmp.topicRows.length === 0 ? (
         <div className="flex gap-2 bg-blue-50 border border-blue-100 rounded-2xl p-4">
           <Info className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-700">ยังไม่มีคะแนนรายหมวด — ต้องกำหนดหมวดหมู่ให้ข้อสอบก่อน</p>
+          <p className="text-xs text-blue-700">{cmp.cohortSize === 0 ? "ยังเทียบรายหมวดไม่ได้ — ต้องมีนักเรียนที่ส่งครบทุกรอบและยินยอมให้รวมสถิติห้อง" : "ยังไม่มีคะแนนรายหมวด — ข้อสอบยังไม่ได้กำหนดหมวดหมู่"}</p>
         </div>
       ) : (
         <div className="sa-rise bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5" style={{ animationDelay: ".2s" }}>
@@ -2594,13 +2601,21 @@ export function ExamAnalyticsView({
       <div className="min-w-0">
         <h1 className={`${PAGE_TITLE}`}>ภาพรวมพัฒนาการนักเรียน</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {resultsErrors[examId] ? "—" : (examResults[examId]?.submittedCount ?? 0)} คน
+          {courseName} {subjectName ? `· ${subjectName}` : ""} · นักเรียนส่งแล้ว {dataLoading ? "…" : resultsErrors[examId] ? "—" : (examResults[examId]?.submittedCount ?? 0)} คน
           {examResults[examId]?.totalQuestions != null && ` · ${examResults[examId].totalQuestions} ข้อ`}
           {(examResults[examId]?.students?.find(s => s.maxScore != null)?.maxScore) != null &&
             ` · ${fmtScore(examResults[examId].students.find(s => s.maxScore != null).maxScore)} คะแนน`}
         </p>
         {roleNote}
       </div>
+
+      {/* บอกให้ชัดว่ากำลังโหลด — เดิมขึ้นแค่กล่องเทาว่าง ๆ กับ "ส่งแล้ว 0 คน" ดูเหมือนไม่มีข้อมูล */}
+      {dataLoading && (
+        <div role="status" aria-live="polite" className="flex items-center gap-2.5 rounded-2xl border border-orange-100 bg-orange-50/70 px-4 py-3 text-sm text-orange-800">
+          <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+          กำลังโหลดผลสอบและสถิติของทั้ง 3 รอบ…
+        </div>
+      )}
 
       {examListError && <ErrorState description="โหลดรายการสอบไม่สำเร็จ ข้อมูลด้านล่างอาจไม่ครบ กรุณาลองใหม่อีกครั้ง" onRetry={() => setExamListReloadKey((k) => k + 1)} />}
 
@@ -2749,10 +2764,12 @@ export function ExamAnalyticsView({
         />
       )}
       {activeTab === "overview" && !(!dataLoading && resultsErrors[examId]) && <OverviewTab results={examResults[examId]} topicBreakdown={topicResults[examId]} loading={dataLoading} />}
+      {activeTab === "overview" && !dataLoading && <ItemAnalysisCard api={api} examId={realExamId(examId)} />}
       {activeTab === "compare" && <ComparisonTab examResults={examResults} topicResults={topicResults} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
       {activeTab === "progress" && <StudentProgressTab crossExamData={crossExamDataForExport} selectedExamIndex={examId} loading={dataLoading} onOpenStudent={setOpenStudentId} />}
       {openStudentId != null && !dataLoading && (
         <StudentProgressModal
+          api={api}
           studentId={openStudentId}
           selectedExamIndex={activeTab === "progress" ? examId : null}
           crossExamData={crossExamDataForExport}

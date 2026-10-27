@@ -23,7 +23,10 @@ export default function ExamSupportPanel({ aiRow, notice, factTopics = [] }) {
         <p className="text-xs font-bold text-slate-500 flex flex-wrap items-center gap-1.5"><AlertTriangle className="h-4 w-4 text-rose-500" /> เรื่องที่ควรทบทวน {aiRow && <AiLabel model={aiRow.model} />}</p>
         {!aiRow || misconceptions.length === 0 ? (
           <p className="flex-1 flex items-center rounded-xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm leading-relaxed text-slate-600">
-            {!aiRow ? notice : "ผลวิเคราะห์รอบนี้ไม่มีข้อสังเกตเพิ่มเติมในส่วนนี้"}
+            {!aiRow ? notice
+              : aiRow.facts && Number(aiRow.facts.wrongCount) === 0 && Number(aiRow.facts.unansweredCount) === 0
+                ? "ตอบถูกทุกข้อ ไม่มีเรื่องที่ต้องทบทวนในรอบนี้"
+                : "ผลวิเคราะห์รอบนี้ไม่มีข้อสังเกตเพิ่มเติมในส่วนนี้"}
           </p>
         ) : null}
         {!aiRow && factTopics.length > 0 && (

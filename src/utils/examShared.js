@@ -271,6 +271,22 @@ export function tutorExamAnalyticsApi({ courseId, subjectId, adminId }) {
     fetchExams: () => fetchExams({ courseId, subjectId, adminId }),
     fetchExamResults: (examId) => fetchExamResults(examId),
     fetchTopicBreakdown: (examId) => fetchTopicBreakdown(examId),
+    fetchItemAnalysis: (examId) => fetchItemAnalysis(examId),
+    // แปลงรายละเอียดรายคนของติวเตอร์ให้เป็นรูปเดียวกับของแอดมิน (+ ข้อความตัวเลือก)
+    fetchAnswerSheet: (_examId, examJoinId) => fetchExamJoinDetail(examJoinId).then((d) => ({
+      examJoinId,
+      contentHidden: false,
+      questions: (d.questions || []).map((q, i) => ({
+        no: i + 1,
+        category: q.category || null,
+        selectedLetter: q.selected != null ? "ABCD"[q.selected] : null,
+        selectedText: q.selected != null ? (q.options?.[q.selected] ?? "") : null,
+        correctLetter: q.correct != null ? "ABCD"[q.correct] : null,
+        correctText: q.correct != null ? (q.options?.[q.correct] ?? "") : null,
+        isCorrect: !!q.isCorrect,
+        repeatWrong: (q.repeatWrong || []).map((r) => ({ round: r.round, selectedLetter: r.selected != null ? "ABCD"[r.selected] : null })),
+      })),
+    })),
   };
 }
 
@@ -304,6 +320,8 @@ export function adminExamAnalyticsApi({ courseId, subjectId, tutorId }) {
     fetchExams: () => sharedGet(`${base}/exams`, params),
     fetchExamResults: (examId) => sharedGet(`${base}/exams/${examId}/results`, params),
     fetchTopicBreakdown: (examId) => sharedGet(`${base}/exams/${examId}/topic-breakdown`, params),
+    fetchItemAnalysis: (examId) => sharedGet(`${base}/exams/${examId}/item-analysis`, params),
+    fetchAnswerSheet: (examId, examJoinId) => sharedGet(`${base}/exams/${examId}/joins/${examJoinId}/answers`, params),
   };
 }
 
@@ -316,6 +334,12 @@ export function prefetchAdminExamAnalytics(ids) {
       api.fetchTopicBreakdown(e.id).catch(() => {});
     }))
     .catch(() => {});
+}
+
+// GET /api/exam/:examId/item-analysis → สถิติรายข้อของห้อง (อัตราตอบถูก + ตัวเลือกผิดที่เลือกบ่อย)
+export async function fetchItemAnalysis(examId) {
+  const { data } = await axios.get(`${API_BASE}/${examId}/item-analysis`, { headers: authHeaders() });
+  return data;
 }
 
 export async function fetchTopicBreakdown(examId) {

@@ -15,7 +15,10 @@ export function displayExamPercent(totalScore, maxScore) {
   const max = Number(maxScore);
   if (totalScore == null || maxScore == null || !Number.isFinite(score) || !Number.isFinite(max) || max <= 0) return null;
   const pct = (score / max) * 100;
-  return pct < PASS_PCT ? Math.floor(pct * 10) / 10 : Math.round(pct * 10) / 10;
+  // ปัดทศนิยม 1 ตำแหน่งแบบปกติ ให้ตรงกับการ์ดสถิติอื่น (เดิมปัดลงเฉพาะคนที่ไม่ผ่าน ทำให้ 9/21 ขึ้น 42.8% ในที่หนึ่งแต่ 42.9% อีกที่)
+  // ยกเว้นกรณีที่ปัดแล้วจะกลายเป็นตัวเลขผ่านเกณฑ์ทั้งที่ยังไม่ผ่าน เช่น 49.96% → แสดง 49.9% ไม่ใช่ 50%
+  const rounded = Math.round(pct * 10) / 10;
+  return pct < PASS_PCT && rounded >= PASS_PCT ? PASS_PCT - 0.1 : rounded;
 }
 
 export function isPassingScore(totalScore, maxScore) {
