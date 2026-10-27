@@ -269,7 +269,7 @@ function RoomForm({ initial = {}, statuses, facilityList = [], onSave, onCancel,
         const e = {};
         if (!form.roomDetail.trim()) e.roomDetail = "กรุณากรอกชื่อห้อง";
         if (form.floor === "" || Number(form.floor) < 0 || !Number.isInteger(Number(form.floor)))
-            e.floor = "กรุณากรอกชั้นเป็นตัวเลขไม่ติดลบ";
+            e.floor = "กรุณาเลือกชั้น";
         if (form.capacity !== "" && (Number(form.capacity) < 0 || !Number.isInteger(Number(form.capacity))))
             e.capacity = "ความจุต้องเป็นตัวเลขไม่ติดลบ";
         setErrors(e);
