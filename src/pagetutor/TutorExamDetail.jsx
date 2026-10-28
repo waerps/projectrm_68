@@ -2917,7 +2917,10 @@ function StudentDetailModal({
                         <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${chipTone}`}>
                           {fmtScore(q.scoreAwarded)}/{fmtScore(q.score)}
                         </span>
-                        <span className="text-xs tabular-nums text-slate-500">{formatTime(q.totalSeconds)}</span>
+                        {/* เวลารายข้อมีเฉพาะคนที่ยินยอมให้เก็บพฤติกรรมและข้อมูลเวลาครบ — เดิม null ถูกแสดงเป็น 00:00:00 ดูเหมือนใช้เวลา 0 วินาที */}
+                        {q.totalSeconds != null
+                          ? <span className="text-xs tabular-nums text-slate-500" title="เวลาที่ใช้ทำข้อนี้">{formatTime(q.totalSeconds)}</span>
+                          : <span className="text-[11px] text-slate-400" title="นักเรียนไม่ได้ยินยอมให้เก็บข้อมูลพฤติกรรมระหว่างสอบ หรือข้อมูลเวลาไม่ครบ">ไม่ได้บันทึกเวลา</span>}
                       </div>
                     </div>
                     {q.imagePath && <img src={q.imagePath} alt="รูปโจทย์" className="mb-2 max-h-56 max-w-full rounded-lg border border-slate-200 object-contain" />}
@@ -2961,7 +2964,7 @@ const exportResultsPdf = (exam, results, courseName, subjectName) => {
   if (!results) return;
 
   const submitted = results.students.filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
-  const avgTimeList = results.students.map(usedSecondsOf).filter((v) => v != null);
+  const avgTimeList = submitted.map(usedSecondsOf).filter((v) => v != null);
   const avgTimeSec = avgTimeList.length
     ? Math.round(avgTimeList.reduce((sum, v) => sum + v, 0) / avgTimeList.length)
     : null;
@@ -3257,11 +3260,14 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
 
   // ค่าเฉลี่ยต้องคำนวณจากนักเรียนที่มีค่าจริงเท่านั้น — คนที่ยังสอบไม่เสร็จ
   // หรือ secondsUsed เป็น null ต้องไม่ถูกนำมารวมจนค่าเฉลี่ยผิดเพี้ยน
-  const usedTimes = (results?.students || []).map(usedSecondsOf).filter((v) => v != null);
-  const avgTimeSec = usedTimes.length ? Math.round(usedTimes.reduce((a, b) => a + b, 0) / usedTimes.length) : null;
   // ใช้กลุ่มเดียวกับ averageScorePct ของ backend และหน้าวิเคราะห์ (ส่งแล้ว + มีคะแนนเต็ม + ไม่ได้
   // ปฏิเสธความยินยอม exam_behavior) — เดิมอัตราผ่านนับทุกคน ตัวเลขการ์ดข้างกันจึงมาจากคนละกลุ่ม
   const passEligible = (results?.students || []).filter((s) => s.submittedAt && s.maxScore && s.examBehaviorConsent !== false);
+  // เวลาเฉลี่ยก็เป็นสถิติห้อง จึงใช้กลุ่มเดียวกัน (เดิมนับคนที่ไม่ยินยอมด้วย ผิดคำสัญญาในหน้าความยินยอม)
+  const usedTimes = passEligible.map(usedSecondsOf).filter((v) => v != null);
+  const avgTimeSec = usedTimes.length ? Math.round(usedTimes.reduce((a, b) => a + b, 0) / usedTimes.length) : null;
+  // ข้อความเมื่อการ์ดสถิติห้องไม่มีตัวเลข: แยก "ยังไม่มีใครส่ง" ออกจาก "ส่งแล้วแต่ไม่ยินยอมให้รวมสถิติ"
+  const noClassStatSub = results?.submittedCount > 0 ? "ผู้ส่งทุกคนไม่ยินยอมให้รวมสถิติห้อง" : "ยังไม่มีผู้ส่ง";
   const passedCount = passEligible.filter((s) => isPassingScore(s.totalScore, s.maxScore)).length;
   const passRatePct = passEligible.length ? Math.round((passedCount / passEligible.length) * 1000) / 10 : null;
   const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
@@ -3310,21 +3316,21 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
           icon={Award}
           label="คะแนนเฉลี่ยห้อง"
           value={results.averageScorePct == null ? "ไม่มีข้อมูล" : `${results.averageScorePct}%`}
-          sub={avgScoreRaw != null ? `${fmtScore(avgScoreRaw)}/${fmtScore(examMaxScore)} คะแนนเฉลี่ย` : results.submittedCount > 0 ? "ผู้ส่งทุกคนไม่ยินยอมให้รวมสถิติห้อง" : "ยังไม่มีผู้ส่ง"}
+          sub={avgScoreRaw != null ? `${fmtScore(avgScoreRaw)}/${fmtScore(examMaxScore)} คะแนนเฉลี่ย` : noClassStatSub}
           color="bg-orange-500"
         />
         <StatCard
           icon={CheckCircle}
           label="สัดส่วนผู้สอบผ่าน"
           value={passRatePct != null ? `${passRatePct}%` : "—"}
-          sub={passRatePct != null ? `ผ่าน ${passedCount}/${passEligible.length} คน · เกณฑ์ ${PASS_PCT}%` : "ยังไม่มีผู้ส่ง"}
+          sub={passRatePct != null ? `ผ่าน ${passedCount}/${passEligible.length} คน · เกณฑ์ ${PASS_PCT}%` : noClassStatSub}
           color="bg-emerald-500"
         />
         <StatCard
           icon={Clock}
           label="เวลาเฉลี่ย"
           value={avgTimeSec != null ? formatTime(avgTimeSec) : "—"}
-          sub={avgTimeSec != null ? `ต่อคน · จาก ${usedTimes.length} คนที่ส่ง` : "ยังไม่มีผู้ส่ง"}
+          sub={avgTimeSec != null ? `ต่อคน · จาก ${usedTimes.length} คนที่ส่ง` : noClassStatSub}
           color="bg-amber-500"
         />
       </div>

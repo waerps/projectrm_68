@@ -2623,7 +2623,7 @@ export function ExamAnalyticsView({
       {/* Tab Nav — แท็บอยู่ซ้าย ตัวเลือกรอบสอบ (เฉพาะแท็บที่ดูทีละรอบ) + ปุ่ม "ส่งออกรายงาน" อยู่ขวา
           ปุ่มส่งออกมีปุ่มเดียวต่อแท็บ รายการในเมนูเปลี่ยนตามแท็บที่เลือก */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <SegmentedControl value={activeTab} onChange={setActiveTab} options={TABS.map(t => ({ id: t.id, label: t.label, icon: t.icon }))} />
+        <SegmentedControl stretchTablet value={activeTab} onChange={setActiveTab} options={TABS.map(t => ({ id: t.id, label: t.label, icon: t.icon }))} />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 w-full lg:w-auto">
           {(activeTab === "overview" || activeTab === "progress") && (
             <SegmentedControl size="sm" stretchMobile value={examId} onChange={setExamId}
