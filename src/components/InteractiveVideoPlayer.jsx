@@ -8,10 +8,11 @@ export default function InteractiveVideoPlayer(props) {
   return <VideoSession key={props.video.VideoId} {...props} />;
 }
 
-function VideoSession({ video, token, onProgress, onLearningChange }) {
+function VideoSession({ video, token, onProgress, onLearningChange, saveRef }) {
   const videoRef = useRef(null);
   const questionPanelRef = useRef(null);
   const loadingRef = useRef(true);
+  const resumeRef = useRef(null);
   const initialProgress = useRef({ time: video.LastWatchTime, percent: video.WatchPercent });
   const pendingSegments = useRef(new Set());
   const pendingEvents = useRef([]);
@@ -42,7 +43,7 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
   useEffect(() => {
     let cancelled = false;
     setActive(null); activeRef.current = null; setFeedback(null); setError(""); setLoading(true); loadingRef.current = true;
-    getVideoLearningState(token, video.VideoId).then(data => { if (!cancelled) { learningRef.current = data; setLearning(data); setLoading(false); loadingRef.current = false; } })
+    getVideoLearningState(token, video.VideoId).then(data => { if (!cancelled) { learningRef.current = data; setLearning(data); setLoading(false); loadingRef.current = false; resumeRef.current?.(); } })
       .catch(err => { if (!cancelled) setError(String(err)); });
     return () => { cancelled = true; };
   }, [token, video.VideoId, loadAttempt]);
@@ -60,7 +61,8 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
     const element = videoRef.current;
     if (!element) return undefined;
     const flush = async (force = false) => {
-      // Wait for the previous write, then drain anything collected while it ran.
+      const position = element.currentTime;
+      // Capture the position before waiting: closing can detach the media element.
       while (flushInFlight.current) await flushInFlight.current;
       if (!Number.isFinite(element.duration)) throw new Error("ยังไม่พร้อมบันทึกการรับชม กรุณาลองอีกครั้ง");
       const indexes = [...pendingSegments.current];
@@ -73,10 +75,10 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
         try {
           const result = await updateVideoWatchSegments(token, video.VideoId, {
             segmentIndexes: indexes, segmentEvents: events,
-            sessionId: watchSessionId.current, lastWatchTime: element.currentTime,
+            sessionId: watchSessionId.current, lastWatchTime: position,
           });
           const data = result?.data || {};
-          onProgressRef.current?.(video.VideoId, Number(data.watchPercent || 0), Number(data.lastWatchTime ?? element.currentTime));
+          onProgressRef.current?.(video.VideoId, Number(data.watchPercent || 0), Number(data.lastWatchTime ?? position));
           // blockedByQuestion identifies the next gate, not a question due now.
           return data;
         } catch (err) {
@@ -90,6 +92,7 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
       finally { flushInFlight.current = null; setSavingProgress(false); }
     };
     flushRef.current = flush;
+    if (saveRef) saveRef.current = () => flush(true);
     const saveInBackground = (force = false) => {
       flush(force).catch(() => setError("บันทึกการรับชมไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อแล้วส่งคำตอบอีกครั้ง"));
     };
@@ -119,15 +122,27 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
         pendingEvents.current.push({ eventId: requestId(), segmentIndex: index });
       }
     };
+    let resumed = false;
     const resume = () => {
-      const verified = Math.min(Number(initialProgress.current.time || 0), element.duration * Number(initialProgress.current.percent || 0) / 100);
-      furthestAllowed.current = Math.max(0, verified);
-      if (verified > 0 && verified < element.duration - 3) element.currentTime = verified;
+      if (resumed || loadingRef.current || !Number.isFinite(element.duration)) return;
+      resumed = true;
+      const verified = element.duration * Number(initialProgress.current.percent || 0) / 100;
+      const due = learningRef.current.questions.find(q => !q.answered);
+      const position = Math.max(0, Math.min(Number(initialProgress.current.time || 0), element.duration, verified + 10, due ? due.timestampMs / 1000 : Infinity));
+      furthestAllowed.current = Math.max(verified, position);
+      // Keep the partial first unverified segment when continuing after a pause/close.
+      currentVisit.current = { index: Math.floor(position / 10), seconds: position % 10, reported: false };
+      if (position > 0) {
+        correctingSeek.current = true;
+        element.currentTime = position;
+      }
     };
+    resumeRef.current = resume;
+    resume();
     const guardSeek = () => {
       reset();
-      currentVisit.current = { index: null, seconds: 0, reported: false };
       if (correctingSeek.current) return;
+      currentVisit.current = { index: null, seconds: 0, reported: false };
       const nextQuestion = learningRef.current.questions.filter(q => !q.answered).sort((a, b) => a.timestampMs - b.timestampMs)[0];
       const questionLimit = nextQuestion ? nextQuestion.timestampMs / 1000 : Infinity;
       if (element.currentTime > Math.min(furthestAllowed.current + 1, questionLimit)) {
@@ -136,15 +151,18 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
         queueMicrotask(() => { correctingSeek.current = false; });
       }
     };
-    const pause = () => { reset(); if (!activeRef.current && !loadingRef.current) saveInBackground(); };
-    const guardPlay = () => { if (activeRef.current || loadingRef.current) element.pause(); };
-    const timer = setInterval(() => { if (!activeRef.current && !loadingRef.current) saveInBackground(); }, 10000);
+    const pause = () => { reset(); if (!loadingRef.current) saveInBackground(true); };
+    const seeked = () => { correctingSeek.current = false; reset(); };
+    const visibility = () => { if (document.hidden) pause(); };
+    document.addEventListener("visibilitychange", visibility);
+    const guardPlay = () => { if (activeRef.current || loadingRef.current) element.pause(); else lastSample.current = { current: element.currentTime, now: performance.now() }; };
+    const timer = setInterval(() => { if (!activeRef.current && !loadingRef.current) saveInBackground(true); }, 10000);
     element.addEventListener("loadedmetadata", resume, { once: true });
     element.addEventListener("play", guardPlay);
     element.addEventListener("timeupdate", sample); element.addEventListener("seeking", guardSeek);
-    element.addEventListener("seeked", reset); element.addEventListener("pause", pause); element.addEventListener("ended", pause);
-    return () => { flushRef.current = null; clearInterval(timer); element.removeEventListener("play", guardPlay); element.removeEventListener("timeupdate", sample); element.removeEventListener("seeking", guardSeek); element.removeEventListener("seeked", reset); element.removeEventListener("pause", pause); element.removeEventListener("ended", pause); };
-  }, [token, video.VideoId, openQuestion]);
+    element.addEventListener("seeked", seeked); element.addEventListener("pause", pause); element.addEventListener("ended", pause);
+    return () => { if (!loadingRef.current && element.currentTime > 0) saveInBackground(true); resumeRef.current = null; if (saveRef) saveRef.current = null; document.removeEventListener("visibilitychange", visibility); flushRef.current = null; clearInterval(timer); element.removeEventListener("play", guardPlay); element.removeEventListener("timeupdate", sample); element.removeEventListener("seeking", guardSeek); element.removeEventListener("seeked", seeked); element.removeEventListener("pause", pause); element.removeEventListener("ended", pause); };
+  }, [token, video.VideoId, openQuestion, saveRef]);
 
   const answer = async () => {
     if (!selected || !active) return;
@@ -153,6 +171,8 @@ function VideoSession({ video, token, onProgress, onLearningChange }) {
       if (!flushRef.current) throw new Error("วิดีโอยังไม่พร้อม กรุณาลองอีกครั้ง");
       await flushRef.current(true);
       const result = await submitVideoQuestionAnswer(token, video.VideoId, active.questionId, selected, requestId());
+      // A segment submitted before its question was answered may have been capped.
+      if (currentVisit.current.reported) pendingSegments.current.add(currentVisit.current.index);
       setFeedback(result);
       const current = learningRef.current;
         const questions = current.questions.map(q => q.questionId === active.questionId ? { ...q, answered: true, isCorrect: result.isCorrect } : q);

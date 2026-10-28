@@ -128,6 +128,15 @@ export default function StudentSubjectDetail() {
     ["videos", "files", "exam"].includes(location.state?.tab) ? location.state.tab : "videos"
   );
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const videoSaveRef = useRef(null);
+  const [closingVideo, setClosingVideo] = useState(false);
+  const closeVideo = async () => {
+    if (closingVideo) return;
+    setClosingVideo(true);
+    try { await videoSaveRef.current?.(); setSelectedVideo(null); }
+    catch { showToast("error", "บันทึกเวลาไม่สำเร็จ", "กรุณาตรวจสอบอินเทอร์เน็ตแล้วกดปิดอีกครั้ง"); }
+    finally { setClosingVideo(false); }
+  };
 
   const [examLoading, setExamLoading] = useState(false);
   const [examSchedule, setExamSchedule] = useState([]);
@@ -407,12 +416,12 @@ export default function StudentSubjectDetail() {
           <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-4 border-b border-neutral-200">
               <h2 className="font-bold text-neutral-900 truncate pr-4">{selectedVideo.VideoTitle}</h2>
-              <button onClick={() => setSelectedVideo(null)} className="shrink-0 text-neutral-500 hover:text-neutral-800 transition">
-                <X className="h-5 w-5" />
+              <button onClick={closeVideo} disabled={closingVideo} aria-label={closingVideo ? "กำลังบันทึกเวลา" : "ปิดวิดีโอ"} className="shrink-0 text-neutral-500 hover:text-neutral-800 transition">
+                {closingVideo ? <Loader2 className="h-5 w-5 animate-spin" /> : <X className="h-5 w-5" />}
               </button>
             </div>
             {getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "upload" ? (
-              <InteractiveVideoPlayer video={selectedVideo} token={token} onProgress={handleProgress} onLearningChange={handleLearningChange} />
+              <InteractiveVideoPlayer saveRef={videoSaveRef} video={selectedVideo} token={token} onProgress={handleProgress} onLearningChange={handleLearningChange} />
             ) : getVideoType(selectedVideo.VideoUrl, selectedVideo.VideoType) === "youtube" ? (
               <YoutubePlayer videoId={selectedVideo.VideoId} youtubeId={selectedVideo.VideoUrl} />
             ) : (
