@@ -1,3 +1,4 @@
+// ─── หน้าคลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Spinner from "../components/ui/Spinner";
 import { useSearchParams } from "react-router-dom";
@@ -15,11 +16,6 @@ import { BookOpen as LuBookOpen } from "lucide-react";
 import ExamRightsNotice from "./ExamRightsNotice";
 import ErrorState from "../components/ui/ErrorState";
 
-// ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
-// ไม่ได้ผูกกับคอร์สหรือรอบสอบเลย มันเป็นของครูต่อวิชาล้วน ๆ หน้านี้จึงเข้าตรงจากเมนู
-// วิชาที่เลือกอยู่เก็บไว้ใน query string (?subjectId=) เพื่อให้รีเฟรชหรือกดย้อนกลับแล้วยังอยู่ที่เดิม
-// รับวันที่จากข้อมูลวิชา แล้วแปลงเป็นวันที่สั้น ๆ ภาษาไทยสำหรับแสดงบนการ์ดและตาราง
-// ถ้าไม่มีวันที่หรือข้อมูลใช้ไม่ได้ จะคืน null เพื่อให้หน้าจอแสดงขีดแทน
 const fmtDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
