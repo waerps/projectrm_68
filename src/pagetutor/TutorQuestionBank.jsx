@@ -6,7 +6,7 @@ import { useToast } from "../components/useToast";
 import { ToastContainer } from "../components/Toast";
 import { fetchMySubjects, prefetchBank } from "../utils/examShared";
 import { readSessionCache, writeSessionCache } from "../utils/sessionCache";
-// ตัวจัดการคลัง (ไฟล์ใหญ่ รวมตัวแสดงสูตรคณิต) โหลดเมื่อเลือกวิชาแล้วเท่านั้น — หน้ารายการวิชาจึงเปิดเร็วขึ้น
+// โหลดส่วนเพิ่ม/แก้ไขข้อสอบเมื่อเลือกวิชาแล้ว เพื่อให้หน้าเลือกวิชาเปิดได้เร็ว
 const BankTab = lazy(() => import("./TutorExamDetail.jsx").then((m) => ({ default: m.BankTab })));
 import { PAGE_TITLE, PAGE_SUBTITLE } from "../components/ui/tokens";
 import Breadcrumb from "../components/ui/Breadcrumb";
@@ -16,15 +16,10 @@ import ExamRightsNotice from "./ExamRightsNotice";
 import ErrorState from "../components/ui/ErrorState";
 
 // ─── คลังข้อสอบของฉัน — ทางลัดจากเมนู ────────────────────────────────────────
-// เดิมกว่าจะเข้าถึงคลังได้ต้องไล่ คอร์ส → วิชา → รอบสอบ → แท็บคลัง ทั้งที่คลังข้อสอบ
 // ไม่ได้ผูกกับคอร์สหรือรอบสอบเลย มันเป็นของครูต่อวิชาล้วน ๆ หน้านี้จึงเข้าตรงจากเมนู
-//
-// ตัวจัดการคลังใช้ BankTab ตัวเดียวกับในหน้าจัดการการสอบ ไม่ได้เขียนใหม่
-// แก้ที่เดียวแล้วเหมือนกันทั้งสองทางเข้าเสมอ
-//
 // วิชาที่เลือกอยู่เก็บไว้ใน query string (?subjectId=) เพื่อให้รีเฟรชหรือกดย้อนกลับแล้วยังอยู่ที่เดิม
-// หน้าตายึดตามหน้าฝั่งแอดมิน (AdminTutors / AdminStudents): โทน slate + ส้ม,
-// การ์ดสถิติไอคอนสี่เหลี่ยมทึบ, แถบค้นหาการ์ดขาว และตารางชุดเดียวกัน
+// รับวันที่จากข้อมูลวิชา แล้วแปลงเป็นวันที่สั้น ๆ ภาษาไทยสำหรับแสดงบนการ์ดและตาราง
+// ถ้าไม่มีวันที่หรือข้อมูลใช้ไม่ได้ จะคืน null เพื่อให้หน้าจอแสดงขีดแทน
 const fmtDate = (v) => {
   if (!v) return null;
   const d = new Date(v);
@@ -32,6 +27,8 @@ const fmtDate = (v) => {
   return d.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "2-digit" });
 };
 
+// รับประเภทคอร์สของวิชา แล้วแสดงป้ายว่าเป็นคอร์สเดี่ยวหรือคอร์สรวม
+// ถ้าไม่มีประเภทคอร์ส จะแสดงข้อความว่าไม่มีคอร์สที่สอนอยู่
 function CourseTypeBadges({ types = [] }) {
   if (!types.length) return <span className="text-[11px] text-slate-500">ไม่มีคอร์สที่สอนอยู่</span>;
   return (
@@ -42,6 +39,8 @@ function CourseTypeBadges({ types = [] }) {
   );
 }
 
+// หน้าคลังข้อสอบหลัก: แสดงรายการวิชาให้เลือกก่อน แล้วเปิดข้อสอบของวิชาที่เลือก
+// รหัสวิชาที่เลือกอยู่ใน URL (?subjectId=...) จึงเปิดลิงก์เดิมหรือรีเฟรชแล้วอยู่ที่วิชาเดิม
 export default function TutorQuestionBank() {
   const { toasts, showToast, removeToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,6 +53,8 @@ export default function TutorQuestionBank() {
   const [search, setSearch] = useState("");
   const [courseTypeFilter, setCourseTypeFilter] = useState("all");
 
+  // ขอรายการวิชาและจำนวนข้อสอบจากหลังบ้าน แล้วเก็บไว้ใช้แสดงครั้งต่อไปในแท็บนี้
+  // ถ้าขอข้อมูลไม่สำเร็จ จะเก็บข้อความผิดพลาดไว้ให้ผู้ใช้กดลองใหม่
   const load = useCallback(() => {
     setLoading(!readSessionCache("tutor-bank-subjects"));
     setError("");
@@ -70,35 +71,44 @@ export default function TutorQuestionBank() {
       .finally(() => setLoading(false));
   }, []);
 
+  // เมื่อเปิดหน้านี้ ให้โหลดรายการวิชาทันที
   useEffect(() => { load(); }, [load]);
-  // เปิดหน้ามาพร้อม ?subjectId= : เริ่มโหลดข้อสอบในคลังทันที ระหว่างรอไฟล์ตัวจัดการคลังโหลด
+  // ถ้า URL ระบุวิชาไว้ ให้เริ่มขอข้อสอบของวิชานั้นล่วงหน้า ระหว่างรอหน้าจัดการคลังโหลด
   useEffect(() => { if (subjectId) prefetchBank(subjectId); }, [subjectId]);
 
+  // หาข้อมูลวิชาที่ผู้ใช้กำลังเปิด เพื่อแสดงชื่อวิชาและประเภทคอร์สด้านบน
   const selected = subjects.find((s) => String(s.subjectId) === String(subjectId));
 
+  // คัดวิชาตามประเภทคอร์สที่เลือก ถ้าเลือก "ทุกประเภท" ก็ใช้ทุกวิชา
   const typeSubjects = useMemo(() => subjects.filter((s) =>
     courseTypeFilter === "all" || s.courseTypes?.includes(courseTypeFilter)
   ), [subjects, courseTypeFilter]);
 
+  // นับจำนวนข้อสอบทั้งหมด วิชาที่มีข้อสอบ และวิชาที่ยังว่าง จากวิชาที่ผ่านตัวกรองประเภท
   const stats = useMemo(() => ({
     questions: typeSubjects.reduce((a, s) => a + s.total, 0),
     ready: typeSubjects.filter((s) => s.total > 0).length,
     empty: typeSubjects.filter((s) => s.total === 0).length,
   }), [typeSubjects]);
 
+  // ค้นหาชื่อวิชาจากรายการที่ผ่านตัวกรองประเภทแล้ว โดยไม่สนตัวพิมพ์เล็กหรือใหญ่
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     if (!kw) return typeSubjects;
     return typeSubjects.filter((s) => s.subjectName.toLowerCase().includes(kw));
   }, [typeSubjects, search]);
 
+  // เมื่อเลือกวิชา ให้ใส่รหัสวิชาลง URL เพื่อสลับไปแสดงคลังข้อสอบของวิชานั้น
   const openSubject = (id) => setSearchParams({ subjectId: String(id) });
+  // เมื่อกดกลับ ให้ลบรหัสวิชาออกจาก URL และโหลดจำนวนข้อสอบใหม่หลังจากที่อาจมีการแก้ไข
   const backToList = () => {
     setSearchParams({});
     load();   // กลับมาแล้วให้ตัวเลขจำนวนข้อตรงกับที่เพิ่งแก้ไป
   };
 
-  // ── เลือกวิชาแล้ว: แสดงตัวจัดการคลังตัวเดียวกับหน้าจัดการการสอบ ──
+  // หน้าคลังหลังเลือกวิชา: เมื่อ URL มี subjectId (เช่น ?subjectId=1) จะแสดงคลังของวิชานั้น
+  // ส่วนหัว ชื่อวิชา ป้ายประเภทคอร์ส และปุ่ม "เปลี่ยนวิชา" อยู่ในไฟล์นี้
+  // รายการข้อสอบและปุ่มจัดการด้านล่างอยู่ใน BankTab ของ TutorExamDetail.jsx
   if (subjectId) {
     return (
       <div className="space-y-6 px-4 lg:px-0">
@@ -129,8 +139,8 @@ export default function TutorQuestionBank() {
           </button>
         </div>
 
-        {/* รอรายการวิชาโหลดเสร็จก่อนค่อยแสดง (ป้าย/ประกาศสิทธิ์ขึ้นกับวิชา) — ไม่ให้แทรกขึ้นมาดันคลังลงทีหลัง (CLS)
-            คลังยัง mount อยู่ใต้ hidden จึงโหลดข้อสอบไปพร้อมกัน */}
+        {/* รอชื่อและประเภทคอร์สของวิชาโหลดเสร็จก่อน จึงแสดงรายละเอียดวิชา
+            ระหว่างนั้น BankTab ยังเริ่มโหลดข้อสอบได้อยู่ แม้จะซ่อนหน้าจอไว้ชั่วคราว */}
         {loading && <Spinner block label="กำลังโหลดคลังข้อสอบ..." wrapperClassName="min-h-[40vh]" />}
         <div className={loading ? "hidden" : "space-y-6"}>
         {selected?.courseTypes?.includes("single") && <ExamRightsNotice standaloneBank />}
@@ -138,6 +148,7 @@ export default function TutorQuestionBank() {
           <p className="text-xs text-slate-500">วิชานี้ใช้คลังข้อสอบชุดเดียวกันทั้งคอร์สเดี่ยวและคอร์สรวม</p>
         )}
 
+        {/* ส่งรหัสวิชาให้ BankTab ไปขอข้อสอบจากหลังบ้าน และส่ง showToast ไว้แจ้งผลเมื่อบันทึก */}
         <Suspense fallback={<Spinner block label="กำลังโหลดคลังข้อสอบ..." wrapperClassName="min-h-[40vh]" />}>
           <BankTab
             subjectId={subjectId}
@@ -174,7 +185,7 @@ export default function TutorQuestionBank() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* การ์ดสรุป: วนข้อมูลสถิติทั้ง 3 แบบ แล้วสร้างการ์ดหน้าตาเดียวกันให้แต่ละแบบ */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 min-[360px]:[&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
         {[
           { label: "ข้อสอบทั้งหมด", value: stats.questions, unit: "ข้อ", color: "bg-orange-600", icon: FileQuestion },
@@ -196,7 +207,7 @@ export default function TutorQuestionBank() {
         })}
       </div>
 
-      {/* Search & Filter */}
+      {/* เมื่อพิมพ์หรือเปลี่ยนประเภทคอร์ส จะปรับรายการวิชาที่แสดงอยู่ด้านล่าง */}
       <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">

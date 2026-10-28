@@ -83,7 +83,7 @@ const TABS = [
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
 // ─── Questions Tab ───────────────────────────────────────────────────────────
-
+// หน้าต่างเล็กที่ให้ครูเลือกว่าจะพิมพ์ข้อสอบเองทีละข้อ หรือนำเข้าหลายข้อจาก Excel
 function AddMethodPicker({ onPick }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -106,6 +106,8 @@ function AddMethodPicker({ onPick }) {
 // รวมหรือเปลี่ยนชื่อหมวดในคลัง สำหรับซ่อมกรณีชื่อหมวดพิมพ์ไม่ตรงกัน
 // เช่น "กรดเบส" กับ "กรด เบส" ที่ความจริงคือหมวดเดียวกัน แต่ระบบมองเป็นคนละหมวด
 // ทำให้ตารางจัดชุดและกราฟรายหมวดแตกเป็นหลายก้อนโดยไม่จำเป็น
+// หน้าต่างจัดการหมวดหมู่: โหลดชื่อหมวดของวิชานี้ แล้วให้เปลี่ยนชื่อหรือรวมหมวด
+// เมื่อบันทึกสำเร็จจะบอกหน้าคลังให้โหลดรายการข้อสอบใหม่
 function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -116,6 +118,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
+  // ขอรายชื่อหมวดหมู่และจำนวนข้อในแต่ละหมวดจากหลังบ้าน
   const load = useCallback(() => {
     setLoading(true);
     fetchBankCategories(subjectId)
@@ -126,6 +129,7 @@ function BankCategoriesModal({ subjectId, onClose, onChanged }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // ส่งชื่อเดิม ชื่อใหม่ และตัวเลือกว่าจะตามไปแก้ข้อสอบที่เคยใช้แล้วหรือไม่
   const confirmRename = async () => {
     const to = renameTo.trim();
     if (!to || to === renamingFrom) { setRenamingFrom(null); return; }
@@ -280,6 +284,8 @@ function findSimilarCategory(name, options) {
   return best;
 }
 
+// ฟอร์มเพิ่มหรือแก้ไขข้อสอบ: ถ้ามี initial คือแก้ข้อเดิม ถ้าไม่มีคือเพิ่มข้อใหม่
+// เก็บโจทย์ รูป ตัวเลือก เฉลย ระดับความยาก หมวดหมู่ และระดับชั้นก่อนส่งให้ onSave
 function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel, categoryOptions, gradeLevelOptions, hideScore }) {
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
@@ -296,6 +302,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
     !String(q.category || "").trim() && "หมวดหมู่",
   ].filter(Boolean);
   const complete = missing.length === 0;
+  // ตรวจชนิดและขนาดรูปก่อนอัปโหลด แล้วเก็บที่อยู่รูปไว้กับข้อสอบที่กำลังแก้
   const handleImage = async (file) => {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
@@ -537,6 +544,7 @@ function QuestionFormPanel({ initial, saving, error, onSave, onClose, saveLabel,
   );
 }
 
+// ขั้นตอนนำเข้า Excel: อ่านไฟล์ในเบราว์เซอร์ ให้ครูตรวจรายการ แล้วจึงส่งข้อที่ใช้ได้ไปบันทึก
 function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions, gradeLevelOptions, existingItems }) {
   const [step, setStep] = useState(1); // 1 upload, 2 preview
   const [bulkGrade, setBulkGrade] = useState(""); // ระดับชั้นเดียวใส่ให้ทั้งไฟล์ที่ import ครั้งนี้ ไม่บังคับเลือก
@@ -551,6 +559,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
   const [confirming, setConfirming] = useState(false);
   const fileRef = useRef();
 
+  // อ่านไฟล์ Excel และแปลงแต่ละแถวเป็นข้อมูลข้อสอบสำหรับหน้าตรวจทาน
   const handleFile = async (file) => {
     if (!file) return;
     setLoading(true);
@@ -566,6 +575,7 @@ function ExcelImportFlow({ onCancel, onImported, onConfirmRows, categoryOptions,
     } finally { setLoading(false); }
   };
 
+  // เมื่อครูยืนยัน คัดแถวข้อมูลไม่ครบและข้อที่เลือกให้ข้ามออก แล้วส่งที่เหลือไปหลังบ้าน
   const handleConfirm = async () => {
     setConfirming(true);
     setError("");
@@ -950,13 +960,16 @@ function scaleScoresLocal(items, totalScore) {
   return items.map((it, i) => ({ ...it, score: scores[i] }));
 }
 
-// ─── Bank Tab — คลังข้อสอบของติวเตอร์ ───────────────────────────────────────
+// ─── หน้ารายการข้อสอบของวิชาที่เลือก ───────────────────────────────────────────
 // คลังเป็น "ของใครของมัน" ข้อสอบทุกข้อเป็นของครูที่สร้างมัน ครูคนอื่นที่สอนวิชาเดียวกัน
 // มีคลังของตัวเองแยกต่างหาก มองไม่เห็นและแตะของกันไม่ได้ (backend กรองด้วยเจ้าของจาก token
 // ทุก endpoint หน้าจอนี้จึงไม่ต้องกรองเองและไม่ต้องส่ง id ของครูไปไหน)
 // คลังไม่ผูกกับรอบสอบไหน ครูเติมไว้เรื่อย ๆ ระหว่างสอน แล้วหยิบมาจัดชุดตอนจะเปิดสอบ
 // แก้หรือลบข้อในคลังไม่กระทบข้อสอบที่เคยใช้สอบไปแล้ว เพราะอันนั้นเป็นสำเนาที่แช่แข็งไว้
 export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = null }) {
+  // subjectId บอกว่าจะเปิดวิชาไหน; items คือข้อสอบทั้งหมดที่หลังบ้านส่งกลับมา
+  // ค่า mode กำหนดว่าจะเปิดหน้าเลือกวิธีเพิ่ม ฟอร์มพิมพ์เอง หรือหน้านำเข้า Excel
+  // ค่า editing / deletingId บอกว่ากำลังแก้หรือลบข้อไหนอยู่
   // แคชข้อสอบของวิชานี้ไว้ในแท็บ — เปิดซ้ำจะเห็นรายการทันที แล้วค่อยอัปเดตจากเซิร์ฟเวอร์
   const bankCacheKey = `tutor-bank-${subjectId}`;
   const [items, setItems] = useState(() => readSessionCache(bankCacheKey) || []);
@@ -978,8 +991,11 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkPending, setBulkPending] = useState(null);  // งานหลายข้อที่รอยืนยัน { type: grade|category|delete, value, label }
 
+  // โหลดระดับชั้นให้ฟอร์มเพิ่ม/แก้ และคำสั่งเปลี่ยนระดับชั้นหลายข้อพร้อมกัน
   useEffect(() => { fetchGradeLevels().then(setGradeLevels).catch(() => setGradeLevels([])); }, []);
 
+  // ขอข้อสอบของวิชานี้จาก GET /api/bank?subjectId=... และเก็บสำเนาไว้ในแท็บ
+  // ถ้าเพิ่งเปิดวิชานี้ครั้งแรกจะแสดงตัวโหลด; ถ้าเคยเปิดแล้วจะแสดงข้อมูลเก่าระหว่างอัปเดต
   const load = useCallback(() => {
     if (!subjectId) return;
     const cacheKey = `tutor-bank-${subjectId}`;
@@ -995,6 +1011,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
       .finally(() => setLoading(false));
   }, [subjectId]);
 
+  // เปิดหน้าหรือเปลี่ยนวิชาเมื่อไร ให้โหลดข้อสอบของวิชานั้น
   useEffect(() => { load(); }, [load]);
 
   // ฟอร์มเพิ่ม/แก้ไข/นำเข้า อยู่ตำแหน่งเดิมเสมอ (เหนือรายการ) แต่ถ้าเปิดจากการกด "แก้ไข"
@@ -1005,12 +1022,14 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     }
   }, [mode, editing]);
 
+  // นับหมวดหมู่จากข้อสอบที่โหลดมา เพื่อนำไปเติมตัวกรองและฟอร์ม
   const categoryOptions = useMemo(() => {
     const m = {};
     for (const it of items) if (it.category) m[it.category] = (m[it.category] || 0) + 1;
     return Object.entries(m).map(([category, questionCount]) => ({ category, questionCount }));
   }, [items]);
 
+  // กรองข้อสอบตามคำค้นในโจทย์ หมวดหมู่ และระดับความยากที่ครูเลือกบนหน้าจอ
   const filtered = useMemo(() => {
     const kw = search.trim().toLowerCase();
     return items.filter((it) =>
@@ -1030,11 +1049,14 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     setBulkPending(null);
   }, [filtered]);
 
+  // การเลือกทั้งหมดหมายถึงเฉพาะข้อที่มองเห็นหลังกรอง ไม่ใช่ทุกข้อในคลัง
   const allVisibleSelected = filtered.length > 0 && filtered.every((it) => selectedIds.includes(it.id));
+  // เลือกหรือยกเลิกข้อเดียวสำหรับการจัดการหลายข้อ
   const toggleSelect = (id) => setSelectedIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  // เลือกหรือยกเลิกทุกข้อที่มองเห็นอยู่
   const toggleSelectAll = () => setSelectedIds(allVisibleSelected ? [] : filtered.map((it) => it.id));
 
-  // ทุกงานแบบหลายข้อวิ่งผ่านตัวนี้ตัวเดียว เพื่อให้ล้างสถานะ/โหลดใหม่/แจ้งเตือนเหมือนกันหมด
+  // งานแก้หรือลบหลายข้อใช้ฟังก์ชันนี้ร่วมกัน: ส่งคำสั่ง โหลดรายการใหม่ และแจ้งผลบนหน้าจอ
   const runBulk = async (fn, okTitle, okDetail = "") => {
     setBulkBusy(true);
     try {
@@ -1053,6 +1075,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
 
   // งานแบบหลายข้อทุกชนิดต้องผ่านการยืนยันก่อนเสมอ ไม่ใช่แค่การลบ
   // เพราะเลือก dropdown พลาดทีเดียวก็เปลี่ยนแท็กของข้อสอบหลายสิบข้อพร้อมกันแล้ว
+  // สร้างข้อความให้ครูตรวจว่ากำลังจะเปลี่ยนอะไร ก่อนกดยืนยันหลายข้อ
   const bulkPendingText = () => {
     const n = selectedIds.length;
     if (!bulkPending) return "";
@@ -1063,6 +1086,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
       : `เปลี่ยนระดับชั้นของ ${n} ข้อเป็น "${bulkPending.label}"?`;
   };
 
+  // หลังครูกดยืนยัน เลือก API ให้ตรงกับงาน: ลบ เปลี่ยนหมวด หรือเปลี่ยนระดับชั้น
   const runBulkPending = () => {
     if (!bulkPending) return;
     const n = selectedIds.length;
@@ -1083,13 +1107,14 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     }
   };
 
-  // ส่งออกทั้งคลัง (ไม่ใช่เฉพาะที่กรองอยู่) เพราะไฟล์นี้มีไว้แก้แบบออฟไลน์แล้วนำเข้ากลับ
+  // ดาวน์โหลดข้อสอบทั้งวิชาเป็น Excel รวมข้อที่ถูกซ่อนด้วยตัวกรอง เพื่อแก้แล้วนำเข้ากลับได้
   const handleExport = () => {
     if (!items.length) return;
     exportBankXlsx(items, subjectName);
     showToast?.("success", "ส่งออกไฟล์แล้ว", `คลัง ${items.length} ข้อ — แก้ไขใน Excel แล้วนำเข้ากลับได้`);
   };
 
+  // รับข้อสอบจากฟอร์ม แล้วส่ง POST /api/bank เพื่อเพิ่มหนึ่งข้อ ก่อนล้างฟอร์มให้เพิ่มต่อได้
   const handleAddOne = async (q) => {
     setSaving(true); setFormError("");
     try {
@@ -1104,6 +1129,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     } finally { setSaving(false); }
   };
 
+  // ส่งข้อมูลที่แก้ไป PUT /api/bank/:id แล้วปิดฟอร์มและโหลดรายการใหม่
   const handleEditSave = async (q) => {
     setSaving(true); setFormError("");
     try {
@@ -1118,6 +1144,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     } finally { setSaving(false); }
   };
 
+  // หลังยืนยันลบ ส่ง DELETE /api/bank/:id แล้วโหลดรายการใหม่
   const handleDelete = async (id) => {
     try {
       await deleteBankQuestion(id);
@@ -1130,6 +1157,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
     }
   };
 
+  // ส่วนที่ครูเห็น: หัวข้อและปุ่มจัดการ → ตัวกรอง → รายการข้อสอบแต่ละข้อ
   return (
     <div className="space-y-4">
       {rightsNoticeMode && <ExamRightsNotice standaloneBank={rightsNoticeMode === "unknown"} />}
@@ -1160,6 +1188,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
         )}
       </div>
 
+      {/* เปิดหน้าต่างจัดการหมวดหมู่เมื่อครูกดปุ่มด้านบน */}
       {showCategories && (
         <BankCategoriesModal
           subjectId={subjectId}
@@ -1168,6 +1197,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
         />
       )}
 
+      {/* พื้นที่ฟอร์มเพิ่ม/แก้/นำเข้า จะแสดงเฉพาะโหมดที่ครูเลือก */}
       <div ref={panelRef}>
         {mode === "picker" && (
           <div className="border border-slate-200 rounded-2xl p-5 relative">
@@ -1237,6 +1267,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
         )}
       </div>
 
+      {/* ช่องค้นหาและตัวกรองทำงานกับ items ที่โหลดมาในเบราว์เซอร์ ไม่เรียก API ทุกครั้งที่พิมพ์ */}
       {items.length > 0 && !editing && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[200px]">
@@ -1265,6 +1296,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
         </div>
       )}
 
+      {/* เมื่อเลือกข้อสอบอย่างน้อยหนึ่งข้อ จะแสดงคำสั่งแก้หรือลบหลายข้อพร้อมกัน */}
       {selectedIds.length > 0 && !editing && (
         <div className="border border-orange-200 bg-orange-50 rounded-xl px-4 py-3 flex flex-wrap items-center gap-2">
           <p className="text-xs font-semibold text-orange-800">เลือกไว้ {selectedIds.length} ข้อ</p>
@@ -1349,6 +1381,7 @@ export function BankTab({ subjectId, showToast, subjectName, rightsNoticeMode = 
       {/* (แก้บั๊ก) เดิมรายการข้อสอบด้านล่างนี้ไม่ได้ถูกกันด้วย !editing เหมือนแถบ
           ค้นหา/แถบเลือกหลายข้อที่อยู่ใกล้กัน ทำให้ยังกดปุ่ม "แก้ไข" ข้ออื่นซ้อนได้
           ระหว่างที่ฟอร์มแก้ไขข้อเดิมเปิดค้างอยู่ จึงเพิ่ม !editing เข้าไปด้วย */}
+      {/* แต่ละแถวแสดงโจทย์ หมวดหมู่ ความยาก ระดับชั้น ประวัติการใช้ และปุ่มแก้/ลบ */}
       {!editing && !loadError && (!loading && items.length === 0 && !mode ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-slate-200 rounded-2xl">
           <FileQuestion className="h-10 w-10 text-slate-300 mb-3" />

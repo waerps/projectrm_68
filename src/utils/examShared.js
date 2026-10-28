@@ -349,9 +349,12 @@ export async function fetchTopicBreakdown(examId) {
 
 // ── คลังข้อสอบของวิชา (/api/bank) ─────────────────────────────────────────────
 // คลังแยกจากชุดที่ใช้สอบจริง แก้ข้อในคลังไม่กระทบข้อสอบที่เคยใช้ไปแล้ว
+// ไฟล์นี้เป็นทางผ่านจากปุ่มใน BankTab ไปยังหลังบ้าน tutor.bank.routes.js
+// authHeaders() แนบข้อมูลล็อกอินไปด้วย; หลังบ้านจึงรู้ว่าติวเตอร์คนไหนเป็นเจ้าของคลัง
 const BANK_BASE = `${API_URL}/api/bank`;
 
 // GET /api/bank?subjectId= → [{ id, text, options, correct, level, category, explanation, usedCount, lastUsed }]
+// โหลดข้อสอบของวิชาที่เลือกมาแสดงเป็นรายการบนหน้าจอ
 export async function fetchBank(subjectId) {
   const { data } = await axios.get(BANK_BASE, { params: { subjectId }, headers: authHeaders() });
   return data;
@@ -367,6 +370,7 @@ export function prefetchBank(subjectId) {
   prefetchedBank.set(String(subjectId), p);
 }
 // รับผลที่โหลดล่วงหน้าไว้ (ใช้ได้ครั้งเดียว — โหลดครั้งถัดไปจะดึงข้อมูลใหม่เสมอ)
+// BankTab ใช้ผลที่หน้าเลือกวิชาเริ่มโหลดไว้ ถ้าไม่มีจึงขอข้อมูลใหม่
 export function takeBank(subjectId) {
   const p = prefetchedBank.get(String(subjectId));
   prefetchedBank.delete(String(subjectId));
@@ -398,17 +402,19 @@ export function fetchGradeLevels() {
   return gradeLevelsPromise;
 }
 
-// POST /api/bank → เพิ่มเข้าคลัง ใช้ได้ทั้งพิมพ์เองทีละข้อและ import Excel หลายข้อ
+// POST /api/bank → ส่งข้อสอบที่พิมพ์ในฟอร์มไปเพิ่มเข้าคลัง
 export async function addBankQuestions(subjectId, questions) {
   const { data } = await axios.post(BANK_BASE, { subjectId, questions }, { headers: authHeaders() });
   return data;
 }
 
+// ส่งข้อมูลใหม่ของข้อที่ครูกดไอคอนดินสอไปบันทึก
 export async function updateBankQuestion(id, patch) {
   const { data } = await axios.put(`${BANK_BASE}/${id}`, patch, { headers: authHeaders() });
   return data;
 }
 
+// ส่งรหัสข้อที่ครูยืนยันลบไปหลังบ้าน
 export async function deleteBankQuestion(id) {
   const { data } = await axios.delete(`${BANK_BASE}/${id}`, { headers: authHeaders() });
   return data;
@@ -416,6 +422,7 @@ export async function deleteBankQuestion(id) {
 
 // POST /api/bank/upsert → นำเข้าจาก Excel แบบรู้จักของเดิม
 // แถวที่มี bankId ของวิชานี้จะอัปเดตทับ ที่เหลือเพิ่มใหม่ → { updated, inserted }
+// ใช้หลังครูตรวจตัวอย่างและยืนยันนำเข้าใน ExcelImportFlow
 export async function upsertBankQuestions(subjectId, questions) {
   const { data } = await axios.post(`${BANK_BASE}/upsert`, { subjectId, questions }, { headers: authHeaders() });
   return data;
