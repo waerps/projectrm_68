@@ -3306,7 +3306,7 @@ function ResultsTab({ exam, courseId, subjectId, courseName, subjectName }) {
   const joinedPct = results?.enrolledCount ? Math.round((results.joinedCount / results.enrolledCount) * 100) : 0;
   const submittedPct = results?.enrolledCount ? Math.round((results.submittedCount / results.enrolledCount) * 100) : 0;
   const avgScoreRaw = passEligible.length
-    ? passEligible.reduce((sum, s) => sum + s.totalScore, 0) / passEligible.length
+    ? passEligible.reduce((sum, s) => sum + Number(s.totalScore), 0) / passEligible.length
     : null;
   const examMaxScore = passEligible.length ? passEligible[0].maxScore : (results?.students?.[0]?.maxScore ?? null);
 
