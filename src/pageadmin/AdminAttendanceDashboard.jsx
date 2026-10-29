@@ -15,6 +15,7 @@ import ErrorState from "../components/ui/ErrorState";
 import { CALLOUT, CALLOUT_ICON } from "../components/ui/tokens";
 import { STAT_LABEL, STAT_VALUE, STAT_UNIT, STAT_SUB } from "../components/ui/tokens";
 import { Info } from "lucide-react";
+import { useNavigate } from "react-router-dom"; // ★ ใหม่: ใช้เปิดหน้ารายละเอียดของการ์ดสรุป
 const API_BASE = `${API_URL}/api/admin`;
 
 // ── Avatar สีวน ──────────────────────────────────────────────
@@ -136,6 +137,19 @@ const MONTH_NAMES_TH = [
 ];
 
 const CURRENT_YEAR_AD = new Date().getFullYear();
+
+// ★ ใหม่: อ่านค่า month/year จาก query string (ใช้ร่วมกับหน้า AdminAttendanceMetricDetail)
+function readMonthParam(search) {
+  const v = new URLSearchParams(search).get('month');
+  const n = Number(v);
+  return v && v !== 'all' && n >= 1 && n <= 12 ? n : 'all';
+}
+function readYearParam(search) {
+  const v = new URLSearchParams(search).get('year');
+  if (v === 'all') return 'all';
+  const n = Number(v);
+  return v && n > 2000 && n < 2200 ? n : new Date().getFullYear();
+}
 const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => CURRENT_YEAR_AD - i); // ย้อนหลัง 8 ปี ปรับตัวเลขนี้ได้ตามจำนวนปีที่มีข้อมูลจริงในระบบ
 
 // ── CSV Export ────────────────────────────────────────────────
@@ -490,8 +504,10 @@ function SessionDetailModal({ tutor, sessions, sessionsLoading, startDate, endDa
 // ── Main Dashboard ────────────────────────────────────────────
 // embedded = แสดงเป็นแท็บในหน้าจัดการติวเตอร์ (หัวหน้าหลักอยู่ที่หน้านั้นแล้ว จึงใช้หัวข้อย่อยแทน h1)
 export default function TutorAttendanceDashboard({ embedded = false }) {
-  const [selectedMonthNum, setSelectedMonthNum] = useState('all');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const navigate = useNavigate(); // ★ ใหม่
+  // ★ ใหม่: อ่านเดือน/ปีเริ่มต้นจาก URL (?month=10&year=2026) — กดย้อนกลับจากหน้ารายละเอียดแล้วฟิลเตอร์ไม่หาย
+  const [selectedMonthNum, setSelectedMonthNum] = useState(() => readMonthParam(window.location.search));
+  const [selectedYear, setSelectedYear] = useState(() => readYearParam(window.location.search));
   const selectedMonth = useMemo(
     () => buildRange(selectedMonthNum, selectedYear),
     [selectedMonthNum, selectedYear]
@@ -683,6 +699,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
   //   เพื่อให้ stat ทั้งหมดเป็นเรื่อง attendance ล้วนๆ ไม่มีการเงินปน
   const STAT_CARDS = [
     {
+      key: 'avg-rate', // ★ ใหม่: ใช้เป็น path ของหน้ารายละเอียด /admin/tutors/attendance/avg-rate
       label: 'อัตราเช็กอินเฉลี่ย',
       value: avgRate,
       unit: '%',
@@ -690,6 +707,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
       color: 'bg-emerald-500',
     },
     {
+      key: 'missed', // ★ ใหม่: ใช้เป็น path ของหน้ารายละเอียด /admin/tutors/attendance/missed
       label: 'คาบที่ยังไม่ได้เช็กอิน',
       value: missedTotal,
       unit: 'คาบ',
@@ -697,6 +715,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
       color: missedTotal > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
+      key: 'at-risk', // ★ ใหม่: ใช้เป็น path ของหน้ารายละเอียด /admin/tutors/attendance/at-risk
       label: 'ติวเตอร์เช็กอินต่ำกว่า 50%',
       value: atRisk,
       unit: 'คน',
@@ -704,6 +723,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
       color: atRisk > 0 ? 'bg-red-500' : 'bg-slate-400',
     },
     {
+      key: 'full-checkin', // ★ ใหม่: ใช้เป็น path ของหน้ารายละเอียด /admin/tutors/attendance/full-checkin
       label: 'ติวเตอร์เช็กอินครบ 100%',
       value: fullyRecorded,
       unit: 'คน',
@@ -712,6 +732,7 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
     },
     // ★ เพิ่มตรงนี้
     {
+      key: 'top-release', // ★ ใหม่: ใช้เป็น path ของหน้ารายละเอียด /admin/tutors/attendance/top-release
       label: 'ปล่อยคลาสมากที่สุด',
       value: topReleaser?.Nickname || '—',
       unit: topReleaser ? `${topReleaser.ReleaseCount} ครั้ง` : '',
@@ -719,6 +740,20 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
       color: topReleaser ? 'bg-amber-500' : 'bg-slate-400',
     },
   ];
+
+  // ★ ใหม่: กดการ์ดสรุป → เปิดหน้าใหม่ที่แสดงเฉพาะข้อมูลของการ์ดนั้น (ส่งเดือน/ปีที่เลือกไปด้วย)
+  const openStatDetail = (key) => {
+    const qs = new URLSearchParams({ month: String(selectedMonthNum), year: String(selectedYear) });
+    navigate(`/admin/tutors/attendance/${key}?${qs.toString()}`);
+  };
+
+  // ★ ใหม่: เปลี่ยนเดือน/ปีแล้วเขียนลง URL ด้วย (คง ?tab=attendance เดิมไว้) เพื่อให้แชร์ลิงก์/ย้อนกลับได้
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('month', String(selectedMonthNum));
+    params.set('year', String(selectedYear));
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}?${params.toString()}`);
+  }, [selectedMonthNum, selectedYear]);
 
   const SortIcon = ({ col }) => {
     if (sortBy !== col) return null;
@@ -782,20 +817,31 @@ export default function TutorAttendanceDashboard({ embedded = false }) {
 
       {/* ── Stats Grid ─────────────────────────────────── */}
       <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        {STAT_CARDS.map(({ label, value, unit, sub, icon: Icon, color }) => (
-          <div key={label} className="flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition">
-            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
+        {/* ★ ใหม่: เปลี่ยนการ์ดจาก <div> เป็น <button> กดแล้วไปหน้ารายละเอียดของการ์ดนั้น */}
+        {STAT_CARDS.map(({ key, label, value, unit, sub, icon: Icon, color }) => (
+          <button
+            type="button"
+            key={key}
+            onClick={() => openStatDetail(key)}
+            title={`ดูรายละเอียด: ${label}`}
+            className="group w-full text-left flex items-start gap-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 transition cursor-pointer"
+          >
+            <span className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center shrink-0`}>
               <Icon className="h-5 w-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className={STAT_LABEL}>{label}</p>
-              <p className={`${STAT_VALUE} mt-0.5 truncate`}>
+            </span>
+            <span className="block min-w-0 flex-1">
+              <span className={`block ${STAT_LABEL}`}>{label}</span>
+              <span className={`block ${STAT_VALUE} mt-0.5 truncate`}>
                 {value}
                 {unit && <span className={STAT_UNIT}>{unit}</span>}
-              </p>
-              {sub && <p className={`${STAT_SUB} mt-0.5`}>{sub}</p>}
-            </div>
-          </div>
+              </span>
+              {sub && <span className={`block ${STAT_SUB} mt-0.5`}>{sub}</span>}
+              {/* ★ ใหม่: ป้ายบอกว่ากดได้ */}
+              <span className="mt-1 inline-flex items-center gap-0.5 text-[11px] font-semibold text-orange-600 opacity-70 group-hover:opacity-100">
+                ดูรายละเอียด <ChevronRight className="w-3 h-3" />
+              </span>
+            </span>
+          </button>
         ))}
       </div>
 
@@ -1157,6 +1203,24 @@ function shortDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
 }
 
+// ★ ใหม่: helper แสดงช่วงวันที่ของสัปดาห์บนหัว Heatmap เช่น "6–12 ต.ค." หรือ "29 ก.ย. – 5 ต.ค."
+//   ตัดช่วงให้อยู่ในเดือนที่เลือก (สัปดาห์ "บางส่วน" จะแสดงเฉพาะวันที่อยู่ในเดือนนั้น)
+const TH_MONTH_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function parseISOLocal(str) {
+  const [y, m, d] = String(str).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function formatWeekRangeTH(weekStart, weekEnd, rangeStart, rangeEnd) {
+  if (!weekStart || !weekEnd) return '';
+  const s = rangeStart && weekStart < rangeStart ? rangeStart : weekStart;
+  const e = rangeEnd && weekEnd > rangeEnd ? rangeEnd : weekEnd;
+  const ds = parseISOLocal(s);
+  const de = parseISOLocal(e);
+  if (s === e) return `${ds.getDate()} ${TH_MONTH_SHORT[ds.getMonth()]}`;
+  if (ds.getMonth() === de.getMonth()) return `${ds.getDate()}–${de.getDate()} ${TH_MONTH_SHORT[de.getMonth()]}`;
+  return `${ds.getDate()} ${TH_MONTH_SHORT[ds.getMonth()]} – ${de.getDate()} ${TH_MONTH_SHORT[de.getMonth()]}`;
+}
+
 // ── Tooltip ───────────────────────────────────────────────────
 function HeatmapTooltip({ tooltip }) {
   if (!tooltip) return null;
@@ -1171,7 +1235,7 @@ function HeatmapTooltip({ tooltip }) {
         <p className="text-slate-300 text-[11px] mt-0.5">{tooltip.weekLabel}</p>
         <p className="text-slate-300 text-[11px]">{tooltip.dateRange}</p>
         <div className="mt-2 pt-2 border-t border-slate-700 flex items-center justify-between gap-2">
-          <span className="text-slate-400">วัน{tooltip.dayLabel}</span>
+          <span className="text-slate-400">วัน{tooltip.dayLabel}{tooltip.cellDate && ` ${tooltip.cellDate}`}{/* ★ ใหม่: ต่อท้ายวันที่ */}</span>
           <span className={`font-bold text-sm ${tooltip.count >= 8 ? 'text-red-400' :
             tooltip.count >= 5 ? 'text-orange-400' :
               tooltip.count >= 3 ? 'text-amber-400' : 'text-yellow-300'
@@ -1608,7 +1672,10 @@ function AbsenceHeatmap({ selectedMonth }) {
   }, [weeks, selectedMonth]);
 
   const handleMouseEnter = (e, t, w, day, count) => {
+    // ★ ใหม่: หา "วันที่จริง" ของช่องนี้ ให้ tooltip บอกว่าเป็นวันที่เท่าไหร่
+    const info = (weekDayInfo[w.YearWeek] || []).find(x => x.day === day);
     setTooltip({
+      cellDate: info ? shortDate(info.date) : '', // ★ ใหม่
       x: e.clientX, y: e.clientY,
       nickname: t.Nickname,
       weekLabel: `สัปดาห์ที่ ${w.weekIndex}`,
@@ -1706,6 +1773,10 @@ function AbsenceHeatmap({ selectedMonth }) {
                             สัปดาห์ที่ {w.weekIndex}
                             {isPartial && <span className="text-slate-400 font-normal normal-case"> (บางส่วน)</span>}
                           </span>
+                          {/* ★ ใหม่: แสดงช่วงวันที่จริงของสัปดาห์ (ตัดให้อยู่ในเดือนที่เลือก) */}
+                          <span className="text-[11px] font-medium text-slate-500 whitespace-nowrap">
+                            {formatWeekRangeTH(w.WeekStart, w.WeekEnd, selectedMonth?.start, selectedMonth?.end)}
+                          </span>
                           {allFuture ? (
                             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
                               ยังไม่ถึง
@@ -1732,14 +1803,24 @@ function AbsenceHeatmap({ selectedMonth }) {
                 <tr className="border-b border-slate-200 bg-slate-50/50">
                   <th className="px-5 py-1.5 sticky left-0 z-30 bg-slate-50 border-r border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                   {weeks.map(w =>
-                    DAY_ORDER.map(day => (
-                      <th key={`${w.YearWeek}-${day}`}
-                        className={`text-center px-1 py-1.5 text-[11px] font-semibold w-8
-                          ${day === 1 ? 'text-red-400' : day === 7 ? 'text-blue-400' : 'text-slate-400'}
-                          ${day === DAY_ORDER[0] ? 'border-l border-slate-200' : ''}`}>
-                        {DAY_LABELS[day]}
-                      </th>
-                    ))
+                    DAY_ORDER.map((day, i) => {
+                      // ★ ใหม่: ดึงวันที่จริงของช่องนี้จาก weekDayInfo มาแสดงใต้ชื่อวัน
+                      const info = weekDayInfo[w.YearWeek]?.[i];
+                      const dayNum = info ? parseISOLocal(info.date).getDate() : '';
+                      return (
+                        <th key={`${w.YearWeek}-${day}`}
+                          title={info ? `วัน${DAY_FULL[day]}ที่ ${shortDate(info.date)}` : undefined}
+                          className={`text-center px-1 py-1.5 text-[11px] font-semibold w-8
+                            ${day === 1 ? 'text-red-400' : day === 7 ? 'text-blue-400' : 'text-slate-400'}
+                            ${day === DAY_ORDER[0] ? 'border-l border-slate-200' : ''}`}>
+                          <span className="block leading-tight">{DAY_LABELS[day]}</span>
+                          {/* ★ ใหม่: เลขวันที่ — วันนอกเดือนที่เลือกแสดงสีจาง */}
+                          <span className={`block leading-tight text-[10px] font-medium ${info && !info.inRange ? 'text-slate-300' : 'text-slate-500'}`}>
+                            {dayNum}
+                          </span>
+                        </th>
+                      );
+                    })
                   )}
                   <th className="border-l border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wide" />
                 </tr>
@@ -1899,3 +1980,11 @@ function AbsenceHeatmap({ selectedMonth }) {
     </div>
   );
 }
+
+// ★ ใหม่: export helper/คอมโพเนนต์ย่อย ให้หน้า AdminAttendanceMetricDetail.jsx ใช้ร่วม (ไม่ต้องเขียนซ้ำ)
+/* eslint-disable react-refresh/only-export-components */
+export {
+  API_BASE, buildRange, MONTH_NAMES_TH, YEAR_OPTIONS, toLocalISODate, shortDate,
+  TutorAvatar, RateBar, readMonthParam, readYearParam,
+};
+/* eslint-enable react-refresh/only-export-components */

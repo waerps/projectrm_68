@@ -118,6 +118,8 @@ const AdminCourses = lazyPage(() => import("./pageadmin/AdminCourses.jsx"));
 const AdminSchedule = lazyPage(() => import("./pageadmin/AdminSchedule.jsx"));
 const AdminStudents = lazyPage(() => import("./pageadmin/AdminStudents.jsx"));
 const AdminTutors = lazyPage(() => import("./pageadmin/AdminTutors.jsx"));
+// ★ ใหม่: หน้ารายละเอียดของการ์ดสรุปในแท็บ "ชั่วโมงการสอน" (avg-rate / missed / at-risk / full-checkin / top-release)
+const AdminAttendanceMetricDetail = lazyPage(() => import("./pageadmin/AdminAttendanceMetricDetail.jsx"));
 const AdminFinance = lazyPage(() => import("./pageadmin/AdminFinance.jsx"));
 const AdminAnnouncements = lazyPage(() => import("./pageadmin/AdminAnnouncements.jsx"));
 const AdminNotification = lazyPage(() => import("./pageadmin/AdminNotification.jsx"));
@@ -221,6 +223,7 @@ const router = createBrowserRouter(
             { path: "schedule", element: <AdminSchedule /> },
             { path: "students", element: <AdminStudents /> },
             { path: "tutors", element: <AdminTutors /> },
+            { path: "tutors/attendance/:metric", element: <AdminAttendanceMetricDetail /> }, // ★ ใหม่: หน้ารายละเอียดการ์ดสรุป
             { path: "finance", element: <AdminFinance /> },
             { path: "announcements", element: <AdminAnnouncements /> },
             { path: "notification", element: <AdminNotification /> },
