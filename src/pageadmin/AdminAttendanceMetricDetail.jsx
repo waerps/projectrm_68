@@ -417,17 +417,18 @@ export default function AdminAttendanceMetricDetail() {
       </div>
 
       {/* ── สลับไปดูการ์ดอื่นได้โดยไม่ต้องกลับ ── */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      {/* ★ ใหม่: เปลี่ยนจากแถว flex (กว้างตามข้อความ) เป็น grid 5 คอลัมน์ ให้กว้างเต็มแถวเท่าการ์ดด้านบน */}
+      <div className="grid grid-cols-1 min-[360px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         {METRIC_KEYS.map(k => {
           const M = METRICS[k]; const I = M.icon; const active = k === metric;
           return (
             <button key={k} type="button" onClick={() => goMetric(k)} aria-current={active ? 'page' : undefined}
-              className={`shrink-0 inline-flex items-center gap-2 h-10 px-3 rounded-xl border text-xs font-bold transition ${active
+              className={`w-full min-w-0 flex items-center gap-2 min-h-12 px-3 py-2 rounded-xl border text-xs font-bold text-left transition ${active
                 ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-600 hover:border-orange-300 hover:text-orange-700'}`}>
-              <I className="h-4 w-4" />
-              <span className="whitespace-nowrap">{M.title}</span>
-              {!loading && <span className={`whitespace-nowrap rounded-md px-1.5 py-0.5 ${active ? 'bg-white/20' : 'bg-slate-100'}`}>{cardValue[k]}</span>}
+              <I className="h-4 w-4 shrink-0" />
+              <span className="flex-1 min-w-0 leading-snug">{M.title}</span>{/* ★ ใหม่: ยืดเต็มช่อง ตัดบรรทัดได้ */}
+              {!loading && <span className={`shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 ${active ? 'bg-white/20' : 'bg-slate-100'}`}>{cardValue[k]}</span>}
             </button>
           );
         })}
